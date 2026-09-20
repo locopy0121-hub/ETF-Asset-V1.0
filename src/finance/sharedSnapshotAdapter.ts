@@ -42,6 +42,12 @@ export function buildSharedSnapshot(input:{
         changePercent,
         marketStatus:statusFor(row.price,row.previousClose),
         updatedAt,
+        shares:row.shares,
+        avgCost:row.avgCost,
+        marketValue:row.marketValue,
+        pnl:row.pnl,
+        roi:row.roi,
+        comprehensivePnl:row.comprehensivePnl,
       };
     }),
   };
