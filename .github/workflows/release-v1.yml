@@ -12,8 +12,10 @@ jobs:
     timeout-minutes: 90
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      CI: "1"
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -27,6 +29,7 @@ jobs:
           test "$(node -p "require('./app.json').expo.version")" = "1.0.0"
           test "$(node -p "require('./app.json').expo.android.versionCode")" = "10000"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
+          test "$(node -p "require('./app.json').expo.extra.eas.projectId")" = "02e27723-d296-4332-826c-3e4477a77c50"
 
       - name: TypeScript
         run: npm run typecheck
@@ -51,22 +54,62 @@ jobs:
           test -n "$EXPO_TOKEN"
           npx --yes eas-cli@23.2.0 whoami --non-interactive
 
-      - name: Bootstrap EAS project
-        run: npx --yes eas-cli@23.2.0 init --account deken4908 --non-interactive
+      - name: Try EAS Android preview APK
+        id: eas_build
+        shell: bash
+        run: |
+          set +e
+          npx --yes eas-cli@23.2.0 build --platform android --profile preview --non-interactive --wait 2>&1 | tee eas-build-attempt.log
+          code=${PIPESTATUS[0]}
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "mode=eas" >> "$GITHUB_OUTPUT"
+            echo "quota_exhausted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if grep -q "used its Android builds from the Free plan this month" eas-build-attempt.log; then
+            echo "mode=github-fallback" >> "$GITHUB_OUTPUT"
+            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          cat eas-build-attempt.log
+          exit "$code"
 
-      - name: Build Android preview APK
-        run: npx --yes eas-cli@23.2.0 build --platform android --profile preview --non-interactive --wait
-
-      - name: Resolve and download APK
+      - name: Resolve EAS APK
+        if: steps.eas_build.outputs.mode == 'eas'
         run: |
           npx --yes eas-cli@23.2.0 build:list --platform android --limit 1 --status finished --non-interactive --json > eas-build.json
           APK_URL="$(jq -r '.[0].artifacts.buildUrl // .[0].artifacts.applicationArchiveUrl // empty' eas-build.json)"
           test -n "$APK_URL"
           curl --fail --location "$APK_URL" --output TF-Asset-V1.0.0-preview.apk
-          test "$(stat -c%s TF-Asset-V1.0.0-preview.apk)" -gt 1000000
+
+      - name: Set up Java for GitHub fallback
+        if: steps.eas_build.outputs.mode == 'github-fallback'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate Android project
+        if: steps.eas_build.outputs.mode == 'github-fallback'
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Build APK on GitHub runner
+        if: steps.eas_build.outputs.mode == 'github-fallback'
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew assembleRelease --no-daemon
+          cd ..
+          APK_PATH="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" TF-Asset-V1.0.0-preview.apk
+          printf '{"builder":"github-actions-fallback","reason":"EAS free-plan Android quota exhausted","projectId":"02e27723-d296-4332-826c-3e4477a77c50"}\n' > eas-build.json
 
       - name: Validate APK artifact
         run: |
+          test -f TF-Asset-V1.0.0-preview.apk
+          test "$(stat -c%s TF-Asset-V1.0.0-preview.apk)" -gt 1000000
           unzip -t TF-Asset-V1.0.0-preview.apk
           sha256sum TF-Asset-V1.0.0-preview.apk | tee TF-Asset-V1.0.0-preview.sha256
           file TF-Asset-V1.0.0-preview.apk
@@ -79,5 +122,6 @@ jobs:
             TF-Asset-V1.0.0-preview.apk
             TF-Asset-V1.0.0-preview.sha256
             eas-build.json
+            eas-build-attempt.log
           if-no-files-found: error
           retention-days: 30
