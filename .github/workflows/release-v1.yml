@@ -51,6 +51,9 @@ jobs:
           test -n "$EXPO_TOKEN"
           npx --yes eas-cli@23.2.0 whoami --non-interactive
 
+      - name: Bootstrap EAS project
+        run: npx --yes eas-cli@23.2.0 init --account deken4908 --non-interactive
+
       - name: Build Android preview APK
         run: npx --yes eas-cli@23.2.0 build --platform android --profile preview --non-interactive --wait
 
