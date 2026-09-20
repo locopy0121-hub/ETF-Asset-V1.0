@@ -6,6 +6,7 @@ import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
 import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
+import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -16,17 +17,20 @@ import { colors, spacing } from './src/theme/tokens';
 
 export default function App() {
   return <SafeAreaProvider>
-    <FinanceProvider>
+    <MarketRuntimeProvider>
+      <FinanceProvider>
       <PageEditorProvider>
         <StatusBar barStyle="dark-content"/>
         <AppBody/>
       </PageEditorProvider>
-    </FinanceProvider>
+      </FinanceProvider>
+    </MarketRuntimeProvider>
   </SafeAreaProvider>;
 }
 
 function AppBody(){
   const finance=useFinance();
+  const market=useMarketRuntime();
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
@@ -44,11 +48,11 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!editor.hydrated){
     return <View style={styles.loading}>
       <ActivityIndicator size="large" color={colors.primary}/>
       <Text style={styles.loadingTitle}>TF Asset</Text>
-      <Text style={styles.loadingText}>正在載入帳務與版面設定…</Text>
+      <Text style={styles.loadingText}>正在載入帳務、行情與版面設定…</Text>
     </View>;
   }
 
