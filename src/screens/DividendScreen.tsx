@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
@@ -7,54 +7,95 @@ import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
-import { DEMO_DIVIDENDS } from '../data/demoData';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import { colors, radius, spacing } from '../theme/tokens';
+import { calculateLedgerCashFlow, type DividendLedgerEntry } from '../finance/canonicalLedger';
+import { useFinance } from '../finance/FinanceRuntime';
+import { colors, spacing } from '../theme/tokens';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
+const nowIso=()=>new Date().toISOString().slice(0,10);
 
 export function DividendScreen() {
+  const finance=useFinance();
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const total=DEMO_DIVIDENDS.reduce((s,x)=>s+x.amount,0);
-  const events=useMemo(()=>new Map(DEMO_DIVIDENDS.map(x=>[Number(x.date.slice(-2)),x])),[]);
+  const [month,setMonth]=useState(nowIso().slice(0,7));
+  const today=nowIso();
+  const dividends=useMemo(()=>finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend').sort((a,b)=>a.date.localeCompare(b.date)),[finance.entries]);
+  const monthRows=dividends.filter(x=>x.date.startsWith(month));
+  const monthTotal=monthRows.reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
+  const year=month.slice(0,4);
+  const annual=dividends.filter(x=>x.date.startsWith(year)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
+  const monthlyAverage=annual/12;
+  const events=useMemo(()=>new Map(monthRows.map(x=>[Number(x.date.slice(-2)),x])),[monthRows]);
+  const monthDate=new Date(month+'-01T12:00:00');
+  const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(d.toISOString().slice(0,7));};
+  const monthTotals=Array.from({length:12},(_,idx)=>{
+    const key=year+'-'+String(idx+1).padStart(2,'0');
+    return dividends.filter(x=>x.date.startsWith(key)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
+  });
+  const maxMonth=Math.max(1,...monthTotals);
+
   return <>
-    <PageShell title="股息中心" subtitle="以股息月曆掌握入金時間軸" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell title="股息中心" subtitle="股息淨額與現金入帳共用 V3.7.8 Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="dividend" frames={[
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
             <View style={styles.metrics}>
-              <MetricTile label="本月入金" value={money(total)} caption="預估＋實收" tone="gain"/>
-              <MetricTile label="年度股息 Total" value="98,730" caption="+12.5% YoY"/>
-              <MetricTile label="月平均股息" value="8,228" caption="今年"/>
+              <MetricTile label="本月淨入帳" value={money(monthTotal)} caption="扣 NHI／匯費" tone="gain"/>
+              <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
+              <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
             </View>
           </FrameCard>
         },
         {key:'dividend-calendar',element:
           <FrameCard title="股息月曆">
-            <View style={styles.calendarTop}><Text style={styles.month}>‹　2026 年 9 月　›</Text><Text style={styles.filter}>全部 ▾</Text></View>
+            <View style={styles.calendarTop}>
+              <Pressable onPress={()=>shiftMonth(-1)}><Text style={styles.arrow}>‹</Text></Pressable>
+              <Text style={styles.month}>{month.replace('-',' 年 ')} 月</Text>
+              <Pressable onPress={()=>shiftMonth(1)}><Text style={styles.arrow}>›</Text></Pressable>
+            </View>
             <View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>
             <View style={styles.grid}>{Array.from({length:35},(_,i)=>{
-              const day=i-1;
-              const valid=day>=1&&day<=30;
-              const event=valid?events.get(day):undefined;
-              const statusColor=event?.status==='已入帳'?colors.gain:event?.status==='待入帳'?colors.warning:event?colors.primary:'transparent';
-              return <View key={i} style={[styles.day,event&&styles.eventDay]}><Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>{event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}</View>;
+              const day=i+1;
+              const event=events.get(day);
+              const status=event?(event.date<today?'已入帳':event.date===today?'待入帳':'預估'):null;
+              const statusColor=status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:status?colors.primary:'transparent';
+              return <View key={i} style={[styles.day,event&&styles.eventDay]}>
+                <Text style={styles.dayText}>{day<=31?day:''}</Text>
+                {event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}
+              </View>;
             })}</View>
             <View style={styles.legend}><Legend color={colors.primary} label="預估"/><Legend color={colors.warning} label="待入帳"/><Legend color={colors.gain} label="已入帳"/></View>
           </FrameCard>
         },
         {key:'dividend-list',element:
           <FrameCard title="股息清單">
-            {DEMO_DIVIDENDS.map(row=><View key={row.id} style={styles.dividendRow}>
-              <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
-              <View style={{flex:1}}><Text style={styles.stockName}>{row.name}</Text><Text style={styles.symbol}>{row.symbol}</Text></View>
-              <View style={{alignItems:'flex-end'}}><Text style={styles.dividendAmount}>NT$ {money(row.amount)}</Text><Text style={[styles.status,{color:row.status==='已入帳'?colors.gain:row.status==='待入帳'?colors.warning:colors.primary}]}>{row.status}</Text></View>
-            </View>)}
+            {monthRows.length?monthRows.map(row=>{
+              const amount=calculateLedgerCashFlow(row);
+              const status=row.date<today?'已入帳':row.date===today?'待入帳':'預估';
+              return <View key={row.id} style={styles.dividendRow}>
+                <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
+                <View style={{flex:1}}>
+                  <Text style={styles.stockName}>{row.name}</Text>
+                  <Text style={styles.symbol}>{row.symbol} · {row.sharesHeld.toLocaleString('zh-TW')} 股 × {row.perShareAmount}</Text>
+                </View>
+                <View style={{alignItems:'flex-end'}}>
+                  <Text style={styles.dividendAmount}>NT$ {money(amount)}</Text>
+                  <Text style={[styles.status,{color:status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:colors.primary}]}>{status}</Text>
+                </View>
+              </View>;
+            }):<Text style={styles.empty}>本月尚無股息紀錄</Text>}
           </FrameCard>
         },
         {key:'annual-trend',element:
           <FrameCard title="年度趨勢">
-            <View style={styles.bars}>{[32,38,46,42,68,52,61,57,74,63,80,88].map((h,i)=><View key={i} style={styles.barCol}><View style={[styles.bar,{height:h}]}/><Text style={styles.barLabel}>{i+1}</Text></View>)}</View>
+            <View style={styles.bars}>{monthTotals.map((amount,index)=>{
+              const key=year+'-'+String(index+1).padStart(2,'0');
+              const h=Math.max(3,Math.round(amount/maxMonth*82));
+              return <Pressable key={key} onPress={()=>setMonth(key)} style={styles.barCol}>
+                <View style={[styles.bar,{height:h}]}/><Text style={styles.barLabel}>{index+1}</Text>
+              </Pressable>;
+            })}</View>
           </FrameCard>
         },
       ]}/>
@@ -65,16 +106,15 @@ export function DividendScreen() {
 function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text style={styles.legendText}>{label}</Text></View>}
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
-  calendarTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center'},
+  calendarTop:{flexDirection:'row',justifyContent:'center',gap:20,alignItems:'center'},
   month:{fontWeight:'900',fontSize:15,color:colors.text},
-  filter:{fontSize:11,fontWeight:'800',color:colors.primary,backgroundColor:colors.surfaceMuted,paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill},
+  arrow:{fontSize:24,fontWeight:'900',color:colors.primary},
   week:{flexDirection:'row'},
   weekday:{flex:1,textAlign:'center',fontSize:10,fontWeight:'800',color:colors.textSecondary},
   grid:{flexDirection:'row',flexWrap:'wrap'},
   day:{width:'14.285%',height:45,alignItems:'center',justifyContent:'center',borderRadius:10},
   eventDay:{backgroundColor:colors.surfaceMuted},
   dayText:{fontSize:12,fontWeight:'700',color:colors.text},
-  dayGhost:{color:'transparent'},
   eventDot:{width:5,height:5,borderRadius:3,marginTop:4},
   legend:{flexDirection:'row',gap:spacing.lg,justifyContent:'center'},
   legendItem:{flexDirection:'row',alignItems:'center',gap:5},
@@ -87,6 +127,7 @@ const styles=StyleSheet.create({
   symbol:{fontSize:10,color:colors.textSecondary,marginTop:2},
   dividendAmount:{fontSize:13,fontWeight:'900',color:colors.text},
   status:{fontSize:10,fontWeight:'800',marginTop:2},
+  empty:{fontSize:12,color:colors.textSecondary,textAlign:'center',paddingVertical:18},
   bars:{height:108,flexDirection:'row',alignItems:'flex-end',gap:5,paddingTop:8},
   barCol:{flex:1,alignItems:'center',justifyContent:'flex-end',height:'100%'},
   bar:{width:'70%',backgroundColor:colors.primary,borderRadius:4,opacity:0.75},
