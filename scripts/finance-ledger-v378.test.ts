@@ -104,6 +104,18 @@ assert.equal(frozenBuy.actualFee, 2);
 
 assert.equal(validateLedgerSequence([buy,sell]).length,0);
 assert.equal(validateLedgerSequence([sell]).length,1);
-assert.equal(validateLedgerSequence([sell,buy]).length,1);
+const oversell = freezeTradeEntry({
+  id:'s-oversell',
+  date:'2026-01-02',
+  kind:'sell',
+  symbol:'0050',
+  name:'元大台灣50',
+  tradeMode:'ODD_LOT',
+  shares:120,
+  price:25,
+  actualFee:3,
+  actualTax:3,
+});
+assert.equal(validateLedgerSequence([buy,oversell]).length,1);
 
 console.log('TF_ASSET_V378_LEDGER: PASS');
