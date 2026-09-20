@@ -245,14 +245,113 @@ function kindLabel(kind:LedgerKind){return kind==='buy'?'買進':kind==='sell'?'
 function kindTone(row:CanonicalLedgerEntry){return row.kind==='sell'?colors.loss:row.kind==='buy'?colors.primary:row.kind==='dividend'?colors.gain:colors.warning;}
 
 function DatePickerModal({visible,value,onChange,onClose}:{visible:boolean;value:string;onChange:(v:string)=>void;onClose:()=>void}){
-  const base=new Date(`${value}T12:00:00`);
-  const shift=(days:number)=>{const d=new Date(base);d.setDate(d.getDate()+days);onChange(d.toISOString().slice(0,10));};
-  const shiftMonth=(months:number)=>{const d=new Date(base);d.setMonth(d.getMonth()+months);onChange(d.toISOString().slice(0,10));};
+  const parsed=parseIsoDate(value);
+  const [viewYear,setViewYear]=useState(parsed.year);
+  const [viewMonth,setViewMonth]=useState(parsed.month);
+
+  useEffect(()=>{
+    if(!visible)return;
+    const next=parseIsoDate(value);
+    setViewYear(next.year);
+    setViewMonth(next.month);
+  },[visible,value]);
+
+  const selected=parseIsoDate(value);
+  const firstWeekday=new Date(viewYear,viewMonth-1,1).getDay();
+  const monthDays=new Date(viewYear,viewMonth,0).getDate();
+  const cells:Array<number|null>=[
+    ...Array.from({length:firstWeekday},()=>null),
+    ...Array.from({length:monthDays},(_,index)=>index+1),
+  ];
+  while(cells.length%7!==0)cells.push(null);
+
+  const setSelectedDate=(year:number,month:number,day:number)=>{
+    onChange(formatIsoDate(year,month,day));
+  };
+  const changeMonth=(delta:number)=>{
+    const total=viewYear*12+(viewMonth-1)+delta;
+    setViewYear(Math.floor(total/12));
+    setViewMonth(((total%12)+12)%12+1);
+  };
+  const changeYear=(delta:number)=>setViewYear(year=>year+delta);
+  const shiftSelectedDay=(days:number)=>{
+    const d=new Date(selected.year,selected.month-1,selected.day,12,0,0);
+    d.setDate(d.getDate()+days);
+    setSelectedDate(d.getFullYear(),d.getMonth()+1,d.getDate());
+    setViewYear(d.getFullYear());
+    setViewMonth(d.getMonth()+1);
+  };
+  const shiftSelectedMonth=(months:number)=>{
+    const total=selected.year*12+(selected.month-1)+months;
+    const year=Math.floor(total/12);
+    const month=((total%12)+12)%12+1;
+    const day=Math.min(selected.day,new Date(year,month,0).getDate());
+    setSelectedDate(year,month,day);
+    setViewYear(year);
+    setViewMonth(month);
+  };
+  const selectToday=()=>{
+    const now=new Date();
+    setSelectedDate(now.getFullYear(),now.getMonth()+1,now.getDate());
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth()+1);
+  };
+
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><View style={styles.backdrop}><View style={styles.dateModal}>
-    <Text style={styles.modalTitle}>選擇日期</Text><Text style={styles.dateValue}>{value}</Text>
-    <View style={styles.dateControls}><Pressable style={styles.dateButton} onPress={()=>shiftMonth(-1)}><Text style={styles.dateButtonText}>上月</Text></Pressable><Pressable style={styles.dateButton} onPress={()=>shift(-1)}><Text style={styles.dateButtonText}>前一天</Text></Pressable><Pressable style={styles.dateButton} onPress={()=>onChange(today())}><Text style={styles.dateButtonText}>今天</Text></Pressable><Pressable style={styles.dateButton} onPress={()=>shift(1)}><Text style={styles.dateButtonText}>後一天</Text></Pressable><Pressable style={styles.dateButton} onPress={()=>shiftMonth(1)}><Text style={styles.dateButtonText}>下月</Text></Pressable></View>
+    <Text style={styles.modalTitle}>選擇日期</Text>
+    <Text style={styles.dateValue}>{value}</Text>
+
+    <View style={styles.calendarHeader}>
+      <Pressable accessibilityLabel="前一年" style={styles.calendarNavButton} onPress={()=>changeYear(-1)}><Text style={styles.calendarNavText}>‹ 年</Text></Pressable>
+      <Text style={styles.calendarTitle}>{viewYear} 年</Text>
+      <Pressable accessibilityLabel="後一年" style={styles.calendarNavButton} onPress={()=>changeYear(1)}><Text style={styles.calendarNavText}>年 ›</Text></Pressable>
+    </View>
+    <View style={styles.calendarHeader}>
+      <Pressable accessibilityLabel="上個月" style={styles.calendarNavButton} onPress={()=>changeMonth(-1)}><Text style={styles.calendarNavText}>‹ 月</Text></Pressable>
+      <Text style={styles.calendarTitle}>{viewMonth} 月</Text>
+      <Pressable accessibilityLabel="下個月" style={styles.calendarNavButton} onPress={()=>changeMonth(1)}><Text style={styles.calendarNavText}>月 ›</Text></Pressable>
+    </View>
+
+    <View style={styles.weekRow}>
+      {['日','一','二','三','四','五','六'].map(day=><Text key={day} style={styles.weekLabel}>{day}</Text>)}
+    </View>
+    <View style={styles.calendarGrid}>
+      {cells.map((day,index)=>{
+        const active=day!=null&&selected.year===viewYear&&selected.month===viewMonth&&selected.day===day;
+        return <View key={`${viewYear}-${viewMonth}-${index}`} style={styles.dayCell}>
+          {day==null?null:<Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${viewYear}年${viewMonth}月${day}日`}
+            style={[styles.dayButton,active&&styles.dayButtonActive]}
+            onPress={()=>setSelectedDate(viewYear,viewMonth,day)}
+          ><Text style={[styles.dayText,active&&styles.dayTextActive]}>{day}</Text></Pressable>}
+        </View>;
+      })}
+    </View>
+
+    <View style={styles.dateControls}>
+      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedMonth(-1)}><Text style={styles.dateButtonText}>上月</Text></Pressable>
+      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedDay(-1)}><Text style={styles.dateButtonText}>前一天</Text></Pressable>
+      <Pressable style={styles.dateButton} onPress={selectToday}><Text style={styles.dateButtonText}>今天</Text></Pressable>
+      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedDay(1)}><Text style={styles.dateButtonText}>後一天</Text></Pressable>
+      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedMonth(1)}><Text style={styles.dateButtonText}>下月</Text></Pressable>
+    </View>
     <Pressable style={styles.primary} onPress={onClose}><Text style={styles.primaryText}>完成</Text></Pressable>
   </View></View></Modal>;
+}
+
+function parseIsoDate(value:string){
+  const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if(match){
+    const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+    if(year>0&&month>=1&&month<=12&&day>=1&&day<=new Date(year,month,0).getDate())return {year,month,day};
+  }
+  const now=new Date();
+  return {year:now.getFullYear(),month:now.getMonth()+1,day:now.getDate()};
+}
+
+function formatIsoDate(year:number,month:number,day:number){
+  return `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 function ConfirmModal({visible,title,onCancel,onConfirm,children}:{visible:boolean;title:string;onCancel:()=>void;onConfirm:()=>void;children:ReactNode}){
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}><View style={styles.backdrop}><View style={styles.confirmModal}><Text style={styles.modalTitle}>{title}</Text><View style={{gap:7}}>{children}</View><View style={styles.confirmButtons}><Pressable style={styles.secondaryButton} onPress={onCancel}><Text style={styles.secondaryText}>返回修改</Text></Pressable><Pressable style={styles.primaryButton} onPress={onConfirm}><Text style={styles.primaryText}>正式入帳</Text></Pressable></View></View></View></Modal>;
@@ -301,6 +400,18 @@ const styles=StyleSheet.create({
   confirmModal:{width:'100%',maxWidth:420,backgroundColor:colors.surface,borderRadius:22,padding:20,gap:16},
   modalTitle:{fontSize:20,fontWeight:'900',color:colors.text},
   dateValue:{fontSize:28,fontWeight:'900',color:colors.primary,textAlign:'center'},
+  calendarHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
+  calendarNavButton:{minWidth:74,paddingHorizontal:10,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.surfaceMuted,alignItems:'center'},
+  calendarNavText:{fontSize:11,fontWeight:'900',color:colors.primary},
+  calendarTitle:{flex:1,textAlign:'center',fontSize:15,fontWeight:'900',color:colors.text},
+  weekRow:{flexDirection:'row'},
+  weekLabel:{width:'14.2857%',textAlign:'center',fontSize:10,fontWeight:'900',color:colors.textSecondary,paddingVertical:4},
+  calendarGrid:{flexDirection:'row',flexWrap:'wrap'},
+  dayCell:{width:'14.2857%',aspectRatio:1,alignItems:'center',justifyContent:'center'},
+  dayButton:{width:34,height:34,borderRadius:17,alignItems:'center',justifyContent:'center'},
+  dayButtonActive:{backgroundColor:colors.primary},
+  dayText:{fontSize:11,fontWeight:'800',color:colors.text},
+  dayTextActive:{color:'#FFF'},
   dateControls:{flexDirection:'row',flexWrap:'wrap',gap:7,justifyContent:'center'},
   dateButton:{paddingHorizontal:10,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
   dateButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
