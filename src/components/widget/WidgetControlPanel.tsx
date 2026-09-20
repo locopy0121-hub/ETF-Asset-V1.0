@@ -1,5 +1,7 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import type { SharedSnapshot } from '../../domain/snapshot';
+import { sortWidgetHoldings } from '../../widget/widgetDomain';
 import type {
   WidgetConfig,
   WidgetEffect,
@@ -15,6 +17,7 @@ type Props = {
   value: WidgetConfig;
   onChange: (value: WidgetConfig) => void;
   availableSymbols?: readonly SymbolOption[];
+  previewSnapshot?: SharedSnapshot|null;
 };
 
 const sizes: readonly WidgetSize[] = ['small', 'medium', 'large'];
@@ -27,7 +30,12 @@ const sortKeys:readonly WidgetSortKey[]=['manual','symbol','price','changePercen
 const sortLabels:Record<WidgetSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
 const palette=['#FFFFFF','#F8FAFC','#0F172A','#0066FF','#EF4444','#10B981','#64748B','#F59E0B'];
 
-export function WidgetControlPanel({ value, onChange, availableSymbols=[] }: Props) {
+export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
+  const previewHolding=sortWidgetHoldings(previewSnapshot,value)[0];
+  const previewTotal=previewSnapshot?.asset.totalAssets;
+  const previewPct=previewHolding?.changePercent;
+  const previewPrice=previewHolding?.price;
+  const previewTone=(previewPct??0)>=0?value.style.gainColor:value.style.lossColor;
   const patch=(patch:Partial<WidgetConfig>)=>onChange({...value,...patch});
   const patchStyle=(stylePatch:Partial<WidgetConfig['style']>)=>patch({style:{...value.style,...stylePatch}});
   const patchEffects=(p:Partial<WidgetConfig['effects']>)=>patch({effects:{...value.effects,...p}});
@@ -65,8 +73,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[] }: Pro
     <Section title="即時預覽">
       <View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
         <Text style={{color:value.style.textColor,fontWeight:'900',fontSize:14*value.style.titleFontScale,textAlign:value.style.textAlign}}>TF Asset</Text>
-        <Text style={{color:value.style.textColor,fontWeight:'900',fontSize:18*value.style.valueFontScale,textAlign:value.style.textAlign,marginTop:value.style.rowGap}}>NT$ 1,288,600</Text>
-        <Text style={{color:value.style.gainColor,fontWeight:'800',fontSize:12*value.style.fontScale,textAlign:value.style.textAlign,marginTop:value.style.rowGap}}>+1.28% · +16,240</Text>
+        <Text style={{color:value.style.textColor,fontWeight:'900',fontSize:18*value.style.valueFontScale,textAlign:value.style.textAlign,marginTop:value.style.rowGap}}>{previewTotal==null?'等待資料':`NT$ ${Math.round(previewTotal).toLocaleString('zh-TW')}`}</Text>
+        <Text style={{color:previewTone,fontWeight:'800',fontSize:12*value.style.fontScale,textAlign:value.style.textAlign,marginTop:value.style.rowGap}}>{previewHolding&&previewPrice!=null?`${previewHolding.symbol}  ${previewPrice.toFixed(2)}  ${previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}`:'尚無行情'}</Text>
       </View>
     </Section>
 
