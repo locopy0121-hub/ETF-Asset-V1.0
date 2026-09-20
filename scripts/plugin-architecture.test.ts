@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { assertAdjacentRelationship, canControlAdjacentLayer } from '../src/domain/relationshipContracts';
-import { DEFAULT_MONITOR_CONFIG, setMonitorMode, updateActiveMonitorLayout } from '../src/monitor/monitorDomain';
+import { DEFAULT_MONITOR_CONFIG, activeMonitorFields, createMonitorRuntimeState, restoreNormalMonitor, setMonitorMode, updateActiveMonitorLayout, updateMonitorFields } from '../src/monitor/monitorDomain';
 
 for (const path of [
   'src/domain/snapshot.ts',
@@ -30,6 +30,14 @@ const miniMode = setMonitorMode(normalChanged, 'mini');
 const miniChanged = updateActiveMonitorLayout(miniMode, { width: 200 });
 assert.equal(miniChanged.miniLayout.width, 200);
 assert.equal(miniChanged.normalLayout.width, 360);
+assert.deepEqual(activeMonitorFields(miniChanged), DEFAULT_MONITOR_CONFIG.miniFields);
+const miniFields=updateMonitorFields(miniChanged,['symbol','price']);
+assert.deepEqual(miniFields.miniFields,['symbol','price']);
+assert.deepEqual(miniFields.fields,DEFAULT_MONITOR_CONFIG.fields);
+assert.equal(restoreNormalMonitor(miniFields).mode,'normal');
+const runtime=createMonitorRuntimeState(null,{marketState:'afterHours',refreshing:true},miniFields);
+assert.equal(runtime.marketState,'afterHours');
+assert.equal(runtime.breathing,true);
 
 const widgetDomain = fs.readFileSync('src/widget/widgetDomain.ts', 'utf8');
 const monitorDomain = fs.readFileSync('src/monitor/monitorDomain.ts', 'utf8');
