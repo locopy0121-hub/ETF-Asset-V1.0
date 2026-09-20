@@ -109,6 +109,13 @@ export interface PurchaseCostResult {
   settlementAmount: number;
 }
 
+export interface SaleSettlementResult {
+  tradeAmount: number;
+  commission: number;
+  tax: number;
+  settlementAmount: number;
+}
+
 /**
  * 單筆股息淨額拆解。
  */
@@ -129,6 +136,12 @@ export interface ETFSummary {
   currentPrice: number;
   totalShares: number;
 
+  /** 目前剩餘持倉的純成交成本，不含買進手續費。 */
+  totalTradeCost: number;
+
+  /** 目前剩餘持股每股純成交均價，不含買進手續費。 */
+  averageTradePrice: number;
+
   /** 目前剩餘持倉所對應的含買進手續費成本。 */
   totalInvestmentCost: number;
 
@@ -147,8 +160,14 @@ export interface ETFSummary {
   /** 當前市值 - 預估賣出手續費 - ETF 證交稅。 */
   netLiquidationValue: number;
 
+  /** 毛市值 - 目前剩餘純成交成本；只代表純價格價差。 */
+  priceUnrealizedProfit: number;
+
   /** 淨清算價值 - 目前剩餘持倉含費成本。 */
   unrealizedProfit: number;
+
+  /** 與 unrealizedProfit 相同，提供語意明確的現金口徑欄位。 */
+  cashUnrealizedProfit: number;
 
   /** 未實現損益 / 目前剩餘持倉含費成本 × 100。 */
   unrealizedROI: number;
@@ -180,12 +199,14 @@ export interface ETFSummary {
  */
 export interface PortfolioSummary {
   totalMarketValue: number;
+  totalTradeCost: number;
   totalInvestmentCost: number;
   totalNetLiquidationValue: number;
 
   totalEstimatedSellCommission: number;
   totalEstimatedSellTax: number;
 
+  totalPriceUnrealizedProfit: number;
   totalUnrealizedProfit: number;
   totalUnrealizedROI: number;
   realizedNetPnL: number;

@@ -10,10 +10,11 @@
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
     "check": "npm run typecheck && npm run test:finance && npm run test:ui && npm run test:plugins && npm run test:editor && npm run check:expo",
-    "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts",
+    "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
-    "test:editor": "tsx scripts/editor-architecture.test.ts"
+    "test:editor": "tsx scripts/editor-architecture.test.ts",
+    "test:ledger": "tsx scripts/finance-ledger-v378.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

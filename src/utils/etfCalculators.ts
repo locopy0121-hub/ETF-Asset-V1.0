@@ -26,6 +26,7 @@ import {
   NetDividendResult,
   PortfolioSummary,
   PurchaseCostResult,
+  SaleSettlementResult,
   TradeMode,
   Transaction,
 } from '../types/etf';
@@ -171,6 +172,28 @@ export const calculateActualPurchaseCost=(transaction:Transaction):PurchaseCostR
  return {tradeAmount,commission,settlementAmount:tradeAmount+commission};
 };
 
+export const calculateSaleSettlement = (
+  transaction: Transaction,
+): SaleSettlementResult => {
+  const shares = safeShares(transaction.shares);
+  const price = nonNegative(transaction.price);
+
+  if (transaction.type !== 'SELL' || shares <= 0 || price <= 0) {
+    return { tradeAmount: 0, commission: 0, tax: 0, settlementAmount: 0 };
+  }
+
+  const tradeAmount = Math.floor(shares * price);
+  const commission = resolveTransactionFee(transaction, tradeAmount);
+  const tax = resolveTransactionSellTax(transaction, tradeAmount);
+
+  return {
+    tradeAmount,
+    commission,
+    tax,
+    settlementAmount: Math.max(0, tradeAmount - commission - tax),
+  };
+};
+
 export const calculateNetDividend = (
   record: DividendRecord,
 ): number => {
@@ -184,10 +207,12 @@ const calculateCurrentPositionCost = (
   transactions: Transaction[],
 ): {
   totalShares: number;
+  totalTradeCost: number;
   totalInvestmentCost: number;
   realizedNetPnL: number;
 } => {
   let totalShares = 0;
+  let totalTradeCost = 0;
   let totalInvestmentCost = 0;
   let realizedNetPnL = 0;
 
@@ -204,6 +229,7 @@ const calculateCurrentPositionCost = (
     if (transaction.type === 'BUY') {
       const purchase = calculateActualPurchaseCost(transaction);
       totalShares += shares;
+      totalTradeCost += purchase.tradeAmount;
       totalInvestmentCost += purchase.settlementAmount;
       continue;
     }
@@ -214,7 +240,9 @@ const calculateCurrentPositionCost = (
       totalInvestmentCost > 0
     ) {
       const sellShares = Math.min(shares, totalShares);
+      const averageTradePriceBeforeSell = totalTradeCost / totalShares;
       const averageCostBeforeSell = totalInvestmentCost / totalShares;
+      const releasedTradeCost = averageTradePriceBeforeSell * sellShares;
       const releasedCost = averageCostBeforeSell * sellShares;
       const sellAmount = Math.floor(price * sellShares);
       const sellCommission = resolveTransactionFee(transaction, sellAmount);
@@ -223,20 +251,24 @@ const calculateCurrentPositionCost = (
       realizedNetPnL += netSellIncome - releasedCost;
 
       totalShares -= sellShares;
+      totalTradeCost -= releasedTradeCost;
       totalInvestmentCost -= releasedCost;
 
       if (totalShares <= 0) {
         totalShares = 0;
+        totalTradeCost = 0;
         totalInvestmentCost = 0;
         continue;
       }
 
+      totalTradeCost = Math.max(0, totalTradeCost);
       totalInvestmentCost = Math.max(0, totalInvestmentCost);
     }
   }
 
   return {
     totalShares,
+    totalTradeCost,
     totalInvestmentCost,
     realizedNetPnL,
   };
@@ -249,12 +281,18 @@ export const calculateETFSummary = (
 
   const {
     totalShares,
+    totalTradeCost,
     totalInvestmentCost,
     realizedNetPnL,
   } = calculateCurrentPositionCost(etf.transactions);
 
   const hasValidPosition =
     totalShares > 0 && currentPrice > 0;
+
+  const averageTradePrice =
+    hasValidPosition && totalTradeCost > 0
+      ? totalTradeCost / totalShares
+      : 0;
 
   const averageCostPerShare =
     hasValidPosition && totalInvestmentCost > 0
@@ -285,6 +323,11 @@ export const calculateETFSummary = (
       ? currentMarketValue -
         estimatedSellCommission -
         estimatedSellTax
+      : 0;
+
+  const priceUnrealizedProfit =
+    hasValidPosition && totalTradeCost > 0
+      ? currentMarketValue - totalTradeCost
       : 0;
 
   const unrealizedProfit =
@@ -344,13 +387,17 @@ export const calculateETFSummary = (
     name: etf.name,
     currentPrice,
     totalShares,
+    totalTradeCost,
+    averageTradePrice,
     totalInvestmentCost,
     averageCostPerShare,
     currentMarketValue,
     estimatedSellCommission,
     estimatedSellTax,
     netLiquidationValue,
+    priceUnrealizedProfit,
     unrealizedProfit,
+    cashUnrealizedProfit: unrealizedProfit,
     unrealizedROI,
     realizedNetPnL,
     comprehensivePnL,
@@ -374,6 +421,11 @@ export const calculatePortfolioSummary = (
     0,
   );
 
+  const totalTradeCost = rawSummaries.reduce(
+    (total, summary) => total + summary.totalTradeCost,
+    0,
+  );
+
   const totalInvestmentCost = rawSummaries.reduce(
     (total, summary) => total + summary.totalInvestmentCost,
     0,
@@ -394,6 +446,9 @@ export const calculatePortfolioSummary = (
     (total, summary) => total + summary.estimatedSellTax,
     0,
   );
+
+  const totalPriceUnrealizedProfit =
+    totalMarketValue - totalTradeCost;
 
   const totalUnrealizedProfit =
     totalNetLiquidationValue - totalInvestmentCost;
@@ -444,10 +499,12 @@ export const calculatePortfolioSummary = (
 
   return {
     totalMarketValue,
+    totalTradeCost,
     totalInvestmentCost,
     totalNetLiquidationValue,
     totalEstimatedSellCommission,
     totalEstimatedSellTax,
+    totalPriceUnrealizedProfit,
     totalUnrealizedProfit,
     totalUnrealizedROI,
     realizedNetPnL,
