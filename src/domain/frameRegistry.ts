@@ -21,8 +21,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
   portfolio: [
     { key:'holding-dashboard', title:'持股分析儀表板', description:'市值、成本、損益、含息報酬' },
     { key:'allocation', title:'資產配置', description:'持股與資產分類占比' },
-    { key:'holding-list', title:'持股清單', description:'固定骨架、可調資料欄位' },
-    { key:'quote-wall', title:'行情牆模式', description:'共用持股行情模塊' },
+    { key:'holding-view', title:'持股檢視', description:'清單模式與行情牆模式共用框架' },
   ],
   dividend: [
     { key:'dividend-summary', title:'股息摘要', description:'本月、年度、月平均' },

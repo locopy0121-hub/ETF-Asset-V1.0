@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
+import { PageEditorProvider } from './src/editor/pageEditor';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -30,29 +31,31 @@ export default function App() {
     }
   },[active,detail]);
 
-  return <SafeAreaProvider>
-    <StatusBar barStyle="dark-content"/>
-    <View style={styles.root}>
-      <View style={styles.screen}>{screen}</View>
-      {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
-        <View style={styles.nav}>
-          {MAIN_PAGES.map(page=>{
-            const selected=page.key===active;
-            return <Pressable
-              key={page.key}
-              accessibilityRole="tab"
-              accessibilityState={{selected}}
-              onPress={()=>setActive(page.key)}
-              style={styles.navItem}
-            >
-              <View style={[styles.navIcon,selected&&styles.navIconActive]}><Text style={[styles.navGlyph,selected&&styles.navGlyphActive]}>{glyph(page.key)}</Text></View>
-              <Text style={[styles.navText,selected&&styles.navTextSelected]}>{page.label}</Text>
-            </Pressable>;
-          })}
-        </View>
-      </SafeAreaView>:null}
-    </View>
-  </SafeAreaProvider>;
+  return <PageEditorProvider>
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content"/>
+      <View style={styles.root}>
+        <View style={styles.screen}>{screen}</View>
+        {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
+          <View style={styles.nav}>
+            {MAIN_PAGES.map(page=>{
+              const selected=page.key===active;
+              return <Pressable
+                key={page.key}
+                accessibilityRole="tab"
+                accessibilityState={{selected}}
+                onPress={()=>setActive(page.key)}
+                style={styles.navItem}
+              >
+                <View style={[styles.navIcon,selected&&styles.navIconActive]}><Text style={[styles.navGlyph,selected&&styles.navGlyphActive]}>{glyph(page.key)}</Text></View>
+                <Text style={[styles.navText,selected&&styles.navTextSelected]}>{page.label}</Text>
+              </Pressable>;
+            })}
+          </View>
+        </SafeAreaView>:null}
+      </View>
+    </SafeAreaProvider>
+  </PageEditorProvider>;
 }
 
 function glyph(key:MainPageKey){

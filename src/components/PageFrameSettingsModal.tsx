@@ -1,39 +1,199 @@
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { PageFrameDefinition } from '../domain/frameRegistry';
+import type { MainPageKey } from '../domain/pageRegistry';
+import {
+  normalizeEditorConfig,
+  type FrameAppearance,
+  type FrameBehavior,
+  type FrameEditorConfig,
+  type FrameLayout,
+  usePageEditor,
+} from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
 
-export function PageFrameSettingsModal({visible,title,frames,onClose}:{visible:boolean;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void}){
-  const [open,setOpen]=useState<string|null>(null);
-  return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+const layouts: readonly { key: FrameLayout; label: string }[] = [
+  { key: 'standard', label: '標準' },
+  { key: 'compact', label: '緊湊' },
+  { key: 'dense', label: '密集' },
+];
+const appearances: readonly { key: FrameAppearance; label: string }[] = [
+  { key: 'theme', label: '跟隨主題' },
+  { key: 'soft', label: '柔和底色' },
+  { key: 'outline', label: '強調外框' },
+];
+const behaviors: readonly { key: FrameBehavior; label: string }[] = [
+  { key: 'manual', label: '手動排序' },
+  { key: 'auto', label: '自動順位' },
+  { key: 'locked', label: '鎖定' },
+];
+
+export function PageFrameSettingsModal({
+  visible,
+  pageKey,
+  title,
+  frames,
+  onClose,
+}: {
+  visible: boolean;
+  pageKey: MainPageKey;
+  title: string;
+  frames: readonly PageFrameDefinition[];
+  onClose: () => void;
+}) {
+  const { config, replacePageConfig, resetPage } = usePageEditor(pageKey);
+  const [open, setOpen] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Record<string, FrameEditorConfig>>({ ...config });
+
+  useEffect(() => {
+    if (visible) {
+      setDraft({ ...config });
+      setOpen(null);
+    }
+  }, [visible, config]);
+
+  const orderedFrames = useMemo(
+    () => [...frames].sort((a, b) => (draft[a.key]?.order ?? 0) - (draft[b.key]?.order ?? 0)),
+    [frames, draft],
+  );
+
+  const patch = (key: string, next: Partial<FrameEditorConfig>) => {
+    const current = draft[key];
+    if (!current || current.behavior === 'locked') return;
+    setDraft(value => ({ ...value, [key]: { ...current, ...next } }));
+  };
+
+  const setBehavior = (key: string, behavior: FrameBehavior) => {
+    const current = draft[key];
+    if (!current) return;
+    setDraft(value => ({ ...value, [key]: { ...current, behavior } }));
+  };
+
+  const move = (key: string, delta: -1 | 1) => {
+    const current = draft[key];
+    if (!current || current.behavior !== 'manual') return;
+    const ordered = [...orderedFrames];
+    const index = ordered.findIndex(frame => frame.key === key);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= ordered.length) return;
+    const other = draft[ordered[target]!.key];
+    if (!other || other.behavior === 'locked') return;
+    setDraft(value => ({
+      ...value,
+      [key]: { ...current, order: other.order },
+      [ordered[target]!.key]: { ...other, order: current.order },
+    }));
+  };
+
+  const apply = () => {
+    replacePageConfig(normalizeEditorConfig(pageKey, draft));
+    onClose();
+  };
+
+  const cancel = () => {
+    setDraft({ ...config });
+    onClose();
+  };
+
+  const reset = () => {
+    resetPage();
+    onClose();
+  };
+
+  return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
     <View style={styles.root}>
       <View style={styles.top}>
-        <View style={{flex:1}}>
+        <View style={{ flex: 1 }}>
           <Text style={styles.kicker}>頁面框架設定</Text>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.hint}>每一個實際框架就是大項 A；展開後才進入 B 層設定。</Text>
+          <Text style={styles.hint}>每個實際框架是 A；展開後只修改該框架直接 B 層，不跨層控制。</Text>
         </View>
-        <Pressable style={styles.close} onPress={onClose}><Text style={styles.closeText}>完成</Text></Pressable>
+        <Pressable style={styles.cancel} onPress={cancel}><Text style={styles.cancelText}>取消</Text></Pressable>
+        <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
       </View>
+
       <ScrollView contentContainerStyle={styles.content}>
-        {frames.map(frame=>{
-          const expanded=open===frame.key;
+        <View style={styles.toolbar}>
+          <Text style={styles.toolbarText}>Draft 模式：只有按「套用」才會寫入目前頁面 Runtime。</Text>
+          <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
+        </View>
+
+        {orderedFrames.map((frame, index) => {
+          const expanded = open === frame.key;
+          const value = draft[frame.key];
+          if (!value) return null;
+          const locked = value.behavior === 'locked';
+
           return <View key={frame.key} style={styles.section}>
-            <Pressable style={styles.header} onPress={()=>setOpen(expanded?null:frame.key)}>
-              <View style={{flex:1}}>
+            <View style={styles.header}>
+              <Pressable style={{ flex: 1 }} onPress={() => setOpen(expanded ? null : frame.key)}>
                 <Text style={styles.sectionTitle}>{frame.title}</Text>
                 <Text style={styles.description}>{frame.description}</Text>
+              </Pressable>
+              <View style={styles.headerActions}>
+                <Switch
+                  value={value.visible}
+                  disabled={locked}
+                  onValueChange={visibleValue => patch(frame.key, { visible: visibleValue })}
+                  trackColor={{ true: colors.primary }}
+                />
+                <Text style={styles.toggle}>{expanded ? '−' : '+'}</Text>
               </View>
-              <Text style={styles.toggle}>{expanded?'−':'+'}</Text>
-            </Pressable>
-            {expanded?<View style={styles.body}>
-              <SettingRow label="顯示內容" value="依框架資料" />
-              <SettingRow label="版面" value="標準" />
-              <SettingRow label="外觀" value="跟隨頁面主題" />
-              <SettingRow label="排序 / 行為" value="依框架能力" />
+            </View>
+
+            {expanded ? <View style={styles.body}>
+              <EditorRow title="顯示內容" subtitle={value.visible ? '此框架顯示' : '此框架隱藏'}>
+                <Switch
+                  value={value.visible}
+                  disabled={locked}
+                  onValueChange={visibleValue => patch(frame.key, { visible: visibleValue })}
+                  trackColor={{ true: colors.primary }}
+                />
+              </EditorRow>
+
+              <EditorRow title="版面" subtitle="控制框架內距與資訊密度">
+                <ChoiceGroup
+                  disabled={locked}
+                  items={layouts}
+                  value={value.layout}
+                  onChange={layout => patch(frame.key, { layout })}
+                />
+              </EditorRow>
+
+              <EditorRow title="外觀" subtitle="只調整目前框架視覺">
+                <ChoiceGroup
+                  disabled={locked}
+                  items={appearances}
+                  value={value.appearance}
+                  onChange={appearance => patch(frame.key, { appearance })}
+                />
+              </EditorRow>
+
+              <EditorRow title="排序 / 行為" subtitle="手動可移位；自動回到頁面預設順位；鎖定禁止修改">
+                <ChoiceGroup
+                  items={behaviors}
+                  value={value.behavior}
+                  onChange={behavior => setBehavior(frame.key, behavior)}
+                />
+              </EditorRow>
+
+              <View style={styles.orderRow}>
+                <Pressable
+                  disabled={value.behavior !== 'manual' || index === 0}
+                  onPress={() => move(frame.key, -1)}
+                  style={[styles.orderButton, (value.behavior !== 'manual' || index === 0) && styles.disabled]}
+                ><Text style={styles.orderText}>↑ 上移</Text></Pressable>
+                <Text style={styles.orderIndex}>順位 {index + 1}</Text>
+                <Pressable
+                  disabled={value.behavior !== 'manual' || index === orderedFrames.length - 1}
+                  onPress={() => move(frame.key, 1)}
+                  style={[styles.orderButton, (value.behavior !== 'manual' || index === orderedFrames.length - 1) && styles.disabled]}
+                ><Text style={styles.orderText}>↓ 下移</Text></Pressable>
+              </View>
+
               <Text style={styles.rule}>B 層只管理「{frame.title}」，不可直接改動其他框架。</Text>
-            </View>:null}
+            </View> : null}
           </View>;
         })}
       </ScrollView>
@@ -41,27 +201,73 @@ export function PageFrameSettingsModal({visible,title,frames,onClose}:{visible:b
   </Modal>;
 }
 
-function SettingRow({label,value}:{label:string;value:string}){
-  return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Text style={styles.rowValue}>{value}  ›</Text></View>;
+function EditorRow({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return <View style={styles.editorRow}>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.rowLabel}>{title}</Text>
+      <Text style={styles.rowHint}>{subtitle}</Text>
+    </View>
+    <View style={styles.editorControl}>{children}</View>
+  </View>;
 }
 
-const styles=StyleSheet.create({
+function ChoiceGroup<T extends string>({
+  items,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  items: readonly { key: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
+  disabled?: boolean;
+}) {
+  return <View style={styles.choiceGroup}>
+    {items.map(item => <Pressable
+      key={item.key}
+      disabled={disabled}
+      onPress={() => onChange(item.key)}
+      style={[styles.choice, value === item.key && styles.choiceActive, disabled && styles.disabled]}
+    >
+      <Text style={[styles.choiceText, value === item.key && styles.choiceTextActive]}>{item.label}</Text>
+    </Pressable>)}
+  </View>;
+}
+
+const styles = StyleSheet.create({
   root:{flex:1,backgroundColor:colors.background},
-  top:{paddingTop:56,paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,backgroundColor:colors.surface,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',gap:spacing.md},
+  top:{paddingTop:56,paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,backgroundColor:colors.surface,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'flex-start',gap:spacing.sm},
   kicker:{fontSize:12,fontWeight:'800',color:colors.primary},
   title:{fontSize:26,fontWeight:'900',color:colors.text,marginTop:4},
   hint:{fontSize:12,color:colors.textSecondary,lineHeight:18,marginTop:5},
-  close:{alignSelf:'flex-start',paddingHorizontal:14,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.primary},
-  closeText:{color:'#FFFFFF',fontWeight:'800'},
+  cancel:{paddingHorizontal:12,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
+  cancelText:{color:colors.textSecondary,fontWeight:'800'},
+  save:{paddingHorizontal:14,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.primary},
+  saveText:{color:'#FFFFFF',fontWeight:'800'},
   content:{padding:spacing.lg,gap:spacing.md,paddingBottom:48},
+  toolbar:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:spacing.md,flexDirection:'row',alignItems:'center',gap:spacing.md},
+  toolbarText:{flex:1,fontSize:10,lineHeight:15,color:colors.textSecondary},
+  resetText:{fontSize:11,fontWeight:'900',color:colors.primary},
   section:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,overflow:'hidden'},
   header:{padding:spacing.lg,flexDirection:'row',alignItems:'center',gap:spacing.md},
+  headerActions:{flexDirection:'row',alignItems:'center',gap:10},
   sectionTitle:{fontSize:17,fontWeight:'900',color:colors.text},
   description:{fontSize:12,color:colors.textSecondary,marginTop:4},
   toggle:{fontSize:25,color:colors.primary,fontWeight:'600'},
   body:{paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
-  row:{paddingVertical:13,flexDirection:'row',justifyContent:'space-between',gap:spacing.md,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  editorRow:{paddingVertical:13,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border,gap:10},
   rowLabel:{fontWeight:'800',color:colors.text},
-  rowValue:{color:colors.textSecondary},
-  rule:{fontSize:11,lineHeight:17,color:colors.primary,marginTop:12,fontWeight:'700'},
+  rowHint:{fontSize:10,color:colors.textSecondary,marginTop:3,lineHeight:15},
+  editorControl:{marginTop:7},
+  choiceGroup:{flexDirection:'row',flexWrap:'wrap',gap:6},
+  choice:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},
+  choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},
+  choiceText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  choiceTextActive:{color:'#FFFFFF'},
+  orderRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:12},
+  orderButton:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
+  orderText:{fontSize:11,fontWeight:'900',color:colors.primary},
+  orderIndex:{fontSize:11,fontWeight:'800',color:colors.textSecondary},
+  disabled:{opacity:0.35},
+  rule:{fontSize:11,lineHeight:17,color:colors.primary,marginTop:4,fontWeight:'700'},
 });
