@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
-import { HoldingQuoteModule } from '../components/HoldingQuoteModule';
+import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
@@ -25,9 +25,11 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const editor=usePageEditor('home');
   const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
   const sortKey=(editor.displayConfig.sortKey??'pnl') as HoldingSortKey;
+  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true).slice(0,4),[finance.holdings,sortKey]);
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
+  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
   const totalDividend=portfolio.totalDividendsReceived;
 
@@ -70,8 +72,22 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
                 </Pressable>
               )}
             </View>
-            <View style={styles.quoteList}>{sorted.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={quoteStyle} onPress={()=>onOpenHolding(item)}/>)}</View>
-            <Text style={styles.ruleText}>首頁與庫存共用同一份持股與行情資料；顯示樣式與排序狀態彼此獨立。</Text>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>顯示排列</Text>
+              {([
+                {key:'list',label:'單欄'},
+                {key:'grid2',label:'雙欄'},
+                {key:'grid3',label:'三欄'},
+                {key:'horizontal',label:'橫向滑動'},
+                {key:'paged2',label:'雙欄滑動'},
+              ] as const).map(x=>
+                <Pressable key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
+                  <Text style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                </Pressable>
+              )}
+            </View>
+            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} onOpenHolding={onOpenHolding}/>
+            <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },
         {key:'pnl-detail',element:
