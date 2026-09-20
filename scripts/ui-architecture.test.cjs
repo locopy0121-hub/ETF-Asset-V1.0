@@ -9,6 +9,7 @@ const files=[
   'src/screens/SettingsScreen.tsx',
   'src/screens/HoldingDetailScreen.tsx',
   'src/components/HoldingQuoteModule.tsx',
+  'src/components/HoldingQuoteCollection.tsx',
   'src/components/PageFrameSettingsModal.tsx',
   'src/domain/frameRegistry.ts',
 ];
@@ -20,8 +21,10 @@ const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
 const frames=fs.readFileSync('src/domain/frameRegistry.ts','utf8');
 const app=fs.readFileSync('App.tsx','utf8');
 
-assert.match(home,/HoldingQuoteModule/,'home must use shared holding quote module');
-assert.match(portfolio,/HoldingQuoteModule/,'portfolio must use shared holding quote module');
+assert.match(home,/HoldingQuoteCollection/,'home must use shared holding quote collection');
+assert.match(portfolio,/HoldingQuoteCollection/,'portfolio must use shared holding quote collection');
+const holdingCollection=fs.readFileSync('src/components/HoldingQuoteCollection.tsx','utf8');
+assert.match(holdingCollection,/HoldingQuoteModule/,'holding collection must render the shared holding quote module');
 assert.match(portfolio,/清單模式/,'portfolio must support list mode');
 assert.match(portfolio,/行情牆模式/,'portfolio must support quote-wall mode');
 assert.match(portfolio,/PageFrameSettingsModal/,'portfolio gear must open frame-oriented settings');
