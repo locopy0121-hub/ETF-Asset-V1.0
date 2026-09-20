@@ -36,7 +36,20 @@ export function LedgerScreen() {
   const [confirmOpen,setConfirmOpen]=useState(false);
   const [dateOpen,setDateOpen]=useState(false);
 
-  const quote=finance.quotes.find(x=>x.symbol===symbol)??finance.quotes[0];
+  const normalizedSymbol=symbol.trim().toUpperCase();
+  const quote=finance.quotes.find(x=>x.symbol===normalizedSymbol);
+  const recentSymbols=useMemo(()=>{
+    const rows=finance.entries
+      .filter((entry):entry is Extract<CanonicalLedgerEntry,{symbol:string}>=>'symbol' in entry)
+      .map(entry=>entry.symbol);
+    return Array.from(new Set(rows)).slice(0,8);
+  },[finance.entries]);
+  const symbolSuggestions=useMemo(()=>{
+    if(!normalizedSymbol||quote)return [];
+    return finance.quotes
+      .filter(item=>item.symbol.startsWith(normalizedSymbol))
+      .slice(0,8);
+  },[finance.quotes,normalizedSymbol,quote]);
   const tradePreview=useMemo(()=>{
     if((kind!=='buy'&&kind!=='sell')||!quote)return null;
     const p=parseNumber(price),s=parseNumber(shares);
@@ -116,14 +129,30 @@ export function LedgerScreen() {
               onChange={setKind}
             />
             <View style={styles.form}>
-              {kind!=='other'?<>
-                <Text style={styles.fieldLabel}>標的</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
-                  {finance.quotes.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.symbolChip,symbol===item.symbol&&styles.symbolChipActive]}>
-                    <Text style={[styles.symbolChipText,symbol===item.symbol&&styles.symbolChipTextActive]}>{item.symbol}</Text>
+              {kind!=='other'?<View style={styles.symbolFieldBlock}>
+                <Text style={styles.fieldLabel}>ETF代號</Text>
+                <TextInput
+                  style={styles.input}
+                  value={symbol}
+                  onChangeText={text=>setSymbol(text.toUpperCase().replace(/\s/g,''))}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  placeholder="例如 0050"
+                  placeholderTextColor="#98A5B8"
+                />
+                {recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
+                  {recentSymbols.map(code=><Pressable key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
+                    <Text style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
                   </Pressable>)}
-                </ScrollView>
-              </>:null}
+                </ScrollView>:null}
+                {symbolSuggestions.length?<View style={styles.suggestionList}>
+                  {symbolSuggestions.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={styles.suggestionRow}>
+                    <Text style={styles.suggestionSymbol}>{item.symbol}</Text>
+                    <Text style={styles.suggestionName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.suggestionArrow}>›</Text>
+                  </Pressable>)}
+                </View>:null}
+              </View>:null}
 
               <View style={styles.two}>
                 <View style={{flex:1}}><Text style={styles.fieldLabel}>日期</Text><Pressable style={styles.input} onPress={()=>setDateOpen(true)}><Text style={styles.inputText}>{date}</Text></Pressable></View>
@@ -230,7 +259,13 @@ const styles=StyleSheet.create({
   fieldLabel:{fontSize:11,fontWeight:'800',color:colors.textSecondary,marginBottom:5},
   input:{minHeight:44,backgroundColor:colors.surfaceMuted,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,paddingHorizontal:12,paddingVertical:11,color:colors.text,fontSize:13,justifyContent:'center'},
   inputText:{color:colors.text,fontSize:13},
-  symbolRow:{gap:6},
+  symbolFieldBlock:{gap:6},
+  symbolRow:{gap:6,paddingVertical:2},
+  suggestionList:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden',backgroundColor:colors.surface},
+  suggestionRow:{minHeight:42,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  suggestionSymbol:{width:56,fontSize:12,fontWeight:'900',color:colors.primary},
+  suggestionName:{flex:1,fontSize:11,fontWeight:'700',color:colors.text},
+  suggestionArrow:{fontSize:18,color:colors.textSecondary},
   symbolChip:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   symbolChipActive:{backgroundColor:colors.primary},
   symbolChipText:{fontSize:11,fontWeight:'900',color:colors.textSecondary},
