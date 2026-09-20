@@ -115,7 +115,7 @@ export function PageFrameSettingsModal({
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.toolbar}>
-          <Text style={styles.toolbarText}>Draft 模式：只有按「套用」才會寫入目前頁面 Runtime。</Text>
+          <Text style={styles.toolbarText}>TF Asset 暫存編輯：只有按「套用」才會寫入目前頁面設定。</Text>
           <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
         </View>
 
