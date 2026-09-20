@@ -1,9 +1,13 @@
 # Phase 5 — EAS Authorization Gate
 
-Purpose: validate GitHub Actions → EXPO_TOKEN → EAS authorization **without starting an APK build**.
+Status: **PASS**
 
-PASS conditions:
-- GitHub Actions can read `EXPO_TOKEN`.
-- `eas-cli whoami --non-interactive` succeeds.
+Validated run: `35492343661`
+Attempt: `2`
 
-Status: RUNNING
+## Result
+
+- GitHub Actions can read `EXPO_TOKEN`: PASS
+- `eas-cli whoami --non-interactive`: PASS
+
+Phase 6 may proceed.
