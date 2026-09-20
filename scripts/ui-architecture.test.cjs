@@ -29,6 +29,11 @@ assert.match(portfolio,/持股試算/,'portfolio must contain calculator entry')
 assert.match(settings,/PAGE_FRAMES\.settings/,'settings must be driven by actual settings frames');
 assert.match(settings,/Widget（mobile 桌面）/,'settings must distinguish Widget');
 assert.match(settings,/Floating Monitor（浮動即時視窗）/,'settings must distinguish Floating Monitor');
+assert.match(settings,/useState<PluginPanel>\(null\)/,'settings child panel must default closed');
+assert.match(settings,/const toggleTop=/,'settings must use a single top-level accordion controller');
+assert.match(settings,/setPluginPanel\(null\)/,'switching top-level section must close plugin child');
+assert.match(settings,/setSystemPanel\(null\)/,'switching top-level section must close system child');
+assert.match(settings,/setAccountingPanel\(null\)/,'switching top-level section must close accounting child');
 
 for(const key of ['home','ledger','portfolio','dividend','settings']){
   assert.match(frames,new RegExp(`\\b${key}:\\s*\\[`),`missing frame registry for ${key}`);
