@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
@@ -11,6 +11,7 @@ import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type DividendLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
+import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 type EntryKind=LedgerKind;
@@ -20,6 +21,7 @@ const today=()=>new Date().toISOString().slice(0,10);
 
 export function LedgerScreen() {
   const finance=useFinance();
+  const market=useMarketRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [kind,setKind]=useState<EntryKind>('buy');
   const [symbol,setSymbol]=useState(finance.quotes[0]?.symbol??'0050');
@@ -38,6 +40,9 @@ export function LedgerScreen() {
 
   const normalizedSymbol=symbol.trim().toUpperCase();
   const quote=finance.quotes.find(x=>x.symbol===normalizedSymbol);
+  const catalogItem=market.catalog.find(x=>x.symbol===normalizedSymbol);
+  const instrument=quote??catalogItem;
+  useEffect(()=>{ if(catalogItem)market.setTrackedSymbols([catalogItem.symbol]); },[catalogItem?.symbol,market.setTrackedSymbols]);
   const recentSymbols=useMemo(()=>{
     const rows=finance.entries
       .filter((entry):entry is Extract<CanonicalLedgerEntry,{symbol:string}>=>'symbol' in entry)
@@ -45,53 +50,53 @@ export function LedgerScreen() {
     return Array.from(new Set(rows)).slice(0,8);
   },[finance.entries]);
   const symbolSuggestions=useMemo(()=>{
-    if(!normalizedSymbol||quote)return [];
-    return finance.quotes
+    if(!normalizedSymbol||catalogItem)return [];
+    return market.catalog
       .filter(item=>item.symbol.startsWith(normalizedSymbol))
       .slice(0,8);
-  },[finance.quotes,normalizedSymbol,quote]);
+  },[market.catalog,normalizedSymbol,catalogItem]);
   const tradePreview=useMemo(()=>{
-    if((kind!=='buy'&&kind!=='sell')||!quote)return null;
+    if((kind!=='buy'&&kind!=='sell')||!instrument)return null;
     const p=parseNumber(price),s=parseNumber(shares);
     if(!(p>0&&s>0))return null;
     return freezeTradeEntry({
       id:'preview',
       date,
       kind,
-      symbol:quote.symbol,
-      name:quote.name,
+      symbol:instrument.symbol,
+      name:instrument.name,
       tradeMode,
       shares:s,
       price:p,
       ...(fee.trim()?{actualFee:parseNumber(fee)}:{}),
       ...(kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
     });
-  },[kind,quote,date,tradeMode,price,shares,fee,tax]);
+  },[kind,instrument,date,tradeMode,price,shares,fee,tax]);
 
   const dividendPreview=useMemo(()=>{
-    if(kind!=='dividend'||!quote)return null;
+    if(kind!=='dividend'||!instrument)return null;
     const perShare=parseNumber(dividendPerShare);
     const held=parseNumber(dividendShares);
     if(!(perShare>0&&held>0))return null;
     const entry:DividendLedgerEntry={
-      id:'preview-dividend',date,kind:'dividend',symbol:quote.symbol,name:quote.name,perShareAmount:perShare,sharesHeld:held,
+      id:'preview-dividend',date,kind:'dividend',symbol:instrument.symbol,name:instrument.name,perShareAmount:perShare,sharesHeld:held,
       ...(note.trim()?{note:note.trim()}:{}),
     };
     return {entry,net:calculateLedgerCashFlow(entry)};
-  },[kind,quote,date,dividendPerShare,dividendShares,note]);
+  },[kind,instrument,date,dividendPerShare,dividendShares,note]);
 
   const otherPreview=kind==='other'&&parseNumber(otherAmount)!==0?parseNumber(otherAmount):null;
-  const currentHolding=finance.holdings.find(item=>item.symbol===symbol);
+  const currentHolding=finance.holdings.find(item=>item.symbol===normalizedSymbol);
   const sellExceedsHolding=kind==='sell'&&parseNumber(shares)>(currentHolding?.shares??0);
   const canSubmit=kind==='buy'||kind==='sell'?!!tradePreview&&!sellExceedsHolding:kind==='dividend'?!!dividendPreview:otherPreview!==null;
 
   const commitEntry=()=>{
-    if(!quote)return;
+    if(kind!=='other'&&!instrument)return;
     const id=`${kind}-${Date.now()}`;
     if(kind==='buy'||kind==='sell'){
       if(!tradePreview)return;
       finance.addTrade({
-        id,date,kind,symbol:quote.symbol,name:quote.name,tradeMode,
+        id,date,kind,symbol:instrument!.symbol,name:instrument!.name,tradeMode,
         shares:parseNumber(shares),price:parseNumber(price),
         ...(fee.trim()?{actualFee:parseNumber(fee)}:{}),
         ...(kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
