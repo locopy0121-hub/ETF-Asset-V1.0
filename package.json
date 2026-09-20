@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,12 +9,17 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:finance && npm run test:ui && npm run test:plugins && npm run test:editor && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v102 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
     "test:editor": "tsx scripts/editor-architecture.test.ts",
-    "test:ledger": "tsx scripts/finance-ledger-v378.test.ts"
+    "test:ledger": "tsx scripts/finance-ledger-v378.test.ts",
+    "test:portfolio": "node scripts/portfolio-skeleton.test.cjs",
+    "test:calculator": "tsx scripts/calculator-v378.test.ts",
+    "test:ledger-ui": "node scripts/ledger-input-contract.test.cjs",
+    "test:runtime": "node scripts/finance-runtime-contract.test.cjs",
+    "test:v102": "npm run test:finance && npm run test:calculator && npm run test:portfolio && npm run test:ledger-ui && npm run test:runtime && npm run test:ui && npm run test:plugins && npm run test:editor"
   },
   "dependencies": {
     "expo": "~57.0.21",

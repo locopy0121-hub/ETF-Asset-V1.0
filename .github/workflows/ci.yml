@@ -9,7 +9,7 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,14 +19,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: Finance Core Gate
-        run: npm run test:finance
-      - name: UI Architecture Gate
-        run: npm run test:ui
-      - name: Plugin Architecture Gate
-        run: npm run test:plugins
-      - name: Editor Architecture Gate
-        run: npm run test:editor
+      - name: V1.0.2 Hard Gates
+        run: npm run test:v102
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor

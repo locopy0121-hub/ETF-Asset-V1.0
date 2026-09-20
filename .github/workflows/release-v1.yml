@@ -1,9 +1,12 @@
-name: TF Asset V1.0.1 GitHub APK
+name: TF Asset V1.0.2 GitHub APK
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-apk:
@@ -14,6 +17,8 @@ jobs:
       CI: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -27,20 +32,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze version identity
+      - name: Freeze V1.0.2 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "1.0.1"
-          test "$(node -p "require('./app.json').expo.version")" = "1.0.1"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10001"
+          test "$(node -p "require('./package.json').version")" = "1.0.2"
+          test "$(node -p "require('./app.json').expo.version")" = "1.0.2"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10002"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
-      - name: Source hard gates
-        run: |
-          npm run typecheck
-          npm run test:finance
-          npm run test:ui
-          npm run test:plugins
-          npm run test:editor
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: V1.0.2 Hard Gates
+        run: npm run test:v102
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -50,7 +53,7 @@ jobs:
             --package-name com.tfasset.app \
             --skip-install
 
-      - name: Inject TF Asset source
+      - name: Inject TF Asset source and native dependencies
         run: |
           cp App.tsx ../TFAssetNative/App.tsx
           rm -rf ../TFAssetNative/src
@@ -66,7 +69,19 @@ jobs:
           const p='../TFAssetNative/package.json';
           const j=JSON.parse(fs.readFileSync(p,'utf8'));
           j.dependencies['react-native-safe-area-context']='~5.7.0';
+          j.dependencies['@react-native-async-storage/async-storage']='2.2.0';
           fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+
+          const gradle='../TFAssetNative/android/app/build.gradle';
+          let g=fs.readFileSync(gradle,'utf8');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 10002');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.0.2"');
+          fs.writeFileSync(gradle,g);
+
+          const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
+          let s=fs.readFileSync(strings,'utf8');
+          s=s.replace(/<string name="app_name">[\s\S]*?<\/string>/,'<string name="app_name">TF Asset 資產管家</string>');
+          fs.writeFileSync(strings,s);
           NODE
 
       - name: Install native workspace dependencies
@@ -79,26 +94,55 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Collect APK
+      - name: Collect and validate APK
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V1.0.1-github.apk
+          cp "$APK_PATH" TF-Asset-V1.0.2-github.apk
+          test "$(stat -c%s TF-Asset-V1.0.2-github.apk)" -gt 1000000
+          unzip -t TF-Asset-V1.0.2-github.apk
+          sha256sum TF-Asset-V1.0.2-github.apk | tee TF-Asset-V1.0.2-github.sha256
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          "$AAPT" dump badging TF-Asset-V1.0.2-github.apk | tee TF-Asset-V1.0.2-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V1.0.2-badging.txt
+          grep "versionCode='10002'" TF-Asset-V1.0.2-badging.txt
+          grep "versionName='1.0.2'" TF-Asset-V1.0.2-badging.txt
+          file TF-Asset-V1.0.2-github.apk
 
-      - name: Validate APK artifact
-        run: |
-          test -f TF-Asset-V1.0.1-github.apk
-          test "$(stat -c%s TF-Asset-V1.0.1-github.apk)" -gt 1000000
-          unzip -t TF-Asset-V1.0.1-github.apk
-          sha256sum TF-Asset-V1.0.1-github.apk | tee TF-Asset-V1.0.1-github.sha256
-          file TF-Asset-V1.0.1-github.apk
-
-      - name: Upload validated APK
+      - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V1.0.1-GitHub-APK
+          name: TF-Asset-V1.0.2-GitHub-APK
           path: |
-            TF-Asset-V1.0.1-github.apk
-            TF-Asset-V1.0.1-github.sha256
+            TF-Asset-V1.0.2-github.apk
+            TF-Asset-V1.0.2-github.sha256
+            TF-Asset-V1.0.2-badging.txt
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish permanent APK download
+        run: |
+          mkdir -p /tmp/tfasset-v102
+          cp TF-Asset-V1.0.2-github.apk /tmp/tfasset-v102/
+          cp TF-Asset-V1.0.2-github.sha256 /tmp/tfasset-v102/
+          cp TF-Asset-V1.0.2-badging.txt /tmp/tfasset-v102/
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin apk-release >/dev/null 2>&1; then
+            git fetch origin apk-release
+            git switch -C apk-release origin/apk-release
+          else
+            git switch --orphan apk-release
+            git rm -rf . || true
+          fi
+
+          mkdir -p downloads
+          cp /tmp/tfasset-v102/TF-Asset-V1.0.2-github.apk downloads/
+          cp /tmp/tfasset-v102/TF-Asset-V1.0.2-github.sha256 downloads/
+          cp /tmp/tfasset-v102/TF-Asset-V1.0.2-badging.txt downloads/
+          git add downloads
+          git commit -m "publish: TF Asset V1.0.2 APK" || true
+          git push origin apk-release
