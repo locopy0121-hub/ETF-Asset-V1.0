@@ -9,43 +9,44 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
-import { DEMO_HOLDINGS, DEMO_NEWS } from '../data/demoData';
+import { DEMO_NEWS } from '../data/demoData';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
+import { useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)=>void}) {
+  const finance=useFinance();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [quoteStyle,setQuoteStyle]=useState<QuoteModuleStyle>('quote');
   const [sortKey,setSortKey]=useState<HoldingSortKey>('pnl');
-  const sorted=useMemo(()=>sortHoldingQuotes(DEMO_HOLDINGS,sortKey,true).slice(0,4),[sortKey]);
-  const totalMarket=DEMO_HOLDINGS.reduce((s,x)=>s+x.marketValue,0);
-  const totalPnl=DEMO_HOLDINGS.reduce((s,x)=>s+x.pnl,0);
-  const totalDividend=DEMO_HOLDINGS.reduce((s,x)=>s+x.cumulativeDividend,0);
+  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true).slice(0,4),[finance.holdings,sortKey]);
+  const portfolio=finance.snapshot.portfolio;
+  const totalDividend=portfolio.totalDividendsReceived;
 
   return <>
-    <PageShell title="資產儀表板" subtitle="一眼掌握資產、行情與損益" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="home" frames={[
         {key:'asset-dashboard',element:
           <FrameCard title="資產儀表板">
-            <Text style={styles.heroLabel}>持股總市值</Text>
-            <Text style={styles.heroValue}>NT$ {money(totalMarket)}</Text>
-            <Text style={[styles.heroDelta,{color:totalPnl>=0?colors.gain:colors.loss}]}>含持股損益 NT$ {money(totalPnl)}</Text>
+            <Text style={styles.heroLabel}>總資產</Text>
+            <Text style={styles.heroValue}>NT$ {money(finance.snapshot.totalAssets)}</Text>
+            <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
             <View style={styles.metricRow}>
-              <MetricTile label="今日損益" value="+8,560" caption="+0.70%" tone="gain"/>
-              <MetricTile label="本月股息" value="9,130" caption="預估＋實收"/>
-              <MetricTile label="年度股息" value={money(totalDividend)} caption="累積"/>
+              <MetricTile label="持股市值" value={money(portfolio.totalMarketValue)} caption="毛市值"/>
+              <MetricTile label="現金" value={money(finance.snapshot.cashBalance)} caption="Ledger"/>
+              <MetricTile label="累積淨股息" value={money(totalDividend)} caption="V3.7.8"/>
             </View>
           </FrameCard>
         },
         {key:'market-news',element:
           <FrameCard title="市場新聞">
-            {DEMO_NEWS.map(item=><View key={item.id} style={styles.newsRow}>
+            {DEMO_NEWS.slice(0,3).map(item=><View key={item.id} style={styles.newsRow}>
               <View style={styles.newsDot}/>
-              <View style={{flex:1}}><Text style={styles.newsTitle}>{item.title}</Text><Text style={styles.newsMeta}>{item.source}</Text></View>
+              <View style={{flex:1}}><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text style={styles.newsMeta}>{item.source}</Text></View>
               <Text style={styles.newsTime}>{item.time}</Text>
             </View>)}
           </FrameCard>
@@ -66,17 +67,17 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
               )}
             </View>
             <View style={styles.quoteList}>{sorted.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={quoteStyle} onPress={()=>onOpenHolding(item)}/>)}</View>
-            <Text style={styles.ruleText}>釘選優先 → 條件排序 → 一般標的。首頁設定與庫存設定彼此獨立。</Text>
+            <Text style={styles.ruleText}>首頁與庫存共用同一份持股與行情資料；顯示樣式與排序狀態彼此獨立。</Text>
           </FrameCard>
         },
         {key:'pnl-detail',element:
           <FrameCard title="損益明細">
             <View style={styles.metricRow}>
-              <MetricTile label="今日" value="+8,560" caption="+0.70%" tone="gain"/>
-              <MetricTile label="本月" value="+23,420" caption="+1.88%" tone="gain"/>
-              <MetricTile label="今年" value="+91,630" caption="+7.45%" tone="gain"/>
+              <MetricTile label="純價差未實現" value={money(portfolio.totalPriceUnrealizedProfit)} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
+              <MetricTile label="淨清算未實現" value={money(portfolio.totalUnrealizedProfit)} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
+              <MetricTile label="已實現" value={money(portfolio.realizedNetPnL)} caption="歷史賣出" tone={portfolio.realizedNetPnL>=0?'gain':'loss'}/>
             </View>
-            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={styles.totalPnlValue}>NT$ {money(totalPnl+totalDividend)}</Text></View>
+            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>NT$ {money(portfolio.totalPnl)}</Text></View>
           </FrameCard>
         },
       ]}/>
@@ -105,5 +106,5 @@ const styles=StyleSheet.create({
   ruleText:{fontSize:10,lineHeight:16,color:colors.textSecondary},
   totalPnl:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingTop:spacing.md,borderTopWidth:1,borderTopColor:colors.border},
   totalPnlLabel:{fontWeight:'800',color:colors.textSecondary},
-  totalPnlValue:{fontSize:18,fontWeight:'900',color:colors.gain},
+  totalPnlValue:{fontSize:18,fontWeight:'900'},
 });
