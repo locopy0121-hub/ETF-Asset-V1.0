@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
+import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
@@ -31,13 +32,14 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
+import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
 type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
 type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
-type MonitorPanel=null|'main'|'mini'|'template'|'colors'|'refresh';
+type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
 type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
@@ -51,6 +53,7 @@ export function SettingsScreen(){
   const broker=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
   const monitor=useMonitorSettingsRuntime();
+  const widget=useWidgetSettingsRuntime();
 
   const [top,setTop]=useState<string|null>(null);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>(null);
@@ -269,8 +272,9 @@ export function SettingsScreen(){
 
   function monitorSection(){
     return <View style={styles.children}>
-      <Text style={styles.hiddenContractText}>Widget（mobile 桌面）</Text>
       <Text style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
+      <ChildButton label="Widget（mobile 桌面）" summary={widget.config.enabled?'已啟用 · '+widget.config.size:'未啟用'} active={monitorPanel==='widget'} onPress={()=>setMonitorPanel(monitorPanel==='widget'?null:'widget')}/>
+      {monitorPanel==='widget'?<WidgetControlPanel value={widget.config} onChange={widget.setConfig}/>:null}
       <ChildButton label="監控器總設定" summary={monitor.config.enabled?'已啟用':'未啟用'} active={monitorPanel==='main'} onPress={()=>setMonitorPanel(monitorPanel==='main'?null:'main')}/>
       {monitorPanel==='main'?<MonitorControlPanel value={monitor.config} onChange={monitor.setConfig}/>:null}
       <ChildButton label="Mini 模式" summary={monitor.config.mode==='mini'?'目前 Mini':'目前 Normal'} active={monitorPanel==='mini'} onPress={()=>setMonitorPanel(monitorPanel==='mini'?null:'mini')}/>
