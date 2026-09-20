@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 import { PAGE_FRAMES } from '../src/domain/frameRegistry';
-import { createInitialEditorState, normalizeEditorConfig } from '../src/editor/pageEditor';
+import { createInitialDisplayState, createInitialEditorState, mergeDisplayState, normalizeEditorConfig } from '../src/editor/editorModel';
 
 const requiredFiles = [
   'src/editor/pageEditor.tsx',
@@ -84,5 +84,29 @@ assert.ok(!settings.includes('PageFrameSettingsModal'),'Settings page must remai
 const registry=fs.readFileSync('src/domain/frameRegistry.ts','utf8');
 assert.match(registry,/key:'holding-view'/,'portfolio must expose actual holding-view frame');
 assert.ok(!registry.includes("key:'quote-wall'"),'portfolio registry must not split a non-existent physical frame');
+
+const displayDefaults=createInitialDisplayState();
+assert.equal(displayDefaults.home.quoteStyle,'quote');
+assert.equal(displayDefaults.home.sortKey,'pnl');
+assert.equal(displayDefaults.portfolio.quoteStyle,'chart');
+assert.equal(displayDefaults.portfolio.sortKey,'manual');
+assert.equal(displayDefaults.portfolio.portfolioViewMode,'list');
+
+const restored=mergeDisplayState({
+  home:{quoteStyle:'advanced',sortKey:'marketValue'},
+  portfolio:{quoteStyle:'compact',sortKey:'roi',portfolioViewMode:'wall'},
+});
+assert.equal(restored.home.quoteStyle,'advanced');
+assert.equal(restored.portfolio.portfolioViewMode,'wall');
+
+const provider=fs.readFileSync('src/editor/pageEditor.tsx','utf8');
+assert.match(provider,/AsyncStorage/,'editor runtime must persist');
+assert.match(provider,/updateDisplayConfig/,'editor runtime must persist page display preferences');
+
+const homeSource=fs.readFileSync('src/screens/HomeScreen.tsx','utf8');
+const portfolioSource=fs.readFileSync('src/screens/PortfolioScreen.tsx','utf8');
+assert.match(homeSource,/usePageEditor\('home'\)/,'home display settings must be page-scoped');
+assert.match(portfolioSource,/usePageEditor\('portfolio'\)/,'portfolio display settings must be page-scoped');
+assert.match(portfolioSource,/portfolioViewMode/,'portfolio list/wall mode must persist');
 
 console.log('TF_ASSET_EDITOR_ARCHITECTURE: PASS');

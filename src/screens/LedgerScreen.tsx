@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
@@ -9,7 +9,7 @@ import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
+import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type DividendLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
@@ -60,7 +60,7 @@ export function LedgerScreen() {
     const perShare=parseNumber(dividendPerShare);
     const held=parseNumber(dividendShares);
     if(!(perShare>0&&held>0))return null;
-    const entry:CanonicalLedgerEntry={
+    const entry:DividendLedgerEntry={
       id:'preview-dividend',date,kind:'dividend',symbol:quote.symbol,name:quote.name,perShareAmount:perShare,sharesHeld:held,
       ...(note.trim()?{note:note.trim()}:{}),
     };
@@ -217,7 +217,7 @@ function DatePickerModal({visible,value,onChange,onClose}:{visible:boolean;value
     <Pressable style={styles.primary} onPress={onClose}><Text style={styles.primaryText}>完成</Text></Pressable>
   </View></View></Modal>;
 }
-function ConfirmModal({visible,title,onCancel,onConfirm,children}:{visible:boolean;title:string;onCancel:()=>void;onConfirm:()=>void;children:React.ReactNode}){
+function ConfirmModal({visible,title,onCancel,onConfirm,children}:{visible:boolean;title:string;onCancel:()=>void;onConfirm:()=>void;children:ReactNode}){
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}><View style={styles.backdrop}><View style={styles.confirmModal}><Text style={styles.modalTitle}>{title}</Text><View style={{gap:7}}>{children}</View><View style={styles.confirmButtons}><Pressable style={styles.secondaryButton} onPress={onCancel}><Text style={styles.secondaryText}>返回修改</Text></Pressable><Pressable style={styles.primaryButton} onPress={onConfirm}><Text style={styles.primaryText}>正式入帳</Text></Pressable></View></View></View></Modal>;
 }
 

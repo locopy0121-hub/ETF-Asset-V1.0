@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../theme/tokens';
@@ -21,13 +21,17 @@ export function PageShell({ title, subtitle, actions, children }: Props) {
         </View>
         {actions ? <View style={styles.actions}>{actions}</View> : null}
       </View>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS==='ios'?'padding':undefined}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -48,6 +52,7 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 28, fontWeight: '800', marginTop: 2 },
   subtitle: { color: colors.textSecondary, fontSize: 13, marginTop: 4 },
   actions: { marginLeft: spacing.md, flexDirection: 'row', gap: spacing.sm },
+  keyboard: { flex: 1 },
   scroll: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: 110, gap: spacing.lg },
 });
