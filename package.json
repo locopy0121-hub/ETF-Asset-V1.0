@@ -37,11 +37,12 @@
     "test:settings-v107": "node scripts/settings-v107-contract.test.cjs",
     "test:widget-monitor-v107": "node scripts/widget-monitor-v107.test.cjs",
     "test:native-display-v107": "node scripts/native-display-sync-v107.test.cjs",
-    "test:v107": "npm run test:v103 && npm run test:settings-v107 && npm run test:widget-monitor-v107 && npm run test:holding-v106 && npm run test:holding-layout-v106 && npm run test:native-display-v107 && npm run test:mini-ab-v107 && npm run test:widget-2x2-v107 && npm run test:monitor-runtime-v107 && npm run test:palette-v107",
+    "test:v107": "npm run test:v103 && npm run test:settings-v107 && npm run test:widget-monitor-v107 && npm run test:holding-v106 && npm run test:holding-layout-v106 && npm run test:native-display-v107 && npm run test:mini-ab-v107 && npm run test:widget-2x2-v107 && npm run test:monitor-runtime-v107 && npm run test:palette-v107 && npm run test:display-modes-v107",
     "test:mini-ab-v107": "node scripts/mini-ab-v107.test.cjs",
     "test:widget-2x2-v107": "node scripts/widget-2x2-v107.test.cjs",
     "test:monitor-runtime-v107": "node scripts/monitor-runtime-v107.test.cjs",
-    "test:palette-v107": "node scripts/global-palette-v107.test.cjs"
+    "test:palette-v107": "node scripts/global-palette-v107.test.cjs",
+    "test:display-modes-v107": "node scripts/display-modes-v107.test.cjs"
   },
   "dependencies": {
     "expo": "~57.0.21",
