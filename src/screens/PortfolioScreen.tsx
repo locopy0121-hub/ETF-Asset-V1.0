@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
-import { HoldingQuoteModule } from '../components/HoldingQuoteModule';
+import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
@@ -29,9 +29,11 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const viewMode=(editor.displayConfig.portfolioViewMode??'list') as ViewMode;
   const quoteStyle=(editor.displayConfig.quoteStyle??'chart') as QuoteModuleStyle;
   const sortKey=(editor.displayConfig.sortKey??'manual') as HoldingSortKey;
+  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
   const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
   const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
 
@@ -78,7 +80,22 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
                 value={quoteStyle}
                 onChange={setQuoteStyle}
               />
-              <View style={styles.quoteList}>{sorted.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={quoteStyle} onPress={()=>onOpenHolding(item)}/>)}</View>
+              <View style={styles.sortRow}>
+                <Text style={styles.sortTitle}>排列</Text>
+                {([
+                  {key:'list',label:'單欄'},
+                  {key:'grid2',label:'雙欄'},
+                  {key:'grid3',label:'三欄'},
+                  {key:'horizontal',label:'橫滑'},
+                  {key:'paged2',label:'雙欄滑動'},
+                ] as const).map(x=>
+                  <Pressable key={x.key} onPress={()=>setHoldingLayoutMode(x.key)} style={[styles.chip,holdingLayoutMode===x.key&&styles.chipActive]}>
+                    <Text style={[styles.chipText,holdingLayoutMode===x.key&&styles.chipTextActive]}>{x.label}</Text>
+                  </Pressable>
+                )}
+              </View>
+              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} onOpenHolding={onOpenHolding}/>
+              <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
           </FrameCard>
         },
