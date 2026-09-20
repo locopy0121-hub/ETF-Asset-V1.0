@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "TF Asset 資產管家",
+    "slug": "tf-asset",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "tfasset",
+    "android": {
+      "package": "com.tfasset.app",
+      "versionCode": 10000
+    },
+    "ios": {
+      "bundleIdentifier": "com.tfasset.app",
+      "buildNumber": "1"
+    }
+  }
+}
