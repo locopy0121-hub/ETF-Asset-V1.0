@@ -8,11 +8,16 @@ export type HoldingQuote = {
   price: number;
   previousClose: number;
   avgCost: number;
+  tradeAvg: number;
+  costAvg: number;
   marketValue: number;
   pnl: number;
+  pricePnl: number;
   roi: number;
   weight: number;
   cumulativeDividend: number;
+  realizedPnl: number;
+  comprehensivePnl: number;
   pinned?: boolean;
   sparkline: number[];
 };

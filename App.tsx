@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider } from './src/editor/pageEditor';
+import { FinanceProvider } from './src/finance/FinanceRuntime';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -31,8 +32,9 @@ export default function App() {
     }
   },[active,detail]);
 
-  return <PageEditorProvider>
-    <SafeAreaProvider>
+  return <FinanceProvider>
+    <PageEditorProvider>
+      <SafeAreaProvider>
       <StatusBar barStyle="dark-content"/>
       <View style={styles.root}>
         <View style={styles.screen}>{screen}</View>
@@ -54,8 +56,9 @@ export default function App() {
           </View>
         </SafeAreaView>:null}
       </View>
-    </SafeAreaProvider>
-  </PageEditorProvider>;
+      </SafeAreaProvider>
+    </PageEditorProvider>
+  </FinanceProvider>;
 }
 
 function glyph(key:MainPageKey){
