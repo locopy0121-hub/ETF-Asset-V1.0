@@ -72,10 +72,16 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   const quotes=useMemo<RuntimeQuote[]>(()=>{
     const source=new Map(market.quotes.map(x=>[x.symbol,x]));
-    return SEED_QUOTES.map(seed=>{
+    const base=SEED_QUOTES.map(seed=>{
       const live=source.get(seed.symbol);
       return live?{...seed,currentPrice:live.currentPrice,previousClose:live.previousClose,name:live.name||seed.name}:seed;
     });
+    const known=new Set(base.map(x=>x.symbol));
+    const extras:RuntimeQuote[]=market.quotes.filter(x=>!known.has(x.symbol)).map(x=>({
+      symbol:x.symbol,name:x.name,currentPrice:x.currentPrice,previousClose:x.previousClose,
+      liquidationTradeMode:'ODD_LOT',dividendFrequency:0,sparkline:[x.currentPrice],
+    }));
+    return [...base,...extras];
   },[market.quotes]);
 
   const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({initialCash,entries,quotes}),[initialCash,entries,quotes]);
