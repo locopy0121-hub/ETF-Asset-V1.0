@@ -22,7 +22,7 @@ type Props = {
 };
 
 const sizes: readonly WidgetSize[] = ['2x2','small', 'medium', 'large'];
-const templates: readonly WidgetTemplate[] = ['asset-summary', 'quote-summary', 'compact', 'quote-wall'];
+const templates: readonly WidgetTemplate[] = ['asset-summary','quote-summary','compact','advanced','minimal','transparent'];
 const fields:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
 const fieldLabels:Record<WidgetField,string>={
   appName:'App 名稱',totalAssets:'總資產',marketValue:'持股總市值',cash:'現金',unrealizedPnl:'未實現損益',realizedPnl:'已實現損益',
@@ -38,7 +38,7 @@ const palette=['#FFFFFF','#F8FAFC','#0F172A','#0066FF','#EF4444','#10B981','#647
 
 export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
   const previewHolding=sortWidgetHoldings(previewSnapshot,value)[0];
-  const previewLines=value.fields.slice(0,6).map(field=>widgetFieldText(previewSnapshot,previewHolding,field));
+  const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>widgetFieldText(previewSnapshot,previewHolding,field));
   const previewPct=previewHolding?.changePercent;
   const previewTone=(previewPct??0)>=0?value.style.gainColor:value.style.lossColor;
   const patch=(patch:Partial<WidgetConfig>)=>onChange({...value,...patch});
@@ -80,12 +80,12 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
         {previewLines.map((line,index)=><Text key={index} numberOfLines={1} style={{color:line.profit?previewTone:value.style.textColor,fontWeight:index===0?'900':'800',fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale),textAlign:value.style.textAlign,marginTop:index===0?0:value.style.rowGap}}>{line.text}</Text>)}
         {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
       </View>
-      <Text style={styles.note}>2×2 桌面尺寸最多顯示前 6 個已選項目；所有項目皆可選，順序由上／下調整控制。</Text>
+      <Text style={styles.note}>2×2 所有項目皆可選；實際顯示數量依樣式容量決定，已選項目依上／下順序顯示。</Text>
     </Section>
 
     <Section title="尺寸與模板">
       <Choice choices={sizes} value={value.size} label={x=>x==='2x2'?'2×2':x==='small'?'小型':x==='large'?'大型':'中型'} onChange={size=>patch({size})}/>
-      <Choice choices={templates} value={value.template} label={x=>x==='asset-summary'?'資產摘要':x==='quote-summary'?'行情摘要':x==='quote-wall'?'行情牆':'精簡'} onChange={template=>patch({template})}/>
+      <Choice choices={templates} value={value.template} label={x=>x==='asset-summary'?'資產摘要':x==='quote-summary'?'行情摘要':x==='compact'?'精簡':x==='advanced'?'進階資訊':x==='minimal'?'極簡':'透明'} onChange={template=>patch({template})}/>
       <Choice choices={['home','portfolio','dividend'] as const} value={value.tapTarget} label={x=>x==='home'?'首頁':x==='portfolio'?'庫存':'股息'} onChange={tapTarget=>patch({tapTarget})}/>
     </Section>
 
@@ -227,4 +227,12 @@ function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['ho
     case 'dailyPnl':return {text:`當日損益 ${signed2(holding?.change)}`,profit:true};
     case 'quote':return {text:holding?`${holding.symbol} ${holding.price?.toFixed(2)??'--'} ${signed2(holding.changePercent,'%')}`:'尚無行情',profit:true};
   }
+}
+
+function widgetTemplateCapacity(template:WidgetTemplate){
+  if(template==='minimal')return 2;
+  if(template==='compact')return 3;
+  if(template==='transparent'||template==='quote-summary')return 4;
+  if(template==='asset-summary')return 5;
+  return 6;
 }
