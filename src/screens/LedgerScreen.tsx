@@ -68,7 +68,9 @@ export function LedgerScreen() {
   },[kind,quote,date,dividendPerShare,dividendShares,note]);
 
   const otherPreview=kind==='other'&&parseNumber(otherAmount)!==0?parseNumber(otherAmount):null;
-  const canSubmit=kind==='buy'||kind==='sell'?!!tradePreview:kind==='dividend'?!!dividendPreview:otherPreview!==null;
+  const currentHolding=finance.holdings.find(item=>item.symbol===symbol);
+  const sellExceedsHolding=kind==='sell'&&parseNumber(shares)>(currentHolding?.shares??0);
+  const canSubmit=kind==='buy'||kind==='sell'?!!tradePreview&&!sellExceedsHolding:kind==='dividend'?!!dividendPreview:otherPreview!==null;
 
   const commitEntry=()=>{
     if(!quote)return;
@@ -135,6 +137,7 @@ export function LedgerScreen() {
                 <SegmentedControl items={[{key:'ODD_LOT',label:'零股／定期定額'},{key:'ROUND_LOT',label:'整股'}] as const} value={tradeMode} onChange={setTradeMode}/>
                 <View style={styles.two}><NumericField label="股數" value={shares} onChange={setShares} placeholder="0"/><NumericField label="實際手續費" value={fee} onChange={setFee} placeholder={tradePreview?String(tradePreview.calculatedFee):'自動估算'}/></View>
                 {kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
+                {sellExceedsHolding?<Text style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
                 {tradePreview?<View style={styles.previewCard}>
                   <Text style={styles.previewTitle}>V3.7.8 入帳預覽</Text>
                   <PreviewRow label="成交金額" value={money(tradePreview.amount)}/>
@@ -155,7 +158,7 @@ export function LedgerScreen() {
 
               <View><Text style={styles.fieldLabel}>備註</Text><TextInput style={styles.input} value={note} onChangeText={setNote} placeholder={kind==='other'?'例如：現金校正':'選填'} placeholderTextColor="#98A5B8"/></View>
               <Pressable disabled={!canSubmit} style={[styles.primary,!canSubmit&&styles.disabled]} onPress={()=>setConfirmOpen(true)}><Text style={styles.primaryText}>確認{kindLabel(kind)}紀錄</Text></Pressable>
-              <Text style={styles.coreNote}>公式預估只供核對；正式入帳後 actualFee / actualTax 固化成歷史真值。Portfolio、首頁、詳情只讀 Canonical Finance Core。</Text>
+              <Text style={styles.coreNote}>公式預估只供核對；正式入帳後「實際手續費／實際證交稅」固化成歷史真值。Portfolio、首頁、詳情只讀 Canonical Finance Core。</Text>
             </View>
           </FrameCard>
         },
@@ -236,6 +239,7 @@ const styles=StyleSheet.create({
   primaryText:{color:'#FFF',fontWeight:'900'},
   disabled:{opacity:.35},
   coreNote:{fontSize:10,lineHeight:16,color:colors.textSecondary},
+  validationError:{fontSize:11,lineHeight:17,color:colors.loss,fontWeight:'900'},
   previewCard:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:12,gap:7},
   previewTitle:{fontSize:11,fontWeight:'900',color:colors.primary,marginBottom:2},
   previewRow:{flexDirection:'row',justifyContent:'space-between',gap:12},

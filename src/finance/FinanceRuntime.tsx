@@ -111,7 +111,13 @@ export function FinanceProvider({children}:PropsWithChildren){
     quotes:SEED_QUOTES,
     snapshot,
     holdings,
-    addTrade:input=>setEntries(current=>[...current,freezeTradeEntry(input)]),
+    addTrade:input=>setEntries(current=>{
+      if(input.kind==='sell'){
+        const available=snapshot.holdings.find(item=>item.etfCode===input.symbol)?.totalShares??0;
+        if(!(input.shares>0)||input.shares>available)return current;
+      }
+      return [...current,freezeTradeEntry(input)];
+    }),
     addDividend:entry=>setEntries(current=>[...current,entry]),
     addOther:entry=>setEntries(current=>[...current,entry]),
     deleteEntry:id=>setEntries(current=>current.filter(entry=>entry.id!==id)),
