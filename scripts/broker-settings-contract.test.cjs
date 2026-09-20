@@ -18,8 +18,9 @@ assert.match(runtime,/minimumCommissionOddLot:recurring\.fixedFee/,'fixed recurr
 assert.match(runtime,/commissionDiscount:recurring\.discount/,'variable recurring discount missing');
 assert.match(runtime,/minimumCommissionOddLot:recurring\.minimumFee/,'variable recurring minimum missing');
 
-assert.match(settings,/券商與手續費設定/,'accounting first item label missing');
-assert.match(settings,/index===0\?'broker'/,'accounting first item must open broker settings panel');
+assert.match(settings,/帳務運算公式/,'accounting formula item missing');
+assert.match(settings,/券商與手續費設定/,'broker settings item missing');
+assert.ok(settings.indexOf('帳務運算公式')<settings.indexOf('券商與費率'),'V1.0.4 accounting order must place formulas before broker settings');
 for(const label of ['公定手續費率','電子下單折扣率','整股最低手續費','零股最低手續費','定期定額','固定單筆','非固定','固定單筆手續費','定期定額折扣率','定期定額最低手續費','ETF','0.1%','一般股票','0.3%','重設','更新設定']){
   assert.ok(settings.includes(label),'missing broker settings control: '+label);
 }
