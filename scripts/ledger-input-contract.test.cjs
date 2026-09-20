@@ -27,6 +27,10 @@ assert.match(src,/賣出股數不可大於目前持有股數/,'ledger must show 
 assert.match(src,/useMarketRuntime/,'ledger symbol lookup must use shared market runtime');
 assert.match(src,/market\.catalog/,'ETF prefix suggestions must use market catalog, not active quotes');
 assert.match(src,/recentSymbols/,'recent ETF shortcuts must remain directly below input');
+assert.match(src,/selectedInstrument/,'selected ETF must show its resolved name below the symbol input');
+assert.match(src,/instrument\.symbol/,'selected ETF display must include the symbol');
+assert.match(src,/instrument\.name/,'selected ETF display must include the ETF name');
+assert.match(src,/suggestionList/,'ETF prefix suggestions must render directly in the symbol input block');
 assert.match(core,/actualFee == null \? estimate\.commission/,'missing frozen actualFee default');
 assert.match(core,/actualTax == null \? estimated\.tax/,'missing frozen actualTax default');
 console.log('TF_ASSET_LEDGER_INPUT_CONTRACT: PASS');
