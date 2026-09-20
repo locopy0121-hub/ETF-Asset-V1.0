@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -18,6 +19,21 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   @ReactMethod fun requestWidgetRefresh(promise:Promise){ refreshWidget(); promise.resolve(true) }
   @ReactMethod fun startMonitor(promise:Promise){ if(!Settings.canDrawOverlays(reactContext)){ promise.resolve(false); return }; reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_START)); promise.resolve(true) }
   @ReactMethod fun stopMonitor(promise:Promise){ reactContext.stopService(Intent(reactContext,TfAssetOverlayService::class.java)); promise.resolve(true) }
+  @ReactMethod fun getMonitorStatus(promise:Promise){
+    val map=Arguments.createMap()
+    val allowed=Settings.canDrawOverlays(reactContext)
+    val running=prefs.getBoolean("monitor_running",false) && allowed
+    map.putBoolean("running",running)
+    map.putString("state",if(!allowed)"permissionRequired" else if(running)"running" else "stopped")
+    map.putString("mode",prefs.getString("monitor_runtime_mode","normal"))
+    map.putInt("x",prefs.getInt("monitor_runtime_x",0))
+    map.putInt("y",prefs.getInt("monitor_runtime_y",0))
+    map.putInt("width",prefs.getInt("monitor_runtime_width",0))
+    map.putInt("height",prefs.getInt("monitor_runtime_height",0))
+    map.putDouble("lastSyncAt",prefs.getLong("monitor_last_sync_at",0L).toDouble())
+    map.putString("displaySymbol",prefs.getString("monitor_display_symbol",""))
+    promise.resolve(map)
+  }
   @ReactMethod fun canDrawOverlays(promise:Promise){ promise.resolve(Settings.canDrawOverlays(reactContext)) }
   @ReactMethod fun openOverlaySettings(promise:Promise){ val intent=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+reactContext.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); reactContext.startActivity(intent); promise.resolve(true) }
   private fun refreshWidget(){ val manager=AppWidgetManager.getInstance(reactContext); val ids=manager.getAppWidgetIds(ComponentName(reactContext,TfAssetWidgetProvider::class.java)); val intent=Intent(reactContext,TfAssetWidgetProvider::class.java).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE); intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids); reactContext.sendBroadcast(intent) }
