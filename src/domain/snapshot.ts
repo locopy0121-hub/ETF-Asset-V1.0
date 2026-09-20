@@ -16,6 +16,12 @@ export type HoldingSnapshot = Readonly<{
   changePercent: number | null;
   marketStatus: MarketStatus;
   updatedAt: string | null;
+  shares: number;
+  avgCost: number;
+  marketValue: number;
+  pnl: number;
+  roi: number;
+  comprehensivePnl: number;
 }>;
 
 export type AssetSnapshot = Readonly<{
