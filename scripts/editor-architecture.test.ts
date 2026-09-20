@@ -3,9 +3,15 @@ import fs from 'node:fs';
 
 import { PAGE_FRAMES } from '../src/domain/frameRegistry';
 import { createInitialDisplayState, createInitialEditorState, mergeDisplayState, normalizeEditorConfig } from '../src/editor/editorModel';
+import { TF_ASSET_EDITOR_CONTRACT } from '../src/editor/editorContract';
+
+assert.equal(TF_ASSET_EDITOR_CONTRACT.origin,'tf-asset-native');
+assert.equal(TF_ASSET_EDITOR_CONTRACT.allowsLegacyV5,false);
+assert.equal(TF_ASSET_EDITOR_CONTRACT.relationshipPolicy,'adjacent-only');
 
 const requiredFiles = [
   'src/editor/pageEditor.tsx',
+  'src/editor/editorContract.ts',
   'src/components/PageEditorStack.tsx',
   'src/components/PageFrameSettingsModal.tsx',
   'src/components/FrameCard.tsx',
