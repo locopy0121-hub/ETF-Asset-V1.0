@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
+import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
@@ -19,39 +20,45 @@ export function LedgerScreen() {
   const [kind,setKind]=useState<EntryKind>('買進');
   return <>
     <PageShell title="帳務中心" subtitle="紀錄是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-      <FrameCard title="快速建檔">
-        <SegmentedControl items={[{key:'買進',label:'買進'},{key:'賣出',label:'賣出'},{key:'股息',label:'股息'},{key:'其他',label:'其他'}] as const} value={kind} onChange={setKind}/>
-        <View style={styles.form}>
-          <Field label="標的" placeholder="ETF 代號或名稱"/>
-          <View style={styles.two}><Field label="日期" placeholder="2026-09-20"/><Field label={kind==='股息'?'金額':'成交價格'} placeholder="0"/></View>
-          {kind!=='股息'&&kind!=='其他'?<View style={styles.two}><Field label="股數" placeholder="0"/><Field label="實際手續費" placeholder="actualFee"/></View>:null}
-          {kind==='賣出'?<Field label="實際證交稅" placeholder="actualTax"/>:null}
-          <Field label="備註" placeholder="選填"/>
-          <Pressable style={styles.primary}><Text style={styles.primaryText}>建立{kind}紀錄</Text></Pressable>
-          <Text style={styles.coreNote}>公式預估只供核對；正式入帳後 actualFee / actualTax 為歷史真值，UI 不自行重算。</Text>
-        </View>
-      </FrameCard>
-
-      <FrameCard title="交易紀錄">
-        <View style={styles.tableHead}><Text style={[styles.headText,{flex:0.8}]}>日期</Text><Text style={[styles.headText,{flex:0.8}]}>類型</Text><Text style={[styles.headText,{flex:1}]}>標的</Text><Text style={[styles.headText,{flex:1.4,textAlign:'right'}]}>金額</Text></View>
-        {DEMO_LEDGER.map(row=><View key={row.id} style={styles.tableRow}>
-          <Text style={[styles.cell,{flex:0.8}]}>{row.date}</Text>
-          <Text style={[styles.cell,{flex:0.8,color:row.kind==='賣出'?colors.loss:row.kind==='買進'?colors.primary:colors.gain,fontWeight:'800'}]}>{row.kind}</Text>
-          <Text style={[styles.cell,{flex:1,fontWeight:'800'}]}>{row.symbol}</Text>
-          <View style={{flex:1.4,alignItems:'flex-end'}}><Text style={styles.amount}>NT$ {money(row.amount)}</Text><Text style={styles.fee}>費/稅 {row.fee??0}/{row.tax??0}</Text></View>
-        </View>)}
-      </FrameCard>
-
-      <FrameCard title="月度摘要">
-        <View style={styles.metrics}>
-          <MetricTile label="本月買進" value="157,050" caption="2 筆"/>
-          <MetricTile label="本月賣出" value="18,420" caption="1 筆"/>
-          <MetricTile label="本月股息" value="1,850" caption="1 筆" tone="gain"/>
-          <MetricTile label="淨現金流" value="-136,780" caption="交易＋股息"/>
-        </View>
-      </FrameCard>
+      <PageEditorStack pageKey="ledger" frames={[
+        {key:'quick-entry',element:
+          <FrameCard title="快速建檔">
+            <SegmentedControl items={[{key:'買進',label:'買進'},{key:'賣出',label:'賣出'},{key:'股息',label:'股息'},{key:'其他',label:'其他'}] as const} value={kind} onChange={setKind}/>
+            <View style={styles.form}>
+              <Field label="標的" placeholder="ETF 代號或名稱"/>
+              <View style={styles.two}><Field label="日期" placeholder="2026-09-20"/><Field label={kind==='股息'?'金額':'成交價格'} placeholder="0"/></View>
+              {kind!=='股息'&&kind!=='其他'?<View style={styles.two}><Field label="股數" placeholder="0"/><Field label="實際手續費" placeholder="actualFee"/></View>:null}
+              {kind==='賣出'?<Field label="實際證交稅" placeholder="actualTax"/>:null}
+              <Field label="備註" placeholder="選填"/>
+              <Pressable style={styles.primary}><Text style={styles.primaryText}>建立{kind}紀錄</Text></Pressable>
+              <Text style={styles.coreNote}>公式預估只供核對；正式入帳後 actualFee / actualTax 為歷史真值，UI 不自行重算。</Text>
+            </View>
+          </FrameCard>
+        },
+        {key:'ledger-list',element:
+          <FrameCard title="交易紀錄">
+            <View style={styles.tableHead}><Text style={[styles.headText,{flex:0.8}]}>日期</Text><Text style={[styles.headText,{flex:0.8}]}>類型</Text><Text style={[styles.headText,{flex:1}]}>標的</Text><Text style={[styles.headText,{flex:1.4,textAlign:'right'}]}>金額</Text></View>
+            {DEMO_LEDGER.map(row=><View key={row.id} style={styles.tableRow}>
+              <Text style={[styles.cell,{flex:0.8}]}>{row.date}</Text>
+              <Text style={[styles.cell,{flex:0.8,color:row.kind==='賣出'?colors.loss:row.kind==='買進'?colors.primary:colors.gain,fontWeight:'800'}]}>{row.kind}</Text>
+              <Text style={[styles.cell,{flex:1,fontWeight:'800'}]}>{row.symbol}</Text>
+              <View style={{flex:1.4,alignItems:'flex-end'}}><Text style={styles.amount}>NT$ {money(row.amount)}</Text><Text style={styles.fee}>費/稅 {row.fee??0}/{row.tax??0}</Text></View>
+            </View>)}
+          </FrameCard>
+        },
+        {key:'monthly-summary',element:
+          <FrameCard title="月度摘要">
+            <View style={styles.metrics}>
+              <MetricTile label="本月買進" value="157,050" caption="2 筆"/>
+              <MetricTile label="本月賣出" value="18,420" caption="1 筆"/>
+              <MetricTile label="本月股息" value="1,850" caption="1 筆" tone="gain"/>
+              <MetricTile label="淨現金流" value="-136,780" caption="交易＋股息"/>
+            </View>
+          </FrameCard>
+        },
+      ]}/>
     </PageShell>
-    <PageFrameSettingsModal visible={settingsOpen} title="紀錄" frames={PAGE_FRAMES.ledger} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="ledger" title="紀錄" frames={PAGE_FRAMES.ledger} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 

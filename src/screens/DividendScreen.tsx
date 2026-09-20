@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
+import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
@@ -18,40 +19,47 @@ export function DividendScreen() {
   const events=useMemo(()=>new Map(DEMO_DIVIDENDS.map(x=>[Number(x.date.slice(-2)),x])),[]);
   return <>
     <PageShell title="股息中心" subtitle="以股息月曆掌握入金時間軸" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-      <FrameCard title="股息摘要">
-        <View style={styles.metrics}>
-          <MetricTile label="本月入金" value={money(total)} caption="預估＋實收" tone="gain"/>
-          <MetricTile label="年度股息 Total" value="98,730" caption="+12.5% YoY"/>
-          <MetricTile label="月平均股息" value="8,228" caption="今年"/>
-        </View>
-      </FrameCard>
-
-      <FrameCard title="股息月曆">
-        <View style={styles.calendarTop}><Text style={styles.month}>‹　2026 年 9 月　›</Text><Text style={styles.filter}>全部 ▾</Text></View>
-        <View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>
-        <View style={styles.grid}>{Array.from({length:35},(_,i)=>{
-          const day=i-1;
-          const valid=day>=1&&day<=30;
-          const event=valid?events.get(day):undefined;
-          const statusColor=event?.status==='已入帳'?colors.gain:event?.status==='待入帳'?colors.warning:event?colors.primary:'transparent';
-          return <View key={i} style={[styles.day,event&&styles.eventDay]}><Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>{event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}</View>;
-        })}</View>
-        <View style={styles.legend}><Legend color={colors.primary} label="預估"/><Legend color={colors.warning} label="待入帳"/><Legend color={colors.gain} label="已入帳"/></View>
-      </FrameCard>
-
-      <FrameCard title="股息清單">
-        {DEMO_DIVIDENDS.map(row=><View key={row.id} style={styles.dividendRow}>
-          <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
-          <View style={{flex:1}}><Text style={styles.stockName}>{row.name}</Text><Text style={styles.symbol}>{row.symbol}</Text></View>
-          <View style={{alignItems:'flex-end'}}><Text style={styles.dividendAmount}>NT$ {money(row.amount)}</Text><Text style={[styles.status,{color:row.status==='已入帳'?colors.gain:row.status==='待入帳'?colors.warning:colors.primary}]}>{row.status}</Text></View>
-        </View>)}
-      </FrameCard>
-
-      <FrameCard title="年度趨勢">
-        <View style={styles.bars}>{[32,38,46,42,68,52,61,57,74,63,80,88].map((h,i)=><View key={i} style={styles.barCol}><View style={[styles.bar,{height:h}]}/><Text style={styles.barLabel}>{i+1}</Text></View>)}</View>
-      </FrameCard>
+      <PageEditorStack pageKey="dividend" frames={[
+        {key:'dividend-summary',element:
+          <FrameCard title="股息摘要">
+            <View style={styles.metrics}>
+              <MetricTile label="本月入金" value={money(total)} caption="預估＋實收" tone="gain"/>
+              <MetricTile label="年度股息 Total" value="98,730" caption="+12.5% YoY"/>
+              <MetricTile label="月平均股息" value="8,228" caption="今年"/>
+            </View>
+          </FrameCard>
+        },
+        {key:'dividend-calendar',element:
+          <FrameCard title="股息月曆">
+            <View style={styles.calendarTop}><Text style={styles.month}>‹　2026 年 9 月　›</Text><Text style={styles.filter}>全部 ▾</Text></View>
+            <View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>
+            <View style={styles.grid}>{Array.from({length:35},(_,i)=>{
+              const day=i-1;
+              const valid=day>=1&&day<=30;
+              const event=valid?events.get(day):undefined;
+              const statusColor=event?.status==='已入帳'?colors.gain:event?.status==='待入帳'?colors.warning:event?colors.primary:'transparent';
+              return <View key={i} style={[styles.day,event&&styles.eventDay]}><Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>{event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}</View>;
+            })}</View>
+            <View style={styles.legend}><Legend color={colors.primary} label="預估"/><Legend color={colors.warning} label="待入帳"/><Legend color={colors.gain} label="已入帳"/></View>
+          </FrameCard>
+        },
+        {key:'dividend-list',element:
+          <FrameCard title="股息清單">
+            {DEMO_DIVIDENDS.map(row=><View key={row.id} style={styles.dividendRow}>
+              <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
+              <View style={{flex:1}}><Text style={styles.stockName}>{row.name}</Text><Text style={styles.symbol}>{row.symbol}</Text></View>
+              <View style={{alignItems:'flex-end'}}><Text style={styles.dividendAmount}>NT$ {money(row.amount)}</Text><Text style={[styles.status,{color:row.status==='已入帳'?colors.gain:row.status==='待入帳'?colors.warning:colors.primary}]}>{row.status}</Text></View>
+            </View>)}
+          </FrameCard>
+        },
+        {key:'annual-trend',element:
+          <FrameCard title="年度趨勢">
+            <View style={styles.bars}>{[32,38,46,42,68,52,61,57,74,63,80,88].map((h,i)=><View key={i} style={styles.barCol}><View style={[styles.bar,{height:h}]}/><Text style={styles.barLabel}>{i+1}</Text></View>)}</View>
+          </FrameCard>
+        },
+      ]}/>
     </PageShell>
-    <PageFrameSettingsModal visible={settingsOpen} title="股息" frames={PAGE_FRAMES.dividend} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="dividend" title="股息" frames={PAGE_FRAMES.dividend} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text style={styles.legendText}>{label}</Text></View>}
