@@ -1,0 +1,53 @@
+import type { PropsWithChildren, ReactNode } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { colors, spacing } from '../theme/tokens';
+
+type Props = PropsWithChildren<{
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}>;
+
+export function PageShell({ title, subtitle, actions, children }: Props) {
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <View style={styles.header}>
+        <View style={styles.titleWrap}>
+          <Text style={styles.brand}>TF Asset</Text>
+          <Text style={styles.title}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+        {actions ? <View style={styles.actions}>{actions}</View> : null}
+      </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titleWrap: { flex: 1 },
+  brand: { color: colors.primary, fontSize: 13, fontWeight: '800', letterSpacing: 0.4 },
+  title: { color: colors.text, fontSize: 28, fontWeight: '800', marginTop: 2 },
+  subtitle: { color: colors.textSecondary, fontSize: 13, marginTop: 4 },
+  actions: { marginLeft: spacing.md, flexDirection: 'row', gap: spacing.sm },
+  scroll: { flex: 1 },
+  content: { padding: spacing.lg, paddingBottom: 110, gap: spacing.lg },
+});
