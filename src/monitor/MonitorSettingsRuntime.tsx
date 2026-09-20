@@ -6,7 +6,7 @@ import {
 } from './monitorDomain';
 
 const STORAGE_KEY='@tf-asset/monitor-settings';
-const VALID_FIELDS:readonly MonitorField[]=['symbol','price','changePercent','marketValue','pnl'];
+const VALID_FIELDS:readonly MonitorField[]=['symbol','name','price','change','changePercent','shares','avgCost','marketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt'];
 const VALID_EFFECTS:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change'];
 const VALID_SORTS:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
 const clamp=(v:unknown,min:number,max:number,fallback:number)=>{const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
