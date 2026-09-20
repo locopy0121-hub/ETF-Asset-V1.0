@@ -373,9 +373,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="設定控制中心 8 大主區塊" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      <ChildButton label="更新資訊" summary="Widget / Monitor V1.0.7 完整化" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
       {appPanel==='updates'?<Panel title="V1.0.7 更新資訊">
-        <Text style={styles.infoText}>Monitor / Widget 同步修復：設定預覽改讀 Shared Snapshot；Native 正式套用 ETF 選擇與排序；浮窗拖曳、重設位置與尺寸更新互不覆蓋。</Text>
+        <Text style={styles.infoText}>Widget / Monitor 完整化：Mini 採 A-B 純清單架構並完整顯示持股列；Widget 支援 Android 2×2 與全項目自由選擇；Monitor 顯示 Native 真實運行狀態；新增全局調色盤與多種 Normal / Widget 顯示模式；預覽、排序、欄位與 Native 共用 Shared Snapshot。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
