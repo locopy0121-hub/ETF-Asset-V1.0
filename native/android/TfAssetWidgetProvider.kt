@@ -59,7 +59,9 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val style=config.optJSONObject("style")?:JSONObject()
     val asset=snapshot.optJSONObject("asset")?:JSONObject()
     val first=orderedHoldings(snapshot,config).firstOrNull()
-    val selectedFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}.take(6)
+    val template=config.optString("template","asset-summary")
+    val capacity=when(template){"minimal"->2;"compact"->3;"quote-summary","transparent"->4;"asset-summary"->5;else->6}
+    val selectedFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}.take(capacity)
     val views=RemoteViews(context.packageName,R.layout.tf_asset_widget)
     val ids=intArrayOf(R.id.widget_line1,R.id.widget_line2,R.id.widget_line3,R.id.widget_line4,R.id.widget_line5,R.id.widget_line6)
 
@@ -67,8 +69,9 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val gain=parseColor(style.optString("gainColor","#EF4444"),Color.rgb(239,68,68))
     val loss=parseColor(style.optString("lossColor","#10B981"),Color.rgb(16,185,129))
     val neutral=parseColor(style.optString("neutralColor","#64748B"),Color.rgb(100,116,139))
-    val fs=style.optDouble("fontScale",1.0).coerceIn(.7,1.8)
-    val titleFs=style.optDouble("titleFontScale",1.0).coerceIn(.7,1.8)
+    val densityScale=when(template){"minimal"->1.12;"compact"->.92;"advanced"->.9;else->1.0}
+    val fs=style.optDouble("fontScale",1.0).coerceIn(.7,1.8)*densityScale
+    val titleFs=style.optDouble("titleFontScale",1.0).coerceIn(.7,1.8)*densityScale
     val align=when(style.optString("textAlign","left")){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
 
     ids.forEachIndexed{index,id->
@@ -91,7 +94,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     }
 
     val bg=parseColor(style.optString("backgroundColor","#FFFFFF"),Color.WHITE)
-    val alpha=(style.optDouble("backgroundOpacity",.94).coerceIn(.1,1.0)*255).roundToInt()
+    val opacity=if(template=="transparent")minOf(style.optDouble("backgroundOpacity",.72),.72) else style.optDouble("backgroundOpacity",.94)
+    val alpha=(opacity.coerceIn(.1,1.0)*255).roundToInt()
     views.setInt(R.id.widget_root,"setBackgroundColor",Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
 
     val launch=context.packageManager.getLaunchIntentForPackage(context.packageName)
