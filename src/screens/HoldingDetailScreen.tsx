@@ -27,7 +27,7 @@ export function HoldingDetailScreen({holding,onBack}:{holding:HoldingQuote;onBac
     <FrameCard title="即時行情">
       <Text style={[styles.price,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.price.toFixed(2)}</Text>
       <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{change>0?'▲':change<0?'▼':'●'} {change>=0?'+':''}{change.toFixed(2)}　{changePct>=0?'+':''}{changePct.toFixed(2)}%</Text>
-      <View style={styles.marketMeta}><Text style={styles.meta}>昨收 {holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>更新 {updatedAt}</Text></View>
+      <View style={styles.marketMeta}><Text style={styles.meta}>昨收 {holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>畫面時間 {updatedAt}</Text></View>
       <View style={styles.rangeRow}>{ranges.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
       <View style={styles.sparkline}>{holding.sparkline.map((v,i)=>{
         const min=Math.min(...holding.sparkline),max=Math.max(...holding.sparkline),rangeValue=Math.max(0.01,max-min);
