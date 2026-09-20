@@ -45,6 +45,7 @@ type FinanceContextValue = {
   addOther: (entry: OtherCashLedgerEntry) => void;
   deleteEntry: (id: string) => void;
   resetFinance: () => void;
+  clearFinance: () => void;
 };
 
 const FinanceContext=createContext<FinanceContextValue|null>(null);
@@ -140,6 +141,10 @@ export function FinanceProvider({children}:PropsWithChildren){
     resetFinance:()=>{
       setInitialCash(INITIAL_CASH);
       setEntries([...SEED_LEDGER]);
+    },
+    clearFinance:()=>{
+      setInitialCash(0);
+      setEntries([]);
     },
   }),[hydrated,initialCash,entries,snapshot,sharedSnapshot,holdings,market.quotes]);
 
