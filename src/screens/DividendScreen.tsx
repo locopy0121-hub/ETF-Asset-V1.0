@@ -29,6 +29,10 @@ export function DividendScreen() {
   const events=useMemo(()=>new Map(monthRows.map(x=>[Number(x.date.slice(-2)),x])),[monthRows]);
   const monthDate=new Date(month+'-01T12:00:00');
   const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(d.toISOString().slice(0,7));};
+  const firstWeekday=monthDate.getDay();
+  const nextMonth=new Date(monthDate);nextMonth.setMonth(nextMonth.getMonth()+1);
+  const daysInMonth=Math.round((nextMonth.getTime()-monthDate.getTime())/86400000);
+  const calendarCells=Math.max(35,Math.ceil((firstWeekday+daysInMonth)/7)*7);
   const monthTotals=Array.from({length:12},(_,idx)=>{
     const key=year+'-'+String(idx+1).padStart(2,'0');
     return dividends.filter(x=>x.date.startsWith(key)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
@@ -55,13 +59,14 @@ export function DividendScreen() {
               <Pressable onPress={()=>shiftMonth(1)}><Text style={styles.arrow}>›</Text></Pressable>
             </View>
             <View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>
-            <View style={styles.grid}>{Array.from({length:35},(_,i)=>{
-              const day=i+1;
-              const event=events.get(day);
+            <View style={styles.grid}>{Array.from({length:calendarCells},(_,i)=>{
+              const day=i-firstWeekday+1;
+              const valid=day>=1&&day<=daysInMonth;
+              const event=valid?events.get(day):undefined;
               const status=event?(event.date<today?'已入帳':event.date===today?'待入帳':'預估'):null;
               const statusColor=status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:status?colors.primary:'transparent';
               return <View key={i} style={[styles.day,event&&styles.eventDay]}>
-                <Text style={styles.dayText}>{day<=31?day:''}</Text>
+                <Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>
                 {event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}
               </View>;
             })}</View>
@@ -115,6 +120,7 @@ const styles=StyleSheet.create({
   day:{width:'14.285%',height:45,alignItems:'center',justifyContent:'center',borderRadius:10},
   eventDay:{backgroundColor:colors.surfaceMuted},
   dayText:{fontSize:12,fontWeight:'700',color:colors.text},
+  dayGhost:{color:'transparent'},
   eventDot:{width:5,height:5,borderRadius:3,marginTop:4},
   legend:{flexDirection:'row',gap:spacing.lg,justifyContent:'center'},
   legendItem:{flexDirection:'row',alignItems:'center',gap:5},
