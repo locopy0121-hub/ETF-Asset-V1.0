@@ -282,7 +282,7 @@ export function SettingsScreen(){
       <Text style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
       <ChildButton label="Widget（mobile 桌面）" summary={widget.config.enabled?'已啟用 · '+widget.config.size:'未啟用'} active={monitorPanel==='widget'} onPress={()=>setMonitorPanel(monitorPanel==='widget'?null:'widget')}/>
       {monitorPanel==='widget'?<View style={{gap:8}}>
-        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))}/>
+        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot}/>
         <Panel title="手機桌面 Widget 執行狀態">
           <StatusRow label="Android 原生橋接" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
           <ActionButton label="立即刷新手機桌面 Widget" disabled={!nativeRuntimeAvailable} onPress={()=>void requestNativeWidgetRefresh()}/>
@@ -291,7 +291,7 @@ export function SettingsScreen(){
       </View>:null}
       <ChildButton label="監控器總設定" summary={monitor.config.enabled?'已啟用':'未啟用'} active={monitorPanel==='main'} onPress={()=>setMonitorPanel(monitorPanel==='main'?null:'main')}/>
       {monitorPanel==='main'?<View style={{gap:8}}>
-        <MonitorControlPanel value={monitor.config} onChange={monitor.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))}/>
+        <MonitorControlPanel value={monitor.config} onChange={monitor.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot}/>
         <Panel title="即時監控器執行狀態">
           <StatusRow label="原生 Floating Runtime" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
           <StatusRow label="懸浮窗權限" value={overlayPermission==='granted'?'已允許':overlayPermission==='denied'?'未允許':'不支援'}/>
