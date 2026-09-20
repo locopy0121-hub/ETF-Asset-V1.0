@@ -243,3 +243,56 @@ export function calculateCanonicalLedgerSnapshot(input: {
     holdings: portfolio.etfSummaries,
   };
 }
+
+
+export function calculateBuyScenario(input: {
+  holding: CanonicalLedgerSnapshot['holdings'][number];
+  currentPrice: number;
+  addPrice: number;
+  addShares: number;
+  tradeMode: TradeMode;
+  brokerProfileId?: BrokerProfileId;
+}) {
+  const profile=resolveBrokerProfile(input.brokerProfileId);
+  const purchase=calculatePurchaseCost({
+    id:'scenario-buy',
+    etfCode:input.holding.etfCode,
+    type:'BUY',
+    tradeMode:input.tradeMode,
+    shares:finiteNonNegative(input.addShares),
+    price:finiteNonNegative(input.addPrice),
+    date:'scenario',
+    brokerProfile:profile,
+  });
+  const newShares=input.holding.totalShares+finiteNonNegative(input.addShares);
+  const newTradeCost=input.holding.totalTradeCost+purchase.tradeAmount;
+  const newInvestmentCost=input.holding.totalInvestmentCost+purchase.settlementAmount;
+  const averageTradePrice=newShares>0?newTradeCost/newShares:0;
+  const averageCostPerShare=newShares>0?newInvestmentCost/newShares:0;
+  const currentMarketValue=Math.floor(newShares*finiteNonNegative(input.currentPrice));
+  const liquidation=calculateSaleSettlement({
+    id:'scenario-sell',
+    etfCode:input.holding.etfCode,
+    type:'SELL',
+    tradeMode:input.tradeMode,
+    shares:newShares,
+    price:finiteNonNegative(input.currentPrice),
+    date:'scenario',
+    brokerProfile:profile,
+  });
+  const netLiquidationValue=liquidation.settlementAmount;
+  return {
+    addTradeAmount:purchase.tradeAmount,
+    addCommission:purchase.commission,
+    addCashOutflow:purchase.settlementAmount,
+    newShares,
+    newTradeCost,
+    newInvestmentCost,
+    averageTradePrice,
+    averageCostPerShare,
+    currentMarketValue,
+    netLiquidationValue,
+    priceUnrealizedProfit:currentMarketValue-newTradeCost,
+    cashUnrealizedProfit:netLiquidationValue-newInvestmentCost,
+  };
+}

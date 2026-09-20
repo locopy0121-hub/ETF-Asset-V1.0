@@ -9,40 +9,41 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
-import { DEMO_HOLDINGS } from '../data/demoData';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
+import { calculateBuyScenario } from '../finance/canonicalLedger';
+import { useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 type ViewMode='list'|'wall';
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
+const number=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFinite(n)?n:0;};
 
 export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)=>void}) {
+  const finance=useFinance();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [calculatorOpen,setCalculatorOpen]=useState(false);
   const [viewMode,setViewMode]=useState<ViewMode>('list');
   const [quoteStyle,setQuoteStyle]=useState<QuoteModuleStyle>('chart');
   const [sortKey,setSortKey]=useState<HoldingSortKey>('manual');
-  const sorted=useMemo(()=>sortHoldingQuotes(DEMO_HOLDINGS,sortKey,true),[sortKey]);
-  const totalMarket=DEMO_HOLDINGS.reduce((s,x)=>s+x.marketValue,0);
-  const totalCost=DEMO_HOLDINGS.reduce((s,x)=>s+x.avgCost*x.shares,0);
-  const totalPnl=DEMO_HOLDINGS.reduce((s,x)=>s+x.pnl,0);
+  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
+  const portfolio=finance.snapshot.portfolio;
 
   return <>
     <PageShell
       title="持股分析"
-      subtitle="清單與行情牆雙模式"
+      subtitle="V3.7.8 Canonical Portfolio"
       actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
     >
       <PageEditorStack pageKey="portfolio" frames={[
         {key:'holding-dashboard',element:
           <FrameCard title="持股分析儀表板">
             <View style={styles.metrics}>
-              <MetricTile label="總市值" value={money(totalMarket)} caption="NT$"/>
-              <MetricTile label="總成本" value={money(totalCost)} caption="NT$"/>
-              <MetricTile label="總損益" value={money(totalPnl)} caption="持股" tone={totalPnl>=0?'gain':'loss'}/>
-              <MetricTile label="含息報酬" value="+16.82%" caption="示意" tone="gain"/>
+              <MetricTile label="總市值" value={money(portfolio.totalMarketValue)} caption="NT$"/>
+              <MetricTile label="純成交成本" value={money(portfolio.totalTradeCost)} caption="不含費"/>
+              <MetricTile label="含費成本" value={money(portfolio.totalInvestmentCost)} caption="Canonical"/>
+              <MetricTile label="含息總損益" value={money(portfolio.totalPnl)} caption="已實現＋未實現＋股息" tone={portfolio.totalPnl>=0?'gain':'loss'}/>
             </View>
           </FrameCard>
         },
@@ -50,7 +51,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
           <FrameCard title="資產配置">
             {sorted.map(item=><View key={item.symbol} style={styles.allocationRow}>
               <View style={styles.allocationLabel}><Text style={styles.allocationSymbol}>{item.symbol}</Text><Text style={styles.allocationPct}>{item.weight.toFixed(1)}%</Text></View>
-              <View style={styles.track}><View style={[styles.fill,{width:`${Math.min(100,item.weight*2)}%`}]}/></View>
+              <View style={styles.track}><View style={[styles.fill,{width:`${Math.min(100,Math.max(0,item.weight))}%`}]}/></View>
             </View>)}
           </FrameCard>
         },
@@ -85,42 +86,79 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
 }
 
 function HoldingTable({rows,onOpenHolding}:{rows:HoldingQuote[];onOpenHolding:(row:HoldingQuote)=>void}){
+  const rowHeight=54;
   return <View style={styles.tableOuter}>
-    <View style={styles.tableHeader}>
-      <Text style={[styles.tableHeadText,{width:128}]}>ETF代號｜名稱</Text>
-      <Text style={[styles.tableHeadText,{width:62,textAlign:'right'}]}>股數</Text>
-      <Text style={[styles.tableHeadText,{width:72,textAlign:'right'}]}>即時</Text>
-      <Text style={[styles.tableHeadText,{width:72,textAlign:'right'}]}>均價</Text>
-      <Text style={[styles.tableHeadText,{width:92,textAlign:'right'}]}>損益</Text>
-      <Text style={[styles.tableHeadText,{width:68,textAlign:'right'}]}>報酬率</Text>
-    </View>
-    <ScrollView horizontal showsHorizontalScrollIndicator>
-      <View>
-        {rows.map(row=><Pressable key={row.symbol} onPress={()=>onOpenHolding(row)} style={styles.tableRow}>
-          <View style={{width:128}}><Text style={styles.symbolStrong}>{row.symbol}</Text><Text numberOfLines={1} style={styles.nameSmall}>{row.name}</Text></View>
-          <Text style={[styles.numberCell,{width:62}]}>{money(row.shares)}</Text>
-          <Text style={[styles.numberCell,{width:72,color:row.price>=row.previousClose?colors.gain:colors.loss}]}>{row.price.toFixed(2)}</Text>
-          <Text style={[styles.numberCell,{width:72}]}>{row.avgCost.toFixed(2)}</Text>
-          <Text style={[styles.numberCell,{width:92,color:row.pnl>=0?colors.gain:colors.loss}]}>NT$ {money(row.pnl)}</Text>
-          <Text style={[styles.numberCell,{width:68,color:row.roi>=0?colors.gain:colors.loss}]}>{row.roi>=0?'+':''}{row.roi.toFixed(2)}%</Text>
+    <View style={styles.tableSplit}>
+      <View style={styles.fixedColumn}>
+        <View style={[styles.fixedHeader,{height:38}]}><Text style={styles.tableHeadText}>ETF代號｜名稱</Text></View>
+        {rows.map(row=><Pressable key={row.symbol} onPress={()=>onOpenHolding(row)} style={[styles.fixedRow,{height:rowHeight}]}>
+          <Text style={styles.symbolStrong}>{row.symbol}</Text>
+          <Text numberOfLines={1} style={styles.nameSmall}>{row.name}</Text>
         </Pressable>)}
       </View>
-    </ScrollView>
-    <Text style={styles.tableRule}>骨架固定：第一欄代號＋名稱、表頭與互動固定；資料欄位可顯示／隱藏、排序與調整寬度。</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.scrollTable}>
+        <View>
+          <View style={[styles.rightHeader,{height:38}]}>
+            <Head width={64} label="股數"/><Head width={70} label="即時"/><Head width={76} label="純均價"/><Head width={76} label="含費均價"/><Head width={92} label="損益"/><Head width={70} label="報酬率"/>
+          </View>
+          {rows.map(row=><Pressable key={row.symbol} onPress={()=>onOpenHolding(row)} style={[styles.rightRow,{height:rowHeight}]}>
+            <Cell width={64} value={money(row.shares)}/>
+            <Cell width={70} value={row.price.toFixed(2)} tone={row.price>row.previousClose?'gain':row.price<row.previousClose?'loss':'flat'}/>
+            <Cell width={76} value={row.tradeAvg.toFixed(2)}/>
+            <Cell width={76} value={row.costAvg.toFixed(2)}/>
+            <Cell width={92} value={`NT$ ${money(row.pnl)}`} tone={row.pnl>=0?'gain':'loss'}/>
+            <Cell width={70} value={`${row.roi>=0?'+':''}${row.roi.toFixed(2)}%`} tone={row.roi>=0?'gain':'loss'}/>
+          </Pressable>)}
+        </View>
+      </ScrollView>
+    </View>
+    <Text style={styles.tableRule}>第一欄固定；右側數值欄獨立水平滑動。純成交均價與含費成本均價不可混用。</Text>
   </View>;
 }
+function Head({width,label}:{width:number;label:string}){return <Text style={[styles.tableHeadText,{width,textAlign:'right'}]}>{label}</Text>}
+function Cell({width,value,tone}:{width:number;value:string;tone?:'gain'|'loss'|'flat'}){const color=tone==='gain'?colors.gain:tone==='loss'?colors.loss:tone==='flat'?colors.flat:colors.text;return <Text style={[styles.numberCell,{width,color}]}>{value}</Text>}
 
 function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
+  const finance=useFinance();
+  const [symbol,setSymbol]=useState(finance.holdings[0]?.symbol??'');
+  const [price,setPrice]=useState('');
+  const [shares,setShares]=useState('');
+  const [mode,setMode]=useState<'ODD_LOT'|'ROUND_LOT'>('ODD_LOT');
+  const holding=finance.snapshot.holdings.find(x=>x.etfCode===symbol)??finance.snapshot.holdings[0];
+  const quote=finance.quotes.find(x=>x.symbol===holding?.etfCode);
+  const scenario=holding&&number(price)>0&&number(shares)>0?calculateBuyScenario({
+    holding,currentPrice:quote?.currentPrice??holding.currentPrice,addPrice:number(price),addShares:number(shares),tradeMode:mode,
+  }):null;
+
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.modalBackdrop}><View style={styles.calculator}>
       <View style={styles.modalTop}><View><Text style={styles.modalKicker}>庫存工具</Text><Text style={styles.modalTitle}>持股試算</Text></View><Pressable onPress={onClose}><Text style={styles.done}>完成</Text></Pressable></View>
-      <Text style={styles.modalHint}>試算資料與正式帳務隔離；只有明確建立紀錄才寫入 Ledger。</Text>
-      <View style={styles.calcGrid}><CalcField label="標的" placeholder="0050"/><CalcField label="目前股數" placeholder="3,000"/><CalcField label="加碼價格" placeholder="109.85"/><CalcField label="加碼股數" placeholder="1,000"/></View>
-      <View style={styles.result}><Text style={styles.resultLabel}>試算後均價</Text><Text style={styles.resultValue}>—</Text></View>
+      <Text style={styles.modalHint}>試算直接呼叫 V3.7.8 Canonical Core；不寫入 Ledger。</Text>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolChoices}>
+        {finance.holdings.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}
+      </ScrollView>
+      <SegmentedControl items={[{key:'ODD_LOT',label:'零股／定期定額'},{key:'ROUND_LOT',label:'整股'}] as const} value={mode} onChange={setMode}/>
+      <View style={styles.calcGrid}><CalcField label="加碼價格" value={price} onChange={setPrice} placeholder={quote?.currentPrice.toFixed(2)??'0'}/><CalcField label="加碼股數" value={shares} onChange={setShares} placeholder="0"/></View>
+
+      {holding?<View style={styles.currentInfo}><Text style={styles.infoTitle}>目前持股</Text><Text style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
+
+      {scenario?<View style={styles.scenario}>
+        <ResultRow label="本次成交金額" value={money(scenario.addTradeAmount)}/>
+        <ResultRow label="本次預估手續費" value={money(scenario.addCommission)}/>
+        <ResultRow label="本次現金支出" value={money(scenario.addCashOutflow)} strong/>
+        <ResultRow label="試算後股數" value={money(scenario.newShares)}/>
+        <ResultRow label="試算後純成交均價" value={scenario.averageTradePrice.toFixed(2)} strong/>
+        <ResultRow label="試算後含費成本均價" value={scenario.averageCostPerShare.toFixed(2)} strong/>
+        <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={scenario.priceUnrealizedProfit>=0?'gain':'loss'}/>
+        <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={scenario.cashUnrealizedProfit>=0?'gain':'loss'}/>
+      </View>:<View style={styles.result}><Text style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text style={styles.resultValue}>—</Text></View>}
     </View></View>
   </Modal>;
 }
-function CalcField({label,placeholder}:{label:string;placeholder:string}){return <View style={{width:'48%'}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
+function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
+function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'}){return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss}]}>{value}</Text></View>}
 
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
@@ -138,23 +176,37 @@ const styles=StyleSheet.create({
   chipTextActive:{color:'#FFF'},
   quoteList:{gap:spacing.sm},
   tableOuter:{gap:8},
-  tableHeader:{flexDirection:'row',backgroundColor:colors.surfaceMuted,borderRadius:radius.md,paddingHorizontal:8,paddingVertical:9},
+  tableSplit:{flexDirection:'row',borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden'},
+  fixedColumn:{width:128,backgroundColor:colors.surface,zIndex:2,borderRightWidth:1,borderRightColor:colors.border},
+  fixedHeader:{justifyContent:'center',paddingHorizontal:8,backgroundColor:colors.surfaceMuted},
+  fixedRow:{justifyContent:'center',paddingHorizontal:8,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
+  scrollTable:{minWidth:448},
+  rightHeader:{flexDirection:'row',alignItems:'center',paddingHorizontal:8,backgroundColor:colors.surfaceMuted},
+  rightRow:{flexDirection:'row',alignItems:'center',paddingHorizontal:8,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
   tableHeadText:{fontSize:9,fontWeight:'900',color:colors.textSecondary},
-  tableRow:{flexDirection:'row',alignItems:'center',paddingHorizontal:8,paddingVertical:11,minWidth:494,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   symbolStrong:{fontSize:12,fontWeight:'900',color:colors.text},
   nameSmall:{fontSize:9,color:colors.textSecondary,marginTop:2},
-  numberCell:{fontSize:11,fontWeight:'800',color:colors.text,textAlign:'right',fontVariant:['tabular-nums']},
+  numberCell:{fontSize:11,fontWeight:'800',textAlign:'right',fontVariant:['tabular-nums']},
   tableRule:{fontSize:10,color:colors.textSecondary,lineHeight:16},
   modalBackdrop:{flex:1,justifyContent:'flex-end',backgroundColor:'rgba(12,18,27,0.35)'},
-  calculator:{backgroundColor:colors.surface,borderTopLeftRadius:24,borderTopRightRadius:24,padding:spacing.xl,paddingBottom:44,gap:spacing.lg},
+  calculator:{backgroundColor:colors.surface,borderTopLeftRadius:24,borderTopRightRadius:24,padding:spacing.xl,paddingBottom:44,gap:spacing.lg,maxHeight:'92%'},
   modalTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start'},
   modalKicker:{fontSize:11,fontWeight:'800',color:colors.primary},
   modalTitle:{fontSize:25,fontWeight:'900',color:colors.text},
   done:{fontSize:14,fontWeight:'900',color:colors.primary},
   modalHint:{fontSize:11,lineHeight:17,color:colors.textSecondary},
+  symbolChoices:{gap:6},
   calcGrid:{flexDirection:'row',flexWrap:'wrap',gap:spacing.sm},
   fieldLabel:{fontSize:10,fontWeight:'800',color:colors.textSecondary,marginBottom:5},
   input:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,padding:11,color:colors.text},
+  currentInfo:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:12},
+  infoTitle:{fontSize:10,fontWeight:'900',color:colors.primary},
+  infoText:{fontSize:11,color:colors.text,marginTop:4},
+  scenario:{backgroundColor:colors.surfaceMuted,borderRadius:radius.lg,padding:14,gap:8},
+  resultRow:{flexDirection:'row',justifyContent:'space-between',gap:12},
+  resultRowLabel:{fontSize:10,color:colors.textSecondary},
+  resultRowValue:{fontSize:11,fontWeight:'900',color:colors.text},
+  resultStrong:{color:colors.primary},
   result:{backgroundColor:colors.surfaceMuted,borderRadius:radius.lg,padding:spacing.lg,flexDirection:'row',justifyContent:'space-between'},
   resultLabel:{fontWeight:'800',color:colors.textSecondary},
   resultValue:{fontSize:20,fontWeight:'900',color:colors.primary},
