@@ -1,4 +1,4 @@
-name: TF Asset V1.0.0 Release Gate
+name: TF Asset V1.0.0 GitHub APK
 
 on:
   push:
@@ -6,12 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  build-apk:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Phase 6:')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       CI: "1"
     steps:
       - uses: actions/checkout@v4
@@ -20,108 +19,78 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Freeze version identity
-        run: |
-          test "$(node -p "require('./package.json').version")" = "1.0.0"
-          test "$(node -p "require('./app.json').expo.version")" = "1.0.0"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10000"
-          test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
-          test "$(node -p "require('./app.json').expo.extra.eas.projectId")" = "02e27723-d296-4332-826c-3e4477a77c50"
-
-      - name: TypeScript
-        run: npm run typecheck
-
-      - name: Finance Core Gate
-        run: npm run test:finance
-
-      - name: UI Architecture Gate
-        run: npm run test:ui
-
-      - name: Plugin Architecture Gate
-        run: npm run test:plugins
-
-      - name: Expo dependency check
-        run: npm run check:expo
-
-      - name: Expo Doctor
-        run: npm run doctor
-
-      - name: Verify EAS authorization
-        run: |
-          test -n "$EXPO_TOKEN"
-          npx --yes eas-cli@23.2.0 whoami --non-interactive
-
-      - name: Try EAS Android preview APK
-        id: eas_build
-        shell: bash
-        run: |
-          set +e
-          npx --yes eas-cli@23.2.0 build --platform android --profile preview --non-interactive --wait 2>&1 | tee eas-build-attempt.log
-          code=${PIPESTATUS[0]}
-          set -e
-          if [ "$code" -eq 0 ]; then
-            echo "mode=eas" >> "$GITHUB_OUTPUT"
-            echo "quota_exhausted=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if grep -q "used its Android builds from the Free plan this month" eas-build-attempt.log; then
-            echo "mode=github-fallback" >> "$GITHUB_OUTPUT"
-            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          cat eas-build-attempt.log
-          exit "$code"
-
-      - name: Resolve EAS APK
-        if: steps.eas_build.outputs.mode == 'eas'
-        run: |
-          npx --yes eas-cli@23.2.0 build:list --platform android --limit 1 --status finished --non-interactive --json > eas-build.json
-          APK_URL="$(jq -r '.[0].artifacts.buildUrl // .[0].artifacts.applicationArchiveUrl // empty' eas-build.json)"
-          test -n "$APK_URL"
-          curl --fail --location "$APK_URL" --output TF-Asset-V1.0.0-preview.apk
-
-      - name: Set up Java for GitHub fallback
-        if: steps.eas_build.outputs.mode == 'github-fallback'
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Generate Android project
-        if: steps.eas_build.outputs.mode == 'github-fallback'
-        run: npx expo prebuild --platform android --clean --no-install
+      - name: Install source dependencies
+        run: npm install --no-audit --no-fund
 
-      - name: Build APK on GitHub runner
-        if: steps.eas_build.outputs.mode == 'github-fallback'
+      - name: Source hard gates
         run: |
-          chmod +x android/gradlew
-          cd android
-          ./gradlew assembleRelease --no-daemon
+          npm run typecheck
+          npm run test:finance
+          npm run test:ui
+          npm run test:plugins
+
+      - name: Create pure React Native Android build workspace
+        run: |
           cd ..
-          APK_PATH="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          npx --yes @react-native-community/cli@latest init TFAssetNative \
+            --version 0.86.3 \
+            --package-name com.tfasset.app \
+            --skip-install
+
+      - name: Inject TF Asset source
+        run: |
+          cp App.tsx ../TFAssetNative/App.tsx
+          rm -rf ../TFAssetNative/src
+          cp -R src ../TFAssetNative/src
+          cat > ../TFAssetNative/index.js <<'EOF'
+          import {AppRegistry} from 'react-native';
+          import App from './App';
+          import {name as appName} from './app.json';
+          AppRegistry.registerComponent(appName, () => App);
+          EOF
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='../TFAssetNative/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.dependencies['react-native-safe-area-context']='~5.7.0';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+      - name: Install native workspace dependencies
+        working-directory: ../TFAssetNative
+        run: npm install --no-audit --no-fund
+
+      - name: Build release APK on GitHub runner
+        working-directory: ../TFAssetNative/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect APK
+        run: |
+          APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V1.0.0-preview.apk
-          printf '{"builder":"github-actions-fallback","reason":"EAS free-plan Android quota exhausted","projectId":"02e27723-d296-4332-826c-3e4477a77c50"}\n' > eas-build.json
+          cp "$APK_PATH" TF-Asset-V1.0.0-github.apk
 
       - name: Validate APK artifact
         run: |
-          test -f TF-Asset-V1.0.0-preview.apk
-          test "$(stat -c%s TF-Asset-V1.0.0-preview.apk)" -gt 1000000
-          unzip -t TF-Asset-V1.0.0-preview.apk
-          sha256sum TF-Asset-V1.0.0-preview.apk | tee TF-Asset-V1.0.0-preview.sha256
-          file TF-Asset-V1.0.0-preview.apk
+          test -f TF-Asset-V1.0.0-github.apk
+          test "$(stat -c%s TF-Asset-V1.0.0-github.apk)" -gt 1000000
+          unzip -t TF-Asset-V1.0.0-github.apk
+          sha256sum TF-Asset-V1.0.0-github.apk | tee TF-Asset-V1.0.0-github.sha256
+          file TF-Asset-V1.0.0-github.apk
 
       - name: Upload validated APK
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V1.0.0-APK
+          name: TF-Asset-V1.0.0-GitHub-APK
           path: |
-            TF-Asset-V1.0.0-preview.apk
-            TF-Asset-V1.0.0-preview.sha256
-            eas-build.json
-            eas-build-attempt.log
+            TF-Asset-V1.0.0-github.apk
+            TF-Asset-V1.0.0-github.sha256
           if-no-files-found: error
           retention-days: 30

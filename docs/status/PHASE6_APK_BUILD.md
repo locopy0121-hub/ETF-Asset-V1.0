@@ -1,23 +1,14 @@
-# Phase 6 — Android Cloud APK Build
+# Phase 6 — GitHub-only APK Build
 
-Status: **REPAIRING / REVALIDATING**
+Rule locked: **APK generation uses GitHub Actions only. No Expo Build, no EAS Build, no Expo prebuild.**
 
-## Verified repairs
-- EAS authorization: PASS
-- EAS project bootstrap: PASS
-- EAS project linked: 02e27723-d296-4332-826c-3e4477a77c50
-- Remote Android credentials: PASS
-- Keystore creation: PASS
+Pipeline:
+1. Source hard gates
+2. Create pure React Native 0.86.3 Android workspace on GitHub runner
+3. Inject TF Asset source
+4. Gradle assembleRelease
+5. APK integrity validation
+6. SHA-256
+7. GitHub Actions Artifact
 
-## Current blocker
-Expo Free plan Android build quota is exhausted until 2026-10-01.
-
-## Repair strategy
-Keep EAS linkage, but when the workflow detects this exact quota condition it automatically falls back to a GitHub-hosted Android build:
-1. Expo prebuild on GitHub runner
-2. Gradle release APK build
-3. APK integrity check
-4. SHA-256
-5. GitHub Actions artifact upload
-
-No local computer is used. Finance/UI logic is unchanged.
+Status: REVALIDATING

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
@@ -32,7 +31,7 @@ export default function App() {
   },[active,detail]);
 
   return <SafeAreaProvider>
-    <StatusBar style="dark"/>
+    <StatusBar barStyle="dark-content"/>
     <View style={styles.root}>
       <View style={styles.screen}>{screen}</View>
       {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
