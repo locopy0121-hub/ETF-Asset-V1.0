@@ -1,15 +1,15 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  activeMonitorFields,activeMonitorLayout,activeMonitorStyle,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
-  updateActiveMonitorLayout,updateActiveMonitorStyle,updateMonitorFields,
-  type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,
+  activeMonitorFields,activeMonitorLayout,activeMonitorStyle,enabledMiniColumns,moveMiniColumn,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
+  updateActiveMonitorLayout,updateActiveMonitorStyle,updateMiniColumn,updateMiniHeader,updateMonitorFields,
+  type MiniColumnConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[];previewSnapshot?:SharedSnapshot|null};
-const fields:readonly MonitorField[]=['symbol','price','changePercent','marketValue','pnl'];
-const labels:Record<MonitorField,string>={symbol:'代號',price:'價格',changePercent:'漲跌%',marketValue:'市值',pnl:'損益'};
+const fields:readonly MonitorField[]=['symbol','name','price','change','changePercent','shares','avgCost','marketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt'];
+const labels:Record<MonitorField,string>={symbol:'代號',name:'名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',shares:'股數',avgCost:'成本均',marketValue:'市值',pnl:'損益',roi:'報酬%',comprehensivePnl:'含息損益',marketStatus:'市場狀態',updatedAt:'更新時間'};
 const effects:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change'];
 const effectLabels:Record<MonitorEffect,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍'};
 const sorts:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
@@ -18,7 +18,9 @@ const palette=['#0F172A','#FFFFFF','#F8FAFC','#0066FF','#EF4444','#10B981','#647
 
 export function MonitorControlPanel({value,onChange,availableSymbols=[],previewSnapshot=null}:Props){
   const layout=activeMonitorLayout(value),style=activeMonitorStyle(value),activeFields=activeMonitorFields(value);
-  const previewHolding=sortMonitorHoldings(previewSnapshot,value)[0];
+  const previewRows=sortMonitorHoldings(previewSnapshot,value);
+  const previewHolding=previewRows[0];
+  const miniColumns=enabledMiniColumns(value);
   const previewSymbol=previewHolding?.symbol??'--';
   const previewName=previewHolding?.name??'等待資料';
   const previewPrice=previewHolding?.price;
@@ -39,16 +41,62 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
     <Section title="模式與即時預覽">
       <Choice choices={['normal','mini'] as const} value={value.mode} label={x=>x==='normal'?'Normal':'Mini'} onChange={(mode:MonitorMode)=>onChange(setMonitorMode(value,mode))}/>
       {value.mode==='mini'?<Pressable onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
-      <View style={[styles.preview,{width:'100%',minHeight:value.mode==='mini'?72:130,backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
-        <Text style={{fontSize:13*style.titleFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign}}>{previewSymbol} {previewName}</Text>
-        <Text style={{fontSize:18*style.valueFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPrice==null?'等待資料':previewPrice.toFixed(2)}</Text>
-        <Text style={{fontSize:11*style.fontScale,fontWeight:'800',color:previewTone,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}</Text>
-      </View>
+      {value.mode==='mini'
+        ?<View style={[styles.preview,{width:'100%',backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
+          {value.miniHeader.visible?<View style={[styles.miniTableRow,{minHeight:value.miniHeader.height,backgroundColor:value.miniHeader.backgroundColor,borderBottomColor:value.miniHeader.borderColor,borderBottomWidth:value.miniHeader.borderWidth}]}>
+            {miniColumns.map((column,index)=><View key={column.field} style={{flex:column.widthPercent}}>
+              <Text style={{color:value.miniHeader.textColor,fontSize:11*value.miniHeader.fontScale,fontWeight:'900',textAlign:column.align}}>{column.label}</Text>
+            </View>)}
+          </View>:null}
+          {previewRows.map(row=><View key={row.symbol} style={styles.miniTableRow}>
+            {miniColumns.map(column=><View key={column.field} style={{flex:column.widthPercent}}>
+              <Text numberOfLines={1} style={{color:miniCellColor(row,column,style),fontSize:11*style.fontScale*column.fontScale,fontWeight:'800',textAlign:column.align}}>{miniCellText(row,column.field)}</Text>
+            </View>)}
+          </View>)}
+          {!previewRows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
+        </View>
+        :<View style={[styles.preview,{width:'100%',minHeight:130,backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
+          <Text style={{fontSize:13*style.titleFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign}}>{previewSymbol} {previewName}</Text>
+          <Text style={{fontSize:18*style.valueFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPrice==null?'等待資料':previewPrice.toFixed(2)}</Text>
+          <Text style={{fontSize:11*style.fontScale,fontWeight:'800',color:previewTone,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}</Text>
+        </View>}
     </Section>
 
+    {value.mode==='mini'?<Section title="Mini A 項目列（母）">
+      <Text style={styles.note}>A 只控制項目列本身；不直接修改 B 欄位內容。</Text>
+      <Toggle label="顯示項目列" value={value.miniHeader.visible} onChange={visible=>onChange(updateMiniHeader(value,{visible}))}/>
+      <Step label="項目列高度" value={value.miniHeader.height} min={22} max={56} step={2} suffix=" px" onChange={height=>onChange(updateMiniHeader(value,{height}))}/>
+      <Step label="項目列字體" value={Math.round(value.miniHeader.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniHeader(value,{fontScale:n/100}))}/>
+      <Color label="項目列背景" value={value.miniHeader.backgroundColor} onChange={backgroundColor=>onChange(updateMiniHeader(value,{backgroundColor}))}/>
+      <Color label="項目列文字" value={value.miniHeader.textColor} onChange={textColor=>onChange(updateMiniHeader(value,{textColor}))}/>
+      <Color label="項目列分隔線" value={value.miniHeader.borderColor} onChange={borderColor=>onChange(updateMiniHeader(value,{borderColor}))}/>
+      <Step label="項目列分隔線" value={value.miniHeader.borderWidth} min={0} max={4} step={1} suffix=" px" onChange={borderWidth=>onChange(updateMiniHeader(value,{borderWidth}))}/>
+    </Section>:null}
+
+    {value.mode==='mini'?<Section title="Mini B 欄位（子）">
+      <Text style={styles.note}>B 欄位只控制自己的顯示、順序、寬度、對齊、字體與損益色；資料列共用同一套 B 結構。</Text>
+      {value.miniColumns.map((column,index)=><View key={column.field} style={styles.miniColumnCard}>
+        <View style={styles.orderRow}>
+          <Pressable onPress={()=>onChange(updateMiniColumn(value,column.field,{enabled:!column.enabled}))} style={[styles.choice,column.enabled&&styles.choiceActive]}>
+            <Text style={[styles.choiceText,column.enabled&&styles.choiceTextActive]}>{column.label}</Text>
+          </Pressable>
+          <Mini label="↑" onPress={()=>onChange(moveMiniColumn(value,column.field,-1))}/>
+          <Mini label="↓" onPress={()=>onChange(moveMiniColumn(value,column.field,1))}/>
+        </View>
+        <Text style={styles.positionHint}>第 {index+1} 欄 · 寬度 {column.widthPercent}% · {column.align==='left'?'靠左':column.align==='center'?'置中':'靠右'}</Text>
+        {column.enabled?<View style={{gap:6}}>
+          <TextInput value={column.label} onChangeText={label=>onChange(updateMiniColumn(value,column.field,{label}))} style={styles.input}/>
+          <Step label="欄寬" value={column.widthPercent} min={10} max={60} step={2} suffix="%" onChange={widthPercent=>onChange(updateMiniColumn(value,column.field,{widthPercent}))}/>
+          <Step label="字體" value={Math.round(column.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniColumn(value,column.field,{fontScale:n/100}))}/>
+          <Choice choices={['left','center','right'] as const} value={column.align} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={align=>onChange(updateMiniColumn(value,column.field,{align}))}/>
+          <Toggle label="套用損益色" value={column.useProfitColor} onChange={useProfitColor=>onChange(updateMiniColumn(value,column.field,{useProfitColor}))}/>
+        </View>:null}
+      </View>)}
+    </Section>:null}
+
     <Section title="尺寸與位置">
-      <Step label="寬度" value={layout.width} min={120} max={value.mode==='mini'?600:1200} step={10} suffix=" px" onChange={width=>patchLayout({width})}/>
-      <Step label="高度" value={layout.height} min={56} max={value.mode==='mini'?300:1600} step={10} suffix=" px" onChange={height=>patchLayout({height})}/>
+      <Step label="寬度" value={layout.width} min={value.mode==='mini'?220:120} max={value.mode==='mini'?900:1200} step={10} suffix=" px" onChange={width=>patchLayout({width})}/>
+      <Step label="高度" value={layout.height} min={value.mode==='mini'?120:56} max={value.mode==='mini'?800:1600} step={10} suffix=" px" onChange={height=>patchLayout({height})}/>
       <Step label="X" value={layout.x} min={-2000} max={2000} step={8} suffix="" onChange={x=>patchLayout({x})}/>
       <Step label="Y" value={layout.y} min={-2000} max={2000} step={8} suffix="" onChange={y=>patchLayout({y})}/>
       <Pressable onPress={()=>patchLayout({x:16,y:120})} style={styles.action}><Text style={styles.actionText}>重設目前模式位置</Text></Pressable>
@@ -117,5 +165,29 @@ const styles=StyleSheet.create({
  step:{flexDirection:'row',alignItems:'center',gap:6},stepLabel:{fontSize:10,fontWeight:'800',color:colors.text,flex:1},stepValue:{minWidth:64,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
  toggle:{minHeight:36,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},state:{paddingHorizontal:10,paddingVertical:5,borderRadius:999,overflow:'hidden',backgroundColor:colors.surface,color:colors.textSecondary,fontSize:10,fontWeight:'900'},stateOn:{backgroundColor:'#EFF6FF',color:colors.primary},
  label:{fontSize:10,fontWeight:'900',color:colors.textSecondary},input:{height:36,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:9,color:colors.text,fontSize:10,fontWeight:'800'},
- dot:{width:28,height:28,borderRadius:14,borderWidth:1,borderColor:colors.border},dotActive:{borderWidth:3,borderColor:colors.primary},note:{fontSize:9,lineHeight:14,color:colors.textSecondary}
+ dot:{width:28,height:28,borderRadius:14,borderWidth:1,borderColor:colors.border},dotActive:{borderWidth:3,borderColor:colors.primary},note:{fontSize:9,lineHeight:14,color:colors.textSecondary},miniTableRow:{flexDirection:'row',alignItems:'center',gap:6,minHeight:28,paddingHorizontal:4},miniColumnCard:{gap:6,padding:8,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface},positionHint:{fontSize:9,fontWeight:'800',color:colors.primary}
 });
+
+
+function miniCellText(row:NonNullable<SharedSnapshot['holdings'][number]>,field:MonitorField){
+  switch(field){
+    case 'symbol':return row.symbol;
+    case 'name':return row.name;
+    case 'price':return row.price==null?'--':row.price.toFixed(2);
+    case 'change':return row.change==null?'--':`${row.change>=0?'+':''}${row.change.toFixed(2)}`;
+    case 'changePercent':return row.changePercent==null?'--':`${row.changePercent>=0?'+':''}${row.changePercent.toFixed(2)}%`;
+    case 'shares':return Math.round(row.shares).toLocaleString('zh-TW');
+    case 'avgCost':return row.avgCost.toFixed(2);
+    case 'marketValue':return Math.round(row.marketValue).toLocaleString('zh-TW');
+    case 'pnl':return `${row.pnl>=0?'+':''}${Math.round(row.pnl).toLocaleString('zh-TW')}`;
+    case 'roi':return `${row.roi>=0?'+':''}${row.roi.toFixed(2)}%`;
+    case 'comprehensivePnl':return `${row.comprehensivePnl>=0?'+':''}${Math.round(row.comprehensivePnl).toLocaleString('zh-TW')}`;
+    case 'marketStatus':return row.marketStatus;
+    case 'updatedAt':return row.updatedAt?new Date(row.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--';
+  }
+}
+function miniCellColor(row:SharedSnapshot['holdings'][number],column:MiniColumnConfig,style:MonitorConfig['miniStyle']){
+  if(!column.useProfitColor)return style.textColor;
+  const value=column.field==='change'?row.change:column.field==='changePercent'?row.changePercent:column.field==='roi'?row.roi:column.field==='comprehensivePnl'?row.comprehensivePnl:column.field==='pnl'?row.pnl:null;
+  return value==null?style.neutralColor:value>0?style.gainColor:value<0?style.lossColor:style.neutralColor;
+}
