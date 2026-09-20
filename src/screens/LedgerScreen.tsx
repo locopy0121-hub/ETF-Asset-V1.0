@@ -384,7 +384,7 @@ const styles=StyleSheet.create({
   input:{minHeight:44,backgroundColor:colors.surfaceMuted,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,paddingHorizontal:12,paddingVertical:11,color:colors.text,fontSize:13,justifyContent:'center'},
   inputText:{color:colors.text,fontSize:13},
   symbolFieldBlock:{gap:6},
-  selectedInstrument:{minHeight:34,paddingHorizontal:10,paddingVertical:7,borderRadius:radius.md,backgroundColor:colors.primarySoft,flexDirection:'row',alignItems:'center',gap:8},
+  selectedInstrument:{minHeight:34,paddingHorizontal:10,paddingVertical:7,borderRadius:radius.md,backgroundColor:colors.surfaceMuted,flexDirection:'row',alignItems:'center',gap:8},
   selectedInstrumentCode:{fontSize:12,fontWeight:'900',color:colors.primary},
   selectedInstrumentName:{flex:1,fontSize:11,fontWeight:'800',color:colors.text},
   symbolNotFound:{fontSize:10,fontWeight:'700',color:colors.textSecondary,paddingHorizontal:2},
