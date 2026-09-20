@@ -6,6 +6,7 @@ import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { DEFAULT_MONITOR_CONFIG, type MonitorConfig } from '../monitor/monitorDomain';
+import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
 import { colors, radius, spacing } from '../theme/tokens';
 import { DEFAULT_WIDGET_CONFIG, type WidgetConfig } from '../widget/widgetDomain';
@@ -22,21 +23,6 @@ const children:Record<string,readonly string[]>={
 type PluginPanel = 'widget' | 'monitor' | null;
 type SystemPanel = 'market' | null;
 type AccountingPanel = 'formulas' | null;
-type MarketUpdateConfig={
-  scheduleEnabled:boolean;
-  refreshOnForeground:boolean;
-  stopAll:boolean;
-  live:{enabled:boolean;start:string;end:string;refreshSeconds:number};
-  afterHours:{enabled:boolean;start:string;end:string;refreshSeconds:number};
-};
-const DEFAULT_MARKET_UPDATE:MarketUpdateConfig={
-  scheduleEnabled:true,
-  refreshOnForeground:true,
-  stopAll:false,
-  live:{enabled:true,start:'09:00',end:'13:30',refreshSeconds:5},
-  afterHours:{enabled:true,start:'13:31',end:'18:00',refreshSeconds:60},
-};
-
 export function SettingsScreen() {
   const [open,setOpen]=useState<string|null>(null);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>('widget');
@@ -44,7 +30,7 @@ export function SettingsScreen() {
   const [monitorConfig,setMonitorConfig]=useState<MonitorConfig>(DEFAULT_MONITOR_CONFIG);
   const [systemPanel,setSystemPanel]=useState<SystemPanel>(null);
   const [accountingPanel,setAccountingPanel]=useState<AccountingPanel>(null);
-  const [marketUpdate,setMarketUpdate]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
+  const market=useMarketRuntime();
 
   return <PageShell title="控制中心" subtitle="主設定負責全局；各頁齒輪負責該頁框架">
     <View style={styles.ruleCard}>
@@ -76,7 +62,7 @@ export function SettingsScreen() {
             </Pressable>;
           })}
           {frame.key==='accounting'&&accountingPanel==='formulas'?<AccountingFormulaList/>:null}
-          {frame.key==='system'&&systemPanel==='market'?<MarketUpdatePanel value={marketUpdate} onChange={setMarketUpdate}/>:null}
+          {frame.key==='system'&&systemPanel==='market'?<MarketUpdatePanel value={market.config} onChange={market.setConfig} phase={market.phase} refreshing={market.refreshing} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} onRefresh={market.refresh}/>:null}
           {frame.key==='plugins'?<View style={styles.pluginStack}>
             <View style={styles.pluginRule}><Text style={styles.pluginRuleTitle}>外掛分離原則</Text><Text style={styles.pluginRuleText}>Widget 只存在 mobile 桌面；Floating Monitor 是跨 App 浮動即時視窗。共用 Shared Snapshot，不共用產品邏輯與控制 UI。</Text></View>
             {pluginPanel==='widget'?<WidgetControlPanel value={widgetConfig} onChange={setWidgetConfig}/>:null}
@@ -103,13 +89,14 @@ function AccountingFormulaList(){
   </View>;
 }
 
-function MarketUpdatePanel({value,onChange}:{value:MarketUpdateConfig;onChange:(next:MarketUpdateConfig)=>void}){
+function MarketUpdatePanel({value,onChange,phase,refreshing,lastSuccessAt,lastError,onRefresh}:{value:MarketUpdateConfig;onChange:(next:MarketUpdateConfig)=>void;phase:string;refreshing:boolean;lastSuccessAt:number|null;lastError:string|null;onRefresh:()=>Promise<void>}){
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...value,...next});
   const patchLive=(next:Partial<MarketUpdateConfig['live']>)=>patch({live:{...value.live,...next}});
   const patchAfterHours=(next:Partial<MarketUpdateConfig['afterHours']>)=>patch({afterHours:{...value.afterHours,...next}});
   return <View style={styles.marketPanel}>
     <Text style={styles.panelTitle}>市場更新</Text>
-    <Text style={styles.panelHint}>排程總控 → 盤中排程 → 盤後排程。每層只控制自己的下一層。</Text>
+    <Text style={styles.panelHint}>行情來源：{value.source}｜目前狀態：{phase==='live'?'盤中':phase==='afterHours'?'盤後':'停止'}。排程總控 → 盤中排程 → 盤後排程。</Text>
+    <View style={styles.controlRow}><View><Text style={styles.controlLabel}>手動更新行情</Text><Text style={styles.controlNote}>{lastSuccessAt?`上次成功 ${new Date(lastSuccessAt).toLocaleTimeString('zh-TW')}`:'尚未成功更新'}{lastError?` · ${lastError}`:''}</Text></View><Pressable disabled={refreshing} style={[styles.manualRefresh,refreshing&&styles.disabled]} onPress={()=>{void onRefresh();}}><Text style={styles.manualRefreshText}>{refreshing?'更新中':'立即更新'}</Text></Pressable></View>
     <ToggleRow label="啟用市場更新排程" value={value.scheduleEnabled} onChange={scheduleEnabled=>patch({scheduleEnabled})}/>
     <ToggleRow label="回到前景立即刷新" value={value.refreshOnForeground} onChange={refreshOnForeground=>patch({refreshOnForeground})}/>
     <ToggleRow label="停止全部自動更新" value={value.stopAll} onChange={stopAll=>patch({stopAll})}/>
@@ -187,6 +174,9 @@ const styles=StyleSheet.create({
   stepText:{fontSize:16,fontWeight:'900',color:colors.primary},
   frequencyInput:{minWidth:48,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:8,paddingVertical:7,color:colors.text,textAlign:'center',fontWeight:'900'},
   seconds:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  manualRefresh:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.primary},
+  manualRefreshText:{fontSize:10,fontWeight:'900',color:'#FFF'},
+  disabled:{opacity:.45},
   pluginRule:{padding:12,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
   pluginRuleTitle:{fontSize:11,fontWeight:'900',color:colors.primary},
   pluginRuleText:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:4},
