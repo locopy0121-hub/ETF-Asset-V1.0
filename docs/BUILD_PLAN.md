@@ -135,7 +135,7 @@ A → B → C → D → E
 - 本建置規劃生成書
 - Architecture decision docs
 - 專案目錄骨架
-- PASS 條件：倉庫可追蹤、規格完整、無舊 V5 程式碼污染
+- PASS 條件：倉庫可追蹤、規格完整、無舊版程式碼污染
 
 ### Phase 2 — React Native / Expo Foundation
 - Expo SDK 57
@@ -182,16 +182,12 @@ A → B → C → D → E
 
 ## 6. 明確不搬項目
 
-- V5 UI
-- 360 編輯器
-- Frame / Block 舊模型
-- 資料方塊
-- 舊 Settings
-- 舊 Screens / Navigation
-- 舊 Layout storage
-- 舊 Blueprint B 視覺
-- 舊拖曳編輯器
-- 舊即時預覽機制
+- 舊版 UI 與視覺系統
+- 舊版自由編輯器與拖曳模型
+- 舊版 Frame / Block 與資料方塊模型
+- 舊版 Settings、Screens 與 Navigation
+- 舊版 Layout storage
+- 舊版即時預覽機制
 
 ---
 
