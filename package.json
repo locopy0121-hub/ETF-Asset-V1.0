@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v106 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v107 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -33,7 +33,11 @@
     "test:v106": "npm run test:v103 && npm run test:settings-v106 && npm run test:widget-monitor-v106 && npm run test:holding-v106 && npm run test:holding-layout-v106",
     "test:holding-layout-v106": "node scripts/holding-layout-v106.test.cjs",
     "test:settings-v106": "node scripts/settings-v106-contract.test.cjs",
-    "test:widget-monitor-v106": "node scripts/widget-monitor-v106.test.cjs"
+    "test:widget-monitor-v106": "node scripts/widget-monitor-v106.test.cjs",
+    "test:settings-v107": "node scripts/settings-v107-contract.test.cjs",
+    "test:widget-monitor-v107": "node scripts/widget-monitor-v107.test.cjs",
+    "test:native-display-v107": "node scripts/native-display-sync-v107.test.cjs",
+    "test:v107": "npm run test:v103 && npm run test:settings-v107 && npm run test:widget-monitor-v107 && npm run test:holding-v106 && npm run test:holding-layout-v106 && npm run test:native-display-v107"
   },
   "dependencies": {
     "expo": "~57.0.21",
