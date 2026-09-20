@@ -1,4 +1,4 @@
-name: TF Asset V1.0.6 GitHub APK
+name: TF Asset V1.0.7 GitHub APK
 
 on:
   push:
@@ -32,18 +32,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V1.0.6 identity
+      - name: Freeze V1.0.7 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "1.0.6"
-          test "$(node -p "require('./app.json').expo.version")" = "1.0.6"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10006"
+          test "$(node -p "require('./package.json').version")" = "1.0.7"
+          test "$(node -p "require('./app.json').expo.version")" = "1.0.7"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10007"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V1.0.6 Hard Gates
-        run: npm run test:v106
+      - name: V1.0.7 Hard Gates
+        run: npm run test:v107
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -74,8 +74,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 10006');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.0.6"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 10007');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.0.7"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -84,7 +84,7 @@ jobs:
           fs.writeFileSync(strings,s);
           NODE
 
-      - name: Inject V1.0.6 Android Widget and Floating Monitor
+      - name: Inject V1.0.7 Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
           mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml
@@ -124,35 +124,35 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V1.0.6-github.apk
-          test "$(stat -c%s TF-Asset-V1.0.6-github.apk)" -gt 1000000
-          unzip -t TF-Asset-V1.0.6-github.apk
-          sha256sum TF-Asset-V1.0.6-github.apk | tee TF-Asset-V1.0.6-github.sha256
+          cp "$APK_PATH" TF-Asset-V1.0.7-github.apk
+          test "$(stat -c%s TF-Asset-V1.0.7-github.apk)" -gt 1000000
+          unzip -t TF-Asset-V1.0.7-github.apk
+          sha256sum TF-Asset-V1.0.7-github.apk | tee TF-Asset-V1.0.7-github.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V1.0.6-github.apk | tee TF-Asset-V1.0.6-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V1.0.6-badging.txt
-          grep "versionCode='10006'" TF-Asset-V1.0.6-badging.txt
-          grep "versionName='1.0.6'" TF-Asset-V1.0.6-badging.txt
-          file TF-Asset-V1.0.6-github.apk
+          "$AAPT" dump badging TF-Asset-V1.0.7-github.apk | tee TF-Asset-V1.0.7-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V1.0.7-badging.txt
+          grep "versionCode='10007'" TF-Asset-V1.0.7-badging.txt
+          grep "versionName='1.0.7'" TF-Asset-V1.0.7-badging.txt
+          file TF-Asset-V1.0.7-github.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V1.0.6-GitHub-APK
+          name: TF-Asset-V1.0.7-GitHub-APK
           path: |
-            TF-Asset-V1.0.6-github.apk
-            TF-Asset-V1.0.6-github.sha256
-            TF-Asset-V1.0.6-badging.txt
+            TF-Asset-V1.0.7-github.apk
+            TF-Asset-V1.0.7-github.sha256
+            TF-Asset-V1.0.7-badging.txt
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish permanent APK download
         run: |
-          mkdir -p /tmp/tfasset-v106
-          cp TF-Asset-V1.0.6-github.apk /tmp/tfasset-v106/
-          cp TF-Asset-V1.0.6-github.sha256 /tmp/tfasset-v106/
-          cp TF-Asset-V1.0.6-badging.txt /tmp/tfasset-v106/
+          mkdir -p /tmp/tfasset-v107
+          cp TF-Asset-V1.0.7-github.apk /tmp/tfasset-v107/
+          cp TF-Asset-V1.0.7-github.sha256 /tmp/tfasset-v107/
+          cp TF-Asset-V1.0.7-badging.txt /tmp/tfasset-v107/
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -166,9 +166,9 @@ jobs:
           fi
 
           mkdir -p downloads
-          cp /tmp/tfasset-v106/TF-Asset-V1.0.6-github.apk downloads/
-          cp /tmp/tfasset-v106/TF-Asset-V1.0.6-github.sha256 downloads/
-          cp /tmp/tfasset-v106/TF-Asset-V1.0.6-badging.txt downloads/
+          cp /tmp/tfasset-v107/TF-Asset-V1.0.7-github.apk downloads/
+          cp /tmp/tfasset-v107/TF-Asset-V1.0.7-github.sha256 downloads/
+          cp /tmp/tfasset-v107/TF-Asset-V1.0.7-badging.txt downloads/
           git add downloads
-          git commit -m "publish: TF Asset V1.0.6 APK" || true
+          git commit -m "publish: TF Asset V1.0.7 APK" || true
           git push origin apk-release
