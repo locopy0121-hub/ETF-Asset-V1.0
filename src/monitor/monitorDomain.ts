@@ -7,6 +7,27 @@ export type MonitorSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type MonitorEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';
 export type MonitorTextAlign = 'left' | 'center' | 'right';
 
+export type MiniHeaderStyle = Readonly<{
+  visible:boolean;
+  height:number;
+  backgroundColor:string;
+  backgroundOpacity:number;
+  textColor:string;
+  fontScale:number;
+  borderColor:string;
+  borderWidth:number;
+}>;
+
+export type MiniColumnConfig = Readonly<{
+  field:MonitorField;
+  enabled:boolean;
+  widthPercent:number;
+  align:MonitorTextAlign;
+  fontScale:number;
+  useProfitColor:boolean;
+  label:string;
+}>;
+
 export type MonitorLayout = Readonly<{x:number;y:number;width:number;height:number;}>;
 export type MonitorStyle = Readonly<{
   fontScale:number;
@@ -53,6 +74,8 @@ export type MonitorConfig = Readonly<{
   miniLayout: MonitorLayout;
   normalStyle: MonitorStyle;
   miniStyle: MonitorStyle;
+  miniHeader: MiniHeaderStyle;
+  miniColumns: readonly MiniColumnConfig[];
   effects: MonitorEffects;
   sort: MonitorSort;
   alwaysOnTop:boolean;
@@ -79,6 +102,22 @@ export const DEFAULT_MONITOR_STYLE:MonitorStyle={
   shadowEnabled:true,textAlign:'left',rowGap:6,padding:12,
 };
 export const DEFAULT_MONITOR_EFFECTS:MonitorEffects={refresh:'fade',gain:'none',loss:'none',alert:'pulse',animationsEnabled:true};
+export const DEFAULT_MINI_HEADER:MiniHeaderStyle={
+  visible:true,
+  height:30,
+  backgroundColor:'#111827',
+  backgroundOpacity:0.96,
+  textColor:'#CBD5E1',
+  fontScale:0.9,
+  borderColor:'#334155',
+  borderWidth:1,
+};
+export const DEFAULT_MINI_COLUMNS:readonly MiniColumnConfig[]=[
+  {field:'symbol',enabled:true,widthPercent:28,align:'left',fontScale:1,useProfitColor:false,label:'代號'},
+  {field:'price',enabled:true,widthPercent:24,align:'right',fontScale:1,useProfitColor:false,label:'價格'},
+  {field:'changePercent',enabled:true,widthPercent:24,align:'right',fontScale:1,useProfitColor:true,label:'漲跌%'},
+  {field:'pnl',enabled:true,widthPercent:24,align:'right',fontScale:1,useProfitColor:true,label:'損益'},
+];
 export const DEFAULT_MONITOR_SORT:MonitorSort={key:'manual',direction:'asc',manualSymbols:[]};
 
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
@@ -91,9 +130,11 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   showBreathingLight: true,
   alertChangePct: null,
   normalLayout: { x: 16, y: 120, width: 320, height: 420 },
-  miniLayout: { x: 16, y: 120, width: 180, height: 72 },
+  miniLayout: { x: 16, y: 120, width: 360, height: 330 },
   normalStyle:DEFAULT_MONITOR_STYLE,
-  miniStyle:{...DEFAULT_MONITOR_STYLE,fontScale:0.9,titleFontScale:0.9,valueFontScale:0.95,padding:8,rowGap:3,cornerRadius:12},
+  miniStyle:{...DEFAULT_MONITOR_STYLE,fontScale:0.9,titleFontScale:0.9,valueFontScale:0.95,padding:6,rowGap:2,cornerRadius:12},
+  miniHeader:DEFAULT_MINI_HEADER,
+  miniColumns:DEFAULT_MINI_COLUMNS,
   effects:DEFAULT_MONITOR_EFFECTS,
   sort:DEFAULT_MONITOR_SORT,
   alwaysOnTop:true,
@@ -102,6 +143,24 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
 export function activeMonitorLayout(config: MonitorConfig) {return config.mode === 'normal' ? config.normalLayout : config.miniLayout;}
 export function activeMonitorStyle(config:MonitorConfig){return config.mode==='normal'?config.normalStyle:config.miniStyle;}
 export function activeMonitorFields(config: MonitorConfig) {return config.mode === 'normal' ? config.fields : config.miniFields;}
+export function enabledMiniColumns(config:MonitorConfig){return config.miniColumns.filter(column=>column.enabled);}
+export function updateMiniHeader(config:MonitorConfig,patch:Partial<MiniHeaderStyle>):MonitorConfig{
+  return {...config,miniHeader:{...config.miniHeader,...patch}};
+}
+export function updateMiniColumn(config:MonitorConfig,field:MonitorField,patch:Partial<MiniColumnConfig>):MonitorConfig{
+  return {...config,miniColumns:config.miniColumns.map(column=>column.field===field?{...column,...patch}:column)};
+}
+export function moveMiniColumn(config:MonitorConfig,field:MonitorField,delta:number):MonitorConfig{
+  const columns=[...config.miniColumns];
+  const index=columns.findIndex(column=>column.field===field);
+  const target=index+delta;
+  if(index<0||target<0||target>=columns.length)return config;
+  const current=columns[index]!;
+  const next=columns[target]!;
+  columns[index]=next;
+  columns[target]=current;
+  return {...config,miniColumns:columns};
+}
 export function setMonitorMode(config: MonitorConfig, mode: MonitorMode): MonitorConfig {return { ...config, mode };}
 export function restoreNormalMonitor(config: MonitorConfig): MonitorConfig {return { ...config, mode: 'normal' };}
 
