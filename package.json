@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v103 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v104 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -23,7 +23,9 @@
     "test:boundary": "node scripts/project-boundary.test.cjs",
     "test:v102": "npm run test:boundary && npm run test:finance && npm run test:calculator && npm run test:portfolio && npm run test:ledger-ui && npm run test:runtime && npm run test:market && npm run test:ui && npm run test:plugins && npm run test:editor",
     "test:broker-settings": "node scripts/broker-settings-contract.test.cjs",
-    "test:v103": "npm run test:boundary && npm run test:finance && npm run test:calculator && npm run test:portfolio && npm run test:ledger-ui && npm run test:broker-settings && npm run test:runtime && npm run test:market && npm run test:ui && npm run test:plugins && npm run test:editor"
+    "test:v103": "npm run test:boundary && npm run test:finance && npm run test:calculator && npm run test:portfolio && npm run test:ledger-ui && npm run test:broker-settings && npm run test:runtime && npm run test:market && npm run test:ui && npm run test:plugins && npm run test:editor",
+    "test:settings-v104": "node scripts/settings-v104-contract.test.cjs",
+    "test:v104": "npm run test:v103 && npm run test:settings-v104"
   },
   "dependencies": {
     "expo": "~57.0.21",
