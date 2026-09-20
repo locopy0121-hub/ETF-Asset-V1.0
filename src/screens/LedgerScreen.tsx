@@ -145,6 +145,10 @@ export function LedgerScreen() {
                   placeholder="例如 0050"
                   placeholderTextColor="#98A5B8"
                 />
+                {instrument?<View style={styles.selectedInstrument}>
+                  <Text style={styles.selectedInstrumentCode}>{instrument.symbol}</Text>
+                  <Text style={styles.selectedInstrumentName} numberOfLines={1}>{instrument.name}</Text>
+                </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的 ETF 名稱</Text>:null}
                 {recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
                   {recentSymbols.map(code=><Pressable key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
                     <Text style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
@@ -364,6 +368,10 @@ const styles=StyleSheet.create({
   input:{minHeight:44,backgroundColor:colors.surfaceMuted,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,paddingHorizontal:12,paddingVertical:11,color:colors.text,fontSize:13,justifyContent:'center'},
   inputText:{color:colors.text,fontSize:13},
   symbolFieldBlock:{gap:6},
+  selectedInstrument:{minHeight:34,paddingHorizontal:10,paddingVertical:7,borderRadius:radius.md,backgroundColor:colors.primarySoft,flexDirection:'row',alignItems:'center',gap:8},
+  selectedInstrumentCode:{fontSize:12,fontWeight:'900',color:colors.primary},
+  selectedInstrumentName:{flex:1,fontSize:11,fontWeight:'800',color:colors.text},
+  symbolNotFound:{fontSize:10,fontWeight:'700',color:colors.textSecondary,paddingHorizontal:2},
   symbolRow:{gap:6,paddingVertical:2},
   suggestionList:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden',backgroundColor:colors.surface},
   suggestionRow:{minHeight:42,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
