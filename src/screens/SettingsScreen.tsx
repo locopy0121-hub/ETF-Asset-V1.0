@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
@@ -13,18 +13,35 @@ const children:Record<string,readonly string[]>={
   general:['顯示與主題','通知與提醒','數字格式'],
   accounting:['券商與費率參數','交易預設值','股息帳務'],
   plugins:['Widget（mobile 桌面）','Floating Monitor（浮動即時視窗）'],
-  system:['行情與更新','背景執行與權限','效能與診斷'],
+  system:['市場更新','背景執行與權限','效能與診斷'],
   backup:['建立備份','還原資料','匯入 / 匯出'],
   disclaimer:['免責聲明','隱私資訊','版本資訊'],
 };
 
 type PluginPanel = 'widget' | 'monitor' | null;
+type SystemPanel = 'market' | null;
+type MarketUpdateConfig={
+  scheduleEnabled:boolean;
+  refreshOnForeground:boolean;
+  stopAll:boolean;
+  live:{enabled:boolean;start:string;end:string;refreshSeconds:number};
+  afterHours:{enabled:boolean;start:string;end:string;refreshSeconds:number};
+};
+const DEFAULT_MARKET_UPDATE:MarketUpdateConfig={
+  scheduleEnabled:true,
+  refreshOnForeground:true,
+  stopAll:false,
+  live:{enabled:true,start:'09:00',end:'13:30',refreshSeconds:5},
+  afterHours:{enabled:true,start:'13:31',end:'18:00',refreshSeconds:60},
+};
 
 export function SettingsScreen() {
-  const [open,setOpen]=useState<string|null>('plugins');
+  const [open,setOpen]=useState<string|null>(null);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>('widget');
   const [widgetConfig,setWidgetConfig]=useState<WidgetConfig>(DEFAULT_WIDGET_CONFIG);
   const [monitorConfig,setMonitorConfig]=useState<MonitorConfig>(DEFAULT_MONITOR_CONFIG);
+  const [systemPanel,setSystemPanel]=useState<SystemPanel>(null);
+  const [marketUpdate,setMarketUpdate]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
 
   return <PageShell title="控制中心" subtitle="主設定負責全局；各頁齒輪負責該頁框架">
     <View style={styles.ruleCard}>
@@ -41,10 +58,12 @@ export function SettingsScreen() {
         {expanded?<View style={styles.body}>
           {(children[frame.key]??[]).map((item,index)=>{
             const pluginTarget:PluginPanel=frame.key==='plugins'?(index===0?'widget':'monitor'):null;
-            const selected=pluginTarget!==null&&pluginPanel===pluginTarget;
+            const systemTarget:SystemPanel=frame.key==='system'&&index===0?'market':null;
+            const selected=(pluginTarget!==null&&pluginPanel===pluginTarget)||(systemTarget!==null&&systemPanel===systemTarget);
+            const onPress=pluginTarget?()=>setPluginPanel(pluginTarget):systemTarget?()=>setSystemPanel(systemTarget):undefined;
             return <Pressable
               key={item}
-              onPress={pluginTarget?()=>setPluginPanel(pluginTarget):undefined}
+              onPress={onPress}
               style={[styles.row,selected&&styles.rowSelected]}
             >
               <View style={[styles.index,selected&&styles.indexSelected]}><Text style={[styles.indexText,selected&&styles.indexTextSelected]}>{index+1}</Text></View>
@@ -52,6 +71,7 @@ export function SettingsScreen() {
               <Text style={styles.arrow}>›</Text>
             </Pressable>;
           })}
+          {frame.key==='system'&&systemPanel==='market'?<MarketUpdatePanel value={marketUpdate} onChange={setMarketUpdate}/>:null}
           {frame.key==='plugins'?<View style={styles.pluginStack}>
             <View style={styles.pluginRule}><Text style={styles.pluginRuleTitle}>外掛分離原則</Text><Text style={styles.pluginRuleText}>Widget 只存在 mobile 桌面；Floating Monitor 是跨 App 浮動即時視窗。共用 Shared Snapshot，不共用產品邏輯與控制 UI。</Text></View>
             {pluginPanel==='widget'?<WidgetControlPanel value={widgetConfig} onChange={setWidgetConfig}/>:null}
@@ -61,6 +81,49 @@ export function SettingsScreen() {
       </View>;
     })}
   </PageShell>;
+}
+
+function MarketUpdatePanel({value,onChange}:{value:MarketUpdateConfig;onChange:(next:MarketUpdateConfig)=>void}){
+  const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...value,...next});
+  const patchLive=(next:Partial<MarketUpdateConfig['live']>)=>patch({live:{...value.live,...next}});
+  const patchAfterHours=(next:Partial<MarketUpdateConfig['afterHours']>)=>patch({afterHours:{...value.afterHours,...next}});
+  return <View style={styles.marketPanel}>
+    <Text style={styles.panelTitle}>市場更新</Text>
+    <Text style={styles.panelHint}>排程總控 → 盤中排程 → 盤後排程。每層只控制自己的下一層。</Text>
+    <ToggleRow label="啟用市場更新排程" value={value.scheduleEnabled} onChange={scheduleEnabled=>patch({scheduleEnabled})}/>
+    <ToggleRow label="回到前景立即刷新" value={value.refreshOnForeground} onChange={refreshOnForeground=>patch({refreshOnForeground})}/>
+    <ToggleRow label="停止全部自動更新" value={value.stopAll} onChange={stopAll=>patch({stopAll})}/>
+
+    <Text style={styles.subTitle}>盤中</Text>
+    <ToggleRow label="啟用盤中排程" value={value.live.enabled} onChange={enabled=>patchLive({enabled})}/>
+    <TimeRow label="開始" value={value.live.start} onChange={start=>patchLive({start})}/>
+    <TimeRow label="結束" value={value.live.end} onChange={end=>patchLive({end})}/>
+    <FrequencyRow label="更新頻率" value={value.live.refreshSeconds} onChange={refreshSeconds=>patchLive({refreshSeconds})}/>
+
+    <Text style={styles.subTitle}>盤後</Text>
+    <ToggleRow label="啟用盤後排程" value={value.afterHours.enabled} onChange={enabled=>patchAfterHours({enabled})}/>
+    <TimeRow label="開始" value={value.afterHours.start} onChange={start=>patchAfterHours({start})}/>
+    <TimeRow label="結束" value={value.afterHours.end} onChange={end=>patchAfterHours({end})}/>
+    <FrequencyRow label="更新頻率" value={value.afterHours.refreshSeconds} onChange={refreshSeconds=>patchAfterHours({refreshSeconds})}/>
+  </View>;
+}
+function ToggleRow({label,value,onChange}:{label:string;value:boolean;onChange:(value:boolean)=>void}){
+  return <View style={styles.controlRow}><Text style={styles.controlLabel}>{label}</Text><Switch value={value} onValueChange={onChange}/></View>;
+}
+function TimeRow({label,value,onChange}:{label:string;value:string;onChange:(value:string)=>void}){
+  return <View style={styles.controlRow}><Text style={styles.controlLabel}>{label}</Text><TextInput value={value} onChangeText={onChange} style={styles.timeInput} maxLength={5} placeholder="HH:MM" placeholderTextColor={colors.textSecondary}/></View>;
+}
+function FrequencyRow({label,value,onChange}:{label:string;value:number;onChange:(value:number)=>void}){
+  const set=(next:number)=>onChange(Math.max(1,Math.min(3600,next)));
+  return <View style={styles.controlRow}>
+    <View><Text style={styles.controlLabel}>{label}</Text><Text style={styles.controlNote}>最低 1 秒</Text></View>
+    <View style={styles.stepper}>
+      <Pressable style={styles.stepButton} onPress={()=>set(value-1)}><Text style={styles.stepText}>−</Text></Pressable>
+      <TextInput keyboardType="number-pad" value={String(value)} onChangeText={text=>set(Number(text)||1)} style={styles.frequencyInput}/>
+      <Text style={styles.seconds}>秒</Text>
+      <Pressable style={styles.stepButton} onPress={()=>set(value+1)}><Text style={styles.stepText}>＋</Text></Pressable>
+    </View>
+  </View>;
 }
 
 const styles=StyleSheet.create({
@@ -83,6 +146,19 @@ const styles=StyleSheet.create({
   rowLabelSelected:{color:colors.primary},
   arrow:{fontSize:22,color:colors.textSecondary},
   pluginStack:{gap:10,marginTop:12},
+  marketPanel:{gap:10,marginTop:12,padding:12,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
+  panelTitle:{fontSize:14,fontWeight:'900',color:colors.primary},
+  panelHint:{fontSize:10,lineHeight:16,color:colors.textSecondary},
+  subTitle:{fontSize:12,fontWeight:'900',color:colors.text,marginTop:6},
+  controlRow:{minHeight:44,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  controlLabel:{fontSize:11,fontWeight:'800',color:colors.text},
+  controlNote:{fontSize:9,color:colors.textSecondary,marginTop:2},
+  timeInput:{width:82,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:10,paddingVertical:8,color:colors.text,textAlign:'center',fontWeight:'800'},
+  stepper:{flexDirection:'row',alignItems:'center',gap:6},
+  stepButton:{width:30,height:30,borderRadius:15,backgroundColor:colors.surface,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:colors.border},
+  stepText:{fontSize:16,fontWeight:'900',color:colors.primary},
+  frequencyInput:{minWidth:48,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:8,paddingVertical:7,color:colors.text,textAlign:'center',fontWeight:'900'},
+  seconds:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
   pluginRule:{padding:12,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
   pluginRuleTitle:{fontSize:11,fontWeight:'900',color:colors.primary},
   pluginRuleText:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:4},
