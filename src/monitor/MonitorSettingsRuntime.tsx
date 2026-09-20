@@ -59,7 +59,7 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
   const miniFields=Array.isArray(input?.miniFields)?input.miniFields.filter((x):x is MonitorField=>VALID_FIELDS.includes(x as MonitorField)):[...DEFAULT_MONITOR_CONFIG.miniFields];
   const effects=input?.effects,sort=input?.sort;
   return {
-    enabled:input?.enabled??false,mode:input?.mode==='mini'?'mini':'normal',template:['portfolio','quotes','compact','single','dual','advanced'].includes(String(input?.template))?input!.template as MonitorConfig['template']:'portfolio',
+    enabled:input?.enabled??false,mode:input?.mode==='mini'?'mini':'normal',template:['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'].includes(String(input?.template))?input!.template as MonitorConfig['template']:'portfolio',
     fields:fields.length?fields:[...DEFAULT_MONITOR_CONFIG.fields],miniFields:miniFields.length?miniFields:[...DEFAULT_MONITOR_CONFIG.miniFields],
     selectedSymbols:strings(input?.selectedSymbols),showBreathingLight:input?.showBreathingLight??true,
     alertChangePct:Number.isFinite(Number(input?.alertChangePct))?Math.max(0,Number(input?.alertChangePct)):null,
