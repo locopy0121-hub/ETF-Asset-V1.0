@@ -45,8 +45,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.6';
-const BUILD='10006';
+const VERSION='1.0.7';
+const BUILD='10007';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -356,8 +356,8 @@ export function SettingsScreen(){
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
       <ChildButton label="更新資訊" summary="設定控制中心 8 大主區塊" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.6 更新資訊">
-        <Text style={styles.infoText}>持股完整性與版型升級：離線/缺行情時仍保留 Ledger 全部持股；首頁與庫存新增單欄、雙欄、三欄、橫向滑動與雙欄分頁滑動。</Text>
+      {appPanel==='updates'?<Panel title="V1.0.7 更新資訊">
+        <Text style={styles.infoText}>Monitor / Widget 同步修復：設定預覽改讀 Shared Snapshot；Native 正式套用 ETF 選擇與排序；浮窗拖曳、重設位置與尺寸更新互不覆蓋。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
