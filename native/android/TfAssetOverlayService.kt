@@ -168,14 +168,72 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
-    val first=orderedHoldings(snap,cfg).firstOrNull()
-    val symbol=first?.optString("symbol","--")?:"--";val name=first?.optString("name","")?:""
-    val price=first?.optDouble("price",Double.NaN)?:Double.NaN;val pct=first?.optDouble("changePercent",Double.NaN)?:Double.NaN
-    val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE);val gain=color(style.optString("gainColor","#EF4444"),Color.RED);val loss=color(style.optString("lossColor","#10B981"),Color.GREEN);val neutral=color(style.optString("neutralColor","#94A3B8"),Color.GRAY)
-    val fs=style.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat();val vs=style.optDouble("valueFontScale",1.0).coerceIn(.7,2.0).toFloat()
-    root.addView(textView(symbol+" "+name,text,12*fs,Gravity.START))
-    root.addView(textView(if(price.isFinite())String.format("%.2f",price) else "等待資料",text,20*vs,Gravity.START))
-    root.addView(textView(if(pct.isFinite())(if(pct>=0)"+" else "")+String.format("%.2f",pct)+"%" else "",if(!pct.isFinite())neutral else if(pct>=0)gain else loss,12*fs,Gravity.START))
+    val rows=orderedHoldings(snap,cfg)
+    val first=rows.firstOrNull()
+    val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE)
+    val secondary=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
+    val gain=color(style.optString("gainColor","#EF4444"),Color.RED)
+    val loss=color(style.optString("lossColor","#10B981"),Color.GREEN)
+    val neutral=color(style.optString("neutralColor","#94A3B8"),Color.GRAY)
+    val fs=style.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat()
+    val vs=style.optDouble("valueFontScale",1.0).coerceIn(.7,2.0).toFloat()
+    val template=cfg.optString("template","portfolio")
+
+    fun tone(row:JSONObject):Int{
+      val pct=row.optDouble("changePercent",Double.NaN)
+      return if(!pct.isFinite())neutral else if(pct>0)gain else if(pct<0)loss else neutral
+    }
+    fun quoteLine(row:JSONObject):String{
+      val symbol=row.optString("symbol","--")
+      val price=number2(row,"price")
+      val pct=signed2(row,"changePercent")+"%"
+      return "$symbol  $price  $pct"
+    }
+
+    when(template){
+      "compact"->{
+        root.addView(textView(first?.let{quoteLine(it)}?:"等待資料",first?.let{tone(it)}?:neutral,13*fs,Gravity.START))
+      }
+      "quotes"->{
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.take(4).forEach{row->root.addView(textView(quoteLine(row),tone(row),12*fs,Gravity.START))}
+      }
+      "dual"->{
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.take(2).forEach{row->
+          root.addView(textView(row.optString("symbol","--")+" "+row.optString("name",""),text,12*fs,Gravity.START))
+          root.addView(textView(number2(row,"price")+"  "+signed2(row,"changePercent")+"%",tone(row),14*fs,Gravity.START))
+        }
+      }
+      "advanced"->{
+        if(first==null){root.addView(textView("等待資料",neutral,12*fs,Gravity.START))}
+        else{
+          root.addView(textView(first.optString("symbol","--")+" "+first.optString("name",""),text,12*fs,Gravity.START))
+          root.addView(textView("價格 "+number2(first,"price")+"  "+signed2(first,"changePercent")+"%",tone(first),17*vs,Gravity.START))
+          root.addView(textView("市值 "+integer(first,"marketValue"),secondary,11*fs,Gravity.START))
+          val pnl=first.optDouble("pnl",Double.NaN)
+          root.addView(textView("損益 "+signedInteger(first,"pnl")+"  報酬 "+signed2(first,"roi")+"%",if(!pnl.isFinite())neutral else if(pnl>0)gain else if(pnl<0)loss else neutral,11*fs,Gravity.START))
+          root.addView(textView("含息 "+signedInteger(first,"comprehensivePnl"),secondary,11*fs,Gravity.START))
+        }
+      }
+      "single"->{
+        if(first==null){root.addView(textView("等待資料",neutral,12*fs,Gravity.START))}
+        else{
+          root.addView(textView(first.optString("symbol","--")+" "+first.optString("name",""),text,13*fs,Gravity.START))
+          root.addView(textView(number2(first,"price"),text,24*vs,Gravity.START))
+          root.addView(textView(signed2(first,"changePercent")+"%",tone(first),14*fs,Gravity.START))
+        }
+      }
+      else->{
+        val asset=snap.optJSONObject("asset")?:JSONObject()
+        root.addView(textView("TF Asset  總資產 "+integer(asset,"totalAssets"),text,12*fs,Gravity.START))
+        if(first==null){root.addView(textView("等待資料",neutral,12*fs,Gravity.START))}
+        else{
+          root.addView(textView(first.optString("symbol","--")+" "+first.optString("name",""),text,12*fs,Gravity.START))
+          root.addView(textView(number2(first,"price")+"  "+signed2(first,"changePercent")+"%",tone(first),16*vs,Gravity.START))
+        }
+      }
+    }
   }
 
   private fun renderMini(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
