@@ -29,7 +29,7 @@ const palette=['#FFFFFF','#F8FAFC','#0F172A','#0066FF','#EF4444','#10B981','#647
 
 export function WidgetControlPanel({ value, onChange, availableSymbols=[] }: Props) {
   const patch=(patch:Partial<WidgetConfig>)=>onChange({...value,...patch});
-  const patchStyle=(patch:Partial<WidgetConfig['style']>)=>patch({style:{...value.style,...patch}});
+  const patchStyle=(stylePatch:Partial<WidgetConfig['style']>)=>patch({style:{...value.style,...stylePatch}});
   const patchEffects=(p:Partial<WidgetConfig['effects']>)=>patch({effects:{...value.effects,...p}});
   const patchSort=(p:Partial<WidgetConfig['sort']>)=>patch({sort:{...value.sort,...p}});
   const toggleField=(field:WidgetField)=>{
@@ -41,7 +41,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[] }: Pro
     const index=current.indexOf(field);
     const target=index+delta;
     if(index<0||target<0||target>=current.length)return;
-    [current[index],current[target]]=[current[target],current[index]];
+    const a=current[index]!; const b=current[target]!; current[index]=b; current[target]=a;
     patch({fields:current});
   };
   const toggleSymbol=(symbol:string)=>{
