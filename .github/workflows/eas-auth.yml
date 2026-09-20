@@ -1,0 +1,23 @@
+name: TF Asset EAS Authorization Gate
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  eas-auth:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Phase 5:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify EXPO_TOKEN is available
+        run: test -n "$EXPO_TOKEN"
+      - name: Verify EAS identity
+        run: npx --yes eas-cli@23.2.0 whoami --non-interactive
