@@ -15,7 +15,7 @@ import {
 
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import { useBrokerSettingsRuntime } from '../finance/BrokerSettingsRuntime';
+import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
@@ -164,16 +164,7 @@ export function SettingsScreen(){
         {FINANCE_FORMULA_CATALOG.map(item=><View key={item.key} style={styles.formula}><Text style={styles.formulaTitle}>{item.title}</Text><Text style={styles.formulaText}>{item.formula}</Text>{item.note?<Text style={styles.note}>{item.note}</Text>:null}</View>)}
       </Panel>:null}
       <ChildButton label="券商與費率" summary={p.name} active={accountingPanel==='broker'} onPress={()=>setAccountingPanel(accountingPanel==='broker'?null:'broker')}/>
-      {accountingPanel==='broker'?<Panel title="券商與費率">
-        <ChoiceRow label="目前券商" options={broker.profiles.map(x=>({key:x.id,label:x.name}))} value={broker.activeProfileId} onChange={broker.setActiveProfileId}/>
-        <NumberField label="手續費率" value={p.commissionRate} onChange={v=>broker.setProfile({...p,commissionRate:v})}/>
-        <NumberField label="折扣率" value={p.commissionDiscount} onChange={v=>broker.setProfile({...p,commissionDiscount:v})}/>
-        <NumberField label="整股最低手續費" value={p.minimumCommissionRoundLot} onChange={v=>broker.setProfile({...p,minimumCommissionRoundLot:v})}/>
-        <NumberField label="零股最低手續費" value={p.minimumCommissionOddLot} onChange={v=>broker.setProfile({...p,minimumCommissionOddLot:v})}/>
-        <NumberField label="ETF 賣出稅率" value={p.etfSellTaxRate} onChange={v=>broker.setProfile({...p,etfSellTaxRate:v})}/>
-        <Text style={styles.note}>券商參數只影響新交易與目前估算；已入帳 actualFee / actualTax 不會被回頭重算。</Text>
-        <ActionButton label="還原此券商預設" onPress={()=>broker.resetProfile(p.id)}/>
-      </Panel>:null}
+      {accountingPanel==='broker'?<BrokerFeeSettingsPanel/>:null}
       <ChildButton label="交易預設值" summary={settings.prefs.tradeDefaults.accountLabel} active={accountingPanel==='defaults'} onPress={()=>setAccountingPanel(accountingPanel==='defaults'?null:'defaults')}/>
       {accountingPanel==='defaults'?<Panel title="交易預設值">
         <ChoiceRow label="預設券商" options={broker.profiles.map(x=>({key:x.id,label:x.name}))} value={settings.prefs.tradeDefaults.brokerProfileId} onChange={brokerProfileId=>settings.patchTradeDefaults({brokerProfileId})}/>
@@ -415,6 +406,97 @@ export function SettingsScreen(){
   </View>;
 }
 
+
+type BrokerDraft={
+  commissionRatePct:string;
+  commissionDiscountPct:string;
+  minimumRoundLot:string;
+  minimumOddLot:string;
+  recurringMode:RecurringFeeMode;
+  recurringFixedFee:string;
+  recurringDiscountPct:string;
+  recurringMinimumFee:string;
+};
+
+function BrokerFeeSettingsPanel(){
+  const runtime=useBrokerSettingsRuntime();
+  const makeDraft=():BrokerDraft=>({
+    commissionRatePct:String(runtime.activeProfile.commissionRate*100),
+    commissionDiscountPct:String(runtime.activeProfile.commissionDiscount*100),
+    minimumRoundLot:String(runtime.activeProfile.minimumCommissionRoundLot),
+    minimumOddLot:String(runtime.activeProfile.minimumCommissionOddLot),
+    recurringMode:runtime.recurring.mode,
+    recurringFixedFee:String(runtime.recurring.fixedFee),
+    recurringDiscountPct:String(runtime.recurring.discount*100),
+    recurringMinimumFee:String(runtime.recurring.minimumFee),
+  });
+  const [draft,setDraft]=useState<BrokerDraft>(makeDraft);
+
+  useEffect(()=>{setDraft(makeDraft());},[
+    runtime.activeProfile.id,
+    runtime.activeProfile.commissionRate,
+    runtime.activeProfile.commissionDiscount,
+    runtime.activeProfile.minimumCommissionRoundLot,
+    runtime.activeProfile.minimumCommissionOddLot,
+    runtime.recurring.mode,
+    runtime.recurring.fixedFee,
+    runtime.recurring.discount,
+    runtime.recurring.minimumFee,
+  ]);
+
+  const nonNegative=(text:string,fallback:number)=>{
+    const n=Number(text.trim());
+    return Number.isFinite(n)&&n>=0?n:fallback;
+  };
+  const save=()=>{
+    runtime.setProfile({
+      ...runtime.activeProfile,
+      commissionRate:nonNegative(draft.commissionRatePct,runtime.activeProfile.commissionRate*100)/100,
+      commissionDiscount:nonNegative(draft.commissionDiscountPct,runtime.activeProfile.commissionDiscount*100)/100,
+      minimumCommissionRoundLot:nonNegative(draft.minimumRoundLot,runtime.activeProfile.minimumCommissionRoundLot),
+      minimumCommissionOddLot:nonNegative(draft.minimumOddLot,runtime.activeProfile.minimumCommissionOddLot),
+    });
+    runtime.setRecurring(runtime.activeProfile.id,{
+      mode:draft.recurringMode,
+      fixedFee:nonNegative(draft.recurringFixedFee,runtime.recurring.fixedFee),
+      discount:nonNegative(draft.recurringDiscountPct,runtime.recurring.discount*100)/100,
+      minimumFee:nonNegative(draft.recurringMinimumFee,runtime.recurring.minimumFee),
+    });
+  };
+
+  return <Panel title="券商與手續費設定">
+    <Text style={styles.note}>設定只影響之後的公式預估；歷史已固化的實際手續費／實際證交稅不回算。所有金額欄位允許 0 元。</Text>
+    <ChoiceRow label="券商 Profile" options={runtime.profiles.map(x=>({key:x.id,label:x.name}))} value={runtime.activeProfileId} onChange={runtime.setActiveProfileId}/>
+    <Text style={styles.subTitle}>一般交易</Text>
+    <SettingNumberRow label="公定手續費率" suffix="%" value={draft.commissionRatePct} onChange={commissionRatePct=>setDraft(current=>({...current,commissionRatePct}))}/>
+    <SettingNumberRow label="電子下單折扣率" suffix="%" value={draft.commissionDiscountPct} onChange={commissionDiscountPct=>setDraft(current=>({...current,commissionDiscountPct}))}/>
+    <SettingNumberRow label="整股最低手續費" suffix="元" value={draft.minimumRoundLot} onChange={minimumRoundLot=>setDraft(current=>({...current,minimumRoundLot}))}/>
+    <SettingNumberRow label="零股最低手續費" suffix="元" value={draft.minimumOddLot} onChange={minimumOddLot=>setDraft(current=>({...current,minimumOddLot}))}/>
+    <Text style={styles.subTitle}>定期定額</Text>
+    <ChoiceRow label="計費模式" options={[{key:'fixed',label:'固定單筆'},{key:'variable',label:'非固定'}]} value={draft.recurringMode} onChange={recurringMode=>setDraft(current=>({...current,recurringMode:recurringMode==='variable'?'variable':'fixed'}))}/>
+    {draft.recurringMode==='fixed'
+      ?<SettingNumberRow label="固定單筆手續費" suffix="元" value={draft.recurringFixedFee} onChange={recurringFixedFee=>setDraft(current=>({...current,recurringFixedFee}))}/>
+      :<>
+        <SettingNumberRow label="定期定額折扣率" suffix="%" value={draft.recurringDiscountPct} onChange={recurringDiscountPct=>setDraft(current=>({...current,recurringDiscountPct}))}/>
+        <SettingNumberRow label="定期定額最低手續費" suffix="元" value={draft.recurringMinimumFee} onChange={recurringMinimumFee=>setDraft(current=>({...current,recurringMinimumFee}))}/>
+      </>}
+    <Text style={styles.subTitle}>證交稅規則</Text>
+    <StatusRow label="ETF" value="0.1%"/>
+    <StatusRow label="一般股票" value="0.3%"/>
+    <View style={styles.actionRow}>
+      <Pressable style={styles.resetAction} onPress={()=>runtime.resetProfile(runtime.activeProfile.id)}><Text style={styles.resetActionText}>重設</Text></Pressable>
+      <Pressable style={styles.saveAction} onPress={save}><Text style={styles.saveActionText}>更新設定</Text></Pressable>
+    </View>
+  </Panel>;
+}
+
+function SettingNumberRow({label,suffix,value,onChange}:{label:string;suffix:string;value:string;onChange:(value:string)=>void}){
+  return <View style={styles.statusRow}>
+    <Text style={styles.statusLabel}>{label}</Text>
+    <View style={styles.numberEditor}><TextInput keyboardType="decimal-pad" value={value} onChangeText={onChange} style={styles.settingNumberInput}/><Text style={styles.note}>{suffix}</Text></View>
+  </View>;
+}
+
 type MarketPanelProps={
   config:MarketUpdateConfig;
   onChange:(next:MarketUpdateConfig)=>void;
@@ -546,6 +628,14 @@ const styles=StyleSheet.create({
   success:{fontSize:10,fontWeight:'800',color:colors.loss},
   dangerText:{fontSize:11,fontWeight:'900',color:colors.gain},
   infoText:{fontSize:11,lineHeight:18,color:colors.text},
+  subTitle:{fontSize:11,fontWeight:'900',color:colors.text,marginTop:4},
+  numberEditor:{flexDirection:'row',alignItems:'center',gap:6},
+  settingNumberInput:{minWidth:88,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:9,paddingVertical:7,color:colors.text,textAlign:'right',fontSize:11,fontWeight:'900',backgroundColor:colors.surface},
+  actionRow:{flexDirection:'row',gap:8,marginTop:4},
+  resetAction:{flex:1,minHeight:40,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,alignItems:'center',justifyContent:'center',backgroundColor:colors.surface},
+  resetActionText:{fontSize:11,fontWeight:'900',color:colors.textSecondary},
+  saveAction:{flex:1,minHeight:40,borderRadius:radius.md,alignItems:'center',justifyContent:'center',backgroundColor:colors.primary},
+  saveActionText:{fontSize:11,fontWeight:'900',color:'#FFFFFF'},
   scheduleBox:{gap:8,padding:10,borderRadius:radius.md,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border},
   disabledBox:{opacity:0.5},
   timeRow:{flexDirection:'row',gap:8},
