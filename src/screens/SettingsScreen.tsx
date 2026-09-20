@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
@@ -8,12 +8,13 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { DEFAULT_MONITOR_CONFIG, type MonitorConfig } from '../monitor/monitorDomain';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
+import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import { DEFAULT_WIDGET_CONFIG, type WidgetConfig } from '../widget/widgetDomain';
 
 const children:Record<string,readonly string[]>={
   general:['顯示與主題','通知與提醒','數字格式'],
-  accounting:['券商與費率參數','交易預設值','股息帳務','運算公式'],
+  accounting:['券商與手續費設定','交易預設值','股息帳務','運算公式'],
   plugins:['Widget（mobile 桌面）','Floating Monitor（浮動即時視窗）'],
   system:['市場更新','背景執行與權限','效能與診斷'],
   backup:['建立備份','還原資料','匯入 / 匯出'],
@@ -22,7 +23,7 @@ const children:Record<string,readonly string[]>={
 
 type PluginPanel = 'widget' | 'monitor' | null;
 type SystemPanel = 'market' | null;
-type AccountingPanel = 'formulas' | null;
+type AccountingPanel = 'broker' | 'formulas' | null;
 export function SettingsScreen() {
   const [open,setOpen]=useState<string|null>(null);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>(null);
@@ -55,7 +56,7 @@ export function SettingsScreen() {
           {(children[frame.key]??[]).map((item,index)=>{
             const pluginTarget:PluginPanel=frame.key==='plugins'?(index===0?'widget':'monitor'):null;
             const systemTarget:SystemPanel=frame.key==='system'&&index===0?'market':null;
-            const accountingTarget:AccountingPanel=frame.key==='accounting'&&index===3?'formulas':null;
+            const accountingTarget:AccountingPanel=frame.key==='accounting'?(index===0?'broker':index===3?'formulas':null):null;
             const selected=(pluginTarget!==null&&pluginPanel===pluginTarget)||(systemTarget!==null&&systemPanel===systemTarget)||(accountingTarget!==null&&accountingPanel===accountingTarget);
             const onPress=pluginTarget?()=>setPluginPanel(pluginTarget):systemTarget?()=>setSystemPanel(systemTarget):accountingTarget?()=>setAccountingPanel(accountingTarget):undefined;
             return <Pressable
@@ -68,6 +69,7 @@ export function SettingsScreen() {
               <Text style={styles.arrow}>›</Text>
             </Pressable>;
           })}
+          {frame.key==='accounting'&&accountingPanel==='broker'?<BrokerFeeSettingsPanel/>:null}
           {frame.key==='accounting'&&accountingPanel==='formulas'?<AccountingFormulaList/>:null}
           {frame.key==='system'&&systemPanel==='market'?<MarketUpdatePanel value={market.config} onChange={market.setConfig} phase={market.phase} refreshing={market.refreshing} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} onRefresh={market.refresh}/>:null}
           {frame.key==='plugins'?<View style={styles.pluginStack}>
@@ -79,6 +81,120 @@ export function SettingsScreen() {
       </View>;
     })}
   </PageShell>;
+}
+
+type BrokerDraft={
+  commissionRatePct:string;
+  commissionDiscountPct:string;
+  minimumRoundLot:string;
+  minimumOddLot:string;
+  recurringMode:RecurringFeeMode;
+  recurringFixedFee:string;
+  recurringDiscountPct:string;
+  recurringMinimumFee:string;
+};
+
+function BrokerFeeSettingsPanel(){
+  const runtime=useBrokerSettingsRuntime();
+  const makeDraft=():BrokerDraft=>({
+    commissionRatePct:String(runtime.activeProfile.commissionRate*100),
+    commissionDiscountPct:String(runtime.activeProfile.commissionDiscount*100),
+    minimumRoundLot:String(runtime.activeProfile.minimumCommissionRoundLot),
+    minimumOddLot:String(runtime.activeProfile.minimumCommissionOddLot),
+    recurringMode:runtime.recurring.mode,
+    recurringFixedFee:String(runtime.recurring.fixedFee),
+    recurringDiscountPct:String(runtime.recurring.discount*100),
+    recurringMinimumFee:String(runtime.recurring.minimumFee),
+  });
+  const [draft,setDraft]=useState<BrokerDraft>(makeDraft);
+
+  useEffect(()=>{setDraft(makeDraft());},[
+    runtime.activeProfile.id,
+    runtime.activeProfile.commissionRate,
+    runtime.activeProfile.commissionDiscount,
+    runtime.activeProfile.minimumCommissionRoundLot,
+    runtime.activeProfile.minimumCommissionOddLot,
+    runtime.recurring.mode,
+    runtime.recurring.fixedFee,
+    runtime.recurring.discount,
+    runtime.recurring.minimumFee,
+  ]);
+
+  const nonNegative=(text:string,fallback:number)=>{
+    const n=Number(text.trim());
+    return Number.isFinite(n)&&n>=0?n:fallback;
+  };
+  const save=()=>{
+    runtime.setProfile({
+      ...runtime.activeProfile,
+      commissionRate:nonNegative(draft.commissionRatePct,runtime.activeProfile.commissionRate*100)/100,
+      commissionDiscount:nonNegative(draft.commissionDiscountPct,runtime.activeProfile.commissionDiscount*100)/100,
+      minimumCommissionRoundLot:nonNegative(draft.minimumRoundLot,runtime.activeProfile.minimumCommissionRoundLot),
+      minimumCommissionOddLot:nonNegative(draft.minimumOddLot,runtime.activeProfile.minimumCommissionOddLot),
+    });
+    runtime.setRecurring(runtime.activeProfile.id,{
+      mode:draft.recurringMode,
+      fixedFee:nonNegative(draft.recurringFixedFee,runtime.recurring.fixedFee),
+      discount:nonNegative(draft.recurringDiscountPct,runtime.recurring.discount*100)/100,
+      minimumFee:nonNegative(draft.recurringMinimumFee,runtime.recurring.minimumFee),
+    });
+  };
+
+  return <View style={styles.brokerPanel}>
+    <Text style={styles.panelTitle}>券商與手續費設定</Text>
+    <Text style={styles.panelHint}>設定只影響之後的公式預估；歷史已固化的實際手續費／實際證交稅不回算。所有金額欄位允許 0 元。</Text>
+
+    <Text style={styles.subTitle}>券商 Profile</Text>
+    <View style={styles.brokerTabs}>
+      {runtime.profiles.map(profile=>{
+        const active=profile.id===runtime.activeProfileId;
+        return <Pressable key={profile.id} style={[styles.brokerTab,active&&styles.brokerTabActive]} onPress={()=>runtime.setActiveProfileId(profile.id)}>
+          <Text style={[styles.brokerTabText,active&&styles.brokerTabTextActive]}>{profile.name}</Text>
+        </Pressable>;
+      })}
+    </View>
+
+    <Text style={styles.subTitle}>一般交易</Text>
+    <SettingNumberRow label="公定手續費率" suffix="%" value={draft.commissionRatePct} onChange={commissionRatePct=>setDraft(current=>({...current,commissionRatePct}))}/>
+    <SettingNumberRow label="電子下單折扣率" suffix="%" value={draft.commissionDiscountPct} onChange={commissionDiscountPct=>setDraft(current=>({...current,commissionDiscountPct}))}/>
+    <SettingNumberRow label="整股最低手續費" suffix="元" value={draft.minimumRoundLot} onChange={minimumRoundLot=>setDraft(current=>({...current,minimumRoundLot}))}/>
+    <SettingNumberRow label="零股最低手續費" suffix="元" value={draft.minimumOddLot} onChange={minimumOddLot=>setDraft(current=>({...current,minimumOddLot}))}/>
+
+    <Text style={styles.subTitle}>定期定額</Text>
+    <View style={styles.modeRow}>
+      <Pressable style={[styles.modeButton,draft.recurringMode==='fixed'&&styles.modeButtonActive]} onPress={()=>setDraft(current=>({...current,recurringMode:'fixed'}))}>
+        <Text style={[styles.modeText,draft.recurringMode==='fixed'&&styles.modeTextActive]}>固定單筆</Text>
+      </Pressable>
+      <Pressable style={[styles.modeButton,draft.recurringMode==='variable'&&styles.modeButtonActive]} onPress={()=>setDraft(current=>({...current,recurringMode:'variable'}))}>
+        <Text style={[styles.modeText,draft.recurringMode==='variable'&&styles.modeTextActive]}>非固定</Text>
+      </Pressable>
+    </View>
+    {draft.recurringMode==='fixed'
+      ?<SettingNumberRow label="固定單筆手續費" suffix="元" value={draft.recurringFixedFee} onChange={recurringFixedFee=>setDraft(current=>({...current,recurringFixedFee}))}/>
+      :<>
+        <SettingNumberRow label="定期定額折扣率" suffix="%" value={draft.recurringDiscountPct} onChange={recurringDiscountPct=>setDraft(current=>({...current,recurringDiscountPct}))}/>
+        <SettingNumberRow label="定期定額最低手續費" suffix="元" value={draft.recurringMinimumFee} onChange={recurringMinimumFee=>setDraft(current=>({...current,recurringMinimumFee}))}/>
+      </>}
+
+    <Text style={styles.subTitle}>證交稅規則</Text>
+    <View style={styles.readonlyRule}><Text style={styles.controlLabel}>ETF</Text><Text style={styles.ruleValue}>0.1%</Text></View>
+    <View style={styles.readonlyRule}><Text style={styles.controlLabel}>一般股票</Text><Text style={styles.ruleValue}>0.3%</Text></View>
+
+    <View style={styles.actionRow}>
+      <Pressable style={styles.resetButton} onPress={()=>runtime.resetProfile(runtime.activeProfile.id)}><Text style={styles.resetButtonText}>重設</Text></Pressable>
+      <Pressable style={styles.saveButton} onPress={save}><Text style={styles.saveButtonText}>更新設定</Text></Pressable>
+    </View>
+  </View>;
+}
+
+function SettingNumberRow({label,suffix,value,onChange}:{label:string;suffix:string;value:string;onChange:(value:string)=>void}){
+  return <View style={styles.controlRow}>
+    <Text style={styles.controlLabel}>{label}</Text>
+    <View style={styles.numberEditor}>
+      <TextInput keyboardType="decimal-pad" value={value} onChangeText={onChange} style={styles.settingNumberInput}/>
+      <Text style={styles.numberSuffix}>{suffix}</Text>
+    </View>
+  </View>;
 }
 
 function AccountingFormulaList(){
@@ -160,6 +276,27 @@ const styles=StyleSheet.create({
   rowLabelSelected:{color:colors.primary},
   arrow:{fontSize:22,color:colors.textSecondary},
   pluginStack:{gap:10,marginTop:12},
+  brokerPanel:{gap:10,marginTop:12,padding:12,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
+  brokerTabs:{flexDirection:'row',flexWrap:'wrap',gap:7},
+  brokerTab:{paddingHorizontal:10,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border},
+  brokerTabActive:{backgroundColor:colors.primary,borderColor:colors.primary},
+  brokerTabText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},
+  brokerTabTextActive:{color:'#FFF'},
+  modeRow:{flexDirection:'row',gap:8},
+  modeButton:{flex:1,paddingVertical:9,borderRadius:radius.md,backgroundColor:colors.surface,alignItems:'center',borderWidth:1,borderColor:colors.border},
+  modeButtonActive:{backgroundColor:colors.primary,borderColor:colors.primary},
+  modeText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},
+  modeTextActive:{color:'#FFF'},
+  numberEditor:{flexDirection:'row',alignItems:'center',gap:6},
+  settingNumberInput:{minWidth:82,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:10,paddingVertical:8,color:colors.text,textAlign:'right',fontWeight:'900',backgroundColor:colors.surface},
+  numberSuffix:{minWidth:22,fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  readonlyRule:{minHeight:38,flexDirection:'row',alignItems:'center',justifyContent:'space-between',borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  ruleValue:{fontSize:11,fontWeight:'900',color:colors.primary},
+  actionRow:{flexDirection:'row',gap:8,marginTop:4},
+  resetButton:{flex:1,paddingVertical:11,borderRadius:radius.md,backgroundColor:colors.surface,alignItems:'center',borderWidth:1,borderColor:colors.border},
+  resetButtonText:{fontSize:11,fontWeight:'900',color:colors.textSecondary},
+  saveButton:{flex:1,paddingVertical:11,borderRadius:radius.md,backgroundColor:colors.primary,alignItems:'center'},
+  saveButtonText:{fontSize:11,fontWeight:'900',color:'#FFF'},
   formulaPanel:{marginTop:12,padding:12,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
   formulaRow:{flexDirection:'row',gap:10,paddingVertical:11,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   formulaIndex:{width:24,height:24,borderRadius:12,backgroundColor:colors.surface,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:colors.border},
