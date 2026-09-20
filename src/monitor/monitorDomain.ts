@@ -2,7 +2,7 @@ import type { SharedSnapshot } from '../domain/snapshot';
 
 export type MonitorMode = 'normal' | 'mini';
 export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact';
-export type MonitorField = 'symbol' | 'price' | 'changePercent' | 'marketValue' | 'pnl';
+export type MonitorField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'marketValue' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt';
 export type MonitorSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type MonitorEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';
 export type MonitorTextAlign = 'left' | 'center' | 'right';
@@ -113,10 +113,19 @@ export const DEFAULT_MINI_HEADER:MiniHeaderStyle={
   borderWidth:1,
 };
 export const DEFAULT_MINI_COLUMNS:readonly MiniColumnConfig[]=[
-  {field:'symbol',enabled:true,widthPercent:28,align:'left',fontScale:1,useProfitColor:false,label:'代號'},
-  {field:'price',enabled:true,widthPercent:24,align:'right',fontScale:1,useProfitColor:false,label:'價格'},
-  {field:'changePercent',enabled:true,widthPercent:24,align:'right',fontScale:1,useProfitColor:true,label:'漲跌%'},
-  {field:'pnl',enabled:true,widthPercent:24,align:'right',fontScale:1,useProfitColor:true,label:'損益'},
+  {field:'symbol',enabled:true,widthPercent:22,align:'left',fontScale:1,useProfitColor:false,label:'代號'},
+  {field:'name',enabled:false,widthPercent:28,align:'left',fontScale:.9,useProfitColor:false,label:'名稱'},
+  {field:'price',enabled:true,widthPercent:22,align:'right',fontScale:1,useProfitColor:false,label:'價格'},
+  {field:'change',enabled:false,widthPercent:18,align:'right',fontScale:1,useProfitColor:true,label:'漲跌'},
+  {field:'changePercent',enabled:true,widthPercent:20,align:'right',fontScale:1,useProfitColor:true,label:'漲跌%'},
+  {field:'shares',enabled:false,widthPercent:18,align:'right',fontScale:1,useProfitColor:false,label:'股數'},
+  {field:'avgCost',enabled:false,widthPercent:20,align:'right',fontScale:1,useProfitColor:false,label:'成本均'},
+  {field:'marketValue',enabled:false,widthPercent:24,align:'right',fontScale:1,useProfitColor:false,label:'市值'},
+  {field:'pnl',enabled:true,widthPercent:20,align:'right',fontScale:1,useProfitColor:true,label:'損益'},
+  {field:'roi',enabled:false,widthPercent:20,align:'right',fontScale:1,useProfitColor:true,label:'報酬%'},
+  {field:'comprehensivePnl',enabled:false,widthPercent:24,align:'right',fontScale:1,useProfitColor:true,label:'含息損益'},
+  {field:'marketStatus',enabled:false,widthPercent:18,align:'center',fontScale:.9,useProfitColor:false,label:'狀態'},
+  {field:'updatedAt',enabled:false,widthPercent:26,align:'right',fontScale:.85,useProfitColor:false,label:'更新'},
 ];
 export const DEFAULT_MONITOR_SORT:MonitorSort={key:'manual',direction:'asc',manualSymbols:[]};
 
