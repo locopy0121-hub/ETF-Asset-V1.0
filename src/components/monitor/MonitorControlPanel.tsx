@@ -23,7 +23,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[]}:Props){
   const patchEffects=(p:Partial<MonitorConfig['effects']>)=>patch({effects:{...value.effects,...p}});
   const patchSort=(p:Partial<MonitorConfig['sort']>)=>patch({sort:{...value.sort,...p}});
   const toggleField=(field:MonitorField)=>onChange(updateMonitorFields(value,activeFields.includes(field)?activeFields.filter(x=>x!==field):[...activeFields,field]));
-  const moveField=(field:MonitorField,d:number)=>{const a=[...activeFields],i=a.indexOf(field),j=i+d;if(i<0||j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];onChange(updateMonitorFields(value,a));};
+  const moveField=(field:MonitorField,d:number)=>{const a=[...activeFields],i=a.indexOf(field),j=i+d;if(i<0||j<0||j>=a.length)return;const left=a[i]!;const right=a[j]!;a[i]=right;a[j]=left;onChange(updateMonitorFields(value,a));};
   const toggleSymbol=(symbol:string)=>{const selected=value.selectedSymbols.includes(symbol)?value.selectedSymbols.filter(x=>x!==symbol):[...value.selectedSymbols,symbol];patch({selectedSymbols:selected,sort:{...value.sort,manualSymbols:selected}});};
 
   return <View style={styles.card}>
