@@ -32,8 +32,9 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
   settings: [
     { key:'general', title:'一般設定', description:'顯示、通知與個人偏好' },
     { key:'accounting', title:'帳務設定', description:'券商與帳務允許參數' },
+    { key:'market', title:'市場與行情', description:'行情來源、排程、狀態與快取' },
     { key:'plugins', title:'外掛設定', description:'Widget 與 Floating Monitor' },
-    { key:'system', title:'系統設定', description:'行情、背景、通知與權限' },
+    { key:'system', title:'系統設定', description:'背景、通知與權限' },
     { key:'backup', title:'資料備份', description:'備份、還原、匯入匯出' },
     { key:'disclaimer', title:'免責聲明', description:'版本、隱私與法律資訊' },
   ],
