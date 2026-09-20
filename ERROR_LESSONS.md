@@ -197,8 +197,12 @@
     - **重新確認至少包含：原問題是否已消失、功能路徑是否真正生效、對應測試是否通過、是否仍有遺漏／半完成／假完成。**
     - **只有完成「修改 → 重驗 → 完整性確認」且該項證據成立後，才可進入下一個項目。**
     - **若重新確認發現任何缺失，該項立即維持 FAIL／待重驗，原地修護，禁止往下。**
+    - **GitHub Action 啟動後，必須每 15 秒讀取一次當前 Action 狀態與 Log，直到該次 Action 結束。**
+    - **每次 15 秒檢查若發現任何 error / failed step / build failure，不得繼續等待當作正常；必須立即讀取實際錯誤、進行修護、完成對應重驗後，再重新啟動 GitHub Action。**
+    - **修護後重新啟動的 Action 也必須重新進入每 15 秒 Log 檢查循環；持續重複「檢查 → 發現 error → 修護 → 重驗 → 重啟 Action」，直到 Action 無 error 且成功完成。**
+    - **Action 成功不代表交付完成；仍必須繼續做 Artifact、APK 實體、版本、package 與下載載點驗證。**
     - 正確執行順序固定為：
-      **GO → 先列出此次目的清單項目 → 讀取 ERROR_LESSONS.md → 前置 Gate → 逐項修改 → 重驗 → 完整性確認 → FAIL 原地阻斷 → 全項 ALL PASS → GitHub Action → Log / Artifact / APK 驗證。**
+      **GO → 先列出此次目的清單項目 → 讀取 ERROR_LESSONS.md → 前置 Gate → 逐項修改 → 重驗 → 完整性確認 → FAIL 原地阻斷 → 全項 ALL PASS → GitHub Action → 每 15 秒讀取 Action Log → 有 error 則修護／重驗／重啟 Action → 直到 Action 成功 → Log / Artifact / APK 驗證。**
     - 上述順序為硬性流程，不得跳步、交換順序或省略任一 Gate。
     - 未完成前述流程，不得宣稱 GO 執行完成。
 
