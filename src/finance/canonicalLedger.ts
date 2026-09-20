@@ -296,3 +296,26 @@ export function calculateBuyScenario(input: {
     cashUnrealizedProfit:netLiquidationValue-newInvestmentCost,
   };
 }
+
+
+export function validateLedgerSequence(entries: readonly CanonicalLedgerEntry[]): string[] {
+  const trades=entries
+    .filter((entry):entry is FrozenTradeLedgerEntry=>entry.kind==='buy'||entry.kind==='sell')
+    .slice()
+    .sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  const sharesBySymbol=new Map<string,number>();
+  const errors:string[]=[];
+  for(const entry of trades){
+    const current=sharesBySymbol.get(entry.symbol)??0;
+    if(entry.kind==='buy'){
+      sharesBySymbol.set(entry.symbol,current+entry.shares);
+      continue;
+    }
+    if(entry.shares>current){
+      errors.push(entry.symbol+' '+entry.date+' 賣出股數 '+entry.shares+' 超過可用持股 '+current);
+      continue;
+    }
+    sharesBySymbol.set(entry.symbol,current-entry.shares);
+  }
+  return errors;
+}

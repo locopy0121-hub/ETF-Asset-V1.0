@@ -13,6 +13,7 @@ import {
   calculateCanonicalLedgerSnapshot,
   calculateLedgerCashFlow,
   freezeTradeEntry,
+  validateLedgerSequence,
   type CanonicalLedgerEntry,
   type DividendLedgerEntry,
   type OtherCashLedgerEntry,
@@ -57,8 +58,11 @@ export function FinanceProvider({children}:PropsWithChildren){
         if(raw){
           const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
           if(parsed.schema===SCHEMA&&Array.isArray(parsed.entries)){
-            setEntries(parsed.entries as CanonicalLedgerEntry[]);
-            if(Number.isFinite(Number(parsed.initialCash)))setInitialCash(Number(parsed.initialCash));
+            const restored=parsed.entries as CanonicalLedgerEntry[];
+            if(validateLedgerSequence(restored).length===0){
+              setEntries(restored);
+              if(Number.isFinite(Number(parsed.initialCash)))setInitialCash(Number(parsed.initialCash));
+            }
           }
         }
       })
@@ -112,15 +116,15 @@ export function FinanceProvider({children}:PropsWithChildren){
     snapshot,
     holdings,
     addTrade:input=>setEntries(current=>{
-      if(input.kind==='sell'){
-        const available=snapshot.holdings.find(item=>item.etfCode===input.symbol)?.totalShares??0;
-        if(!(input.shares>0)||input.shares>available)return current;
-      }
-      return [...current,freezeTradeEntry(input)];
+      const candidate=[...current,freezeTradeEntry(input)];
+      return validateLedgerSequence(candidate).length===0?candidate:current;
     }),
     addDividend:entry=>setEntries(current=>[...current,entry]),
     addOther:entry=>setEntries(current=>[...current,entry]),
-    deleteEntry:id=>setEntries(current=>current.filter(entry=>entry.id!==id)),
+    deleteEntry:id=>setEntries(current=>{
+      const candidate=current.filter(entry=>entry.id!==id);
+      return validateLedgerSequence(candidate).length===0?candidate:current;
+    }),
     resetFinance:()=>{
       setInitialCash(INITIAL_CASH);
       setEntries([...SEED_LEDGER]);

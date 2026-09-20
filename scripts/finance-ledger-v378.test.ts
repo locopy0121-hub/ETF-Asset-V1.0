@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { calculateCanonicalLedgerSnapshot, freezeTradeEntry } from '../src/finance/canonicalLedger';
+import { calculateCanonicalLedgerSnapshot, freezeTradeEntry, validateLedgerSequence } from '../src/finance/canonicalLedger';
 
 const buy = freezeTradeEntry({
   id: 'b1',
@@ -101,5 +101,9 @@ const frozenBuy = freezeTradeEntry({
 assert.equal(frozenBuy.amount, 2206);
 assert.equal(frozenBuy.calculatedFee, 2);
 assert.equal(frozenBuy.actualFee, 2);
+
+assert.equal(validateLedgerSequence([buy,sell]).length,0);
+assert.equal(validateLedgerSequence([sell]).length,1);
+assert.equal(validateLedgerSequence([sell,buy]).length,1);
 
 console.log('TF_ASSET_V378_LEDGER: PASS');

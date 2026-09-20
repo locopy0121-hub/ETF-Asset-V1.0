@@ -16,7 +16,7 @@ assert.ok(!src.includes('placeholder="actualFee"'),'technical actualFee key must
 assert.ok(!src.includes('DEMO_LEDGER'),'ledger must not consume demo ledger');
 assert.match(runtime,/AsyncStorage/,'ledger must persist');
 assert.match(runtime,/calculateCanonicalLedgerSnapshot/,'runtime must consume canonical snapshot');
-assert.match(runtime,/input\.kind==='sell'/,'runtime must guard sell quantity');
+assert.match(runtime,/validateLedgerSequence/,'runtime must guard invalid ledger sequence');
 assert.match(src,/賣出股數不可大於目前持有股數/,'ledger must show oversell validation');
 assert.match(core,/actualFee == null \? estimate\.commission/,'missing frozen actualFee default');
 assert.match(core,/actualTax == null \? estimated\.tax/,'missing frozen actualTax default');
