@@ -5,6 +5,7 @@ import {
   type MiniColumnConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
+import { DISPLAY_PALETTES } from '../../theme/displayPalettes';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[];previewSnapshot?:SharedSnapshot|null};
@@ -116,6 +117,21 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Step label="內距" value={style.padding} min={0} max={32} step={2} suffix=" px" onChange={padding=>patchStyle({padding})}/>
       <Step label="列間距" value={style.rowGap} min={0} max={24} step={2} suffix=" px" onChange={rowGap=>patchStyle({rowGap})}/>
       <Choice choices={['left','center','right'] as const} value={style.textAlign} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={textAlign=>patchStyle({textAlign})}/>
+    </Section>
+
+    <Section title="全局調色盤">
+      <Text style={styles.note}>選一次套用 Normal、Mini 與 Mini 項目列的整套配色；B 欄位結構與位置不受影響。</Text>
+      <View style={styles.row}>{DISPLAY_PALETTES.map(palette=><Pressable key={palette.key} onPress={()=>onChange({
+        ...value,
+        normalStyle:{...value.normalStyle,backgroundColor:palette.backgroundColor,textColor:palette.textColor,secondaryTextColor:palette.secondaryTextColor,gainColor:palette.gainColor,lossColor:palette.lossColor,neutralColor:palette.neutralColor,borderColor:palette.borderColor,backgroundOpacity:palette.backgroundOpacity},
+        miniStyle:{...value.miniStyle,backgroundColor:palette.backgroundColor,textColor:palette.textColor,secondaryTextColor:palette.secondaryTextColor,gainColor:palette.gainColor,lossColor:palette.lossColor,neutralColor:palette.neutralColor,borderColor:palette.borderColor,backgroundOpacity:palette.backgroundOpacity},
+        miniHeader:{...value.miniHeader,backgroundColor:palette.backgroundColor,textColor:palette.secondaryTextColor,borderColor:palette.borderColor,backgroundOpacity:Math.min(1,palette.backgroundOpacity+.04)},
+      })} style={styles.paletteCard}>
+        <View style={[styles.palettePreview,{backgroundColor:palette.backgroundColor,borderColor:palette.borderColor}]}>
+          <View style={[styles.paletteDot,{backgroundColor:palette.textColor}]}/><View style={[styles.paletteDot,{backgroundColor:palette.gainColor}]}/><View style={[styles.paletteDot,{backgroundColor:palette.lossColor}]}/>
+        </View>
+        <Text style={styles.choiceText}>{palette.label}</Text>
+      </Pressable>)}</View>
     </Section>
 
     <Section title="顏色、透明度與外觀">
