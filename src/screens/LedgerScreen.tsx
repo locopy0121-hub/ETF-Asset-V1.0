@@ -10,11 +10,13 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type DividendLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
+import { useBrokerSettingsRuntime } from '../finance/BrokerSettingsRuntime';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 type EntryKind=LedgerKind;
+type TradePlan='ROUND_LOT'|'ODD_LOT'|'RECURRING';
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const parseNumber=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFinite(n)?n:0;};
 const today=()=>new Date().toISOString().slice(0,10);
@@ -22,6 +24,7 @@ const today=()=>new Date().toISOString().slice(0,10);
 export function LedgerScreen() {
   const finance=useFinance();
   const market=useMarketRuntime();
+  const brokerSettings=useBrokerSettingsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [kind,setKind]=useState<EntryKind>('buy');
   const [symbol,setSymbol]=useState(finance.quotes[0]?.symbol??'0050');
@@ -30,7 +33,7 @@ export function LedgerScreen() {
   const [shares,setShares]=useState('');
   const [fee,setFee]=useState('');
   const [tax,setTax]=useState('');
-  const [tradeMode,setTradeMode]=useState<'ROUND_LOT'|'ODD_LOT'>('ODD_LOT');
+  const [tradePlan,setTradePlan]=useState<TradePlan>('ODD_LOT');
   const [dividendPerShare,setDividendPerShare]=useState('');
   const [dividendShares,setDividendShares]=useState('');
   const [otherAmount,setOtherAmount]=useState('');
@@ -38,6 +41,8 @@ export function LedgerScreen() {
   const [confirmOpen,setConfirmOpen]=useState(false);
   const [dateOpen,setDateOpen]=useState(false);
 
+  const tradeMode=tradePlan==='ROUND_LOT'?'ROUND_LOT':'ODD_LOT';
+  const selectedBrokerProfile=tradePlan==='RECURRING'?brokerSettings.recurringProfile:brokerSettings.activeProfile;
   const normalizedSymbol=symbol.trim().toUpperCase();
   const quote=finance.quotes.find(x=>x.symbol===normalizedSymbol);
   const catalogItem=market.catalog.find(x=>x.symbol===normalizedSymbol);
@@ -66,12 +71,13 @@ export function LedgerScreen() {
       symbol:instrument.symbol,
       name:instrument.name,
       tradeMode,
+      brokerProfile:selectedBrokerProfile,
       shares:s,
       price:p,
       ...(fee.trim()?{actualFee:parseNumber(fee)}:{}),
       ...(kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
     });
-  },[kind,instrument,date,tradeMode,price,shares,fee,tax]);
+  },[kind,instrument,date,tradeMode,selectedBrokerProfile,price,shares,fee,tax]);
 
   const dividendPreview=useMemo(()=>{
     if(kind!=='dividend'||!instrument)return null;
@@ -97,6 +103,7 @@ export function LedgerScreen() {
       if(!tradePreview)return;
       finance.addTrade({
         id,date,kind,symbol:instrument!.symbol,name:instrument!.name,tradeMode,
+        brokerProfile:selectedBrokerProfile,
         shares:parseNumber(shares),price:parseNumber(price),
         ...(fee.trim()?{actualFee:parseNumber(fee)}:{}),
         ...(kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
@@ -172,7 +179,12 @@ export function LedgerScreen() {
 
               {(kind==='buy'||kind==='sell')?<>
                 <Text style={styles.fieldLabel}>交易模式</Text>
-                <SegmentedControl items={[{key:'ODD_LOT',label:'零股／定期定額'},{key:'ROUND_LOT',label:'整股'}] as const} value={tradeMode} onChange={setTradeMode}/>
+                <SegmentedControl
+                  items={[{key:'ODD_LOT',label:'零股'},{key:'ROUND_LOT',label:'整股'},{key:'RECURRING',label:'定期定額'}] as const}
+                  value={tradePlan}
+                  onChange={setTradePlan}
+                />
+                <Text style={styles.tradePlanHint}>目前券商：{brokerSettings.activeProfile.name}{tradePlan==='RECURRING'?' · '+(brokerSettings.recurring.mode==='fixed'?'固定 '+brokerSettings.recurring.fixedFee+' 元':'非固定，最低 '+brokerSettings.recurring.minimumFee+' 元'):''}</Text>
                 <View style={styles.two}><NumericField label="股數" value={shares} onChange={setShares} placeholder="0"/><NumericField label="實際手續費" value={fee} onChange={setFee} placeholder={tradePreview?String(tradePreview.calculatedFee):'自動估算'}/></View>
                 {kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
                 {sellExceedsHolding?<Text style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
@@ -390,6 +402,7 @@ const styles=StyleSheet.create({
   primaryText:{color:'#FFF',fontWeight:'900'},
   disabled:{opacity:.35},
   coreNote:{fontSize:10,lineHeight:16,color:colors.textSecondary},
+  tradePlanHint:{fontSize:10,lineHeight:15,color:colors.textSecondary},
   validationError:{fontSize:11,lineHeight:17,color:colors.loss,fontWeight:'900'},
   previewCard:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:12,gap:7},
   previewTitle:{fontSize:11,fontWeight:'900',color:colors.primary,marginBottom:2},
