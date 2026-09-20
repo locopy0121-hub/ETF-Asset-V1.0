@@ -14,11 +14,13 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
 
 export default function App() {
   return <SafeAreaProvider>
     <MarketRuntimeProvider>
+      <SettingsRuntimeProvider>
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
@@ -27,6 +29,7 @@ export default function App() {
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>
+      </SettingsRuntimeProvider>
     </MarketRuntimeProvider>
   </SafeAreaProvider>;
 }
@@ -35,6 +38,7 @@ function AppBody(){
   const finance=useFinance();
   const market=useMarketRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
+  const settings=useSettingsRuntime();
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
@@ -52,7 +56,7 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!editor.hydrated){
     return <View style={styles.loading}>
       <ActivityIndicator size="large" color={colors.primary}/>
       <Text style={styles.loadingTitle}>TF Asset</Text>
