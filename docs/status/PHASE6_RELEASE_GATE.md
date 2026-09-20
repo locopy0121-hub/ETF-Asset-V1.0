@@ -18,4 +18,4 @@ This document defines the release gate. It must not be marked PASS until the Git
 10. APK ZIP integrity, minimum-size validation and SHA-256.
 11. Upload validated APK as a GitHub Actions artifact.
 
-Status: **RUNNING / NOT YET PASS**
+Status: **RUNNING — release workflow trigger requested**
