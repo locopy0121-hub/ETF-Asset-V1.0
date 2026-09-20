@@ -32,7 +32,7 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
-import { canDrawOverlays, nativeRuntimeAvailable, openOverlaySettings, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor } from '../native/TfAssetNativeBridge';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
@@ -73,6 +73,7 @@ export function SettingsScreen(){
   const [storageStats,setStorageStats]=useState({keys:0,bytes:0});
   const [notificationPermission,setNotificationPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
   const [overlayPermission,setOverlayPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
+  const [nativeMonitorStatus,setNativeMonitorStatus]=useState<NativeMonitorStatus|null>(null);
 
   const toggleTop=(key:string)=>{
     setTop(current=>current===key?null:key);
@@ -108,6 +109,15 @@ export function SettingsScreen(){
     if(!nativeRuntimeAvailable){setOverlayPermission('unsupported');return;}
     canDrawOverlays().then(ok=>setOverlayPermission(ok?'granted':'denied')).catch(()=>setOverlayPermission('denied'));
   },[top,monitorPanel]);
+
+  useEffect(()=>{
+    if(!nativeRuntimeAvailable||top!=='monitor'){setNativeMonitorStatus(null);return;}
+    let alive=true;
+    const refresh=()=>{void getNativeMonitorStatus().then(status=>{if(alive&&status)setNativeMonitorStatus(status);}).catch(()=>{});};
+    refresh();
+    const timer=setInterval(refresh,1000);
+    return()=>{alive=false;clearInterval(timer);};
+  },[top,monitorPanel,monitor.config.enabled,monitor.config.mode]);
 
   const duplicates=useMemo(()=>{
     const ids=new Set<string>();
@@ -289,20 +299,28 @@ export function SettingsScreen(){
           <Text style={styles.note}>Widget 需由 Android 桌面長按 → 小工具 → TF Asset 加入桌面；啟用設定不會偽裝成已加入桌面。</Text>
         </Panel>
       </View>:null}
-      <ChildButton label="監控器總設定" summary={monitor.config.enabled?'已啟用':'未啟用'} active={monitorPanel==='main'} onPress={()=>setMonitorPanel(monitorPanel==='main'?null:'main')}/>
+      <ChildButton label="監控器總設定" summary={nativeMonitorStatus?nativeMonitorStateLabel(nativeMonitorStatus):monitor.config.enabled?'設定已啟用 · 狀態讀取中':'未啟用'} active={monitorPanel==='main'} onPress={()=>setMonitorPanel(monitorPanel==='main'?null:'main')}/>
       {monitorPanel==='main'?<View style={{gap:8}}>
         <MonitorControlPanel value={monitor.config} onChange={monitor.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot}/>
         <Panel title="即時監控器執行狀態">
-          <StatusRow label="原生 Floating Runtime" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
+          <StatusRow label="設定開關" value={monitor.config.enabled?'已啟用':'已關閉'}/>
+          <StatusRow label="Native 實際狀態" value={nativeMonitorStatus?nativeMonitorStateLabel(nativeMonitorStatus):nativeRuntimeAvailable?'讀取中':'此平台不支援'}/>
           <StatusRow label="懸浮窗權限" value={overlayPermission==='granted'?'已允許':overlayPermission==='denied'?'未允許':'不支援'}/>
+          <StatusRow label="實際模式" value={nativeMonitorStatus?.mode==='mini'?'Mini':nativeMonitorStatus?.mode==='normal'?'Normal':'--'}/>
+          <StatusRow label="實際顯示 ETF" value={nativeMonitorStatus?.displaySymbol||'--'}/>
+          <StatusRow label="實際位置" value={nativeMonitorStatus?`X ${nativeMonitorStatus.x} / Y ${nativeMonitorStatus.y}`:'--'}/>
+          <StatusRow label="實際尺寸" value={nativeMonitorStatus?`${nativeMonitorStatus.width} × ${nativeMonitorStatus.height}`:'--'}/>
+          <StatusRow label="最後 Native 同步" value={nativeMonitorStatus&&nativeMonitorStatus.lastSyncAt>0?formatTime(nativeMonitorStatus.lastSyncAt):'--'}/>
           {overlayPermission!=='granted'?<ActionButton label="前往允許懸浮窗權限" disabled={!nativeRuntimeAvailable} onPress={()=>void openOverlaySettings()}/>:null}
           <ActionButton label="立即啟動 Monitor" disabled={!nativeRuntimeAvailable||overlayPermission!=='granted'} onPress={()=>void startNativeMonitor()}/>
           <ActionButton label="停止 Monitor" disabled={!nativeRuntimeAvailable} onPress={()=>void stopNativeMonitor()}/>
+          <Text style={styles.note}>此區顯示 Android Floating Service 的實際狀態，不再用設定 enabled 冒充執行中。</Text>
         </Panel>
       </View>:null}
-      <ChildButton label="Mini 模式" summary={monitor.config.mode==='mini'?'目前 Mini':'目前 Normal'} active={monitorPanel==='mini'} onPress={()=>setMonitorPanel(monitorPanel==='mini'?null:'mini')}/>
+      <ChildButton label="Mini 模式" summary={nativeMonitorStatus?.running?`實際 ${nativeMonitorStatus.mode==='mini'?'Mini':'Normal'}`:monitor.config.mode==='mini'?'設定 Mini':'設定 Normal'} active={monitorPanel==='mini'} onPress={()=>setMonitorPanel(monitorPanel==='mini'?null:'mini')}/>
       {monitorPanel==='mini'?<Panel title="Mini 模式">
-        <StatusRow label="目前模式" value={monitor.config.mode==='mini'?'Mini':'Normal'}/>
+        <StatusRow label="設定模式" value={monitor.config.mode==='mini'?'Mini':'Normal'}/>
+        <StatusRow label="Native 實際模式" value={nativeMonitorStatus?.mode==='mini'?'Mini':nativeMonitorStatus?.mode==='normal'?'Normal':'--'}/>
         <StatusRow label="Mini 尺寸" value={monitor.config.miniLayout.width+' × '+monitor.config.miniLayout.height}/>
         <Text style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。</Text>
       </Panel>:null}
@@ -672,3 +690,10 @@ const styles=StyleSheet.create({
   stepValue:{minWidth:84,textAlign:'center',fontSize:12,fontWeight:'900',color:colors.text},
   hiddenContractText:{height:0,opacity:0,fontSize:1},
 });
+
+
+function nativeMonitorStateLabel(status:NativeMonitorStatus){
+  if(status.state==='permissionRequired')return '等待懸浮窗權限';
+  if(status.running)return '運行中';
+  return '已停止';
+}
