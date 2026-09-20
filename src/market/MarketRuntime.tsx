@@ -68,7 +68,9 @@ const FALLBACK_CATALOG:EtfCatalogItem[]=FALLBACK_QUOTES.map(x=>({symbol:x.symbol
 
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
 const hhmm=(value:string)=>{
-  const [h,m]=String(value||'00:00').split(':').map(Number);
+  const parts=String(value||'00:00').split(':').map(Number);
+  const h=parts[0]??0;
+  const m=parts[1]??0;
   return Math.max(0,Math.min(1439,(Number.isFinite(h)?h:0)*60+(Number.isFinite(m)?m:0)));
 };
 const inWindow=(now:number,start:string,end:string)=>{
