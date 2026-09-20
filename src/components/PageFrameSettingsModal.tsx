@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { PageFrameDefinition } from '../domain/frameRegistry';
@@ -201,7 +201,7 @@ export function PageFrameSettingsModal({
   </Modal>;
 }
 
-function EditorRow({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+function EditorRow({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return <View style={styles.editorRow}>
     <View style={{ flex: 1 }}>
       <Text style={styles.rowLabel}>{title}</Text>

@@ -1,4 +1,4 @@
-name: TF Asset V1.0.0 GitHub APK
+name: TF Asset V1.0.1 GitHub APK
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-apk:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Phase 6:')
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Action:')
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -27,12 +27,20 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Freeze version identity
+        run: |
+          test "$(node -p "require('./package.json').version")" = "1.0.1"
+          test "$(node -p "require('./app.json').expo.version")" = "1.0.1"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10001"
+          test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
+
       - name: Source hard gates
         run: |
           npm run typecheck
           npm run test:finance
           npm run test:ui
           npm run test:plugins
+          npm run test:editor
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -75,22 +83,22 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V1.0.0-github.apk
+          cp "$APK_PATH" TF-Asset-V1.0.1-github.apk
 
       - name: Validate APK artifact
         run: |
-          test -f TF-Asset-V1.0.0-github.apk
-          test "$(stat -c%s TF-Asset-V1.0.0-github.apk)" -gt 1000000
-          unzip -t TF-Asset-V1.0.0-github.apk
-          sha256sum TF-Asset-V1.0.0-github.apk | tee TF-Asset-V1.0.0-github.sha256
-          file TF-Asset-V1.0.0-github.apk
+          test -f TF-Asset-V1.0.1-github.apk
+          test "$(stat -c%s TF-Asset-V1.0.1-github.apk)" -gt 1000000
+          unzip -t TF-Asset-V1.0.1-github.apk
+          sha256sum TF-Asset-V1.0.1-github.apk | tee TF-Asset-V1.0.1-github.sha256
+          file TF-Asset-V1.0.1-github.apk
 
       - name: Upload validated APK
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V1.0.0-GitHub-APK
+          name: TF-Asset-V1.0.1-GitHub-APK
           path: |
-            TF-Asset-V1.0.0-github.apk
-            TF-Asset-V1.0.0-github.sha256
+            TF-Asset-V1.0.1-github.apk
+            TF-Asset-V1.0.1-github.sha256
           if-no-files-found: error
           retention-days: 30
