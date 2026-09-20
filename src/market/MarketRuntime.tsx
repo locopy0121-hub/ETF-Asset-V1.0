@@ -39,6 +39,7 @@ const DEFAULT_SETTINGS:MarketSettings={
 };
 const SETTINGS_KEY='@tf-asset/market-settings-v1';
 const QUOTE_CACHE='@tf-asset/market-quotes-v1';
+const TRACKED_KEY='@tf-asset/market-tracked-v1';
 
 type Ctx={
   hydrated:boolean;
@@ -49,6 +50,7 @@ type Ctx={
   lastUpdatedAt:number|null;
   updateSettings:(patch:Partial<MarketSettings>)=>void;
   refresh:()=>Promise<void>;
+  trackSymbol:(symbol:string)=>void;
 };
 const MarketContext=createContext<Ctx|null>(null);
 
@@ -103,22 +105,26 @@ export function MarketProvider({children}:PropsWithChildren){
   const [quotes,setQuotes]=useState<MarketQuote[]>([]);
   const [settings,setSettingsState]=useState<MarketSettings>(DEFAULT_SETTINGS);
   const [lastUpdatedAt,setLastUpdatedAt]=useState<number|null>(null);
+  const [tracked,setTracked]=useState<string[]>([]);
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
   const appState=useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(()=>{(async()=>{
     try{
-      const [rawSettings,rawQuotes,registry]=await Promise.all([
-        AsyncStorage.getItem(SETTINGS_KEY),AsyncStorage.getItem(QUOTE_CACHE),loadInstrumentRegistry(),
+      const [rawSettings,rawQuotes,rawTracked,registry]=await Promise.all([
+        AsyncStorage.getItem(SETTINGS_KEY),AsyncStorage.getItem(QUOTE_CACHE),AsyncStorage.getItem(TRACKED_KEY),loadInstrumentRegistry(),
       ]);
       if(rawSettings)setSettingsState({...DEFAULT_SETTINGS,...JSON.parse(rawSettings)});
       if(rawQuotes){
         const parsed=JSON.parse(rawQuotes) as MarketQuote[];
         if(Array.isArray(parsed))setQuotes(parsed);
       }
+      if(rawTracked){const parsed=JSON.parse(rawTracked) as string[];if(Array.isArray(parsed))setTracked(parsed);}
       setInstruments(registry);
     }catch{}finally{setHydrated(true);}
   })();},[]);
+
+  const trackSymbol=useCallback((symbol:string)=>{const clean=symbol.trim().toUpperCase();if(!clean)return;setTracked(current=>{const next=[clean,...current.filter(x=>x!==clean)].slice(0,30);AsyncStorage.setItem(TRACKED_KEY,JSON.stringify(next)).catch(()=>{});return next;});},[]);
 
   const updateSettings=useCallback((patch:Partial<MarketSettings>)=>{
     setSettingsState(current=>{
@@ -131,7 +137,7 @@ export function MarketProvider({children}:PropsWithChildren){
   const refresh=useCallback(async()=>{
     if(!settings.enabled)return;
     try{
-      const symbols=Array.from(new Set([...quotes.map(x=>x.symbol),...FALLBACK_INSTRUMENTS.map(x=>x.symbol)]));
+      const symbols=Array.from(new Set([...tracked,...quotes.map(x=>x.symbol),...FALLBACK_INSTRUMENTS.map(x=>x.symbol)]));
       const names=new Map(instruments.map(x=>[x.symbol,x.name]));
       const fresh=await fetchTwse(symbols,names,settings.staleAfterMs);
       if(fresh.length){
@@ -140,7 +146,7 @@ export function MarketProvider({children}:PropsWithChildren){
         AsyncStorage.setItem(QUOTE_CACHE,JSON.stringify(fresh)).catch(()=>{});
       }
     }catch{}
-  },[settings.enabled,settings.staleAfterMs,instruments,quotes]);
+  },[settings.enabled,settings.staleAfterMs,instruments,quotes,tracked]);
 
   useEffect(()=>{
     if(!hydrated||!settings.enabled)return;
@@ -162,8 +168,8 @@ export function MarketProvider({children}:PropsWithChildren){
   }).remove,[settings.refreshOnForeground,refresh]);
 
   const value=useMemo<Ctx>(()=>({
-    hydrated,instruments,quotes,session:resolveMarketSession(),settings,lastUpdatedAt,updateSettings,refresh,
-  }),[hydrated,instruments,quotes,settings,lastUpdatedAt,updateSettings,refresh]);
+    hydrated,instruments,quotes,session:resolveMarketSession(),settings,lastUpdatedAt,updateSettings,refresh,trackSymbol,
+  }),[hydrated,instruments,quotes,settings,lastUpdatedAt,updateSettings,refresh,trackSymbol]);
 
   return <MarketContext.Provider value={value}>{children}</MarketContext.Provider>;
 }
