@@ -22,3 +22,7 @@
 - Expo dependency check
 - Expo Doctor
 - GitHub-only release APK identity and badging validation
+
+## Pre-release verification
+
+- V1.0.4 CI / Hard Gates: ALL PASS before APK Action.
