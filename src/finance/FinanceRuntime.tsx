@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import type { HoldingQuote } from '../domain/uiModels';
+import { useMarketRuntime } from '../market/MarketRuntime';
 import {
   calculateCanonicalLedgerSnapshot,
   calculateLedgerCashFlow,
@@ -18,7 +19,7 @@ import {
   type DividendLedgerEntry,
   type OtherCashLedgerEntry,
 } from './canonicalLedger';
-import { INITIAL_CASH, SEED_LEDGER, SEED_QUOTES, type RuntimeQuote } from './financeSeed';
+import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=1;
@@ -46,6 +47,7 @@ type FinanceContextValue = {
 const FinanceContext=createContext<FinanceContextValue|null>(null);
 
 export function FinanceProvider({children}:PropsWithChildren){
+  const market=useMarketRuntime();
   const [initialCash,setInitialCash]=useState(INITIAL_CASH);
   const [entries,setEntries]=useState<CanonicalLedgerEntry[]>(()=>[...SEED_LEDGER]);
   const [hydrated,setHydrated]=useState(false);
@@ -77,14 +79,18 @@ export function FinanceProvider({children}:PropsWithChildren){
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
   },[hydrated,initialCash,entries]);
 
+  useEffect(()=>{
+    market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
+  },[entries,market.setTrackedSymbols]);
+
   const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({
     initialCash,
     entries,
-    quotes:SEED_QUOTES,
-  }),[initialCash,entries]);
+    quotes:market.quotes,
+  }),[initialCash,entries,market.quotes]);
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
-    const quote=SEED_QUOTES.find(x=>x.symbol===summary.etfCode);
+    const quote=market.quotes.find(x=>x.symbol===summary.etfCode);
     const previousClose=quote?.previousClose??summary.currentPrice;
     return {
       symbol:summary.etfCode,
@@ -106,13 +112,13 @@ export function FinanceProvider({children}:PropsWithChildren){
       pinned:quote?.pinned??false,
       sparkline:[...(quote?.sparkline??[summary.currentPrice])],
     };
-  }).filter(x=>x.shares>0),[snapshot]);
+  }).filter(x=>x.shares>0),[snapshot,market.quotes]);
 
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,
     initialCash,
     entries,
-    quotes:SEED_QUOTES,
+    quotes:market.quotes,
     snapshot,
     holdings,
     addTrade:input=>setEntries(current=>{
@@ -129,7 +135,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       setInitialCash(INITIAL_CASH);
       setEntries([...SEED_LEDGER]);
     },
-  }),[hydrated,initialCash,entries,snapshot,holdings]);
+  }),[hydrated,initialCash,entries,snapshot,holdings,market.quotes]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
