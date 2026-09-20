@@ -1,8 +1,8 @@
 import type { SharedSnapshot } from '../domain/snapshot';
 
-export type WidgetSize = 'small' | 'medium' | 'large';
+export type WidgetSize = '2x2' | 'small' | 'medium' | 'large';
 export type WidgetTemplate = 'asset-summary' | 'quote-summary' | 'compact' | 'quote-wall';
-export type WidgetField = 'totalAssets' | 'dailyPnl' | 'quote' | 'changePercent';
+export type WidgetField = 'appName' | 'totalAssets' | 'marketValue' | 'cash' | 'unrealizedPnl' | 'realizedPnl' | 'dividendIncome' | 'totalReturn' | 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'holdingMarketValue' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt' | 'dailyPnl' | 'quote';
 export type WidgetSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type WidgetSortDirection = 'asc' | 'desc';
 export type WidgetEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';
@@ -95,9 +95,9 @@ export const DEFAULT_WIDGET_SORT: WidgetSort = {
 
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   enabled: false,
-  size: 'medium',
+  size: '2x2',
   template: 'asset-summary',
-  fields: ['totalAssets', 'dailyPnl'],
+  fields: ['appName','totalAssets','symbol','price','changePercent'],
   style: DEFAULT_WIDGET_STYLE,
   effects: DEFAULT_WIDGET_EFFECTS,
   sort: DEFAULT_WIDGET_SORT,
