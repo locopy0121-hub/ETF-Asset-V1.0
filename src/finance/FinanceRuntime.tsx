@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import type { HoldingQuote } from '../domain/uiModels';
+import { useMarket } from '../market/MarketRuntime';
 import {
   calculateCanonicalLedgerSnapshot,
   calculateLedgerCashFlow,
@@ -23,51 +24,43 @@ import { INITIAL_CASH, SEED_LEDGER, SEED_QUOTES, type RuntimeQuote } from './fin
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=1;
 
-type PersistedFinanceState = {
-  schema: number;
-  initialCash: number;
-  entries: CanonicalLedgerEntry[];
+type PersistedFinanceState={schema:number;initialCash:number;entries:CanonicalLedgerEntry[]};
+type FinanceContextValue={
+  hydrated:boolean;
+  initialCash:number;
+  entries:readonly CanonicalLedgerEntry[];
+  quotes:readonly RuntimeQuote[];
+  snapshot:ReturnType<typeof calculateCanonicalLedgerSnapshot>;
+  holdings:HoldingQuote[];
+  addTrade:(input:Parameters<typeof freezeTradeEntry>[0])=>void;
+  addDividend:(entry:DividendLedgerEntry)=>void;
+  addOther:(entry:OtherCashLedgerEntry)=>void;
+  deleteEntry:(id:string)=>void;
+  resetFinance:()=>void;
 };
-
-type FinanceContextValue = {
-  hydrated: boolean;
-  initialCash: number;
-  entries: readonly CanonicalLedgerEntry[];
-  quotes: readonly RuntimeQuote[];
-  snapshot: ReturnType<typeof calculateCanonicalLedgerSnapshot>;
-  holdings: HoldingQuote[];
-  addTrade: (input: Parameters<typeof freezeTradeEntry>[0]) => void;
-  addDividend: (entry: DividendLedgerEntry) => void;
-  addOther: (entry: OtherCashLedgerEntry) => void;
-  deleteEntry: (id: string) => void;
-  resetFinance: () => void;
-};
-
 const FinanceContext=createContext<FinanceContextValue|null>(null);
 
 export function FinanceProvider({children}:PropsWithChildren){
+  const market=useMarket();
   const [initialCash,setInitialCash]=useState(INITIAL_CASH);
   const [entries,setEntries]=useState<CanonicalLedgerEntry[]>(()=>[...SEED_LEDGER]);
   const [hydrated,setHydrated]=useState(false);
 
   useEffect(()=>{
     let alive=true;
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then(raw=>{
-        if(!alive)return;
-        if(raw){
-          const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
-          if(parsed.schema===SCHEMA&&Array.isArray(parsed.entries)){
-            const restored=parsed.entries as CanonicalLedgerEntry[];
-            if(validateLedgerSequence(restored).length===0){
-              setEntries(restored);
-              if(Number.isFinite(Number(parsed.initialCash)))setInitialCash(Number(parsed.initialCash));
-            }
+    AsyncStorage.getItem(STORAGE_KEY).then(raw=>{
+      if(!alive)return;
+      if(raw){
+        const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
+        if(parsed.schema===SCHEMA&&Array.isArray(parsed.entries)){
+          const restored=parsed.entries as CanonicalLedgerEntry[];
+          if(validateLedgerSequence(restored).length===0){
+            setEntries(restored);
+            if(Number.isFinite(Number(parsed.initialCash)))setInitialCash(Number(parsed.initialCash));
           }
         }
-      })
-      .catch(()=>{})
-      .finally(()=>{if(alive)setHydrated(true);});
+      }
+    }).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});
     return()=>{alive=false;};
   },[]);
 
@@ -77,71 +70,39 @@ export function FinanceProvider({children}:PropsWithChildren){
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
   },[hydrated,initialCash,entries]);
 
-  const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({
-    initialCash,
-    entries,
-    quotes:SEED_QUOTES,
-  }),[initialCash,entries]);
+  const quotes=useMemo<RuntimeQuote[]>(()=>{
+    const source=new Map(market.quotes.map(x=>[x.symbol,x]));
+    return SEED_QUOTES.map(seed=>{
+      const live=source.get(seed.symbol);
+      return live?{...seed,currentPrice:live.currentPrice,previousClose:live.previousClose,name:live.name||seed.name}:seed;
+    });
+  },[market.quotes]);
+
+  const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({initialCash,entries,quotes}),[initialCash,entries,quotes]);
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
-    const quote=SEED_QUOTES.find(x=>x.symbol===summary.etfCode);
+    const quote=quotes.find(x=>x.symbol===summary.etfCode);
     const previousClose=quote?.previousClose??summary.currentPrice;
     return {
-      symbol:summary.etfCode,
-      name:summary.name,
-      shares:summary.totalShares,
-      price:summary.currentPrice,
-      previousClose,
-      avgCost:summary.averageCostPerShare,
-      tradeAvg:summary.averageTradePrice,
-      costAvg:summary.averageCostPerShare,
-      marketValue:summary.currentMarketValue,
-      pnl:summary.unrealizedProfit,
-      pricePnl:summary.priceUnrealizedProfit,
-      roi:summary.unrealizedROI,
-      weight:summary.portfolioWeight,
-      cumulativeDividend:summary.totalDividendsReceived,
-      realizedPnl:summary.realizedNetPnL,
-      comprehensivePnl:summary.comprehensivePnL,
-      pinned:quote?.pinned??false,
+      symbol:summary.etfCode,name:summary.name,shares:summary.totalShares,price:summary.currentPrice,previousClose,
+      avgCost:summary.averageCostPerShare,tradeAvg:summary.averageTradePrice,costAvg:summary.averageCostPerShare,
+      marketValue:summary.currentMarketValue,pnl:summary.unrealizedProfit,pricePnl:summary.priceUnrealizedProfit,
+      roi:summary.unrealizedROI,weight:summary.portfolioWeight,cumulativeDividend:summary.totalDividendsReceived,
+      realizedPnl:summary.realizedNetPnL,comprehensivePnl:summary.comprehensivePnL,pinned:quote?.pinned??false,
       sparkline:[...(quote?.sparkline??[summary.currentPrice])],
     };
-  }).filter(x=>x.shares>0),[snapshot]);
+  }).filter(x=>x.shares>0),[snapshot,quotes]);
 
   const value=useMemo<FinanceContextValue>(()=>({
-    hydrated,
-    initialCash,
-    entries,
-    quotes:SEED_QUOTES,
-    snapshot,
-    holdings,
-    addTrade:input=>setEntries(current=>{
-      const candidate=[...current,freezeTradeEntry(input)];
-      return validateLedgerSequence(candidate).length===0?candidate:current;
-    }),
+    hydrated,initialCash,entries,quotes,snapshot,holdings,
+    addTrade:input=>setEntries(current=>{const candidate=[...current,freezeTradeEntry(input)];return validateLedgerSequence(candidate).length===0?candidate:current;}),
     addDividend:entry=>setEntries(current=>[...current,entry]),
     addOther:entry=>setEntries(current=>[...current,entry]),
-    deleteEntry:id=>setEntries(current=>{
-      const candidate=current.filter(entry=>entry.id!==id);
-      return validateLedgerSequence(candidate).length===0?candidate:current;
-    }),
-    resetFinance:()=>{
-      setInitialCash(INITIAL_CASH);
-      setEntries([...SEED_LEDGER]);
-    },
-  }),[hydrated,initialCash,entries,snapshot,holdings]);
+    deleteEntry:id=>setEntries(current=>{const candidate=current.filter(entry=>entry.id!==id);return validateLedgerSequence(candidate).length===0?candidate:current;}),
+    resetFinance:()=>{setInitialCash(INITIAL_CASH);setEntries([...SEED_LEDGER]);},
+  }),[hydrated,initialCash,entries,quotes,snapshot,holdings]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
-
-export function useFinance(){
-  const value=useContext(FinanceContext);
-  if(!value)throw new Error('useFinance must be used inside FinanceProvider');
-  return value;
-}
-
-export function ledgerDisplayAmount(entry:CanonicalLedgerEntry){
-  if(entry.kind==='buy'||entry.kind==='sell')return entry.amount;
-  if(entry.kind==='dividend')return calculateLedgerCashFlow(entry);
-  return Math.abs(entry.amount);
-}
+export function useFinance(){const value=useContext(FinanceContext);if(!value)throw new Error('useFinance must be used inside FinanceProvider');return value;}
+export function ledgerDisplayAmount(entry:CanonicalLedgerEntry){if(entry.kind==='buy'||entry.kind==='sell')return entry.amount;if(entry.kind==='dividend')return calculateLedgerCashFlow(entry);return Math.abs(entry.amount);}
