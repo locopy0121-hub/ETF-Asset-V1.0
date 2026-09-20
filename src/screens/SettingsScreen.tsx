@@ -32,6 +32,7 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
+import { canDrawOverlays, nativeRuntimeAvailable, openOverlaySettings, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
@@ -44,8 +45,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.4';
-const BUILD='10004';
+const VERSION='1.0.5';
+const BUILD='10005';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -71,6 +72,7 @@ export function SettingsScreen(){
   const [importText,setImportText]=useState('');
   const [storageStats,setStorageStats]=useState({keys:0,bytes:0});
   const [notificationPermission,setNotificationPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
+  const [overlayPermission,setOverlayPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
 
   const toggleTop=(key:string)=>{
     setTop(current=>current===key?null:key);
@@ -101,6 +103,11 @@ export function SettingsScreen(){
       .then(ok=>setNotificationPermission(ok?'granted':'denied'))
       .catch(()=>setNotificationPermission('denied'));
   },[]);
+
+  useEffect(()=>{
+    if(!nativeRuntimeAvailable){setOverlayPermission('unsupported');return;}
+    canDrawOverlays().then(ok=>setOverlayPermission(ok?'granted':'denied')).catch(()=>setOverlayPermission('denied'));
+  },[top,monitorPanel]);
 
   const duplicates=useMemo(()=>{
     const ids=new Set<string>();
@@ -274,9 +281,25 @@ export function SettingsScreen(){
     return <View style={styles.children}>
       <Text style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
       <ChildButton label="Widget（mobile 桌面）" summary={widget.config.enabled?'已啟用 · '+widget.config.size:'未啟用'} active={monitorPanel==='widget'} onPress={()=>setMonitorPanel(monitorPanel==='widget'?null:'widget')}/>
-      {monitorPanel==='widget'?<WidgetControlPanel value={widget.config} onChange={widget.setConfig}/>:null}
+      {monitorPanel==='widget'?<View style={{gap:8}}>
+        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))}/>
+        <Panel title="手機桌面 Widget 執行狀態">
+          <StatusRow label="Android 原生橋接" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
+          <ActionButton label="立即刷新手機桌面 Widget" disabled={!nativeRuntimeAvailable} onPress={()=>void requestNativeWidgetRefresh()}/>
+          <Text style={styles.note}>Widget 需由 Android 桌面長按 → 小工具 → TF Asset 加入桌面；啟用設定不會偽裝成已加入桌面。</Text>
+        </Panel>
+      </View>:null}
       <ChildButton label="監控器總設定" summary={monitor.config.enabled?'已啟用':'未啟用'} active={monitorPanel==='main'} onPress={()=>setMonitorPanel(monitorPanel==='main'?null:'main')}/>
-      {monitorPanel==='main'?<MonitorControlPanel value={monitor.config} onChange={monitor.setConfig}/>:null}
+      {monitorPanel==='main'?<View style={{gap:8}}>
+        <MonitorControlPanel value={monitor.config} onChange={monitor.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))}/>
+        <Panel title="即時監控器執行狀態">
+          <StatusRow label="原生 Floating Runtime" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
+          <StatusRow label="懸浮窗權限" value={overlayPermission==='granted'?'已允許':overlayPermission==='denied'?'未允許':'不支援'}/>
+          {overlayPermission!=='granted'?<ActionButton label="前往允許懸浮窗權限" disabled={!nativeRuntimeAvailable} onPress={()=>void openOverlaySettings()}/>:null}
+          <ActionButton label="立即啟動 Monitor" disabled={!nativeRuntimeAvailable||overlayPermission!=='granted'} onPress={()=>void startNativeMonitor()}/>
+          <ActionButton label="停止 Monitor" disabled={!nativeRuntimeAvailable} onPress={()=>void stopNativeMonitor()}/>
+        </Panel>
+      </View>:null}
       <ChildButton label="Mini 模式" summary={monitor.config.mode==='mini'?'目前 Mini':'目前 Normal'} active={monitorPanel==='mini'} onPress={()=>setMonitorPanel(monitorPanel==='mini'?null:'mini')}/>
       {monitorPanel==='mini'?<Panel title="Mini 模式">
         <StatusRow label="目前模式" value={monitor.config.mode==='mini'?'Mini':'Normal'}/>
