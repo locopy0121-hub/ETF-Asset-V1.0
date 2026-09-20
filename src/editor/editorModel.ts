@@ -6,6 +6,7 @@ export type FrameLayout = 'standard' | 'compact' | 'dense';
 export type FrameAppearance = 'theme' | 'soft' | 'outline';
 export type FrameBehavior = 'manual' | 'auto' | 'locked';
 export type PortfolioViewMode = 'list' | 'wall';
+export type HoldingLayoutMode = 'list' | 'grid2' | 'grid3' | 'horizontal' | 'paged2';
 
 export type FrameEditorConfig = Readonly<{
   visible: boolean;
@@ -21,6 +22,7 @@ export type PageDisplayConfig = Readonly<{
   quoteStyle?: QuoteModuleStyle;
   sortKey?: HoldingSortKey;
   portfolioViewMode?: PortfolioViewMode;
+  holdingLayoutMode?: HoldingLayoutMode;
 }>;
 
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
@@ -43,9 +45,9 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl' },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list' },
     ledger: {},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list' },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
     dividend: {},
     settings: {},
   };
