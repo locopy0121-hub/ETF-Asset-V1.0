@@ -6,25 +6,26 @@ import { colors, radius, spacing } from '../theme/tokens';
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const pct=(value:number)=>`${value>=0?'+':''}${value.toFixed(2)}%`;
 
-export function HoldingQuoteModule({item,style='quote',onPress}:{item:HoldingQuote;style?:QuoteModuleStyle;onPress?:()=>void}){
+export function HoldingQuoteModule({item,style='quote',layout='full',onPress}:{item:HoldingQuote;style?:QuoteModuleStyle;layout?:'full'|'narrow';onPress?:()=>void}){
   const change=item.price-item.previousClose;
   const changePct=item.previousClose>0?(change/item.previousClose)*100:0;
   const marketTone=change>0?colors.gain:change<0?colors.loss:colors.flat;
   const pnlTone=item.pnl>=0?colors.gain:colors.loss;
   const compact=style==='compact';
+  const narrow=layout==='narrow';
   const showChart=style==='chart'||style==='advanced';
-  return <Pressable onPress={onPress} style={[styles.card,compact&&styles.compact]}>
-    {showChart?<Sparkline values={item.sparkline} positive={change>=0}/>:null}
+  return <Pressable onPress={onPress} style={[styles.card,compact&&styles.compact,narrow&&styles.narrowCard]}>
+    {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow}/>:null}
     <View style={styles.body}>
       <View style={styles.head}>
         <View style={styles.nameWrap}>
-          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.name,narrow&&styles.narrowName]} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.symbol}>{item.symbol}{item.pinned?'  • PIN':''}</Text>
         </View>
         <Text style={styles.chevron}>›</Text>
       </View>
       <View style={styles.quoteRow}>
-        <Text style={[styles.price,{color:marketTone}]}>{item.price.toFixed(2)}</Text>
+        <Text style={[styles.price,narrow&&styles.narrowPrice,{color:marketTone}]}>{item.price.toFixed(2)}</Text>
         <View style={styles.changeWrap}>
           <Text style={[styles.change,{color:marketTone}]}>{change>=0?'▲':'▼'} {change>=0?'+':''}{change.toFixed(2)}</Text>
           <Text style={[styles.change,{color:marketTone}]}>{pct(changePct)}</Text>
@@ -38,9 +39,9 @@ export function HoldingQuoteModule({item,style='quote',onPress}:{item:HoldingQuo
   </Pressable>;
 }
 
-function Sparkline({values,positive}:{values:number[];positive:boolean}){
+function Sparkline({values,positive,narrow=false}:{values:number[];positive:boolean;narrow?:boolean}){
   const max=Math.max(...values),min=Math.min(...values),range=Math.max(0.001,max-min);
-  return <View style={styles.spark}>
+  return <View style={[styles.spark,narrow&&styles.narrowSpark]}>
     {values.map((value,index)=>{
       const height=12+((value-min)/range)*44;
       return <View key={index} style={[styles.sparkBar,{height,backgroundColor:positive?colors.gain:colors.loss}]} />;
@@ -68,4 +69,8 @@ const styles=StyleSheet.create({
   footerValue:{fontSize:12,fontWeight:'800',color:'#FFFFFF',marginTop:2},
   roi:{fontSize:13,fontWeight:'900'},
   rightMetric:{alignItems:'flex-end'},
+  narrowCard:{flexDirection:'column',minHeight:150},
+  narrowSpark:{width:'100%',height:54,paddingHorizontal:10,paddingVertical:8},
+  narrowName:{fontSize:12},
+  narrowPrice:{fontSize:21},
 });
