@@ -25,12 +25,19 @@ type SystemPanel = 'market' | null;
 type AccountingPanel = 'formulas' | null;
 export function SettingsScreen() {
   const [open,setOpen]=useState<string|null>(null);
-  const [pluginPanel,setPluginPanel]=useState<PluginPanel>('widget');
+  const [pluginPanel,setPluginPanel]=useState<PluginPanel>(null);
   const [widgetConfig,setWidgetConfig]=useState<WidgetConfig>(DEFAULT_WIDGET_CONFIG);
   const [monitorConfig,setMonitorConfig]=useState<MonitorConfig>(DEFAULT_MONITOR_CONFIG);
   const [systemPanel,setSystemPanel]=useState<SystemPanel>(null);
   const [accountingPanel,setAccountingPanel]=useState<AccountingPanel>(null);
   const market=useMarketRuntime();
+  const toggleTop=(key:string)=>{
+    const next=open===key?null:key;
+    setOpen(next);
+    setPluginPanel(null);
+    setSystemPanel(null);
+    setAccountingPanel(null);
+  };
 
   return <PageShell title="控制中心" subtitle="主設定負責全局；各頁齒輪負責該頁框架">
     <View style={styles.ruleCard}>
@@ -40,7 +47,7 @@ export function SettingsScreen() {
     {PAGE_FRAMES.settings.map(frame=>{
       const expanded=open===frame.key;
       return <View key={frame.key} style={styles.section}>
-        <Pressable onPress={()=>setOpen(expanded?null:frame.key)} style={styles.header}>
+        <Pressable onPress={()=>toggleTop(frame.key)} style={styles.header}>
           <View style={{flex:1}}><Text style={styles.title}>{frame.title}</Text><Text style={styles.description}>{frame.description}</Text></View>
           <Text style={styles.toggle}>{expanded?'−':'+'}</Text>
         </Pressable>
