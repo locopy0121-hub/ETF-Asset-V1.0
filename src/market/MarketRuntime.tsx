@@ -18,6 +18,7 @@ import { SEED_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 
 export type MarketPhase = 'live' | 'afterHours' | 'offline';
 export type MarketSource = 'TWSE';
+export type EtfCatalogItem = Readonly<{ symbol:string; name:string; market:'TWSE'|'TPEx'|'fallback' }>;
 
 export type MarketUpdateConfig = Readonly<{
   source: MarketSource;
@@ -42,6 +43,7 @@ type PersistedMarketState = {
   config: MarketUpdateConfig;
   quotes: RuntimeQuote[];
   lastSuccessAt: number | null;
+  catalog?: EtfCatalogItem[];
 };
 
 type MarketRuntimeValue = {
@@ -52,13 +54,17 @@ type MarketRuntimeValue = {
   refreshing: boolean;
   lastSuccessAt: number | null;
   lastError: string | null;
+  catalog: readonly EtfCatalogItem[];
+  catalogRefreshing: boolean;
   setConfig: (next: MarketUpdateConfig) => void;
   refresh: () => Promise<void>;
+  refreshCatalog: () => Promise<void>;
   setTrackedSymbols: (symbols: readonly string[]) => void;
 };
 
 const STORAGE_KEY='@tf-asset/market-runtime';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
+const FALLBACK_CATALOG:EtfCatalogItem[]=SEED_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'}));
 
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
 const hhmm=(value:string)=>{
@@ -98,6 +104,38 @@ const num=(value:unknown)=>{
   const n=Number(String(value??'').replace(/,/g,''));
   return Number.isFinite(n)?n:0;
 };
+async function fetchEtfCatalog():Promise<EtfCatalogItem[]>{
+  const rows:EtfCatalogItem[]=[];
+  const push=(symbol:unknown,name:unknown,market:'TWSE'|'TPEx')=>{
+    const code=String(symbol??'').trim().toUpperCase();
+    const label=String(name??'').trim();
+    if(!/^00[0-9A-Z]{2,6}$/.test(code)||!label)return;
+    rows.push({symbol:code,name:label,market});
+  };
+  const requests=[
+    fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',{headers:{Accept:'application/json'}})
+      .then(async response=>{
+        if(!response.ok)throw new Error('TWSE catalog HTTP '+response.status);
+        const data=await response.json() as Array<Record<string,unknown>>;
+        for(const row of Array.isArray(data)?data:[]) push(row.Code??row.code,row.Name??row.name,'TWSE');
+      }),
+    fetch('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes',{headers:{Accept:'application/json'}})
+      .then(async response=>{
+        if(!response.ok)throw new Error('TPEx catalog HTTP '+response.status);
+        const data=await response.json() as Array<Record<string,unknown>>;
+        for(const row of Array.isArray(data)?data:[]) push(
+          row.SecuritiesCompanyCode??row.Code??row.code??row.SecuritiesCode,
+          row.CompanyName??row.Name??row.name??row.SecuritiesCompanyName,
+          'TPEx',
+        );
+      }),
+  ];
+  await Promise.allSettled(requests);
+  const unique=new Map<string,EtfCatalogItem>();
+  for(const item of [...FALLBACK_CATALOG,...rows]) unique.set(item.symbol,item);
+  return [...unique.values()].sort((a,b)=>a.symbol.localeCompare(b.symbol));
+}
+
 async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[]):Promise<RuntimeQuote[]>{
   if(!symbols.length)return [...previous];
   const channels=symbols.flatMap(symbol=>[`tse_${symbol}.tw`,`otc_${symbol}.tw`]).join('|');
@@ -143,6 +181,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [refreshing,setRefreshing]=useState(false);
   const [lastSuccessAt,setLastSuccessAt]=useState<number|null>(null);
   const [lastError,setLastError]=useState<string|null>(null);
+  const [catalog,setCatalog]=useState<EtfCatalogItem[]>(FALLBACK_CATALOG);
+  const [catalogRefreshing,setCatalogRefreshing]=useState(false);
   const refreshingRef=useRef(false);
   const quotesRef=useRef<RuntimeQuote[]>([...SEED_QUOTES]);
   const symbolsRef=useRef<string[]>(SEED_QUOTES.map(x=>x.symbol));
@@ -156,6 +196,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
         if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes);
         if(Number.isFinite(Number(parsed.lastSuccessAt)))setLastSuccessAt(Number(parsed.lastSuccessAt));
+        if(Array.isArray(parsed.catalog)&&parsed.catalog.length)setCatalog(parsed.catalog);
       }
     }).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});
     return()=>{alive=false;};
@@ -166,9 +207,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedMarketState={schema:1,config,quotes,lastSuccessAt};
+    const payload:PersistedMarketState={schema:1,config,quotes,lastSuccessAt,catalog};
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,config,quotes,lastSuccessAt]);
+  },[hydrated,config,quotes,lastSuccessAt,catalog]);
 
   const setConfig=useCallback((next:MarketUpdateConfig)=>{
     setConfigState({
@@ -200,7 +241,19 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     }
   },[]);
 
+  const refreshCatalog=useCallback(async()=>{
+    setCatalogRefreshing(true);
+    try{
+      const next=await fetchEtfCatalog();
+      if(next.length)setCatalog(next);
+    }finally{
+      setCatalogRefreshing(false);
+    }
+  },[]);
+
   const phase=resolveMarketPhase(config);
+
+  useEffect(()=>{ if(hydrated&&catalog.length<=FALLBACK_CATALOG.length)void refreshCatalog(); },[hydrated,catalog.length,refreshCatalog]);
 
   useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
@@ -218,8 +271,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[config.refreshOnForeground,refresh]);
 
   const value=useMemo<MarketRuntimeValue>(()=>({
-    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,setConfig,refresh,setTrackedSymbols,
-  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,setConfig,refresh,setTrackedSymbols]);
+    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,setConfig,refresh,refreshCatalog,setTrackedSymbols,
+  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,setConfig,refresh,refreshCatalog,setTrackedSymbols]);
 
   return <MarketRuntimeContext.Provider value={value}>{children}</MarketRuntimeContext.Provider>;
 }
