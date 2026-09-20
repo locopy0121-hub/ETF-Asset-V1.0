@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 
+import type { SharedSnapshot } from '../domain/snapshot';
 import type { HoldingQuote } from '../domain/uiModels';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import {
@@ -20,6 +21,7 @@ import {
   type OtherCashLedgerEntry,
 } from './canonicalLedger';
 import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
+import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=1;
@@ -36,6 +38,7 @@ type FinanceContextValue = {
   entries: readonly CanonicalLedgerEntry[];
   quotes: readonly RuntimeQuote[];
   snapshot: ReturnType<typeof calculateCanonicalLedgerSnapshot>;
+  sharedSnapshot: SharedSnapshot;
   holdings: HoldingQuote[];
   addTrade: (input: Parameters<typeof freezeTradeEntry>[0]) => void;
   addDividend: (entry: DividendLedgerEntry) => void;
@@ -114,12 +117,15 @@ export function FinanceProvider({children}:PropsWithChildren){
     };
   }).filter(x=>x.shares>0),[snapshot,market.quotes]);
 
+  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt}),[snapshot,holdings,market.lastSuccessAt]);
+
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,
     initialCash,
     entries,
     quotes:market.quotes,
     snapshot,
+    sharedSnapshot,
     holdings,
     addTrade:input=>setEntries(current=>{
       const candidate=[...current,freezeTradeEntry(input)];
@@ -135,7 +141,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       setInitialCash(INITIAL_CASH);
       setEntries([...SEED_LEDGER]);
     },
-  }),[hydrated,initialCash,entries,snapshot,holdings,market.quotes]);
+  }),[hydrated,initialCash,entries,snapshot,sharedSnapshot,holdings,market.quotes]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
