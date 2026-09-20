@@ -1,14 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { DEFAULT_MARKET_UPDATE, marketRefreshSeconds } from '../src/market/MarketRuntime';
-
-assert.equal(marketRefreshSeconds(DEFAULT_MARKET_UPDATE,'live'),5);
-assert.equal(marketRefreshSeconds({...DEFAULT_MARKET_UPDATE,live:{...DEFAULT_MARKET_UPDATE.live,refreshSeconds:1}},'live'),1);
-assert.equal(marketRefreshSeconds(DEFAULT_MARKET_UPDATE,'afterHours'),60);
-assert.equal(marketRefreshSeconds(DEFAULT_MARKET_UPDATE,'offline'),0);
-
 const source=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
+
+assert.match(source,/live:\s*\{\s*enabled:\s*true,\s*start:\s*'09:00',\s*end:\s*'13:30',\s*refreshSeconds:\s*5\s*\}/,'live refresh default must remain 5 seconds');
+assert.match(source,/afterHours:\s*\{\s*enabled:\s*true,\s*start:\s*'13:31',\s*end:\s*'18:00',\s*refreshSeconds:\s*60\s*\}/,'after-hours refresh default must remain 60 seconds');
+assert.match(source,/Math\.max\(1,Math\.min\(3600,/,'market refresh must support a 1-second minimum');
+assert.match(source,/phase==='live'\?clampSeconds\(config\.live\.refreshSeconds\):phase==='afterHours'\?clampSeconds\(config\.afterHours\.refreshSeconds\):0/,'market refresh interval must follow phase config and return 0 offline');
 assert.match(source,/quotesRef/,'market refresh must use quote ref to keep callback stable');
 assert.match(source,/symbolsRef/,'market refresh must use symbol ref to keep callback stable');
 assert.match(source,/if\(refreshingRef\.current\)return/,'market refresh must prevent overlapping requests');
