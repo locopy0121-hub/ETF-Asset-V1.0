@@ -22,6 +22,7 @@ import {
 } from './canonicalLedger';
 import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
 import { buildSharedSnapshot } from './sharedSnapshotAdapter';
+import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=1;
@@ -87,11 +88,16 @@ export function FinanceProvider({children}:PropsWithChildren){
     market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
   },[entries,market.setTrackedSymbols]);
 
+  const canonicalQuotes=useMemo(
+    ()=>ensureLedgerQuoteCoverage(entries,market.quotes),
+    [entries,market.quotes],
+  );
+
   const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({
     initialCash,
     entries,
-    quotes:market.quotes,
-  }),[initialCash,entries,market.quotes]);
+    quotes:canonicalQuotes,
+  }),[initialCash,entries,canonicalQuotes]);
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
     const quote=market.quotes.find(x=>x.symbol===summary.etfCode);
