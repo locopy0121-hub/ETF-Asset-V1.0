@@ -144,6 +144,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [lastSuccessAt,setLastSuccessAt]=useState<number|null>(null);
   const [lastError,setLastError]=useState<string|null>(null);
   const refreshingRef=useRef(false);
+  const quotesRef=useRef<RuntimeQuote[]>([...SEED_QUOTES]);
+  const symbolsRef=useRef<string[]>(SEED_QUOTES.map(x=>x.symbol));
 
   useEffect(()=>{
     let alive=true;
@@ -158,6 +160,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     }).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});
     return()=>{alive=false;};
   },[]);
+
+  useEffect(()=>{ quotesRef.current=quotes; },[quotes]);
+  useEffect(()=>{ symbolsRef.current=trackedSymbols; },[trackedSymbols]);
 
   useEffect(()=>{
     if(!hydrated)return;
@@ -174,7 +179,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[]);
 
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
-    setTrackedSymbolsState(current=>Array.from(new Set([...current,...symbols.map(x=>x.trim().toUpperCase()).filter(Boolean)])));
+    const normalized=symbols.map(x=>x.trim().toUpperCase()).filter(Boolean);
+    setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])));
   },[]);
 
   const refresh=useCallback(async()=>{
@@ -183,7 +189,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     setRefreshing(true);
     setLastError(null);
     try{
-      const next=await fetchTwseQuotes(trackedSymbols,quotes);
+      const next=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
       setQuotes(next);
       setLastSuccessAt(Date.now());
     }catch(error){
@@ -192,7 +198,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       refreshingRef.current=false;
       setRefreshing(false);
     }
-  },[trackedSymbols,quotes]);
+  },[]);
 
   const phase=resolveMarketPhase(config);
 
