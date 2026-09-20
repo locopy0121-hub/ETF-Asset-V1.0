@@ -28,7 +28,9 @@
     "test:v104": "npm run test:v103 && npm run test:settings-v104",
     "test:widget-monitor-v105": "node scripts/widget-monitor-v105.test.cjs",
     "test:v105": "npm run test:v103 && npm run test:settings-v105 && npm run test:widget-monitor-v105",
-    "test:settings-v105": "node scripts/settings-v105-contract.test.cjs"
+    "test:settings-v105": "node scripts/settings-v105-contract.test.cjs",
+    "test:holding-v106": "tsx scripts/holding-integrity-v106.test.ts",
+    "test:v106": "npm run test:v105 && npm run test:holding-v106"
   },
   "dependencies": {
     "expo": "~57.0.21",
