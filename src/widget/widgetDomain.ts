@@ -1,7 +1,7 @@
 import type { SharedSnapshot } from '../domain/snapshot';
 
 export type WidgetSize = '2x2' | 'small' | 'medium' | 'large';
-export type WidgetTemplate = 'asset-summary' | 'quote-summary' | 'compact' | 'quote-wall';
+export type WidgetTemplate = 'asset-summary' | 'quote-summary' | 'compact' | 'advanced' | 'minimal' | 'transparent' | 'quote-wall';
 export type WidgetField = 'appName' | 'totalAssets' | 'marketValue' | 'cash' | 'unrealizedPnl' | 'realizedPnl' | 'dividendIncome' | 'totalReturn' | 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'holdingMarketValue' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt' | 'dailyPnl' | 'quote';
 export type WidgetSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type WidgetSortDirection = 'asc' | 'desc';
