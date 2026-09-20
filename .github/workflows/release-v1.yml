@@ -1,0 +1,80 @@
+name: TF Asset V1.0.0 Release Gate
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Phase 6:')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Freeze version identity
+        run: |
+          test "$(node -p "require('./package.json').version")" = "1.0.0"
+          test "$(node -p "require('./app.json').expo.version")" = "1.0.0"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10000"
+          test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: Finance Core Gate
+        run: npm run test:finance
+
+      - name: UI Architecture Gate
+        run: npm run test:ui
+
+      - name: Plugin Architecture Gate
+        run: npm run test:plugins
+
+      - name: Expo dependency check
+        run: npm run check:expo
+
+      - name: Expo Doctor
+        run: npm run doctor
+
+      - name: Verify EAS authorization
+        run: |
+          test -n "$EXPO_TOKEN"
+          npx --yes eas-cli@23.2.0 whoami --non-interactive
+
+      - name: Build Android preview APK
+        run: npx --yes eas-cli@23.2.0 build --platform android --profile preview --non-interactive --wait
+
+      - name: Resolve and download APK
+        run: |
+          npx --yes eas-cli@23.2.0 build:list --platform android --limit 1 --status finished --non-interactive --json > eas-build.json
+          APK_URL="$(jq -r '.[0].artifacts.buildUrl // .[0].artifacts.applicationArchiveUrl // empty' eas-build.json)"
+          test -n "$APK_URL"
+          curl --fail --location "$APK_URL" --output TF-Asset-V1.0.0-preview.apk
+          test "$(stat -c%s TF-Asset-V1.0.0-preview.apk)" -gt 1000000
+
+      - name: Validate APK artifact
+        run: |
+          unzip -t TF-Asset-V1.0.0-preview.apk
+          sha256sum TF-Asset-V1.0.0-preview.apk | tee TF-Asset-V1.0.0-preview.sha256
+          file TF-Asset-V1.0.0-preview.apk
+
+      - name: Upload validated APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TF-Asset-V1.0.0-APK
+          path: |
+            TF-Asset-V1.0.0-preview.apk
+            TF-Asset-V1.0.0-preview.sha256
+            eas-build.json
+          if-no-files-found: error
+          retention-days: 30
