@@ -9,9 +9,10 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:finance && npm run test:ui && npm run check:expo",
+    "check": "npm run typecheck && npm run test:finance && npm run test:ui && npm run test:plugins && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts",
-    "test:ui": "node scripts/ui-architecture.test.cjs"
+    "test:ui": "node scripts/ui-architecture.test.cjs",
+    "test:plugins": "tsx scripts/plugin-architecture.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

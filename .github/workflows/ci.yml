@@ -23,6 +23,8 @@ jobs:
         run: npm run test:finance
       - name: UI Architecture Gate
         run: npm run test:ui
+      - name: Plugin Architecture Gate
+        run: npm run test:plugins
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
