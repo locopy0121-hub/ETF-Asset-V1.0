@@ -20,10 +20,15 @@ type Props = {
   previewSnapshot?: SharedSnapshot|null;
 };
 
-const sizes: readonly WidgetSize[] = ['small', 'medium', 'large'];
+const sizes: readonly WidgetSize[] = ['2x2','small', 'medium', 'large'];
 const templates: readonly WidgetTemplate[] = ['asset-summary', 'quote-summary', 'compact', 'quote-wall'];
-const fields:readonly WidgetField[]=['totalAssets','dailyPnl','quote','changePercent'];
-const fieldLabels:Record<WidgetField,string>={totalAssets:'總資產',dailyPnl:'當日損益',quote:'行情',changePercent:'漲跌%'};
+const fields:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
+const fieldLabels:Record<WidgetField,string>={
+  appName:'App 名稱',totalAssets:'總資產',marketValue:'持股總市值',cash:'現金',unrealizedPnl:'未實現損益',realizedPnl:'已實現損益',
+  dividendIncome:'股息收入',totalReturn:'總報酬',symbol:'ETF 代號',name:'ETF 名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',
+  shares:'股數',avgCost:'成本均價',holdingMarketValue:'單檔市值',pnl:'持股損益',roi:'報酬%',comprehensivePnl:'含息損益',
+  marketStatus:'市場狀態',updatedAt:'最後更新',dailyPnl:'當日損益',quote:'行情'
+};
 const effects:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const effectLabels:Record<WidgetEffect,string>={none:'無',fade:'淡入',pulse:'脈衝', 'flash-on-change':'變動閃爍'};
 const sortKeys:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
@@ -32,9 +37,8 @@ const palette=['#FFFFFF','#F8FAFC','#0F172A','#0066FF','#EF4444','#10B981','#647
 
 export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
   const previewHolding=sortWidgetHoldings(previewSnapshot,value)[0];
-  const previewTotal=previewSnapshot?.asset.totalAssets;
+  const previewLines=value.fields.slice(0,6).map(field=>widgetFieldText(previewSnapshot,previewHolding,field));
   const previewPct=previewHolding?.changePercent;
-  const previewPrice=previewHolding?.price;
   const previewTone=(previewPct??0)>=0?value.style.gainColor:value.style.lossColor;
   const patch=(patch:Partial<WidgetConfig>)=>onChange({...value,...patch});
   const patchStyle=(stylePatch:Partial<WidgetConfig['style']>)=>patch({style:{...value.style,...stylePatch}});
@@ -72,14 +76,14 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
 
     <Section title="即時預覽">
       <View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
-        <Text style={{color:value.style.textColor,fontWeight:'900',fontSize:14*value.style.titleFontScale,textAlign:value.style.textAlign}}>TF Asset</Text>
-        <Text style={{color:value.style.textColor,fontWeight:'900',fontSize:18*value.style.valueFontScale,textAlign:value.style.textAlign,marginTop:value.style.rowGap}}>{previewTotal==null?'等待資料':`NT$ ${Math.round(previewTotal).toLocaleString('zh-TW')}`}</Text>
-        <Text style={{color:previewTone,fontWeight:'800',fontSize:12*value.style.fontScale,textAlign:value.style.textAlign,marginTop:value.style.rowGap}}>{previewHolding&&previewPrice!=null?`${previewHolding.symbol}  ${previewPrice.toFixed(2)}  ${previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}`:'尚無行情'}</Text>
+        {previewLines.map((line,index)=><Text key={index} numberOfLines={1} style={{color:line.profit?previewTone:value.style.textColor,fontWeight:index===0?'900':'800',fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale),textAlign:value.style.textAlign,marginTop:index===0?0:value.style.rowGap}}>{line.text}</Text>)}
+        {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
       </View>
+      <Text style={styles.note}>2×2 桌面尺寸最多顯示前 6 個已選項目；所有項目皆可選，順序由上／下調整控制。</Text>
     </Section>
 
     <Section title="尺寸與模板">
-      <Choice choices={sizes} value={value.size} label={x=>x==='small'?'小型':x==='large'?'大型':'中型'} onChange={size=>patch({size})}/>
+      <Choice choices={sizes} value={value.size} label={x=>x==='2x2'?'2×2':x==='small'?'小型':x==='large'?'大型':'中型'} onChange={size=>patch({size})}/>
       <Choice choices={templates} value={value.template} label={x=>x==='asset-summary'?'資產摘要':x==='quote-summary'?'行情摘要':x==='quote-wall'?'行情牆':'精簡'} onChange={template=>patch({template})}/>
       <Choice choices={['home','portfolio','dividend'] as const} value={value.tapTarget} label={x=>x==='home'?'首頁':x==='portfolio'?'庫存':'股息'} onChange={tapTarget=>patch({tapTarget})}/>
     </Section>
@@ -175,3 +179,36 @@ const styles = StyleSheet.create({
   symbolWrap:{flexDirection:'row',gap:6,flexWrap:'wrap'},
   symbolChip:{paddingHorizontal:8,paddingVertical:6,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
 });
+
+
+function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField):{text:string;profit:boolean}{
+  const asset=snapshot?.asset;
+  const money=(v:number|undefined)=>v==null?'--':Math.round(v).toLocaleString('zh-TW');
+  const signedMoney=(v:number|undefined)=>v==null?'--':`${v>=0?'+':''}${Math.round(v).toLocaleString('zh-TW')}`;
+  const signed2=(v:number|null|undefined,suffix='')=>v==null?'--':`${v>=0?'+':''}${v.toFixed(2)}${suffix}`;
+  switch(field){
+    case 'appName':return {text:'TF Asset',profit:false};
+    case 'totalAssets':return {text:`總資產 NT$ ${money(asset?.totalAssets)}`,profit:false};
+    case 'marketValue':return {text:`總市值 NT$ ${money(asset?.marketValue)}`,profit:false};
+    case 'cash':return {text:`現金 NT$ ${money(asset?.cash)}`,profit:false};
+    case 'unrealizedPnl':return {text:`未實現 ${signedMoney(asset?.unrealizedPnl)}`,profit:true};
+    case 'realizedPnl':return {text:`已實現 ${signedMoney(asset?.realizedPnl)}`,profit:true};
+    case 'dividendIncome':return {text:`股息 ${money(asset?.dividendIncome)}`,profit:false};
+    case 'totalReturn':return {text:`總報酬 ${signedMoney(asset?.totalReturn)}`,profit:true};
+    case 'symbol':return {text:holding?.symbol??'--',profit:false};
+    case 'name':return {text:holding?.name??'--',profit:false};
+    case 'price':return {text:`價格 ${holding?.price==null?'--':holding.price.toFixed(2)}`,profit:false};
+    case 'change':return {text:`漲跌 ${signed2(holding?.change)}`,profit:true};
+    case 'changePercent':return {text:`漲跌% ${signed2(holding?.changePercent,'%')}`,profit:true};
+    case 'shares':return {text:`股數 ${holding?Math.round(holding.shares).toLocaleString('zh-TW'):'--'}`,profit:false};
+    case 'avgCost':return {text:`成本均 ${holding?holding.avgCost.toFixed(2):'--'}`,profit:false};
+    case 'holdingMarketValue':return {text:`單檔市值 ${money(holding?.marketValue)}`,profit:false};
+    case 'pnl':return {text:`持股損益 ${signedMoney(holding?.pnl)}`,profit:true};
+    case 'roi':return {text:`報酬% ${holding?signed2(holding.roi,'%'):'--'}`,profit:true};
+    case 'comprehensivePnl':return {text:`含息損益 ${signedMoney(holding?.comprehensivePnl)}`,profit:true};
+    case 'marketStatus':return {text:`狀態 ${holding?.marketStatus??'--'}`,profit:false};
+    case 'updatedAt':return {text:`更新 ${holding?.updatedAt?new Date(holding.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}`,profit:false};
+    case 'dailyPnl':return {text:`當日損益 ${signed2(holding?.change)}`,profit:true};
+    case 'quote':return {text:holding?`${holding.symbol} ${holding.price?.toFixed(2)??'--'} ${signed2(holding.changePercent,'%')}`:'尚無行情',profit:true};
+  }
+}
