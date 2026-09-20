@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
 import {
-  DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,
-  type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorSortKey,type MonitorStyle,
+  DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,DEFAULT_MINI_COLUMNS,DEFAULT_MINI_HEADER,
+  type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorSortKey,type MonitorStyle,type MiniColumnConfig,type MiniHeaderStyle,
 } from './monitorDomain';
 
 const STORAGE_KEY='@tf-asset/monitor-settings';
@@ -26,6 +26,33 @@ const normStyle=(s:Partial<MonitorStyle>|undefined,fallback:MonitorStyle):Monito
   rowGap:clamp(s?.rowGap,0,24,fallback.rowGap),padding:clamp(s?.padding,0,32,fallback.padding),
 });
 
+const normMiniHeader=(h:Partial<MiniHeaderStyle>|undefined):MiniHeaderStyle=>({
+  visible:h?.visible??DEFAULT_MINI_HEADER.visible,
+  height:clamp(h?.height,22,56,DEFAULT_MINI_HEADER.height),
+  backgroundColor:color(h?.backgroundColor,DEFAULT_MINI_HEADER.backgroundColor),
+  backgroundOpacity:clamp(h?.backgroundOpacity,.1,1,DEFAULT_MINI_HEADER.backgroundOpacity),
+  textColor:color(h?.textColor,DEFAULT_MINI_HEADER.textColor),
+  fontScale:clamp(h?.fontScale,.7,1.6,DEFAULT_MINI_HEADER.fontScale),
+  borderColor:color(h?.borderColor,DEFAULT_MINI_HEADER.borderColor),
+  borderWidth:clamp(h?.borderWidth,0,4,DEFAULT_MINI_HEADER.borderWidth),
+});
+const normMiniColumns=(columns:readonly Partial<MiniColumnConfig>[]|undefined):readonly MiniColumnConfig[]=>{
+  const input=Array.isArray(columns)?columns:[];
+  const map=new Map(input.map(column=>[column.field,column]));
+  return DEFAULT_MINI_COLUMNS.map(defaultColumn=>{
+    const column=map.get(defaultColumn.field);
+    return {
+      field:defaultColumn.field,
+      enabled:column?.enabled??defaultColumn.enabled,
+      widthPercent:clamp(column?.widthPercent,10,60,defaultColumn.widthPercent),
+      align:column?.align==='center'||column?.align==='right'?column.align:'left',
+      fontScale:clamp(column?.fontScale,.7,1.6,defaultColumn.fontScale),
+      useProfitColor:column?.useProfitColor??defaultColumn.useProfitColor,
+      label:typeof column?.label==='string'&&column.label.trim()?column.label.trim().slice(0,8):defaultColumn.label,
+    };
+  });
+};
+
 function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
   const normal=input?.normalLayout, mini=input?.miniLayout;
   const fields=Array.isArray(input?.fields)?input.fields.filter((x):x is MonitorField=>VALID_FIELDS.includes(x as MonitorField)):[...DEFAULT_MONITOR_CONFIG.fields];
@@ -37,8 +64,10 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
     selectedSymbols:strings(input?.selectedSymbols),showBreathingLight:input?.showBreathingLight??true,
     alertChangePct:Number.isFinite(Number(input?.alertChangePct))?Math.max(0,Number(input?.alertChangePct)):null,
     normalLayout:{x:clamp(normal?.x,-2000,2000,16),y:clamp(normal?.y,-2000,2000,120),width:clamp(normal?.width,120,1200,320),height:clamp(normal?.height,56,1600,420)},
-    miniLayout:{x:clamp(mini?.x,-2000,2000,16),y:clamp(mini?.y,-2000,2000,120),width:clamp(mini?.width,120,600,180),height:clamp(mini?.height,56,300,72)},
+    miniLayout:{x:clamp(mini?.x,-2000,2000,16),y:clamp(mini?.y,-2000,2000,120),width:clamp(mini?.width,220,900,360),height:clamp(mini?.height,120,800,330)},
     normalStyle:normStyle(input?.normalStyle,DEFAULT_MONITOR_STYLE),miniStyle:normStyle(input?.miniStyle,DEFAULT_MONITOR_CONFIG.miniStyle),
+    miniHeader:normMiniHeader(input?.miniHeader),
+    miniColumns:normMiniColumns(input?.miniColumns),
     effects:{
       refresh:VALID_EFFECTS.includes(effects?.refresh as MonitorEffect)?effects!.refresh:DEFAULT_MONITOR_EFFECTS.refresh,
       gain:VALID_EFFECTS.includes(effects?.gain as MonitorEffect)?effects!.gain:DEFAULT_MONITOR_EFFECTS.gain,
