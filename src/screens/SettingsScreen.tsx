@@ -322,11 +322,11 @@ export function SettingsScreen(){
         <StatusRow label="設定模式" value={monitor.config.mode==='mini'?'Mini':'Normal'}/>
         <StatusRow label="Native 實際模式" value={nativeMonitorStatus?.mode==='mini'?'Mini':nativeMonitorStatus?.mode==='normal'?'Normal':'--'}/>
         <StatusRow label="Mini 尺寸" value={monitor.config.miniLayout.width+' × '+monitor.config.miniLayout.height}/>
-        <Text style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。</Text>
+        <Text style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。Mini 固定採清單顯示，列數不設上限；內容超過可視高度時由浮窗內部垂直滑動。</Text>
       </Panel>:null}
       <ChildButton label="共用模板" summary={monitor.config.template} active={monitorPanel==='template'} onPress={()=>setMonitorPanel(monitorPanel==='template'?null:'template')}/>
       {monitorPanel==='template'?<Panel title="共用模板">
-        <ChoiceRow label="Normal 顯示模式" options={[{key:'portfolio',label:'投資組合'},{key:'quotes',label:'行情列'},{key:'compact',label:'極簡'},{key:'single',label:'單檔大行情'},{key:'dual',label:'雙檔行情'},{key:'advanced',label:'進階資訊'}]} value={monitor.config.template} onChange={template=>monitor.setConfig({...monitor.config,template:(['portfolio','quotes','compact','single','dual','advanced'].includes(template)?template:'portfolio') as typeof monitor.config.template})}/>
+        <ChoiceRow label="Normal 顯示模式" options={[{key:'portfolio',label:'投資組合'},{key:'quotes',label:'行情列'},{key:'compact',label:'極簡'},{key:'single',label:'單檔大行情'},{key:'dual',label:'雙檔行情'},{key:'advanced',label:'進階資訊'},{key:'market-wall',label:'行情牆'},{key:'heatmap',label:'漲跌熱圖'},{key:'pnl-wall',label:'損益牆'},{key:'weight-wall',label:'資產權重牆'},{key:'ticker',label:'跑馬行情'},{key:'terminal',label:'純文字終端'}]} value={monitor.config.template} onChange={template=>monitor.setConfig({...monitor.config,template:(['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'].includes(template)?template:'portfolio') as typeof monitor.config.template})}/>
       </Panel>:null}
       <ChildButton label="損益顏色" summary={settings.prefs.display.profitColorMode==='red-up-green-down'?'紅漲綠跌':'綠漲紅跌'} active={monitorPanel==='colors'} onPress={()=>setMonitorPanel(monitorPanel==='colors'?null:'colors')}/>
       {monitorPanel==='colors'?<ProfitColorPanel/>:null}
