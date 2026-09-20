@@ -1,12 +1,13 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  activeMonitorFields,activeMonitorLayout,activeMonitorStyle,restoreNormalMonitor,setMonitorMode,
+  activeMonitorFields,activeMonitorLayout,activeMonitorStyle,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
   updateActiveMonitorLayout,updateActiveMonitorStyle,updateMonitorFields,
   type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,
 } from '../../monitor/monitorDomain';
+import type { SharedSnapshot } from '../../domain/snapshot';
 import { colors, radius, spacing } from '../../theme/tokens';
 
-type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[]};
+type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[];previewSnapshot?:SharedSnapshot|null};
 const fields:readonly MonitorField[]=['symbol','price','changePercent','marketValue','pnl'];
 const labels:Record<MonitorField,string>={symbol:'代號',price:'價格',changePercent:'漲跌%',marketValue:'市值',pnl:'損益'};
 const effects:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change'];
@@ -15,8 +16,14 @@ const sorts:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'
 const sortLabels:Record<MonitorSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
 const palette=['#0F172A','#FFFFFF','#F8FAFC','#0066FF','#EF4444','#10B981','#64748B','#F59E0B'];
 
-export function MonitorControlPanel({value,onChange,availableSymbols=[]}:Props){
+export function MonitorControlPanel({value,onChange,availableSymbols=[],previewSnapshot=null}:Props){
   const layout=activeMonitorLayout(value),style=activeMonitorStyle(value),activeFields=activeMonitorFields(value);
+  const previewHolding=sortMonitorHoldings(previewSnapshot,value)[0];
+  const previewSymbol=previewHolding?.symbol??'--';
+  const previewName=previewHolding?.name??'等待資料';
+  const previewPrice=previewHolding?.price;
+  const previewPct=previewHolding?.changePercent;
+  const previewTone=(previewPct??0)>=0?style.gainColor:style.lossColor;
   const patch=(p:Partial<MonitorConfig>)=>onChange({...value,...p});
   const patchLayout=(p:Partial<typeof layout>)=>onChange(updateActiveMonitorLayout(value,p));
   const patchStyle=(p:Partial<typeof style>)=>onChange(updateActiveMonitorStyle(value,p));
@@ -33,9 +40,9 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[]}:Props){
       <Choice choices={['normal','mini'] as const} value={value.mode} label={x=>x==='normal'?'Normal':'Mini'} onChange={(mode:MonitorMode)=>onChange(setMonitorMode(value,mode))}/>
       {value.mode==='mini'?<Pressable onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
       <View style={[styles.preview,{width:'100%',minHeight:value.mode==='mini'?72:130,backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
-        <Text style={{fontSize:13*style.titleFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign}}>00878 國泰永續高股息</Text>
-        <Text style={{fontSize:18*style.valueFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign,marginTop:style.rowGap}}>22.68</Text>
-        <Text style={{fontSize:11*style.fontScale,fontWeight:'800',color:style.gainColor,textAlign:style.textAlign,marginTop:style.rowGap}}>+0.41%</Text>
+        <Text style={{fontSize:13*style.titleFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign}}>{previewSymbol} {previewName}</Text>
+        <Text style={{fontSize:18*style.valueFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPrice==null?'等待資料':previewPrice.toFixed(2)}</Text>
+        <Text style={{fontSize:11*style.fontScale,fontWeight:'800',color:previewTone,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}</Text>
       </View>
     </Section>
 
