@@ -205,7 +205,11 @@ export function LedgerScreen() {
             {ordered.slice(0,20).map(row=><View key={row.id} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
               <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
-              <View style={{flex:1}}><Text style={styles.symbolStrong}>{'symbol' in row?row.symbol:row.label}</Text>{row.kind==='buy'||row.kind==='sell'?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}</View>
+              <View style={{flex:1}}>
+                <Text style={styles.symbolStrong}>{'symbol' in row?row.symbol:row.label}</Text>
+                {'symbol' in row?<Text style={styles.symbolName} numberOfLines={1}>{row.name}</Text>:null}
+                {row.kind==='buy'||row.kind==='sell'?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
+              </View>
               <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Pressable onPress={()=>finance.deleteEntry(row.id)}><Text style={styles.delete}>刪除</Text></Pressable></View>
             </View>)}
           </FrameCard>
@@ -397,6 +401,7 @@ const styles=StyleSheet.create({
   cell:{fontSize:11,color:colors.text},
   kindCell:{width:38,fontSize:11,fontWeight:'900'},
   symbolStrong:{fontSize:12,fontWeight:'900',color:colors.text},
+  symbolName:{fontSize:10,fontWeight:'700',color:colors.textSecondary,marginTop:2},
   rowRight:{alignItems:'flex-end'},
   amount:{fontSize:11,fontWeight:'900',color:colors.text},
   fee:{fontSize:9,color:colors.textSecondary,marginTop:2},
