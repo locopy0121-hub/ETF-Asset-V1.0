@@ -19,8 +19,9 @@
     "test:calculator": "tsx scripts/calculator-v378.test.ts",
     "test:ledger-ui": "node scripts/ledger-input-contract.test.cjs",
     "test:runtime": "node scripts/finance-runtime-contract.test.cjs",
+    "test:market": "tsx scripts/market-runtime.test.ts",
     "test:boundary": "node scripts/project-boundary.test.cjs",
-    "test:v102": "npm run test:boundary && npm run test:finance && npm run test:calculator && npm run test:portfolio && npm run test:ledger-ui && npm run test:runtime && npm run test:ui && npm run test:plugins && npm run test:editor"
+    "test:v102": "npm run test:boundary && npm run test:finance && npm run test:calculator && npm run test:portfolio && npm run test:ledger-ui && npm run test:runtime && npm run test:market && npm run test:ui && npm run test:plugins && npm run test:editor"
   },
   "dependencies": {
     "expo": "~57.0.21",
