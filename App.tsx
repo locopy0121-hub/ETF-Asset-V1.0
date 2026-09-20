@@ -8,6 +8,7 @@ import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
 import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/finance/BrokerSettingsRuntime';
 import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
+import { MonitorSettingsRuntimeProvider, useMonitorSettingsRuntime } from './src/monitor/MonitorSettingsRuntime';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -21,6 +22,7 @@ export default function App() {
   return <SafeAreaProvider>
     <MarketRuntimeProvider>
       <SettingsRuntimeProvider>
+      <MonitorSettingsRuntimeProvider>
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
@@ -29,6 +31,7 @@ export default function App() {
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>
+      </MonitorSettingsRuntimeProvider>
       </SettingsRuntimeProvider>
     </MarketRuntimeProvider>
   </SafeAreaProvider>;
@@ -39,6 +42,7 @@ function AppBody(){
   const market=useMarketRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
+  const monitorSettings=useMonitorSettingsRuntime();
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
@@ -56,7 +60,7 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!monitorSettings.hydrated||!editor.hydrated){
     return <View style={styles.loading}>
       <ActivityIndicator size="large" color={colors.primary}/>
       <Text style={styles.loadingTitle}>TF Asset</Text>
