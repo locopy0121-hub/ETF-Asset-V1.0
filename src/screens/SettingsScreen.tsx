@@ -45,8 +45,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.5';
-const BUILD='10005';
+const VERSION='1.0.6';
+const BUILD='10006';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -356,8 +356,8 @@ export function SettingsScreen(){
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
       <ChildButton label="更新資訊" summary="設定控制中心 8 大主區塊" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.5 更新資訊">
-        <Text style={styles.infoText}>Widget / Monitor Runtime 完整化：新增尺寸、字體、顏色、透明度、特效、欄位與 ETF 排序、Normal / Mini 隔離、Android 桌面 Widget 與 Floating Monitor 原生橋接。</Text>
+      {appPanel==='updates'?<Panel title="V1.0.6 更新資訊">
+        <Text style={styles.infoText}>持股完整性與版型升級：離線/缺行情時仍保留 Ledger 全部持股；首頁與庫存新增單欄、雙欄、三欄、橫向滑動與雙欄分頁滑動。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
