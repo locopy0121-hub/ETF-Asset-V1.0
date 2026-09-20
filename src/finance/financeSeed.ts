@@ -1,5 +1,10 @@
-import { freezeTradeEntry, type CanonicalLedgerEntry } from './canonicalLedger';
-import type { RuntimeQuote } from './FinanceRuntime';
+import { freezeTradeEntry, type CanonicalLedgerEntry, type MarketQuoteInput } from './canonicalLedger';
+
+export type RuntimeQuote = MarketQuoteInput & Readonly<{
+  previousClose: number;
+  sparkline: readonly number[];
+  pinned?: boolean;
+}>;
 
 export const INITIAL_CASH=750_000;
 

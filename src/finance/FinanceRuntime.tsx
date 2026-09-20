@@ -15,19 +15,12 @@ import {
   freezeTradeEntry,
   type CanonicalLedgerEntry,
   type DividendLedgerEntry,
-  type MarketQuoteInput,
   type OtherCashLedgerEntry,
 } from './canonicalLedger';
-import { INITIAL_CASH, SEED_LEDGER, SEED_QUOTES } from './financeSeed';
+import { INITIAL_CASH, SEED_LEDGER, SEED_QUOTES, type RuntimeQuote } from './financeSeed';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=1;
-
-export type RuntimeQuote = MarketQuoteInput & Readonly<{
-  previousClose: number;
-  sparkline: readonly number[];
-  pinned?: boolean;
-}>;
 
 type PersistedFinanceState = {
   schema: number;
