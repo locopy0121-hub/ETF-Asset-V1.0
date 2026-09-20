@@ -9,6 +9,7 @@ import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/f
 import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { MonitorSettingsRuntimeProvider, useMonitorSettingsRuntime } from './src/monitor/MonitorSettingsRuntime';
+import { WidgetSettingsRuntimeProvider, useWidgetSettingsRuntime } from './src/widget/WidgetSettingsRuntime';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -23,6 +24,7 @@ export default function App() {
     <MarketRuntimeProvider>
       <SettingsRuntimeProvider>
       <MonitorSettingsRuntimeProvider>
+      <WidgetSettingsRuntimeProvider>
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
@@ -31,6 +33,7 @@ export default function App() {
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>
+      </WidgetSettingsRuntimeProvider>
       </MonitorSettingsRuntimeProvider>
       </SettingsRuntimeProvider>
     </MarketRuntimeProvider>
@@ -43,6 +46,7 @@ function AppBody(){
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
   const monitorSettings=useMonitorSettingsRuntime();
+  const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
@@ -60,7 +64,7 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!monitorSettings.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated){
     return <View style={styles.loading}>
       <ActivityIndicator size="large" color={colors.primary}/>
       <Text style={styles.loadingTitle}>TF Asset</Text>
