@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +18,7 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
+import { syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
@@ -50,6 +51,18 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+
+  useEffect(()=>{
+    if(!finance.hydrated||!widgetSettings.hydrated)return;
+    void syncNativeWidget(widgetSettings.config,finance.sharedSnapshot);
+  },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config]);
+
+  useEffect(()=>{
+    if(!finance.hydrated||!monitorSettings.hydrated)return;
+    void syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot);
+    if(monitorSettings.config.enabled)void startNativeMonitor();
+    else void stopNativeMonitor();
+  },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config]);
 
   const openHolding=(holding:HoldingQuote)=>setDetail(holding);
   const screen=useMemo(()=>{
