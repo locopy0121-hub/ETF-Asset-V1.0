@@ -10,6 +10,7 @@ import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import { usePageEditor } from '../editor/pageEditor';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
@@ -24,9 +25,13 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const finance=useFinance();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [calculatorOpen,setCalculatorOpen]=useState(false);
-  const [viewMode,setViewMode]=useState<ViewMode>('list');
-  const [quoteStyle,setQuoteStyle]=useState<QuoteModuleStyle>('chart');
-  const [sortKey,setSortKey]=useState<HoldingSortKey>('manual');
+  const editor=usePageEditor('portfolio');
+  const viewMode=(editor.displayConfig.portfolioViewMode??'list') as ViewMode;
+  const quoteStyle=(editor.displayConfig.quoteStyle??'chart') as QuoteModuleStyle;
+  const sortKey=(editor.displayConfig.sortKey??'manual') as HoldingSortKey;
+  const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
+  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
+  const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
 
