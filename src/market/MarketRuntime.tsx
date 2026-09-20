@@ -14,7 +14,7 @@ import {
   useState,
 } from 'react';
 
-import { SEED_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
+import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 
 export type MarketPhase = 'live' | 'afterHours' | 'offline';
 export type MarketSource = 'TWSE';
@@ -64,7 +64,7 @@ type MarketRuntimeValue = {
 
 const STORAGE_KEY='@tf-asset/market-runtime';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
-const FALLBACK_CATALOG:EtfCatalogItem[]=SEED_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'}));
+const FALLBACK_CATALOG:EtfCatalogItem[]=FALLBACK_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'}));
 
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
 const hhmm=(value:string)=>{
@@ -154,7 +154,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     if(price>0||existingPrice<=0)bySymbol.set(symbol,row);
   }
   return symbols.map(symbol=>{
-    const old=previous.find(x=>x.symbol===symbol)??SEED_QUOTES.find(x=>x.symbol===symbol);
+    const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
     const row=bySymbol.get(symbol);
     const currentPrice=num(row?.z)||num(row?.y)||old?.currentPrice||0;
     const previousClose=num(row?.y)||old?.previousClose||currentPrice;
@@ -175,8 +175,8 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
-  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[...SEED_QUOTES]);
-  const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>(()=>SEED_QUOTES.map(x=>x.symbol));
+  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[...FALLBACK_QUOTES]);
+  const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>(()=>FALLBACK_QUOTES.map(x=>x.symbol));
   const [hydrated,setHydrated]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [lastSuccessAt,setLastSuccessAt]=useState<number|null>(null);
@@ -184,8 +184,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [catalog,setCatalog]=useState<EtfCatalogItem[]>(FALLBACK_CATALOG);
   const [catalogRefreshing,setCatalogRefreshing]=useState(false);
   const refreshingRef=useRef(false);
-  const quotesRef=useRef<RuntimeQuote[]>([...SEED_QUOTES]);
-  const symbolsRef=useRef<string[]>(SEED_QUOTES.map(x=>x.symbol));
+  const quotesRef=useRef<RuntimeQuote[]>([...FALLBACK_QUOTES]);
+  const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
 
   useEffect(()=>{
     let alive=true;
