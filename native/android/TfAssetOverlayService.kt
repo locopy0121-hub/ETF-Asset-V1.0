@@ -28,10 +28,14 @@ class TfAssetOverlayService:Service(){
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
   override fun onBind(intent:Intent?):IBinder?=null
   override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
-    if(!Settings.canDrawOverlays(this))return START_NOT_STICKY
+    if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);return START_NOT_STICKY}
     ensureView();render();return START_STICKY
   }
-  override fun onDestroy(){root?.let{runCatching{wm.removeView(it)}};root=null;super.onDestroy()}
+  override fun onDestroy(){
+    root?.let{runCatching{wm.removeView(it)}};root=null
+    writeRuntimeStatus(false,null)
+    super.onDestroy()
+  }
 
   private fun prefs()=getSharedPreferences("tf_asset_native",0)
   private fun readConfig()=runCatching{JSONObject(prefs().getString("monitor_config","{}")?:"{}")}.getOrElse{JSONObject()}
@@ -106,7 +110,10 @@ class TfAssetOverlayService:Service(){
     lastLayoutSignature=mode+"|"+layout.toString()
     render()
   }
-  private fun savePosition(x:Int,y:Int){prefs().edit().putInt("monitor_"+mode+"_x",x).putInt("monitor_"+mode+"_y",y).apply()}
+  private fun savePosition(x:Int,y:Int){
+    prefs().edit().putInt("monitor_"+mode+"_x",x).putInt("monitor_"+mode+"_y",y).apply()
+    writeRuntimeStatus(true,prefs().getString("monitor_display_symbol",null))
+  }
 
   private fun jsonStrings(array:JSONArray?):List<String>{
     if(array==null)return emptyList()
@@ -156,6 +163,8 @@ class TfAssetOverlayService:Service(){
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
     if(mode=="mini")renderMini(r,cfg,snap,style) else renderNormal(r,cfg,snap,style)
+    val first=orderedHoldings(snap,cfg).firstOrNull()
+    writeRuntimeStatus(true,first?.optString("symbol",""))
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
@@ -247,5 +256,18 @@ class TfAssetOverlayService:Service(){
   private fun signed2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%,.0f",v) else "--"}
   private fun signedInteger(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%,.0f",v) else "--"}
+  private fun writeRuntimeStatus(running:Boolean,symbol:String?){
+    val p=params
+    prefs().edit()
+      .putBoolean("monitor_running",running)
+      .putString("monitor_runtime_mode",mode)
+      .putInt("monitor_runtime_x",p?.x?:0)
+      .putInt("monitor_runtime_y",p?.y?:0)
+      .putInt("monitor_runtime_width",p?.width?:0)
+      .putInt("monitor_runtime_height",p?.height?:0)
+      .putLong("monitor_last_sync_at",System.currentTimeMillis())
+      .putString("monitor_display_symbol",symbol?:"")
+      .apply()
+  }
   private fun color(value:String,fallback:Int)=runCatching{Color.parseColor(value)}.getOrDefault(fallback)
 }
