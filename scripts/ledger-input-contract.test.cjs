@@ -31,6 +31,8 @@ assert.match(src,/selectedInstrument/,'selected ETF must show its resolved name 
 assert.match(src,/instrument\.symbol/,'selected ETF display must include the symbol');
 assert.match(src,/instrument\.name/,'selected ETF display must include the ETF name');
 assert.match(src,/suggestionList/,'ETF prefix suggestions must render directly in the symbol input block');
+assert.match(src,/row\.name/,'ledger transaction rows must show the persisted ETF name');
+assert.match(src,/symbolName/,'ledger transaction rows must render ETF name styling');
 assert.match(core,/actualFee == null \? estimate\.commission/,'missing frozen actualFee default');
 assert.match(core,/actualTax == null \? estimated\.tax/,'missing frozen actualTax default');
 console.log('TF_ASSET_LEDGER_INPUT_CONTRACT: PASS');
