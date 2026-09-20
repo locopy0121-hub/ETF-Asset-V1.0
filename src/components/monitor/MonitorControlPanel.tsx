@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   activeMonitorFields,activeMonitorLayout,activeMonitorStyle,enabledMiniColumns,moveMiniColumn,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
   updateActiveMonitorLayout,updateActiveMonitorStyle,updateMiniColumn,updateMiniHeader,updateMonitorFields,
-  type MiniColumnConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,
+  type MiniColumnConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,type MonitorTemplate,
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
 import { DISPLAY_PALETTES } from '../../theme/displayPalettes';
@@ -41,6 +41,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
 
     <Section title="模式與即時預覽">
       <Choice choices={['normal','mini'] as const} value={value.mode} label={x=>x==='normal'?'Normal':'Mini'} onChange={(mode:MonitorMode)=>onChange(setMonitorMode(value,mode))}/>
+      {value.mode==='normal'?<Choice choices={['portfolio','quotes','compact','single','dual','advanced'] as const} value={value.template} label={(x:MonitorTemplate)=>x==='portfolio'?'投資組合':x==='quotes'?'行情列':x==='compact'?'極簡':x==='single'?'單檔大行情':x==='dual'?'雙檔行情':'進階資訊'} onChange={template=>patch({template})}/>:null}
       {value.mode==='mini'?<Pressable onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
       {value.mode==='mini'
         ?<View style={[styles.preview,{width:'100%',backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
