@@ -22,7 +22,7 @@ import {
 
 const STORAGE_KEY='@tf-asset/widget-settings';
 const VALID_FIELDS:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
-const VALID_TEMPLATES:readonly WidgetTemplate[]=['asset-summary','quote-summary','compact','quote-wall'];
+const VALID_TEMPLATES:readonly WidgetTemplate[]=['asset-summary','quote-summary','compact','advanced','minimal','transparent','quote-wall'];
 const VALID_EFFECTS:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const VALID_SORTS:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
 const clamp=(value:unknown,min:number,max:number,fallback:number)=>{
