@@ -9,6 +9,7 @@ const detail=fs.readFileSync('src/screens/HoldingDetailScreen.tsx','utf8');
 const demo=fs.readFileSync('src/data/demoData.ts','utf8');
 const financeRuntime=fs.readFileSync('src/finance/FinanceRuntime.tsx','utf8');
 const financeSeed=fs.readFileSync('src/finance/financeSeed.ts','utf8');
+const sharedAdapter=fs.readFileSync('src/finance/sharedSnapshotAdapter.ts','utf8');
 
 assert.match(app,/FinanceProvider/,'app must mount canonical finance runtime');
 for(const row of [['home',home],['portfolio',portfolio],['dividend',dividend],['detail',detail]]) {
@@ -23,4 +24,7 @@ assert.ok(!demo.includes('DEMO_DIVIDENDS'),'legacy demo dividends must be remove
 assert.ok(!financeRuntime.includes('FALLBACK_QUOTES'),'FinanceRuntime must never consume static fallback quotes directly');
 assert.ok(!financeRuntime.includes('SEED_QUOTES'),'FinanceRuntime must never consume seed quotes as market truth');
 assert.match(financeSeed,/FALLBACK_QUOTES/,'static quotes must be explicitly named fallback');
+assert.match(financeRuntime,/sharedSnapshot/,'FinanceRuntime must expose canonical SharedSnapshot');
+assert.match(financeRuntime,/buildSharedSnapshot/,'SharedSnapshot must be built only after canonical finance snapshot');
+assert.match(sharedAdapter,/source:'canonical-finance-core'/,'SharedSnapshot must declare canonical finance core source');
 console.log('TF_ASSET_FINANCE_RUNTIME: PASS');
