@@ -21,7 +21,7 @@ import {
 } from './widgetDomain';
 
 const STORAGE_KEY='@tf-asset/widget-settings';
-const VALID_FIELDS:readonly WidgetField[]=['totalAssets','dailyPnl','quote','changePercent'];
+const VALID_FIELDS:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
 const VALID_TEMPLATES:readonly WidgetTemplate[]=['asset-summary','quote-summary','compact','quote-wall'];
 const VALID_EFFECTS:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const VALID_SORTS:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
@@ -33,7 +33,7 @@ const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-F
 const uniqueStrings=(value:unknown)=>Array.isArray(value)?Array.from(new Set(value.map(x=>String(x).trim().toUpperCase()).filter(Boolean))):[];
 
 function normalize(input:Partial<WidgetConfig>|null|undefined):WidgetConfig{
-  const size=input?.size==='small'||input?.size==='large'?input.size:'medium';
+  const size=input?.size==='small'||input?.size==='medium'||input?.size==='large'?input.size:'2x2';
   const template=VALID_TEMPLATES.includes(input?.template as WidgetTemplate)?input!.template as WidgetTemplate:'asset-summary';
   const style=input?.style;
   const effects=input?.effects;
