@@ -5,6 +5,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
+import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/finance/BrokerSettingsRuntime';
 import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { DividendScreen } from './src/screens/DividendScreen';
@@ -18,12 +19,14 @@ import { colors, spacing } from './src/theme/tokens';
 export default function App() {
   return <SafeAreaProvider>
     <MarketRuntimeProvider>
+      <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
         <StatusBar barStyle="dark-content"/>
         <AppBody/>
       </PageEditorProvider>
       </FinanceProvider>
+      </BrokerSettingsRuntimeProvider>
     </MarketRuntimeProvider>
   </SafeAreaProvider>;
 }
@@ -31,6 +34,7 @@ export default function App() {
 function AppBody(){
   const finance=useFinance();
   const market=useMarketRuntime();
+  const brokerSettings=useBrokerSettingsRuntime();
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
@@ -48,7 +52,7 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!editor.hydrated){
     return <View style={styles.loading}>
       <ActivityIndicator size="large" color={colors.primary}/>
       <Text style={styles.loadingTitle}>TF Asset</Text>
