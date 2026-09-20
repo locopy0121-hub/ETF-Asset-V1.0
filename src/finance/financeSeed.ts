@@ -8,7 +8,8 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
 
 export const INITIAL_CASH=750_000;
 
-export const SEED_QUOTES:readonly RuntimeQuote[]=[
+/** Emergency/cache bootstrap only. Never treat these values as live market truth. */
+export const FALLBACK_QUOTES:readonly RuntimeQuote[]=[
   {symbol:'0050',name:'元大台灣50',currentPrice:109.85,previousClose:108.65,liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,latestDividendPerShare:1.05,pinned:true,sparkline:[104.8,105.2,104.9,106.1,107.4,108.2,109.1,109.85]},
   {symbol:'00878',name:'國泰永續高股息',currentPrice:21.56,previousClose:21.64,liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,latestDividendPerShare:0.4,sparkline:[21.7,21.66,21.61,21.58,21.6,21.55,21.57,21.56]},
   {symbol:'00919',name:'群益台灣精選高息',currentPrice:23.84,previousClose:23.69,liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,latestDividendPerShare:0.72,sparkline:[23.2,23.35,23.4,23.58,23.62,23.71,23.8,23.84]},
