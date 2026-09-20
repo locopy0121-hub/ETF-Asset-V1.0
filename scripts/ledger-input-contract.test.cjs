@@ -9,6 +9,12 @@ for(const label of ['買進','賣出','股息','其他','實際手續費','實�
   assert.ok(src.includes(label),'missing ledger UX: '+label);
 }
 assert.match(src,/DatePickerModal/,'ledger must use date selection flow');
+assert.match(src,/calendarGrid/,'ledger date picker must render a real calendar grid');
+assert.match(src,/\['日','一','二','三','四','五','六'\]/,'ledger date picker must render weekday headings');
+assert.match(src,/前一年/,'ledger date picker must support direct year navigation');
+assert.match(src,/上個月/,'ledger date picker must support direct month navigation');
+assert.match(src,/setSelectedDate\(viewYear,viewMonth,day\)/,'ledger date picker must allow selecting a calendar day');
+for(const shortcut of ['上月','前一天','今天','後一天','下月']) assert.ok(src.includes(shortcut),'missing date shortcut: '+shortcut);
 assert.match(src,/keyboardType/,'numeric inputs must request numeric keyboard');
 assert.match(src,/freezeTradeEntry/,'trade preview and commit must use canonical freeze function');
 assert.match(src,/已覆寫/,'manual fee/tax override state must be visible');
