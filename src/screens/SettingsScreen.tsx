@@ -37,7 +37,7 @@ import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOv
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
+type SystemPanel=null|'ai'|'market'|'permissions'|'diagnostics'|'notifications';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
 type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
@@ -143,6 +143,8 @@ export function SettingsScreen(){
 
   function systemSection(){
     return <View style={styles.children}>
+      <ChildButton label="AI 助理" summary={settings.prefs.ai.enabled?'已啟用 · 浮動入口可設定':'已關閉'} active={systemPanel==='ai'} onPress={()=>setSystemPanel(systemPanel==='ai'?null:'ai')}/>
+      {systemPanel==='ai'?<AiSettingsPanel/>:null}
       <ChildButton label="市場更新" summary={marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
       {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
@@ -400,6 +402,38 @@ export function SettingsScreen(){
       <ChildButton label="關於 TF Asset" summary={'Version '+VERSION} active={legalPanel==='about'} onPress={()=>setLegalPanel(legalPanel==='about'?null:'about')}/>
       {legalPanel==='about'?<Panel title="關於 TF Asset"><StatusRow label="名稱" value="TF Asset｜資產管家"/><StatusRow label="版本" value={VERSION}/><StatusRow label="核心原則" value="Single Source of Truth"/></Panel>:null}
     </View>;
+  }
+
+  function AiSettingsPanel(){
+    const a=settings.prefs.ai;
+    const pageOptions=([
+      {key:'home',label:'首頁'},
+      {key:'ledger',label:'記帳'},
+      {key:'portfolio',label:'庫存'},
+      {key:'dividend',label:'股息'},
+      {key:'ai',label:'AI'},
+      {key:'settings',label:'設定'},
+    ] as const);
+    const togglePage=(key:(typeof pageOptions)[number]['key'])=>{
+      const next=a.visiblePages.includes(key)?a.visiblePages.filter(x=>x!==key):[...a.visiblePages,key];
+      settings.patchAi({visiblePages:next});
+    };
+    return <Panel title="AI 助理設定">
+      <ToggleRow label="AI 總開關" value={a.enabled} onChange={enabled=>settings.patchAi({enabled})}/>
+      <ToggleRow label="顯示 AI 浮動按鈕" value={a.floatingButtonVisible} onChange={floatingButtonVisible=>settings.patchAi({floatingButtonVisible})}/>
+      <ToggleRow label="允許浮動對話框" value={a.floatingPanelVisible} onChange={floatingPanelVisible=>settings.patchAi({floatingPanelVisible})}/>
+      <Stepper label="浮動按鈕尺寸" value={Math.round(a.buttonSize)} min={40} max={88} step={4} suffix=" px" onChange={buttonSize=>settings.patchAi({buttonSize})}/>
+      <Stepper label="按鈕透明度" value={Math.round(a.buttonOpacity*100)} min={25} max={100} step={5} suffix="%" onChange={v=>settings.patchAi({buttonOpacity:v/100})}/>
+      <Stepper label="浮動視窗寬度" value={Math.round(a.panelWidth)} min={280} max={620} step={20} suffix=" px" onChange={panelWidth=>settings.patchAi({panelWidth})}/>
+      <Stepper label="浮動視窗高度" value={Math.round(a.panelHeight)} min={300} max={760} step={20} suffix=" px" onChange={panelHeight=>settings.patchAi({panelHeight})}/>
+      <Stepper label="浮動視窗透明度" value={Math.round(a.panelOpacity*100)} min={35} max={100} step={5} suffix="%" onChange={v=>settings.patchAi({panelOpacity:v/100})}/>
+      <ToggleRow label="鎖定浮動位置" value={a.positionLocked} onChange={positionLocked=>settings.patchAi({positionLocked})}/>
+      <ToggleRow label="拖移後吸附畫面邊緣" value={a.edgeSnap} onChange={edgeSnap=>settings.patchAi({edgeSnap})}/>
+      <ToggleRow label="AI 狀態提示點" value={a.statusDotVisible} onChange={statusDotVisible=>settings.patchAi({statusDotVisible})}/>
+      <Text style={styles.fieldLabel}>顯示頁面</Text>
+      <View style={styles.choiceWrap}>{pageOptions.map(page=><Pressable key={page.key} onPress={()=>togglePage(page.key)} style={[styles.choice,a.visiblePages.includes(page.key)&&styles.choiceActive]}><Text style={[styles.choiceText,a.visiblePages.includes(page.key)&&styles.choiceTextActive]}>{page.label}</Text></Pressable>)}</View>
+      <Text style={styles.note}>拖移位置會記住；視窗寬高在視窗右下角也可直接 Resize。鎖定位置只阻止拖移，不會鎖住 Resize。</Text>
+    </Panel>;
   }
 
   function NotificationPanel(){
