@@ -157,6 +157,7 @@ export function PageFrameSettingsModal({
                 {pageKey==='ledger'&&frame.key==='quick-entry'?<LedgerQuickEntryEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
                 {pageKey==='ledger'&&frame.key==='ledger-list'?<LedgerListEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
                 {pageKey==='portfolio'&&frame.key==='holding-view'?<PortfolioToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
+                {pageKey==='dividend'?<DividendToolsEditor frameKey={frame.key} value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
@@ -165,6 +166,32 @@ export function PageFrameSettingsModal({
       </ScrollView>
     </View>
   </Modal>;
+}
+
+function DividendToolsEditor({frameKey,value,onChange}:{frameKey:string;value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  if(frameKey==='dividend-summary')return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>股息摘要內容</Text>
+    <SwitchRow label="顯示股息 AI 問答" value={value.dividendAiVisible??true} onChange={dividendAiVisible=>onChange({dividendAiVisible})}/>
+    <Text style={styles.rule}>關閉只隱藏 AI 視覺區塊，不影響股息資料、入帳或 Finance Core。</Text>
+  </View>;
+  if(frameKey==='dividend-calendar')return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>股息月曆</Text>
+    <EditorRow title="日期格高度" subtitle={`${Math.round(value.dividendCalendarCellHeight??45)} px`}><NumberStep label="px" value={value.dividendCalendarCellHeight??45} min={32} max={88} step={2} onChange={dividendCalendarCellHeight=>onChange({dividendCalendarCellHeight})}/></EditorRow>
+    <EditorRow title="日期字體" subtitle={`${Math.round(value.dividendCalendarDayFontSize??12)} px`}><NumberStep label="px" value={value.dividendCalendarDayFontSize??12} min={9} max={20} step={1} onChange={dividendCalendarDayFontSize=>onChange({dividendCalendarDayFontSize})}/></EditorRow>
+    <EditorRow title="事件標記大小" subtitle={`${Math.round(value.dividendCalendarDotSize??5)} px`}><NumberStep label="px" value={value.dividendCalendarDotSize??5} min={3} max={12} step={1} onChange={dividendCalendarDotSize=>onChange({dividendCalendarDotSize})}/></EditorRow>
+    <SwitchRow label="顯示星期列" value={value.dividendCalendarWeekdayVisible??true} onChange={dividendCalendarWeekdayVisible=>onChange({dividendCalendarWeekdayVisible})}/>
+    <SwitchRow label="顯示事件標記" value={value.dividendCalendarEventDotsVisible??true} onChange={dividendCalendarEventDotsVisible=>onChange({dividendCalendarEventDotsVisible})}/>
+    <SwitchRow label="顯示狀態圖例" value={value.dividendCalendarLegendVisible??true} onChange={dividendCalendarLegendVisible=>onChange({dividendCalendarLegendVisible})}/>
+  </View>;
+  if(frameKey==='dividend-list')return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>股息清單</Text>
+    <EditorRow title="每筆上下留白" subtitle={`${Math.round(value.dividendListRowPadding??11)} px`}><NumberStep label="px" value={value.dividendListRowPadding??11} min={4} max={24} step={1} onChange={dividendListRowPadding=>onChange({dividendListRowPadding})}/></EditorRow>
+  </View>;
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>年度趨勢</Text>
+    <EditorRow title="圖表高度" subtitle={`${Math.round(value.dividendTrendHeight??108)} px`}><NumberStep label="px" value={value.dividendTrendHeight??108} min={80} max={220} step={4} onChange={dividendTrendHeight=>onChange({dividendTrendHeight})}/></EditorRow>
+    <EditorRow title="長條寬度" subtitle={`${Math.round(value.dividendTrendBarWidthPct??70)}%`}><NumberStep label="%" value={value.dividendTrendBarWidthPct??70} min={30} max={100} step={5} onChange={dividendTrendBarWidthPct=>onChange({dividendTrendBarWidthPct})}/></EditorRow>
+  </View>;
 }
 
 function LedgerQuickEntryEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
@@ -367,7 +394,8 @@ function hasContentTools(pageKey:MainPageKey,frameKey:string){
   return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))
     ||(pageKey==='ai'&&frameKey==='ai-news')
     ||(pageKey==='ledger'&&['quick-entry','ledger-list'].includes(frameKey))
-    ||(pageKey==='portfolio'&&frameKey==='holding-view');
+    ||(pageKey==='portfolio'&&frameKey==='holding-view')
+    ||(pageKey==='dividend'&&['dividend-summary','dividend-calendar','dividend-list','annual-trend'].includes(frameKey));
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);
