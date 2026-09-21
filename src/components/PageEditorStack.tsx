@@ -24,6 +24,7 @@ export function PageEditorStack({ pageKey, frames }: { pageKey: MainPageKey; fra
         key: item.key,
         layout: frameConfig?.layout ?? 'standard',
         appearance: frameConfig?.appearance ?? 'theme',
+        editorStyle:frameConfig,
       });
     })}
   </View>;
