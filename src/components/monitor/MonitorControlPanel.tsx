@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   activeMonitorFields,activeMonitorLayout,activeMonitorStyle,enabledMiniColumns,moveMiniColumn,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
-  updateActiveMonitorLayout,updateActiveMonitorStyle,updateMiniColumn,updateMiniHeader,updateMonitorFields,
+  updateActiveMonitorLayout,updateActiveMonitorStyle,updateMiniColumn,updateMiniHeader,updateMonitorFields,updateMonitorWall,
   type MiniColumnConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,type MonitorTemplate,
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
@@ -22,6 +22,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   const previewRows=sortMonitorHoldings(previewSnapshot,value);
   const previewHolding=previewRows[0];
   const miniColumns=enabledMiniColumns(value);
+  const wall=value.normalWall;
   const previewSymbol=previewHolding?.symbol??'--';
   const previewName=previewHolding?.name??'等待資料';
   const previewPrice=previewHolding?.price;
@@ -35,6 +36,10 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   const toggleField=(field:MonitorField)=>onChange(updateMonitorFields(value,activeFields.includes(field)?activeFields.filter(x=>x!==field):[...activeFields,field]));
   const moveField=(field:MonitorField,d:number)=>{const a=[...activeFields],i=a.indexOf(field),j=i+d;if(i<0||j<0||j>=a.length)return;const left=a[i]!;const right=a[j]!;a[i]=right;a[j]=left;onChange(updateMonitorFields(value,a));};
   const toggleSymbol=(symbol:string)=>{const selected=value.selectedSymbols.includes(symbol)?value.selectedSymbols.filter(x=>x!==symbol):[...value.selectedSymbols,symbol];patch({selectedSymbols:selected,sort:{...value.sort,manualSymbols:selected}});};
+  const patchWall=(next:typeof wall)=>onChange(updateMonitorWall(value,next));
+  const patchWallHeader=(p:Partial<typeof wall.header>)=>patchWall({...wall,header:{...wall.header,...p}});
+  const patchWallField=(field:typeof wall.fields[number]['field'],p:Partial<typeof wall.fields[number]>)=>patchWall({...wall,fields:wall.fields.map(x=>x.field===field?{...x,...p}:x)});
+  const moveWallField=(field:typeof wall.fields[number]['field'],d:number)=>{const a=[...wall.fields],i=a.findIndex(x=>x.field===field),j=i+d;if(i<0||j<0||j>=a.length)return;const t=a[i]!;a[i]=a[j]!;a[j]=t;patchWall({...wall,fields:a});};
 
   return <View style={styles.card}>
     <View style={styles.header}><View style={{flex:1}}><Text style={styles.title}>即時監控器編輯器</Text><Text style={styles.sub}>Normal / Mini 的尺寸與樣式完全分離；目前模式只修改目前模式。</Text></View><Pressable onPress={()=>patch({enabled:!value.enabled})} style={[styles.pill,value.enabled&&styles.pillActive]}><Text style={[styles.pillText,value.enabled&&styles.pillTextActive]}>{value.enabled?'已啟用':'未啟用'}</Text></Pressable></View>
@@ -92,6 +97,27 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
           <Step label="字體" value={Math.round(column.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniColumn(value,column.field,{fontScale:n/100}))}/>
           <Choice choices={['left','center','right'] as const} value={column.align} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={align=>onChange(updateMiniColumn(value,column.field,{align}))}/>
           <Toggle label="套用損益色" value={column.useProfitColor} onChange={useProfitColor=>onChange(updateMiniColumn(value,column.field,{useProfitColor}))}/>
+        </View>:null}
+      </View>)}
+    </Section>:null}
+
+    {value.mode==='normal'&&value.template==='market-wall'?<Section title="主體行情牆 A/B 編輯">
+      <Text style={styles.note}>與首頁持股行情牆採同一欄位契約；A 控制標題列，B 控制各欄位顯示、順序、對齊、字體與損益色。</Text>
+      <Toggle label="A 標題列顯示" value={wall.header.visible} onChange={visible=>patchWallHeader({visible})}/>
+      <Step label="A 標題列字體" value={Math.round(wall.header.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchWallHeader({fontScale:n/100})}/>
+      <Color label="A 標題列背景" value={wall.header.backgroundColor} onChange={backgroundColor=>patchWallHeader({backgroundColor})}/>
+      <Color label="A 標題列文字" value={wall.header.textColor} onChange={textColor=>patchWallHeader({textColor})}/>
+      {wall.fields.map((field,index)=><View key={field.field} style={styles.miniColumnCard}>
+        <View style={styles.orderRow}>
+          <Pressable onPress={()=>patchWallField(field.field,{enabled:!field.enabled})} style={[styles.choice,field.enabled&&styles.choiceActive]}><Text style={[styles.choiceText,field.enabled&&styles.choiceTextActive]}>{field.label}</Text></Pressable>
+          <Mini label="↑" onPress={()=>moveWallField(field.field,-1)}/><Mini label="↓" onPress={()=>moveWallField(field.field,1)}/>
+        </View>
+        <Text style={styles.positionHint}>B 第 {index+1} 欄 · {field.align==='left'?'靠左':field.align==='center'?'置中':'靠右'}</Text>
+        {field.enabled?<View style={{gap:6}}>
+          <TextInput value={field.label} onChangeText={label=>patchWallField(field.field,{label})} style={styles.input}/>
+          <Step label="字體" value={Math.round(field.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchWallField(field.field,{fontScale:n/100})}/>
+          <Choice choices={['left','center','right'] as const} value={field.align} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={align=>patchWallField(field.field,{align})}/>
+          <Toggle label="套用損益色" value={field.useProfitColor} onChange={useProfitColor=>patchWallField(field.field,{useProfitColor})}/>
         </View>:null}
       </View>)}
     </Section>:null}
