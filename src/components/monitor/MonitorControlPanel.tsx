@@ -5,7 +5,7 @@ import {
   type MiniColumnConfig,type MiniStatusItemConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,type MonitorTemplate,
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
-import { DISPLAY_PALETTES } from '../../theme/displayPalettes';
+import { ColorPalettePicker } from '../ColorPalettePicker';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[];previewSnapshot?:SharedSnapshot|null};
@@ -15,7 +15,6 @@ const effects:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change']
 const effectLabels:Record<MonitorEffect,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍'};
 const sorts:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
 const sortLabels:Record<MonitorSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
-const palette=['#0F172A','#FFFFFF','#F8FAFC','#0066FF','#EF4444','#10B981','#64748B','#F59E0B'];
 
 export function MonitorControlPanel({value,onChange,availableSymbols=[],previewSnapshot=null}:Props){
   const layout=activeMonitorLayout(value),style=activeMonitorStyle(value),activeFields=activeMonitorFields(value);
@@ -95,9 +94,9 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Toggle label="顯示項目列" value={value.miniHeader.visible} onChange={visible=>onChange(updateMiniHeader(value,{visible}))}/>
       <Step label="項目列高度" value={value.miniHeader.height} min={22} max={56} step={2} suffix=" px" onChange={height=>onChange(updateMiniHeader(value,{height}))}/>
       <Step label="項目列字體" value={Math.round(value.miniHeader.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniHeader(value,{fontScale:n/100}))}/>
-      <Color label="項目列背景" value={value.miniHeader.backgroundColor} onChange={backgroundColor=>onChange(updateMiniHeader(value,{backgroundColor}))}/>
-      <Color label="項目列文字" value={value.miniHeader.textColor} onChange={textColor=>onChange(updateMiniHeader(value,{textColor}))}/>
-      <Color label="項目列分隔線" value={value.miniHeader.borderColor} onChange={borderColor=>onChange(updateMiniHeader(value,{borderColor}))}/>
+      <ColorPalettePicker label="項目列背景" value={value.miniHeader.backgroundColor} onChange={backgroundColor=>onChange(updateMiniHeader(value,{backgroundColor}))}/>
+      <ColorPalettePicker label="項目列文字" value={value.miniHeader.textColor} onChange={textColor=>onChange(updateMiniHeader(value,{textColor}))}/>
+      <ColorPalettePicker label="項目列分隔線" value={value.miniHeader.borderColor} onChange={borderColor=>onChange(updateMiniHeader(value,{borderColor}))}/>
       <Step label="項目列分隔線" value={value.miniHeader.borderWidth} min={0} max={4} step={1} suffix=" px" onChange={borderWidth=>onChange(updateMiniHeader(value,{borderWidth}))}/>
     </Section>:null}
 
@@ -128,9 +127,9 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Step label="狀態列高度" value={value.miniStatusBar.height} min={24} max={96} step={2} suffix=" px" onChange={height=>onChange(updateMiniStatusBar(value,{height}))}/>
       <Step label="每列欄數" value={value.miniStatusBar.columns} min={1} max={4} step={1} suffix=" 欄" onChange={columns=>onChange(updateMiniStatusBar(value,{columns}))}/>
       <Step label="狀態列字體" value={Math.round(value.miniStatusBar.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniStatusBar(value,{fontScale:n/100}))}/>
-      <Color label="狀態列背景" value={value.miniStatusBar.backgroundColor} onChange={backgroundColor=>onChange(updateMiniStatusBar(value,{backgroundColor}))}/>
-      <Color label="狀態列文字" value={value.miniStatusBar.textColor} onChange={textColor=>onChange(updateMiniStatusBar(value,{textColor}))}/>
-      <Color label="狀態列分隔線" value={value.miniStatusBar.borderColor} onChange={borderColor=>onChange(updateMiniStatusBar(value,{borderColor}))}/>
+      <ColorPalettePicker label="狀態列背景" value={value.miniStatusBar.backgroundColor} onChange={backgroundColor=>onChange(updateMiniStatusBar(value,{backgroundColor}))}/>
+      <ColorPalettePicker label="狀態列文字" value={value.miniStatusBar.textColor} onChange={textColor=>onChange(updateMiniStatusBar(value,{textColor}))}/>
+      <ColorPalettePicker label="狀態列分隔線" value={value.miniStatusBar.borderColor} onChange={borderColor=>onChange(updateMiniStatusBar(value,{borderColor}))}/>
       {value.miniStatusItems.map((item,index)=><View key={item.field} style={styles.miniColumnCard}>
         <View style={styles.orderRow}>
           <Pressable onPress={()=>onChange(updateMiniStatusItem(value,item.field,{enabled:!item.enabled}))} style={[styles.choice,item.enabled&&styles.choiceActive]}><Text style={[styles.choiceText,item.enabled&&styles.choiceTextActive]}>{item.label}</Text></Pressable>
@@ -155,8 +154,8 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Text style={styles.note}>與首頁持股行情牆採同一欄位契約；A 控制標題列，B 控制各欄位顯示、順序、對齊、字體與損益色。</Text>
       <Toggle label="A 標題列顯示" value={wall.header.visible} onChange={visible=>patchWallHeader({visible})}/>
       <Step label="A 標題列字體" value={Math.round(wall.header.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchWallHeader({fontScale:n/100})}/>
-      <Color label="A 標題列背景" value={wall.header.backgroundColor} onChange={backgroundColor=>patchWallHeader({backgroundColor})}/>
-      <Color label="A 標題列文字" value={wall.header.textColor} onChange={textColor=>patchWallHeader({textColor})}/>
+      <ColorPalettePicker label="A 標題列背景" value={wall.header.backgroundColor} onChange={backgroundColor=>patchWallHeader({backgroundColor})}/>
+      <ColorPalettePicker label="A 標題列文字" value={wall.header.textColor} onChange={textColor=>patchWallHeader({textColor})}/>
       {wall.fields.map((field,index)=><View key={field.field} style={styles.miniColumnCard}>
         <View style={styles.orderRow}>
           <Pressable onPress={()=>patchWallField(field.field,{enabled:!field.enabled})} style={[styles.choice,field.enabled&&styles.choiceActive]}><Text style={[styles.choiceText,field.enabled&&styles.choiceTextActive]}>{field.label}</Text></Pressable>
@@ -196,28 +195,14 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Choice choices={['left','center','right'] as const} value={style.textAlign} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={textAlign=>patchStyle({textAlign})}/>
     </Section>
 
-    <Section title="全局調色盤">
-      <Text style={styles.note}>選一次套用 Normal、Mini 與 Mini 項目列的整套配色；B 欄位結構與位置不受影響。</Text>
-      <View style={styles.row}>{DISPLAY_PALETTES.map(palette=><Pressable key={palette.key} onPress={()=>onChange({
-        ...value,
-        normalStyle:{...value.normalStyle,backgroundColor:palette.backgroundColor,textColor:palette.textColor,secondaryTextColor:palette.secondaryTextColor,gainColor:palette.gainColor,lossColor:palette.lossColor,neutralColor:palette.neutralColor,borderColor:palette.borderColor,backgroundOpacity:palette.backgroundOpacity},
-        miniStyle:{...value.miniStyle,backgroundColor:palette.backgroundColor,textColor:palette.textColor,secondaryTextColor:palette.secondaryTextColor,gainColor:palette.gainColor,lossColor:palette.lossColor,neutralColor:palette.neutralColor,borderColor:palette.borderColor,backgroundOpacity:palette.backgroundOpacity},
-        miniHeader:{...value.miniHeader,backgroundColor:palette.backgroundColor,textColor:palette.secondaryTextColor,borderColor:palette.borderColor,backgroundOpacity:Math.min(1,palette.backgroundOpacity+.04)},
-      })} style={styles.paletteCard}>
-        <View style={[styles.palettePreview,{backgroundColor:palette.backgroundColor,borderColor:palette.borderColor}]}>
-          <View style={[styles.paletteDot,{backgroundColor:palette.textColor}]}/><View style={[styles.paletteDot,{backgroundColor:palette.gainColor}]}/><View style={[styles.paletteDot,{backgroundColor:palette.lossColor}]}/>
-        </View>
-        <Text style={styles.choiceText}>{palette.label}</Text>
-      </Pressable>)}</View>
-    </Section>
-
     <Section title="顏色、透明度與外觀">
-      <Color label="背景" value={style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
-      <Color label="文字" value={style.textColor} onChange={textColor=>patchStyle({textColor})}/>
-      <Color label="次要文字" value={style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
-      <Color label="上漲 / 獲利" value={style.gainColor} onChange={gainColor=>patchStyle({gainColor})}/>
-      <Color label="下跌 / 虧損" value={style.lossColor} onChange={lossColor=>patchStyle({lossColor})}/>
-      <Color label="邊框" value={style.borderColor} onChange={borderColor=>patchStyle({borderColor})}/>
+      <Text style={styles.note}>所有顏色一律由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
+      <ColorPalettePicker label="背景" value={style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
+      <ColorPalettePicker label="文字" value={style.textColor} onChange={textColor=>patchStyle({textColor})}/>
+      <ColorPalettePicker label="次要文字" value={style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
+      <ColorPalettePicker label="上漲 / 獲利" value={style.gainColor} onChange={gainColor=>patchStyle({gainColor})}/>
+      <ColorPalettePicker label="下跌 / 虧損" value={style.lossColor} onChange={lossColor=>patchStyle({lossColor})}/>
+      <ColorPalettePicker label="邊框" value={style.borderColor} onChange={borderColor=>patchStyle({borderColor})}/>
       <Step label="背景透明度" value={Math.round(style.backgroundOpacity*100)} min={10} max={100} step={5} suffix="%" onChange={n=>patchStyle({backgroundOpacity:n/100})}/>
       <Step label="圓角" value={style.cornerRadius} min={0} max={40} step={2} suffix=" px" onChange={cornerRadius=>patchStyle({cornerRadius})}/>
       <Step label="邊框" value={style.borderWidth} min={0} max={6} step={1} suffix=" px" onChange={borderWidth=>patchStyle({borderWidth})}/>
@@ -245,8 +230,6 @@ function Mini({label,onPress}:{label:string;onPress:()=>void}){return <Pressable
 function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(x:number)=>void}){return <View style={styles.step}><Text style={styles.stepLabel}>{label}</Text><Mini label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.stepValue}>{value}{suffix}</Text><Mini label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
 function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(x:boolean)=>void}){return <Pressable onPress={()=>onChange(!value)} style={styles.toggle}><Text style={styles.stepLabel}>{label}</Text><Text style={[styles.state,value&&styles.stateOn]}>{value?'開':'關'}</Text></Pressable>;}
 function Effect({label,value,onChange}:{label:string;value:MonitorEffect;onChange:(x:MonitorEffect)=>void}){return <View><Text style={styles.label}>{label}</Text><Choice choices={effects} value={value} label={x=>effectLabels[x]} onChange={onChange}/></View>;}
-function Color({label,value,onChange}:{label:string;value:string;onChange:(x:string)=>void}){return <View style={{gap:6}}><Text style={styles.label}>{label}</Text><View style={styles.row}>{palette.map(c=><Pressable key={c} onPress={()=>onChange(c)} style={[styles.dot,{backgroundColor:c},value.toUpperCase()===c&&styles.dotActive]}/>)}</View><TextInput autoCapitalize="characters" value={value} onChangeText={onChange} style={styles.input}/></View>;}
-
 const styles=StyleSheet.create({
  card:{backgroundColor:colors.surfaceMuted,borderRadius:radius.lg,padding:spacing.md,borderWidth:1,borderColor:colors.border,gap:10},
  header:{flexDirection:'row',alignItems:'center',gap:8},title:{fontSize:14,fontWeight:'900',color:colors.text},sub:{fontSize:10,lineHeight:15,color:colors.textSecondary,marginTop:2},
@@ -258,8 +241,7 @@ const styles=StyleSheet.create({
  step:{flexDirection:'row',alignItems:'center',gap:6},stepLabel:{fontSize:10,fontWeight:'800',color:colors.text,flex:1},stepValue:{minWidth:64,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
  toggle:{minHeight:36,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},state:{paddingHorizontal:10,paddingVertical:5,borderRadius:999,overflow:'hidden',backgroundColor:colors.surface,color:colors.textSecondary,fontSize:10,fontWeight:'900'},stateOn:{backgroundColor:'#EFF6FF',color:colors.primary},
  label:{fontSize:10,fontWeight:'900',color:colors.textSecondary},input:{height:36,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:9,color:colors.text,fontSize:10,fontWeight:'800'},
- dot:{width:28,height:28,borderRadius:14,borderWidth:1,borderColor:colors.border},dotActive:{borderWidth:3,borderColor:colors.primary},note:{fontSize:9,lineHeight:14,color:colors.textSecondary},miniTableRow:{flexDirection:'row',alignItems:'center',gap:6,minHeight:28,paddingHorizontal:4},miniColumnCard:{gap:6,padding:8,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface},positionHint:{fontSize:9,fontWeight:'800',color:colors.primary},miniStatusPreview:{marginTop:6,paddingHorizontal:4,justifyContent:'center'},miniStatusRow:{flexDirection:'row',alignItems:'center',minHeight:20},
- paletteCard:{gap:4,alignItems:'center'},palettePreview:{width:64,height:38,borderRadius:10,borderWidth:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4},paletteDot:{width:10,height:10,borderRadius:5}
+note:{fontSize:9,lineHeight:14,color:colors.textSecondary},miniTableRow:{flexDirection:'row',alignItems:'center',gap:6,minHeight:28,paddingHorizontal:4},miniColumnCard:{gap:6,padding:8,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface},positionHint:{fontSize:9,fontWeight:'800',color:colors.primary},miniStatusPreview:{marginTop:6,paddingHorizontal:4,justifyContent:'center'},miniStatusRow:{flexDirection:'row',alignItems:'center',minHeight:20}
 });
 
 
