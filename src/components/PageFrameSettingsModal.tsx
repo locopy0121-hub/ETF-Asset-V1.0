@@ -14,6 +14,9 @@ import {
   type FrameBehavior,
   type FrameEditorConfig,
   type FrameLayout,
+  type HoldingColumnCount,
+  type HoldingPrimaryField,
+  type HoldingScrollMode,
   type PageDisplayConfig,
   usePageEditor,
 } from '../editor/pageEditor';
@@ -147,7 +150,10 @@ export function PageFrameSettingsModal({
                   <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
                   <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
                 </View>:null}
-                {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>:null}
+                {pageKey==='home'&&frame.key==='holding-quotes'?<>
+                  <HoldingDisplayEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>
+                  <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
+                </>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
@@ -156,6 +162,44 @@ export function PageFrameSettingsModal({
       </ScrollView>
     </View>
   </Modal>;
+}
+
+function HoldingDisplayEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const quoteStyle=value.quoteStyle??'quote';
+  const columns=(value.holdingColumns??1) as HoldingColumnCount;
+  const scrollMode=(value.holdingScrollMode??'none') as HoldingScrollMode;
+  const primaryField=(value.holdingPrimaryField??'price') as HoldingPrimaryField;
+  const setStyle=(next:'quote'|'chart'|'compact'|'advanced')=>onChange({quoteStyle:next,...(next==='chart'?{holdingColumns:1 as const}:{})});
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>目前顯示狀態</Text>
+    <Text style={styles.dashboardHint}>{quoteStyle==='quote'?'純行情':quoteStyle==='chart'?'圖表':quoteStyle==='compact'?'精簡':'進階'} → {primaryField==='price'?'市價':primaryField==='marketValue'?'市值':primaryField==='pnl'?'損益':'報酬率'} → {columns===1?'單欄':columns===2?'雙欄':'三欄'}{scrollMode==='horizontal'?' → 橫向滑動':''}</Text>
+    <EditorRow title="顯示模式" subtitle="切換後只保留相容的排列選項"><ChoiceGroup
+      items={([{key:'quote',label:'純行情'},{key:'chart',label:'圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const)}
+      value={quoteStyle}
+      onChange={setStyle}
+    /></EditorRow>
+    <EditorRow title="主要資料" subtitle="進入設定時沿用目前畫面的資料欄位"><ChoiceGroup
+      items={([{key:'price',label:'市價'},{key:'marketValue',label:'市值'},{key:'pnl',label:'損益'},{key:'roi',label:'報酬率'}] as const)}
+      value={primaryField}
+      onChange={holdingPrimaryField=>onChange({holdingPrimaryField})}
+    /></EditorRow>
+    <EditorRow title="欄數" subtitle={quoteStyle==='chart'?'圖表模式固定單欄，不顯示雙欄／三欄':'欄數與橫向滑動可組合'}>
+      <ChoiceGroup
+        items={(quoteStyle==='chart'
+          ?([{key:'1',label:'單欄'}] as const)
+          :([{key:'1',label:'單欄'},{key:'2',label:'雙欄'},{key:'3',label:'三欄'}] as const))}
+        value={String(quoteStyle==='chart'?1:columns) as '1'|'2'|'3'}
+        onChange={key=>onChange({holdingColumns:Number(key) as HoldingColumnCount})}
+      />
+    </EditorRow>
+    <SwitchRow label="橫向滑動" value={scrollMode==='horizontal'} onChange={enabled=>onChange({holdingScrollMode:enabled?'horizontal':'none'})}/>
+    <EditorRow title="條件排序" subtitle="只改順序，不裁切資料"><ChoiceGroup
+      items={([{key:'pnl',label:'損益'},{key:'changePct',label:'漲跌'},{key:'marketValue',label:'市值'},{key:'roi',label:'報酬率'},{key:'price',label:'市價'}] as const)}
+      value={(value.sortKey??'pnl') as 'pnl'|'changePct'|'marketValue'|'roi'|'price'}
+      onChange={sortKey=>onChange({sortKey})}
+    /></EditorRow>
+    <Text style={styles.rule}>純行情可同時選「雙欄＋橫向滑動」或其他相容組合；圖表模式永遠強制單欄。套用前只修改 Draft。</Text>
+  </View>;
 }
 
 const dashboardMetricChoices:readonly {key:DashboardMetricKey;label:string}[]=[
