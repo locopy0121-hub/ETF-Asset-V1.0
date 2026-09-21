@@ -55,11 +55,12 @@ export function LedgerScreen() {
     return Array.from(new Set(rows)).slice(0,8);
   },[finance.entries]);
   const symbolSuggestions=useMemo(()=>{
-    if(!normalizedSymbol||catalogItem)return [];
+    const keyword=symbol.trim().toLowerCase();
+    if(!keyword||catalogItem)return [];
     return market.catalog
-      .filter(item=>item.symbol.startsWith(normalizedSymbol))
+      .filter(item=>item.symbol.toLowerCase().startsWith(keyword)||item.name.toLowerCase().includes(keyword))
       .slice(0,8);
-  },[market.catalog,normalizedSymbol,catalogItem]);
+  },[market.catalog,symbol,catalogItem]);
   const tradePreview=useMemo(()=>{
     if((kind!=='buy'&&kind!=='sell')||!instrument)return null;
     const p=parseNumber(price),s=parseNumber(shares);
@@ -165,6 +166,7 @@ export function LedgerScreen() {
                   {symbolSuggestions.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={styles.suggestionRow}>
                     <Text style={styles.suggestionSymbol}>{item.symbol}</Text>
                     <Text style={styles.suggestionName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.suggestionMarket}>{item.market}</Text>
                     <Text style={styles.suggestionArrow}>›</Text>
                   </Pressable>)}
                 </View>:null}
@@ -393,6 +395,7 @@ const styles=StyleSheet.create({
   suggestionRow:{minHeight:42,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   suggestionSymbol:{width:56,fontSize:12,fontWeight:'900',color:colors.primary},
   suggestionName:{flex:1,fontSize:11,fontWeight:'700',color:colors.text},
+  suggestionMarket:{fontSize:8,fontWeight:'800',color:colors.textSecondary},
   suggestionArrow:{fontSize:18,color:colors.textSecondary},
   symbolChip:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   symbolChipActive:{backgroundColor:colors.primary},
