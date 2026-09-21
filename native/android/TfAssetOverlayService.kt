@@ -10,6 +10,8 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams as LinearLayoutParams
 import android.widget.ScrollView
@@ -292,6 +294,13 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun renderMini(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
+    if(cfg.optBoolean("showBreathingLight",true)){
+      val lamp=textView("●",color(style.optString("gainColor","#10B981"),Color.GREEN),12f,Gravity.START)
+      if((cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)){
+        lamp.startAnimation(AlphaAnimation(.28f,1f).apply{duration=900;repeatMode=Animation.REVERSE;repeatCount=Animation.INFINITE})
+      }
+      root.addView(lamp)
+    }
     val columnsJson=cfg.optJSONArray("miniColumns")
     val columns=(0 until (columnsJson?.length()?:0)).mapNotNull{columnsJson?.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
     val header=cfg.optJSONObject("miniHeader")?:JSONObject()
