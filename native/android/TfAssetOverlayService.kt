@@ -30,11 +30,18 @@ class TfAssetOverlayService:Service(){
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
   override fun onBind(intent:Intent?):IBinder?=null
   override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
-    if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);return START_NOT_STICKY}
+    val cfg=readConfig()
+    if(!cfg.optBoolean("enabled",false)){
+      root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
+      writeRuntimeStatus(false,null)
+      stopSelf()
+      return START_NOT_STICKY
+    }
+    if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);stopSelf();return START_NOT_STICKY}
     ensureView();render();return START_STICKY
   }
   override fun onDestroy(){
-    root?.let{runCatching{wm.removeView(it)}};root=null
+    root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
     writeRuntimeStatus(false,null)
     super.onDestroy()
   }
