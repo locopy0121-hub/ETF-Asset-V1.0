@@ -77,7 +77,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
             <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
             <View style={styles.metricRow}>
-              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} tone={item.tone}/>;})}
+              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
             </View>
             {dashboardCharts.length?<View onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:chartCanvasHeight})} style={[styles.chartCanvas,{height:chartCanvasHeight}]}>
               {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={{width:chartBounds.width,height:chartCanvasHeight}} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)}/>;})}
