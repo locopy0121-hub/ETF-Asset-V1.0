@@ -45,8 +45,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.7';
-const BUILD='10007';
+const VERSION='1.0.9';
+const BUILD='10009';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -373,9 +373,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="Monitor V1.0.8 Mini 清單與多元主題" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.8 更新資訊">
-        <Text style={styles.infoText}>Monitor 顯示升級：Mini 固定採 A-B 清單、列數不設上限，少量資料自適應高度，超出可視高度改為浮窗內垂直滑動；Normal 新增行情牆、漲跌熱圖、損益牆、資產權重牆、跑馬行情與純文字終端；資料、排序與欄位仍共用 Shared Snapshot。</Text>
+      <ChildButton label="更新資訊" summary="V1.0.9 主體行情牆編輯" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      {appPanel==='updates'?<Panel title="V1.0.9 更新資訊">
+        <Text style={styles.infoText}>主體行情牆＝首頁大型持股卡片區；新增比照 Mini 的 A/B 編輯模式，可編輯標題列、欄位顯示、字體、對齊、損益色與卡片外觀，並可將 Mini 設定複製至主體行情牆。持股筆數仍不裁切，首頁與庫存設定保持獨立。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
