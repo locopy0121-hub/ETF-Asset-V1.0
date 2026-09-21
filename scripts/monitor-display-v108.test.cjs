@@ -23,9 +23,10 @@ assert.match(settings,/label:'跑馬行情'/,'跑馬行情 label missing');
 assert.match(settings,/label:'純文字終端'/,'純文字終端 label missing');
 
 assert.match(native,/fitMiniHeightToContent/,'Mini adaptive-height gate missing');
-assert.match(native,/ScrollView/,'Mini scrolling container missing');
-assert.match(native,/rows\.forEach\{holding->/,'Mini must iterate all holdings');
-assert.ok(!/renderMini[\s\S]*?rows\.(take|slice|subList)\(/.test(native),'Mini must never truncate holdings');
+const mini=native.slice(native.indexOf('private fun renderMini'),native.indexOf('private fun weighted'));
+assert.match(mini,/ScrollView/,'Mini scrolling container missing');
+assert.match(mini,/rows\.forEach\{holding->/,'Mini must iterate all holdings');
+assert.ok(!/rows\.(take|slice|subList)\(/.test(mini),'Mini must never truncate holdings');
 assert.match(settings,/列數不設上限/,'Mini unlimited-row UI contract missing');
 assert.match(panel,/列數不設限/,'Mini unlimited-row editor contract missing');
 
