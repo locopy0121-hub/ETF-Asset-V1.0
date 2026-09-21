@@ -9,7 +9,7 @@ assert.match(source,/Math\.max\(1,Math\.min\(3600,/,'market refresh must support
 assert.match(source,/phase==='live'\?clampSeconds\(config\.live\.refreshSeconds\):phase==='afterHours'\?clampSeconds\(config\.afterHours\.refreshSeconds\):0/,'market refresh interval must follow phase config and return 0 offline');
 assert.match(source,/quotesRef/,'market refresh must use quote ref to keep callback stable');
 assert.match(source,/symbolsRef/,'market refresh must use symbol ref to keep callback stable');
-assert.match(source,/if\(refreshingRef\.current\)return/,'market refresh must prevent overlapping requests');
+assert.match(source,/if\(refreshPromiseRef\.current\)return refreshPromiseRef\.current/,'market refresh must coalesce overlapping requests');
 assert.match(source,/AsyncStorage/,'market config and quote cache must persist');
 assert.match(source,/AppState\.addEventListener/,'foreground refresh must be wired');
 assert.match(source,/setInterval/,'market schedule must use one interval');
