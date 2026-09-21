@@ -61,7 +61,7 @@ export function FloatingDashboardChart({
       ?<View style={styles.sparkWrap}><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.spark,{color:config.accentColor}]}>{spark}</Text></View>
       :config.style==='pie'||config.style==='donut'||config.style==='allocation'||config.style==='holdingWeight'
         ?<View style={styles.pieWrap}><View style={[styles.ring,{borderColor:config.accentColor}]}><Text style={[styles.ringText,{color:config.textColor}]}>{safe.length}</Text></View><View style={styles.legend}>{safe.slice(0,4).map((value,index)=><Text key={index} numberOfLines={1} style={[styles.legendText,{color:config.textColor}]}>{labels[index]??String(index+1)} {Math.round(value).toLocaleString('zh-TW')}</Text>)}</View></View>
-        :<View style={styles.bars}>{safe.slice(0,8).map((value,index)=><View key={index} style={styles.barCol}><View style={[styles.bar,{height:`${Math.max(6,Math.round(Math.abs(value)/max*70))}%`,backgroundColor:config.accentColor}]}/><Text numberOfLines={1} style={[styles.barLabel,{color:config.textColor}]}>{labels[index]??index+1}</Text></View>)}</View>
+        :<View style={styles.bars}>{safe.slice(0,8).map((value,index)=><View key={index} style={styles.barCol}><View style={[styles.bar,{height:Math.max(6,Math.round(Math.abs(value)/max*74)),backgroundColor:config.accentColor}]}/><Text numberOfLines={1} style={[styles.barLabel,{color:config.textColor}]}>{labels[index]??index+1}</Text></View>)}</View>
     }
   </View>;
 }
