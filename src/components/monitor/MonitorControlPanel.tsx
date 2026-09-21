@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  activeMonitorFields,activeMonitorLayout,activeMonitorStyle,enabledMiniColumns,moveMiniColumn,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
-  updateActiveMonitorLayout,updateActiveMonitorStyle,updateMiniColumn,updateMiniHeader,updateMonitorFields,updateMonitorWall,
-  type MiniColumnConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,type MonitorTemplate,
+  activeMonitorFields,activeMonitorLayout,activeMonitorStyle,enabledMiniColumns,enabledMiniStatusItems,moveMiniColumn,moveMiniStatusItem,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
+  updateActiveMonitorLayout,updateActiveMonitorStyle,updateMiniColumn,updateMiniHeader,updateMiniStatusBar,updateMiniStatusItem,updateMonitorFields,updateMonitorWall,updateMonitorWallLayout,
+  type MiniColumnConfig,type MiniStatusItemConfig,type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorMode,type MonitorSortKey,type MonitorTemplate,
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
 import { DISPLAY_PALETTES } from '../../theme/displayPalettes';
@@ -22,7 +22,9 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   const previewRows=sortMonitorHoldings(previewSnapshot,value);
   const previewHolding=previewRows[0];
   const miniColumns=enabledMiniColumns(value);
+  const miniStatusItems=enabledMiniStatusItems(value);
   const wall=value.normalWall;
+  const wallLayout=value.normalWallLayout;
   const previewSymbol=previewHolding?.symbol??'--';
   const previewName=previewHolding?.name??'等待資料';
   const previewPrice=previewHolding?.price;
@@ -40,6 +42,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   const patchWallHeader=(p:Partial<typeof wall.header>)=>patchWall({...wall,header:{...wall.header,...p}});
   const patchWallField=(field:typeof wall.fields[number]['field'],p:Partial<typeof wall.fields[number]>)=>patchWall({...wall,fields:wall.fields.map(x=>x.field===field?{...x,...p}:x)});
   const moveWallField=(field:typeof wall.fields[number]['field'],d:number)=>{const a=[...wall.fields],i=a.findIndex(x=>x.field===field),j=i+d;if(i<0||j<0||j>=a.length)return;const t=a[i]!;a[i]=a[j]!;a[j]=t;patchWall({...wall,fields:a});};
+  const wallRows=chunk(previewRows,wallLayout.columns);
 
   return <View style={styles.card}>
     <View style={styles.header}><View style={{flex:1}}><Text style={styles.title}>即時監控器編輯器</Text><Text style={styles.sub}>Normal / Mini 的尺寸與樣式完全分離；目前模式只修改目前模式。</Text></View><Pressable onPress={()=>patch({enabled:!value.enabled})} style={[styles.pill,value.enabled&&styles.pillActive]}><Text style={[styles.pillText,value.enabled&&styles.pillTextActive]}>{value.enabled?'已啟用':'未啟用'}</Text></Pressable></View>
@@ -61,12 +64,30 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
             </View>)}
           </View>)}
           {!previewRows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
+          {value.miniStatusBar.visible&&miniStatusItems.length?<View style={[styles.miniStatusPreview,{minHeight:value.miniStatusBar.height,backgroundColor:value.miniStatusBar.backgroundColor,borderTopColor:value.miniStatusBar.borderColor,borderTopWidth:value.miniStatusBar.borderWidth}]}>
+            {chunk(miniStatusItems,value.miniStatusBar.columns).map((statusRow,rowIndex)=><View key={'status-'+rowIndex} style={styles.miniStatusRow}>
+              {statusRow.map(item=><Text key={item.field} numberOfLines={1} style={{flex:1,color:miniStatusPreviewColor(previewSnapshot,item,style,value.miniStatusBar.textColor),fontSize:9*value.miniStatusBar.fontScale,fontWeight:'800',textAlign:'center'}}>{item.label} {miniStatusPreviewText(previewSnapshot,item.field,previewRows.length)}</Text>)}
+              {Array.from({length:Math.max(0,value.miniStatusBar.columns-statusRow.length)}).map((_,i)=><View key={'blank-'+i} style={{flex:1}}/>)}
+            </View>)}
+          </View>:null}
         </View>
-        :<View style={[styles.preview,{width:'100%',minHeight:130,backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
-          <Text style={{fontSize:13*style.titleFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign}}>{previewSymbol} {previewName}</Text>
-          <Text style={{fontSize:18*style.valueFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPrice==null?'等待資料':previewPrice.toFixed(2)}</Text>
-          <Text style={{fontSize:11*style.fontScale,fontWeight:'800',color:previewTone,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}</Text>
-        </View>}
+        :value.template==='market-wall'
+          ?<View style={[styles.preview,{width:'100%',minHeight:130,backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:wallLayout.rowGap}]}>
+            {wallRows.map((row,rowIndex)=><View key={'wall-row-'+rowIndex} style={{flexDirection:'row',gap:wallLayout.columnGap}}>
+              {row.map(holding=><View key={holding.symbol} style={{flex:1,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding}}>
+                <Text numberOfLines={1} style={{fontSize:11*style.titleFontScale,fontWeight:'900',color:wall.style.textColor}}>{holding.symbol} {holding.name}</Text>
+                <Text style={{fontSize:17*style.valueFontScale,fontWeight:'900',color:wall.style.textColor,marginTop:wall.style.rowGap}}>{holding.price==null?'--':holding.price.toFixed(2)}</Text>
+                <Text style={{fontSize:10*style.fontScale,fontWeight:'800',color:(holding.changePercent??0)>=0?wall.style.gainColor:wall.style.lossColor,marginTop:wall.style.rowGap}}>{holding.changePercent==null?'--':`${holding.changePercent>=0?'+':''}${holding.changePercent.toFixed(2)}%`}</Text>
+              </View>)}
+              {Array.from({length:Math.max(0,wallLayout.columns-row.length)}).map((_,i)=><View key={'wall-blank-'+i} style={{flex:1}}/>)}
+            </View>)}
+            {!previewRows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
+          </View>
+          :<View style={[styles.preview,{width:'100%',minHeight:130,backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
+            <Text style={{fontSize:13*style.titleFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign}}>{previewSymbol} {previewName}</Text>
+            <Text style={{fontSize:18*style.valueFontScale,fontWeight:'900',color:style.textColor,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPrice==null?'等待資料':previewPrice.toFixed(2)}</Text>
+            <Text style={{fontSize:11*style.fontScale,fontWeight:'800',color:previewTone,textAlign:style.textAlign,marginTop:style.rowGap}}>{previewPct==null?'':`${previewPct>=0?'+':''}${previewPct.toFixed(2)}%`}</Text>
+          </View>}
     </Section>
 
     {value.mode==='mini'?<Section title="Mini A 項目列（母）">
@@ -99,6 +120,35 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
           <Toggle label="套用損益色" value={column.useProfitColor} onChange={useProfitColor=>onChange(updateMiniColumn(value,column.field,{useProfitColor}))}/>
         </View>:null}
       </View>)}
+    </Section>:null}
+
+    {value.mode==='mini'?<Section title="Mini 下方狀態列">
+      <Text style={styles.note}>狀態列與持股清單分層編輯；可選擇顯示項目、排序、每列欄數、字體與背景，不會修改上方 B 欄位。</Text>
+      <Toggle label="顯示下方狀態列" value={value.miniStatusBar.visible} onChange={visible=>onChange(updateMiniStatusBar(value,{visible}))}/>
+      <Step label="狀態列高度" value={value.miniStatusBar.height} min={24} max={96} step={2} suffix=" px" onChange={height=>onChange(updateMiniStatusBar(value,{height}))}/>
+      <Step label="每列欄數" value={value.miniStatusBar.columns} min={1} max={4} step={1} suffix=" 欄" onChange={columns=>onChange(updateMiniStatusBar(value,{columns}))}/>
+      <Step label="狀態列字體" value={Math.round(value.miniStatusBar.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniStatusBar(value,{fontScale:n/100}))}/>
+      <Color label="狀態列背景" value={value.miniStatusBar.backgroundColor} onChange={backgroundColor=>onChange(updateMiniStatusBar(value,{backgroundColor}))}/>
+      <Color label="狀態列文字" value={value.miniStatusBar.textColor} onChange={textColor=>onChange(updateMiniStatusBar(value,{textColor}))}/>
+      <Color label="狀態列分隔線" value={value.miniStatusBar.borderColor} onChange={borderColor=>onChange(updateMiniStatusBar(value,{borderColor}))}/>
+      {value.miniStatusItems.map((item,index)=><View key={item.field} style={styles.miniColumnCard}>
+        <View style={styles.orderRow}>
+          <Pressable onPress={()=>onChange(updateMiniStatusItem(value,item.field,{enabled:!item.enabled}))} style={[styles.choice,item.enabled&&styles.choiceActive]}><Text style={[styles.choiceText,item.enabled&&styles.choiceTextActive]}>{item.label}</Text></Pressable>
+          <Mini label="↑" onPress={()=>onChange(moveMiniStatusItem(value,item.field,-1))}/><Mini label="↓" onPress={()=>onChange(moveMiniStatusItem(value,item.field,1))}/>
+        </View>
+        <Text style={styles.positionHint}>第 {index+1} 項</Text>
+        {item.enabled?<View style={{gap:6}}>
+          <TextInput value={item.label} onChangeText={label=>onChange(updateMiniStatusItem(value,item.field,{label}))} style={styles.input}/>
+          <Toggle label="套用損益色" value={item.useProfitColor} onChange={useProfitColor=>onChange(updateMiniStatusItem(value,item.field,{useProfitColor}))}/>
+        </View>:null}
+      </View>)}
+    </Section>:null}
+
+    {value.mode==='normal'&&value.template==='market-wall'?<Section title="主體行情牆框架">
+      <Text style={styles.note}>此框架只控制行情卡如何排列；卡片內部 A/B 欄位維持原本編輯契約。Monitor 拉寬時可用 2～4 欄並排。</Text>
+      <Step label="並排欄數" value={wallLayout.columns} min={1} max={4} step={1} suffix=" 欄" onChange={columns=>onChange(updateMonitorWallLayout(value,{columns}))}/>
+      <Step label="水平間距" value={wallLayout.columnGap} min={0} max={32} step={2} suffix=" px" onChange={columnGap=>onChange(updateMonitorWallLayout(value,{columnGap}))}/>
+      <Step label="垂直間距" value={wallLayout.rowGap} min={0} max={32} step={2} suffix=" px" onChange={rowGap=>onChange(updateMonitorWallLayout(value,{rowGap}))}/>
     </Section>:null}
 
     {value.mode==='normal'&&value.template==='market-wall'?<Section title="主體行情牆 A/B 編輯">
@@ -233,5 +283,26 @@ function miniCellText(row:NonNullable<SharedSnapshot['holdings'][number]>,field:
 function miniCellColor(row:SharedSnapshot['holdings'][number],column:MiniColumnConfig,style:MonitorConfig['miniStyle']){
   if(!column.useProfitColor)return style.textColor;
   const value=column.field==='change'?row.change:column.field==='changePercent'?row.changePercent:column.field==='roi'?row.roi:column.field==='comprehensivePnl'?row.comprehensivePnl:column.field==='pnl'?row.pnl:null;
+  return value==null?style.neutralColor:value>0?style.gainColor:value<0?style.lossColor:style.neutralColor;
+}
+
+function chunk<T>(items:readonly T[],size:number):T[][]{
+  const safe=Math.max(1,Math.round(size));
+  const rows:T[][]=[];
+  for(let i=0;i<items.length;i+=safe)rows.push(items.slice(i,i+safe));
+  return rows;
+}
+function miniStatusPreviewText(snapshot:SharedSnapshot|null,field:MiniStatusItemConfig['field'],holdingCount:number){
+  if(field==='holdingCount')return String(holdingCount);
+  if(field==='updatedAt')return snapshot?.generatedAt?new Date(snapshot.generatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--';
+  const asset=snapshot?.asset;
+  if(!asset)return '--';
+  const value=asset[field as keyof typeof asset];
+  return typeof value==='number'?Math.round(value).toLocaleString('zh-TW'):'--';
+}
+function miniStatusPreviewColor(snapshot:SharedSnapshot|null,item:MiniStatusItemConfig,style:MonitorConfig['miniStyle'],fallback:string){
+  if(!item.useProfitColor)return fallback;
+  const asset=snapshot?.asset;
+  const value=item.field==='totalReturn'?asset?.totalReturn:item.field==='unrealizedPnl'?asset?.unrealizedPnl:item.field==='realizedPnl'?asset?.realizedPnl:null;
   return value==null?style.neutralColor:value>0?style.gainColor:value<0?style.lossColor:style.neutralColor;
 }
