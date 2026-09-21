@@ -15,6 +15,7 @@ import {
 } from 'react';
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
+import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
 
 export type MarketPhase = 'live' | 'afterHours' | 'offline';
 export type MarketSource = 'TWSE';
@@ -102,10 +103,6 @@ export function resolveMarketPhase(config:MarketUpdateConfig):MarketPhase{
 export function marketRefreshSeconds(config:MarketUpdateConfig,phase:MarketPhase){
   return phase==='live'?clampSeconds(config.live.refreshSeconds):phase==='afterHours'?clampSeconds(config.afterHours.refreshSeconds):0;
 }
-const num=(value:unknown)=>{
-  const n=Number(String(value??'').replace(/,/g,''));
-  return Number.isFinite(n)?n:0;
-};
 async function fetchEtfCatalog():Promise<EtfCatalogItem[]>{
   const rows:EtfCatalogItem[]=[];
   const push=(symbol:unknown,name:unknown,market:'TWSE'|'TPEx')=>{
@@ -150,16 +147,29 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
   for(const row of rows){
     const symbol=String(row.c??'').trim();
     if(!symbol)continue;
-    const price=num(row.z)||num(row.y);
     const existing=bySymbol.get(symbol);
-    const existingPrice=existing?(num(existing.z)||num(existing.y)):0;
-    if(price>0||existingPrice<=0)bySymbol.set(symbol,row);
+    bySymbol.set(symbol,pickBetterTwseRow(existing,row));
   }
-  return symbols.map(symbol=>{
+  const unresolved:string[]=[];
+  const next=symbols.map(symbol=>{
     const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
     const row=bySymbol.get(symbol);
-    const currentPrice=num(row?.z)||num(row?.y)||old?.currentPrice||0;
-    const previousClose=num(row?.y)||old?.previousClose||currentPrice;
+    if(!hasUsableTwseQuote(row)){
+      unresolved.push(symbol);
+      if(old)return old;
+      const missing:RuntimeQuote={
+        symbol,
+        name:symbol,
+        currentPrice:0,
+        previousClose:0,
+        liquidationTradeMode:'ROUND_LOT',
+        dividendFrequency:4,
+        sparkline:[0],
+      };
+      return missing;
+    }
+    const currentPrice=resolveTwseCurrentPrice(row);
+    const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
     return {
       symbol,
@@ -173,6 +183,8 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       sparkline:sparkline.length?sparkline:[currentPrice],
     };
   });
+  if(unresolved.length)throw new Error('TWSE incomplete snapshot: '+unresolved.join(','));
+  return next;
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
@@ -258,10 +270,14 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{ if(hydrated&&catalog.length<=FALLBACK_CATALOG.length)void refreshCatalog(); },[hydrated,catalog.length,refreshCatalog]);
 
   useEffect(()=>{
+    if(!hydrated)return;
+    void refresh();
+  },[hydrated,trackedSymbols,refresh]);
+
+  useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
     const seconds=marketRefreshSeconds(config,phase);
     if(seconds<=0)return;
-    void refresh();
     const timer=setInterval(()=>{void refresh();},seconds*1000);
     return()=>clearInterval(timer);
   },[hydrated,config,phase,refresh]);

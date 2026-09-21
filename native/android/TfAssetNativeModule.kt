@@ -15,10 +15,27 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
   override fun getName() = "TfAssetNative"
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).apply(); refreshWidget(); promise.resolve(true) }
-  @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("monitor_config",configJson).putString("snapshot",snapshotJson).apply(); reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH)); promise.resolve(true) }
+  @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
+    prefs.edit().putString("monitor_config",configJson).putString("snapshot",snapshotJson).apply()
+    val enabled=runCatching{org.json.JSONObject(configJson).optBoolean("enabled",false)}.getOrDefault(false)
+    if(!enabled){
+      prefs.edit().putBoolean("monitor_running",false).apply()
+      reactContext.stopService(Intent(reactContext,TfAssetOverlayService::class.java))
+      promise.resolve(true)
+      return
+    }
+    reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
+    promise.resolve(true)
+  }
   @ReactMethod fun requestWidgetRefresh(promise:Promise){ refreshWidget(); promise.resolve(true) }
-  @ReactMethod fun startMonitor(promise:Promise){ if(!Settings.canDrawOverlays(reactContext)){ promise.resolve(false); return }; reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_START)); promise.resolve(true) }
-  @ReactMethod fun stopMonitor(promise:Promise){ reactContext.stopService(Intent(reactContext,TfAssetOverlayService::class.java)); promise.resolve(true) }
+  @ReactMethod fun startMonitor(promise:Promise){
+    val cfg=runCatching{org.json.JSONObject(prefs.getString("monitor_config","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
+    if(!cfg.optBoolean("enabled",false)){ prefs.edit().putBoolean("monitor_running",false).apply(); promise.resolve(false); return }
+    if(!Settings.canDrawOverlays(reactContext)){ promise.resolve(false); return }
+    reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_START))
+    promise.resolve(true)
+  }
+  @ReactMethod fun stopMonitor(promise:Promise){ prefs.edit().putBoolean("monitor_running",false).apply(); reactContext.stopService(Intent(reactContext,TfAssetOverlayService::class.java)); promise.resolve(true) }
   @ReactMethod fun getMonitorStatus(promise:Promise){
     val map=Arguments.createMap()
     val allowed=Settings.canDrawOverlays(reactContext)

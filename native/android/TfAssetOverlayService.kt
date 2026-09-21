@@ -30,11 +30,18 @@ class TfAssetOverlayService:Service(){
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
   override fun onBind(intent:Intent?):IBinder?=null
   override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
-    if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);return START_NOT_STICKY}
+    val cfg=readConfig()
+    if(!cfg.optBoolean("enabled",false)){
+      root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
+      writeRuntimeStatus(false,null)
+      stopSelf()
+      return START_NOT_STICKY
+    }
+    if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);stopSelf();return START_NOT_STICKY}
     ensureView();render();return START_STICKY
   }
   override fun onDestroy(){
-    root?.let{runCatching{wm.removeView(it)}};root=null
+    root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
     writeRuntimeStatus(false,null)
     super.onDestroy()
   }
@@ -165,26 +172,10 @@ class TfAssetOverlayService:Service(){
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
     if(mode=="mini"){
-      fitMiniHeightToContent(cfg,snap,style)
       renderMini(r,cfg,snap,style)
     }else renderNormal(r,cfg,snap,style)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
-  }
-
-  private fun fitMiniHeightToContent(cfg:JSONObject,snap:JSONObject,style:JSONObject){
-    val configuredHeight=(cfg.optJSONObject("miniLayout")?:JSONObject()).optInt("height",330).coerceAtLeast(120)
-    val header=cfg.optJSONObject("miniHeader")?:JSONObject()
-    val headerHeight=if(header.optBoolean("visible",true))header.optInt("height",30).coerceIn(22,56) else 0
-    val padding=style.optInt("padding",6).coerceAtLeast(0)
-    val rows=orderedHoldings(snap,cfg).size
-    val contentHeight=padding*2+headerHeight+maxOf(1,rows)*28
-    val target=contentHeight.coerceIn(80,configuredHeight)
-    val p=params?:return
-    if(p.height!=target){
-      p.height=target
-      root?.let{wm.updateViewLayout(it,p)}
-    }
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
