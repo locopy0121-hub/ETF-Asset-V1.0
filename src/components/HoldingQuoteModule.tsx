@@ -120,7 +120,7 @@ function WallText({
     style={{
       color:header&&!field.useProfitColor?wall.header.textColor:tone,
       fontSize,
-      fontWeight:quotePrimary||primary?'900':'800',
+      fontWeight:quotePrimary?'900':primary?'800':'700',
       textAlign:field.align,
       marginTop:header&&!primary?2:0,
       fontVariant:['tabular-nums'],
