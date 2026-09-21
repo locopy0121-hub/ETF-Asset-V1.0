@@ -12,7 +12,7 @@ const release=fs.readFileSync('.github/workflows/release-v1.yml','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
 
-assert.match(home,/wallConfig=\{editor\.displayConfig\.holdingWall\}/,'home main market wall must consume its editor config');
+assert.match(home,/wallConfig=\{editor\.displayConfig\.holdingWall\?\?DEFAULT_HOLDING_WALL_CONFIG\}/,'home main market wall must consume editor config with safe default');
 assert.ok(!/sortHoldingQuotes\(finance\.holdings[\s\S]{0,100}slice\(/.test(home),'home market wall must not cap holdings');
 assert.match(collection,/rows\.map\(/,'collection must render all holding rows');
 assert.match(collection,/wallConfig=\{wallConfig\}/,'collection must pass main market wall config to every card');
