@@ -1,0 +1,15 @@
+const fs=require('fs');const assert=require('assert');
+const caps=fs.readFileSync('src/editor/componentCapabilities.ts','utf8');
+const model=fs.readFileSync('src/editor/editorModel.ts','utf8');
+const modal=fs.readFileSync('src/components/PageFrameSettingsModal.tsx','utf8');
+const stack=fs.readFileSync('src/components/PageEditorStack.tsx','utf8');
+const card=fs.readFileSync('src/components/FrameCard.tsx','utf8');
+for(const type of ['frame','title','data','image','icon','chart','reminder','marquee','calendar'])assert.ok(caps.includes("'"+type+"'"),'capability type missing '+type);
+for(const rule of ['defaultCollapsed:true','singleOpenPerLevel:true','closeSiblingOnOpen:true','preserveUneditedCollapsed:true'])assert.ok(caps.includes(rule),'AB collapse rule missing '+rule);
+assert.match(modal,/setOpenFrame\(null\)/);assert.match(modal,/setOpenGroup\(null\)/);assert.match(modal,/AccordionGroup/);
+for(const label of ['標題','背景','邊框'])assert.ok(modal.includes('title="'+label+'"'),'unified settings missing '+label);
+for(const field of ['titleFontSize','titleColor','titleAlign','backgroundColor','backgroundOpacity','borderColor','borderWidth','borderRadius','shadowEnabled','shadowOpacity'])assert.ok(model.includes(field),'frame setting missing '+field);
+assert.match(stack,/editorStyle:frameConfig/);assert.match(card,/editorStyle/);
+assert.match(modal,/所有頁面的標題都使用同一套工具/);
+assert.match(modal,/所有顏色皆使用調色盤/);
+console.log('V1.1.1 unified component capability / AB collapse gate: PASS');
