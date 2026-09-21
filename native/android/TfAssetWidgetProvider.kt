@@ -111,6 +111,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     views.setTextViewText(R.id.widget_title,if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
     views.setTextColor(R.id.widget_refresh,neutral)
+    val forceRefreshEnabled=config.optBoolean("forceRefreshOnTap",true)
+    views.setViewVisibility(R.id.widget_refresh,if(forceRefreshEnabled)View.VISIBLE else View.GONE)
     if(!wallMode){
       ids.forEachIndexed{index,id->
         val field=selectedFields.getOrNull(index)
@@ -163,9 +165,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val pending=PendingIntent.getActivity(context,appWidgetId,launch,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
       views.setOnClickPendingIntent(R.id.widget_root,pending)
     }
-    val refreshIntent=Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_FORCE_REFRESH)
-    val refreshPending=PendingIntent.getBroadcast(context,10000+appWidgetId,refreshIntent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-    views.setOnClickPendingIntent(R.id.widget_refresh,refreshPending)
+    if(forceRefreshEnabled){
+      val refreshIntent=Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_FORCE_REFRESH)
+      val refreshPending=PendingIntent.getBroadcast(context,10000+appWidgetId,refreshIntent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+      views.setOnClickPendingIntent(R.id.widget_refresh,refreshPending)
+    }
     return views
   }
 
