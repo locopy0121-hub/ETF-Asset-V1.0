@@ -91,10 +91,11 @@
     "test:v1_1_2": "npm run test:v1_1_1 && npm run test:v112-new",
     "test:v112-screener": "tsx scripts/v112-etf-screener.test.ts",
     "test:v112-ai-settings": "tsx scripts/v112-ai-settings.test.ts",
-    "test:v112-new": "npm run test:v112-network && npm run test:v112-screener && npm run test:v112-ai-settings && npm run test:v112-home-holding && npm run test:v112-b-layer && npm run test:v112-dividend",
+    "test:v112-new": "npm run test:v112-network && npm run test:v112-screener && npm run test:v112-ai-settings && npm run test:v112-home-holding && npm run test:v112-b-layer && npm run test:v112-dividend && npm run test:v112-widget-monitor",
     "test:v112-home-holding": "tsx scripts/v112-home-holding.test.ts",
     "test:v112-b-layer": "tsx scripts/v112-b-layer-tools.test.ts",
-    "test:v112-dividend": "tsx scripts/v112-dividend-editor.test.ts"
+    "test:v112-dividend": "tsx scripts/v112-dividend-editor.test.ts",
+    "test:v112-widget-monitor": "tsx scripts/v112-widget-monitor.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
