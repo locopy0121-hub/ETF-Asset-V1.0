@@ -41,19 +41,19 @@ export function PageFrameSettingsModal({
 }:{
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;
 }){
-  const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
+  const {config,storedDisplayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
-  const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
+  const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...storedDisplayConfig});
 
   useEffect(()=>{
     if(!visible)return;
     setDraft({...config});
-    setDisplayDraft({...displayConfig});
+    setDisplayDraft({...storedDisplayConfig});
     setOpenFrame(null);
     setOpenGroup(null);
-  },[visible,config,displayConfig]);
+  },[visible,config,storedDisplayConfig]);
 
   const orderedFrames=useMemo(
     ()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),
@@ -84,7 +84,7 @@ export function PageFrameSettingsModal({
     setOpenGroup(current=>current===key?null:key);
   };
   const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);onClose();};
-  const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
+  const cancel=()=>{setDraft({...config});setDisplayDraft({...storedDisplayConfig});onClose();};
   const reset=()=>{resetPage();onClose();};
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
