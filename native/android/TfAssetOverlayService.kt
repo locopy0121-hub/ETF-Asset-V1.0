@@ -238,15 +238,23 @@ class TfAssetOverlayService:Service(){
         }
       }
       "market-wall"->{
+        val wall=cfg.optJSONObject("normalWall")?:JSONObject()
+        val wallStyle=wall.optJSONObject("style")?:JSONObject()
+        val wallFields=wall.optJSONArray("fields")?:JSONArray()
+        val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
+        val wallGain=color(wallStyle.optString("gainColor",style.optString("gainColor","#EF4444")),gain)
+        val wallLoss=color(wallStyle.optString("lossColor",style.optString("lossColor","#10B981")),loss)
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
         rows.forEach{row->
           val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(8,6,8,6)}
-          card.addView(textView(row.optString("name","")+"  "+row.optString("symbol","--"),text,12*fs,Gravity.START))
-          card.addView(textView(number2(row,"price")+"   "+signed2(row,"change")+"   "+signed2(row,"changePercent")+"%",tone(row),15*vs,Gravity.START))
-          val pnl=row.optDouble("pnl",Double.NaN)
-          val pnlTone=if(!pnl.isFinite())neutral else if(pnl>0)gain else if(pnl<0)loss else neutral
-          card.addView(textView("持股損益 "+signedInteger(row,"pnl")+"   報酬率 "+signed2(row,"roi")+"%   市值 "+integer(row,"marketValue"),pnlTone,10*fs,Gravity.START))
+          (0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}.forEach{field->
+            val key=field.optString("field","symbol")
+            val numeric=miniNumeric(row,key)
+            val useProfit=field.optBoolean("useProfitColor",false)
+            val fieldTone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else neutral
+            card.addView(textView(field.optString("label",key)+"  "+miniValue(row,key),fieldTone,11*field.optDouble("fontScale",1.0).toFloat()*fs,gravityFor(field.optString("align","left"))))
+          }
           body.addView(card)
         }
         val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
