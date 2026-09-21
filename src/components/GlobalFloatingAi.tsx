@@ -100,7 +100,12 @@ export function GlobalFloatingAi({activePage}:{activePage:MainPageKey}){
     },
   }),[mode,panelSize.width,panelSize.height,width,height,settings.patchAi]);
 
-  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries);
+  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,{
+    networkSearchEnabled:prefs.networkSearch,
+    showSources:prefs.showSources,
+    showDates:prefs.showDates,
+    responseDetail:prefs.responseDetail,
+  });
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   if(!prefs.enabled||!prefs.visiblePages.includes(activePage))return null;
