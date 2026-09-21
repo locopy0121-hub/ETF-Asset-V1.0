@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v116 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v117 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -69,7 +69,10 @@
     "test:v115": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:monitor-layout-v113 && npm run test:v114-upgrade && npm run test:monitor-settings-crash-v115 && npm run test:release-v115",
     "test:v116-upgrade": "node scripts/v116-ai-news-monitor.test.cjs",
     "test:release-v116": "node scripts/release-v116.test.cjs",
-    "test:v116": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:monitor-layout-v113 && npm run test:v114-upgrade && npm run test:monitor-settings-crash-v115 && npm run test:v116-upgrade && npm run test:release-v116"
+    "test:v116": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:monitor-layout-v113 && npm run test:v114-upgrade && npm run test:monitor-settings-crash-v115 && npm run test:v116-upgrade && npm run test:release-v116",
+    "test:v117-upgrade": "node scripts/v117-editor-ai-tools.test.cjs",
+    "test:release-v117": "node scripts/release-v117.test.cjs",
+    "test:v117": "npm run test:v116 && npm run test:v117-upgrade && npm run test:release-v117"
   },
   "dependencies": {
     "expo": "~57.0.21",
