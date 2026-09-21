@@ -1,4 +1,5 @@
 import type { SharedSnapshot } from '../domain/snapshot';
+import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig } from '../domain/uiModels';
 
 export type MonitorMode = 'normal' | 'mini';
 export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact' | 'single' | 'dual' | 'advanced' | 'market-wall' | 'heatmap' | 'pnl-wall' | 'weight-wall' | 'ticker' | 'terminal';
@@ -76,6 +77,7 @@ export type MonitorConfig = Readonly<{
   miniStyle: MonitorStyle;
   miniHeader: MiniHeaderStyle;
   miniColumns: readonly MiniColumnConfig[];
+  normalWall: HoldingWallConfig;
   effects: MonitorEffects;
   sort: MonitorSort;
   alwaysOnTop:boolean;
@@ -144,7 +146,8 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   miniStyle:{...DEFAULT_MONITOR_STYLE,fontScale:0.9,titleFontScale:0.9,valueFontScale:0.95,padding:6,rowGap:2,cornerRadius:12},
   miniHeader:DEFAULT_MINI_HEADER,
   miniColumns:DEFAULT_MINI_COLUMNS,
-  effects:DEFAULT_MONITOR_EFFECTS,
+  normalWall:DEFAULT_HOLDING_WALL_CONFIG,
+  effects:DEFAULT_MONITOR_EFFECTS;
   sort:DEFAULT_MONITOR_SORT,
   alwaysOnTop:true,
 };
@@ -182,6 +185,7 @@ export function updateActiveMonitorStyle(config:MonitorConfig,patch:Partial<Moni
 export function updateMonitorFields(config:MonitorConfig,fields:readonly MonitorField[]):MonitorConfig{
   return config.mode==='normal'?{...config,fields:[...fields]}:{...config,miniFields:[...fields]};
 }
+export function updateMonitorWall(config:MonitorConfig,wall:HoldingWallConfig):MonitorConfig{return {...config,normalWall:wall};}
 export function sortMonitorHoldings(snapshot:SharedSnapshot|null,config:MonitorConfig){
   if(!snapshot)return [];
   const rows=config.selectedSymbols.length?snapshot.holdings.filter(x=>config.selectedSymbols.includes(x.symbol)):[...snapshot.holdings];
