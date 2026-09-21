@@ -9,8 +9,8 @@ export type EtfScreenFilters=Readonly<{
   market:'all'|'TWSE'|'TPEx';
   kind:'all'|EtfKind;
   industry:'all'|EtfIndustry;
-  maxExpenseRatioPct?:number;
-  minYieldPct?:number;
+  maxExpenseRatioPct?:number|undefined;
+  minYieldPct?:number|undefined;
 }>;
 
 const has=(text:string,words:readonly string[])=>words.some(word=>text.includes(word));
