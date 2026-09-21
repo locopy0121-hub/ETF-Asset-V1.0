@@ -10,7 +10,7 @@ const monitor=readFileSync('src/components/monitor/MonitorControlPanel.tsx','utf
 
 assert.ok(!picker.includes('TextInput'),'Color picker must not require HEX/RGB/HSV text input');
 assert.match(picker,/調色盤直接選色，不需輸入色碼/);
-assert.match(picker,/visible=\{expanded\}/,'picker modal must have one stable lifecycle instead of conditional mount churn');
+assert.match(picker,/expanded\?<Modal visible/,'palette modal and bars must mount only after explicit expansion');
 assert.match(picker,/if\(!expanded\|\|mode!==['"]wheel['"]\)return \[\]/,'closed pickers must not allocate wheel cells');
 assert.match(picker,/hardwareAccelerated/,'Android palette modal should use hardware acceleration');
 assert.match(picker,/backgroundColor:safeValue/,'preview must normalize invalid persisted color values');
