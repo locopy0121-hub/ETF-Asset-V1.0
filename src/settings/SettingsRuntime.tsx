@@ -102,7 +102,7 @@ const DEFAULT_SETTINGS:SettingsPrefs={
     positionLocked:false,
     edgeSnap:true,
     statusDotVisible:true,
-    networkSearch:false,
+    networkSearch:true,
     holdingsNews:true,
     proactiveHints:true,
     showSources:true,
