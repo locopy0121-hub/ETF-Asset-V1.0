@@ -78,7 +78,7 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
     ledger: {},
     portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
     dividend: {},
@@ -99,7 +99,15 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
   const header=(source.header??{}) as Partial<HoldingWallConfig['header']>;
   const style=(source.style??{}) as Partial<HoldingWallConfig['style']>;
   const rawFields=Array.isArray(source.fields)?source.fields:[];
-  const fieldMap=new Map(rawFields.map(field=>[(field as Partial<HoldingWallFieldConfig>).field,field as Partial<HoldingWallFieldConfig>]));
+  const rawFieldKeys=rawFields.map(field=>(field as Partial<HoldingWallFieldConfig>).field);
+  const legacyWrongWall=rawFieldKeys.join(',')==='name,symbol,price,change,changePercent,pnl,roi,marketValue'
+    &&rawFields.every(field=>{
+      const f=field as Partial<HoldingWallFieldConfig>;
+      if(f.field==='marketValue')return f.enabled===false;
+      return f.enabled!==false;
+    });
+  const normalizedSourceFields=legacyWrongWall?DEFAULT_HOLDING_WALL_CONFIG.fields:rawFields;
+  const fieldMap=new Map(normalizedSourceFields.map(field=>[(field as Partial<HoldingWallFieldConfig>).field,field as Partial<HoldingWallFieldConfig>]));
   const fields=DEFAULT_HOLDING_WALL_CONFIG.fields.map((fallback):HoldingWallFieldConfig=>{
     const candidate=fieldMap.get(fallback.field);
     return {
