@@ -1,6 +1,6 @@
 import type {AiNewsItem} from './AiNewsRuntime';
 import {formatDividendEvent,refreshHoldingDividendEvents,type HoldingDividendEvent} from './dividendAssistant';
-import type {CanonicalLedgerEntry} from '../finance/canonicalLedger';
+import {calculateLedgerCashFlow,type CanonicalLedgerEntry} from '../finance/canonicalLedger';
 
 export type AiAssistantAction=Readonly<{
   id:string;
@@ -91,6 +91,27 @@ export async function answerAiQuestion(
   }
 
   if(includesAny(q,['股息','配息'])){
+    const today=new Date().toISOString().slice(0,10);
+    const year=today.slice(0,4),month=today.slice(0,7);
+    const dividends=entries.filter((entry):entry is Extract<CanonicalLedgerEntry,{kind:'dividend'}>=>entry.kind==='dividend');
+    if(includesAny(q,['本月','這個月'])){
+      const rows=dividends.filter(entry=>entry.date.startsWith(month)&&(symbol?entry.symbol===symbol.symbol:true));
+      const total=rows.reduce((sum,entry)=>sum+calculateLedgerCashFlow(entry),0);
+      return {intent:'dividend',text:(symbol?symbol.symbol+' '+symbol.name+' ':'')+month+' 本月淨股息 NT$ '+money(total)+'，共 '+rows.length+' 筆。'};
+    }
+    if(includesAny(q,['今年','年度','本年'])){
+      const rows=dividends.filter(entry=>entry.date.startsWith(year)&&(symbol?entry.symbol===symbol.symbol:true));
+      const total=rows.reduce((sum,entry)=>sum+calculateLedgerCashFlow(entry),0);
+      return {intent:'dividend',text:(symbol?symbol.symbol+' '+symbol.name+' ':'')+year+' 年度淨股息 NT$ '+money(total)+'，共 '+rows.length+' 筆。'};
+    }
+    if(includesAny(q,['最高月份','哪個月','最多'])){
+      const totals=Array.from({length:12},(_,index)=>{
+        const key=year+'-'+String(index+1).padStart(2,'0');
+        return dividends.filter(entry=>entry.date.startsWith(key)&&(symbol?entry.symbol===symbol.symbol:true)).reduce((sum,entry)=>sum+calculateLedgerCashFlow(entry),0);
+      });
+      const max=Math.max(0,...totals),index=totals.indexOf(max);
+      return {intent:'dividend',text:year+' 年目前股息最高月份為 '+(index+1)+' 月，淨股息 NT$ '+money(max)+'。'};
+    }
     if(symbol)return {intent:'dividend',text:symbol.symbol+' '+symbol.name+' 目前帳務累積股息 NT$ '+money(symbol.cumulativeDividend)+'。若要查下一次除息／配發或未登錄紀錄，請輸入「更新 '+symbol.symbol+' 股息日」。'};
     return {intent:'dividend',text:'目前帳務累積淨股息 NT$ '+money(portfolio.totalDividendsReceived)+'。若要掃描持股最新除息與待補登紀錄，請輸入「更新持股股息日」。'};
   }
