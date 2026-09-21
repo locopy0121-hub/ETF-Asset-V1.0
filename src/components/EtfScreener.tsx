@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {type ReactNode,useMemo,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 
 import type {EtfCatalogItem} from '../market/MarketRuntime';
@@ -112,7 +112,7 @@ export function EtfScreener({catalog}:{catalog:readonly EtfCatalogItem[]}){
   </View>;
 }
 
-function FilterGroup({label,children}:{label:string;children:React.ReactNode}){
+function FilterGroup({label,children}:{label:string;children:ReactNode}){
   return <View style={styles.filterGroup}><Text style={styles.fieldLabel}>{label}</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{children}</ScrollView></View>;
 }
 function Chip({label,active,onPress}:{label:string;active:boolean;onPress:()=>void}){
