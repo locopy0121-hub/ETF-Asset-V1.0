@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
@@ -240,22 +241,125 @@ class TfAssetOverlayService:Service(){
       "market-wall"->{
         val wall=cfg.optJSONObject("normalWall")?:JSONObject()
         val wallStyle=wall.optJSONObject("style")?:JSONObject()
+        val wallHeader=wall.optJSONObject("header")?:JSONObject()
         val wallFields=wall.optJSONArray("fields")?:JSONArray()
         val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
+        val wallSecondary=color(wallStyle.optString("secondaryTextColor",style.optString("secondaryTextColor","#CBD5E1")),secondary)
         val wallGain=color(wallStyle.optString("gainColor",style.optString("gainColor","#EF4444")),gain)
         val wallLoss=color(wallStyle.optString("lossColor",style.optString("lossColor","#10B981")),loss)
+        val wallBorder=color(wallStyle.optString("borderColor",style.optString("borderColor","#334155")),Color.DKGRAY)
+        val wallBackground=color(wallStyle.optString("backgroundColor",style.optString("backgroundColor","#0F172A")),Color.rgb(15,23,42))
+        val wallPadding=wallStyle.optInt("padding",12).coerceIn(0,32)
+        val wallGap=wallStyle.optInt("rowGap",8).coerceIn(0,24)
+        val wallBorderWidth=wallStyle.optInt("borderWidth",1).coerceIn(0,6)
+        val wallCorner=wallStyle.optInt("cornerRadius",16).coerceIn(0,40)
+        val enabled=(0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
+        val headerFields=enabled.filter{it.optString("field")=="name"||it.optString("field")=="symbol"}
+        val quoteFields=enabled.filter{it.optString("field")=="price"||it.optString("field")=="change"||it.optString("field")=="changePercent"}
+        val footerFields=enabled.filter{it.optString("field")=="pnl"||it.optString("field")=="roi"||it.optString("field")=="marketValue"}
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
         rows.forEach{row->
-          val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(8,6,8,6)}
-          (0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}.forEach{field->
-            val key=field.optString("field","symbol")
-            val numeric=miniNumeric(row,key)
-            val useProfit=field.optBoolean("useProfitColor",false)
-            val fieldTone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else neutral
-            card.addView(textView(field.optString("label",key)+"  "+miniValue(row,key),fieldTone,11*field.optDouble("fontScale",1.0).toFloat()*fs,gravityFor(field.optString("align","left"))))
+          val card=LinearLayout(this).apply{
+            orientation=LinearLayout.VERTICAL
+            setPadding(wallPadding,wallPadding,wallPadding,wallPadding)
+            background=GradientDrawable().apply{
+              setColor(wallBackground)
+              cornerRadius=wallCorner.toFloat()
+              if(wallBorderWidth>0)setStroke(wallBorderWidth,wallBorder)
+            }
           }
-          body.addView(card)
+
+          if(wallHeader.optBoolean("visible",true)&&headerFields.isNotEmpty()){
+            val headerRow=LinearLayout(this).apply{
+              orientation=LinearLayout.HORIZONTAL
+              gravity=Gravity.CENTER_VERTICAL
+              val headerBg=color(wallHeader.optString("backgroundColor",wallStyle.optString("backgroundColor","#0C121B")),wallBackground)
+              setBackgroundColor(headerBg)
+              setPadding(0,0,0,wallGap)
+            }
+            val headerText=color(wallHeader.optString("textColor","#FFFFFF"),wallText)
+            val headerScale=wallHeader.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat()
+            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+            headerFields.forEachIndexed{index,field->
+              val key=field.optString("field","symbol")
+              val numeric=miniNumeric(row,key)
+              val useProfit=field.optBoolean("useProfitColor",false)
+              val tone=if(!useProfit||numeric==null)headerText else if(numeric>0)wallGain else if(numeric<0)wallLoss else wallSecondary
+              val base=if(index==0)15f else 11f
+              nameWrap.addView(textView(
+                miniValue(row,key),
+                tone,
+                base*field.optDouble("fontScale",1.0).toFloat()*headerScale*fs,
+                gravityFor(field.optString("align","left"))
+              ))
+            }
+            headerRow.addView(nameWrap,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+            headerRow.addView(textView("›",wallSecondary,22*headerScale*fs,Gravity.END))
+            card.addView(headerRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+          }
+
+          if(quoteFields.isNotEmpty()){
+            val quoteRow=LinearLayout(this).apply{
+              orientation=LinearLayout.HORIZONTAL
+              gravity=Gravity.BOTTOM
+              setPadding(0,wallGap,0,0)
+            }
+            val primary=quoteFields.first()
+            val primaryKey=primary.optString("field","price")
+            val primaryNumeric=miniNumeric(row,primaryKey)
+            val primaryUseProfit=primary.optBoolean("useProfitColor",false)
+            val primaryTone=if(!primaryUseProfit||primaryNumeric==null)wallText else if(primaryNumeric>0)wallGain else if(primaryNumeric<0)wallLoss else wallSecondary
+            quoteRow.addView(textView(
+              miniValue(row,primaryKey),
+              primaryTone,
+              29*primary.optDouble("fontScale",1.0).toFloat()*fs,
+              gravityFor(primary.optString("align","left"))
+            ),LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+            if(quoteFields.size>1){
+              val changeWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.END}
+              quoteFields.drop(1).forEach{field->
+                val key=field.optString("field","change")
+                val numeric=miniNumeric(row,key)
+                val useProfit=field.optBoolean("useProfitColor",false)
+                val tone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else wallSecondary
+                changeWrap.addView(textView(
+                  miniValue(row,key),
+                  tone,
+                  11*field.optDouble("fontScale",1.0).toFloat()*fs,
+                  gravityFor(field.optString("align","right"))
+                ))
+              }
+              quoteRow.addView(changeWrap)
+            }
+            card.addView(quoteRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+          }
+
+          if(footerFields.isNotEmpty()){
+            val footer=LinearLayout(this).apply{
+              orientation=LinearLayout.HORIZONTAL
+              gravity=Gravity.BOTTOM
+              setPadding(0,wallGap,0,0)
+            }
+            footerFields.forEachIndexed{index,field->
+              val key=field.optString("field","pnl")
+              val numeric=miniNumeric(row,key)
+              val useProfit=field.optBoolean("useProfitColor",false)
+              val tone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else wallSecondary
+              val cell=LinearLayout(this).apply{
+                orientation=LinearLayout.VERTICAL
+                gravity=gravityFor(field.optString("align",if(index==0)"left" else "right"))
+                addView(textView(field.optString("label",key),wallSecondary,10*fs,gravity))
+                addView(textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).toFloat()*fs,gravity))
+              }
+              footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+            }
+            card.addView(footer,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+          }
+
+          body.addView(card,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{
+            bottomMargin=wallGap
+          })
         }
         val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
         root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
