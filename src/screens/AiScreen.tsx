@@ -1,13 +1,18 @@
+import {useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {FrameCard} from '../components/FrameCard';
 import {PageShell} from '../components/PageShell';
+import {PageGearButton} from '../components/PageGearButton';
+import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
+import {PAGE_FRAMES} from '../domain/frameRegistry';
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 
 const date=(value:string)=>{const d=new Date(value);return Number.isNaN(d.getTime())?value:d.toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'});};
 export function AiScreen(){
   const ai=useAiNewsRuntime();
-  return <PageShell title="AI 助理" subtitle="持股新聞智慧整理；行情與金融數值仍只讀 Finance Core">
+  const [settingsOpen,setSettingsOpen]=useState(false);
+  return <><PageShell title="AI 助理" subtitle="持股新聞智慧整理；行情與金融數值仍只讀 Finance Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
     <FrameCard title="AI 持股新聞">
       <View style={styles.row}><View style={{flex:1}}><Text style={styles.note}>自動依目前持股抓取網路新聞，保留來源與新聞日期，再產生重點摘要。</Text>{ai.lastError?<Text style={styles.error}>{ai.lastError}</Text>:null}</View>
       <Pressable style={[styles.refresh,ai.refreshing&&styles.disabled]} disabled={ai.refreshing} onPress={()=>void ai.refresh()}><Text style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable></View>
@@ -17,7 +22,7 @@ export function AiScreen(){
       </View>)}
       {!ai.items.length?<Text style={styles.empty}>尚無新聞資料，按「更新新聞」取得最新持股相關資訊。</Text>:null}
     </FrameCard>
-  </PageShell>;
+  </PageShell><PageFrameSettingsModal visible={settingsOpen} pageKey="ai" title="AI 助理" frames={PAGE_FRAMES.ai} onClose={()=>setSettingsOpen(false)}/></>;
 }
 const styles=StyleSheet.create({
   row:{flexDirection:'row',gap:10,alignItems:'center'},note:{fontSize:11,lineHeight:17,color:colors.textSecondary},error:{fontSize:10,color:colors.loss,marginTop:4},
