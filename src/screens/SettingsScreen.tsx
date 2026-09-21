@@ -46,8 +46,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.14';
-const BUILD='10014';
+const VERSION='1.0.15';
+const BUILD='10015';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -374,9 +374,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.0.13 Monitor 框架與 Mini 狀態列編輯" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.13 更新資訊">
-        <Text style={styles.infoText}>Monitor 主體行情牆新增獨立框架設定，可控制 1～4 欄並排與水平／垂直間距，卡片內仍沿用首頁行情牆 A/B 欄位契約。Mini 下方狀態列新增完整編輯入口，可選擇總資產、市值、總損益等項目並調整順序、欄數、字體與配色。所有 Monitor 數據持續只讀 Shared Snapshot。</Text>
+      <ChildButton label="更新資訊" summary="V1.0.15 Monitor 設定閃退修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      {appPanel==='updates'?<Panel title="V1.0.15 更新資訊">
+        <Text style={styles.infoText}>修正點擊「監控器總設定」時因大量調色盤同時掛載造成的設定頁閃退；調色盤改為需要時才展開，保留直接選色、不輸入 HEX 的規則。Monitor 資料與 Native 執行邏輯不變。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
