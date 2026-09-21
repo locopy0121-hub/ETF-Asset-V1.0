@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
@@ -57,11 +57,11 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
         },
         {key:'market-news',element:
           <FrameCard title="市場新聞">
-            {newsItems.map(item=><View key={item.id} style={styles.newsRow}>
+            {newsItems.map(item=><Pressable key={item.id} accessibilityRole="link" disabled={!item.url} onPress={()=>void Linking.openURL(item.url)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed,!item.url&&styles.newsDisabled]}>
               <View style={styles.newsDot}/>
-              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source}</Text></View>
+              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source} · 點擊開啟原文</Text></View>
               <Text style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
-            </View>)}
+            </Pressable>)}
             {!newsItems.length?<Text style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
           </FrameCard>
         },
@@ -129,6 +129,8 @@ const styles=StyleSheet.create({
   newsTitle:{fontSize:13,color:colors.text,fontWeight:'700',lineHeight:19},
   newsMeta:{fontSize:10,color:colors.textSecondary,marginTop:2},
   newsTime:{fontSize:10,color:colors.textSecondary},
+  newsPressed:{opacity:.65},
+  newsDisabled:{opacity:.45},
   sortRow:{flexDirection:'row',alignItems:'center',gap:6,flexWrap:'wrap'},
   sortLabel:{fontSize:11,fontWeight:'800',color:colors.textSecondary,marginRight:3},
   sortChip:{paddingHorizontal:11,paddingVertical:6,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
