@@ -513,3 +513,82 @@ GO 執行途中若追加新需求：
 ### 只有原始 Checklist 全部完成、逐項驗證完成、Final Checklist Reconciliation PASS、GitHub Action PASS、APK / Artifact 驗證 PASS，才能宣告：
 
 # GO ALL PASS
+
+---
+
+## 26. GO 自動接續與正式 Action 邊界（LOCKED）
+
+以下規則為 GO 執行的強制流程，禁止自行變形、提前、跳項或以其他流程取代：
+
+### 26.1 固定執行順序
+
+**GO → 列出本次目的清單 → 讀 `ERROR_LESSONS.md` → 讀 `Work_Project_Rules.md` → 前置 Gate → 單項修改 → 重驗 → 完整性確認 → PASS 後自動下一項 → 直到最後一項 → Final Checklist Reconciliation → 全項 PASS → 才能正式 GitHub Release Action → 每 15 秒查 Log → Error 原地修護並重跑 → Artifact／APK／版本／package 驗證 → 最終交付。**
+
+### 26.2 單項狀態與自動接續
+
+- 單項未完成「修改 → 重驗 → 完整性確認」三階段，不得標示 PASS。
+- 單項未 PASS，禁止進入下一項。
+- 單項正式 PASS 後，**必須自動接續下一項**，不得等待使用者再次輸入 GO、確認或提醒。
+- 只有 **FAIL／BLOCKED／未證實** 才停留在原項。
+- FAIL 必須原地修護、重驗、完整性確認，直到 PASS 才可繼續。
+- 不得以「先做下一項、之後補回來」的方式跨關。
+
+### 26.3 正式 GitHub Release Action 的硬性限制
+
+- **Release Checklist 尚未全數 PASS 前，禁止啟動正式 GitHub Release Action。**
+- QA／Preview／驗收 APK、PR CI、分支 quality workflow，均不得稱為「正式 Release Action」。
+- Build PASS、CI PASS、GitHub Action PASS、APK 產出，均不得反向推論 Feature PASS。
+- 只有在：
+  1. 原始 Release Checklist 全項 PASS；
+  2. 0 FAIL；
+  3. 0 BLOCKED；
+  4. 0 未證實；
+  5. Final Checklist Reconciliation PASS；
+  6. Finance Core PASS；
+  7. Boundary PASS；
+  8. Version Identity PASS；
+  
+  全部成立後，才允許啟動正式 GitHub Release Action。
+
+### 26.4 正式 Action 後的持續監控
+
+- 正式 GitHub Release Action 啟動後，必須每 15 秒讀取一次狀態與 Log。
+- 發現任何 error／failed step／build failure：
+  - 立即讀取實際錯誤；
+  - 原地修護；
+  - 重驗；
+  - 重新啟動正式 Action；
+  - 再次進入每 15 秒監控循環。
+- 不得因前一次 Action 曾成功就略過本次 Log／Artifact 驗證。
+
+### 26.5 最終回報必備統計
+
+每次 GO 進度回報與最終回報都必須包含：
+
+- 已完成項目數；
+- 未完成項目數；
+- 未完成／未證實項目清單；
+- 是否存在 FAIL；
+- 是否存在 BLOCKED；
+- 是否已允許正式 Release Action。
+
+禁止只回報「已完成什麼」而省略「尚未完成什麼」。
+
+### 26.6 專案與 Scope 邊界
+
+- 不得換專案。
+- 不得混入 V5／舊 360／其他專案元件，除非使用者明確要求。
+- 不得擅自擴張 scope。
+- 使用者要求修 A，就先完成 A；發現 B 有問題只回報，除非使用者明確追加，否則不得自行修改 B。
+- 對話中斷、工具中斷、Action 中斷，都不得改變原始 Release Checklist 與 GO 執行順序。
+
+### 26.7 GO 最終硬規則
+
+**單項沒 PASS，不准下一項。**  
+**單項 PASS，立即自動下一項。**  
+**FAIL／BLOCKED，原地修。**  
+**Checklist 沒全 PASS，不准正式 Release Action。**  
+**Build／CI／APK 不得冒充 Feature PASS。**  
+**每次回報都要列完成數、未完成數與未完成清單。**  
+**只有全部 Checklist 完成並通過 Final Checklist Reconciliation，才能進正式 Release Action。**
+
