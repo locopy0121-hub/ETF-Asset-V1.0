@@ -353,7 +353,7 @@ export function SettingsScreen(){
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
       <ChildButton label="金額單位設定" summary={d.amountDecimals===2?'2 位小數':'整數'} active={displayPanel==='amount'} onPress={()=>setDisplayPanel(displayPanel==='amount'?null:'amount')}/>
-      {displayPanel==='amount'?<Panel title="金額單位設定">
+      {displayPanel==='amount'?<Panel title="金額格式">
         <ChoiceRow label="小數位" options={[{key:'0',label:'整數'},{key:'2',label:'2 位'}]} value={String(d.amountDecimals)} onChange={x=>settings.patchDisplay({amountDecimals:x==='2'?2:0})}/>
         <ToggleRow label="千分位" value={d.thousandsSeparator} onChange={thousandsSeparator=>settings.patchDisplay({thousandsSeparator})}/>
       </Panel>:null}
