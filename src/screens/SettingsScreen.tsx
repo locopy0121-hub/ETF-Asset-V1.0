@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ImageBackground,
   Linking,
   PermissionsAndroid,
   Platform,
@@ -33,7 +34,8 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import {APP_ICON_OPTIONS,BUILTIN_BACKGROUNDS,BUILTIN_THEMES,useThemeRuntime,type ThemeFit,type ThemeId} from '../theme/ThemeRuntime';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackgroundImage, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
@@ -42,7 +44,7 @@ type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
 type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
-type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
+type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
@@ -56,6 +58,7 @@ export function SettingsScreen(){
   const settings=useSettingsRuntime();
   const monitor=useMonitorSettingsRuntime();
   const widget=useWidgetSettingsRuntime();
+  const theme=useThemeRuntime();
 
   const [top,setTop]=useState<string|null>(null);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>(null);
@@ -350,6 +353,8 @@ export function SettingsScreen(){
         <ToggleRow label="顯示優化" value={d.optimizationEnabled} onChange={optimizationEnabled=>settings.patchDisplay({optimizationEnabled})}/>
         <Text style={styles.note}>關閉時各頁使用原始顯示預設；已儲存的各頁顯示設定保留，重新開啟後恢復套用。設定頁本身不受影響。</Text>
       </View>
+      <ChildButton label="主題系統" summary={theme.activeThemeName+' · 10 組內建'} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
+      {displayPanel==='theme'?<ThemeSettingsPanel/>:null}
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
       <ChildButton label="金額單位設定" summary={d.amountDecimals===2?'2 位小數':'整數'} active={displayPanel==='amount'} onPress={()=>setDisplayPanel(displayPanel==='amount'?null:'amount')}/>
@@ -461,6 +466,66 @@ export function SettingsScreen(){
       <ToggleRow label="聲音" value={n.sound} onChange={sound=>settings.patchNotifications({sound})}/>
       <Stepper label="提前提醒" value={n.leadDays} min={0} max={30} step={1} suffix=" 天" onChange={leadDays=>settings.patchNotifications({leadDays})}/>
       {notificationPermission==='denied'?<Text style={styles.note}>偏好會保存，但 Android 通知權限尚未允許，因此通知目前不會實際送出。</Text>:null}
+    </Panel>;
+  }
+
+  function ThemeSettingsPanel(){
+    const state=theme.state;
+    const bg=state.background;
+    const resizeMode=bg.fit==='fit-height'?'contain':bg.fit==='fit-width'?'cover':'stretch';
+    const pickBackground=async()=>{const uri=await pickNativeThemeBackgroundImage();if(uri)theme.setCustomBackgroundUri(uri);};
+    const fitOptions=[{key:'fit-width',label:'適寬'},{key:'fit-height',label:'適高'},{key:'fill',label:'填滿'}] as const;
+    return <Panel title="主題系統">
+      <Text style={styles.note}>10 組主題、10 組 App Icon、10 張內建背景；主題切換只改視覺，不改帳務、行情或金融核心。</Text>
+      <View style={[styles.themePreview,{backgroundColor:state.palette.background,borderColor:state.palette.border}]}>
+        {theme.backgroundUri?<ImageBackground source={{uri:theme.backgroundUri}} resizeMode={resizeMode} blurRadius={bg.blurRadius} imageStyle={{opacity:bg.opacity}} style={StyleSheet.absoluteFill}/>:null}
+        {bg.maskOpacity>0?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:'#000000',opacity:bg.maskOpacity}]}/>:null}
+        <View style={[styles.themePreviewHeader,{backgroundColor:state.palette.surface,borderColor:state.palette.border}]}>
+          <View style={[styles.themeIconPreview,{backgroundColor:APP_ICON_OPTIONS.find(x=>x.id===state.appIconId)?.background??state.palette.surface}]}>
+            <Text style={{fontWeight:'900',fontSize:16,color:APP_ICON_OPTIONS.find(x=>x.id===state.appIconId)?.primary??state.palette.primary}}>TF</Text>
+          </View>
+          <View style={{flex:1}}><Text style={{fontSize:10,fontWeight:'900',color:state.palette.primary}}>TF ASSET</Text><Text style={{fontSize:16,fontWeight:'900',color:state.palette.text}}>主題即時預覽</Text></View>
+        </View>
+        <View style={[styles.themePreviewCard,{backgroundColor:state.palette.surface,borderColor:state.palette.border}]}>
+          <Text style={{fontSize:10,color:state.palette.textSecondary}}>持股市值</Text>
+          <Text style={{fontSize:18,fontWeight:'900',color:state.palette.text}}>NT$ 500,000</Text>
+          <Text style={{fontSize:11,fontWeight:'900',color:state.palette.gain}}>+12,800</Text>
+        </View>
+      </View>
+
+      <Text style={styles.subTitle}>10 組主題組合</Text>
+      <View style={styles.choiceWrap}>{BUILTIN_THEMES.map(item=><Pressable key={item.id} onPress={()=>theme.applyPreset(item.id)} style={[styles.choice,state.selectedThemeId===item.id&&styles.choiceActive]}><Text style={[styles.choiceText,state.selectedThemeId===item.id&&styles.choiceTextActive]}>{item.name}</Text></Pressable>)}</View>
+
+      <Text style={styles.subTitle}>10 組 App Icon</Text>
+      <View style={styles.themeIconGrid}>{APP_ICON_OPTIONS.map(item=><Pressable key={item.id} onPress={()=>theme.setAppIconId(item.id)} style={[styles.themeIconChoice,{backgroundColor:item.background,borderColor:state.appIconId===item.id?state.palette.primary:state.palette.border}]}><Text style={{color:item.primary,fontWeight:'900'}}>TF</Text><Text style={{fontSize:8,color:item.primary}}>{item.id.replace('icon-','')}</Text></Pressable>)}</View>
+
+      <Text style={styles.subTitle}>10 張內建背景</Text>
+      <View style={styles.choiceWrap}>{BUILTIN_BACKGROUNDS.map(item=><Pressable key={item.id} onPress={()=>theme.patchBackground({source:'builtin',builtinId:item.id,customUri:null})} style={[styles.choice,bg.source==='builtin'&&bg.builtinId===item.id&&styles.choiceActive]}><Text style={[styles.choiceText,bg.source==='builtin'&&bg.builtinId===item.id&&styles.choiceTextActive]}>{item.name}</Text></Pressable>)}</View>
+      <ActionButton label="選擇自訂背景圖片" onPress={()=>void pickBackground()}/>
+      {bg.source==='custom'&&bg.customUri?<ActionButton label="移除自訂背景，回到內建" onPress={()=>theme.setCustomBackgroundUri(null)}/>:null}
+      <ChoiceRow label="背景顯示" options={fitOptions} value={bg.fit} onChange={fit=>theme.patchBackground({fit:fit as ThemeFit})}/>
+      <Stepper label="背景透明度" value={Math.round(bg.opacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>theme.patchBackground({opacity:v/100})}/>
+      <Stepper label="背景模糊" value={Math.round(bg.blurRadius)} min={0} max={30} step={2} suffix="" onChange={blurRadius=>theme.patchBackground({blurRadius})}/>
+      <Stepper label="背景遮罩" value={Math.round(bg.maskOpacity*100)} min={0} max={90} step={5} suffix="%" onChange={v=>theme.patchBackground({maskOpacity:v/100})}/>
+
+      <Text style={styles.subTitle}>目前主題色</Text>
+      <ColorPalettePicker label="頁面背景" value={state.palette.background} onChange={background=>theme.patchPalette({background})}/>
+      <ColorPalettePicker label="卡片背景" value={state.palette.surface} onChange={surface=>theme.patchPalette({surface})}/>
+      <ColorPalettePicker label="次要背景" value={state.palette.surfaceMuted} onChange={surfaceMuted=>theme.patchPalette({surfaceMuted})}/>
+      <ColorPalettePicker label="主色" value={state.palette.primary} onChange={primary=>theme.patchPalette({primary})}/>
+      <ColorPalettePicker label="主要文字" value={state.palette.text} onChange={text=>theme.patchPalette({text})}/>
+      <ColorPalettePicker label="次要文字" value={state.palette.textSecondary} onChange={textSecondary=>theme.patchPalette({textSecondary})}/>
+      <ColorPalettePicker label="邊框" value={state.palette.border} onChange={border=>theme.patchPalette({border})}/>
+      <ColorPalettePicker label="獲利／上漲" value={state.palette.gain} onChange={gain=>theme.patchPalette({gain})}/>
+      <ColorPalettePicker label="虧損／下跌" value={state.palette.loss} onChange={loss=>theme.patchPalette({loss})}/>
+
+      <Text style={styles.subTitle}>5 組自訂主題儲存</Text>
+      {state.customSlots.map(slot=><View key={slot.slot} style={styles.themeSlotRow}>
+        <Text style={styles.rowTitle}>{slot.name}{slot.saved?' · 已儲存':' · 空白'}</Text>
+        <Pressable onPress={()=>theme.saveCustomSlot(slot.slot)} style={styles.themeSlotButton}><Text style={styles.themeSlotButtonText}>儲存目前</Text></Pressable>
+        <Pressable disabled={!slot.saved} onPress={()=>theme.applyCustomSlot(slot.slot)} style={[styles.themeSlotButton,!slot.saved&&styles.actionDisabled]}><Text style={styles.themeSlotButtonText}>套用</Text></Pressable>
+      </View>)}
+      <ActionButton label="重設為經典金融藍" onPress={theme.resetTheme}/>
     </Panel>;
   }
 
@@ -725,6 +790,15 @@ const styles=StyleSheet.create({
   dangerText:{fontSize:11,fontWeight:'900',color:colors.gain},
   infoText:{fontSize:11,lineHeight:18,color:colors.text},
   subTitle:{fontSize:11,fontWeight:'900',color:colors.text,marginTop:4},
+  themePreview:{height:190,borderRadius:radius.lg,borderWidth:1,overflow:'hidden',padding:12,gap:10,position:'relative'},
+  themePreviewHeader:{flexDirection:'row',alignItems:'center',gap:10,padding:9,borderRadius:radius.md,borderWidth:1},
+  themePreviewCard:{padding:12,borderRadius:radius.md,borderWidth:1,gap:3},
+  themeIconPreview:{width:38,height:38,borderRadius:10,alignItems:'center',justifyContent:'center'},
+  themeIconGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},
+  themeIconChoice:{width:52,height:52,borderRadius:12,borderWidth:2,alignItems:'center',justifyContent:'center'},
+  themeSlotRow:{flexDirection:'row',alignItems:'center',gap:6,paddingVertical:4},
+  themeSlotButton:{paddingHorizontal:9,paddingVertical:7,borderRadius:radius.md,backgroundColor:colors.primary},
+  themeSlotButtonText:{fontSize:9,fontWeight:'900',color:'#FFFFFF'},
   numberEditor:{flexDirection:'row',alignItems:'center',gap:6},
   settingNumberInput:{minWidth:88,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:9,paddingVertical:7,color:colors.text,textAlign:'right',fontSize:11,fontWeight:'900',backgroundColor:colors.surface},
   actionRow:{flexDirection:'row',gap:8,marginTop:4},
