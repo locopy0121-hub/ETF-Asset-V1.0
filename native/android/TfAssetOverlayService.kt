@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
+import android.widget.LinearLayout.LayoutParams as LinearLayoutParams
 import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONArray
@@ -339,10 +340,10 @@ class TfAssetOverlayService:Service(){
       isFillViewport=true
       addView(body)
     }
-    root.addView(scroller,LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,0,1f))
+    root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
   }
 
-  private fun weighted(weight:Float)=LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
+  private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
   private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{
     text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)
   }
