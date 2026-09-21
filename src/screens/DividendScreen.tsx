@@ -10,6 +10,8 @@ import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
+import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
+import {dividendEventToLedger} from '../ai/dividendAssistant';
 import { calculateLedgerCashFlow, type DividendLedgerEntry } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
 import { colors, spacing } from '../theme/tokens';
@@ -41,16 +43,14 @@ export function DividendScreen() {
     return dividends.filter(x=>x.date.startsWith(key)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
   });
   const maxMonth=Math.max(1,...monthTotals);
-  const askDividend=(question:string)=>{
+  const askDividend=async(question:string)=>{
     const q=question.toLowerCase();
-    const symbol=finance.holdings.find(h=>q.includes(h.symbol.toLowerCase())||q.includes(h.name.toLowerCase()));
-    if(q.includes('本月'))return `${month} 本月淨入帳 NT$ ${money(monthTotal)}，共 ${monthRows.length} 筆股息紀錄。`;
-    if(q.includes('今年')||q.includes('年度'))return `${year} 年度淨股息 NT$ ${money(annual)}，月平均 NT$ ${money(monthlyAverage)}。`;
-    if(q.includes('最高')||q.includes('最多')){const max=Math.max(...monthTotals);const idx=monthTotals.indexOf(max);return `${year} 年目前最高月份為 ${idx+1} 月，淨股息 NT$ ${money(max)}。`;}
-    if(symbol){const rows=dividends.filter(x=>x.symbol===symbol.symbol);const total=rows.reduce((sum,row)=>sum+calculateLedgerCashFlow(row),0);const news=aiNews.items.filter(item=>item.symbol===symbol.symbol).slice(0,2);return `${symbol.symbol} ${symbol.name} 已記錄股息淨額 NT$ ${money(total)}，共 ${rows.length} 筆。${news.length?'\n相關近期新聞：\n'+news.map(item=>`• ${item.title}`).join('\n'):''}`;}
-    if(q.includes('新聞')||q.includes('消息')){const news=aiNews.items.slice(0,3);return news.length?news.map(item=>`• ${item.symbol} ${item.title}（${item.source}）`).join('\n'):'目前尚無已取得的持股新聞。';}
-    return `目前頁面：${month} 本月淨入帳 NT$ ${money(monthTotal)}；${year} 年度淨股息 NT$ ${money(annual)}。你也可以直接問某一檔 ETF 代號。`;
+    if(q.includes('本月'))return {intent:'dividend' as const,text:month+' 本月淨入帳 NT$ '+money(monthTotal)+'，共 '+monthRows.length+' 筆股息紀錄。'};
+    if(q.includes('今年')||q.includes('年度'))return {intent:'dividend' as const,text:year+' 年度淨股息 NT$ '+money(annual)+'，月平均 NT$ '+money(monthlyAverage)+'。'};
+    if(q.includes('最高')||q.includes('最多')){const max=Math.max(...monthTotals);const idx=monthTotals.indexOf(max);return {intent:'dividend' as const,text:year+' 年目前最高月份為 '+(idx+1)+' 月，淨股息 NT$ '+money(max)+'。'};}
+    return answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,aiNews.items,finance.entries);
   };
+  const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   return <>
     <PageShell title="股息中心" subtitle="股息淨額與現金入帳共用 V3.7.8 Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
@@ -62,7 +62,7 @@ export function DividendScreen() {
               <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
               <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
             </View>
-            <View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['這個月股息多少？','今年股息多少？','哪個月股息最高？','最近有什麼持股新聞？']} onAsk={askDividend}/></View>
+            <View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>
           </FrameCard>
         },
         {key:'dividend-calendar',element:

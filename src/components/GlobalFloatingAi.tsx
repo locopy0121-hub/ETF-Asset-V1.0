@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
-import { answerAiQuestion } from '../ai/aiAssistant';
+import { answerAiQuestion, type AiAssistantAction } from '../ai/aiAssistant';
+import { dividendEventToLedger } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import { AiQuestionBox } from './AiQuestionBox';
@@ -60,7 +61,8 @@ export function GlobalFloatingAi(){
     },
   }),[safePosition.x,safePosition.y,maxX,maxY,mode]);
 
-  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items);
+  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries);
+  const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   if(mode==='closed'){
     return <Pressable
@@ -83,7 +85,7 @@ export function GlobalFloatingAi(){
     <View {...responder.panHandlers} style={styles.header}>
       <View style={{flex:1}}>
         <Text style={styles.title}>AI 助理</Text>
-        <Text style={styles.subtitle}>全局浮動 · 持股／損益／股息／新聞</Text>
+        <Text style={styles.subtitle}>全局浮動 · 財務資料／股息更新／行情／新聞整理</Text>
       </View>
       <Pressable onPress={()=>changeMode('minimized')} style={styles.headerAction}><Text style={styles.headerActionText}>−</Text></Pressable>
       <Pressable onPress={()=>changeMode('closed')} style={styles.headerAction}><Text style={styles.headerActionText}>×</Text></Pressable>
@@ -91,8 +93,9 @@ export function GlobalFloatingAi(){
     <View style={styles.body}>
       <AiQuestionBox
         title="直接詢問目前 App 資料"
-        suggestions={['目前持股市值？','目前損益？','最近持股有什麼新聞？','累積股息多少？']}
+        suggestions={['你可以做什麼？','更新持股股息日','目前持股市值？','最近持股有什麼新聞？']}
         onAsk={ask}
+        onAction={runAction}
       />
       <View style={styles.statusRow}>
         <Text style={styles.statusText}>持股 {finance.holdings.length} 檔 · 新聞 {ai.items.length} 則</Text>
@@ -103,13 +106,13 @@ export function GlobalFloatingAi(){
 }
 
 const styles=StyleSheet.create({
-  panel:{position:'absolute',zIndex:9999,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,overflow:'hidden',elevation:16},
+  panel:{position:'absolute',zIndex:9999,height:CARD_HEIGHT,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,overflow:'hidden',elevation:16},
   header:{flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:12,paddingVertical:10,backgroundColor:colors.surfaceMuted,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   title:{fontSize:13,fontWeight:'900',color:colors.text},
   subtitle:{fontSize:9,color:colors.textSecondary,marginTop:2},
   headerAction:{width:30,height:30,borderRadius:15,alignItems:'center',justifyContent:'center',backgroundColor:colors.surface},
   headerActionText:{fontSize:18,fontWeight:'900',color:colors.primary},
-  body:{padding:spacing.md,gap:8},
+  body:{flex:1,padding:spacing.md,gap:8},
   statusRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,paddingTop:6,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
   statusText:{fontSize:9,color:colors.textSecondary},
   refreshText:{fontSize:10,fontWeight:'900',color:colors.primary},

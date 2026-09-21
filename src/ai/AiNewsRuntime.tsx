@@ -48,7 +48,8 @@ export function AiNewsRuntimeProvider({children}:PropsWithChildren){
     const tracked=trackedRef.current;
     if(!tracked.length){setItems([]);setLastUpdatedAt(Date.now());return;}
     const settled=await Promise.allSettled(tracked.map(fetchHoldingNews));
-    const merged=settled.flatMap(x=>x.status==='fulfilled'?x.value:[]).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||'')).slice(0,40);
+    const raw=settled.flatMap(x=>x.status==='fulfilled'?x.value:[]).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||''));
+    const merged=Array.from(new Map(raw.map(item=>[(item.url||item.symbol+'|'+item.title).toLowerCase(),item])).values()).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||'')).slice(0,40);
     if(!merged.length)throw new Error('目前沒有可用的持股新聞');
     setItems(merged);setLastUpdatedAt(Date.now());
     const failures=settled.filter(x=>x.status==='rejected').length;

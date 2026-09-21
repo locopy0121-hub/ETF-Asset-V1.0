@@ -18,7 +18,7 @@ assert.match(floating,/type Mode='open'\|'minimized'\|'closed'/);
 assert.match(floating,/changeMode\('minimized'\)/);
 assert.match(floating,/changeMode\('closed'\)/);
 assert.match(floating,/answerAiQuestion/);
-for(const token of ['持股市值','目前損益','最近持股有什麼新聞','累積股息'])assert.ok(floating.includes(token),'floating AI suggestion missing '+token);
+for(const token of ['你可以做什麼','更新持股股息日','目前持股市值','最近持股有什麼新聞'])assert.ok(floating.includes(token),'floating AI suggestion missing '+token);
 
 for(const keyword of ['新聞','股息','損益','報酬','市值','資產','持股'])assert.ok(assistant.includes(keyword),'AI answer route missing '+keyword);
 assert.match(aiScreen,/answerAiQuestion/);
