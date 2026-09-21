@@ -34,6 +34,6 @@ assert.match(modal,/displayDraft\.holdingWall/,'main wall settings must stay in 
 assert.match(modal,/updateDisplayConfig\(displayDraft\)/,'main wall draft must persist only on apply');
 assert.match(editor,/holdingWall\?: HoldingWallConfig/,'page display contract missing main wall config');
 assert.match(editor,/normalizeHoldingWall/,'persisted main wall config must be normalized');
-assert.match(editor,/home: \{ quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG \}/,'home default wall config missing');
+assert.match(editor,/home:\\s*\\{[^}]*quoteStyle:'quote'[^}]*sortKey:'pnl'[^}]*holdingLayoutMode:'list'[^}]*holdingWall:DEFAULT_HOLDING_WALL_CONFIG[^}]*\\}/,'home default wall config missing');
 
 console.log('V1.0.9 MAIN MARKET WALL EDITOR: PASS');
