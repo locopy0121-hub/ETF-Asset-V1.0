@@ -1,0 +1,23 @@
+const fs=require('fs');const assert=require('assert');
+const assistant=fs.readFileSync('src/ai/aiAssistant.ts','utf8');
+const dividend=fs.readFileSync('src/ai/dividendAssistant.ts','utf8');
+const question=fs.readFileSync('src/components/AiQuestionBox.tsx','utf8');
+const floating=fs.readFileSync('src/components/GlobalFloatingAi.tsx','utf8');
+const ai=fs.readFileSync('src/screens/AiScreen.tsx','utf8');
+const home=fs.readFileSync('src/screens/HomeScreen.tsx','utf8');
+const reader=fs.readFileSync('src/components/NewsReaderModal.tsx','utf8');
+
+assert.match(assistant,/capabilities/);assert.match(assistant,/更新持股股息日/);assert.match(assistant,/dividend-update/);
+assert.match(assistant,/refreshHoldingDividendEvents/);assert.match(assistant,/actions/);assert.match(assistant,/addDividend/);
+assert.ok(assistant.indexOf('你可以做什麼')<assistant.indexOf("['新聞'"),'capability intent must route before news');
+assert.match(dividend,/openapi\.twse\.com\.tw\/v1\/exchangeReport\/TWT48U_ALL/);
+assert.match(dividend,/ETFortune\/dividendList/);assert.match(dividend,/STOCK_DAY/);
+for(const token of ['除息日','最後購買日','每股配息','符合持股','預估股息','配息率','股息配發日','狀態'])assert.ok(dividend.includes(token),'dividend field missing '+token);
+assert.match(dividend,/sharesOnDate/);assert.match(dividend,/alreadyRecorded/);assert.match(dividend,/dividendEventToLedger/);
+assert.match(question,/ScrollView/);assert.match(question,/height:310/);assert.match(question,/確認新增/);assert.match(question,/onAction/);
+assert.match(floating,/finance\.entries/);assert.match(floating,/dividendEventToLedger/);
+assert.match(ai,/財務資料與 App 操作型助理/);assert.match(ai,/對話內新聞以文字摘要播送/);
+assert.ok(!ai.includes('Linking.openURL(item.url)'),'AI conversation must not launch article links');
+assert.match(home,/NewsReaderModal/);assert.ok(!home.includes('Linking.openURL(item.url)'),'home card must enter in-app reader');
+assert.match(reader,/App 內新聞閱讀/);assert.match(reader,/使用外部瀏覽器查看完整原文/);
+console.log('V1.1.1 AI / dividend / chat / news gate: PASS');
