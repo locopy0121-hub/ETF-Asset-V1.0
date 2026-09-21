@@ -147,7 +147,7 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   miniHeader:DEFAULT_MINI_HEADER,
   miniColumns:DEFAULT_MINI_COLUMNS,
   normalWall:DEFAULT_HOLDING_WALL_CONFIG,
-  effects:DEFAULT_MONITOR_EFFECTS;
+  effects:DEFAULT_MONITOR_EFFECTS,
   sort:DEFAULT_MONITOR_SORT,
   alwaysOnTop:true,
 };
