@@ -13,14 +13,21 @@ import {PageShell} from '../components/PageShell';
 import {PAGE_FRAMES} from '../domain/frameRegistry';
 import {usePageEditor} from '../editor/pageEditor';
 import {useFinance} from '../finance/FinanceRuntime';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 
 export function AiScreen(){
   const ai=useAiNewsRuntime();
   const finance=useFinance();
+  const settings=useSettingsRuntime();
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries);
+  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,{
+    networkSearchEnabled:settings.prefs.ai.networkSearch,
+    showSources:settings.prefs.ai.showSources,
+    showDates:settings.prefs.ai.showDates,
+    responseDetail:settings.prefs.ai.responseDetail,
+  });
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
