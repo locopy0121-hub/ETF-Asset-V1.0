@@ -84,7 +84,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       R.id.widget_wall_1,R.id.widget_wall_2,R.id.widget_wall_3,R.id.widget_wall_4,
       R.id.widget_wall_5,R.id.widget_wall_6,R.id.widget_wall_7,R.id.widget_wall_8,
       R.id.widget_wall_9,R.id.widget_wall_10,R.id.widget_wall_11,R.id.widget_wall_12,
-      R.id.widget_wall_13,R.id.widget_wall_14,R.id.widget_wall_15,R.id.widget_wall_16
+      R.id.widget_wall_13,R.id.widget_wall_14,R.id.widget_wall_15,R.id.widget_wall_16,
+      R.id.widget_wall_17,R.id.widget_wall_18,R.id.widget_wall_19,R.id.widget_wall_20,
+      R.id.widget_wall_21,R.id.widget_wall_22,R.id.widget_wall_23,R.id.widget_wall_24,
+      R.id.widget_wall_25,R.id.widget_wall_26,R.id.widget_wall_27,R.id.widget_wall_28,
+      R.id.widget_wall_29,R.id.widget_wall_30,R.id.widget_wall_31,R.id.widget_wall_32
     )
 
     val text=parseColor(style.optString("textColor","#0F172A"),Color.rgb(15,23,42))
@@ -99,8 +103,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val configuredColumns=config.optInt("wallColumns",4).coerceIn(1,4)
     val autoColumns=when{minWidth>=360->4;minWidth>=270->3;minWidth>=180->2;else->1}
     val wallColumns=minOf(configuredColumns,autoColumns)
-    val wallRows=(minHeight/92).coerceIn(1,4)
-    val wallCapacity=(wallColumns*wallRows).coerceIn(1,16)
+    val wallRows=(minHeight/92).coerceIn(1,8)
+    val wallCapacity=(wallColumns*wallRows).coerceIn(1,32)
     val profitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
     val titleFs=style.optDouble("titleFontScale",1.0).coerceIn(.7,1.8)*densityScale
     val align=when(style.optString("textAlign","left")){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
