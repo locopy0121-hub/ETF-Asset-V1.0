@@ -58,7 +58,7 @@ type MarketRuntimeValue = {
   catalog: readonly EtfCatalogItem[];
   catalogRefreshing: boolean;
   setConfig: (next: MarketUpdateConfig) => void;
-  refresh: () => Promise<void>;
+  refresh: (options?:{ force?: boolean }) => Promise<void>;
   refreshCatalog: () => Promise<void>;
   setTrackedSymbols: (symbols: readonly string[]) => void;
 };
@@ -135,8 +135,8 @@ async function fetchEtfCatalog():Promise<EtfCatalogItem[]>{
   return [...unique.values()].sort((a,b)=>a.symbol.localeCompare(b.symbol));
 }
 
-async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[]):Promise<RuntimeQuote[]>{
-  if(!symbols.length)return [...previous];
+async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[]):Promise<{quotes:RuntimeQuote[];updatedCount:number;unresolved:string[]}>{
+  if(!symbols.length)return {quotes:[...previous],updatedCount:0,unresolved:[]};
   const channels=symbols.flatMap(symbol=>[`tse_${symbol}.tw`,`otc_${symbol}.tw`]).join('|');
   const url='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch='+encodeURIComponent(channels)+'&json=1&delay=0&_='+Date.now();
   const response=await fetch(url,{headers:{Accept:'application/json'}});
@@ -151,6 +151,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     bySymbol.set(symbol,pickBetterTwseRow(existing,row));
   }
   const unresolved:string[]=[];
+  let updatedCount=0;
   const next=symbols.map(symbol=>{
     const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
     const row=bySymbol.get(symbol);
@@ -168,6 +169,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       };
       return missing;
     }
+    updatedCount+=1;
     const currentPrice=resolveTwseCurrentPrice(row);
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
@@ -183,8 +185,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       sparkline:sparkline.length?sparkline:[currentPrice],
     };
   });
-  if(unresolved.length)throw new Error('TWSE incomplete snapshot: '+unresolved.join(','));
-  return next;
+  return {quotes:next,updatedCount,unresolved};
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
@@ -198,6 +199,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [catalog,setCatalog]=useState<EtfCatalogItem[]>(FALLBACK_CATALOG);
   const [catalogRefreshing,setCatalogRefreshing]=useState(false);
   const refreshingRef=useRef(false);
+  const refreshPromiseRef=useRef<Promise<void>|null>(null);
   const quotesRef=useRef<RuntimeQuote[]>([...FALLBACK_QUOTES]);
   const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
 
@@ -238,21 +240,39 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])));
   },[]);
 
-  const refresh=useCallback(async()=>{
-    if(refreshingRef.current)return;
-    refreshingRef.current=true;
-    setRefreshing(true);
-    setLastError(null);
-    try{
-      const next=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
-      setQuotes(next);
-      setLastSuccessAt(Date.now());
-    }catch(error){
-      setLastError(error instanceof Error?error.message:String(error));
-    }finally{
-      refreshingRef.current=false;
-      setRefreshing(false);
-    }
+  const refresh=useCallback((options?:{force?:boolean})=>{
+    if(refreshPromiseRef.current)return refreshPromiseRef.current;
+    const task=(async()=>{
+      refreshingRef.current=true;
+      setRefreshing(true);
+      setLastError(null);
+      let lastFailure:unknown=null;
+      try{
+        const attempts=options?.force?3:2;
+        for(let attempt=1;attempt<=attempts;attempt+=1){
+          try{
+            const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
+            if(result.updatedCount<=0)throw new Error('TWSE no usable live quotes');
+            quotesRef.current=result.quotes;
+            setQuotes(result.quotes);
+            setLastSuccessAt(Date.now());
+            setLastError(result.unresolved.length?'部分行情暫用上次資料：'+result.unresolved.join(','):null);
+            return;
+          }catch(error){
+            lastFailure=error;
+            if(attempt<attempts)await new Promise(resolve=>setTimeout(resolve,options?.force?350:650));
+          }
+        }
+        throw lastFailure instanceof Error?lastFailure:new Error(String(lastFailure??'TWSE refresh failed'));
+      }catch(error){
+        setLastError(error instanceof Error?error.message:String(error));
+      }finally{
+        refreshingRef.current=false;
+        setRefreshing(false);
+      }
+    })();
+    refreshPromiseRef.current=task.finally(()=>{refreshPromiseRef.current=null;});
+    return refreshPromiseRef.current;
   },[]);
 
   const refreshCatalog=useCallback(async()=>{
@@ -284,7 +304,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!config.refreshOnForeground)return;
-    const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{if(next==='active')void refresh();});
+    const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{if(next==='active')void refresh({force:true});});
     return()=>sub.remove();
   },[config.refreshOnForeground,refresh]);
 
