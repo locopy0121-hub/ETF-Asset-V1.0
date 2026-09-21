@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
+import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig, type HoldingWallFieldConfig } from '../domain/uiModels';
 import {
   DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,DEFAULT_MINI_COLUMNS,DEFAULT_MINI_HEADER,
   type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorSortKey,type MonitorStyle,type MiniColumnConfig,type MiniHeaderStyle,
@@ -53,6 +54,45 @@ const normMiniColumns=(columns:readonly Partial<MiniColumnConfig>[]|undefined):r
   });
 };
 
+const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
+  const fallback=DEFAULT_HOLDING_WALL_CONFIG;
+  const input=Array.isArray(wall?.fields)?wall!.fields:[];
+  const byField=new Map(input.map(field=>[field.field,field]));
+  return {
+    header:{
+      visible:wall?.header?.visible??fallback.header.visible,
+      fontScale:clamp(wall?.header?.fontScale,.7,1.8,fallback.header.fontScale),
+      backgroundColor:color(wall?.header?.backgroundColor,fallback.header.backgroundColor),
+      textColor:color(wall?.header?.textColor,fallback.header.textColor),
+      borderColor:color(wall?.header?.borderColor,fallback.header.borderColor),
+      borderWidth:clamp(wall?.header?.borderWidth,0,6,fallback.header.borderWidth),
+    },
+    fields:fallback.fields.map(defaultField=>{
+      const field=byField.get(defaultField.field) as Partial<HoldingWallFieldConfig>|undefined;
+      return {
+        field:defaultField.field,
+        enabled:field?.enabled??defaultField.enabled,
+        label:typeof field?.label==='string'&&field.label.trim()?field.label.trim().slice(0,10):defaultField.label,
+        fontScale:clamp(field?.fontScale,.7,1.8,defaultField.fontScale),
+        align:field?.align==='center'||field?.align==='right'?field.align:'left',
+        useProfitColor:field?.useProfitColor??defaultField.useProfitColor,
+      };
+    }),
+    style:{
+      backgroundColor:color(wall?.style?.backgroundColor,fallback.style.backgroundColor),
+      textColor:color(wall?.style?.textColor,fallback.style.textColor),
+      secondaryTextColor:color(wall?.style?.secondaryTextColor,fallback.style.secondaryTextColor),
+      gainColor:color(wall?.style?.gainColor,fallback.style.gainColor),
+      lossColor:color(wall?.style?.lossColor,fallback.style.lossColor),
+      borderColor:color(wall?.style?.borderColor,fallback.style.borderColor),
+      borderWidth:clamp(wall?.style?.borderWidth,0,6,fallback.style.borderWidth),
+      cornerRadius:clamp(wall?.style?.cornerRadius,0,40,fallback.style.cornerRadius),
+      padding:clamp(wall?.style?.padding,0,32,fallback.style.padding),
+      rowGap:clamp(wall?.style?.rowGap,0,24,fallback.style.rowGap),
+    },
+  };
+};
+
 function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
   const normal=input?.normalLayout, mini=input?.miniLayout;
   const fields=Array.isArray(input?.fields)?input.fields.filter((x):x is MonitorField=>VALID_FIELDS.includes(x as MonitorField)):[...DEFAULT_MONITOR_CONFIG.fields];
@@ -68,6 +108,7 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
     normalStyle:normStyle(input?.normalStyle,DEFAULT_MONITOR_STYLE),miniStyle:normStyle(input?.miniStyle,DEFAULT_MONITOR_CONFIG.miniStyle),
     miniHeader:normMiniHeader(input?.miniHeader),
     miniColumns:normMiniColumns(input?.miniColumns),
+    normalWall:normWall(input?.normalWall),
     effects:{
       refresh:VALID_EFFECTS.includes(effects?.refresh as MonitorEffect)?effects!.refresh:DEFAULT_MONITOR_EFFECTS.refresh,
       gain:VALID_EFFECTS.includes(effects?.gain as MonitorEffect)?effects!.gain:DEFAULT_MONITOR_EFFECTS.gain,
