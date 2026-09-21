@@ -541,16 +541,17 @@ export function SettingsScreen(){
     </Panel>;
   }
 
-  return <View style={styles.root}>
-    <View style={styles.header}>
-      <Text style={styles.eyebrow}>TF ASSET</Text>
-      <Text style={styles.title}>控制中心</Text>
-      <Text style={styles.subtitle}>系統、帳務、資料與顯示設定集中管理</Text>
+  const themeColors=theme.state.palette;
+  return <View style={[styles.root,{backgroundColor:themeColors.background}]}>
+    <View style={[styles.header,{backgroundColor:themeColors.surface,borderBottomColor:themeColors.border}]}>
+      <Text style={[styles.eyebrow,{color:themeColors.primary}]}>TF ASSET</Text>
+      <Text style={[styles.title,{color:themeColors.text}]}>控制中心</Text>
+      <Text style={[styles.subtitle,{color:themeColors.textSecondary}]}>系統、帳務、資料與顯示設定集中管理</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {PAGE_FRAMES.settings.map((frame,index)=>{
         const open=top===frame.key;
-        return <View key={frame.key} style={styles.section}>
+        return <View key={frame.key} style={[styles.section,{backgroundColor:themeColors.surface,borderColor:themeColors.border}]}>
           <Pressable style={styles.topRow} onPress={()=>toggleTop(frame.key)}>
             <View style={styles.index}><Text style={styles.indexText}>{index+1}</Text></View>
             <View style={{flex:1}}>
