@@ -10,12 +10,24 @@ import { useFinance } from '../finance/FinanceRuntime';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import { AiQuestionBox } from './AiQuestionBox';
+import {
+  clampFloatingPanelSize,
+  clampFloatingPoint,
+  getFloatingBounds,
+  snapFloatingPoint,
+  type FloatingBounds,
+  type FloatingPoint,
+  type FloatingSize,
+  type FloatingViewport,
+} from './floatingAiGeometry';
 
 type Mode='open'|'minimized'|'closed';
-type Point=Readonly<{x:number;y:number}>;
-type Size=Readonly<{width:number;height:number}>;
 const STORAGE_KEY='@tf-asset/global-floating-ai-v2';
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
+
+function persistFloatingAi(point:FloatingPoint,mode:Mode){
+  return AsyncStorage.setItem(STORAGE_KEY,JSON.stringify({...point,mode})).catch(()=>{});
+}
 
 export function GlobalFloatingAi({activePage}:{activePage:MainPageKey}){
   const finance=useFinance();
@@ -24,81 +36,106 @@ export function GlobalFloatingAi({activePage}:{activePage:MainPageKey}){
   const prefs=settings.prefs.ai;
   const {width,height}=useWindowDimensions();
   const [mode,setMode]=useState<Mode>('minimized');
-  const [position,setPosition]=useState<Point>({x:12,y:120});
-  const [panelSize,setPanelSize]=useState<Size>({width:prefs.panelWidth,height:prefs.panelHeight});
-  const dragStart=useRef<Point>({x:12,y:120});
-  const resizeStart=useRef<Size>({width:prefs.panelWidth,height:prefs.panelHeight});
+  const [position,setPosition]=useState<FloatingPoint>({x:12,y:120});
+  const [panelSize,setPanelSize]=useState<FloatingSize>({width:prefs.panelWidth,height:prefs.panelHeight});
+  const dragStart=useRef<FloatingPoint>({x:12,y:120});
+  const resizeStart=useRef<FloatingSize>({width:prefs.panelWidth,height:prefs.panelHeight});
+  const safePositionRef=useRef<FloatingPoint>({x:12,y:120});
+  const boundsRef=useRef<FloatingBounds>({maxX:8,maxY:56});
+  const viewportRef=useRef<FloatingViewport>({width,height});
+  const panelSizeRef=useRef<FloatingSize>({width:prefs.panelWidth,height:prefs.panelHeight});
+  const modeRef=useRef<Mode>(mode);
+  const positionLockedRef=useRef(prefs.positionLocked);
+  const edgeSnapRef=useRef(prefs.edgeSnap);
+  const patchAiRef=useRef(settings.patchAi);
 
   useEffect(()=>{setPanelSize({width:prefs.panelWidth,height:prefs.panelHeight});},[prefs.panelWidth,prefs.panelHeight]);
 
   useEffect(()=>{let alive=true;AsyncStorage.getItem(STORAGE_KEY).then(raw=>{
     if(!alive||!raw)return;
-    const saved=JSON.parse(raw) as Partial<Point>&{mode?:Mode};
+    const saved=JSON.parse(raw) as Partial<FloatingPoint>&{mode?:Mode};
     setPosition({x:Number(saved.x)||12,y:Number(saved.y)||120});
     if(saved.mode==='open'||saved.mode==='minimized'||saved.mode==='closed')setMode(saved.mode);
   }).catch(()=>{});return()=>{alive=false;};},[]);
 
   const buttonSize=clamp(prefs.buttonSize,40,88);
-  const panelWidth=Math.min(Math.max(280,panelSize.width),Math.max(280,width-16));
-  const panelHeight=Math.min(Math.max(300,panelSize.height),Math.max(300,height-130));
+  const resolvedPanelSize=clampFloatingPanelSize(panelSize,{width,height});
+  const panelWidth=resolvedPanelSize.width;
+  const panelHeight=resolvedPanelSize.height;
   const activeWidth=mode==='open'?panelWidth:mode==='closed'?buttonSize:Math.min(190,Math.max(150,panelWidth));
   const activeHeight=mode==='open'?panelHeight:mode==='closed'?buttonSize:48;
-  const maxX=Math.max(8,width-activeWidth-8);
-  const maxY=Math.max(56,height-activeHeight-86);
-  const safePosition={x:clamp(position.x,8,maxX),y:clamp(position.y,56,maxY)};
+  const bounds=getFloatingBounds({width,height},{width:activeWidth,height:activeHeight});
+  const safePosition=clampFloatingPoint(position,bounds);
 
-  useEffect(()=>{if(safePosition.x!==position.x||safePosition.y!==position.y)setPosition(safePosition);},[width,height,mode,panelWidth,panelHeight,buttonSize]);
+  safePositionRef.current=safePosition;
+  boundsRef.current=bounds;
+  viewportRef.current={width,height};
+  panelSizeRef.current=resolvedPanelSize;
+  modeRef.current=mode;
+  positionLockedRef.current=prefs.positionLocked;
+  edgeSnapRef.current=prefs.edgeSnap;
+  patchAiRef.current=settings.patchAi;
 
-  const persist=(point:Point,nextMode=mode)=>AsyncStorage.setItem(STORAGE_KEY,JSON.stringify({...point,mode:nextMode})).catch(()=>{});
-  const snap=(point:Point)=>{
-    if(!prefs.edgeSnap)return point;
-    return {...point,x:point.x<=maxX/2?8:maxX};
-  };
+  useEffect(()=>{
+    if(safePosition.x!==position.x||safePosition.y!==position.y){
+      setPosition(safePosition);
+      void persistFloatingAi(safePosition,modeRef.current);
+    }
+  },[width,height,mode,panelWidth,panelHeight,buttonSize]);
+
   const changeMode=(next:Mode)=>{
     const normalized=next==='open'&&!prefs.floatingPanelVisible?'closed':next;
+    modeRef.current=normalized;
     setMode(normalized);
-    void persist(safePosition,normalized);
+    void persistFloatingAi(safePositionRef.current,normalized);
   };
 
   const responder=useMemo(()=>PanResponder.create({
-    onStartShouldSetPanResponder:()=>!prefs.positionLocked,
-    onMoveShouldSetPanResponder:(_,g)=>!prefs.positionLocked&&(Math.abs(g.dx)>3||Math.abs(g.dy)>3),
-    onPanResponderGrant:()=>{dragStart.current=safePosition;},
-    onPanResponderMove:(_,g)=>setPosition({
-      x:clamp(dragStart.current.x+g.dx,8,maxX),
-      y:clamp(dragStart.current.y+g.dy,56,maxY),
-    }),
-    onPanResponderRelease:(_,g)=>{
-      const raw={
-        x:clamp(dragStart.current.x+g.dx,8,maxX),
-        y:clamp(dragStart.current.y+g.dy,56,maxY),
-      };
-      const next=snap(raw);
-      setPosition(next);
-      void persist(next);
+    onStartShouldSetPanResponder:()=>false,
+    onMoveShouldSetPanResponder:(_,g)=>!positionLockedRef.current&&(Math.abs(g.dx)>3||Math.abs(g.dy)>3),
+    onPanResponderGrant:()=>{dragStart.current=safePositionRef.current;},
+    onPanResponderMove:(_,g)=>{
+      const currentBounds=boundsRef.current;
+      setPosition(clampFloatingPoint({
+        x:dragStart.current.x+g.dx,
+        y:dragStart.current.y+g.dy,
+      },currentBounds));
     },
-  }),[safePosition.x,safePosition.y,maxX,maxY,mode,prefs.positionLocked,prefs.edgeSnap]);
+    onPanResponderRelease:(_,g)=>{
+      const currentBounds=boundsRef.current;
+      const raw=clampFloatingPoint({
+        x:dragStart.current.x+g.dx,
+        y:dragStart.current.y+g.dy,
+      },currentBounds);
+      const next=snapFloatingPoint(raw,currentBounds,edgeSnapRef.current);
+      setPosition(next);
+      safePositionRef.current=next;
+      void persistFloatingAi(next,modeRef.current);
+    },
+  }),[]);
 
   const resizeResponder=useMemo(()=>PanResponder.create({
-    onStartShouldSetPanResponder:()=>mode==='open',
-    onMoveShouldSetPanResponder:(_,g)=>mode==='open'&&(Math.abs(g.dx)>2||Math.abs(g.dy)>2),
-    onPanResponderGrant:()=>{resizeStart.current=panelSize;},
+    onStartShouldSetPanResponder:()=>modeRef.current==='open',
+    onMoveShouldSetPanResponder:(_,g)=>modeRef.current==='open'&&(Math.abs(g.dx)>2||Math.abs(g.dy)>2),
+    onPanResponderGrant:()=>{resizeStart.current=panelSizeRef.current;},
     onPanResponderMove:(_,g)=>{
-      const next={
-        width:clamp(resizeStart.current.width+g.dx,280,Math.max(280,width-16)),
-        height:clamp(resizeStart.current.height+g.dy,300,Math.max(300,height-130)),
-      };
+      const next=clampFloatingPanelSize({
+        width:resizeStart.current.width+g.dx,
+        height:resizeStart.current.height+g.dy,
+      },viewportRef.current);
+      panelSizeRef.current=next;
       setPanelSize(next);
     },
     onPanResponderRelease:(_,g)=>{
-      const next={
-        width:clamp(resizeStart.current.width+g.dx,280,Math.max(280,width-16)),
-        height:clamp(resizeStart.current.height+g.dy,300,Math.max(300,height-130)),
-      };
+      const next=clampFloatingPanelSize({
+        width:resizeStart.current.width+g.dx,
+        height:resizeStart.current.height+g.dy,
+      },viewportRef.current);
+      panelSizeRef.current=next;
       setPanelSize(next);
-      settings.patchAi({panelWidth:next.width,panelHeight:next.height});
+      patchAiRef.current({panelWidth:next.width,panelHeight:next.height});
     },
-  }),[mode,panelSize.width,panelSize.height,width,height,settings.patchAi]);
+  }),[]);
 
   const ask=(question:string,conversation:readonly AiConversationTurn[])=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,{
     networkSearchEnabled:prefs.networkSearch,
@@ -145,6 +182,7 @@ export function GlobalFloatingAi({activePage}:{activePage:MainPageKey}){
     </View>
     <View style={styles.body}>
       <AiQuestionBox
+        flex
         title="直接詢問目前 App 資料"
         suggestions={prefs.proactiveHints?['你可以做什麼？','更新持股股息日','目前持股市值？','最近持股有什麼新聞？']:[]}
         onAsk={ask}

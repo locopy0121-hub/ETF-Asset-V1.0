@@ -14,6 +14,7 @@ export function AiQuestionBox({
   onAction,
   useHistory=true,
   confirmBeforeAction=true,
+  flex=false,
 }:{
   title?:string;
   placeholder?:string;
@@ -22,6 +23,7 @@ export function AiQuestionBox({
   onAction?:(action:AiAssistantAction)=>void|Promise<void>;
   useHistory?:boolean;
   confirmBeforeAction?:boolean;
+  flex?:boolean;
 }){
   const [input,setInput]=useState('');
   const [messages,setMessages]=useState<Message[]>([]);
@@ -61,7 +63,7 @@ export function AiQuestionBox({
     setMessages(current=>[...current,{id:'ok-'+Date.now(),role:'assistant',text:action.event.symbol+' '+action.event.name+' 股息紀錄已新增。'}]);
   };
 
-  return <View style={styles.root}>
+  return <View style={[styles.rootBase,flex?styles.rootFlex:styles.rootFixed]}>
     <Text style={styles.title}>{title}</Text>
     {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>{suggestions.map(item=><Pressable key={item} onPress={()=>void submit(item)} style={styles.chip}><Text style={styles.chipText}>{item}</Text></Pressable>)}</ScrollView>:null}
     <ScrollView
@@ -97,7 +99,9 @@ export function AiQuestionBox({
 }
 
 const styles=StyleSheet.create({
-  root:{height:310,gap:spacing.sm},
+  rootBase:{gap:spacing.sm},
+  rootFixed:{height:310},
+  rootFlex:{flex:1,minHeight:170},
   title:{fontSize:13,fontWeight:'900',color:colors.text},
   suggestions:{gap:6,paddingRight:8},
   chip:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
