@@ -162,7 +162,7 @@ export function ColorPalettePicker({
       <Text style={styles.toggleText}>開啟調色盤</Text>
     </Pressable>
 
-    <Modal visible={expanded} animationType="slide" presentationStyle="fullScreen" hardwareAccelerated onRequestClose={cancel}>
+    {expanded?<Modal visible animationType="slide" presentationStyle="fullScreen" hardwareAccelerated onRequestClose={cancel}>
       <View style={styles.modalRoot}>
         <View style={styles.modalTop}>
           <Pressable onPress={cancel} style={styles.topAction}><Text style={styles.cancelText}>取消</Text></Pressable>
@@ -210,7 +210,7 @@ export function ColorPalettePicker({
           </>:null}
         </View>
       </View>
-    </Modal>
+    </Modal>:null}
   </View>;
 }
 
