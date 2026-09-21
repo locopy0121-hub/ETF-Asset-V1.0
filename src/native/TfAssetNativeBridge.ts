@@ -16,6 +16,7 @@ type TfAssetNativeModule={
   syncWidget:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   syncMonitor:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   requestWidgetRefresh:()=>Promise<boolean>;
+  consumeWidgetForceRefreshRequest:()=>Promise<number>;
   startMonitor:()=>Promise<boolean>;
   stopMonitor:()=>Promise<boolean>;
   getMonitorStatus:()=>Promise<NativeMonitorStatus>;
@@ -35,6 +36,7 @@ export async function syncNativeMonitor(config:MonitorConfig,snapshot:SharedSnap
   return native.syncMonitor(JSON.stringify(config),JSON.stringify(snapshot));
 }
 export async function requestNativeWidgetRefresh(){return native?native.requestWidgetRefresh():false;}
+export async function consumeNativeWidgetForceRefreshRequest(){return native?native.consumeWidgetForceRefreshRequest():0;}
 export async function startNativeMonitor(){return native?native.startMonitor():false;}
 export async function stopNativeMonitor(){return native?native.stopMonitor():false;}
 export async function getNativeMonitorStatus(){return native?native.getMonitorStatus():null;}
