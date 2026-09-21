@@ -16,15 +16,20 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   override fun getName() = "TfAssetNative"
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).apply(); refreshWidget(); promise.resolve(true) }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
-    prefs.edit().putString("monitor_config",configJson).putString("snapshot",snapshotJson).apply()
-    val enabled=runCatching{org.json.JSONObject(configJson).optBoolean("enabled",false)}.getOrDefault(false)
+    val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
+    val incomingMode=parsed.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    val previousMode=prefs.getString("monitor_last_config_mode",null)
+    val edit=prefs.edit().putString("monitor_config",configJson).putString("snapshot",snapshotJson).putString("monitor_last_config_mode",incomingMode)
+    if(previousMode!=null&&previousMode!=incomingMode)edit.remove("monitor_runtime_mode_override")
+    edit.apply()
+    val enabled=parsed.optBoolean("enabled",false)
     if(!enabled){
-      prefs.edit().putBoolean("monitor_running",false).apply()
+      prefs.edit().putBoolean("monitor_running",false).putBoolean("monitor_user_closed",false).apply()
       reactContext.stopService(Intent(reactContext,TfAssetOverlayService::class.java))
       promise.resolve(true)
       return
     }
-    reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
+    if(!prefs.getBoolean("monitor_user_closed",false)) reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
     promise.resolve(true)
   }
   @ReactMethod fun requestWidgetRefresh(promise:Promise){ refreshWidget(); promise.resolve(true) }
@@ -33,7 +38,13 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     if(at>0L)prefs.edit().remove("widget_force_refresh_requested_at").apply()
     promise.resolve(at.toDouble())
   }
+  @ReactMethod fun consumeMonitorForceRefreshRequest(promise:Promise){
+    val at=prefs.getLong("monitor_force_refresh_requested_at",0L)
+    if(at>0L)prefs.edit().remove("monitor_force_refresh_requested_at").apply()
+    promise.resolve(at.toDouble())
+  }
   @ReactMethod fun startMonitor(promise:Promise){
+    prefs.edit().putBoolean("monitor_user_closed",false).apply()
     val cfg=runCatching{org.json.JSONObject(prefs.getString("monitor_config","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
     if(!cfg.optBoolean("enabled",false)){ prefs.edit().putBoolean("monitor_running",false).apply(); promise.resolve(false); return }
     if(!Settings.canDrawOverlays(reactContext)){ promise.resolve(false); return }

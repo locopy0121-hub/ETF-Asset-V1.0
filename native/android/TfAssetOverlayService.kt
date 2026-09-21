@@ -41,7 +41,7 @@ class TfAssetOverlayService:Service(){
       return START_NOT_STICKY
     }
     if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);stopSelf();return START_NOT_STICKY}
-    ensureView();render();return START_STICKY
+    ensureView();applyConfiguredLayoutIfChanged(cfg);render();return START_STICKY
   }
   override fun onDestroy(){
     root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
@@ -52,12 +52,13 @@ class TfAssetOverlayService:Service(){
   private fun prefs()=getSharedPreferences("tf_asset_native",0)
   private fun readConfig()=runCatching{JSONObject(prefs().getString("monitor_config","{}")?:"{}")}.getOrElse{JSONObject()}
   private fun readSnapshot()=runCatching{JSONObject(prefs().getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+  private fun effectiveMode(cfg:JSONObject)=prefs().getString("monitor_runtime_mode_override",null)?.let{if(it=="mini")"mini" else "normal"}?:cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
   private fun activeLayout(cfg:JSONObject)=cfg.optJSONObject(if(mode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
 
   private fun ensureView(){
     if(root!=null)return
     val cfg=readConfig()
-    mode=cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    mode=effectiveMode(cfg)
     val layout=activeLayout(cfg)
     val pxKey="monitor_"+mode+"_x";val pyKey="monitor_"+mode+"_y"
     val x=if(prefs().contains(pxKey))prefs().getInt(pxKey,layout.optInt("x",16)) else layout.optInt("x",16)
@@ -78,13 +79,13 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun layoutSignature(cfg:JSONObject):String{
-    val configMode=cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    val configMode=effectiveMode(cfg)
     val layout=cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
     return configMode+"|"+layout.toString()
   }
 
   private fun applyConfiguredLayoutIfChanged(cfg:JSONObject){
-    val nextMode=cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    val nextMode=effectiveMode(cfg)
     val nextLayout=cfg.optJSONObject(if(nextMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
     val signature=nextMode+"|"+nextLayout.toString()
     if(signature==lastLayoutSignature)return
@@ -111,6 +112,7 @@ class TfAssetOverlayService:Service(){
   private fun toggleMode(){
     val cfg=readConfig()
     mode=if(mode=="mini")"normal" else "mini"
+    prefs().edit().putString("monitor_runtime_mode_override",mode).apply()
     val layout=activeLayout(cfg)
     val p=params?:return
     p.width=layout.optInt("width",if(mode=="mini")360 else 320)
@@ -165,7 +167,6 @@ class TfAssetOverlayService:Service(){
   private fun render(){
     val r=root?:return
     val cfg=readConfig()
-    applyConfiguredLayoutIfChanged(cfg)
     val snap=readSnapshot()
     val style=cfg.optJSONObject(if(mode=="mini")"miniStyle" else "normalStyle")?:JSONObject()
     r.removeAllViews()
@@ -174,11 +175,28 @@ class TfAssetOverlayService:Service(){
     val bg=color(style.optString("backgroundColor","#0F172A"),Color.rgb(15,23,42))
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
+    renderWindowControls(r,style)
     if(mode=="mini"){
       renderMini(r,cfg,snap,style)
     }else renderNormal(r,cfg,snap,style)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
+  }
+
+  private fun renderWindowControls(root:LinearLayout,style:JSONObject){
+    val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.END or Gravity.CENTER_VERTICAL}
+    val text=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
+    fun control(label:String,onClick:()->Unit):TextView=TextView(this).apply{
+      this.text=label
+      setTextColor(text)
+      textSize=10f
+      setPadding(12,7,12,7)
+      setOnClickListener{onClick()}
+    }
+    row.addView(control("↻ 更新行情"){prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply();render()})
+    row.addView(control(if(mode=="mini")"□ 放大" else "— 縮小"){toggleMode()})
+    row.addView(control("× 關閉"){prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
+    root.addView(row,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){

@@ -9,18 +9,21 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
-import { DEMO_NEWS } from '../data/demoData';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { useFinance } from '../finance/FinanceRuntime';
+import { useMarketRuntime } from '../market/MarketRuntime';
+import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)=>void}) {
   const finance=useFinance();
+  const market=useMarketRuntime();
+  const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const editor=usePageEditor('home');
   const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
@@ -32,14 +35,18 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
   const totalDividend=portfolio.totalDividendsReceived;
+  const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??5)));
+  const newsHoldingsOnly=editor.displayConfig.newsHoldingsOnly??true;
+  const holdingSymbols=useMemo(()=>new Set(finance.holdings.map(x=>x.symbol.toUpperCase())),[finance.holdings]);
+  const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
   return <>
-    <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <PageEditorStack pageKey="home" frames={[
         {key:'asset-dashboard',element:
           <FrameCard title="資產儀表板">
-            <Text style={styles.heroLabel}>總資產</Text>
-            <Text style={styles.heroValue}>NT$ {money(finance.snapshot.totalAssets)}</Text>
+            <Text style={styles.heroLabel}>總資產（持股市值）</Text>
+            <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
             <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
             <View style={styles.metricRow}>
               <MetricTile label="持股市值" value={money(portfolio.totalMarketValue)} caption="毛市值"/>
@@ -50,11 +57,12 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
         },
         {key:'market-news',element:
           <FrameCard title="市場新聞">
-            {DEMO_NEWS.slice(0,3).map(item=><View key={item.id} style={styles.newsRow}>
+            {newsItems.map(item=><View key={item.id} style={styles.newsRow}>
               <View style={styles.newsDot}/>
-              <View style={{flex:1}}><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text style={styles.newsMeta}>{item.source}</Text></View>
-              <Text style={styles.newsTime}>{item.time}</Text>
+              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source}</Text></View>
+              <Text style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
             </View>)}
+            {!newsItems.length?<Text style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
           </FrameCard>
         },
         {key:'holding-quotes',element:
@@ -107,12 +115,17 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
 }
 
 const styles=StyleSheet.create({
+  actions:{flexDirection:'row',alignItems:'center',gap:8},
+  refreshButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
+  refreshButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   heroLabel:{color:colors.textSecondary,fontSize:12,fontWeight:'700'},
   heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums']},
   heroDelta:{fontSize:13,fontWeight:'800'},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},
+  newsSymbol:{fontSize:10,fontWeight:'900',color:colors.primary,marginBottom:2},
+  newsSummary:{fontSize:10,lineHeight:15,color:colors.textSecondary,marginTop:3},
   newsTitle:{fontSize:13,color:colors.text,fontWeight:'700',lineHeight:19},
   newsMeta:{fontSize:10,color:colors.textSecondary,marginTop:2},
   newsTime:{fontSize:10,color:colors.textSecondary},

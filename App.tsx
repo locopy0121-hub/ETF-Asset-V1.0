@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
@@ -10,6 +11,7 @@ import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { MonitorSettingsRuntimeProvider, useMonitorSettingsRuntime } from './src/monitor/MonitorSettingsRuntime';
 import { WidgetSettingsRuntimeProvider, useWidgetSettingsRuntime } from './src/widget/WidgetSettingsRuntime';
+import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -18,11 +20,12 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
-import { consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
+import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
     <MarketRuntimeProvider>
+      <AiNewsRuntimeProvider>
       <SettingsRuntimeProvider>
       <MonitorSettingsRuntimeProvider>
       <WidgetSettingsRuntimeProvider>
@@ -37,6 +40,7 @@ export default function App() {
       </WidgetSettingsRuntimeProvider>
       </MonitorSettingsRuntimeProvider>
       </SettingsRuntimeProvider>
+      </AiNewsRuntimeProvider>
     </MarketRuntimeProvider>
   </SafeAreaProvider>;
 }
@@ -44,6 +48,7 @@ export default function App() {
 function AppBody(){
   const finance=useFinance();
   const market=useMarketRuntime();
+  const aiNews=useAiNewsRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
   const monitorSettings=useMonitorSettingsRuntime();
@@ -51,6 +56,13 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+
+  const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
+  useEffect(()=>{
+    if(!finance.hydrated)return;
+    aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
+    void aiNews.refresh();
+  },[finance.hydrated,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
@@ -65,10 +77,16 @@ function AppBody(){
   },[market.hydrated,market.refresh]);
 
   useEffect(()=>{
+    if(!market.hydrated||!monitorSettings.config.enabled)return;
+    const poll=()=>void consumeNativeMonitorForceRefreshRequest().then(requestedAt=>{if(requestedAt>0)void market.refresh({force:true});});
+    poll();
+    const timer=setInterval(poll,1000);
+    return()=>clearInterval(timer);
+  },[market.hydrated,market.refresh,monitorSettings.config.enabled]);
+
+  useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated)return;
     void syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot);
-    if(monitorSettings.config.enabled)void startNativeMonitor();
-    else void stopNativeMonitor();
   },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config]);
 
   const openHolding=(holding:HoldingQuote)=>setDetail(holding);
@@ -78,6 +96,7 @@ function AppBody(){
       case 'ledger': return <LedgerScreen/>;
       case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding}/>;
       case 'dividend': return <DividendScreen/>;
+      case 'ai': return <AiScreen/>;
       case 'settings': return <SettingsScreen/>;
       case 'home':
       default: return <HomeScreen onOpenHolding={openHolding}/>;
@@ -120,6 +139,7 @@ function glyph(key:MainPageKey){
     case 'ledger': return '▤';
     case 'portfolio': return '◇';
     case 'dividend': return '$';
+    case 'ai': return 'AI';
     case 'settings': return '⚙';
   }
 }
