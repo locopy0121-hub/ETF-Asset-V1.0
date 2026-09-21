@@ -139,27 +139,7 @@ function glyph(key:MainPageKey){
     case 'home': return '⌂';
     case 'ledger': return '▤';
     case 'portfolio': return '◇';
-    case 'dividend': return ' return '⚙';
-  }
-}
-
-const styles=StyleSheet.create({
-  root:{flex:1,backgroundColor:colors.background},
-  screen:{flex:1},
-  loading:{flex:1,alignItems:'center',justifyContent:'center',gap:8,backgroundColor:colors.background},
-  loadingTitle:{fontSize:24,fontWeight:'900',color:colors.text,marginTop:8},
-  loadingText:{fontSize:12,color:colors.textSecondary},
-  navSafe:{backgroundColor:colors.surface,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
-  nav:{flexDirection:'row',paddingTop:spacing.sm,paddingHorizontal:spacing.sm},
-  navItem:{flex:1,alignItems:'center',gap:4,paddingVertical:4,minHeight:48},
-  navIcon:{width:30,height:25,borderRadius:9,alignItems:'center',justifyContent:'center'},
-  navIconActive:{backgroundColor:colors.surfaceMuted},
-  navGlyph:{fontSize:15,fontWeight:'900',color:colors.textSecondary},
-  navGlyphActive:{color:colors.primary},
-  navText:{color:colors.textSecondary,fontSize:11,fontWeight:'700'},
-  navTextSelected:{color:colors.primary},
-});
-;
+    case 'dividend': return '$';
     case 'ai': return 'AI';
     case 'settings': return '⚙';
   }
