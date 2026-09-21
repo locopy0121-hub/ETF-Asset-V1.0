@@ -31,7 +31,7 @@ export type DashboardChartConfig = Readonly<{
 
 export const DEFAULT_DASHBOARD_METRICS:readonly DashboardMetricKey[]=['totalMarketValue','totalPnl','totalUnrealizedProfit','realizedNetPnL','totalDividendsReceived','cashBalance','holdingCount'];
 export const DEFAULT_DASHBOARD_CHARTS:readonly DashboardChartConfig[]=[{
-  id:'allocation-main',title:'資產配置',visible:true,style:'donut',source:'allocation',x:8,y:8,width:210,height:180,zIndex:1,locked:false,
+  id:'allocation-main',title:'資產配置',visible:true,style:'donut',source:'allocation',x:-1,y:48,width:160,height:140,zIndex:10,locked:false,
   backgroundColor:'#FFFFFF',textColor:'#0F172A',accentColor:'#0066FF',opacity:1,
 }];
 
@@ -149,13 +149,18 @@ const normalizeDashboardCharts=(raw:unknown):readonly DashboardChartConfig[]=>{
   const normalized=values.slice(0,8).map((item,index)=>{
     const source=(item&&typeof item==='object'?item:{}) as Partial<DashboardChartConfig>;
     const fallback=DEFAULT_DASHBOARD_CHARTS[0]!;
+    const legacyMain=source.id==='allocation-main'&&Number(source.x)===8&&Number(source.y)===8&&Number(source.width)===210&&Number(source.height)===180;
+    const nextX=legacyMain?-1:source.x;
+    const nextY=legacyMain?48:source.y;
+    const nextWidth=legacyMain?160:source.width;
+    const nextHeight=legacyMain?140:source.height;
     return {
       id:typeof source.id==='string'&&source.id.trim()?source.id.slice(0,40):`chart-${index+1}`,
       title:typeof source.title==='string'&&source.title.trim()?source.title.slice(0,20):fallback.title,
       visible:source.visible!==false,
       style:DASHBOARD_STYLES.includes(source.style as DashboardChartStyle)?source.style as DashboardChartStyle:fallback.style,
       source:DASHBOARD_SOURCES.includes(source.source as DashboardChartSource)?source.source as DashboardChartSource:fallback.source,
-      x:clamp(source.x,0,1200,8),y:clamp(source.y,0,1600,8),width:clamp(source.width,140,900,210),height:clamp(source.height,120,700,180),
+      x:nextX===-1?-1:clamp(nextX,0,1200,fallback.x),y:clamp(nextY,0,1600,fallback.y),width:clamp(nextWidth,140,900,fallback.width),height:clamp(nextHeight,120,700,fallback.height),
       zIndex:clamp(source.zIndex,0,99,index+1),locked:source.locked===true,
       backgroundColor:wallColor(source.backgroundColor,fallback.backgroundColor),textColor:wallColor(source.textColor,fallback.textColor),accentColor:wallColor(source.accentColor,fallback.accentColor),
       opacity:clamp(source.opacity,.2,1,1),
