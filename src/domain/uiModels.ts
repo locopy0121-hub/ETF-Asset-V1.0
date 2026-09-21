@@ -38,18 +38,18 @@ export type HoldingWallConfig = Readonly<{
 }>;
 
 export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
-  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#263343',borderWidth:0},
+  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#738197',borderWidth:1},
   fields:[
+    {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true},
     {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false},
-    {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:false},
     {field:'price',enabled:true,label:'價格',fontScale:1,align:'left',useProfitColor:true},
-    {field:'change',enabled:true,label:'漲跌',fontScale:1,align:'right',useProfitColor:true},
     {field:'changePercent',enabled:true,label:'漲跌%',fontScale:1,align:'right',useProfitColor:true},
-    {field:'pnl',enabled:true,label:'持股損益',fontScale:1,align:'left',useProfitColor:true},
-    {field:'roi',enabled:true,label:'報酬率',fontScale:1,align:'right',useProfitColor:true},
+    {field:'change',enabled:false,label:'漲跌',fontScale:1,align:'right',useProfitColor:true},
+    {field:'pnl',enabled:true,label:'損益',fontScale:1,align:'right',useProfitColor:true},
+    {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true},
     {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false},
   ],
-  style:{backgroundColor:'#0C121B',textColor:'#FFFFFF',secondaryTextColor:'#91A0B5',gainColor:'#EF4444',lossColor:'#10B981',borderColor:'#263343',borderWidth:1,cornerRadius:16,padding:12,rowGap:8},
+  style:{backgroundColor:'#0C121B',textColor:'#FFFFFF',secondaryTextColor:'#91A0B5',gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
 };
 
 export type HoldingQuote = {
