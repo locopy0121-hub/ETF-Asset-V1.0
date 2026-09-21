@@ -285,8 +285,12 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
       </EditorRow>
       <EditorRow title="圖表樣式" subtitle="切換樣式不會清除位置、尺寸與資料來源"><ChoiceGroup items={dashboardChartStyles} value={chart.style} onChange={style=>patchChart(chart.id,{style})}/></EditorRow>
       <EditorRow title="資料來源" subtitle="只讀 Finance Core / Shared Snapshot"><ChoiceGroup items={dashboardChartSources} value={chart.source} onChange={source=>patchChart(chart.id,{source})}/></EditorRow>
-      <EditorRow title="自由位置" subtitle={`X ${Math.round(chart.x)} / Y ${Math.round(chart.y)}`}>
-        <View style={styles.stepGrid}><NumberStep label="X" value={chart.x} min={0} max={1200} step={8} onChange={x=>patchChart(chart.id,{x})}/><NumberStep label="Y" value={chart.y} min={0} max={1600} step={8} onChange={y=>patchChart(chart.id,{y})}/></View>
+      <EditorRow title="自由位置" subtitle={`X ${chart.x<0?'靠右':Math.round(chart.x)} / Y ${Math.round(chart.y)}；可跨越框架與格線`}>
+        <View style={styles.stepGrid}>
+          <Pressable style={styles.layerButton} onPress={()=>patchChart(chart.id,{x:-1})}><Text style={styles.layerButtonText}>靠右對齊</Text></Pressable>
+          <NumberStep label="X" value={Math.max(0,chart.x)} min={0} max={1200} step={8} onChange={x=>patchChart(chart.id,{x})}/>
+          <NumberStep label="Y" value={chart.y} min={0} max={1600} step={8} onChange={y=>patchChart(chart.id,{y})}/>
+        </View>
       </EditorRow>
       <EditorRow title="尺寸" subtitle={`${Math.round(chart.width)} × ${Math.round(chart.height)} px`}>
         <View style={styles.stepGrid}><NumberStep label="寬" value={chart.width} min={140} max={900} step={10} onChange={width=>patchChart(chart.id,{width})}/><NumberStep label="高" value={chart.height} min={120} max={700} step={10} onChange={height=>patchChart(chart.id,{height})}/></View>
