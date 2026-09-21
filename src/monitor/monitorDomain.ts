@@ -1,7 +1,7 @@
 import type { SharedSnapshot } from '../domain/snapshot';
 
 export type MonitorMode = 'normal' | 'mini';
-export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact' | 'single' | 'dual' | 'advanced';
+export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact' | 'single' | 'dual' | 'advanced' | 'market-wall' | 'heatmap' | 'pnl-wall' | 'weight-wall' | 'ticker' | 'terminal';
 export type MonitorField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'marketValue' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt';
 export type MonitorSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type MonitorEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';

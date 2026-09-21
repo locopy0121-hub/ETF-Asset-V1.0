@@ -41,7 +41,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
 
     <Section title="模式與即時預覽">
       <Choice choices={['normal','mini'] as const} value={value.mode} label={x=>x==='normal'?'Normal':'Mini'} onChange={(mode:MonitorMode)=>onChange(setMonitorMode(value,mode))}/>
-      {value.mode==='normal'?<Choice choices={['portfolio','quotes','compact','single','dual','advanced'] as const} value={value.template} label={(x:MonitorTemplate)=>x==='portfolio'?'投資組合':x==='quotes'?'行情列':x==='compact'?'極簡':x==='single'?'單檔大行情':x==='dual'?'雙檔行情':'進階資訊'} onChange={template=>patch({template})}/>:null}
+      {value.mode==='normal'?<Choice choices={['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'] as const} value={value.template} label={(x:MonitorTemplate)=>x==='portfolio'?'投資組合':x==='quotes'?'行情列':x==='compact'?'極簡':x==='single'?'單檔大行情':x==='dual'?'雙檔行情':x==='advanced'?'進階資訊':x==='market-wall'?'行情牆':x==='heatmap'?'漲跌熱圖':x==='pnl-wall'?'損益牆':x==='weight-wall'?'資產權重牆':x==='ticker'?'跑馬行情':'純文字終端'} onChange={template=>patch({template})}/>:null}
       {value.mode==='mini'?<Pressable onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
       {value.mode==='mini'
         ?<View style={[styles.preview,{width:'100%',backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
@@ -160,7 +160,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <TextInput keyboardType="decimal-pad" value={value.alertChangePct==null?'':String(value.alertChangePct)} onChangeText={t=>patch({alertChangePct:t.trim()===''?null:Math.max(0,Number(t)||0)})} style={styles.input}/>
     </Section>
 
-    <Text style={styles.note}>Monitor 只讀 Shared Snapshot；拖曳/Resize 後只回寫目前模式 Layout，不會改另一模式。</Text>
+    <Text style={styles.note}>Monitor 只讀 Shared Snapshot；Mini 固定採清單結構且列數不設限，超出可視高度由 Native 內部捲動；拖曳/Resize 後只回寫目前模式 Layout，不會改另一模式。</Text>
   </View>;
 }
 function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;}
