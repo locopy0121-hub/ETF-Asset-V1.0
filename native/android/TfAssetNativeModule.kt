@@ -19,12 +19,12 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     prefs.edit().putString("monitor_config",configJson).putString("snapshot",snapshotJson).apply()
     val enabled=runCatching{org.json.JSONObject(configJson).optBoolean("enabled",false)}.getOrDefault(false)
     if(!enabled){
-      prefs.edit().putBoolean("monitor_running",false).apply()
+      prefs.edit().putBoolean("monitor_running",false).putBoolean("monitor_user_closed",false).apply()
       reactContext.stopService(Intent(reactContext,TfAssetOverlayService::class.java))
       promise.resolve(true)
       return
     }
-    reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
+    if(!prefs.getBoolean("monitor_user_closed",false)) reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
     promise.resolve(true)
   }
   @ReactMethod fun requestWidgetRefresh(promise:Promise){ refreshWidget(); promise.resolve(true) }
@@ -33,7 +33,13 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     if(at>0L)prefs.edit().remove("widget_force_refresh_requested_at").apply()
     promise.resolve(at.toDouble())
   }
+  @ReactMethod fun consumeMonitorForceRefreshRequest(promise:Promise){
+    val at=prefs.getLong("monitor_force_refresh_requested_at",0L)
+    if(at>0L)prefs.edit().remove("monitor_force_refresh_requested_at").apply()
+    promise.resolve(at.toDouble())
+  }
   @ReactMethod fun startMonitor(promise:Promise){
+    if(prefs.getBoolean("monitor_user_closed",false)){ promise.resolve(false); return }
     val cfg=runCatching{org.json.JSONObject(prefs.getString("monitor_config","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
     if(!cfg.optBoolean("enabled",false)){ prefs.edit().putBoolean("monitor_running",false).apply(); promise.resolve(false); return }
     if(!Settings.canDrawOverlays(reactContext)){ promise.resolve(false); return }
