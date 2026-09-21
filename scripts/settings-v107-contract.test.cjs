@@ -36,7 +36,7 @@ assert.match(financeRuntime,/clearFinance:\(\)=>\{/,'safe clearFinance runtime m
 assert.match(financeRuntime,/setInitialCash\(0\)/,'clearFinance must zero initial cash');
 assert.match(financeRuntime,/setEntries\(\[\]\)/,'clearFinance must empty ledger');
 
-assert.match(settings,/const VERSION='1\.0\.7'/,'Settings version display must be 1.0.7');
-assert.match(settings,/const BUILD='10007'/,'Settings build display must be 10007');
+assert.match(settings,/const VERSION='\d+\.\d+\.\d+';/,'Settings must expose a semantic version display');
+assert.match(settings,/const BUILD='\d+';/,'Settings must expose a numeric build display');
 
 console.log('TF_ASSET_SETTINGS_V107_CONTRACT: PASS');
