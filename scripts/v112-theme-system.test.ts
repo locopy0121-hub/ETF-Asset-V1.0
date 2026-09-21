@@ -19,6 +19,7 @@ for(let i=1;i<=10;i++){
 }
 assert.match(runtime,/\[1,2,3,4,5\]\.map/,'theme system must keep five custom slots');
 assert.match(runtime,/fit:'fill'/);
+assert.match(settings,/主題系統/);
 assert.match(settings,/適寬/);
 assert.match(settings,/適高/);
 assert.match(settings,/填滿/);
