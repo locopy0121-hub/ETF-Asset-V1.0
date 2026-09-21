@@ -111,11 +111,12 @@ function sharesOnDate(entries:readonly CanonicalLedgerEntry[],symbol:string,date
   for(const trade of trades)shares+=trade.kind==='buy'?trade.shares:-trade.shares;
   return Math.max(0,shares);
 }
-function recorded(entries:readonly CanonicalLedgerEntry[],event:{symbol:string;paymentDate:string;perShareAmount:number}){
-  return entries.some(entry=>entry.kind==='dividend'&&entry.symbol===event.symbol&&(
-    (event.paymentDate&&entry.date===event.paymentDate)||
-    Math.abs(entry.perShareAmount-event.perShareAmount)<0.000001
-  ));
+function recorded(entries:readonly CanonicalLedgerEntry[],event:{symbol:string;exDate:string;paymentDate:string;perShareAmount:number}){
+  return entries.some(entry=>{
+    if(entry.kind!=='dividend'||entry.symbol!==event.symbol)return false;
+    if(event.paymentDate)return entry.date===event.paymentDate&&Math.abs(entry.perShareAmount-event.perShareAmount)<0.000001;
+    return Math.abs(entry.perShareAmount-event.perShareAmount)<0.000001&&Boolean(entry.note?.includes('除息日 '+event.exDate));
+  });
 }
 
 export async function refreshHoldingDividendEvents(
@@ -200,6 +201,6 @@ export function formatDividendEvent(event:HoldingDividendEvent){
     `預估股息：NT$ ${money(event.estimatedDividend)}`,
     `配息率：${event.distributionYield.toFixed(2)}%`,
     `股息配發日：${event.paymentDate||'尚未公告'}`,
-    `狀態：${event.status}`,
+    `狀態：${event.status}${event.status==='已登錄'||event.status==='預告'?'':'（尚未登錄）  [＋新增]'}`,
   ].join('\n');
 }
