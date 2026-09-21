@@ -101,7 +101,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
 
   @ReactMethod fun pickThemeBackgroundImage(promise:Promise){
     if(pendingThemeBackgroundPromise!=null){promise.reject("THEME_PICKER_BUSY","Theme background picker is already open");return}
-    val activity=currentActivity
+    val activity=reactContext.currentActivity
     if(activity==null){promise.resolve(null);return}
     pendingThemeBackgroundPromise=promise
     val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
