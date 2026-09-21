@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
-import { answerAiQuestion, type AiAssistantAction } from '../ai/aiAssistant';
+import { answerAiQuestion, type AiAssistantAction, type AiConversationTurn } from '../ai/aiAssistant';
 import { dividendEventToLedger } from '../ai/dividendAssistant';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { useFinance } from '../finance/FinanceRuntime';
@@ -100,11 +100,12 @@ export function GlobalFloatingAi({activePage}:{activePage:MainPageKey}){
     },
   }),[mode,panelSize.width,panelSize.height,width,height,settings.patchAi]);
 
-  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,{
+  const ask=(question:string,conversation:readonly AiConversationTurn[])=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,{
     networkSearchEnabled:prefs.networkSearch,
     showSources:prefs.showSources,
     showDates:prefs.showDates,
     responseDetail:prefs.responseDetail,
+    conversation:prefs.useHistory?conversation:[],
   });
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
@@ -148,6 +149,8 @@ export function GlobalFloatingAi({activePage}:{activePage:MainPageKey}){
         suggestions={prefs.proactiveHints?['你可以做什麼？','更新持股股息日','目前持股市值？','最近持股有什麼新聞？']:[]}
         onAsk={ask}
         onAction={runAction}
+        useHistory={prefs.useHistory}
+        confirmBeforeAction={prefs.confirmBeforeWrite}
       />
       <View style={styles.statusRow}>
         <Text style={styles.statusText}>持股 {finance.holdings.length} 檔 · 新聞 {ai.items.length} 則</Text>

@@ -1,7 +1,7 @@
 import {useMemo,useRef,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 
-import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
+import type {AiAssistantAction,AiAssistantAnswer,AiConversationTurn} from '../ai/aiAssistant';
 import {colors,radius,spacing} from '../theme/tokens';
 
 type Message=Readonly<{id:string;role:'user'|'assistant';text:string;actions?:readonly AiAssistantAction[]}>;
@@ -12,12 +12,16 @@ export function AiQuestionBox({
   suggestions=[],
   onAsk,
   onAction,
+  useHistory=true,
+  confirmBeforeAction=true,
 }:{
   title?:string;
   placeholder?:string;
   suggestions?:readonly string[];
-  onAsk:(question:string)=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
+  onAsk:(question:string,history:readonly AiConversationTurn[])=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
   onAction?:(action:AiAssistantAction)=>void|Promise<void>;
+  useHistory?:boolean;
+  confirmBeforeAction?:boolean;
 }){
   const [input,setInput]=useState('');
   const [messages,setMessages]=useState<Message[]>([]);
@@ -34,7 +38,10 @@ export function AiQuestionBox({
     setInput('');
     setAsking(true);
     try{
-      const result=await onAsk(question);
+      const history:readonly AiConversationTurn[]=useHistory
+        ? messages.slice(-10).map(message=>({role:message.role,text:message.text}))
+        : [];
+      const result=await onAsk(question,history);
       const normalized:AiAssistantAnswer=typeof result==='string'?{intent:'help',text:result}:result;
       const answer:Message={id:'a-'+Date.now(),role:'assistant',text:normalized.text||'目前沒有可整理的資料。',...(normalized.actions?.length?{actions:normalized.actions}:{})};
       setMessages(current=>[...current,answer]);
@@ -48,7 +55,7 @@ export function AiQuestionBox({
 
   const runAction=async(action:AiAssistantAction)=>{
     if(!onAction)return;
-    if(confirming!==action.id){setConfirming(action.id);return;}
+    if(confirmBeforeAction&&confirming!==action.id){setConfirming(action.id);return;}
     setConfirming(null);
     await onAction(action);
     setMessages(current=>[...current,{id:'ok-'+Date.now(),role:'assistant',text:action.event.symbol+' '+action.event.name+' 股息紀錄已新增。'}]);

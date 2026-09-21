@@ -16,11 +16,14 @@ export type AiAssistantAnswer=Readonly<{
   actions?:readonly AiAssistantAction[];
 }>;
 
+export type AiConversationTurn=Readonly<{role:'user'|'assistant';text:string}>;
+
 export type AiAssistantOptions=Readonly<{
   networkSearchEnabled?:boolean;
   showSources?:boolean;
   showDates?:boolean;
   responseDetail?:'concise'|'balanced'|'detailed';
+  conversation?:readonly AiConversationTurn[];
 }>;
 
 type HoldingLike=Readonly<{
@@ -67,7 +70,10 @@ export async function answerAiQuestion(
   options:AiAssistantOptions={},
 ):Promise<AiAssistantAnswer>{
   const q=normalize(question);
-  const symbol=holdings.find(h=>q.includes(h.symbol.toLowerCase())||(Boolean(h.name)&&q.includes(h.name.toLowerCase())));
+  const directSymbol=holdings.find(h=>q.includes(h.symbol.toLowerCase())||(Boolean(h.name)&&q.includes(h.name.toLowerCase())));
+  const contextQ=normalize((options.conversation??[]).filter(turn=>turn.role==='user').slice(-8).map(turn=>turn.text).join(' '));
+  const contextSymbol=directSymbol?undefined:holdings.find(h=>contextQ.includes(h.symbol.toLowerCase())||(Boolean(h.name)&&contextQ.includes(h.name.toLowerCase())));
+  const symbol=directSymbol??contextSymbol;
 
   if(includesAny(q,['你可以做什麼','可以做什麼','會做什麼','有什麼功能','能做什麼','幫什麼'])){
     return {
@@ -148,7 +154,8 @@ export async function answerAiQuestion(
   }
 
   if(options.networkSearchEnabled){
-    const rows=await searchNetwork(question);
+    const networkQuery=symbol&&!directSymbol?symbol.symbol+' '+symbol.name+' '+question:question;
+    const rows=await searchNetwork(networkQuery);
     if(rows.length){
       return {
         intent:'network',
