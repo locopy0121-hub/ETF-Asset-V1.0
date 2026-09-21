@@ -58,6 +58,12 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
       case 'pnl':return {labels,values:rows.map(row=>row.pnl)};
       case 'dividend':return {labels,values:rows.map(row=>row.cumulativeDividend)};
       case 'roi':return {labels,values:rows.map(row=>row.roi)};
+      case 'avgCost':return {labels,values:rows.map(row=>row.avgCost)};
+      case 'price':return {labels,values:rows.map(row=>row.price)};
+      case 'shares':return {labels,values:rows.map(row=>row.shares)};
+      case 'realizedPnl':return {labels,values:rows.map(row=>row.realizedPnl)};
+      case 'comprehensivePnl':return {labels,values:rows.map(row=>row.comprehensivePnl)};
+      case 'transactions':return {labels,values:rows.map(row=>finance.entries.filter(entry=>'symbol' in entry&&entry.symbol===row.symbol&&(entry.kind==='buy'||entry.kind==='sell')).length)};
       case 'marketValue':
       case 'allocation':
       default:return {labels,values:rows.map(row=>row.marketValue)};
