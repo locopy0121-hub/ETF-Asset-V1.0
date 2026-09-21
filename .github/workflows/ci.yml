@@ -19,10 +19,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V1.1.1 Hard Gates
-        run: npm run test:v1_1_1
-      - name: V1.1.2 Incremental Gates
-        run: npm run test:v112-new
+      - name: V1.1.2 Full Gates
+        run: npm run test:v1_1_2
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
@@ -48,8 +46,6 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V1.1.2 full gates
-        run: npm run test:v1_1_2
       - name: Release metadata gate
         run: |
           node - <<'NODE'

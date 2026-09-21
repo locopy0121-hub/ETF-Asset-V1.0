@@ -1,4 +1,4 @@
-name: TF Asset V1.1.1 GitHub APK
+name: TF Asset V1.1.2 GitHub APK
 
 on:
   push:
@@ -32,18 +32,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V1.1.1 identity
+      - name: Freeze V1.1.2 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "1.1.1"
-          test "$(node -p "require('./app.json').expo.version")" = "1.1.1"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10101"
+          test "$(node -p "require('./package.json').version")" = "1.1.2"
+          test "$(node -p "require('./app.json').expo.version")" = "1.1.2"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "10102"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V1.1.1 Hard Gates
-        run: npm run test:v1_1_1
+      - name: V1.1.2 Full Gates
+        run: npm run test:v1_1_2
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -74,8 +74,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 10101');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.1.1"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 10102');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.1.2"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -84,13 +84,14 @@ jobs:
           fs.writeFileSync(strings,s);
           NODE
 
-      - name: Inject V1.1.1 Android Widget and Floating Monitor
+      - name: Inject V1.1.2 Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
-          mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml
+          mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
           cp native/android/*.kt "$PKG_DIR/"
           cp native/android/res/layout/tf_asset_widget.xml ../TFAssetNative/android/app/src/main/res/layout/
           cp native/android/res/xml/tf_asset_widget_info.xml ../TFAssetNative/android/app/src/main/res/xml/
+          cp native/android/res/drawable/tf_asset_icon_*.xml ../TFAssetNative/android/app/src/main/res/drawable/
           python3 - <<'PY'
           from pathlib import Path
           main=Path('../TFAssetNative/android/app/src/main/java/com/tfasset/app/MainApplication.kt')
@@ -107,9 +108,29 @@ jobs:
           block='''\n    <receiver android:name=".TfAssetWidgetProvider" android:exported="true">\n      <intent-filter>\n        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n      </intent-filter>\n      <meta-data android:name="android.appwidget.provider" android:resource="@xml/tf_asset_widget_info" />\n    </receiver>\n    <service android:name=".TfAssetOverlayService" android:exported="false" />\n'''
           if 'TfAssetWidgetProvider' not in m:
               m=m.replace('</application>', block+'  </application>', 1)
+
+          import re
+          if 'MainActivityIcon01' not in m:
+              activity_match=re.search(r'(<activity\\b[^>]*android:name="\\.MainActivity"[\\s\\S]*?</activity>)',m)
+              if activity_match:
+                  activity=activity_match.group(1)
+                  activity=re.sub(r'<intent-filter>[\\s\\S]*?android.intent.action.MAIN[\\s\\S]*?android.intent.category.LAUNCHER[\\s\\S]*?</intent-filter>','',activity,count=1)
+                  m=m[:activity_match.start(1)]+activity+m[activity_match.end(1):]
+              aliases=[]
+              for i in range(1,11):
+                  n=f'{i:02d}'
+                  enabled='true' if i==1 else 'false'
+                  aliases.append(
+                      f'    <activity-alias android:name=".MainActivityIcon{n}" android:enabled="{enabled}" android:exported="true" android:icon="@drawable/tf_asset_icon_{n}" android:label="@string/app_name" android:targetActivity=".MainActivity">\\n'
+                      '      <intent-filter>\\n'
+                      '        <action android:name="android.intent.action.MAIN" />\\n'
+                      '        <category android:name="android.intent.category.LAUNCHER" />\\n'
+                      '      </intent-filter>\\n'
+                      '    </activity-alias>'
+                  )
+              m=m.replace('</application>','\\n'.join(aliases)+'\\n  </application>',1)
           manifest.write_text(m)
           PY
-
       - name: Install native workspace dependencies
         working-directory: ../TFAssetNative
         run: npm install --no-audit --no-fund
@@ -124,35 +145,35 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V1.1.1-github.apk
-          test "$(stat -c%s TF-Asset-V1.1.1-github.apk)" -gt 1000000
-          unzip -t TF-Asset-V1.1.1-github.apk
-          sha256sum TF-Asset-V1.1.1-github.apk | tee TF-Asset-V1.1.1-github.sha256
+          cp "$APK_PATH" TF-Asset-V1.1.2-github.apk
+          test "$(stat -c%s TF-Asset-V1.1.2-github.apk)" -gt 1000000
+          unzip -t TF-Asset-V1.1.2-github.apk
+          sha256sum TF-Asset-V1.1.2-github.apk | tee TF-Asset-V1.1.2-github.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V1.1.1-github.apk | tee TF-Asset-V1.1.1-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V1.1.1-badging.txt
-          grep "versionCode='10101'" TF-Asset-V1.1.1-badging.txt
-          grep "versionName='1.1.1'" TF-Asset-V1.1.1-badging.txt
-          file TF-Asset-V1.1.1-github.apk
+          "$AAPT" dump badging TF-Asset-V1.1.2-github.apk | tee TF-Asset-V1.1.2-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V1.1.2-badging.txt
+          grep "versionCode='10102'" TF-Asset-V1.1.2-badging.txt
+          grep "versionName='1.1.2'" TF-Asset-V1.1.2-badging.txt
+          file TF-Asset-V1.1.2-github.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V1.1.1-GitHub-APK
+          name: TF-Asset-V1.1.2-GitHub-APK
           path: |
-            TF-Asset-V1.1.1-github.apk
-            TF-Asset-V1.1.1-github.sha256
-            TF-Asset-V1.1.1-badging.txt
+            TF-Asset-V1.1.2-github.apk
+            TF-Asset-V1.1.2-github.sha256
+            TF-Asset-V1.1.2-badging.txt
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish permanent APK download
         run: |
-          mkdir -p /tmp/tfasset-v1_1_1
-          cp TF-Asset-V1.1.1-github.apk /tmp/tfasset-v1_1_1/
-          cp TF-Asset-V1.1.1-github.sha256 /tmp/tfasset-v1_1_1/
-          cp TF-Asset-V1.1.1-badging.txt /tmp/tfasset-v1_1_1/
+          mkdir -p /tmp/tfasset-v1_1_2
+          cp TF-Asset-V1.1.2-github.apk /tmp/tfasset-v1_1_2/
+          cp TF-Asset-V1.1.2-github.sha256 /tmp/tfasset-v1_1_2/
+          cp TF-Asset-V1.1.2-badging.txt /tmp/tfasset-v1_1_2/
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -166,9 +187,9 @@ jobs:
           fi
 
           mkdir -p downloads
-          cp /tmp/tfasset-v1_1_1/TF-Asset-V1.1.1-github.apk downloads/
-          cp /tmp/tfasset-v1_1_1/TF-Asset-V1.1.1-github.sha256 downloads/
-          cp /tmp/tfasset-v1_1_1/TF-Asset-V1.1.1-badging.txt downloads/
+          cp /tmp/tfasset-v1_1_2/TF-Asset-V1.1.2-github.apk downloads/
+          cp /tmp/tfasset-v1_1_2/TF-Asset-V1.1.2-github.sha256 downloads/
+          cp /tmp/tfasset-v1_1_2/TF-Asset-V1.1.2-badging.txt downloads/
           git add downloads
-          git commit -m "publish: TF Asset V1.1.1 APK" || true
+          git commit -m "publish: TF Asset V1.1.2 APK" || true
           git push origin apk-release
