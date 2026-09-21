@@ -24,6 +24,8 @@ export type PageDisplayConfig = Readonly<{
   portfolioViewMode?: PortfolioViewMode;
   holdingLayoutMode?: HoldingLayoutMode;
   holdingWall?: HoldingWallConfig;
+  newsVisibleCount?: number;
+  newsHoldingsOnly?: boolean;
 }>;
 
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
@@ -40,16 +42,18 @@ export function createInitialEditorState(): PageEditorState {
     ledger: makePageConfig('ledger'),
     portfolio: makePageConfig('portfolio'),
     dividend: makePageConfig('dividend'),
+    ai: makePageConfig('ai'),
     settings: makePageConfig('settings'),
   };
 }
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true },
     ledger: {},
     portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
     dividend: {},
+    ai: {},
     settings: {},
   };
 }
@@ -136,6 +140,7 @@ export function mergeEditorState(raw:unknown):PageEditorState{
     ledger:normalizeEditorConfig('ledger',source.ledger??{}),
     portfolio:normalizeEditorConfig('portfolio',source.portfolio??{}),
     dividend:normalizeEditorConfig('dividend',source.dividend??{}),
+    ai:normalizeEditorConfig('ai',source.ai??{}),
     settings:normalizeEditorConfig('settings',source.settings??{}),
   };
 }
@@ -145,5 +150,5 @@ export function mergeDisplayState(raw:unknown):PageDisplayState{
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
   const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
   const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall)};
-  return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),settings:merge('settings')};
+  return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }
