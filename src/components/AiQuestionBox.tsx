@@ -36,7 +36,7 @@ export function AiQuestionBox({
     try{
       const result=await onAsk(question);
       const normalized:AiAssistantAnswer=typeof result==='string'?{intent:'help',text:result}:result;
-      const answer:Message={id:'a-'+Date.now(),role:'assistant',text:normalized.text||'目前沒有可整理的資料。',actions:normalized.actions};
+      const answer:Message={id:'a-'+Date.now(),role:'assistant',text:normalized.text||'目前沒有可整理的資料。',...(normalized.actions?.length?{actions:normalized.actions}:{})};
       setMessages(current=>[...current,answer]);
     }catch(error){
       const answer:Message={id:'e-'+Date.now(),role:'assistant',text:'目前無法完成這個問題：'+(error instanceof Error?error.message:String(error))};
