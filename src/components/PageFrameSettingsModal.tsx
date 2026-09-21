@@ -201,6 +201,15 @@ export function PageFrameSettingsModal({
                 ><Text style={styles.orderText}>↓ 下移</Text></Pressable>
               </View>
 
+              {pageKey==='home'&&frame.key==='market-news'?<View style={styles.newsEditor}>
+                <EditorRow title="新聞顯示筆數" subtitle="首頁市場新聞顯示 3／5／10 筆">
+                  <ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={value=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(value)}))}/>
+                </EditorRow>
+                <EditorRow title="僅顯示持股相關" subtitle="新聞來源依目前持股代號與名稱搜尋">
+                  <Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/>
+                </EditorRow>
+              </View>:null}
+
               {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor
                 value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
                 onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}
@@ -284,5 +293,6 @@ const styles = StyleSheet.create({
   orderText:{fontSize:11,fontWeight:'900',color:colors.primary},
   orderIndex:{fontSize:11,fontWeight:'800',color:colors.textSecondary},
   disabled:{opacity:0.35},
+  newsEditor:{gap:4},
   rule:{fontSize:11,lineHeight:17,color:colors.primary,marginTop:4,fontWeight:'700'},
 });
