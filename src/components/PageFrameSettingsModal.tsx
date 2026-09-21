@@ -252,6 +252,22 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
   const charts=value.dashboardCharts??[];
   const toggleMetric=(key:DashboardMetricKey)=>onChange({dashboardMetrics:metrics.includes(key)?metrics.filter(item=>item!==key):[...metrics,key]});
   const patchChart=(id:string,patch:Partial<DashboardChartConfig>)=>onChange({dashboardCharts:charts.map(chart=>chart.id===id?{...chart,...patch}:chart)});
+  const moveChartLayer=(id:string,action:'down'|'up'|'bottom'|'top')=>{
+    const ordered=[...charts].sort((a,b)=>a.zIndex-b.zIndex||charts.indexOf(a)-charts.indexOf(b));
+    const from=ordered.findIndex(chart=>chart.id===id);
+    if(from<0)return;
+    let to=from;
+    if(action==='down')to=Math.max(0,from-1);
+    if(action==='up')to=Math.min(ordered.length-1,from+1);
+    if(action==='bottom')to=0;
+    if(action==='top')to=ordered.length-1;
+    if(to===from)return;
+    const [moving]=ordered.splice(from,1);
+    if(!moving)return;
+    ordered.splice(to,0,moving);
+    const layerById=new Map(ordered.map((chart,index)=>[chart.id,index+1]));
+    onChange({dashboardCharts:charts.map(chart=>({...chart,zIndex:layerById.get(chart.id)??chart.zIndex}))});
+  };
   const addChart=()=>{
     const index=charts.length+1;
     onChange({dashboardCharts:[...charts,{id:`chart-${Date.now()}`,title:`圖表 ${index}`,visible:true,style:'line',source:'marketValue',x:8+index*8,y:8+index*12,width:210,height:180,zIndex:index,locked:false,backgroundColor:'#FFFFFF',textColor:'#0F172A',accentColor:'#0066FF',opacity:1}]});
@@ -275,7 +291,14 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
       <EditorRow title="尺寸" subtitle={`${Math.round(chart.width)} × ${Math.round(chart.height)} px`}>
         <View style={styles.stepGrid}><NumberStep label="寬" value={chart.width} min={140} max={900} step={10} onChange={width=>patchChart(chart.id,{width})}/><NumberStep label="高" value={chart.height} min={120} max={700} step={10} onChange={height=>patchChart(chart.id,{height})}/></View>
       </EditorRow>
-      <EditorRow title="圖層" subtitle="允許重疊；z-index 決定前後"><NumberStep label="層" value={chart.zIndex} min={0} max={99} step={1} onChange={zIndex=>patchChart(chart.id,{zIndex})}/></EditorRow>
+      <EditorRow title="圖層" subtitle={`目前第 ${chart.zIndex} 層；允許重疊，提供上置／下置／最上／最下快速控制`}>
+        <View style={styles.layerActions}>
+          <Pressable style={styles.layerButton} onPress={()=>moveChartLayer(chart.id,'bottom')}><Text style={styles.layerButtonText}>最下層</Text></Pressable>
+          <Pressable style={styles.layerButton} onPress={()=>moveChartLayer(chart.id,'down')}><Text style={styles.layerButtonText}>↓ 下置</Text></Pressable>
+          <Pressable style={styles.layerButton} onPress={()=>moveChartLayer(chart.id,'up')}><Text style={styles.layerButtonText}>↑ 上置</Text></Pressable>
+          <Pressable style={styles.layerButton} onPress={()=>moveChartLayer(chart.id,'top')}><Text style={styles.layerButtonText}>最上層</Text></Pressable>
+        </View>
+      </EditorRow>
       <ColorPalettePicker label="圖表背景" value={chart.backgroundColor} onChange={backgroundColor=>patchChart(chart.id,{backgroundColor})}/>
       <ColorPalettePicker label="圖表文字" value={chart.textColor} onChange={textColor=>patchChart(chart.id,{textColor})}/>
       <ColorPalettePicker label="圖表主色" value={chart.accentColor} onChange={accentColor=>patchChart(chart.id,{accentColor})}/>
@@ -367,6 +390,9 @@ const styles = StyleSheet.create({
   chartEditor:{gap:6,padding:10,borderWidth:1,borderColor:colors.border,borderRadius:radius.md},
   chartName:{fontSize:11,fontWeight:'900',color:colors.text},
   deleteChart:{fontSize:10,fontWeight:'900',color:colors.loss},
+  layerActions:{flexDirection:'row',flexWrap:'wrap',gap:6},
+  layerButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},
+  layerButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   stepGrid:{gap:6},
   numberStep:{flexDirection:'row',alignItems:'center',gap:6},
   numberLabel:{width:24,fontSize:10,fontWeight:'800',color:colors.textSecondary},
