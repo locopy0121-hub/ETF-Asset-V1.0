@@ -116,6 +116,16 @@ export type PageDisplayConfig = Readonly<{
   calculatorPanelHeightPct?: number;
   calculatorShowCurrentHolding?: boolean;
   calculatorShowFeeBreakdown?: boolean;
+  dividendAiVisible?: boolean;
+  dividendCalendarCellHeight?: number;
+  dividendCalendarDayFontSize?: number;
+  dividendCalendarDotSize?: number;
+  dividendCalendarWeekdayVisible?: boolean;
+  dividendCalendarEventDotsVisible?: boolean;
+  dividendCalendarLegendVisible?: boolean;
+  dividendListRowPadding?: number;
+  dividendTrendHeight?: number;
+  dividendTrendBarWidthPct?: number;
 }>;
 
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
@@ -142,7 +152,18 @@ export function createInitialDisplayState(): PageDisplayState {
     home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingColumns:2, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
     ledger: { ledgerListVisibleCount:20, ledgerShowRecentSymbols:true, ledgerShowSuggestions:true, ledgerShowFeeTax:true },
     portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, portfolioTableRowHeight:54, calculatorPanelHeightPct:92, calculatorShowCurrentHolding:true, calculatorShowFeeBreakdown:true },
-    dividend: {},
+    dividend: {
+      dividendAiVisible:true,
+      dividendCalendarCellHeight:45,
+      dividendCalendarDayFontSize:12,
+      dividendCalendarDotSize:5,
+      dividendCalendarWeekdayVisible:true,
+      dividendCalendarEventDotsVisible:true,
+      dividendCalendarLegendVisible:true,
+      dividendListRowPadding:11,
+      dividendTrendHeight:108,
+      dividendTrendBarWidthPct:70,
+    },
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
   };
@@ -315,6 +336,21 @@ export function normalizePageDisplayConfig(page:MainPageKey,raw:PageDisplayConfi
       ledgerShowRecentSymbols:raw.ledgerShowRecentSymbols??defaults.ledgerShowRecentSymbols??true,
       ledgerShowSuggestions:raw.ledgerShowSuggestions??defaults.ledgerShowSuggestions??true,
       ledgerShowFeeTax:raw.ledgerShowFeeTax??defaults.ledgerShowFeeTax??true,
+    };
+  }
+  if(page==='dividend'){
+    return {
+      ...merged,
+      dividendAiVisible:raw.dividendAiVisible??defaults.dividendAiVisible??true,
+      dividendCalendarCellHeight:clamp(raw.dividendCalendarCellHeight,32,88,defaults.dividendCalendarCellHeight??45),
+      dividendCalendarDayFontSize:clamp(raw.dividendCalendarDayFontSize,9,20,defaults.dividendCalendarDayFontSize??12),
+      dividendCalendarDotSize:clamp(raw.dividendCalendarDotSize,3,12,defaults.dividendCalendarDotSize??5),
+      dividendCalendarWeekdayVisible:raw.dividendCalendarWeekdayVisible??defaults.dividendCalendarWeekdayVisible??true,
+      dividendCalendarEventDotsVisible:raw.dividendCalendarEventDotsVisible??defaults.dividendCalendarEventDotsVisible??true,
+      dividendCalendarLegendVisible:raw.dividendCalendarLegendVisible??defaults.dividendCalendarLegendVisible??true,
+      dividendListRowPadding:clamp(raw.dividendListRowPadding,4,24,defaults.dividendListRowPadding??11),
+      dividendTrendHeight:clamp(raw.dividendTrendHeight,80,220,defaults.dividendTrendHeight??108),
+      dividendTrendBarWidthPct:clamp(raw.dividendTrendBarWidthPct,30,100,defaults.dividendTrendBarWidthPct??70),
     };
   }
   if(page!=='home'&&page!=='portfolio')return merged;
