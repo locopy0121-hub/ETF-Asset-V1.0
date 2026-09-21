@@ -46,7 +46,9 @@
     "test:monitor-display-v108": "node scripts/monitor-display-v108.test.cjs",
     "test:v108": "npm run test:v107 && npm run test:monitor-display-v108",
     "test:main-market-wall-v109": "node scripts/main-market-wall-editor-v109.test.cjs",
-    "test:v109": "npm run test:v108 && npm run test:main-market-wall-v109"
+    "test:v109": "npm run test:v108 && npm run test:main-market-wall-v109",
+    "test:realtime-v110": "tsx scripts/realtime-market-v110.test.ts",
+    "test:v110": "npm run test:v109 && npm run test:realtime-v110"
   },
   "dependencies": {
     "expo": "~57.0.21",
