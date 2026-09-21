@@ -8,7 +8,7 @@ const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const rgba=(hex:string,alpha:number)=>{
   const m=/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if(!m)return hex;
-  return 'rgba('+parseInt(m[1],16)+','+parseInt(m[2],16)+','+parseInt(m[3],16)+','+clamp(alpha,0,1)+')';
+  return 'rgba('+parseInt(m[1]!,16)+','+parseInt(m[2]!,16)+','+parseInt(m[3]!,16)+','+clamp(alpha,0,1)+')';
 };
 const distance=(touches:readonly {pageX:number;pageY:number}[])=>{
   if(touches.length<2)return 0;
@@ -161,7 +161,7 @@ export function FloatingDashboardChart({
 const styles=StyleSheet.create({
   card:{position:'absolute',overflow:'hidden'},
   header:{flexDirection:'row',alignItems:'center',gap:8},title:{fontWeight:'900'},sub:{fontSize:8,opacity:.65,marginTop:2},drag:{fontSize:16,fontWeight:'900'},iconButton:{padding:4},
-  plot:{flex:1,position:'relative',minHeight:0},grid:{...StyleSheet.absoluteFillObject,justifyContent:'space-around'},gridLine:{borderTopWidth:StyleSheet.hairlineWidth,borderStyle:'dashed'},
+  plot:{flex:1,position:'relative',minHeight:0},grid:{position:'absolute',left:0,right:0,top:0,bottom:0,justifyContent:'space-around'},gridLine:{borderTopWidth:StyleSheet.hairlineWidth,borderStyle:'dashed'},
   sparkWrap:{flex:1,justifyContent:'center'},spark:{fontWeight:'900',letterSpacing:1},
   pieWrap:{flex:1,flexDirection:'row',alignItems:'center',gap:12},ring:{alignItems:'center',justifyContent:'center'},ringText:{fontSize:12,fontWeight:'900'},legend:{flex:1,gap:4},legendText:{fontSize:8,fontWeight:'700'},
   bars:{flex:1,flexDirection:'row',alignItems:'flex-end',gap:4,paddingTop:10},barCol:{flex:1,height:'100%',justifyContent:'flex-end',alignItems:'center'},bar:{width:'80%',minHeight:6},barLabel:{fontSize:7,marginTop:3,maxWidth:42},
