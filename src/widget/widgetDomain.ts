@@ -51,6 +51,9 @@ export type WidgetConfig = Readonly<{
   effects: WidgetEffects;
   sort: WidgetSort;
   selectedSymbols: readonly string[];
+  profitColorFields: readonly WidgetField[];
+  wallColumns: number;
+  forceRefreshOnTap: boolean;
   tapTarget: 'home' | 'portfolio' | 'dividend';
 }>;
 
@@ -102,6 +105,9 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   effects: DEFAULT_WIDGET_EFFECTS,
   sort: DEFAULT_WIDGET_SORT,
   selectedSymbols: [],
+  profitColorFields: ['unrealizedPnl','realizedPnl','totalReturn','change','changePercent','pnl','roi','comprehensivePnl','dailyPnl','quote'],
+  wallColumns: 4,
+  forceRefreshOnTap: true,
   tapTarget: 'home',
 };
 
