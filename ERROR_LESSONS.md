@@ -190,8 +190,8 @@
 25. **GO 必須理解成「受約束的執行命令」**
     - 使用者下達 **GO** 後，第一步不是修改、測試或 Build。
     - **第一步必須先列出「此次目的清單項目」**，把本次要處理的項目、範圍與驗收目標明確列出；未列清單前不得開始修改。
-    - 列出目的清單後，**必須讀取並逐條遵守當下最新版 `ERROR_LESSONS.md`**，完成所有適用前置閘門後，才允許開始執行。
-    - 若 `ERROR_LESSONS.md` 任一適用條款尚未滿足，GO 必須停在該閘門，不得略過、不得自行降級、不得直接進 Action。
+    - 列出目的清單後，**必須先讀取並逐條遵守當下最新版 `ERROR_LESSONS.md`，再讀取並逐條遵守 `Work_Project_Rules.md`**；兩份規則完成所有適用前置閘門後，才允許開始執行。
+    - 若 `ERROR_LESSONS.md` 或其後的 `Work_Project_Rules.md` 任一適用條款尚未滿足，GO 必須停在該閘門，不得略過、不得自行降級、不得直接進 Action。
     - 不是「快速做完」。
     - 不是「自主全修」。
     - 不是「直接 build」。
@@ -204,7 +204,7 @@
     - **修護後重新啟動的 Action 也必須重新進入每 15 秒 Log 檢查循環；持續重複「檢查 → 發現 error → 修護 → 重驗 → 重啟 Action」，直到 Action 無 error 且成功完成。**
     - **Action 成功不代表交付完成；仍必須繼續做 Artifact、APK 實體、版本、package 與下載載點驗證。**
     - 正確執行順序固定為：
-      **GO → 先列出此次目的清單項目 → 讀取 ERROR_LESSONS.md → 前置 Gate → 逐項修改 → 重驗 → 完整性確認 → FAIL 原地阻斷 → 全項 ALL PASS → GitHub Action → 每 15 秒讀取 Action Log → 有 error 則修護／重驗／重啟 Action → 直到 Action 成功 → Log / Artifact / APK 驗證。**
+      **GO → 先列出此次目的清單項目 → 讀取 ERROR_LESSONS.md → 讀取 Work_Project_Rules.md → 前置 Gate → 逐項修改 → 重驗 → 完整性確認 → FAIL 原地阻斷 → Final Checklist Reconciliation → 全項 ALL PASS → GitHub Action → 每 15 秒讀取 Action Log → 有 error 則修護／重驗／重啟 Action → 直到 Action 成功 → Log / Artifact / APK 驗證 → RELEASE PASS。**
     - 上述順序為硬性流程，不得跳步、交換順序或省略任一 Gate。
     - 未完成前述流程，不得宣稱 GO 執行完成。
 
