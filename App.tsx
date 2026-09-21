@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
+import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
@@ -10,6 +11,7 @@ import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { MonitorSettingsRuntimeProvider, useMonitorSettingsRuntime } from './src/monitor/MonitorSettingsRuntime';
 import { WidgetSettingsRuntimeProvider, useWidgetSettingsRuntime } from './src/widget/WidgetSettingsRuntime';
+import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -23,6 +25,7 @@ import { consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWi
 export default function App() {
   return <SafeAreaProvider>
     <MarketRuntimeProvider>
+      <AiNewsRuntimeProvider>
       <SettingsRuntimeProvider>
       <MonitorSettingsRuntimeProvider>
       <WidgetSettingsRuntimeProvider>
@@ -37,6 +40,7 @@ export default function App() {
       </WidgetSettingsRuntimeProvider>
       </MonitorSettingsRuntimeProvider>
       </SettingsRuntimeProvider>
+      </AiNewsRuntimeProvider>
     </MarketRuntimeProvider>
   </SafeAreaProvider>;
 }
@@ -44,6 +48,7 @@ export default function App() {
 function AppBody(){
   const finance=useFinance();
   const market=useMarketRuntime();
+  const aiNews=useAiNewsRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
   const monitorSettings=useMonitorSettingsRuntime();
@@ -51,6 +56,12 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+
+  useEffect(()=>{
+    if(!finance.hydrated)return;
+    aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
+    if(aiNews.lastUpdatedAt==null)void aiNews.refresh();
+  },[finance.hydrated,finance.holdings,aiNews.setTrackedHoldings,aiNews.lastUpdatedAt]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
@@ -78,6 +89,7 @@ function AppBody(){
       case 'ledger': return <LedgerScreen/>;
       case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding}/>;
       case 'dividend': return <DividendScreen/>;
+      case 'ai': return <AiScreen/>;
       case 'settings': return <SettingsScreen/>;
       case 'home':
       default: return <HomeScreen onOpenHolding={openHolding}/>;
@@ -119,7 +131,28 @@ function glyph(key:MainPageKey){
     case 'home': return '⌂';
     case 'ledger': return '▤';
     case 'portfolio': return '◇';
-    case 'dividend': return '$';
+    case 'dividend': return ' return '⚙';
+  }
+}
+
+const styles=StyleSheet.create({
+  root:{flex:1,backgroundColor:colors.background},
+  screen:{flex:1},
+  loading:{flex:1,alignItems:'center',justifyContent:'center',gap:8,backgroundColor:colors.background},
+  loadingTitle:{fontSize:24,fontWeight:'900',color:colors.text,marginTop:8},
+  loadingText:{fontSize:12,color:colors.textSecondary},
+  navSafe:{backgroundColor:colors.surface,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
+  nav:{flexDirection:'row',paddingTop:spacing.sm,paddingHorizontal:spacing.sm},
+  navItem:{flex:1,alignItems:'center',gap:4,paddingVertical:4,minHeight:48},
+  navIcon:{width:30,height:25,borderRadius:9,alignItems:'center',justifyContent:'center'},
+  navIconActive:{backgroundColor:colors.surfaceMuted},
+  navGlyph:{fontSize:15,fontWeight:'900',color:colors.textSecondary},
+  navGlyphActive:{color:colors.primary},
+  navText:{color:colors.textSecondary,fontSize:11,fontWeight:'700'},
+  navTextSelected:{color:colors.primary},
+});
+;
+    case 'ai': return 'AI';
     case 'settings': return '⚙';
   }
 }
