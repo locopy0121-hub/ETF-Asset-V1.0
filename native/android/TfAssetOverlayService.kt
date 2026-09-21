@@ -347,6 +347,10 @@ class TfAssetOverlayService:Service(){
       addView(body)
     }
     root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
+    val asset=snap.optJSONObject("asset")?:JSONObject()
+    val totalReturn=asset.optDouble("totalReturn",Double.NaN)
+    val returnTone=if(!totalReturn.isFinite())neutral else if(totalReturn>0)gain else if(totalReturn<0)loss else neutral
+    root.addView(textView("總資產 "+integer(asset,"totalAssets")+"   市值 "+integer(asset,"marketValue")+"   總損益 "+signedInteger(asset,"totalReturn"),returnTone,10*baseScale,Gravity.CENTER))
   }
 
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
