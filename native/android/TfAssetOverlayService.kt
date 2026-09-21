@@ -10,6 +10,8 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AlphaAnimation
+import android.view.animation.Animation
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams as LinearLayoutParams
 import android.widget.ScrollView
@@ -236,13 +238,27 @@ class TfAssetOverlayService:Service(){
         }
       }
       "market-wall"->{
-        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.chunked(2).forEach{pair->
-          val line=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-          pair.forEach{row->line.addView(textView(quoteLine(row),tone(row),11*fs,Gravity.CENTER),weighted(1f))}
-          if(pair.size==1)line.addView(View(this),weighted(1f))
-          root.addView(line)
+        val wall=cfg.optJSONObject("normalWall")?:JSONObject()
+        val wallStyle=wall.optJSONObject("style")?:JSONObject()
+        val wallFields=wall.optJSONArray("fields")?:JSONArray()
+        val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
+        val wallGain=color(wallStyle.optString("gainColor",style.optString("gainColor","#EF4444")),gain)
+        val wallLoss=color(wallStyle.optString("lossColor",style.optString("lossColor","#10B981")),loss)
+        val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.forEach{row->
+          val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(8,6,8,6)}
+          (0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}.forEach{field->
+            val key=field.optString("field","symbol")
+            val numeric=miniNumeric(row,key)
+            val useProfit=field.optBoolean("useProfitColor",false)
+            val fieldTone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else neutral
+            card.addView(textView(field.optString("label",key)+"  "+miniValue(row,key),fieldTone,11*field.optDouble("fontScale",1.0).toFloat()*fs,gravityFor(field.optString("align","left"))))
+          }
+          body.addView(card)
         }
+        val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
+        root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
       }
       "heatmap"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
@@ -286,6 +302,13 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun renderMini(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
+    if(cfg.optBoolean("showBreathingLight",true)){
+      val lamp=textView("●",color(style.optString("gainColor","#10B981"),Color.GREEN),12f,Gravity.START)
+      if((cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)){
+        lamp.startAnimation(AlphaAnimation(.28f,1f).apply{duration=900;repeatMode=Animation.REVERSE;repeatCount=Animation.INFINITE})
+      }
+      root.addView(lamp)
+    }
     val columnsJson=cfg.optJSONArray("miniColumns")
     val columns=(0 until (columnsJson?.length()?:0)).mapNotNull{columnsJson?.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
     val header=cfg.optJSONObject("miniHeader")?:JSONObject()
@@ -332,6 +355,10 @@ class TfAssetOverlayService:Service(){
       addView(body)
     }
     root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
+    val asset=snap.optJSONObject("asset")?:JSONObject()
+    val totalReturn=asset.optDouble("totalReturn",Double.NaN)
+    val returnTone=if(!totalReturn.isFinite())neutral else if(totalReturn>0)gain else if(totalReturn<0)loss else neutral
+    root.addView(textView("總資產 "+integer(asset,"totalAssets")+"   市值 "+integer(asset,"marketValue")+"   總損益 "+signedInteger(asset,"totalReturn"),returnTone,10*baseScale,Gravity.CENTER))
   }
 
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))

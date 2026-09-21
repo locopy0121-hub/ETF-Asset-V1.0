@@ -45,8 +45,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.10';
-const BUILD='10010';
+const VERSION='1.0.11';
+const BUILD='10011';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -373,9 +373,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.0.10 行情同步與 Monitor 修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.10 更新資訊">
-        <Text style={styles.infoText}>全 App 行情改用同一份即時 Shared Snapshot 聯動刷新；TWSE 盤中即時價缺值時優先使用可用即時成交／買賣盤，不再直接誤退昨日收盤。Monitor 未啟動時 Native 雙層阻擋 Overlay，Mini 高度完全依使用者設定，內容超出改由浮窗內捲動。</Text>
+      <ChildButton label="更新資訊" summary="V1.0.11 Monitor 行情牆與 Mini 狀態列" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      {appPanel==='updates'?<Panel title="V1.0.11 更新資訊">
+        <Text style={styles.infoText}>Monitor 主體行情牆改為共用首頁行情牆欄位契約與 A/B 編輯邏輯；Mini 左上新增呼吸燈，底部固定顯示總資產、市值、總損益。所有 Monitor 數據持續只讀 Shared Snapshot，清單超出高度時僅在浮窗內捲動。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
