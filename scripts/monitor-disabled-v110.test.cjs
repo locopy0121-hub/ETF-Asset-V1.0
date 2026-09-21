@@ -11,7 +11,7 @@ assert.match(nativeModule,/startMonitor[\s\S]*if\(!cfg\.optBoolean\("enabled",fa
 assert.match(nativeModule,/stopMonitor[\s\S]*putBoolean\("monitor_running",false\)/,'stop must synchronously clear runtime running state');
 
 const guardIndex=service.indexOf('if(!cfg.optBoolean("enabled",false))');
-const ensureIndex=service.indexOf('ensureView();render()');
+const ensureIndex=service.indexOf('ensureView();');
 assert.ok(guardIndex>=0&&ensureIndex>guardIndex,'service enabled guard must execute before view creation/render');
 assert.match(service,/removeViewImmediate/,'disabled/destroy path must remove overlay immediately');
 assert.match(service,/stopSelf\(\)/,'disabled service must stop itself');
