@@ -141,7 +141,7 @@ export function createInitialDisplayState(): PageDisplayState {
   return {
     home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingColumns:2, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
     ledger: { ledgerListVisibleCount:20, ledgerShowRecentSymbols:true, ledgerShowSuggestions:true, ledgerShowFeeTax:true },
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price', portfolioTableRowHeight:54, calculatorPanelHeightPct:92, calculatorShowCurrentHolding:true, calculatorShowFeeBreakdown:true },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, portfolioTableRowHeight:54, calculatorPanelHeightPct:92, calculatorShowCurrentHolding:true, calculatorShowFeeBreakdown:true },
     dividend: {},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
