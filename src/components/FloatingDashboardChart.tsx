@@ -20,18 +20,20 @@ export function FloatingDashboardChart({
   bounds:{width:number;height:number};
   onMove:(x:number,y:number)=>void;
 }){
-  const start=useRef({x:config.x,y:config.y});
+  const maxX=Math.max(0,bounds.width-config.width);
+  const maxY=Math.max(0,bounds.height-config.height);
+  const effectiveX=config.x<0?maxX:clamp(config.x,0,maxX);
+  const effectiveY=clamp(config.y,0,maxY);
+  const start=useRef({x:effectiveX,y:effectiveY});
   const responder=useMemo(()=>PanResponder.create({
     onStartShouldSetPanResponder:()=>!config.locked,
     onMoveShouldSetPanResponder:(_,g)=>!config.locked&&(Math.abs(g.dx)>3||Math.abs(g.dy)>3),
-    onPanResponderGrant:()=>{start.current={x:config.x,y:config.y};},
+    onPanResponderGrant:()=>{start.current={x:effectiveX,y:effectiveY};},
     onPanResponderRelease:(_,g)=>{
       if(config.locked)return;
-      const maxX=Math.max(0,bounds.width-config.width);
-      const maxY=Math.max(0,bounds.height-config.height);
       onMove(clamp(start.current.x+g.dx,0,maxX),clamp(start.current.y+g.dy,0,maxY));
     },
-  }),[config.locked,config.x,config.y,config.width,config.height,bounds.width,bounds.height,onMove]);
+  }),[config.locked,effectiveX,effectiveY,maxX,maxY,onMove]);
 
   if(!config.visible)return null;
   const safe=values.length?values:[0];
@@ -46,7 +48,7 @@ export function FloatingDashboardChart({
   return <View
     {...responder.panHandlers}
     style={[styles.card,{
-      left:config.x,top:config.y,width:config.width,height:config.height,zIndex:config.zIndex,
+      left:effectiveX,top:effectiveY,width:config.width,height:config.height,zIndex:config.zIndex,
       backgroundColor:config.backgroundColor,opacity:config.opacity,borderColor:config.accentColor,
     }]}
   >

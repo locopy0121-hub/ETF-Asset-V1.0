@@ -1,0 +1,22 @@
+const fs=require('fs');const assert=require('assert');
+const home=fs.readFileSync('src/screens/HomeScreen.tsx','utf8');
+const model=fs.readFileSync('src/editor/editorModel.ts','utf8');
+const ui=fs.readFileSync('src/domain/uiModels.ts','utf8');
+const collection=fs.readFileSync('src/components/HoldingQuoteCollection.tsx','utf8');
+const card=fs.readFileSync('src/components/HoldingQuoteModule.tsx','utf8');
+const wall=fs.readFileSync('src/components/HoldingMarketWallEditor.tsx','utf8');
+
+assert.match(model,/holdingLayoutMode:'grid2'/,'home normal baseline must be two columns');
+assert.match(model,/legacyWrongWall/,'exact wrong default must migrate back to normal wall');
+assert.ok(ui.indexOf("field:'symbol'")<ui.indexOf("field:'name'"),'normal card header must show symbol before name');
+assert.match(ui,/field:'change',enabled:false/,'pure quote baseline must hide absolute change');
+assert.match(ui,/field:'changePercent',enabled:true/,'pure quote baseline must show percent change');
+assert.match(ui,/field:'roi',enabled:false/,'pure quote baseline must not crowd card with ROI');
+assert.match(ui,/field:'pnl',enabled:true,label:'損益'/,'pure quote baseline must show PnL');
+assert.match(ui,/borderWidth:1/,'normal card header divider must be restored');
+assert.match(home,/HoldingQuoteCollection rows=\{sorted\}/,'home must feed the complete sorted holdings collection');
+assert.ok(!/sorted\.slice\(/.test(home),'home must never cap holdings');
+assert.match(collection,/rows\.map\(/,'all holdings must render');
+assert.ok(!wall.includes('miniSource')&&!wall.includes('copyMini'),'main wall must remain independent from Mini');
+assert.match(card,/groups\.header/);assert.match(card,/groups\.quote/);assert.match(card,/groups\.footer/);
+console.log('V1.0.19 market wall restore gate: PASS');

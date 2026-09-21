@@ -8,9 +8,10 @@ const wall=fs.readFileSync('src/components/HoldingMarketWallEditor.tsx','utf8');
 const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
 
 assert.match(picker,/調色盤直接選色/,'shared palette picker missing');
-assert.match(picker,/色相/,'palette picker must expose hue');
-assert.match(picker,/飽和/,'palette picker must expose saturation');
-assert.match(picker,/明度/,'palette picker must expose lightness');
+assert.match(picker,/PanResponder\.create/,'palette picker must support direct wheel dragging');
+assert.match(picker,/亮度/,'palette picker must expose touch brightness adjustment');
+assert.match(picker,/色盤/,'palette picker must expose wheel mode');
+assert.ok(!picker.includes('TextInput'),'palette picker must not expose typed color values');
 for(const source of [widget,monitor,wall,settings]) assert.match(source,/ColorPalettePicker/,'color setting must use shared palette picker');
 for(const source of [widget,monitor,wall]){
   assert.ok(!/autoCapitalize="characters"/.test(source),'manual HEX input must not remain');
