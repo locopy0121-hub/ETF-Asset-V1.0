@@ -67,7 +67,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
   const style=(source.style??{}) as Partial<HoldingWallConfig['style']>;
   const rawFields=Array.isArray(source.fields)?source.fields:[];
   const fieldMap=new Map(rawFields.map(field=>[(field as Partial<HoldingWallFieldConfig>).field,field as Partial<HoldingWallFieldConfig>]));
-  const fields=DEFAULT_HOLDING_WALL_CONFIG.fields.map(fallback=>{
+  const fields=DEFAULT_HOLDING_WALL_CONFIG.fields.map((fallback):HoldingWallFieldConfig=>{
     const candidate=fieldMap.get(fallback.field);
     return {
       field:fallback.field,
