@@ -53,7 +53,7 @@ export function createInitialDisplayState(): PageDisplayState {
     ledger: {},
     portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
     dividend: {},
-    ai: {},
+    ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
   };
 }
