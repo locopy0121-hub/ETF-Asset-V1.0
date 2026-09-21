@@ -8,6 +8,7 @@ import {
   makePageConfig,
   mergeDisplayState,
   mergeEditorState,
+  normalizePageDisplayConfig,
   type FrameEditorConfig,
   type PageDisplayConfig,
   type PageDisplayState,
@@ -64,7 +65,7 @@ export function PageEditorProvider({ children }: PropsWithChildren) {
     getPageConfig: page => state[page],
     replacePageConfig: (page, config) => setState(current => ({ ...current, [page]: config })),
     getDisplayConfig:page=>displayState[page],
-    updateDisplayConfig:(page,patch)=>setDisplayState(current=>({...current,[page]:{...current[page],...patch}})),
+    updateDisplayConfig:(page,patch)=>setDisplayState(current=>({...current,[page]:normalizePageDisplayConfig(page,{...current[page],...patch})})),
     resetPage: page => {
       setState(current => ({ ...current, [page]: makePageConfig(page) }));
       const defaults=createInitialDisplayState();
