@@ -21,6 +21,8 @@ jobs:
         run: npm run typecheck
       - name: V1.0.18 Hard Gates
         run: npm run test:v118
+      - name: V1.0.19 Dashboard Free-Layer Gate
+        run: node scripts/v119-dashboard-free-layer.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
