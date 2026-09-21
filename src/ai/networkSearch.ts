@@ -15,9 +15,62 @@ type DuckResponse=Readonly<{
   RelatedTopics?:readonly DuckRelated[];
 }>;
 type WikiOpenSearch=readonly [string,readonly string[],readonly string[],readonly string[]];
+type FetchLike=typeof fetch;
 
-const clean=(value:unknown)=>String(value??'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
-const unique=(rows:readonly NetworkSearchResult[])=>Array.from(new Map(rows.filter(row=>row.title&&row.url).map(row=>[row.url.toLowerCase(),row])).values());
+const decodeHtml=(value:string)=>value
+  .replace(/&amp;/gi,'&')
+  .replace(/&quot;/gi,'"')
+  .replace(/&#39;|&#x27;/gi,"'")
+  .replace(/&lt;/gi,'<')
+  .replace(/&gt;/gi,'>')
+  .replace(/&#x2F;/gi,'/')
+  .replace(/&#(\d+);/g,(_,code)=>String.fromCharCode(Number(code)));
+
+const clean=(value:unknown)=>decodeHtml(String(value??''))
+  .replace(/<[^>]+>/g,' ')
+  .replace(/\s+/g,' ')
+  .trim();
+
+const unique=(rows:readonly NetworkSearchResult[])=>Array.from(
+  new Map(rows.filter(row=>row.title&&/^https?:\/\//i.test(row.url)).map(row=>[row.url.toLowerCase(),row])).values(),
+);
+
+function unwrapDuckUrl(raw:string){
+  const decoded=decodeHtml(raw.trim());
+  const absolute=decoded.startsWith('//')?'https:'+decoded:decoded;
+  try{
+    const parsed=new URL(absolute);
+    if(parsed.hostname.endsWith('duckduckgo.com')&&parsed.pathname.startsWith('/l/')){
+      const target=parsed.searchParams.get('uddg');
+      if(target&&/^https?:\/\//i.test(target))return target;
+    }
+    return /^https?:\/\//i.test(parsed.toString())?parsed.toString():'';
+  }catch{
+    return /^https?:\/\//i.test(absolute)?absolute:'';
+  }
+}
+
+function sourceFromUrl(url:string){
+  try{return new URL(url).hostname.replace(/^www\./i,'')||'Web';}
+  catch{return 'Web';}
+}
+
+export function parseDuckHtml(html:string):NetworkSearchResult[]{
+  const matches=Array.from(html.matchAll(/<a\b[^>]*class=["'][^"']*\bresult__a\b[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi));
+  const rows:NetworkSearchResult[]=[];
+  matches.forEach((match,index)=>{
+    const url=unwrapDuckUrl(match[1]??'');
+    const title=clean(match[2]);
+    if(!url||!title)return;
+    const from=(match.index??0)+match[0].length;
+    const to=index+1<matches.length?(matches[index+1]?.index??html.length):html.length;
+    const segment=html.slice(from,to);
+    const snippetMatch=segment.match(/<(?:a|div|span)\b[^>]*class=["'][^"']*\bresult__snippet\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div|span)>/i);
+    const snippet=clean(snippetMatch?.[1]??'')||title;
+    rows.push({title:title.slice(0,160),url,snippet:snippet.slice(0,500),source:sourceFromUrl(url)});
+  });
+  return unique(rows).slice(0,8);
+}
 
 export function parseDuckDuckGo(payload:DuckResponse):NetworkSearchResult[]{
   const rows:NetworkSearchResult[]=[];
@@ -51,24 +104,41 @@ export function parseWikipedia(payload:WikiOpenSearch):NetworkSearchResult[]{
   }))).slice(0,5);
 }
 
-async function searchDuckDuckGo(query:string){
+async function searchDuckHtml(query:string,fetcher:FetchLike){
   const q=encodeURIComponent(query.trim());
-  const response=await fetch(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&no_redirect=1&skip_disambig=1`,{headers:{Accept:'application/json'}});
-  if(!response.ok)throw new Error('DuckDuckGo HTTP '+response.status);
+  const response=await fetcher(`https://html.duckduckgo.com/html/?q=${q}`,{
+    headers:{Accept:'text/html,application/xhtml+xml'},
+  });
+  if(!response.ok)throw new Error('DuckDuckGo HTML HTTP '+response.status);
+  return parseDuckHtml(await response.text());
+}
+
+async function searchDuckInstant(query:string,fetcher:FetchLike){
+  const q=encodeURIComponent(query.trim());
+  const response=await fetcher(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&no_redirect=1&skip_disambig=1`,{
+    headers:{Accept:'application/json'},
+  });
+  if(!response.ok)throw new Error('DuckDuckGo Instant HTTP '+response.status);
   return parseDuckDuckGo(await response.json() as DuckResponse);
 }
 
-async function searchWikipedia(query:string){
+async function searchWikipedia(query:string,fetcher:FetchLike){
   const q=encodeURIComponent(query.trim());
-  const response=await fetch(`https://zh.wikipedia.org/w/api.php?action=opensearch&search=${q}&limit=5&namespace=0&format=json&origin=*`,{headers:{Accept:'application/json'}});
+  const response=await fetcher(`https://zh.wikipedia.org/w/api.php?action=opensearch&search=${q}&limit=5&namespace=0&format=json&origin=*`,{
+    headers:{Accept:'application/json'},
+  });
   if(!response.ok)throw new Error('Wikipedia HTTP '+response.status);
   return parseWikipedia(await response.json() as WikiOpenSearch);
 }
 
-export async function searchNetwork(query:string):Promise<readonly NetworkSearchResult[]>{
+export async function searchNetwork(query:string,fetcher:FetchLike=fetch):Promise<readonly NetworkSearchResult[]>{
   const text=query.trim();
   if(!text)return [];
-  const settled=await Promise.allSettled([searchDuckDuckGo(text),searchWikipedia(text)]);
+  const settled=await Promise.allSettled([
+    searchDuckHtml(text,fetcher),
+    searchDuckInstant(text,fetcher),
+    searchWikipedia(text,fetcher),
+  ]);
   const rows=settled.flatMap(result=>result.status==='fulfilled'?result.value:[]);
   return unique(rows).slice(0,8);
 }
