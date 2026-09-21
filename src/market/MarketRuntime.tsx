@@ -156,15 +156,17 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     const row=bySymbol.get(symbol);
     if(!hasUsableTwseQuote(row)){
       unresolved.push(symbol);
-      return old??{
+      if(old)return old;
+      const missing:RuntimeQuote={
         symbol,
         name:symbol,
         currentPrice:0,
         previousClose:0,
-        liquidationTradeMode:'ROUND_LOT' as const,
+        liquidationTradeMode:'ROUND_LOT',
         dividendFrequency:4,
         sparkline:[0],
       };
+      return missing;
     }
     const currentPrice=resolveTwseCurrentPrice(row);
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
