@@ -5,6 +5,7 @@ import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
 import {AiQuestionBox} from '../components/AiQuestionBox';
+import {EtfScreener} from '../components/EtfScreener';
 import {FrameCard} from '../components/FrameCard';
 import {PageEditorStack} from '../components/PageEditorStack';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
@@ -13,12 +14,14 @@ import {PageShell} from '../components/PageShell';
 import {PAGE_FRAMES} from '../domain/frameRegistry';
 import {usePageEditor} from '../editor/pageEditor';
 import {useFinance} from '../finance/FinanceRuntime';
+import {useMarketRuntime} from '../market/MarketRuntime';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 
 export function AiScreen(){
   const ai=useAiNewsRuntime();
   const finance=useFinance();
+  const market=useMarketRuntime();
   const settings=useSettingsRuntime();
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -33,7 +36,9 @@ export function AiScreen(){
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
 
   return <><PageShell title="AI 助理" subtitle="財務資料與 App 操作型助理；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-    <PageEditorStack pageKey="ai" frames={[{key:'ai-news',element:
+    <PageEditorStack pageKey="ai" frames={[
+      {key:'etf-screener',element:<FrameCard title="ETF 搜尋／篩選"><EtfScreener catalog={market.catalog}/></FrameCard>},
+      {key:'ai-news',element:
       <FrameCard title="AI 財務管家">
         <AiQuestionBox
           title="直接詢問或下達資料整理指令"
@@ -50,7 +55,8 @@ export function AiScreen(){
           <Pressable disabled={ai.refreshing} onPress={()=>void ai.refresh()} style={[styles.refresh,ai.refreshing&&styles.disabled]}><Text style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
         </View>
       </FrameCard>
-    }]}/>
+      }
+    ]}/>
   </PageShell><PageFrameSettingsModal visible={settingsOpen} pageKey="ai" title="AI 助理" frames={PAGE_FRAMES.ai} onClose={()=>setSettingsOpen(false)}/></>;
 }
 
