@@ -20,7 +20,7 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
-import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, startNativeMonitor, stopNativeMonitor, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
+import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
@@ -87,8 +87,6 @@ function AppBody(){
   useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated)return;
     void syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot);
-    if(monitorSettings.config.enabled)void startNativeMonitor();
-    else void stopNativeMonitor();
   },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config]);
 
   const openHolding=(holding:HoldingQuote)=>setDetail(holding);
