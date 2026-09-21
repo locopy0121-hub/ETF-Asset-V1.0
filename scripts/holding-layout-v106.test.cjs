@@ -18,7 +18,7 @@ assert.ok(collection.includes('snapToInterval'),'horizontal layout must support 
 assert.ok(collection.includes("layout=\"narrow\""),'multi-column layout must use narrow card');
 assert.ok(card.includes("narrowCard"),'quote card must support narrow layout');
 assert.ok(editor.includes('holdingLayoutMode'),'layout selection must persist in page editor display config');
-assert.ok(editor.includes("home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list' }"),'home layout must have independent default');
+assert.match(editor,/home:\s*\{\s*quoteStyle:'quote',\s*sortKey:'pnl',\s*holdingLayoutMode:'list'/,'home layout must have independent default');
 assert.ok(editor.includes("portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' }"),'portfolio layout must have independent default');
 
 console.log('V1.0.6 HOLDING LAYOUT: PASS');
