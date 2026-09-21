@@ -30,6 +30,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'annual-trend', title:'年度趨勢', description:'1–12 月股息趨勢' },
   ],
   ai: [
+    { key:'etf-screener', title:'ETF 篩選器', description:'代號／名稱、市場、類型、產業、費用率與殖利率篩選' },
     { key:'ai-news', title:'AI 持股新聞', description:'網路新聞、來源、日期與智慧摘要' },
   ],
   settings: [
