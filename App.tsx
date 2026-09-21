@@ -18,7 +18,7 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
-import { syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
+import { consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
@@ -56,6 +56,13 @@ function AppBody(){
     if(!finance.hydrated||!widgetSettings.hydrated)return;
     void syncNativeWidget(widgetSettings.config,finance.sharedSnapshot);
   },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config]);
+
+  useEffect(()=>{
+    if(!market.hydrated)return;
+    void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
+      if(requestedAt>0)void market.refresh({force:true});
+    });
+  },[market.hydrated,market.refresh]);
 
   useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated)return;
