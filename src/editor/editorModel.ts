@@ -108,6 +108,14 @@ export type PageDisplayConfig = Readonly<{
   newsHoldingsOnly?: boolean;
   dashboardMetrics?: readonly DashboardMetricKey[];
   dashboardCharts?: readonly DashboardChartConfig[];
+  ledgerListVisibleCount?: 10|20|50|100;
+  ledgerShowRecentSymbols?: boolean;
+  ledgerShowSuggestions?: boolean;
+  ledgerShowFeeTax?: boolean;
+  portfolioTableRowHeight?: number;
+  calculatorPanelHeightPct?: number;
+  calculatorShowCurrentHolding?: boolean;
+  calculatorShowFeeBreakdown?: boolean;
 }>;
 
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
@@ -132,8 +140,8 @@ export function createInitialEditorState(): PageEditorState {
 export function createInitialDisplayState(): PageDisplayState {
   return {
     home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingColumns:2, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
-    ledger: {},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price' },
+    ledger: { ledgerListVisibleCount:20, ledgerShowRecentSymbols:true, ledgerShowSuggestions:true, ledgerShowFeeTax:true },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price', portfolioTableRowHeight:54, calculatorPanelHeightPct:92, calculatorShowCurrentHolding:true, calculatorShowFeeBreakdown:true },
     dividend: {},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
@@ -298,6 +306,17 @@ const normalizeHoldingPrimaryField=(value:unknown,fallback:HoldingPrimaryField):
 export function normalizePageDisplayConfig(page:MainPageKey,raw:PageDisplayConfig):PageDisplayConfig{
   const defaults=createInitialDisplayState()[page];
   const merged={...defaults,...raw};
+  if(page==='ledger'){
+    const count=raw.ledgerListVisibleCount;
+    const ledgerListVisibleCount:10|20|50|100=count===10||count===50||count===100?count:20;
+    return {
+      ...merged,
+      ledgerListVisibleCount,
+      ledgerShowRecentSymbols:raw.ledgerShowRecentSymbols??defaults.ledgerShowRecentSymbols??true,
+      ledgerShowSuggestions:raw.ledgerShowSuggestions??defaults.ledgerShowSuggestions??true,
+      ledgerShowFeeTax:raw.ledgerShowFeeTax??defaults.ledgerShowFeeTax??true,
+    };
+  }
   if(page!=='home'&&page!=='portfolio')return merged;
   const legacy=legacyHoldingLayout(raw.holdingLayoutMode);
   const quoteStyle=isQuoteStyle(merged.quoteStyle)?merged.quoteStyle:'quote';
@@ -310,7 +329,17 @@ export function normalizePageDisplayConfig(page:MainPageKey,raw:PageDisplayConfi
   const holdingLayoutMode:HoldingLayoutMode=holdingScrollMode==='horizontal'
     ?(holdingColumns===2?'paged2':'horizontal')
     :(holdingColumns===3?'grid3':holdingColumns===2?'grid2':'list');
-  return {...merged,quoteStyle,holdingColumns,holdingScrollMode,holdingPrimaryField,holdingLayoutMode};
+  const base={...merged,quoteStyle,holdingColumns,holdingScrollMode,holdingPrimaryField,holdingLayoutMode};
+  if(page==='portfolio'){
+    return {
+      ...base,
+      portfolioTableRowHeight:clamp(raw.portfolioTableRowHeight,44,84,defaults.portfolioTableRowHeight??54),
+      calculatorPanelHeightPct:clamp(raw.calculatorPanelHeightPct,60,96,defaults.calculatorPanelHeightPct??92),
+      calculatorShowCurrentHolding:raw.calculatorShowCurrentHolding??defaults.calculatorShowCurrentHolding??true,
+      calculatorShowFeeBreakdown:raw.calculatorShowFeeBreakdown??defaults.calculatorShowFeeBreakdown??true,
+    };
+  }
+  return base;
 }
 
 export function mergeDisplayState(raw:unknown):PageDisplayState{
