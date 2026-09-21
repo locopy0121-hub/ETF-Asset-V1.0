@@ -430,6 +430,14 @@ export function SettingsScreen(){
       <ToggleRow label="鎖定浮動位置" value={a.positionLocked} onChange={positionLocked=>settings.patchAi({positionLocked})}/>
       <ToggleRow label="拖移後吸附畫面邊緣" value={a.edgeSnap} onChange={edgeSnap=>settings.patchAi({edgeSnap})}/>
       <ToggleRow label="AI 狀態提示點" value={a.statusDotVisible} onChange={statusDotVisible=>settings.patchAi({statusDotVisible})}/>
+      <ToggleRow label="一般網路搜尋" value={a.networkSearch} onChange={networkSearch=>settings.patchAi({networkSearch})}/>
+      <ToggleRow label="持股新聞更新" value={a.holdingsNews} onChange={holdingsNews=>settings.patchAi({holdingsNews})}/>
+      <ToggleRow label="主動提示建議" value={a.proactiveHints} onChange={proactiveHints=>settings.patchAi({proactiveHints})}/>
+      <ToggleRow label="顯示來源" value={a.showSources} onChange={showSources=>settings.patchAi({showSources})}/>
+      <ToggleRow label="顯示日期" value={a.showDates} onChange={showDates=>settings.patchAi({showDates})}/>
+      <ToggleRow label="使用對話上下文" value={a.useHistory} onChange={useHistory=>settings.patchAi({useHistory})}/>
+      <ToggleRow label="寫入資料前確認" value={a.confirmBeforeWrite} onChange={confirmBeforeWrite=>settings.patchAi({confirmBeforeWrite})}/>
+      <ChoiceRow label="回覆詳略" options={[{key:'concise',label:'精簡'},{key:'balanced',label:'標準'},{key:'detailed',label:'詳細'}]} value={a.responseDetail} onChange={responseDetail=>settings.patchAi({responseDetail:responseDetail==='concise'||responseDetail==='detailed'?responseDetail:'balanced'})}/>
       <Text style={styles.fieldLabel}>顯示頁面</Text>
       <View style={styles.choiceWrap}>{pageOptions.map(page=><Pressable key={page.key} onPress={()=>togglePage(page.key)} style={[styles.choice,a.visiblePages.includes(page.key)&&styles.choiceActive]}><Text style={[styles.choiceText,a.visiblePages.includes(page.key)&&styles.choiceTextActive]}>{page.label}</Text></Pressable>)}</View>
       <Text style={styles.note}>拖移位置會記住；視窗寬高在視窗右下角也可直接 Resize。鎖定位置只阻止拖移，不會鎖住 Resize。</Text>
