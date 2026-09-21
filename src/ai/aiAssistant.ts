@@ -77,8 +77,8 @@ export async function answerAiQuestion(
       return {intent:'dividend-update',text:symbol?symbol.symbol+' '+symbol.name+' 目前沒有需要補登或近期可用的配息事件。':'目前持股沒有找到需要補登的近期配息事件。'};
     }
     const actions=visible
-      .filter(event=>event.status==='尚未登錄'&&event.eligibleShares>0&&event.perShareAmount>0)
-      .map(event=>({id:'add-'+event.id,kind:'addDividend' as const,label:'＋新增',event}));
+      .filter(event=>(event.status==='尚未登錄'||event.status==='待配發')&&event.eligibleShares>0&&event.perShareAmount>0)
+      .map(event=>({id:'add-'+event.id,kind:'addDividend' as const,label:'＋新增 '+event.symbol,event}));
     return {
       intent:'dividend-update',
       text:visible.map(formatDividendEvent).join('\n\n────────\n\n'),
