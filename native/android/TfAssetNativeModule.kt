@@ -28,6 +28,11 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     promise.resolve(true)
   }
   @ReactMethod fun requestWidgetRefresh(promise:Promise){ refreshWidget(); promise.resolve(true) }
+  @ReactMethod fun consumeWidgetForceRefreshRequest(promise:Promise){
+    val at=prefs.getLong("widget_force_refresh_requested_at",0L)
+    if(at>0L)prefs.edit().remove("widget_force_refresh_requested_at").apply()
+    promise.resolve(at.toDouble())
+  }
   @ReactMethod fun startMonitor(promise:Promise){
     val cfg=runCatching{org.json.JSONObject(prefs.getString("monitor_config","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
     if(!cfg.optBoolean("enabled",false)){ prefs.edit().putBoolean("monitor_running",false).apply(); promise.resolve(false); return }
