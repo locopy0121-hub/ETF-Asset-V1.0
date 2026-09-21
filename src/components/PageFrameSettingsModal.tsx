@@ -58,7 +58,7 @@ export function PageFrameSettingsModal({
   );
   const patch=(key:string,next:Partial<FrameEditorConfig>)=>{
     const current=draft[key];
-    if(!current||current.behavior==='locked')return;
+    if(!current||current.behavior === 'locked')return;
     setDraft(value=>({...value,[key]:{...current,...next}}));
   };
   const setBehavior=(key:string,behavior:FrameBehavior)=>{
@@ -116,9 +116,9 @@ export function PageFrameSettingsModal({
                 <EditorRow title="外觀模式" subtitle="快速套用基本框架風格"><ChoiceGroup disabled={locked} items={appearances} value={value.appearance} onChange={appearance=>patch(frame.key,{appearance})}/></EditorRow>
                 <EditorRow title="排序 / 行為" subtitle="鎖定時禁止框架修改"><ChoiceGroup items={behaviors} value={value.behavior} onChange={behavior=>setBehavior(frame.key,behavior)}/></EditorRow>
                 <View style={styles.orderRow}>
-                  <Pressable disabled={value.behavior!=='manual'||index===0} onPress={()=>move(frame.key,-1)} style={[styles.orderButton,(value.behavior!=='manual'||index===0)&&styles.disabled]}><Text style={styles.orderText}>↑ 上移</Text></Pressable>
+                  <Pressable disabled={value.behavior !== 'manual'||index===0} onPress={()=>move(frame.key,-1)} style={[styles.orderButton,(value.behavior !== 'manual'||index===0)&&styles.disabled]}><Text style={styles.orderText}>↑ 上移</Text></Pressable>
                   <Text style={styles.orderIndex}>順位 {index+1}</Text>
-                  <Pressable disabled={value.behavior!=='manual'||index===orderedFrames.length-1} onPress={()=>move(frame.key,1)} style={[styles.orderButton,(value.behavior!=='manual'||index===orderedFrames.length-1)&&styles.disabled]}><Text style={styles.orderText}>↓ 下移</Text></Pressable>
+                  <Pressable disabled={value.behavior !== 'manual'||index===orderedFrames.length-1} onPress={()=>move(frame.key,1)} style={[styles.orderButton,(value.behavior !== 'manual'||index===orderedFrames.length-1)&&styles.disabled]}><Text style={styles.orderText}>↓ 下移</Text></Pressable>
                 </View>
               </AccordionGroup>
 
