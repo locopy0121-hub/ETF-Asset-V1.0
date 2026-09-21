@@ -39,6 +39,7 @@ function Marker({ratio}:{ratio:number}){return <View pointerEvents="none" style=
 export function ColorPalettePicker({label,value,onChange,profitColorEnabled,onProfitColorChange}:{label:string;value:string;onChange:(value:string)=>void;profitColorEnabled?:boolean;onProfitColorChange?:(value:boolean)=>void}){
   const [hsl,setHsl]=useState<Hsl>(()=>hexToHsl(value));
   const [widths,setWidths]=useState({h:1,s:1,l:1});
+  const [expanded,setExpanded]=useState(false);
   useEffect(()=>setHsl(hexToHsl(value)),[value]);
   const update=(next:Hsl)=>{setHsl(next);onChange(hslToHex(next));};
   const setFromX=(key:'h'|'s'|'l',x:number)=>{
@@ -57,11 +58,16 @@ export function ColorPalettePicker({label,value,onChange,profitColorEnabled,onPr
       <View style={[styles.preview,{backgroundColor:value}]}/>
       {onProfitColorChange?<Pressable onPress={()=>onProfitColorChange(!profitColorEnabled)} style={[styles.profitPill,profitColorEnabled&&styles.profitPillOn]}><Text style={[styles.profitText,profitColorEnabled&&styles.profitTextOn]}>損益色 {profitColorEnabled?'開':'關'}</Text></Pressable>:null}
     </View>
-    <Text style={styles.hint}>調色盤直接選色，不需輸入色碼</Text>
-    <PaletteBar colors={hueSegments} onLayout={onLayout('h')} onPick={x=>setFromX('h',x)}><Marker ratio={hsl.h/360}/></PaletteBar>
-    <PaletteBar colors={satSegments} onLayout={onLayout('s')} onPick={x=>setFromX('s',x)}><Marker ratio={hsl.s/100}/></PaletteBar>
-    <PaletteBar colors={lightSegments} onLayout={onLayout('l')} onPick={x=>setFromX('l',x)}><Marker ratio={hsl.l/100}/></PaletteBar>
-    <Text style={styles.meta}>色相 {Math.round(hsl.h)}°　飽和 {Math.round(hsl.s)}%　明度 {Math.round(hsl.l)}%</Text>
+    <Pressable onPress={()=>setExpanded(current=>!current)} style={styles.paletteToggle}>
+      <Text style={styles.hint}>調色盤直接選色，不需輸入色碼</Text>
+      <Text style={styles.toggleText}>{expanded?'收合':'開啟調色盤'}</Text>
+    </Pressable>
+    {expanded?<>
+      <PaletteBar colors={hueSegments} onLayout={onLayout('h')} onPick={x=>setFromX('h',x)}><Marker ratio={hsl.h/360}/></PaletteBar>
+      <PaletteBar colors={satSegments} onLayout={onLayout('s')} onPick={x=>setFromX('s',x)}><Marker ratio={hsl.s/100}/></PaletteBar>
+      <PaletteBar colors={lightSegments} onLayout={onLayout('l')} onPick={x=>setFromX('l',x)}><Marker ratio={hsl.l/100}/></PaletteBar>
+      <Text style={styles.meta}>色相 {Math.round(hsl.h)}°　飽和 {Math.round(hsl.s)}%　明度 {Math.round(hsl.l)}%</Text>
+    </>:null}
   </View>;
 }
 function PaletteBar({colors:barColors,onLayout,onPick,children}:{colors:string[];onLayout:(e:LayoutChangeEvent)=>void;onPick:(x:number)=>void;children:React.ReactNode}){
@@ -75,7 +81,9 @@ const styles=StyleSheet.create({
   block:{gap:6,paddingVertical:5},
   titleRow:{flexDirection:'row',alignItems:'center',gap:8},
   label:{fontSize:10,fontWeight:'900',color:colors.text,flex:1},
-  hint:{fontSize:9,color:colors.textSecondary},
+  hint:{fontSize:9,color:colors.textSecondary,flex:1},
+  paletteToggle:{minHeight:32,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:9,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  toggleText:{fontSize:9,fontWeight:'900',color:colors.primary},
   preview:{width:24,height:24,borderRadius:12,borderWidth:1,borderColor:colors.border},
   bar:{height:28,borderRadius:radius.md,overflow:'hidden',flexDirection:'row',borderWidth:1,borderColor:colors.border,position:'relative'},
   marker:{position:'absolute',top:0,bottom:0,width:3,marginLeft:-1.5,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#0F172A'},
