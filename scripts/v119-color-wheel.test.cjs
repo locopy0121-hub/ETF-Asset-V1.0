@@ -1,0 +1,15 @@
+const fs=require('fs');const assert=require('assert');
+const picker=fs.readFileSync('src/components/ColorPalettePicker.tsx','utf8');
+assert.match(picker,/const \[expanded,setExpanded\]=useState\(false\)/,'picker must stay unmounted until opened');
+assert.match(picker,/expanded\?<Modal/,'heavy picker UI must mount only inside explicit modal');
+assert.match(picker,/PanResponder\.create/,'wheel must support drag selection');
+assert.match(picker,/mode==='wheel'/);assert.match(picker,/色盤/);assert.match(picker,/經典/);assert.match(picker,/調色板/);
+assert.match(picker,/亮度/,'picker must expose brightness slider');
+assert.match(picker,/PaletteBar/,'brightness must be touch/drag adjustable');
+assert.match(picker,/const confirm=\(\)=>\{\s*onChange\(draft\)/,'parent color must commit only on Done');
+assert.match(picker,/完成/);assert.match(picker,/取消/);
+assert.match(picker,/調色盤直接選色，不需輸入色碼/);
+assert.ok(!picker.includes('TextInput'),'color picker must not contain text inputs');
+assert.ok(!/onChangeText/.test(picker),'color picker must never request typed color values');
+assert.match(picker,/不提供 HEX、RGB、HSV 或任何文字輸入欄位/);
+console.log('V1.0.19 no-input color wheel gate: PASS');
