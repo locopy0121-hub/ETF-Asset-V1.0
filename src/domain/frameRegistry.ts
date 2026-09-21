@@ -29,6 +29,9 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'dividend-list', title:'股息清單', description:'日期、標的、金額、狀態' },
     { key:'annual-trend', title:'年度趨勢', description:'1–12 月股息趨勢' },
   ],
+  ai: [
+    { key:'ai-news', title:'AI 持股新聞', description:'網路新聞、來源、日期與智慧摘要' },
+  ],
   settings: [
     { key:'system', title:'系統設定', description:'行情、背景、權限、診斷與通知' },
     { key:'accounting', title:'帳務系統', description:'公式、券商費率、交易預設與核心狀態' },
