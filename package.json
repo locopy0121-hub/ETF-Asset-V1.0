@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v108 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v109 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -44,7 +44,9 @@
     "test:palette-v107": "node scripts/global-palette-v107.test.cjs",
     "test:display-modes-v107": "node scripts/display-modes-v107.test.cjs",
     "test:monitor-display-v108": "node scripts/monitor-display-v108.test.cjs",
-    "test:v108": "npm run test:v107 && npm run test:monitor-display-v108"
+    "test:v108": "npm run test:v107 && npm run test:monitor-display-v108",
+    "test:main-market-wall-v109": "node scripts/main-market-wall-editor-v109.test.cjs",
+    "test:v109": "npm run test:v108 && npm run test:main-market-wall-v109"
   },
   "dependencies": {
     "expo": "~57.0.21",

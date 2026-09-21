@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
 import type { PageFrameDefinition } from '../domain/frameRegistry';
+import { DEFAULT_HOLDING_WALL_CONFIG } from '../domain/uiModels';
 import type { MainPageKey } from '../domain/pageRegistry';
 import {
   normalizeEditorConfig,
@@ -9,9 +10,12 @@ import {
   type FrameBehavior,
   type FrameEditorConfig,
   type FrameLayout,
+  type PageDisplayConfig,
   usePageEditor,
 } from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
+import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
+import { HoldingMarketWallEditor } from './HoldingMarketWallEditor';
 
 const layouts: readonly { key: FrameLayout; label: string }[] = [
   { key: 'standard', label: '標準' },
@@ -42,16 +46,19 @@ export function PageFrameSettingsModal({
   frames: readonly PageFrameDefinition[];
   onClose: () => void;
 }) {
-  const { config, replacePageConfig, resetPage } = usePageEditor(pageKey);
+  const { config, displayConfig, replacePageConfig, updateDisplayConfig, resetPage } = usePageEditor(pageKey);
+  const monitor=useMonitorSettingsRuntime();
   const [open, setOpen] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, FrameEditorConfig>>({ ...config });
+  const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
 
   useEffect(() => {
     if (visible) {
       setDraft({ ...config });
+      setDisplayDraft({...displayConfig});
       setOpen(null);
     }
-  }, [visible, config]);
+  }, [visible, config, displayConfig]);
 
   const orderedFrames = useMemo(
     () => [...frames].sort((a, b) => (draft[a.key]?.order ?? 0) - (draft[b.key]?.order ?? 0)),
@@ -88,11 +95,13 @@ export function PageFrameSettingsModal({
 
   const apply = () => {
     replacePageConfig(normalizeEditorConfig(pageKey, draft));
+    updateDisplayConfig(displayDraft);
     onClose();
   };
 
   const cancel = () => {
     setDraft({ ...config });
+    setDisplayDraft({...displayConfig});
     onClose();
   };
 
@@ -191,6 +200,12 @@ export function PageFrameSettingsModal({
                   style={[styles.orderButton, (value.behavior !== 'manual' || index === orderedFrames.length - 1) && styles.disabled]}
                 ><Text style={styles.orderText}>↓ 下移</Text></Pressable>
               </View>
+
+              {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor
+                value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
+                onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}
+                miniSource={monitor.config}
+              />:null}
 
               <Text style={styles.rule}>B 層只管理「{frame.title}」，不可直接改動其他框架。</Text>
             </View> : null}
