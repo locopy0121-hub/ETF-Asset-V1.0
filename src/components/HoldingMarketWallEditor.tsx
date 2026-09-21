@@ -9,13 +9,13 @@ import {
   type HoldingWallFieldKey,
 } from '../domain/uiModels';
 import { colors, radius, spacing } from '../theme/tokens';
+import { ColorPalettePicker } from './ColorPalettePicker';
 
 const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}[]=[
   {title:'標題區',fields:['name','symbol']},
   {title:'行情區',fields:['price','change','changePercent']},
   {title:'損益區',fields:['pnl','roi','marketValue']},
 ];
-const palette=['#0C121B','#111827','#FFFFFF','#F8FAFC','#0066FF','#EF4444','#10B981','#64748B','#F59E0B'];
 
 export function HoldingMarketWallEditor({
   value,
@@ -93,9 +93,9 @@ export function HoldingMarketWallEditor({
       <Text style={styles.blockTitle}>A 標題列（母）</Text>
       <Toggle label="顯示標題列" value={value.header.visible} onChange={visible=>patchHeader({visible})}/>
       <Step label="標題字體" value={Math.round(value.header.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={fontScale=>patchHeader({fontScale:fontScale/100})}/>
-      <Color label="標題背景" value={value.header.backgroundColor} onChange={backgroundColor=>patchHeader({backgroundColor})}/>
-      <Color label="標題文字" value={value.header.textColor} onChange={textColor=>patchHeader({textColor})}/>
-      <Color label="標題分隔線" value={value.header.borderColor} onChange={borderColor=>patchHeader({borderColor})}/>
+      <ColorPalettePicker label="標題背景" value={value.header.backgroundColor} onChange={backgroundColor=>patchHeader({backgroundColor})}/>
+      <ColorPalettePicker label="標題文字" value={value.header.textColor} onChange={textColor=>patchHeader({textColor})}/>
+      <ColorPalettePicker label="標題分隔線" value={value.header.borderColor} onChange={borderColor=>patchHeader({borderColor})}/>
       <Step label="標題分隔線" value={value.header.borderWidth} min={0} max={4} step={1} suffix=" px" onChange={borderWidth=>patchHeader({borderWidth})}/>
     </View>
 
@@ -125,12 +125,12 @@ export function HoldingMarketWallEditor({
 
     <View style={styles.block}>
       <Text style={styles.blockTitle}>卡片外觀</Text>
-      <Color label="背景" value={value.style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
-      <Color label="文字" value={value.style.textColor} onChange={textColor=>patchStyle({textColor})}/>
-      <Color label="次要文字" value={value.style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
-      <Color label="上漲 / 獲利" value={value.style.gainColor} onChange={gainColor=>patchStyle({gainColor})}/>
-      <Color label="下跌 / 虧損" value={value.style.lossColor} onChange={lossColor=>patchStyle({lossColor})}/>
-      <Color label="邊框" value={value.style.borderColor} onChange={borderColor=>patchStyle({borderColor})}/>
+      <ColorPalettePicker label="背景" value={value.style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
+      <ColorPalettePicker label="文字" value={value.style.textColor} onChange={textColor=>patchStyle({textColor})}/>
+      <ColorPalettePicker label="次要文字" value={value.style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
+      <ColorPalettePicker label="上漲 / 獲利" value={value.style.gainColor} onChange={gainColor=>patchStyle({gainColor})}/>
+      <ColorPalettePicker label="下跌 / 虧損" value={value.style.lossColor} onChange={lossColor=>patchStyle({lossColor})}/>
+      <ColorPalettePicker label="邊框" value={value.style.borderColor} onChange={borderColor=>patchStyle({borderColor})}/>
       <Step label="邊框" value={value.style.borderWidth} min={0} max={6} step={1} suffix=" px" onChange={borderWidth=>patchStyle({borderWidth})}/>
       <Step label="圓角" value={value.style.cornerRadius} min={0} max={40} step={2} suffix=" px" onChange={cornerRadius=>patchStyle({cornerRadius})}/>
       <Step label="內距" value={value.style.padding} min={0} max={32} step={2} suffix=" px" onChange={padding=>patchStyle({padding})}/>
@@ -147,8 +147,6 @@ function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:num
 }
 function Mini({label,onPress}:{label:string;onPress:()=>void}){return <Pressable onPress={onPress} style={styles.mini}><Text style={styles.miniText}>{label}</Text></Pressable>;}
 function Choice({value,onChange}:{value:HoldingWallAlign;onChange:(value:HoldingWallAlign)=>void}){return <View style={styles.row}>{(['left','center','right'] as const).map(item=><Pressable key={item} onPress={()=>onChange(item)} style={[styles.choice,value===item&&styles.choiceActive]}><Text style={[styles.choiceText,value===item&&styles.choiceTextActive]}>{item==='left'?'靠左':item==='center'?'置中':'靠右'}</Text></Pressable>)}</View>;}
-function Color({label,value,onChange}:{label:string;value:string;onChange:(value:string)=>void}){return <View><Text style={styles.label}>{label}</Text><View style={styles.row}>{palette.map(color=><Pressable key={color} onPress={()=>onChange(color)} style={[styles.swatch,{backgroundColor:color},value===color&&styles.swatchActive]}/>)}</View></View>;}
-
 const styles=StyleSheet.create({
   root:{gap:spacing.md,marginTop:spacing.md},
   notice:{backgroundColor:'#EFF6FF',borderRadius:radius.md,padding:spacing.md,gap:8},
@@ -179,6 +177,4 @@ const styles=StyleSheet.create({
   choiceText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
   choiceTextActive:{color:'#FFFFFF'},
   input:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,paddingHorizontal:10,paddingVertical:8,color:colors.text,fontSize:11},
-  swatch:{width:28,height:28,borderRadius:14,borderWidth:2,borderColor:'transparent'},
-  swatchActive:{borderColor:colors.primary},
 });
