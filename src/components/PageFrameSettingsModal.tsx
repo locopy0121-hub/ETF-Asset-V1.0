@@ -201,8 +201,8 @@ export function PageFrameSettingsModal({
                 ><Text style={styles.orderText}>↓ 下移</Text></Pressable>
               </View>
 
-              {pageKey==='home'&&frame.key==='market-news'?<View style={styles.newsEditor}>
-                <EditorRow title="新聞顯示筆數" subtitle="首頁市場新聞顯示 3／5／10 筆">
+              {((pageKey==='home'&&frame.key==='market-news')||(pageKey==='ai'&&frame.key==='ai-news'))?<View style={styles.newsEditor}>
+                <EditorRow title="新聞顯示筆數" subtitle={pageKey==='home'?'首頁市場新聞顯示 3／5／10 筆':'AI 持股新聞顯示 3／5／10 筆'}>
                   <ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={value=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(value)}))}/>
                 </EditorRow>
                 <EditorRow title="僅顯示持股相關" subtitle="新聞來源依目前持股代號與名稱搜尋">
