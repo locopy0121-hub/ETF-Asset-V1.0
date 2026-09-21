@@ -29,6 +29,30 @@ export type MiniColumnConfig = Readonly<{
   label:string;
 }>;
 
+export type MiniStatusField = 'totalAssets' | 'marketValue' | 'totalReturn' | 'cash' | 'unrealizedPnl' | 'realizedPnl' | 'dividendIncome' | 'holdingCount' | 'updatedAt';
+export type MiniStatusBarStyle = Readonly<{
+  visible:boolean;
+  height:number;
+  columns:number;
+  backgroundColor:string;
+  backgroundOpacity:number;
+  textColor:string;
+  fontScale:number;
+  borderColor:string;
+  borderWidth:number;
+}>;
+export type MiniStatusItemConfig = Readonly<{
+  field:MiniStatusField;
+  enabled:boolean;
+  label:string;
+  useProfitColor:boolean;
+}>;
+export type MonitorWallLayout = Readonly<{
+  columns:number;
+  columnGap:number;
+  rowGap:number;
+}>;
+
 export type MonitorLayout = Readonly<{x:number;y:number;width:number;height:number;}>;
 export type MonitorStyle = Readonly<{
   fontScale:number;
@@ -77,7 +101,10 @@ export type MonitorConfig = Readonly<{
   miniStyle: MonitorStyle;
   miniHeader: MiniHeaderStyle;
   miniColumns: readonly MiniColumnConfig[];
+  miniStatusBar: MiniStatusBarStyle;
+  miniStatusItems: readonly MiniStatusItemConfig[];
   normalWall: HoldingWallConfig;
+  normalWallLayout: MonitorWallLayout;
   effects: MonitorEffects;
   sort: MonitorSort;
   alwaysOnTop:boolean;
@@ -129,6 +156,29 @@ export const DEFAULT_MINI_COLUMNS:readonly MiniColumnConfig[]=[
   {field:'marketStatus',enabled:false,widthPercent:18,align:'center',fontScale:.9,useProfitColor:false,label:'狀態'},
   {field:'updatedAt',enabled:false,widthPercent:26,align:'right',fontScale:.85,useProfitColor:false,label:'更新'},
 ];
+export const DEFAULT_MINI_STATUS_BAR:MiniStatusBarStyle={
+  visible:true,
+  height:36,
+  columns:3,
+  backgroundColor:'#111827',
+  backgroundOpacity:0.96,
+  textColor:'#CBD5E1',
+  fontScale:0.85,
+  borderColor:'#334155',
+  borderWidth:1,
+};
+export const DEFAULT_MINI_STATUS_ITEMS:readonly MiniStatusItemConfig[]=[
+  {field:'totalAssets',enabled:true,label:'總資產',useProfitColor:false},
+  {field:'marketValue',enabled:true,label:'市值',useProfitColor:false},
+  {field:'totalReturn',enabled:true,label:'總損益',useProfitColor:true},
+  {field:'cash',enabled:false,label:'現金',useProfitColor:false},
+  {field:'unrealizedPnl',enabled:false,label:'未實現',useProfitColor:true},
+  {field:'realizedPnl',enabled:false,label:'已實現',useProfitColor:true},
+  {field:'dividendIncome',enabled:false,label:'股息',useProfitColor:false},
+  {field:'holdingCount',enabled:false,label:'持股數',useProfitColor:false},
+  {field:'updatedAt',enabled:false,label:'更新',useProfitColor:false},
+];
+export const DEFAULT_MONITOR_WALL_LAYOUT:MonitorWallLayout={columns:2,columnGap:8,rowGap:8};
 export const DEFAULT_MONITOR_SORT:MonitorSort={key:'manual',direction:'asc',manualSymbols:[]};
 
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
@@ -146,7 +196,10 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   miniStyle:{...DEFAULT_MONITOR_STYLE,fontScale:0.9,titleFontScale:0.9,valueFontScale:0.95,padding:6,rowGap:2,cornerRadius:12},
   miniHeader:DEFAULT_MINI_HEADER,
   miniColumns:DEFAULT_MINI_COLUMNS,
+  miniStatusBar:DEFAULT_MINI_STATUS_BAR,
+  miniStatusItems:DEFAULT_MINI_STATUS_ITEMS,
   normalWall:DEFAULT_HOLDING_WALL_CONFIG,
+  normalWallLayout:DEFAULT_MONITOR_WALL_LAYOUT,
   effects:DEFAULT_MONITOR_EFFECTS,
   sort:DEFAULT_MONITOR_SORT,
   alwaysOnTop:true,
@@ -156,6 +209,23 @@ export function activeMonitorLayout(config: MonitorConfig) {return config.mode =
 export function activeMonitorStyle(config:MonitorConfig){return config.mode==='normal'?config.normalStyle:config.miniStyle;}
 export function activeMonitorFields(config: MonitorConfig) {return config.mode === 'normal' ? config.fields : config.miniFields;}
 export function enabledMiniColumns(config:MonitorConfig){return config.miniColumns.filter(column=>column.enabled);}
+export function enabledMiniStatusItems(config:MonitorConfig){return config.miniStatusItems.filter(item=>item.enabled);}
+export function updateMiniStatusBar(config:MonitorConfig,patch:Partial<MiniStatusBarStyle>):MonitorConfig{
+  return {...config,miniStatusBar:{...config.miniStatusBar,...patch}};
+}
+export function updateMiniStatusItem(config:MonitorConfig,field:MiniStatusField,patch:Partial<MiniStatusItemConfig>):MonitorConfig{
+  return {...config,miniStatusItems:config.miniStatusItems.map(item=>item.field===field?{...item,...patch}:item)};
+}
+export function moveMiniStatusItem(config:MonitorConfig,field:MiniStatusField,delta:number):MonitorConfig{
+  const items=[...config.miniStatusItems];
+  const index=items.findIndex(item=>item.field===field);
+  const target=index+delta;
+  if(index<0||target<0||target>=items.length)return config;
+  const current=items[index]!;
+  items[index]=items[target]!;
+  items[target]=current;
+  return {...config,miniStatusItems:items};
+}
 export function updateMiniHeader(config:MonitorConfig,patch:Partial<MiniHeaderStyle>):MonitorConfig{
   return {...config,miniHeader:{...config.miniHeader,...patch}};
 }
@@ -186,6 +256,9 @@ export function updateMonitorFields(config:MonitorConfig,fields:readonly Monitor
   return config.mode==='normal'?{...config,fields:[...fields]}:{...config,miniFields:[...fields]};
 }
 export function updateMonitorWall(config:MonitorConfig,wall:HoldingWallConfig):MonitorConfig{return {...config,normalWall:wall};}
+export function updateMonitorWallLayout(config:MonitorConfig,patch:Partial<MonitorWallLayout>):MonitorConfig{
+  return {...config,normalWallLayout:{...config.normalWallLayout,...patch}};
+}
 export function sortMonitorHoldings(snapshot:SharedSnapshot|null,config:MonitorConfig){
   if(!snapshot)return [];
   const rows=config.selectedSymbols.length?snapshot.holdings.filter(x=>config.selectedSymbols.includes(x.symbol)):[...snapshot.holdings];
