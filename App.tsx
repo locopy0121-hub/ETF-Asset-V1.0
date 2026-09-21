@@ -11,6 +11,7 @@ import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { MonitorSettingsRuntimeProvider, useMonitorSettingsRuntime } from './src/monitor/MonitorSettingsRuntime';
 import { WidgetSettingsRuntimeProvider, useWidgetSettingsRuntime } from './src/widget/WidgetSettingsRuntime';
+import { GlobalFloatingAi } from './src/components/GlobalFloatingAi';
 import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
@@ -113,6 +114,7 @@ function AppBody(){
 
   return <View style={styles.root}>
     <View style={styles.screen}>{screen}</View>
+    <GlobalFloatingAi/>
     {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
       <View style={styles.nav}>
         {MAIN_PAGES.map(page=>{
