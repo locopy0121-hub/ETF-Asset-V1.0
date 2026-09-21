@@ -25,6 +25,8 @@ assert.match(settings,/label:'純文字終端'/,'純文字終端 label missing')
 assert.match(native,/fitMiniHeightToContent/,'Mini adaptive-height gate missing');
 const mini=native.slice(native.indexOf('private fun renderMini'),native.indexOf('private fun weighted'));
 assert.match(mini,/ScrollView/,'Mini scrolling container missing');
+assert.ok(!mini.includes('ScrollView.LayoutParams'),'Mini ScrollView child must not use unresolved ScrollView.LayoutParams');
+assert.match(mini,/addView\(body\)/,'Mini ScrollView must attach its body with supported default child layout params');
 assert.match(mini,/rows\.forEach\{holding->/,'Mini must iterate all holdings');
 assert.ok(!/rows\.(take|slice|subList)\(/.test(mini),'Mini must never truncate holdings');
 assert.match(settings,/列數不設上限/,'Mini unlimited-row UI contract missing');

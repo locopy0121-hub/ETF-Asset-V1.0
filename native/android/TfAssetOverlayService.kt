@@ -337,7 +337,7 @@ class TfAssetOverlayService:Service(){
     if(rows.isEmpty())body.addView(textView("尚無持股資料",neutral,11*baseScale,Gravity.START))
     val scroller=ScrollView(this).apply{
       isFillViewport=true
-      addView(body,ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT,ScrollView.LayoutParams.WRAP_CONTENT))
+      addView(body)
     }
     root.addView(scroller,LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,0,1f))
   }
