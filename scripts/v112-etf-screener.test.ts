@@ -15,6 +15,6 @@ assert.deepEqual(filterEtfs(rows,{query:'',market:'TWSE',kind:'高股息',indust
 assert.deepEqual(filterEtfs(rows,{query:'',market:'all',kind:'all',industry:'all',maxExpenseRatioPct:.5}).map(x=>x.symbol),['0050']);
 
 const metrics=parseYahooEtfMetrics({quoteSummary:{result:[{fundProfile:{feesExpensesInvestment:{annualReportExpenseRatio:{raw:.0045}}},summaryDetail:{trailingAnnualDividendYield:{raw:.052}}}]}});
-assert.equal(metrics.expenseRatioPct,.45);
-assert.equal(metrics.yieldPct,5.2);
+assert.ok(Math.abs((metrics.expenseRatioPct??0)-.45)<1e-9);
+assert.ok(Math.abs((metrics.yieldPct??0)-5.2)<1e-9);
 console.log('v1.1.2 ETF screener PASS');
