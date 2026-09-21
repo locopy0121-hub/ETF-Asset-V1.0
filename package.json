@@ -91,7 +91,8 @@
     "test:v1_1_2": "npm run test:v1_1_1 && npm run test:v112-new",
     "test:v112-screener": "tsx scripts/v112-etf-screener.test.ts",
     "test:v112-ai-settings": "tsx scripts/v112-ai-settings.test.ts",
-    "test:v112-new": "npm run test:v112-network && npm run test:v112-screener && npm run test:v112-ai-settings"
+    "test:v112-new": "npm run test:v112-network && npm run test:v112-screener && npm run test:v112-ai-settings && npm run test:v112-home-holding",
+    "test:v112-home-holding": "tsx scripts/v112-home-holding.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
