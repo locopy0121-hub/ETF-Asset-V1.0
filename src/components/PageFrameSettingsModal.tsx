@@ -14,7 +14,6 @@ import {
   usePageEditor,
 } from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
-import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import { HoldingMarketWallEditor } from './HoldingMarketWallEditor';
 
 const layouts: readonly { key: FrameLayout; label: string }[] = [
@@ -47,7 +46,6 @@ export function PageFrameSettingsModal({
   onClose: () => void;
 }) {
   const { config, displayConfig, replacePageConfig, updateDisplayConfig, resetPage } = usePageEditor(pageKey);
-  const monitor=useMonitorSettingsRuntime();
   const [open, setOpen] = useState<string | null>(null);
   const [draft, setDraft] = useState<Record<string, FrameEditorConfig>>({ ...config });
   const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
@@ -213,7 +211,6 @@ export function PageFrameSettingsModal({
               {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor
                 value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
                 onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}
-                miniSource={monitor.config}
               />:null}
 
               <Text style={styles.rule}>B 層只管理「{frame.title}」，不可直接改動其他框架。</Text>
