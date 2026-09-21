@@ -28,7 +28,8 @@ jobs:
       - name: Expo Doctor
         run: npm run doctor
 
-  qa-item1-apk:
+  release-apk:
+    needs: quality
     if: github.event_name == 'pull_request' && github.head_ref == 'go-1.1.2-20260921'
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -47,8 +48,20 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V1.1.2 Item1 automated gates
-        run: npm run test:v112-ai-settings && npm run test:v112-floating-ai
+      - name: V1.1.2 full gates
+        run: npm run test:v1_1_2
+      - name: Release metadata gate
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
+          if(pkg.version!=='1.1.2') throw new Error('package.json version must be 1.1.2');
+          if(app.version!=='1.1.2') throw new Error('app.json version must be 1.1.2');
+          if(app.android?.versionCode!==10102) throw new Error('Android versionCode must be 10102');
+          if(app.ios?.buildNumber!=='10102') throw new Error('iOS buildNumber must be 10102');
+          if(app.android?.package!=='com.tfasset.app') throw new Error('Android package must be com.tfasset.app');
+          NODE
       - name: Create React Native Android QA workspace
         run: |
           cd ..
@@ -78,12 +91,12 @@ jobs:
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
           g=g.replace(/versionCode\s+\d+/,'versionCode 10102');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.1.2-QA"');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "1.1.2"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
           let s=fs.readFileSync(strings,'utf8');
-          s=s.replace(/<string name="app_name">[\s\S]*?<\/string>/,'<string name="app_name">TF Asset 資產管家 QA</string>');
+          s=s.replace(/<string name="app_name">[\s\S]*?<\/string>/,'<string name="app_name">TF Asset 資產管家</string>');
           fs.writeFileSync(strings,s);
           NODE
       - name: Inject Android Widget and Floating Monitor
@@ -136,32 +149,32 @@ jobs:
       - name: Install native workspace dependencies
         working-directory: ../TFAssetNative
         run: npm install --no-audit --no-fund
-      - name: Build QA APK on GitHub runner
+      - name: Build release APK on GitHub runner
         working-directory: ../TFAssetNative/android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
-      - name: Collect and validate QA APK
+      - name: Collect and validate release APK
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V1.1.2-QA-Item1.apk
-          test "$(stat -c%s TF-Asset-V1.1.2-QA-Item1.apk)" -gt 1000000
-          unzip -t TF-Asset-V1.1.2-QA-Item1.apk
-          sha256sum TF-Asset-V1.1.2-QA-Item1.apk | tee TF-Asset-V1.1.2-QA-Item1.sha256
+          cp "$APK_PATH" TF-Asset-V1.1.2.apk
+          test "$(stat -c%s TF-Asset-V1.1.2.apk)" -gt 1000000
+          unzip -t TF-Asset-V1.1.2.apk
+          sha256sum TF-Asset-V1.1.2.apk | tee TF-Asset-V1.1.2.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V1.1.2-QA-Item1.apk | tee TF-Asset-V1.1.2-QA-Item1-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V1.1.2-QA-Item1-badging.txt
-          grep "versionCode='10102'" TF-Asset-V1.1.2-QA-Item1-badging.txt
-          grep "versionName='1.1.2-QA'" TF-Asset-V1.1.2-QA-Item1-badging.txt
-      - name: Upload QA APK artifact
+          "$AAPT" dump badging TF-Asset-V1.1.2.apk | tee TF-Asset-V1.1.2-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V1.1.2-badging.txt
+          grep "versionCode='10102'" TF-Asset-V1.1.2-badging.txt
+          grep "versionName='1.1.2'" TF-Asset-V1.1.2-badging.txt
+      - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V1.1.2-QA-Item1
+          name: TF-Asset-V1.1.2
           path: |
-            TF-Asset-V1.1.2-QA-Item1.apk
-            TF-Asset-V1.1.2-QA-Item1.sha256
-            TF-Asset-V1.1.2-QA-Item1-badging.txt
+            TF-Asset-V1.1.2.apk
+            TF-Asset-V1.1.2.sha256
+            TF-Asset-V1.1.2-badging.txt
           if-no-files-found: error
           retention-days: 7
