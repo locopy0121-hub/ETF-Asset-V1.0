@@ -71,11 +71,14 @@ function AppBody(){
   },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config]);
 
   useEffect(()=>{
-    if(!market.hydrated)return;
-    void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
+    if(!market.hydrated||!widgetSettings.hydrated||!widgetSettings.config.enabled||!widgetSettings.config.forceRefreshOnTap)return;
+    const poll=()=>void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
       if(requestedAt>0)void market.refresh({force:true});
     });
-  },[market.hydrated,market.refresh]);
+    poll();
+    const timer=setInterval(poll,1000);
+    return()=>clearInterval(timer);
+  },[market.hydrated,market.refresh,widgetSettings.hydrated,widgetSettings.config.enabled,widgetSettings.config.forceRefreshOnTap]);
 
   useEffect(()=>{
     if(!market.hydrated||!monitorSettings.config.enabled)return;
