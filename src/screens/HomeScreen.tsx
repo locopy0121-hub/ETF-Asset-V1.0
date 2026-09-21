@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FloatingDashboardChart } from '../components/FloatingDashboardChart';
+import { NewsReaderModal } from '../components/NewsReaderModal';
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
@@ -17,7 +18,7 @@ import { sortHoldingQuotes } from '../domain/holdingSort';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
-import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
+import { useAiNewsRuntime, type AiNewsItem } from '../ai/AiNewsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
@@ -27,6 +28,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const market=useMarketRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
+  const [selectedNews,setSelectedNews]=useState<AiNewsItem|null>(null);
   const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
   const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
@@ -90,9 +92,9 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
         },
         {key:'market-news',element:
           <FrameCard title="市場新聞">
-            {newsItems.map(item=><Pressable key={item.id} accessibilityRole="link" disabled={!item.url} onPress={()=>void Linking.openURL(item.url)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed,!item.url&&styles.newsDisabled]}>
+            {newsItems.map(item=><Pressable key={item.id} accessibilityRole="button" onPress={()=>setSelectedNews(item)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed]}>
               <View style={styles.newsDot}/>
-              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source} · 點擊開啟原文</Text></View>
+              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source} · 點擊於 App 內閱讀</Text></View>
               <Text style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
             </Pressable>)}
             {!newsItems.length?<Text style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
@@ -145,6 +147,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
       {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)}/>;})}
       </View>
     </PageShell>
+    <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
