@@ -154,6 +154,9 @@ export function PageFrameSettingsModal({
                   <HoldingDisplayEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>
                   <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
                 </>:null}
+                {pageKey==='ledger'&&frame.key==='quick-entry'?<LedgerQuickEntryEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
+                {pageKey==='ledger'&&frame.key==='ledger-list'?<LedgerListEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
+                {pageKey==='portfolio'&&frame.key==='holding-view'?<PortfolioToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
@@ -162,6 +165,52 @@ export function PageFrameSettingsModal({
       </ScrollView>
     </View>
   </Modal>;
+}
+
+function LedgerQuickEntryEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>快速建檔顯示</Text>
+    <SwitchRow label="最近使用 ETF 快捷列" value={value.ledgerShowRecentSymbols??true} onChange={ledgerShowRecentSymbols=>onChange({ledgerShowRecentSymbols})}/>
+    <SwitchRow label="ETF 即時符合清單" value={value.ledgerShowSuggestions??true} onChange={ledgerShowSuggestions=>onChange({ledgerShowSuggestions})}/>
+    <SwitchRow label="顯示手動手續費／稅金欄位" value={value.ledgerShowFeeTax??true} onChange={ledgerShowFeeTax=>onChange({ledgerShowFeeTax})}/>
+    <Text style={styles.rule}>關閉費稅欄位時只隱藏手動覆寫入口，正式帳務仍使用既有 Canonical Finance Core 公式計算。</Text>
+  </View>;
+}
+
+function LedgerListEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const count=String(value.ledgerListVisibleCount??20) as '10'|'20'|'50'|'100';
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>交易紀錄顯示</Text>
+    <EditorRow title="顯示筆數" subtitle="只影響列表顯示，不刪除帳務資料"><ChoiceGroup
+      items={([{key:'10',label:'10 筆'},{key:'20',label:'20 筆'},{key:'50',label:'50 筆'},{key:'100',label:'100 筆'}] as const)}
+      value={count}
+      onChange={key=>onChange({ledgerListVisibleCount:Number(key) as 10|20|50|100})}
+    /></EditorRow>
+    <SwitchRow label="列表顯示費／稅明細" value={value.ledgerShowFeeTax??true} onChange={ledgerShowFeeTax=>onChange({ledgerShowFeeTax})}/>
+  </View>;
+}
+
+function PortfolioToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const viewMode=value.portfolioViewMode??'list';
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>庫存顯示／試算工具</Text>
+    <EditorRow title="持股檢視模式" subtitle="清單與行情牆使用同一份持股資料"><ChoiceGroup
+      items={([{key:'list',label:'清單'},{key:'wall',label:'行情牆'}] as const)}
+      value={viewMode}
+      onChange={portfolioViewMode=>onChange({portfolioViewMode})}
+    /></EditorRow>
+    {viewMode==='list'?<EditorRow title="清單列高" subtitle={`${Math.round(value.portfolioTableRowHeight??54)} px`}><NumberStep label="px" value={value.portfolioTableRowHeight??54} min={44} max={84} step={2} onChange={portfolioTableRowHeight=>onChange({portfolioTableRowHeight})}/></EditorRow>:<>
+      <HoldingDisplayEditor value={value} onChange={onChange}/>
+      <HoldingMarketWallEditor value={value.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>onChange({holdingWall})}/>
+    </>}
+    <AccordionGroup title="持股試算" subtitle="試算視窗尺寸與顯示內容" expanded={false} onPress={()=>{}}>
+      <></>
+    </AccordionGroup>
+    <EditorRow title="試算視窗高度" subtitle={`${Math.round(value.calculatorPanelHeightPct??92)}%`}><NumberStep label="%" value={value.calculatorPanelHeightPct??92} min={60} max={96} step={2} onChange={calculatorPanelHeightPct=>onChange({calculatorPanelHeightPct})}/></EditorRow>
+    <SwitchRow label="顯示目前持股摘要" value={value.calculatorShowCurrentHolding??true} onChange={calculatorShowCurrentHolding=>onChange({calculatorShowCurrentHolding})}/>
+    <SwitchRow label="顯示費用明細" value={value.calculatorShowFeeBreakdown??true} onChange={calculatorShowFeeBreakdown=>onChange({calculatorShowFeeBreakdown})}/>
+    <Text style={styles.rule}>以上只控制試算工具介面；試算仍直接呼叫 V3.7.8 Canonical Core，且不寫入 Ledger。</Text>
+  </View>;
 }
 
 function HoldingDisplayEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
@@ -317,7 +366,10 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
 }
 
 function hasContentTools(pageKey:MainPageKey,frameKey:string){
-  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='ai'&&frameKey==='ai-news');
+  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))
+    ||(pageKey==='ai'&&frameKey==='ai-news')
+    ||(pageKey==='ledger'&&['quick-entry','ledger-list'].includes(frameKey))
+    ||(pageKey==='portfolio'&&frameKey==='holding-view');
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);
