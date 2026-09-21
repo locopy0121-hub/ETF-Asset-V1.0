@@ -73,7 +73,7 @@ export async function searchNetwork(query:string):Promise<readonly NetworkSearch
   return unique(rows).slice(0,8);
 }
 
-export function formatNetworkResults(rows:readonly NetworkSearchResult[],options?:Readonly<{showSources?:boolean;showDates?:boolean;detail?:'concise'|'balanced'|'detailed'}>){
+export function formatNetworkResults(rows:readonly NetworkSearchResult[],options?:Readonly<{showSources?:boolean|undefined;showDates?:boolean|undefined;detail?:'concise'|'balanced'|'detailed'|undefined}>){
   const detail=options?.detail??'balanced';
   const max=detail==='concise'?3:detail==='detailed'?8:5;
   return rows.slice(0,max).map((row,index)=>{
