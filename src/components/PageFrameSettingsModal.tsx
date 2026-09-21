@@ -14,6 +14,9 @@ import {
   type FrameBehavior,
   type FrameEditorConfig,
   type FrameLayout,
+  type HoldingColumnCount,
+  type HoldingPrimaryField,
+  type HoldingScrollMode,
   type PageDisplayConfig,
   usePageEditor,
 } from '../editor/pageEditor';
@@ -38,19 +41,19 @@ export function PageFrameSettingsModal({
 }:{
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;
 }){
-  const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
+  const {config,storedDisplayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
-  const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
+  const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...storedDisplayConfig});
 
   useEffect(()=>{
     if(!visible)return;
     setDraft({...config});
-    setDisplayDraft({...displayConfig});
+    setDisplayDraft({...storedDisplayConfig});
     setOpenFrame(null);
     setOpenGroup(null);
-  },[visible,config,displayConfig]);
+  },[visible,config,storedDisplayConfig]);
 
   const orderedFrames=useMemo(
     ()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),
@@ -81,7 +84,7 @@ export function PageFrameSettingsModal({
     setOpenGroup(current=>current===key?null:key);
   };
   const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);onClose();};
-  const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
+  const cancel=()=>{setDraft({...config});setDisplayDraft({...storedDisplayConfig});onClose();};
   const reset=()=>{resetPage();onClose();};
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
@@ -147,7 +150,14 @@ export function PageFrameSettingsModal({
                   <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
                   <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
                 </View>:null}
-                {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>:null}
+                {pageKey==='home'&&frame.key==='holding-quotes'?<>
+                  <HoldingDisplayEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>
+                  <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
+                </>:null}
+                {pageKey==='ledger'&&frame.key==='quick-entry'?<LedgerQuickEntryEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
+                {pageKey==='ledger'&&frame.key==='ledger-list'?<LedgerListEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
+                {pageKey==='portfolio'&&frame.key==='holding-view'?<PortfolioToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
+                {pageKey==='dividend'?<DividendToolsEditor frameKey={frame.key} value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
@@ -156,6 +166,114 @@ export function PageFrameSettingsModal({
       </ScrollView>
     </View>
   </Modal>;
+}
+
+function DividendToolsEditor({frameKey,value,onChange}:{frameKey:string;value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  if(frameKey==='dividend-summary')return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>股息摘要內容</Text>
+    <SwitchRow label="顯示股息 AI 問答" value={value.dividendAiVisible??true} onChange={dividendAiVisible=>onChange({dividendAiVisible})}/>
+    <Text style={styles.rule}>關閉只隱藏 AI 視覺區塊，不影響股息資料、入帳或 Finance Core。</Text>
+  </View>;
+  if(frameKey==='dividend-calendar')return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>股息月曆</Text>
+    <EditorRow title="日期格高度" subtitle={`${Math.round(value.dividendCalendarCellHeight??45)} px`}><NumberStep label="px" value={value.dividendCalendarCellHeight??45} min={32} max={88} step={2} onChange={dividendCalendarCellHeight=>onChange({dividendCalendarCellHeight})}/></EditorRow>
+    <EditorRow title="日期字體" subtitle={`${Math.round(value.dividendCalendarDayFontSize??12)} px`}><NumberStep label="px" value={value.dividendCalendarDayFontSize??12} min={9} max={20} step={1} onChange={dividendCalendarDayFontSize=>onChange({dividendCalendarDayFontSize})}/></EditorRow>
+    <EditorRow title="事件標記大小" subtitle={`${Math.round(value.dividendCalendarDotSize??5)} px`}><NumberStep label="px" value={value.dividendCalendarDotSize??5} min={3} max={12} step={1} onChange={dividendCalendarDotSize=>onChange({dividendCalendarDotSize})}/></EditorRow>
+    <SwitchRow label="顯示星期列" value={value.dividendCalendarWeekdayVisible??true} onChange={dividendCalendarWeekdayVisible=>onChange({dividendCalendarWeekdayVisible})}/>
+    <SwitchRow label="顯示事件標記" value={value.dividendCalendarEventDotsVisible??true} onChange={dividendCalendarEventDotsVisible=>onChange({dividendCalendarEventDotsVisible})}/>
+    <SwitchRow label="顯示狀態圖例" value={value.dividendCalendarLegendVisible??true} onChange={dividendCalendarLegendVisible=>onChange({dividendCalendarLegendVisible})}/>
+  </View>;
+  if(frameKey==='dividend-list')return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>股息清單</Text>
+    <EditorRow title="每筆上下留白" subtitle={`${Math.round(value.dividendListRowPadding??11)} px`}><NumberStep label="px" value={value.dividendListRowPadding??11} min={4} max={24} step={1} onChange={dividendListRowPadding=>onChange({dividendListRowPadding})}/></EditorRow>
+  </View>;
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>年度趨勢</Text>
+    <EditorRow title="圖表高度" subtitle={`${Math.round(value.dividendTrendHeight??108)} px`}><NumberStep label="px" value={value.dividendTrendHeight??108} min={80} max={220} step={4} onChange={dividendTrendHeight=>onChange({dividendTrendHeight})}/></EditorRow>
+    <EditorRow title="長條寬度" subtitle={`${Math.round(value.dividendTrendBarWidthPct??70)}%`}><NumberStep label="%" value={value.dividendTrendBarWidthPct??70} min={30} max={100} step={5} onChange={dividendTrendBarWidthPct=>onChange({dividendTrendBarWidthPct})}/></EditorRow>
+  </View>;
+}
+
+function LedgerQuickEntryEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>快速建檔顯示</Text>
+    <SwitchRow label="最近使用 ETF 快捷列" value={value.ledgerShowRecentSymbols??true} onChange={ledgerShowRecentSymbols=>onChange({ledgerShowRecentSymbols})}/>
+    <SwitchRow label="ETF 即時符合清單" value={value.ledgerShowSuggestions??true} onChange={ledgerShowSuggestions=>onChange({ledgerShowSuggestions})}/>
+    <SwitchRow label="顯示手動手續費／稅金欄位" value={value.ledgerShowFeeTax??true} onChange={ledgerShowFeeTax=>onChange({ledgerShowFeeTax})}/>
+    <Text style={styles.rule}>關閉費稅欄位時只隱藏手動覆寫入口，正式帳務仍使用既有 Canonical Finance Core 公式計算。</Text>
+  </View>;
+}
+
+function LedgerListEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const count=String(value.ledgerListVisibleCount??20) as '10'|'20'|'50'|'100';
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>交易紀錄顯示</Text>
+    <EditorRow title="顯示筆數" subtitle="只影響列表顯示，不刪除帳務資料"><ChoiceGroup
+      items={([{key:'10',label:'10 筆'},{key:'20',label:'20 筆'},{key:'50',label:'50 筆'},{key:'100',label:'100 筆'}] as const)}
+      value={count}
+      onChange={key=>onChange({ledgerListVisibleCount:Number(key) as 10|20|50|100})}
+    /></EditorRow>
+    <SwitchRow label="列表顯示費／稅明細" value={value.ledgerShowFeeTax??true} onChange={ledgerShowFeeTax=>onChange({ledgerShowFeeTax})}/>
+  </View>;
+}
+
+function PortfolioToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const viewMode=value.portfolioViewMode??'list';
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>庫存顯示／試算工具</Text>
+    <EditorRow title="持股檢視模式" subtitle="清單與行情牆使用同一份持股資料"><ChoiceGroup
+      items={([{key:'list',label:'清單'},{key:'wall',label:'行情牆'}] as const)}
+      value={viewMode}
+      onChange={portfolioViewMode=>onChange({portfolioViewMode})}
+    /></EditorRow>
+    {viewMode==='list'?<EditorRow title="清單列高" subtitle={`${Math.round(value.portfolioTableRowHeight??54)} px`}><NumberStep label="px" value={value.portfolioTableRowHeight??54} min={44} max={84} step={2} onChange={portfolioTableRowHeight=>onChange({portfolioTableRowHeight})}/></EditorRow>:<>
+      <HoldingDisplayEditor value={value} onChange={onChange}/>
+      <HoldingMarketWallEditor value={value.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>onChange({holdingWall})}/>
+    </>}
+    <Text style={styles.dashboardTitle}>持股試算</Text>
+    <EditorRow title="試算視窗高度" subtitle={`${Math.round(value.calculatorPanelHeightPct??92)}%`}><NumberStep label="%" value={value.calculatorPanelHeightPct??92} min={60} max={96} step={2} onChange={calculatorPanelHeightPct=>onChange({calculatorPanelHeightPct})}/></EditorRow>
+    <SwitchRow label="顯示目前持股摘要" value={value.calculatorShowCurrentHolding??true} onChange={calculatorShowCurrentHolding=>onChange({calculatorShowCurrentHolding})}/>
+    <SwitchRow label="顯示費用明細" value={value.calculatorShowFeeBreakdown??true} onChange={calculatorShowFeeBreakdown=>onChange({calculatorShowFeeBreakdown})}/>
+    <Text style={styles.rule}>以上只控制試算工具介面；試算仍直接呼叫 V3.7.8 Canonical Core，且不寫入 Ledger。</Text>
+  </View>;
+}
+
+function HoldingDisplayEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const quoteStyle=value.quoteStyle??'quote';
+  const columns=(value.holdingColumns??1) as HoldingColumnCount;
+  const scrollMode=(value.holdingScrollMode??'none') as HoldingScrollMode;
+  const primaryField=(value.holdingPrimaryField??'price') as HoldingPrimaryField;
+  const setStyle=(next:'quote'|'chart'|'compact'|'advanced')=>onChange({quoteStyle:next,...(next==='chart'?{holdingColumns:1 as const}:{})});
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>目前顯示狀態</Text>
+    <Text style={styles.dashboardHint}>{quoteStyle==='quote'?'純行情':quoteStyle==='chart'?'圖表':quoteStyle==='compact'?'精簡':'進階'} → {primaryField==='price'?'市價':primaryField==='marketValue'?'市值':primaryField==='pnl'?'損益':'報酬率'} → {columns===1?'單欄':columns===2?'雙欄':'三欄'}{scrollMode==='horizontal'?' → 橫向滑動':''}</Text>
+    <EditorRow title="顯示模式" subtitle="切換後只保留相容的排列選項"><ChoiceGroup
+      items={([{key:'quote',label:'純行情'},{key:'chart',label:'圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const)}
+      value={quoteStyle}
+      onChange={setStyle}
+    /></EditorRow>
+    <EditorRow title="主要資料" subtitle="進入設定時沿用目前畫面的資料欄位"><ChoiceGroup
+      items={([{key:'price',label:'市價'},{key:'marketValue',label:'市值'},{key:'pnl',label:'損益'},{key:'roi',label:'報酬率'}] as const)}
+      value={primaryField}
+      onChange={holdingPrimaryField=>onChange({holdingPrimaryField})}
+    /></EditorRow>
+    <EditorRow title="欄數" subtitle={quoteStyle==='chart'?'圖表模式固定單欄，不顯示雙欄／三欄':'欄數與橫向滑動可組合'}>
+      <ChoiceGroup
+        items={(quoteStyle==='chart'
+          ?([{key:'1',label:'單欄'}] as const)
+          :([{key:'1',label:'單欄'},{key:'2',label:'雙欄'},{key:'3',label:'三欄'}] as const))}
+        value={String(quoteStyle==='chart'?1:columns) as '1'|'2'|'3'}
+        onChange={key=>onChange({holdingColumns:Number(key) as HoldingColumnCount})}
+      />
+    </EditorRow>
+    <SwitchRow label="橫向滑動" value={scrollMode==='horizontal'} onChange={enabled=>onChange({holdingScrollMode:enabled?'horizontal':'none'})}/>
+    <EditorRow title="條件排序" subtitle="只改順序，不裁切資料"><ChoiceGroup
+      items={([{key:'pnl',label:'損益'},{key:'changePct',label:'漲跌'},{key:'marketValue',label:'市值'},{key:'roi',label:'報酬率'},{key:'price',label:'市價'}] as const)}
+      value={(value.sortKey??'pnl') as 'pnl'|'changePct'|'marketValue'|'roi'|'price'}
+      onChange={sortKey=>onChange({sortKey})}
+    /></EditorRow>
+    <Text style={styles.rule}>純行情可同時選「雙欄＋橫向滑動」或其他相容組合；圖表模式永遠強制單欄。套用前只修改 Draft。</Text>
+  </View>;
 }
 
 const dashboardMetricChoices:readonly {key:DashboardMetricKey;label:string}[]=[
@@ -273,7 +391,11 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
 }
 
 function hasContentTools(pageKey:MainPageKey,frameKey:string){
-  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='ai'&&frameKey==='ai-news');
+  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))
+    ||(pageKey==='ai'&&frameKey==='ai-news')
+    ||(pageKey==='ledger'&&['quick-entry','ledger-list'].includes(frameKey))
+    ||(pageKey==='portfolio'&&frameKey==='holding-view')
+    ||(pageKey==='dividend'&&['dividend-summary','dividend-calendar','dividend-list','annual-trend'].includes(frameKey));
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);

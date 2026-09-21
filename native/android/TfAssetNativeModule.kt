@@ -1,19 +1,25 @@
 package com.tfasset.app
 
+import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 
-class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext), ActivityEventListener {
+  companion object { private const val THEME_BACKGROUND_REQUEST=49013 }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
+  private var pendingThemeBackgroundPromise:Promise?=null
+  init { reactContext.addActivityEventListener(this) }
   override fun getName() = "TfAssetNative"
+
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).apply(); refreshWidget(); promise.resolve(true) }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
     val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
@@ -69,5 +75,55 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   @ReactMethod fun canDrawOverlays(promise:Promise){ promise.resolve(Settings.canDrawOverlays(reactContext)) }
   @ReactMethod fun openOverlaySettings(promise:Promise){ val intent=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+reactContext.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); reactContext.startActivity(intent); promise.resolve(true) }
+
+  @ReactMethod fun setAppIcon(iconId:String,promise:Promise){
+    val index=iconId.removePrefix("icon-").toIntOrNull()
+    if(index==null||index !in 1..10){promise.resolve(false);return}
+    val manager=reactContext.packageManager
+    val selected="MainActivityIcon"+index.toString().padStart(2,'0')
+    runCatching{
+      manager.setComponentEnabledSetting(
+        ComponentName(reactContext.packageName,reactContext.packageName+"."+selected),
+        android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+        android.content.pm.PackageManager.DONT_KILL_APP
+      )
+      (1..10).filter{it!=index}.forEach{n->
+        val alias="MainActivityIcon"+n.toString().padStart(2,'0')
+        manager.setComponentEnabledSetting(
+          ComponentName(reactContext.packageName,reactContext.packageName+"."+alias),
+          android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+          android.content.pm.PackageManager.DONT_KILL_APP
+        )
+      }
+      prefs.edit().putString("app_icon_id",iconId).apply()
+    }.onSuccess{promise.resolve(true)}.onFailure{promise.reject("ICON_SWITCH_FAILED",it)}
+  }
+
+  @ReactMethod fun pickThemeBackgroundImage(promise:Promise){
+    if(pendingThemeBackgroundPromise!=null){promise.reject("THEME_PICKER_BUSY","Theme background picker is already open");return}
+    val activity=reactContext.currentActivity
+    if(activity==null){promise.resolve(null);return}
+    pendingThemeBackgroundPromise=promise
+    val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
+      addCategory(Intent.CATEGORY_OPENABLE)
+      type="image/*"
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+    }
+    runCatching{activity.startActivityForResult(intent,THEME_BACKGROUND_REQUEST)}
+      .onFailure{pendingThemeBackgroundPromise=null;promise.reject("THEME_PICKER_FAILED",it)}
+  }
+
+  override fun onActivityResult(activity:Activity,requestCode:Int,resultCode:Int,data:Intent?){
+    if(requestCode!=THEME_BACKGROUND_REQUEST)return
+    val promise=pendingThemeBackgroundPromise?:return
+    pendingThemeBackgroundPromise=null
+    if(resultCode!=Activity.RESULT_OK){promise.resolve(null);return}
+    val uri=data?.data
+    if(uri==null){promise.resolve(null);return}
+    runCatching{reactContext.contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION)}
+    promise.resolve(uri.toString())
+  }
+  override fun onNewIntent(intent:Intent){}
+
   private fun refreshWidget(){ val manager=AppWidgetManager.getInstance(reactContext); val ids=manager.getAppWidgetIds(ComponentName(reactContext,TfAssetWidgetProvider::class.java)); val intent=Intent(reactContext,TfAssetWidgetProvider::class.java).setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE); intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids); reactContext.sendBroadcast(intent) }
 }

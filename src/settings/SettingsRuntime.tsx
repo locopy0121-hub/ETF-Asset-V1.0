@@ -27,6 +27,7 @@ export type DisplayPrefs=Readonly<{
   thousandsSeparator:boolean;
   dateFormat:DateFormat;
   profitColorMode:ProfitColorMode;
+  optimizationEnabled:boolean;
   gainColor:string;
   lossColor:string;
   neutralColor:string;
@@ -36,10 +37,34 @@ export type TradeDefaults=Readonly<{
   accountLabel:string;
   tradeKind:'buy'|'sell';
 }>;
+export type AiResponseDetail='concise'|'balanced'|'detailed';
+export type AiPrefs=Readonly<{
+  enabled:boolean;
+  floatingButtonVisible:boolean;
+  floatingPanelVisible:boolean;
+  buttonSize:number;
+  buttonOpacity:number;
+  panelWidth:number;
+  panelHeight:number;
+  panelOpacity:number;
+  positionLocked:boolean;
+  edgeSnap:boolean;
+  statusDotVisible:boolean;
+  networkSearch:boolean;
+  holdingsNews:boolean;
+  proactiveHints:boolean;
+  showSources:boolean;
+  showDates:boolean;
+  useHistory:boolean;
+  confirmBeforeWrite:boolean;
+  responseDetail:AiResponseDetail;
+  visiblePages:readonly ('home'|'ledger'|'portfolio'|'dividend'|'ai'|'settings')[];
+}>;
 export type SettingsPrefs=Readonly<{
   schema:1;
   notifications:NotificationPrefs;
   display:DisplayPrefs;
+  ai:AiPrefs;
   tradeDefaults:TradeDefaults;
 }>;
 
@@ -62,9 +87,32 @@ const DEFAULT_SETTINGS:SettingsPrefs={
     thousandsSeparator:true,
     dateFormat:'YYYY-MM-DD',
     profitColorMode:'red-up-green-down',
+    optimizationEnabled:true,
     gainColor:'#EF4444',
     lossColor:'#10B981',
     neutralColor:'#64748B',
+  },
+  ai:{
+    enabled:true,
+    floatingButtonVisible:true,
+    floatingPanelVisible:true,
+    buttonSize:52,
+    buttonOpacity:1,
+    panelWidth:360,
+    panelHeight:430,
+    panelOpacity:1,
+    positionLocked:false,
+    edgeSnap:true,
+    statusDotVisible:true,
+    networkSearch:true,
+    holdingsNews:true,
+    proactiveHints:true,
+    showSources:true,
+    showDates:true,
+    useHistory:true,
+    confirmBeforeWrite:true,
+    responseDetail:'balanced',
+    visiblePages:['home','ledger','portfolio','dividend','ai','settings'],
   },
   tradeDefaults:{
     brokerProfileId:'huanan-yongchang',
@@ -78,6 +126,7 @@ const STORAGE_KEY='@tf-asset/settings-runtime';
 function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
   const n=input?.notifications;
   const d=input?.display;
+  const a=input?.ai;
   const t=input?.tradeDefaults;
   const lead=Math.max(0,Math.min(30,Math.floor(Number(n?.leadDays??DEFAULT_SETTINGS.notifications.leadDays))));
   const fontScale=Math.max(0.8,Math.min(1.4,Number(d?.fontScale??DEFAULT_SETTINGS.display.fontScale)));
@@ -101,9 +150,34 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
       thousandsSeparator:d?.thousandsSeparator??DEFAULT_SETTINGS.display.thousandsSeparator,
       dateFormat:d?.dateFormat==='YYYY/MM/DD'?'YYYY/MM/DD':'YYYY-MM-DD',
       profitColorMode:d?.profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down',
+      optimizationEnabled:d?.optimizationEnabled??DEFAULT_SETTINGS.display.optimizationEnabled,
       gainColor:color(d?.gainColor,DEFAULT_SETTINGS.display.gainColor),
       lossColor:color(d?.lossColor,DEFAULT_SETTINGS.display.lossColor),
       neutralColor:color(d?.neutralColor,DEFAULT_SETTINGS.display.neutralColor),
+    },
+    ai:{
+      enabled:a?.enabled??DEFAULT_SETTINGS.ai.enabled,
+      floatingButtonVisible:a?.floatingButtonVisible??DEFAULT_SETTINGS.ai.floatingButtonVisible,
+      floatingPanelVisible:a?.floatingPanelVisible??DEFAULT_SETTINGS.ai.floatingPanelVisible,
+      buttonSize:Math.max(40,Math.min(88,Number(a?.buttonSize??DEFAULT_SETTINGS.ai.buttonSize))),
+      buttonOpacity:Math.max(.25,Math.min(1,Number(a?.buttonOpacity??DEFAULT_SETTINGS.ai.buttonOpacity))),
+      panelWidth:Math.max(280,Math.min(620,Number(a?.panelWidth??DEFAULT_SETTINGS.ai.panelWidth))),
+      panelHeight:Math.max(300,Math.min(760,Number(a?.panelHeight??DEFAULT_SETTINGS.ai.panelHeight))),
+      panelOpacity:Math.max(.35,Math.min(1,Number(a?.panelOpacity??DEFAULT_SETTINGS.ai.panelOpacity))),
+      positionLocked:a?.positionLocked??DEFAULT_SETTINGS.ai.positionLocked,
+      edgeSnap:a?.edgeSnap??DEFAULT_SETTINGS.ai.edgeSnap,
+      statusDotVisible:a?.statusDotVisible??DEFAULT_SETTINGS.ai.statusDotVisible,
+      networkSearch:a?.networkSearch??DEFAULT_SETTINGS.ai.networkSearch,
+      holdingsNews:a?.holdingsNews??DEFAULT_SETTINGS.ai.holdingsNews,
+      proactiveHints:a?.proactiveHints??DEFAULT_SETTINGS.ai.proactiveHints,
+      showSources:a?.showSources??DEFAULT_SETTINGS.ai.showSources,
+      showDates:a?.showDates??DEFAULT_SETTINGS.ai.showDates,
+      useHistory:a?.useHistory??DEFAULT_SETTINGS.ai.useHistory,
+      confirmBeforeWrite:a?.confirmBeforeWrite??DEFAULT_SETTINGS.ai.confirmBeforeWrite,
+      responseDetail:a?.responseDetail==='concise'||a?.responseDetail==='detailed'?a.responseDetail:'balanced',
+      visiblePages:Array.isArray(a?.visiblePages)
+        ? Array.from(new Set(a.visiblePages.filter((page):page is 'home'|'ledger'|'portfolio'|'dividend'|'ai'|'settings'=>['home','ledger','portfolio','dividend','ai','settings'].includes(String(page)))))
+        : DEFAULT_SETTINGS.ai.visiblePages,
     },
     tradeDefaults:{
       brokerProfileId:String(t?.brokerProfileId??DEFAULT_SETTINGS.tradeDefaults.brokerProfileId),
@@ -118,6 +192,7 @@ type SettingsRuntimeValue=Readonly<{
   prefs:SettingsPrefs;
   patchNotifications:(patch:Partial<NotificationPrefs>)=>void;
   patchDisplay:(patch:Partial<DisplayPrefs>)=>void;
+  patchAi:(patch:Partial<AiPrefs>)=>void;
   patchTradeDefaults:(patch:Partial<TradeDefaults>)=>void;
   resetPreferences:()=>void;
 }>;
@@ -151,6 +226,7 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     prefs,
     patchNotifications:patch=>setPrefs(current=>normalize({...current,notifications:{...current.notifications,...patch}})),
     patchDisplay:patch=>setPrefs(current=>normalize({...current,display:{...current.display,...patch}})),
+    patchAi:patch=>setPrefs(current=>normalize({...current,ai:{...current.ai,...patch}})),
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
     resetPreferences:()=>setPrefs(DEFAULT_SETTINGS),
   }),[hydrated,prefs]);

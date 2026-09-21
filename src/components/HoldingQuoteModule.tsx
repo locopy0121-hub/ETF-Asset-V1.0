@@ -18,12 +18,14 @@ export function HoldingQuoteModule({
   style='quote',
   layout='full',
   wallConfig=DEFAULT_HOLDING_WALL_CONFIG,
+  primaryField='price',
   onPress,
 }:{
   item:HoldingQuote;
   style?:QuoteModuleStyle;
   layout?:'full'|'narrow';
   wallConfig?:HoldingWallConfig;
+  primaryField?:'price'|'marketValue'|'pnl'|'roi';
   onPress?:()=>void;
 }){
   const change=item.price-item.previousClose;
@@ -33,10 +35,17 @@ export function HoldingQuoteModule({
   const showChart=style==='chart'||style==='advanced';
   const cfg=wallConfig;
   const cardStyle=cfg.style;
+  const headerFields=cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol'));
+  const regularQuoteFields=cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent'));
+  const footerFields=cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue'));
+  const requestedPrimary=cfg.fields.find(field=>field.enabled&&field.field===primaryField);
+  const quoteFields=requestedPrimary
+    ?[requestedPrimary,...regularQuoteFields.filter(field=>field.field!==requestedPrimary.field)]
+    :regularQuoteFields;
   const groups={
-    header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol')),
-    quote:cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent')),
-    footer:cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue')),
+    header:headerFields,
+    quote:quoteFields,
+    footer:footerFields.filter(field=>field.field!==requestedPrimary?.field),
   };
 
   return <Pressable onPress={onPress} style={[
@@ -111,7 +120,7 @@ function WallText({
     style={{
       color:header&&!field.useProfitColor?wall.header.textColor:tone,
       fontSize,
-      fontWeight:quotePrimary||primary?'900':'800',
+      fontWeight:quotePrimary?'900':primary?'800':'700',
       textAlign:field.align,
       marginTop:header&&!primary?2:0,
       fontVariant:['tabular-nums'],

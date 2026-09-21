@@ -38,7 +38,7 @@ export type HoldingWallConfig = Readonly<{
 }>;
 
 export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
-  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#738197',borderWidth:1},
+  header:{visible:true,fontScale:.82,backgroundColor:'#0C121B',textColor:'#91A0B5',borderColor:'#263343',borderWidth:0},
   fields:[
     {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true},
     {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false},

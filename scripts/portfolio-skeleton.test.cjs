@@ -9,7 +9,9 @@ assert.match(src,/ETF代號｜名稱/,'first column label must be ETF code + nam
 for(const label of ['股數','即時','純均價','含費均價','損益','報酬率']) {
   assert.ok(src.includes(label),'missing portfolio column '+label);
 }
-assert.match(src,/rowHeight=54/,'left/right rows must share one explicit row height');
+assert.match(src,/rowHeight=\{tableRowHeight\}/,'portfolio table must receive one shared configurable row height');
+assert.match(src,/fixedRow,\{height:rowHeight\}/,'fixed identity rows must use the shared row height');
+assert.match(src,/rightRow,\{height:rowHeight\}/,'numeric rows must use the shared row height');
 assert.match(src,/tradeAvg/,'portfolio must expose pure trade average');
 assert.match(src,/costAvg/,'portfolio must expose fee-included average');
 assert.ok(!src.includes('item.weight*2'),'allocation bar must use true portfolio percentage');

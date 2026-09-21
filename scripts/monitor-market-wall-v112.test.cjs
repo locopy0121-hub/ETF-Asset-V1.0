@@ -17,9 +17,10 @@ assert.match(market,/wallStyle\.optInt\("cornerRadius",16\)/,'Monitor market wal
 assert.match(market,/GradientDrawable/,'Monitor market wall must render card background/border contract');
 assert.match(market,/miniValue\(row,key\)/,'Monitor market wall must render values from Shared Snapshot rows');
 assert.ok(!/field\.optString\("label",key\)\+"  "\+miniValue/.test(market),'Monitor market wall must not regress to legacy label/value vertical dump');
-assert.match(home,/header:cfg\.fields\.filter/,'Home holding wall header contract missing');
-assert.match(home,/quote:cfg\.fields\.filter/,'Home holding wall quote contract missing');
-assert.match(home,/footer:cfg\.fields\.filter/,'Home holding wall footer contract missing');
+assert.match(home,/headerFields=cfg\.fields\.filter/,'Home holding wall header contract missing');
+assert.match(home,/regularQuoteFields=cfg\.fields\.filter/,'Home holding wall quote contract missing');
+assert.match(home,/footerFields=cfg\.fields\.filter/,'Home holding wall footer contract missing');
+assert.match(home,/const groups=\{[\s\S]*header:headerFields,[\s\S]*quote:quoteFields,[\s\S]*footer:/,'Home holding wall groups must preserve A/B runtime mapping');
 assert.match(app,/syncNativeMonitor\(monitorSettings\.config,finance\.sharedSnapshot\)/,'Monitor must stay wired to Shared Snapshot');
 
 console.log('V1.0.12 MONITOR MARKET WALL LINKAGE: PASS');

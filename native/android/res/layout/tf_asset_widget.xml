@@ -76,5 +76,29 @@
             <TextView android:id="@+id/widget_wall_15" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
             <TextView android:id="@+id/widget_wall_16" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
         </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+            <TextView android:id="@+id/widget_wall_17" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_18" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_19" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_20" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+            <TextView android:id="@+id/widget_wall_21" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_22" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_23" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_24" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+            <TextView android:id="@+id/widget_wall_25" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_26" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_27" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_28" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+            <TextView android:id="@+id/widget_wall_29" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_30" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_31" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+            <TextView android:id="@+id/widget_wall_32" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:padding="5dp" android:maxLines="4"/>
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

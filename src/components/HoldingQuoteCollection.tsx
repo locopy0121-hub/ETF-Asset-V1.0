@@ -1,81 +1,104 @@
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingWallConfig, type QuoteModuleStyle } from '../domain/uiModels';
 import { spacing } from '../theme/tokens';
 import { HoldingQuoteModule } from './HoldingQuoteModule';
 
 export type HoldingLayoutMode='list'|'grid2'|'grid3'|'horizontal'|'paged2';
+export type HoldingColumnCount=1|2|3;
+export type HoldingScrollMode='none'|'horizontal';
+export type HoldingPrimaryField='price'|'marketValue'|'pnl'|'roi';
+
+const legacyLayout=(mode:HoldingLayoutMode):Readonly<{columns:HoldingColumnCount;scroll:HoldingScrollMode}>=>{
+  if(mode==='grid2')return {columns:2,scroll:'none'};
+  if(mode==='grid3')return {columns:3,scroll:'none'};
+  if(mode==='horizontal')return {columns:1,scroll:'horizontal'};
+  if(mode==='paged2')return {columns:2,scroll:'horizontal'};
+  return {columns:1,scroll:'none'};
+};
 
 export function HoldingQuoteCollection({
   rows,
   style,
   layoutMode='list',
+  columns,
+  scrollMode,
+  primaryField='price',
   onOpenHolding,
   wallConfig,
 }:{
   rows:readonly HoldingQuote[];
   style:QuoteModuleStyle;
   layoutMode?:HoldingLayoutMode;
+  columns?:HoldingColumnCount;
+  scrollMode?:HoldingScrollMode;
+  primaryField?:HoldingPrimaryField;
   onOpenHolding:(row:HoldingQuote)=>void;
   wallConfig?:HoldingWallConfig;
 }){
   const {width}=useWindowDimensions();
   const pageWidth=Math.max(280,width-64);
+  const legacy=legacyLayout(layoutMode);
+  const requestedColumns=columns??legacy.columns;
+  const effectiveColumns:HoldingColumnCount=style==='chart'?1:requestedColumns;
+  const effectiveScroll=scrollMode??legacy.scroll;
   const effectiveWallConfig=wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
-  if(layoutMode==='horizontal'){
-    const itemWidth=Math.max(230,Math.min(pageWidth-18,width*0.78));
-    return <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      decelerationRate="fast"
-      snapToInterval={itemWidth+spacing.sm}
-      snapToAlignment="start"
-      contentContainerStyle={styles.horizontal}
-    >
-      {rows.map(item=><View key={item.symbol} style={{width:itemWidth}}>
-        <HoldingQuoteModule item={item} style={style} wallConfig={effectiveWallConfig} onPress={()=>onOpenHolding(item)}/>
-      </View>)}
-    </ScrollView>;
-  }
+  const renderCard=(item:HoldingQuote,narrow:boolean)=><HoldingQuoteModule
+    item={item}
+    style={style}
+    layout={narrow?'narrow':'full'}
+    wallConfig={effectiveWallConfig}
+    primaryField={primaryField}
+    onPress={()=>onOpenHolding(item)}
+  />;
 
-  if(layoutMode==='paged2'){
+  if(effectiveScroll==='horizontal'){
     const pages:Array<readonly HoldingQuote[]>=[];
-    for(let i=0;i<rows.length;i+=2)pages.push(rows.slice(i,i+2));
-    return <ScrollView
+    for(let i=0;i<rows.length;i+=effectiveColumns)pages.push(rows.slice(i,i+effectiveColumns));
+    return <FlatList
       horizontal
-      pagingEnabled
+      data={pages}
+      keyExtractor={(page,index)=>page.map(item=>item.symbol).join('|')||String(index)}
       showsHorizontalScrollIndicator={false}
       decelerationRate="fast"
       snapToInterval={pageWidth}
+      snapToAlignment="start"
+      initialNumToRender={4}
+      maxToRenderPerBatch={4}
+      windowSize={5}
       contentContainerStyle={styles.horizontal}
-    >
-      {pages.map((page,index)=><View key={index} style={[styles.page,{width:pageWidth}]}>
-        {page.map(item=><View key={item.symbol} style={styles.half}>
-          <HoldingQuoteModule item={item} style={style} layout="narrow" wallConfig={effectiveWallConfig} onPress={()=>onOpenHolding(item)}/>
-        </View>)}
-      </View>)}
-    </ScrollView>;
+      renderItem={({item:page})=><View style={[styles.page,{width:pageWidth}]}>
+        {page.map(item=><View key={item.symbol} style={styles.pageItem}>{renderCard(item,effectiveColumns>1)}</View>)}
+      </View>}
+    />;
   }
 
-  if(layoutMode==='grid2'||layoutMode==='grid3'){
-    const widthStyle=layoutMode==='grid3'?styles.third:styles.half;
-    return <View style={styles.grid}>
-      {rows.map(item=><View key={item.symbol} style={widthStyle}>
-        <HoldingQuoteModule item={item} style={style} layout="narrow" wallConfig={effectiveWallConfig} onPress={()=>onOpenHolding(item)}/>
-      </View>)}
-    </View>;
-  }
-
-  return <View style={styles.list}>
-    {rows.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={style} wallConfig={effectiveWallConfig} onPress={()=>onOpenHolding(item)}/>)}
-  </View>;
+  const tall=rows.length>12;
+  return <FlatList
+    key={'holding-columns-'+effectiveColumns}
+    data={[...rows]}
+    keyExtractor={item=>item.symbol}
+    numColumns={effectiveColumns}
+    nestedScrollEnabled
+    scrollEnabled={tall}
+    removeClippedSubviews={tall}
+    initialNumToRender={Math.min(12,Math.max(effectiveColumns*3,6))}
+    maxToRenderPerBatch={12}
+    updateCellsBatchingPeriod={40}
+    windowSize={7}
+    style={tall?styles.virtualized:undefined}
+    contentContainerStyle={styles.list}
+    {...(effectiveColumns>1?{columnWrapperStyle:styles.row}: {})}
+    renderItem={({item})=><View style={styles.gridItem}>{renderCard(item,effectiveColumns>1)}</View>}
+  />;
 }
 
 const styles=StyleSheet.create({
   list:{gap:spacing.sm},
-  grid:{flexDirection:'row',flexWrap:'wrap',gap:spacing.sm,alignItems:'stretch'},
-  half:{width:'48.5%'},
-  third:{width:'31.2%'},
+  row:{gap:spacing.sm},
+  gridItem:{flex:1,minWidth:0,marginBottom:spacing.sm},
   horizontal:{gap:spacing.sm,paddingRight:spacing.md},
   page:{flexDirection:'row',gap:spacing.sm,paddingRight:spacing.sm},
+  pageItem:{flex:1,minWidth:0},
+  virtualized:{maxHeight:620},
 });

@@ -1,7 +1,7 @@
 import {useMemo,useRef,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 
-import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
+import type {AiAssistantAction,AiAssistantAnswer,AiConversationTurn} from '../ai/aiAssistant';
 import {colors,radius,spacing} from '../theme/tokens';
 
 type Message=Readonly<{id:string;role:'user'|'assistant';text:string;actions?:readonly AiAssistantAction[]}>;
@@ -12,12 +12,18 @@ export function AiQuestionBox({
   suggestions=[],
   onAsk,
   onAction,
+  useHistory=true,
+  confirmBeforeAction=true,
+  flex=false,
 }:{
   title?:string;
   placeholder?:string;
   suggestions?:readonly string[];
-  onAsk:(question:string)=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
+  onAsk:(question:string,history:readonly AiConversationTurn[])=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
   onAction?:(action:AiAssistantAction)=>void|Promise<void>;
+  useHistory?:boolean;
+  confirmBeforeAction?:boolean;
+  flex?:boolean;
 }){
   const [input,setInput]=useState('');
   const [messages,setMessages]=useState<Message[]>([]);
@@ -34,7 +40,10 @@ export function AiQuestionBox({
     setInput('');
     setAsking(true);
     try{
-      const result=await onAsk(question);
+      const history:readonly AiConversationTurn[]=useHistory
+        ? messages.slice(-10).map(message=>({role:message.role,text:message.text}))
+        : [];
+      const result=await onAsk(question,history);
       const normalized:AiAssistantAnswer=typeof result==='string'?{intent:'help',text:result}:result;
       const answer:Message={id:'a-'+Date.now(),role:'assistant',text:normalized.text||'目前沒有可整理的資料。',...(normalized.actions?.length?{actions:normalized.actions}:{})};
       setMessages(current=>[...current,answer]);
@@ -48,13 +57,13 @@ export function AiQuestionBox({
 
   const runAction=async(action:AiAssistantAction)=>{
     if(!onAction)return;
-    if(confirming!==action.id){setConfirming(action.id);return;}
+    if(confirmBeforeAction&&confirming!==action.id){setConfirming(action.id);return;}
     setConfirming(null);
     await onAction(action);
     setMessages(current=>[...current,{id:'ok-'+Date.now(),role:'assistant',text:action.event.symbol+' '+action.event.name+' 股息紀錄已新增。'}]);
   };
 
-  return <View style={styles.root}>
+  return <View style={[styles.rootBase,flex?styles.rootFlex:styles.rootFixed]}>
     <Text style={styles.title}>{title}</Text>
     {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>{suggestions.map(item=><Pressable key={item} onPress={()=>void submit(item)} style={styles.chip}><Text style={styles.chipText}>{item}</Text></Pressable>)}</ScrollView>:null}
     <ScrollView
@@ -90,7 +99,9 @@ export function AiQuestionBox({
 }
 
 const styles=StyleSheet.create({
-  root:{height:310,gap:spacing.sm},
+  rootBase:{gap:spacing.sm},
+  rootFixed:{height:310},
+  rootFlex:{flex:1,minHeight:170},
   title:{fontSize:13,fontWeight:'900',color:colors.text},
   suggestions:{gap:6,paddingRight:8},
   chip:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},

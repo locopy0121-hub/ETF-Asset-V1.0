@@ -7,6 +7,9 @@ export type FrameAppearance = 'theme' | 'soft' | 'outline';
 export type FrameBehavior = 'manual' | 'auto' | 'locked';
 export type PortfolioViewMode = 'list' | 'wall';
 export type HoldingLayoutMode = 'list' | 'grid2' | 'grid3' | 'horizontal' | 'paged2';
+export type HoldingColumnCount = 1|2|3;
+export type HoldingScrollMode = 'none'|'horizontal';
+export type HoldingPrimaryField = 'price'|'marketValue'|'pnl'|'roi';
 
 export type DashboardMetricKey = 'totalMarketValue'|'totalPnl'|'totalUnrealizedProfit'|'realizedNetPnL'|'totalDividendsReceived'|'cashBalance'|'holdingCount';
 export type DashboardChartStyle = 'line'|'area'|'bar'|'horizontalBar'|'stackedBar'|'pie'|'donut'|'allocation'|'pnlTrend'|'dividendTrend'|'investVsValue'|'holdingWeight'|'costVsPrice'|'roiTrend'|'priceK'|'volume';
@@ -97,11 +100,32 @@ export type PageDisplayConfig = Readonly<{
   sortKey?: HoldingSortKey;
   portfolioViewMode?: PortfolioViewMode;
   holdingLayoutMode?: HoldingLayoutMode;
+  holdingColumns?: HoldingColumnCount;
+  holdingScrollMode?: HoldingScrollMode;
+  holdingPrimaryField?: HoldingPrimaryField;
   holdingWall?: HoldingWallConfig;
   newsVisibleCount?: number;
   newsHoldingsOnly?: boolean;
   dashboardMetrics?: readonly DashboardMetricKey[];
   dashboardCharts?: readonly DashboardChartConfig[];
+  ledgerListVisibleCount?: 10|20|50|100;
+  ledgerShowRecentSymbols?: boolean;
+  ledgerShowSuggestions?: boolean;
+  ledgerShowFeeTax?: boolean;
+  portfolioTableRowHeight?: number;
+  calculatorPanelHeightPct?: number;
+  calculatorShowCurrentHolding?: boolean;
+  calculatorShowFeeBreakdown?: boolean;
+  dividendAiVisible?: boolean;
+  dividendCalendarCellHeight?: number;
+  dividendCalendarDayFontSize?: number;
+  dividendCalendarDotSize?: number;
+  dividendCalendarWeekdayVisible?: boolean;
+  dividendCalendarEventDotsVisible?: boolean;
+  dividendCalendarLegendVisible?: boolean;
+  dividendListRowPadding?: number;
+  dividendTrendHeight?: number;
+  dividendTrendBarWidthPct?: number;
 }>;
 
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
@@ -125,10 +149,21 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
-    ledger: {},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
-    dividend: {},
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingColumns:2, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
+    ledger: { ledgerListVisibleCount:20, ledgerShowRecentSymbols:true, ledgerShowSuggestions:true, ledgerShowFeeTax:true },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, portfolioTableRowHeight:54, calculatorPanelHeightPct:92, calculatorShowCurrentHolding:true, calculatorShowFeeBreakdown:true },
+    dividend: {
+      dividendAiVisible:true,
+      dividendCalendarCellHeight:45,
+      dividendCalendarDayFontSize:12,
+      dividendCalendarDotSize:5,
+      dividendCalendarWeekdayVisible:true,
+      dividendCalendarEventDotsVisible:true,
+      dividendCalendarLegendVisible:true,
+      dividendListRowPadding:11,
+      dividendTrendHeight:108,
+      dividendTrendBarWidthPct:70,
+    },
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
   };
@@ -277,10 +312,76 @@ export function mergeEditorState(raw:unknown):PageEditorState{
   };
 }
 
+const legacyHoldingLayout=(mode:HoldingLayoutMode|undefined):Readonly<{columns:HoldingColumnCount;scrollMode:HoldingScrollMode}>=>{
+  if(mode==='grid2')return {columns:2,scrollMode:'none'};
+  if(mode==='grid3')return {columns:3,scrollMode:'none'};
+  if(mode==='horizontal')return {columns:1,scrollMode:'horizontal'};
+  if(mode==='paged2')return {columns:2,scrollMode:'horizontal'};
+  return {columns:1,scrollMode:'none'};
+};
+const isQuoteStyle=(value:unknown):value is QuoteModuleStyle=>value==='quote'||value==='chart'||value==='compact'||value==='advanced';
+const normalizeHoldingColumns=(value:unknown,fallback:HoldingColumnCount):HoldingColumnCount=>value===2||value===3?value:value===1?1:fallback;
+const normalizeHoldingScrollMode=(value:unknown,fallback:HoldingScrollMode):HoldingScrollMode=>value==='horizontal'?'horizontal':value==='none'?'none':fallback;
+const normalizeHoldingPrimaryField=(value:unknown,fallback:HoldingPrimaryField):HoldingPrimaryField=>value==='marketValue'||value==='pnl'||value==='roi'||value==='price'?value:fallback;
+
+export function normalizePageDisplayConfig(page:MainPageKey,raw:PageDisplayConfig):PageDisplayConfig{
+  const defaults=createInitialDisplayState()[page];
+  const merged={...defaults,...raw};
+  if(page==='ledger'){
+    const count=raw.ledgerListVisibleCount;
+    const ledgerListVisibleCount:10|20|50|100=count===10||count===50||count===100?count:20;
+    return {
+      ...merged,
+      ledgerListVisibleCount,
+      ledgerShowRecentSymbols:raw.ledgerShowRecentSymbols??defaults.ledgerShowRecentSymbols??true,
+      ledgerShowSuggestions:raw.ledgerShowSuggestions??defaults.ledgerShowSuggestions??true,
+      ledgerShowFeeTax:raw.ledgerShowFeeTax??defaults.ledgerShowFeeTax??true,
+    };
+  }
+  if(page==='dividend'){
+    return {
+      ...merged,
+      dividendAiVisible:raw.dividendAiVisible??defaults.dividendAiVisible??true,
+      dividendCalendarCellHeight:clamp(raw.dividendCalendarCellHeight,32,88,defaults.dividendCalendarCellHeight??45),
+      dividendCalendarDayFontSize:clamp(raw.dividendCalendarDayFontSize,9,20,defaults.dividendCalendarDayFontSize??12),
+      dividendCalendarDotSize:clamp(raw.dividendCalendarDotSize,3,12,defaults.dividendCalendarDotSize??5),
+      dividendCalendarWeekdayVisible:raw.dividendCalendarWeekdayVisible??defaults.dividendCalendarWeekdayVisible??true,
+      dividendCalendarEventDotsVisible:raw.dividendCalendarEventDotsVisible??defaults.dividendCalendarEventDotsVisible??true,
+      dividendCalendarLegendVisible:raw.dividendCalendarLegendVisible??defaults.dividendCalendarLegendVisible??true,
+      dividendListRowPadding:clamp(raw.dividendListRowPadding,4,24,defaults.dividendListRowPadding??11),
+      dividendTrendHeight:clamp(raw.dividendTrendHeight,80,220,defaults.dividendTrendHeight??108),
+      dividendTrendBarWidthPct:clamp(raw.dividendTrendBarWidthPct,30,100,defaults.dividendTrendBarWidthPct??70),
+    };
+  }
+  if(page!=='home'&&page!=='portfolio')return merged;
+  const legacy=legacyHoldingLayout(raw.holdingLayoutMode);
+  const quoteStyle=isQuoteStyle(merged.quoteStyle)?merged.quoteStyle:'quote';
+  const defaultColumns=(defaults.holdingColumns??legacy.columns) as HoldingColumnCount;
+  const defaultScroll=(defaults.holdingScrollMode??legacy.scrollMode) as HoldingScrollMode;
+  const requestedColumns=normalizeHoldingColumns(raw.holdingColumns,raw.holdingLayoutMode?legacy.columns:defaultColumns);
+  const holdingColumns:HoldingColumnCount=quoteStyle==='chart'?1:requestedColumns;
+  const holdingScrollMode=normalizeHoldingScrollMode(raw.holdingScrollMode,raw.holdingLayoutMode?legacy.scrollMode:defaultScroll);
+  const holdingPrimaryField=normalizeHoldingPrimaryField(raw.holdingPrimaryField,(defaults.holdingPrimaryField??'price') as HoldingPrimaryField);
+  const holdingLayoutMode:HoldingLayoutMode=holdingScrollMode==='horizontal'
+    ?(holdingColumns===2?'paged2':'horizontal')
+    :(holdingColumns===3?'grid3':holdingColumns===2?'grid2':'list');
+  const base={...merged,quoteStyle,holdingColumns,holdingScrollMode,holdingPrimaryField,holdingLayoutMode};
+  if(page==='portfolio'){
+    return {
+      ...base,
+      portfolioTableRowHeight:clamp(raw.portfolioTableRowHeight,44,84,defaults.portfolioTableRowHeight??54),
+      calculatorPanelHeightPct:clamp(raw.calculatorPanelHeightPct,60,96,defaults.calculatorPanelHeightPct??92),
+      calculatorShowCurrentHolding:raw.calculatorShowCurrentHolding??defaults.calculatorShowCurrentHolding??true,
+      calculatorShowFeeBreakdown:raw.calculatorShowFeeBreakdown??defaults.calculatorShowFeeBreakdown??true,
+    };
+  }
+  return base;
+}
+
 export function mergeDisplayState(raw:unknown):PageDisplayState{
   const defaults=createInitialDisplayState();
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
-  const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
+  const merge=(page:MainPageKey):PageDisplayConfig=>normalizePageDisplayConfig(page,{...defaults[page],...(source[page]??{})});
   const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts)};
   return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }

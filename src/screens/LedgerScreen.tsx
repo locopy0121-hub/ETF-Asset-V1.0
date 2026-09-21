@@ -9,6 +9,7 @@ import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import { usePageEditor } from '../editor/pageEditor';
 import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type DividendLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
 import { useBrokerSettingsRuntime } from '../finance/BrokerSettingsRuntime';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
@@ -25,6 +26,12 @@ export function LedgerScreen() {
   const finance=useFinance();
   const market=useMarketRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
+  const editor=usePageEditor('ledger');
+  const display=editor.displayConfig;
+  const ledgerListVisibleCount=display.ledgerListVisibleCount??20;
+  const ledgerShowRecentSymbols=display.ledgerShowRecentSymbols??true;
+  const ledgerShowSuggestions=display.ledgerShowSuggestions??true;
+  const ledgerShowFeeTax=display.ledgerShowFeeTax??true;
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [kind,setKind]=useState<EntryKind>('buy');
   const [symbol,setSymbol]=useState(finance.quotes[0]?.symbol??'0050');
@@ -55,11 +62,12 @@ export function LedgerScreen() {
     return Array.from(new Set(rows)).slice(0,8);
   },[finance.entries]);
   const symbolSuggestions=useMemo(()=>{
-    if(!normalizedSymbol||catalogItem)return [];
+    const keyword=symbol.trim().toLowerCase();
+    if(!keyword||catalogItem)return [];
     return market.catalog
-      .filter(item=>item.symbol.startsWith(normalizedSymbol))
+      .filter(item=>item.symbol.toLowerCase().startsWith(keyword)||item.name.toLowerCase().includes(keyword))
       .slice(0,8);
-  },[market.catalog,normalizedSymbol,catalogItem]);
+  },[market.catalog,symbol,catalogItem]);
   const tradePreview=useMemo(()=>{
     if((kind!=='buy'&&kind!=='sell')||!instrument)return null;
     const p=parseNumber(price),s=parseNumber(shares);
@@ -74,10 +82,10 @@ export function LedgerScreen() {
       brokerProfile:selectedBrokerProfile,
       shares:s,
       price:p,
-      ...(fee.trim()?{actualFee:parseNumber(fee)}:{}),
-      ...(kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
+      ...(ledgerShowFeeTax&&fee.trim()?{actualFee:parseNumber(fee)}:{}),
+      ...(ledgerShowFeeTax&&kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
     });
-  },[kind,instrument,date,tradeMode,selectedBrokerProfile,price,shares,fee,tax]);
+  },[kind,instrument,date,tradeMode,selectedBrokerProfile,price,shares,fee,tax,ledgerShowFeeTax]);
 
   const dividendPreview=useMemo(()=>{
     if(kind!=='dividend'||!instrument)return null;
@@ -105,8 +113,8 @@ export function LedgerScreen() {
         id,date,kind,symbol:instrument!.symbol,name:instrument!.name,tradeMode,
         brokerProfile:selectedBrokerProfile,
         shares:parseNumber(shares),price:parseNumber(price),
-        ...(fee.trim()?{actualFee:parseNumber(fee)}:{}),
-        ...(kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
+        ...(ledgerShowFeeTax&&fee.trim()?{actualFee:parseNumber(fee)}:{}),
+        ...(ledgerShowFeeTax&&kind==='sell'&&tax.trim()?{actualTax:parseNumber(tax)}:{}),
         ...(note.trim()?{note:note.trim()}:{}),
       });
     }else if(kind==='dividend'){
@@ -156,15 +164,16 @@ export function LedgerScreen() {
                   <Text style={styles.selectedInstrumentCode}>{instrument.symbol}</Text>
                   <Text style={styles.selectedInstrumentName} numberOfLines={1}>{instrument.name}</Text>
                 </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的 ETF 名稱</Text>:null}
-                {recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
+                {ledgerShowRecentSymbols&&recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
                   {recentSymbols.map(code=><Pressable key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
                     <Text style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
                   </Pressable>)}
                 </ScrollView>:null}
-                {symbolSuggestions.length?<View style={styles.suggestionList}>
+                {ledgerShowSuggestions&&symbolSuggestions.length?<View style={styles.suggestionList}>
                   {symbolSuggestions.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={styles.suggestionRow}>
                     <Text style={styles.suggestionSymbol}>{item.symbol}</Text>
                     <Text style={styles.suggestionName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.suggestionMarket}>{item.market}</Text>
                     <Text style={styles.suggestionArrow}>›</Text>
                   </Pressable>)}
                 </View>:null}
@@ -185,18 +194,18 @@ export function LedgerScreen() {
                   onChange={setTradePlan}
                 />
                 <Text style={styles.tradePlanHint}>目前券商：{brokerSettings.activeProfile.name}{tradePlan==='RECURRING'?' · '+(brokerSettings.recurring.mode==='fixed'?'固定 '+brokerSettings.recurring.fixedFee+' 元':'非固定，最低 '+brokerSettings.recurring.minimumFee+' 元'):''}</Text>
-                <View style={styles.two}><NumericField label="股數" value={shares} onChange={setShares} placeholder="0"/><NumericField label="實際手續費" value={fee} onChange={setFee} placeholder={tradePreview?String(tradePreview.calculatedFee):'自動估算'}/></View>
-                {kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
+                <View style={styles.two}><NumericField label="股數" value={shares} onChange={setShares} placeholder="0"/>{ledgerShowFeeTax?<NumericField label="實際手續費" value={fee} onChange={setFee} placeholder={tradePreview?String(tradePreview.calculatedFee):'自動估算'}/>:null}</View>
+                {ledgerShowFeeTax&&kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
                 {sellExceedsHolding?<Text style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
                 {tradePreview?<View style={styles.previewCard}>
                   <Text style={styles.previewTitle}>V3.7.8 入帳預覽</Text>
                   <PreviewRow label="成交金額" value={money(tradePreview.amount)}/>
-                  <PreviewRow label="公式手續費" value={money(tradePreview.calculatedFee)}/>
+                  {ledgerShowFeeTax?<><PreviewRow label="公式手續費" value={money(tradePreview.calculatedFee)}/>
                   <PreviewRow label={fee.trim()?'實際手續費（已覆寫）':'實際手續費（公式固化）'} value={money(tradePreview.actualFee)} strong/>
                   {kind==='sell'?<>
                     <PreviewRow label="公式證交稅" value={money(tradePreview.calculatedTax)}/>
                     <PreviewRow label={tax.trim()?'實際證交稅（已覆寫）':'實際證交稅（公式固化）'} value={money(tradePreview.actualTax)} strong/>
-                  </>:null}
+                  </>:null}</>:null}
                   <PreviewRow label={kind==='buy'?'現金支出':'現金流入'} value={money(Math.abs(calculateLedgerCashFlow(tradePreview)))} strong/>
                 </View>:null}
               </>:null}
@@ -214,13 +223,13 @@ export function LedgerScreen() {
         },
         {key:'ledger-list',element:
           <FrameCard title="交易紀錄">
-            {ordered.slice(0,20).map(row=><View key={row.id} style={styles.tableRow}>
+            {ordered.slice(0,ledgerListVisibleCount).map(row=><View key={row.id} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
               <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
               <View style={{flex:1}}>
                 <Text style={styles.symbolStrong}>{'symbol' in row?row.symbol:row.label}</Text>
                 {'symbol' in row?<Text style={styles.symbolName} numberOfLines={1}>{row.name}</Text>:null}
-                {row.kind==='buy'||row.kind==='sell'?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
+                {ledgerShowFeeTax&&(row.kind==='buy'||row.kind==='sell')?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
               </View>
               <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Pressable onPress={()=>finance.deleteEntry(row.id)}><Text style={styles.delete}>刪除</Text></Pressable></View>
             </View>)}
@@ -393,6 +402,7 @@ const styles=StyleSheet.create({
   suggestionRow:{minHeight:42,paddingHorizontal:12,flexDirection:'row',alignItems:'center',gap:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   suggestionSymbol:{width:56,fontSize:12,fontWeight:'900',color:colors.primary},
   suggestionName:{flex:1,fontSize:11,fontWeight:'700',color:colors.text},
+  suggestionMarket:{fontSize:8,fontWeight:'800',color:colors.textSecondary},
   suggestionArrow:{fontSize:18,color:colors.textSecondary},
   symbolChip:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   symbolChipActive:{backgroundColor:colors.primary},

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ImageBackground,
   Linking,
   PermissionsAndroid,
   Platform,
@@ -33,21 +34,22 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import {APP_ICON_OPTIONS,BUILTIN_BACKGROUNDS,BUILTIN_THEMES,useThemeRuntime,type ThemeFit,type ThemeId} from '../theme/ThemeRuntime';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackgroundImage, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
+type SystemPanel=null|'ai'|'market'|'permissions'|'diagnostics'|'notifications';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
 type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
-type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
+type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.1.1';
-const BUILD='10101';
+const VERSION='1.1.2';
+const BUILD='10102';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -56,6 +58,7 @@ export function SettingsScreen(){
   const settings=useSettingsRuntime();
   const monitor=useMonitorSettingsRuntime();
   const widget=useWidgetSettingsRuntime();
+  const theme=useThemeRuntime();
 
   const [top,setTop]=useState<string|null>(null);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>(null);
@@ -143,6 +146,8 @@ export function SettingsScreen(){
 
   function systemSection(){
     return <View style={styles.children}>
+      <ChildButton label="AI 助理" summary={settings.prefs.ai.enabled?'已啟用 · 浮動入口可設定':'已關閉'} active={systemPanel==='ai'} onPress={()=>setSystemPanel(systemPanel==='ai'?null:'ai')}/>
+      {systemPanel==='ai'?<AiSettingsPanel/>:null}
       <ChildButton label="市場更新" summary={marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
       {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
@@ -344,9 +349,15 @@ export function SettingsScreen(){
   function displaySection(){
     const d=settings.prefs.display;
     return <View style={styles.children}>
+      <View style={styles.panel}>
+        <ToggleRow label="顯示優化" value={d.optimizationEnabled} onChange={optimizationEnabled=>settings.patchDisplay({optimizationEnabled})}/>
+        <Text style={styles.note}>關閉時各頁使用原始顯示預設；已儲存的各頁顯示設定保留，重新開啟後恢復套用。設定頁本身不受影響。</Text>
+      </View>
+      <ChildButton label="主題系統" summary={theme.activeThemeName+' · 10 組內建'} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
+      {displayPanel==='theme'?<ThemeSettingsPanel/>:null}
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
-      <ChildButton label="金額格式" summary={d.amountDecimals===2?'2 位小數':'整數'} active={displayPanel==='amount'} onPress={()=>setDisplayPanel(displayPanel==='amount'?null:'amount')}/>
+      <ChildButton label="金額單位設定" summary={d.amountDecimals===2?'2 位小數':'整數'} active={displayPanel==='amount'} onPress={()=>setDisplayPanel(displayPanel==='amount'?null:'amount')}/>
       {displayPanel==='amount'?<Panel title="金額格式">
         <ChoiceRow label="小數位" options={[{key:'0',label:'整數'},{key:'2',label:'2 位'}]} value={String(d.amountDecimals)} onChange={x=>settings.patchDisplay({amountDecimals:x==='2'?2:0})}/>
         <ToggleRow label="千分位" value={d.thousandsSeparator} onChange={thousandsSeparator=>settings.patchDisplay({thousandsSeparator})}/>
@@ -402,6 +413,46 @@ export function SettingsScreen(){
     </View>;
   }
 
+  function AiSettingsPanel(){
+    const a=settings.prefs.ai;
+    const pageOptions=([
+      {key:'home',label:'首頁'},
+      {key:'ledger',label:'記帳'},
+      {key:'portfolio',label:'庫存'},
+      {key:'dividend',label:'股息'},
+      {key:'ai',label:'AI'},
+      {key:'settings',label:'設定'},
+    ] as const);
+    const togglePage=(key:(typeof pageOptions)[number]['key'])=>{
+      const next=a.visiblePages.includes(key)?a.visiblePages.filter(x=>x!==key):[...a.visiblePages,key];
+      settings.patchAi({visiblePages:next});
+    };
+    return <Panel title="AI 助理設定">
+      <ToggleRow label="AI 總開關" value={a.enabled} onChange={enabled=>settings.patchAi({enabled})}/>
+      <ToggleRow label="顯示 AI 浮動按鈕" value={a.floatingButtonVisible} onChange={floatingButtonVisible=>settings.patchAi({floatingButtonVisible})}/>
+      <ToggleRow label="允許浮動對話框" value={a.floatingPanelVisible} onChange={floatingPanelVisible=>settings.patchAi({floatingPanelVisible})}/>
+      <Stepper label="浮動按鈕尺寸" value={Math.round(a.buttonSize)} min={40} max={88} step={4} suffix=" px" onChange={buttonSize=>settings.patchAi({buttonSize})}/>
+      <Stepper label="按鈕透明度" value={Math.round(a.buttonOpacity*100)} min={25} max={100} step={5} suffix="%" onChange={v=>settings.patchAi({buttonOpacity:v/100})}/>
+      <Stepper label="浮動視窗寬度" value={Math.round(a.panelWidth)} min={280} max={620} step={20} suffix=" px" onChange={panelWidth=>settings.patchAi({panelWidth})}/>
+      <Stepper label="浮動視窗高度" value={Math.round(a.panelHeight)} min={300} max={760} step={20} suffix=" px" onChange={panelHeight=>settings.patchAi({panelHeight})}/>
+      <Stepper label="浮動視窗透明度" value={Math.round(a.panelOpacity*100)} min={35} max={100} step={5} suffix="%" onChange={v=>settings.patchAi({panelOpacity:v/100})}/>
+      <ToggleRow label="鎖定浮動位置" value={a.positionLocked} onChange={positionLocked=>settings.patchAi({positionLocked})}/>
+      <ToggleRow label="拖移後吸附畫面邊緣" value={a.edgeSnap} onChange={edgeSnap=>settings.patchAi({edgeSnap})}/>
+      <ToggleRow label="AI 狀態提示點" value={a.statusDotVisible} onChange={statusDotVisible=>settings.patchAi({statusDotVisible})}/>
+      <ToggleRow label="一般網路搜尋" value={a.networkSearch} onChange={networkSearch=>settings.patchAi({networkSearch})}/>
+      <ToggleRow label="持股新聞更新" value={a.holdingsNews} onChange={holdingsNews=>settings.patchAi({holdingsNews})}/>
+      <ToggleRow label="主動提示建議" value={a.proactiveHints} onChange={proactiveHints=>settings.patchAi({proactiveHints})}/>
+      <ToggleRow label="顯示來源" value={a.showSources} onChange={showSources=>settings.patchAi({showSources})}/>
+      <ToggleRow label="顯示日期" value={a.showDates} onChange={showDates=>settings.patchAi({showDates})}/>
+      <ToggleRow label="使用對話上下文" value={a.useHistory} onChange={useHistory=>settings.patchAi({useHistory})}/>
+      <ToggleRow label="寫入資料前確認" value={a.confirmBeforeWrite} onChange={confirmBeforeWrite=>settings.patchAi({confirmBeforeWrite})}/>
+      <ChoiceRow label="回覆詳略" options={[{key:'concise',label:'精簡'},{key:'balanced',label:'標準'},{key:'detailed',label:'詳細'}]} value={a.responseDetail} onChange={responseDetail=>settings.patchAi({responseDetail:responseDetail==='concise'||responseDetail==='detailed'?responseDetail:'balanced'})}/>
+      <Text style={styles.fieldLabel}>顯示頁面</Text>
+      <View style={styles.choiceWrap}>{pageOptions.map(page=><Pressable key={page.key} onPress={()=>togglePage(page.key)} style={[styles.choice,a.visiblePages.includes(page.key)&&styles.choiceActive]}><Text style={[styles.choiceText,a.visiblePages.includes(page.key)&&styles.choiceTextActive]}>{page.label}</Text></Pressable>)}</View>
+      <Text style={styles.note}>拖移位置會記住；視窗寬高在視窗右下角也可直接 Resize。鎖定位置只阻止拖移，不會鎖住 Resize。</Text>
+    </Panel>;
+  }
+
   function NotificationPanel(){
     const n=settings.prefs.notifications;
     return <Panel title="通知與提醒">
@@ -418,6 +469,66 @@ export function SettingsScreen(){
     </Panel>;
   }
 
+  function ThemeSettingsPanel(){
+    const state=theme.state;
+    const bg=state.background;
+    const resizeMode=bg.fit==='fit-height'?'contain':bg.fit==='fit-width'?'cover':'stretch';
+    const pickBackground=async()=>{const uri=await pickNativeThemeBackgroundImage();if(uri)theme.setCustomBackgroundUri(uri);};
+    const fitOptions=[{key:'fit-width',label:'適寬'},{key:'fit-height',label:'適高'},{key:'fill',label:'填滿'}] as const;
+    return <Panel title="主題系統">
+      <Text style={styles.note}>10 組主題、10 組 App Icon、10 張內建背景；主題切換只改視覺，不改帳務、行情或金融核心。</Text>
+      <View style={[styles.themePreview,{backgroundColor:state.palette.background,borderColor:state.palette.border}]}>
+        {theme.backgroundUri?<ImageBackground source={{uri:theme.backgroundUri}} resizeMode={resizeMode} blurRadius={bg.blurRadius} imageStyle={{opacity:bg.opacity}} style={StyleSheet.absoluteFill}/>:null}
+        {bg.maskOpacity>0?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{backgroundColor:'#000000',opacity:bg.maskOpacity}]}/>:null}
+        <View style={[styles.themePreviewHeader,{backgroundColor:state.palette.surface,borderColor:state.palette.border}]}>
+          <View style={[styles.themeIconPreview,{backgroundColor:APP_ICON_OPTIONS.find(x=>x.id===state.appIconId)?.background??state.palette.surface}]}>
+            <Text style={{fontWeight:'900',fontSize:16,color:APP_ICON_OPTIONS.find(x=>x.id===state.appIconId)?.primary??state.palette.primary}}>TF</Text>
+          </View>
+          <View style={{flex:1}}><Text style={{fontSize:10,fontWeight:'900',color:state.palette.primary}}>TF ASSET</Text><Text style={{fontSize:16,fontWeight:'900',color:state.palette.text}}>主題即時預覽</Text></View>
+        </View>
+        <View style={[styles.themePreviewCard,{backgroundColor:state.palette.surface,borderColor:state.palette.border}]}>
+          <Text style={{fontSize:10,color:state.palette.textSecondary}}>持股市值</Text>
+          <Text style={{fontSize:18,fontWeight:'900',color:state.palette.text}}>NT$ 500,000</Text>
+          <Text style={{fontSize:11,fontWeight:'900',color:state.palette.gain}}>+12,800</Text>
+        </View>
+      </View>
+
+      <Text style={styles.subTitle}>10 組主題組合</Text>
+      <View style={styles.choiceWrap}>{BUILTIN_THEMES.map(item=><Pressable key={item.id} onPress={()=>theme.applyPreset(item.id)} style={[styles.choice,state.selectedThemeId===item.id&&styles.choiceActive]}><Text style={[styles.choiceText,state.selectedThemeId===item.id&&styles.choiceTextActive]}>{item.name}</Text></Pressable>)}</View>
+
+      <Text style={styles.subTitle}>10 組 App Icon</Text>
+      <View style={styles.themeIconGrid}>{APP_ICON_OPTIONS.map(item=><Pressable key={item.id} onPress={()=>theme.setAppIconId(item.id)} style={[styles.themeIconChoice,{backgroundColor:item.background,borderColor:state.appIconId===item.id?state.palette.primary:state.palette.border}]}><Text style={{color:item.primary,fontWeight:'900'}}>TF</Text><Text style={{fontSize:8,color:item.primary}}>{item.id.replace('icon-','')}</Text></Pressable>)}</View>
+
+      <Text style={styles.subTitle}>10 張內建背景</Text>
+      <View style={styles.choiceWrap}>{BUILTIN_BACKGROUNDS.map(item=><Pressable key={item.id} onPress={()=>theme.patchBackground({source:'builtin',builtinId:item.id,customUri:null})} style={[styles.choice,bg.source==='builtin'&&bg.builtinId===item.id&&styles.choiceActive]}><Text style={[styles.choiceText,bg.source==='builtin'&&bg.builtinId===item.id&&styles.choiceTextActive]}>{item.name}</Text></Pressable>)}</View>
+      <ActionButton label="選擇自訂背景圖片" onPress={()=>void pickBackground()}/>
+      {bg.source==='custom'&&bg.customUri?<ActionButton label="移除自訂背景，回到內建" onPress={()=>theme.setCustomBackgroundUri(null)}/>:null}
+      <ChoiceRow label="背景顯示" options={fitOptions} value={bg.fit} onChange={fit=>theme.patchBackground({fit:fit as ThemeFit})}/>
+      <Stepper label="背景透明度" value={Math.round(bg.opacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>theme.patchBackground({opacity:v/100})}/>
+      <Stepper label="背景模糊" value={Math.round(bg.blurRadius)} min={0} max={30} step={2} suffix="" onChange={blurRadius=>theme.patchBackground({blurRadius})}/>
+      <Stepper label="背景遮罩" value={Math.round(bg.maskOpacity*100)} min={0} max={90} step={5} suffix="%" onChange={v=>theme.patchBackground({maskOpacity:v/100})}/>
+
+      <Text style={styles.subTitle}>目前主題色</Text>
+      <ColorPalettePicker label="頁面背景" value={state.palette.background} onChange={background=>theme.patchPalette({background})}/>
+      <ColorPalettePicker label="卡片背景" value={state.palette.surface} onChange={surface=>theme.patchPalette({surface})}/>
+      <ColorPalettePicker label="次要背景" value={state.palette.surfaceMuted} onChange={surfaceMuted=>theme.patchPalette({surfaceMuted})}/>
+      <ColorPalettePicker label="主色" value={state.palette.primary} onChange={primary=>theme.patchPalette({primary})}/>
+      <ColorPalettePicker label="主要文字" value={state.palette.text} onChange={text=>theme.patchPalette({text})}/>
+      <ColorPalettePicker label="次要文字" value={state.palette.textSecondary} onChange={textSecondary=>theme.patchPalette({textSecondary})}/>
+      <ColorPalettePicker label="邊框" value={state.palette.border} onChange={border=>theme.patchPalette({border})}/>
+      <ColorPalettePicker label="獲利／上漲" value={state.palette.gain} onChange={gain=>theme.patchPalette({gain})}/>
+      <ColorPalettePicker label="虧損／下跌" value={state.palette.loss} onChange={loss=>theme.patchPalette({loss})}/>
+
+      <Text style={styles.subTitle}>5 組自訂主題儲存</Text>
+      {state.customSlots.map(slot=><View key={slot.slot} style={styles.themeSlotRow}>
+        <Text style={styles.rowTitle}>{slot.name}{slot.saved?' · 已儲存':' · 空白'}</Text>
+        <Pressable onPress={()=>theme.saveCustomSlot(slot.slot)} style={styles.themeSlotButton}><Text style={styles.themeSlotButtonText}>儲存目前</Text></Pressable>
+        <Pressable disabled={!slot.saved} onPress={()=>theme.applyCustomSlot(slot.slot)} style={[styles.themeSlotButton,!slot.saved&&styles.actionDisabled]}><Text style={styles.themeSlotButtonText}>套用</Text></Pressable>
+      </View>)}
+      <ActionButton label="重設為經典金融藍" onPress={theme.resetTheme}/>
+    </Panel>;
+  }
+
   function ProfitColorPanel(){
     const d=settings.prefs.display;
     return <Panel title="損益顏色">
@@ -430,16 +541,17 @@ export function SettingsScreen(){
     </Panel>;
   }
 
-  return <View style={styles.root}>
-    <View style={styles.header}>
-      <Text style={styles.eyebrow}>TF ASSET</Text>
-      <Text style={styles.title}>控制中心</Text>
-      <Text style={styles.subtitle}>系統、帳務、資料與顯示設定集中管理</Text>
+  const themeColors=theme.state.palette;
+  return <View style={[styles.root,{backgroundColor:themeColors.background}]}>
+    <View style={[styles.header,{backgroundColor:themeColors.surface,borderBottomColor:themeColors.border}]}>
+      <Text style={[styles.eyebrow,{color:themeColors.primary}]}>TF ASSET</Text>
+      <Text style={[styles.title,{color:themeColors.text}]}>控制中心</Text>
+      <Text style={[styles.subtitle,{color:themeColors.textSecondary}]}>系統、帳務、資料與顯示設定集中管理</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {PAGE_FRAMES.settings.map((frame,index)=>{
         const open=top===frame.key;
-        return <View key={frame.key} style={styles.section}>
+        return <View key={frame.key} style={[styles.section,{backgroundColor:themeColors.surface,borderColor:themeColors.border}]}>
           <Pressable style={styles.topRow} onPress={()=>toggleTop(frame.key)}>
             <View style={styles.index}><Text style={styles.indexText}>{index+1}</Text></View>
             <View style={{flex:1}}>
@@ -679,6 +791,15 @@ const styles=StyleSheet.create({
   dangerText:{fontSize:11,fontWeight:'900',color:colors.gain},
   infoText:{fontSize:11,lineHeight:18,color:colors.text},
   subTitle:{fontSize:11,fontWeight:'900',color:colors.text,marginTop:4},
+  themePreview:{height:190,borderRadius:radius.lg,borderWidth:1,overflow:'hidden',padding:12,gap:10,position:'relative'},
+  themePreviewHeader:{flexDirection:'row',alignItems:'center',gap:10,padding:9,borderRadius:radius.md,borderWidth:1},
+  themePreviewCard:{padding:12,borderRadius:radius.md,borderWidth:1,gap:3},
+  themeIconPreview:{width:38,height:38,borderRadius:10,alignItems:'center',justifyContent:'center'},
+  themeIconGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},
+  themeIconChoice:{width:52,height:52,borderRadius:12,borderWidth:2,alignItems:'center',justifyContent:'center'},
+  themeSlotRow:{flexDirection:'row',alignItems:'center',gap:6,paddingVertical:4},
+  themeSlotButton:{paddingHorizontal:9,paddingVertical:7,borderRadius:radius.md,backgroundColor:colors.primary},
+  themeSlotButtonText:{fontSize:9,fontWeight:'900',color:'#FFFFFF'},
   numberEditor:{flexDirection:'row',alignItems:'center',gap:6},
   settingNumberInput:{minWidth:88,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,paddingHorizontal:9,paddingVertical:7,color:colors.text,textAlign:'right',fontSize:11,fontWeight:'900',backgroundColor:colors.surface},
   actionRow:{flexDirection:'row',gap:8,marginTop:4},

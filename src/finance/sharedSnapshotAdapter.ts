@@ -21,7 +21,10 @@ export function buildSharedSnapshot(input:{
     generatedAt:updatedAt??new Date().toISOString(),
     source:'canonical-finance-core',
     asset:{
-      totalAssets:input.canonical.totalAssets,
+      // TF Asset display contract: 「總資產」means current holding market value.
+      // Cash remains a separate field. Canonical totalAssets is intentionally
+      // not substituted here, so App / Widget / Monitor show the same headline value.
+      totalAssets:portfolio.totalMarketValue,
       marketValue:portfolio.totalMarketValue,
       cash:input.canonical.cashBalance,
       unrealizedPnl:portfolio.totalUnrealizedProfit,

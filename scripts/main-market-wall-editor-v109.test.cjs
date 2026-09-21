@@ -14,7 +14,8 @@ const app=JSON.parse(fs.readFileSync('app.json','utf8'));
 
 assert.match(home,/wallConfig=\{editor\.displayConfig\.holdingWall\?\?DEFAULT_HOLDING_WALL_CONFIG\}/,'home main market wall must consume editor config with safe default');
 assert.ok(!/sortHoldingQuotes\(finance\.holdings[\s\S]{0,100}slice\(/.test(home),'home market wall must not cap holdings');
-assert.match(collection,/rows\.map\(/,'collection must render all holding rows');
+assert.match(collection,/data=\{\[\.\.\.rows\]\}/,'collection must pass the full holding rows into the virtualized list');
+assert.match(collection,/for\(let i=0;i<rows\.length;i\+=effectiveColumns\)/,'horizontal paging must partition the entire holding set without a fixed cap');
 assert.match(collection,/const effectiveWallConfig=wallConfig\?\?DEFAULT_HOLDING_WALL_CONFIG/,'collection must resolve a non-null wall config');
 assert.match(collection,/wallConfig=\{effectiveWallConfig\}/,'collection must pass resolved wall config to every card');
 assert.match(card,/HoldingWallConfig/,'holding cards must accept wall editor config');
@@ -34,6 +35,6 @@ assert.match(modal,/displayDraft\.holdingWall/,'main wall settings must stay in 
 assert.match(modal,/updateDisplayConfig\(displayDraft\)/,'main wall draft must persist only on apply');
 assert.match(editor,/holdingWall\?: HoldingWallConfig/,'page display contract missing main wall config');
 assert.match(editor,/normalizeHoldingWall/,'persisted main wall config must be normalized');
-assert.match(editor,/home:\s*\{[^}]*quoteStyle:'quote'[^}]*sortKey:'pnl'[^}]*holdingLayoutMode:'grid2'[^}]*holdingWall:DEFAULT_HOLDING_WALL_CONFIG[^}]*\}/,'home restored two-column wall default missing');
+assert.match(editor,/home:\s*\{[^}]*quoteStyle:'quote'[^}]*sortKey:'pnl'[^}]*holdingLayoutMode:'grid2'[^}]*holdingColumns:2[^}]*holdingScrollMode:'none'[^}]*holdingPrimaryField:'price'[^}]*holdingWall:DEFAULT_HOLDING_WALL_CONFIG[^}]*\}/,'home restored two-column wall default missing');
 
 console.log('V1.0.9 MAIN MARKET WALL EDITOR: PASS');

@@ -86,18 +86,29 @@ export function ColorPalettePicker({
     }
   },[value,expanded]);
 
+  const safeValue=normalizeHex(value);
   const hsv=useMemo(()=>hexToHsv(draft),[draft]);
-  const wheelRows=useMemo(()=>Array.from({length:WHEEL_STEPS},(_,row)=>
-    Array.from({length:WHEEL_STEPS},(_,col)=>{
-      const x=((col+.5)/WHEEL_STEPS)*2-1;
-      const y=((row+.5)/WHEEL_STEPS)*2-1;
-      const radiusValue=Math.sqrt(x*x+y*y);
-      if(radiusValue>1)return 'transparent';
-      const hue=(Math.atan2(y,x)*180/Math.PI+360)%360;
-      return hsvToHex({h:hue,s:clamp(radiusValue*100,0,100),v:100});
-    })
-  ),[]);
-  const brightnessSegments=useMemo(()=>Array.from({length:32},(_,i)=>hsvToHex({h:hsv.h,s:hsv.s,v:(i/31)*100})),[hsv.h,hsv.s]);
+  // Do not allocate hundreds of wheel cells for every closed picker on a settings page.
+  // Only the single visible wheel owns the heavy render data.
+  const wheelRows=useMemo(()=>{
+    if(!expanded||mode!=='wheel')return [] as string[][];
+    return Array.from({length:WHEEL_STEPS},(_,row)=>
+      Array.from({length:WHEEL_STEPS},(_,col)=>{
+        const x=((col+.5)/WHEEL_STEPS)*2-1;
+        const y=((row+.5)/WHEEL_STEPS)*2-1;
+        const radiusValue=Math.sqrt(x*x+y*y);
+        if(radiusValue>1)return 'transparent';
+        const hue=(Math.atan2(y,x)*180/Math.PI+360)%360;
+        return hsvToHex({h:hue,s:clamp(radiusValue*100,0,100),v:100});
+      })
+    );
+  },[expanded,mode]);
+  const brightnessSegments=useMemo(
+    ()=>expanded&&mode==='wheel'
+      ?Array.from({length:32},(_,i)=>hsvToHex({h:hsv.h,s:hsv.s,v:(i/31)*100}))
+      :[],
+    [expanded,mode,hsv.h,hsv.s],
+  );
 
   const updateDraftHsv=(next:Hsv)=>setDraft(hsvToHex(next));
   const pickWheel=(x:number,y:number)=>{
@@ -142,7 +153,7 @@ export function ColorPalettePicker({
   return <View style={styles.block}>
     <View style={styles.titleRow}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.preview,{backgroundColor:value}]}/>
+      <View style={[styles.preview,{backgroundColor:safeValue}]}/>
       {onProfitColorChange?<Pressable onPress={()=>onProfitColorChange(!profitColorEnabled)} style={[styles.profitPill,profitColorEnabled&&styles.profitPillOn]}><Text style={[styles.profitText,profitColorEnabled&&styles.profitTextOn]}>損益色 {profitColorEnabled?'開':'關'}</Text></Pressable>:null}
     </View>
 
@@ -151,7 +162,7 @@ export function ColorPalettePicker({
       <Text style={styles.toggleText}>開啟調色盤</Text>
     </Pressable>
 
-    {expanded?<Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={cancel}>
+    {expanded?<Modal visible animationType="slide" presentationStyle="fullScreen" hardwareAccelerated onRequestClose={cancel}>
       <View style={styles.modalRoot}>
         <View style={styles.modalTop}>
           <Pressable onPress={cancel} style={styles.topAction}><Text style={styles.cancelText}>取消</Text></Pressable>

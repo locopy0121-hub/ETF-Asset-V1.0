@@ -21,7 +21,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
   portfolio: [
     { key:'holding-dashboard', title:'持股分析儀表板', description:'市值、成本、損益、含息報酬' },
     { key:'allocation', title:'資產配置', description:'持股與資產分類占比' },
-    { key:'holding-view', title:'持股檢視', description:'清單模式與行情牆模式共用框架' },
+    { key:'holding-view', title:'持股檢視', description:'清單模式、行情牆與持股試算共用工具' },
   ],
   dividend: [
     { key:'dividend-summary', title:'股息摘要', description:'本月、年度、月平均' },
@@ -30,6 +30,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'annual-trend', title:'年度趨勢', description:'1–12 月股息趨勢' },
   ],
   ai: [
+    { key:'etf-screener', title:'ETF 篩選器', description:'代號／名稱、市場、類型、產業、費用率與殖利率篩選' },
     { key:'ai-news', title:'AI 持股新聞', description:'網路新聞、來源、日期與智慧摘要' },
   ],
   settings: [

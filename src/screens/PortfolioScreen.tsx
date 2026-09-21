@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
-import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
+import { HoldingQuoteCollection, type HoldingColumnCount, type HoldingPrimaryField, type HoldingScrollMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
@@ -12,7 +12,7 @@ import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import { sortHoldingQuotes } from '../domain/holdingSort';
-import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
+import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
@@ -29,11 +29,19 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const viewMode=(editor.displayConfig.portfolioViewMode??'list') as ViewMode;
   const quoteStyle=(editor.displayConfig.quoteStyle??'chart') as QuoteModuleStyle;
   const sortKey=(editor.displayConfig.sortKey??'manual') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
+  const holdingColumns=(editor.displayConfig.holdingColumns??1) as HoldingColumnCount;
+  const holdingScrollMode=(editor.displayConfig.holdingScrollMode??'none') as HoldingScrollMode;
+  const holdingPrimaryField=(editor.displayConfig.holdingPrimaryField??'price') as HoldingPrimaryField;
+  const tableRowHeight=editor.displayConfig.portfolioTableRowHeight??54;
+  const calculatorPanelHeightPct=editor.displayConfig.calculatorPanelHeightPct??92;
+  const calculatorShowCurrentHolding=editor.displayConfig.calculatorShowCurrentHolding??true;
+  const calculatorShowFeeBreakdown=editor.displayConfig.calculatorShowFeeBreakdown??true;
   const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
-  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
+  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value,...(value==='chart'?{holdingColumns:1 as const}:{})});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
+  const setHoldingColumns=(value:HoldingColumnCount)=>editor.updateDisplayConfig({holdingColumns:value});
+  const setHoldingScrollMode=(value:HoldingScrollMode)=>editor.updateDisplayConfig({holdingScrollMode:value});
+  const setHoldingPrimaryField=(value:HoldingPrimaryField)=>editor.updateDisplayConfig({holdingPrimaryField:value});
   const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
 
@@ -74,28 +82,49 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               )}
             </View>
 
-            {viewMode==='list'?<HoldingTable rows={sorted} onOpenHolding={onOpenHolding}/>:<>
+            {viewMode==='list'?<HoldingTable rows={sorted} rowHeight={tableRowHeight} onOpenHolding={onOpenHolding}/>:<>
               <SegmentedControl
                 items={[{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const}
                 value={quoteStyle}
                 onChange={setQuoteStyle}
               />
               <View style={styles.sortRow}>
-                <Text style={styles.sortTitle}>排列</Text>
+                <Text style={styles.sortTitle}>主要資料</Text>
                 {([
-                  {key:'list',label:'單欄'},
-                  {key:'grid2',label:'雙欄'},
-                  {key:'grid3',label:'三欄'},
-                  {key:'horizontal',label:'橫滑'},
-                  {key:'paged2',label:'雙欄滑動'},
+                  {key:'price',label:'市價'},
+                  {key:'marketValue',label:'市值'},
+                  {key:'pnl',label:'損益'},
+                  {key:'roi',label:'報酬率'},
                 ] as const).map(x=>
-                  <Pressable key={x.key} onPress={()=>setHoldingLayoutMode(x.key)} style={[styles.chip,holdingLayoutMode===x.key&&styles.chipActive]}>
-                    <Text style={[styles.chipText,holdingLayoutMode===x.key&&styles.chipTextActive]}>{x.label}</Text>
+                  <Pressable key={x.key} onPress={()=>setHoldingPrimaryField(x.key)} style={[styles.chip,holdingPrimaryField===x.key&&styles.chipActive]}>
+                    <Text style={[styles.chipText,holdingPrimaryField===x.key&&styles.chipTextActive]}>{x.label}</Text>
                   </Pressable>
                 )}
               </View>
-              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} onOpenHolding={onOpenHolding}/>
-              <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
+              <View style={styles.sortRow}>
+                <Text style={styles.sortTitle}>欄數</Text>
+                {([
+                  {key:1,label:'單欄'},
+                  ...(quoteStyle==='chart'?[]:[{key:2,label:'雙欄'},{key:3,label:'三欄'}] as const),
+                ] as readonly {key:HoldingColumnCount;label:string}[]).map(x=>
+                  <Pressable key={x.key} onPress={()=>setHoldingColumns(x.key)} style={[styles.chip,holdingColumns===x.key&&styles.chipActive]}>
+                    <Text style={[styles.chipText,holdingColumns===x.key&&styles.chipTextActive]}>{x.label}</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={()=>setHoldingScrollMode(holdingScrollMode==='horizontal'?'none':'horizontal')} style={[styles.chip,holdingScrollMode==='horizontal'&&styles.chipActive]}>
+                  <Text style={[styles.chipText,holdingScrollMode==='horizontal'&&styles.chipTextActive]}>橫向滑動</Text>
+                </Pressable>
+              </View>
+              <HoldingQuoteCollection
+                rows={sorted}
+                style={quoteStyle}
+                columns={holdingColumns}
+                scrollMode={holdingScrollMode}
+                primaryField={holdingPrimaryField}
+                wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
+                onOpenHolding={onOpenHolding}
+              />
+              <Text style={styles.tableRule}>共 {sorted.length} 筆持股；圖表模式固定單欄，純行情可組合雙／三欄與橫向滑動。</Text>
             </>}
           </FrameCard>
         },
@@ -103,12 +132,17 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
     </PageShell>
 
     <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} onClose={()=>setSettingsOpen(false)}/>
-    <CalculatorModal visible={calculatorOpen} onClose={()=>setCalculatorOpen(false)}/>
+    <CalculatorModal
+      visible={calculatorOpen}
+      panelHeightPct={calculatorPanelHeightPct}
+      showCurrentHolding={calculatorShowCurrentHolding}
+      showFeeBreakdown={calculatorShowFeeBreakdown}
+      onClose={()=>setCalculatorOpen(false)}
+    />
   </>;
 }
 
-function HoldingTable({rows,onOpenHolding}:{rows:HoldingQuote[];onOpenHolding:(row:HoldingQuote)=>void}){
-  const rowHeight=54;
+function HoldingTable({rows,rowHeight,onOpenHolding}:{rows:HoldingQuote[];rowHeight:number;onOpenHolding:(row:HoldingQuote)=>void}){
   return <View style={styles.tableOuter}>
     <View style={styles.tableSplit}>
       <View style={styles.fixedColumn}>
@@ -141,7 +175,7 @@ function HoldingTable({rows,onOpenHolding}:{rows:HoldingQuote[];onOpenHolding:(r
 function Head({width,label}:{width:number;label:string}){return <Text style={[styles.tableHeadText,{width,textAlign:'right'}]}>{label}</Text>}
 function Cell({width,value,tone}:{width:number;value:string;tone?:'gain'|'loss'|'flat'}){const color=tone==='gain'?colors.gain:tone==='loss'?colors.loss:tone==='flat'?colors.flat:colors.text;return <Text style={[styles.numberCell,{width,color}]}>{value}</Text>}
 
-function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
+function CalculatorModal({visible,panelHeightPct,showCurrentHolding,showFeeBreakdown,onClose}:{visible:boolean;panelHeightPct:number;showCurrentHolding:boolean;showFeeBreakdown:boolean;onClose:()=>void}){
   const finance=useFinance();
   const [symbol,setSymbol]=useState(finance.holdings[0]?.symbol??'');
   const [price,setPrice]=useState('');
@@ -154,7 +188,7 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   }):null;
 
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <View style={styles.modalBackdrop}><View style={styles.calculator}>
+    <View style={styles.modalBackdrop}><View style={[styles.calculator,{maxHeight:`${Math.max(60,Math.min(96,panelHeightPct))}%`}]}>
       <View style={styles.modalTop}><View><Text style={styles.modalKicker}>庫存工具</Text><Text style={styles.modalTitle}>持股試算</Text></View><Pressable onPress={onClose}><Text style={styles.done}>完成</Text></Pressable></View>
       <Text style={styles.modalHint}>試算直接呼叫 V3.7.8 Canonical Core；不寫入 Ledger。</Text>
 
@@ -164,11 +198,11 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
       <SegmentedControl items={[{key:'ODD_LOT',label:'零股／定期定額'},{key:'ROUND_LOT',label:'整股'}] as const} value={mode} onChange={setMode}/>
       <View style={styles.calcGrid}><CalcField label="加碼價格" value={price} onChange={setPrice} placeholder={quote?.currentPrice.toFixed(2)??'0'}/><CalcField label="加碼股數" value={shares} onChange={setShares} placeholder="0"/></View>
 
-      {holding?<View style={styles.currentInfo}><Text style={styles.infoTitle}>目前持股</Text><Text style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
+      {showCurrentHolding&&holding?<View style={styles.currentInfo}><Text style={styles.infoTitle}>目前持股</Text><Text style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
 
       {scenario?<View style={styles.scenario}>
         <ResultRow label="本次成交金額" value={money(scenario.addTradeAmount)}/>
-        <ResultRow label="本次預估手續費" value={money(scenario.addCommission)}/>
+        {showFeeBreakdown?<ResultRow label="本次預估手續費" value={money(scenario.addCommission)}/>:null}
         <ResultRow label="本次現金支出" value={money(scenario.addCashOutflow)} strong/>
         <ResultRow label="試算後股數" value={money(scenario.newShares)}/>
         <ResultRow label="試算後純成交均價" value={scenario.averageTradePrice.toFixed(2)} strong/>

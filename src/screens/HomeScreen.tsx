@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FloatingDashboardChart } from '../components/FloatingDashboardChart';
 import { NewsReaderModal } from '../components/NewsReaderModal';
 import { FrameCard } from '../components/FrameCard';
-import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
+import { HoldingQuoteCollection, type HoldingColumnCount, type HoldingPrimaryField, type HoldingScrollMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
@@ -33,10 +33,14 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const editor=usePageEditor('home');
   const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
   const sortKey=(editor.displayConfig.sortKey??'pnl') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
-  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
+  const holdingColumns=(editor.displayConfig.holdingColumns??1) as HoldingColumnCount;
+  const holdingScrollMode=(editor.displayConfig.holdingScrollMode??'none') as HoldingScrollMode;
+  const holdingPrimaryField=(editor.displayConfig.holdingPrimaryField??'price') as HoldingPrimaryField;
+  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value,...(value==='chart'?{holdingColumns:1 as const}:{})});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
+  const setHoldingColumns=(value:HoldingColumnCount)=>editor.updateDisplayConfig({holdingColumns:value});
+  const setHoldingScrollMode=(value:HoldingScrollMode)=>editor.updateDisplayConfig({holdingScrollMode:value});
+  const setHoldingPrimaryField=(value:HoldingPrimaryField)=>editor.updateDisplayConfig({holdingPrimaryField:value});
   const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
   const totalDividend=portfolio.totalDividendsReceived;
@@ -123,21 +127,45 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
               )}
             </View>
             <View style={styles.sortRow}>
-              <Text style={styles.sortLabel}>顯示排列</Text>
+              <Text style={styles.sortLabel}>主要資料</Text>
               {([
-                {key:'list',label:'單欄'},
-                {key:'grid2',label:'雙欄'},
-                {key:'grid3',label:'三欄'},
-                {key:'horizontal',label:'橫向滑動'},
-                {key:'paged2',label:'雙欄滑動'},
+                {key:'price',label:'市價'},
+                {key:'marketValue',label:'市值'},
+                {key:'pnl',label:'損益'},
+                {key:'roi',label:'報酬率'},
               ] as const).map(x=>
-                <Pressable key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
-                  <Text style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                <Pressable key={x.key} style={[styles.sortChip,holdingPrimaryField===x.key&&styles.sortChipActive]} onPress={()=>setHoldingPrimaryField(x.key)}>
+                  <Text style={[styles.sortChipText,holdingPrimaryField===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
                 </Pressable>
               )}
             </View>
-            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
-            <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>欄數</Text>
+              {([
+                {key:1,label:'單欄'},
+                ...(quoteStyle==='chart'?[]:[{key:2,label:'雙欄'},{key:3,label:'三欄'}] as const),
+              ] as readonly {key:HoldingColumnCount;label:string}[]).map(x=>
+                <Pressable key={x.key} style={[styles.sortChip,holdingColumns===x.key&&styles.sortChipActive]} onPress={()=>setHoldingColumns(x.key)}>
+                  <Text style={[styles.sortChipText,holdingColumns===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                </Pressable>
+              )}
+              <Pressable
+                style={[styles.sortChip,holdingScrollMode==='horizontal'&&styles.sortChipActive]}
+                onPress={()=>setHoldingScrollMode(holdingScrollMode==='horizontal'?'none':'horizontal')}
+              >
+                <Text style={[styles.sortChipText,holdingScrollMode==='horizontal'&&styles.sortChipTextActive]}>橫向滑動</Text>
+              </Pressable>
+            </View>
+            <HoldingQuoteCollection
+              rows={sorted}
+              style={quoteStyle}
+              columns={holdingColumns}
+              scrollMode={holdingScrollMode}
+              primaryField={holdingPrimaryField}
+              wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
+              onOpenHolding={onOpenHolding}
+            />
+            <Text style={styles.ruleText}>目前：{quoteStyle==='quote'?'純行情':quoteStyle==='chart'?'圖表':quoteStyle==='compact'?'精簡':'進階'} → {holdingPrimaryField==='price'?'市價':holdingPrimaryField==='marketValue'?'市值':holdingPrimaryField==='pnl'?'損益':'報酬率'} → {holdingColumns===1?'單欄':holdingColumns===2?'雙欄':'三欄'}{holdingScrollMode==='horizontal'?' → 橫向滑動':''}。共 {sorted.length} 筆持股，不裁切資料；圖表模式固定單欄。</Text>
           </FrameCard>
         },
         {key:'pnl-detail',element:
@@ -180,10 +208,10 @@ const styles=StyleSheet.create({
   newsPressed:{opacity:.65},
   newsDisabled:{opacity:.45},
   sortRow:{flexDirection:'row',alignItems:'center',gap:6,flexWrap:'wrap'},
-  sortLabel:{fontSize:11,fontWeight:'800',color:colors.textSecondary,marginRight:3},
+  sortLabel:{fontSize:10,fontWeight:'700',color:colors.textSecondary,marginRight:3,opacity:.82},
   sortChip:{paddingHorizontal:11,paddingVertical:6,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   sortChipActive:{backgroundColor:colors.primary},
-  sortChipText:{fontSize:11,fontWeight:'800',color:colors.textSecondary},
+  sortChipText:{fontSize:10,fontWeight:'700',color:colors.textSecondary},
   sortChipTextActive:{color:'#FFFFFF'},
   quoteList:{gap:spacing.sm},
   ruleText:{fontSize:10,lineHeight:16,color:colors.textSecondary},

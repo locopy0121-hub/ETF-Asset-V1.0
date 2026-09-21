@@ -2,12 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
 import type { MainPageKey } from '../domain/pageRegistry';
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import {
   createInitialDisplayState,
   createInitialEditorState,
   makePageConfig,
   mergeDisplayState,
   mergeEditorState,
+  normalizePageDisplayConfig,
   type FrameEditorConfig,
   type PageDisplayConfig,
   type PageDisplayState,
@@ -64,7 +66,7 @@ export function PageEditorProvider({ children }: PropsWithChildren) {
     getPageConfig: page => state[page],
     replacePageConfig: (page, config) => setState(current => ({ ...current, [page]: config })),
     getDisplayConfig:page=>displayState[page],
-    updateDisplayConfig:(page,patch)=>setDisplayState(current=>({...current,[page]:{...current[page],...patch}})),
+    updateDisplayConfig:(page,patch)=>setDisplayState(current=>({...current,[page]:normalizePageDisplayConfig(page,{...current[page],...patch})})),
     resetPage: page => {
       setState(current => ({ ...current, [page]: makePageConfig(page) }));
       const defaults=createInitialDisplayState();
@@ -77,12 +79,18 @@ export function PageEditorProvider({ children }: PropsWithChildren) {
 
 export function usePageEditor(page: MainPageKey) {
   const context = useContext(EditorContext);
+  const settings = useSettingsRuntime();
   if (!context) throw new Error('usePageEditor must be used inside PageEditorProvider');
+  const storedDisplayConfig=context.getDisplayConfig(page);
+  const displayConfig=settings.prefs.display.optimizationEnabled
+    ?storedDisplayConfig
+    :createInitialDisplayState()[page];
 
   return {
     hydrated:context.hydrated,
     config: context.getPageConfig(page),
-    displayConfig:context.getDisplayConfig(page),
+    displayConfig,
+    storedDisplayConfig,
     replacePageConfig: (config: Record<string, FrameEditorConfig>) => context.replacePageConfig(page, config),
     updateDisplayConfig:(patch:Partial<PageDisplayConfig>)=>context.updateDisplayConfig(page,patch),
     resetPage: () => context.resetPage(page),

@@ -21,13 +21,15 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
-import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
+import {ThemeRuntimeProvider,useThemeRuntime} from './src/theme/ThemeRuntime';
+import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, setNativeAppIcon, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
     <MarketRuntimeProvider>
       <AiNewsRuntimeProvider>
       <SettingsRuntimeProvider>
+      <ThemeRuntimeProvider>
       <MonitorSettingsRuntimeProvider>
       <WidgetSettingsRuntimeProvider>
       <BrokerSettingsRuntimeProvider>
@@ -40,6 +42,7 @@ export default function App() {
       </BrokerSettingsRuntimeProvider>
       </WidgetSettingsRuntimeProvider>
       </MonitorSettingsRuntimeProvider>
+      </ThemeRuntimeProvider>
       </SettingsRuntimeProvider>
       </AiNewsRuntimeProvider>
     </MarketRuntimeProvider>
@@ -52,11 +55,14 @@ function AppBody(){
   const aiNews=useAiNewsRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
+  const theme=useThemeRuntime();
   const monitorSettings=useMonitorSettingsRuntime();
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+
+  useEffect(()=>{if(theme.hydrated)void setNativeAppIcon(theme.state.appIconId);},[theme.hydrated,theme.state.appIconId]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -71,11 +77,14 @@ function AppBody(){
   },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config]);
 
   useEffect(()=>{
-    if(!market.hydrated)return;
-    void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
+    if(!market.hydrated||!widgetSettings.hydrated||!widgetSettings.config.enabled||!widgetSettings.config.forceRefreshOnTap)return;
+    const poll=()=>void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
       if(requestedAt>0)void market.refresh({force:true});
     });
-  },[market.hydrated,market.refresh]);
+    poll();
+    const timer=setInterval(poll,1000);
+    return()=>clearInterval(timer);
+  },[market.hydrated,market.refresh,widgetSettings.hydrated,widgetSettings.config.enabled,widgetSettings.config.forceRefreshOnTap]);
 
   useEffect(()=>{
     if(!market.hydrated||!monitorSettings.config.enabled)return;
@@ -104,7 +113,7 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!theme.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated){
     return <View style={styles.loading}>
       <ActivityIndicator size="large" color={colors.primary}/>
       <Text style={styles.loadingTitle}>TF Asset</Text>
@@ -112,10 +121,11 @@ function AppBody(){
     </View>;
   }
 
-  return <View style={styles.root}>
+  const tc=theme.state.palette;
+  return <View style={[styles.root,{backgroundColor:tc.background}]}>
     <View style={styles.screen}>{screen}</View>
-    <GlobalFloatingAi/>
-    {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
+    <GlobalFloatingAi activePage={active}/>
+    {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:tc.surface,borderTopColor:tc.border}]}>
       <View style={styles.nav}>
         {MAIN_PAGES.map(page=>{
           const selected=page.key===active;
@@ -126,8 +136,8 @@ function AppBody(){
             onPress={()=>setActive(page.key)}
             style={styles.navItem}
           >
-            <View style={[styles.navIcon,selected&&styles.navIconActive]}><Text style={[styles.navGlyph,selected&&styles.navGlyphActive]}>{glyph(page.key)}</Text></View>
-            <Text style={[styles.navText,selected&&styles.navTextSelected]}>{page.label}</Text>
+            <View style={[styles.navIcon,selected&&{backgroundColor:tc.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?tc.primary:tc.textSecondary}]}>{glyph(page.key)}</Text></View>
+            <Text style={[styles.navText,{color:selected?tc.primary:tc.textSecondary}]}>{page.label}</Text>
           </Pressable>;
         })}
       </View>
