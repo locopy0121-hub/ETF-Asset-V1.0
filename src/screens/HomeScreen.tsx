@@ -61,7 +61,6 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
       default:return {labels,values:rows.map(row=>row.marketValue)};
     }
   };
-  const chartCanvasHeight=Math.min(720,Math.max(220,...dashboardCharts.filter(chart=>chart.visible).map(chart=>chart.y+chart.height+8)));
   const moveDashboardChart=(id:string,x:number,y:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,x,y}:chart)});
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??5)));
   const newsHoldingsOnly=editor.displayConfig.newsHoldingsOnly??true;
@@ -70,18 +69,23 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
 
   return <>
     <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+      <View
+        style={styles.pageLayer}
+        onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
+      >
       <PageEditorStack pageKey="home" frames={[
         {key:'asset-dashboard',element:
           <FrameCard title="資產儀表板">
-            <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-            <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
-            <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
+            <View style={styles.dashboardTop}>
+              <View style={styles.dashboardSummary}>
+                <Text style={styles.heroLabel}>總資產（持股市值）</Text>
+                <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
+                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
+              </View>
+            </View>
             <View style={styles.metricRow}>
               {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
             </View>
-            {dashboardCharts.length?<View onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:chartCanvasHeight})} style={[styles.chartCanvas,{height:chartCanvasHeight}]}>
-              {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={{width:chartBounds.width,height:chartCanvasHeight}} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)}/>;})}
-            </View>:null}
           </FrameCard>
         },
         {key:'market-news',element:
@@ -138,6 +142,8 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
           </FrameCard>
         },
       ]}/>
+      {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)}/>;})}
+      </View>
     </PageShell>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} onClose={()=>setSettingsOpen(false)}/>
   </>;
@@ -150,8 +156,10 @@ const styles=StyleSheet.create({
   heroLabel:{color:colors.textSecondary,fontSize:12,fontWeight:'700'},
   heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums']},
   heroDelta:{fontSize:13,fontWeight:'800'},
+  pageLayer:{position:'relative'},
+  dashboardTop:{minHeight:150,justifyContent:'flex-start'},
+  dashboardSummary:{width:'48%',gap:6},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
-  chartCanvas:{position:'relative',overflow:'hidden',borderRadius:radius.lg,backgroundColor:colors.surfaceMuted},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},
   newsSymbol:{fontSize:10,fontWeight:'900',color:colors.primary,marginBottom:2},
