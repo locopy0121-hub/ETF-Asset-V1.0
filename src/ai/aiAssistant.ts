@@ -154,8 +154,7 @@ export async function answerAiQuestion(
   }
 
   if(options.networkSearchEnabled){
-    const networkQuery=symbol&&!directSymbol?symbol.symbol+' '+symbol.name+' '+question:question;
-    const rows=await searchNetwork(networkQuery);
+    const rows=await searchNetwork(question);
     if(rows.length){
       return {
         intent:'network',
