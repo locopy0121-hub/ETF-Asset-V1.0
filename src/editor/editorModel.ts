@@ -1,6 +1,6 @@
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import type { MainPageKey } from '../domain/pageRegistry';
-import type { HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
+import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingSortKey, type HoldingWallConfig, type HoldingWallFieldConfig, type HoldingWallFieldKey, type QuoteModuleStyle } from '../domain/uiModels';
 
 export type FrameLayout = 'standard' | 'compact' | 'dense';
 export type FrameAppearance = 'theme' | 'soft' | 'outline';
@@ -23,6 +23,7 @@ export type PageDisplayConfig = Readonly<{
   sortKey?: HoldingSortKey;
   portfolioViewMode?: PortfolioViewMode;
   holdingLayoutMode?: HoldingLayoutMode;
+  holdingWall?: HoldingWallConfig;
 }>;
 
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
@@ -45,7 +46,7 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list' },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG },
     ledger: {},
     portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
     dividend: {},
@@ -56,6 +57,52 @@ export function createInitialDisplayState(): PageDisplayState {
 const isFrameLayout=(v:unknown):v is FrameLayout=>v==='standard'||v==='compact'||v==='dense';
 const isFrameAppearance=(v:unknown):v is FrameAppearance=>v==='theme'||v==='soft'||v==='outline';
 const isFrameBehavior=(v:unknown):v is FrameBehavior=>v==='manual'||v==='auto'||v==='locked';
+
+const HOLDING_WALL_FIELDS:readonly HoldingWallFieldKey[]=['name','symbol','price','change','changePercent','pnl','roi','marketValue'];
+const clamp=(value:unknown,min:number,max:number,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
+const wallColor=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value:fallback;
+const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
+  const source=(raw&&typeof raw==='object'?raw:{}) as Partial<HoldingWallConfig>;
+  const header=(source.header??{}) as Partial<HoldingWallConfig['header']>;
+  const style=(source.style??{}) as Partial<HoldingWallConfig['style']>;
+  const rawFields=Array.isArray(source.fields)?source.fields:[];
+  const fieldMap=new Map(rawFields.map(field=>[(field as Partial<HoldingWallFieldConfig>).field,field as Partial<HoldingWallFieldConfig>]));
+  const fields=DEFAULT_HOLDING_WALL_CONFIG.fields.map(fallback=>{
+    const candidate=fieldMap.get(fallback.field);
+    return {
+      field:fallback.field,
+      enabled:candidate?.enabled??fallback.enabled,
+      label:typeof candidate?.label==='string'&&candidate.label.trim()?candidate.label.trim().slice(0,12):fallback.label,
+      fontScale:clamp(candidate?.fontScale,.7,1.8,fallback.fontScale),
+      align:candidate?.align==='center'||candidate?.align==='right'?candidate.align:'left',
+      useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
+    };
+  }).filter(field=>HOLDING_WALL_FIELDS.includes(field.field));
+  return {
+    header:{
+      visible:header.visible??DEFAULT_HOLDING_WALL_CONFIG.header.visible,
+      fontScale:clamp(header.fontScale,.7,1.8,DEFAULT_HOLDING_WALL_CONFIG.header.fontScale),
+      backgroundColor:wallColor(header.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.header.backgroundColor),
+      textColor:wallColor(header.textColor,DEFAULT_HOLDING_WALL_CONFIG.header.textColor),
+      borderColor:wallColor(header.borderColor,DEFAULT_HOLDING_WALL_CONFIG.header.borderColor),
+      borderWidth:clamp(header.borderWidth,0,4,DEFAULT_HOLDING_WALL_CONFIG.header.borderWidth),
+    },
+    fields,
+    style:{
+      backgroundColor:wallColor(style.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.style.backgroundColor),
+      textColor:wallColor(style.textColor,DEFAULT_HOLDING_WALL_CONFIG.style.textColor),
+      secondaryTextColor:wallColor(style.secondaryTextColor,DEFAULT_HOLDING_WALL_CONFIG.style.secondaryTextColor),
+      gainColor:wallColor(style.gainColor,DEFAULT_HOLDING_WALL_CONFIG.style.gainColor),
+      lossColor:wallColor(style.lossColor,DEFAULT_HOLDING_WALL_CONFIG.style.lossColor),
+      borderColor:wallColor(style.borderColor,DEFAULT_HOLDING_WALL_CONFIG.style.borderColor),
+      borderWidth:clamp(style.borderWidth,0,6,DEFAULT_HOLDING_WALL_CONFIG.style.borderWidth),
+      cornerRadius:clamp(style.cornerRadius,0,40,DEFAULT_HOLDING_WALL_CONFIG.style.cornerRadius),
+      padding:clamp(style.padding,0,32,DEFAULT_HOLDING_WALL_CONFIG.style.padding),
+      rowGap:clamp(style.rowGap,0,24,DEFAULT_HOLDING_WALL_CONFIG.style.rowGap),
+    },
+  };
+};
+
 
 export function normalizeEditorConfig(
   page: MainPageKey,
@@ -97,5 +144,6 @@ export function mergeDisplayState(raw:unknown):PageDisplayState{
   const defaults=createInitialDisplayState();
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
   const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
-  return {home:merge('home'),ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),settings:merge('settings')};
+  const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall)};
+  return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),settings:merge('settings')};
 }
