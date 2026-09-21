@@ -10,7 +10,9 @@ export type HoldingLayoutMode = 'list' | 'grid2' | 'grid3' | 'horizontal' | 'pag
 
 export type DashboardMetricKey = 'totalMarketValue'|'totalPnl'|'totalUnrealizedProfit'|'realizedNetPnL'|'totalDividendsReceived'|'cashBalance'|'holdingCount';
 export type DashboardChartStyle = 'line'|'area'|'bar'|'horizontalBar'|'stackedBar'|'pie'|'donut'|'allocation'|'pnlTrend'|'dividendTrend'|'investVsValue'|'holdingWeight'|'costVsPrice'|'roiTrend'|'priceK'|'volume';
-export type DashboardChartSource = 'allocation'|'pnl'|'dividend'|'roi'|'marketValue';
+export type DashboardChartSource = 'allocation'|'pnl'|'dividend'|'roi'|'marketValue'|'avgCost'|'price'|'shares'|'realizedPnl'|'comprehensivePnl'|'transactions';
+export type ChartBorderStyle='solid'|'dashed'|'dotted';
+export type TextAlign='left'|'center'|'right';
 export type DashboardChartConfig = Readonly<{
   id:string;
   title:string;
@@ -23,24 +25,69 @@ export type DashboardChartConfig = Readonly<{
   height:number;
   zIndex:number;
   locked:boolean;
+  aspectLocked:boolean;
   backgroundColor:string;
+  backgroundOpacity:number;
   textColor:string;
   accentColor:string;
+  gainColor:string;
+  lossColor:string;
+  flatColor:string;
   opacity:number;
+  contentOpacity:number;
+  borderColor:string;
+  borderWidth:number;
+  borderStyle:ChartBorderStyle;
+  borderRadius:number;
+  shadowEnabled:boolean;
+  shadowOpacity:number;
+  padding:number;
+  titleFontSize:number;
+  titleAlign:TextAlign;
+  lineWidth:number;
+  showPoints:boolean;
+  pointSize:number;
+  legendVisible:boolean;
+  xAxisVisible:boolean;
+  yAxisVisible:boolean;
+  gridVisible:boolean;
+  tooltipEnabled:boolean;
+  dataLabels:boolean;
+  crosshairEnabled:boolean;
+  pinchZoomEnabled:boolean;
+  panEnabled:boolean;
+  doubleTapReset:boolean;
+  rememberZoom:boolean;
+  touchThrough:boolean;
+  zoomMin:number;
+  zoomMax:number;
 }>;
 
 export const DEFAULT_DASHBOARD_METRICS:readonly DashboardMetricKey[]=['totalMarketValue','totalPnl','totalUnrealizedProfit','realizedNetPnL','totalDividendsReceived','cashBalance','holdingCount'];
 export const DEFAULT_DASHBOARD_CHARTS:readonly DashboardChartConfig[]=[{
-  id:'allocation-main',title:'資產配置',visible:true,style:'donut',source:'allocation',x:-1,y:48,width:160,height:140,zIndex:10,locked:false,
-  backgroundColor:'#FFFFFF',textColor:'#0F172A',accentColor:'#0066FF',opacity:1,
+  id:'allocation-main',title:'資產配置',visible:true,style:'donut',source:'allocation',x:-1,y:48,width:160,height:140,zIndex:10,locked:false,aspectLocked:false,
+  backgroundColor:'#FFFFFF',backgroundOpacity:1,textColor:'#0F172A',accentColor:'#0066FF',gainColor:'#10B981',lossColor:'#EF4444',flatColor:'#64748B',opacity:1,contentOpacity:1,
+  borderColor:'#0066FF',borderWidth:1,borderStyle:'solid',borderRadius:16,shadowEnabled:false,shadowOpacity:.18,padding:10,titleFontSize:12,titleAlign:'left',
+  lineWidth:2,showPoints:true,pointSize:4,legendVisible:true,xAxisVisible:true,yAxisVisible:true,gridVisible:true,tooltipEnabled:true,dataLabels:false,crosshairEnabled:true,
+  pinchZoomEnabled:true,panEnabled:true,doubleTapReset:true,rememberZoom:true,touchThrough:false,zoomMin:1,zoomMax:8,
 }];
 
 export type FrameEditorConfig = Readonly<{
-  visible: boolean;
-  order: number;
-  layout: FrameLayout;
-  appearance: FrameAppearance;
-  behavior: FrameBehavior;
+  visible:boolean;
+  order:number;
+  layout:FrameLayout;
+  appearance:FrameAppearance;
+  behavior:FrameBehavior;
+  titleFontSize:number;
+  titleColor:string;
+  titleAlign:TextAlign;
+  backgroundColor:string;
+  backgroundOpacity:number;
+  borderColor:string;
+  borderWidth:number;
+  borderRadius:number;
+  shadowEnabled:boolean;
+  shadowOpacity:number;
 }>;
 
 export type PageEditorState = Readonly<Record<MainPageKey, Readonly<Record<string, FrameEditorConfig>>>>;
@@ -62,7 +109,7 @@ export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
   Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => [
     frame.key,
-    { visible: true, order: index, layout: 'standard', appearance: 'theme', behavior: 'manual' } satisfies FrameEditorConfig,
+    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12} satisfies FrameEditorConfig,
   ]));
 
 export function createInitialEditorState(): PageEditorState {
@@ -147,7 +194,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
 
 const DASHBOARD_METRICS:readonly DashboardMetricKey[]=['totalMarketValue','totalPnl','totalUnrealizedProfit','realizedNetPnL','totalDividendsReceived','cashBalance','holdingCount'];
 const DASHBOARD_STYLES:readonly DashboardChartStyle[]=['line','area','bar','horizontalBar','stackedBar','pie','donut','allocation','pnlTrend','dividendTrend','investVsValue','holdingWeight','costVsPrice','roiTrend','priceK','volume'];
-const DASHBOARD_SOURCES:readonly DashboardChartSource[]=['allocation','pnl','dividend','roi','marketValue'];
+const DASHBOARD_SOURCES:readonly DashboardChartSource[]=['allocation','pnl','dividend','roi','marketValue','avgCost','price','shares','realizedPnl','comprehensivePnl','transactions'];
 const normalizeDashboardMetrics=(raw:unknown):readonly DashboardMetricKey[]=>{
   const values=Array.isArray(raw)?raw.filter((x):x is DashboardMetricKey=>DASHBOARD_METRICS.includes(x as DashboardMetricKey)):[];
   return values.length?Array.from(new Set(values)):DEFAULT_DASHBOARD_METRICS;
@@ -169,9 +216,20 @@ const normalizeDashboardCharts=(raw:unknown):readonly DashboardChartConfig[]=>{
       style:DASHBOARD_STYLES.includes(source.style as DashboardChartStyle)?source.style as DashboardChartStyle:fallback.style,
       source:DASHBOARD_SOURCES.includes(source.source as DashboardChartSource)?source.source as DashboardChartSource:fallback.source,
       x:nextX===-1?-1:clamp(nextX,0,1200,fallback.x),y:clamp(nextY,0,1600,fallback.y),width:clamp(nextWidth,140,900,fallback.width),height:clamp(nextHeight,120,700,fallback.height),
-      zIndex:clamp(source.zIndex,0,99,index+1),locked:source.locked===true,
-      backgroundColor:wallColor(source.backgroundColor,fallback.backgroundColor),textColor:wallColor(source.textColor,fallback.textColor),accentColor:wallColor(source.accentColor,fallback.accentColor),
-      opacity:clamp(source.opacity,.2,1,1),
+      zIndex:clamp(source.zIndex,0,99,index+1),locked:source.locked===true,aspectLocked:source.aspectLocked===true,
+      backgroundColor:wallColor(source.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(source.backgroundOpacity,0,1,fallback.backgroundOpacity),
+      textColor:wallColor(source.textColor,fallback.textColor),accentColor:wallColor(source.accentColor,fallback.accentColor),
+      gainColor:wallColor(source.gainColor,fallback.gainColor),lossColor:wallColor(source.lossColor,fallback.lossColor),flatColor:wallColor(source.flatColor,fallback.flatColor),
+      opacity:clamp(source.opacity,.05,1,fallback.opacity),contentOpacity:clamp(source.contentOpacity,.05,1,fallback.contentOpacity),
+      borderColor:wallColor(source.borderColor,fallback.borderColor),borderWidth:clamp(source.borderWidth,0,8,fallback.borderWidth),
+      borderStyle:source.borderStyle==='dashed'||source.borderStyle==='dotted'?source.borderStyle:'solid',borderRadius:clamp(source.borderRadius,0,48,fallback.borderRadius),
+      shadowEnabled:source.shadowEnabled===true,shadowOpacity:clamp(source.shadowOpacity,0,.8,fallback.shadowOpacity),padding:clamp(source.padding,0,32,fallback.padding),
+      titleFontSize:clamp(source.titleFontSize,8,28,fallback.titleFontSize),titleAlign:source.titleAlign==='center'||source.titleAlign==='right'?source.titleAlign:'left',
+      lineWidth:clamp(source.lineWidth,1,8,fallback.lineWidth),showPoints:source.showPoints!==false,pointSize:clamp(source.pointSize,2,12,fallback.pointSize),
+      legendVisible:source.legendVisible!==false,xAxisVisible:source.xAxisVisible!==false,yAxisVisible:source.yAxisVisible!==false,gridVisible:source.gridVisible!==false,
+      tooltipEnabled:source.tooltipEnabled!==false,dataLabels:source.dataLabels===true,crosshairEnabled:source.crosshairEnabled!==false,
+      pinchZoomEnabled:source.pinchZoomEnabled!==false,panEnabled:source.panEnabled!==false,doubleTapReset:source.doubleTapReset!==false,rememberZoom:source.rememberZoom!==false,
+      touchThrough:source.touchThrough===true,zoomMin:clamp(source.zoomMin,1,4,fallback.zoomMin),zoomMax:clamp(source.zoomMax,2,20,fallback.zoomMax),
     } satisfies DashboardChartConfig;
   });
   return normalized.length?normalized:DEFAULT_DASHBOARD_CHARTS;
@@ -191,7 +249,12 @@ export function normalizeEditorConfig(
       order: candidate.behavior === 'auto' ? index : (Number.isFinite(candidate.order)?candidate.order:fallback.order),
       layout: isFrameLayout(candidate.layout)?candidate.layout:fallback.layout,
       appearance: isFrameAppearance(candidate.appearance)?candidate.appearance:fallback.appearance,
-      behavior: isFrameBehavior(candidate.behavior)?candidate.behavior:fallback.behavior,
+      behavior:isFrameBehavior(candidate.behavior)?candidate.behavior:fallback.behavior,
+      titleFontSize:clamp(candidate.titleFontSize,10,32,fallback.titleFontSize),titleColor:wallColor(candidate.titleColor,fallback.titleColor),
+      titleAlign:candidate.titleAlign==='center'||candidate.titleAlign==='right'?candidate.titleAlign:'left',
+      backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
+      borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
+      shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
     };
   });
 
