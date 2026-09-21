@@ -22,12 +22,12 @@ assert.match(card,/groups\.header/,'card A header runtime missing');
 assert.match(card,/groups\.quote/,'card quote field runtime missing');
 assert.match(card,/groups\.footer/,'card footer field runtime missing');
 
-assert.match(wallEditor,/主體行情牆＝首頁大型持股卡片區/,'editor must identify the corrected main market wall');
+assert.match(wallEditor,/主體行情牆是獨立工具/,'editor must identify the independent main market wall tool');
 assert.match(wallEditor,/A 標題列（母）/,'main wall A editor missing');
 assert.match(wallEditor,/B 欄位（子）/,'main wall B editor missing');
-assert.match(wallEditor,/複製 Mini 設定至主體行情牆/,'Mini-to-main copy action missing');
-assert.match(wallEditor,/miniSource\.miniColumns/,'copy must use actual Mini column configuration');
-assert.match(wallEditor,/miniSource\.miniStyle/,'copy must use actual Mini style configuration');
+assert.match(wallEditor,/新建主體行情牆工具/,'independent main-wall create action missing');
+assert.ok(!wallEditor.includes('miniSource'),'main wall must not depend on Mini config');
+assert.ok(!wallEditor.includes('copyMini'),'legacy Mini copy action must stay removed');
 
 assert.match(modal,/frame\.key==='holding-quotes'/,'main wall editor must bind only to home holding-quotes frame');
 assert.match(modal,/displayDraft\.holdingWall/,'main wall settings must stay in modal draft until apply');
