@@ -1,19 +1,26 @@
 const fs=require('fs');
 const assert=require('assert');
 
-const palettes=fs.readFileSync('src/theme/displayPalettes.ts','utf8');
+const picker=fs.readFileSync('src/components/ColorPalettePicker.tsx','utf8');
 const widget=fs.readFileSync('src/components/widget/WidgetControlPanel.tsx','utf8');
 const monitor=fs.readFileSync('src/components/monitor/MonitorControlPanel.tsx','utf8');
+const wall=fs.readFileSync('src/components/HoldingMarketWallEditor.tsx','utf8');
+const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
 
-for(const key of ['light','dark','glass','blue','warm']) assert.ok(palettes.includes("key:'"+key+"'"),'palette missing '+key);
-for(const token of ['backgroundColor','textColor','secondaryTextColor','gainColor','lossColor','neutralColor','borderColor','backgroundOpacity']) assert.ok(palettes.includes(token),'palette token missing '+token);
-assert.match(widget,/全局調色盤/,'Widget global palette UI missing');
-assert.match(widget,/DISPLAY_PALETTES\.map/,'Widget palette selector missing');
-assert.match(monitor,/全局調色盤/,'Monitor global palette UI missing');
-assert.match(monitor,/DISPLAY_PALETTES\.map/,'Monitor palette selector missing');
-assert.match(monitor,/normalStyle:/,'Monitor palette must update Normal');
-assert.match(monitor,/miniStyle:/,'Monitor palette must update Mini');
-assert.match(monitor,/miniHeader:/,'Monitor palette must update Mini header');
-assert.match(monitor,/B 欄位結構與位置不受影響/,'Palette must not mutate B layout');
+assert.match(picker,/調色盤直接選色/,'shared palette picker missing');
+assert.match(picker,/色相/,'palette picker must expose hue');
+assert.match(picker,/飽和/,'palette picker must expose saturation');
+assert.match(picker,/明度/,'palette picker must expose lightness');
+for(const source of [widget,monitor,wall,settings]) assert.match(source,/ColorPalettePicker/,'color setting must use shared palette picker');
+for(const source of [widget,monitor,wall]){
+  assert.ok(!/autoCapitalize="characters"/.test(source),'manual HEX input must not remain');
+  assert.ok(!/const\s+palette\s*=/.test(source),'fixed swatch palette must not remain');
+}
+assert.match(widget,/profitColorFields/,'Widget must expose per-field profit color support');
+assert.match(monitor,/套用損益色/,'Monitor field color settings must retain profit color mode');
+assert.match(wall,/套用損益色/,'Holding wall fields must retain profit color mode');
+assert.match(settings,/gainColor/,'Global settings must persist gain color');
+assert.match(settings,/lossColor/,'Global settings must persist loss color');
+assert.match(settings,/neutralColor/,'Global settings must persist neutral color');
 
-console.log('V1.0.7 GLOBAL PALETTE: PASS');
+console.log('GLOBAL PALETTE + PROFIT COLOR CONTRACT: PASS');
