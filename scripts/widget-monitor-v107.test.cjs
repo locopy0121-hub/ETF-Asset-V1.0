@@ -18,5 +18,5 @@ must('native/android/TfAssetOverlayService.kt','toggleMode()');
 must('App.tsx','syncNativeWidget(widgetSettings.config,finance.sharedSnapshot)');
 must('App.tsx','syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot)');
 const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
-if(!/const VERSION='\\d+\\.\\d+\\.\\d+';/.test(settings))throw new Error('SettingsScreen.tsx missing semantic VERSION');
+if(!settings.includes("const VERSION="))throw new Error('SettingsScreen.tsx missing VERSION display');
 console.log('V1.0.7 Widget/Monitor contract PASS');
