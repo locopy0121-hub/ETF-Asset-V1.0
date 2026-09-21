@@ -1,6 +1,7 @@
 import type {AiNewsItem} from './AiNewsRuntime';
 import {formatDividendEvent,refreshHoldingDividendEvents,type HoldingDividendEvent} from './dividendAssistant';
 import {calculateLedgerCashFlow,type CanonicalLedgerEntry} from '../finance/canonicalLedger';
+import {formatNetworkResults,searchNetwork} from './networkSearch';
 
 export type AiAssistantAction=Readonly<{
   id:string;
@@ -10,9 +11,16 @@ export type AiAssistantAction=Readonly<{
 }>;
 
 export type AiAssistantAnswer=Readonly<{
-  intent:'capabilities'|'news'|'dividend-update'|'dividend'|'performance'|'market-value'|'holdings'|'holding-detail'|'help';
+  intent:'capabilities'|'news'|'dividend-update'|'dividend'|'performance'|'market-value'|'holdings'|'holding-detail'|'network'|'help';
   text:string;
   actions?:readonly AiAssistantAction[];
+}>;
+
+export type AiAssistantOptions=Readonly<{
+  networkSearchEnabled?:boolean;
+  showSources?:boolean;
+  showDates?:boolean;
+  responseDetail?:'concise'|'balanced'|'detailed';
 }>;
 
 type HoldingLike=Readonly<{
@@ -56,6 +64,7 @@ export async function answerAiQuestion(
   portfolio:PortfolioLike,
   newsItems:readonly AiNewsItem[],
   entries:readonly CanonicalLedgerEntry[]=[],
+  options:AiAssistantOptions={},
 ):Promise<AiAssistantAnswer>{
   const q=normalize(question);
   const symbol=holdings.find(h=>q.includes(h.symbol.toLowerCase())||(Boolean(h.name)&&q.includes(h.name.toLowerCase())));
@@ -63,7 +72,7 @@ export async function answerAiQuestion(
   if(includesAny(q,['你可以做什麼','可以做什麼','會做什麼','有什麼功能','能做什麼','幫什麼'])){
     return {
       intent:'capabilities',
-      text:'我可以直接使用目前 App 的持股、帳務、股息與行情資料回答問題，也能整理持股新聞。你可以問持股市值、損益、報酬、年度／本月股息、某檔 ETF 資訊，或輸入「更新持股股息日」掃描證交所最新配息事件並找出尚未登錄的紀錄。需要寫入帳務的動作，我會先列出內容並提供「＋新增」，不會自行寫入。',
+      text:'我可以直接使用目前 App 的持股、帳務、股息與行情資料回答問題，也能整理持股新聞'+(options.networkSearchEnabled?'，以及依你的問題進行一般網路搜尋。':'。')+'你可以問持股市值、損益、報酬、年度／本月股息、某檔 ETF 資訊，或輸入「更新持股股息日」掃描證交所最新配息事件並找出尚未登錄的紀錄。需要寫入帳務的動作，我會先列出內容並提供「＋新增」，不會自行寫入。',
     };
   }
 
@@ -138,8 +147,23 @@ export async function answerAiQuestion(
     };
   }
 
+  if(options.networkSearchEnabled){
+    const rows=await searchNetwork(question);
+    if(rows.length){
+      return {
+        intent:'network',
+        text:'網路搜尋結果：\n\n'+formatNetworkResults(rows,{
+          showSources:options.showSources,
+          showDates:options.showDates,
+          detail:options.responseDetail,
+        }),
+      };
+    }
+    return {intent:'network',text:'已嘗試一般網路搜尋，但目前沒有取得可用結果。你可以換一個更明確的關鍵字再試一次。'};
+  }
+
   return {
     intent:'help',
-    text:'我沒有把這句話判斷成要查新聞。你可以直接問「目前持股市值？」「0050 損益？」「今年股息多少？」「更新持股股息日」或「最近持股有什麼新聞？」。',
+    text:'這個問題需要一般網路搜尋或更明確的 App 資料條件。你可以到「設定 → 系統設定 → AI 助理」開啟一般網路搜尋，或直接問「目前持股市值？」「0050 損益？」「今年股息多少？」「更新持股股息日」或「最近持股有什麼新聞？」。',
   };
 }
