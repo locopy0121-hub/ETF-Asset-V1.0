@@ -41,6 +41,6 @@ assert.match(nativeModule,/consumeWidgetForceRefreshRequest/,'Native module miss
 assert.match(bridge,/consumeNativeWidgetForceRefreshRequest/,'JS native bridge missing force refresh consume method');
 assert.match(app,/market\.refresh\(\{force:true\}\)/,'App must force market refresh after Widget request');
 
-for(const locked of ['src/utils/etfCalculators.ts','src/finance/canonicalLedger.ts','CORE_LOCK.md']) assert.ok(fs.existsSync(locked),locked+' must remain present');
+for(const locked of ['src/utils/etfCalculators.ts','src/finance/canonicalLedger.ts','docs/finance/CORE_LOCK.md']) assert.ok(fs.existsSync(locked),locked+' must remain present');
 
 console.log('V1.0.14 refresh + palette + Widget quote wall contract PASS');
