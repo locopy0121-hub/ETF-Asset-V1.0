@@ -45,8 +45,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.12';
-const BUILD='10012';
+const VERSION='1.0.13';
+const BUILD='10013';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -322,7 +322,7 @@ export function SettingsScreen(){
         <StatusRow label="設定模式" value={monitor.config.mode==='mini'?'Mini':'Normal'}/>
         <StatusRow label="Native 實際模式" value={nativeMonitorStatus?.mode==='mini'?'Mini':nativeMonitorStatus?.mode==='normal'?'Normal':'--'}/>
         <StatusRow label="Mini 尺寸" value={monitor.config.miniLayout.width+' × '+monitor.config.miniLayout.height}/>
-        <Text style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。Mini 固定採清單顯示，列數不設上限；內容超過可視高度時由浮窗內部垂直滑動。</Text>
+        <Text style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。Mini 固定採清單顯示，列數不設上限；內容超過可視高度時由浮窗內部垂直滑動。下方狀態列已納入 Mini 編輯器，可調項目、順序、欄數、字體與配色。</Text>
       </Panel>:null}
       <ChildButton label="共用模板" summary={monitor.config.template} active={monitorPanel==='template'} onPress={()=>setMonitorPanel(monitorPanel==='template'?null:'template')}/>
       {monitorPanel==='template'?<Panel title="共用模板">
@@ -373,9 +373,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.0.11 Monitor 行情牆與 Mini 狀態列" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.11 更新資訊">
-        <Text style={styles.infoText}>Monitor 主體行情牆改為共用首頁行情牆欄位契約與 A/B 編輯邏輯；Mini 左上新增呼吸燈，底部固定顯示總資產、市值、總損益。所有 Monitor 數據持續只讀 Shared Snapshot，清單超出高度時僅在浮窗內捲動。</Text>
+      <ChildButton label="更新資訊" summary="V1.0.13 Monitor 框架與 Mini 狀態列編輯" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      {appPanel==='updates'?<Panel title="V1.0.13 更新資訊">
+        <Text style={styles.infoText}>Monitor 主體行情牆新增獨立框架設定，可控制 1～4 欄並排與水平／垂直間距，卡片內仍沿用首頁行情牆 A/B 欄位契約。Mini 下方狀態列新增完整編輯入口，可選擇總資產、市值、總損益等項目並調整順序、欄數、字體與配色。所有 Monitor 數據持續只讀 Shared Snapshot。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
