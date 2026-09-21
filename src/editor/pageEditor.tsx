@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
 
 import type { MainPageKey } from '../domain/pageRegistry';
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import {
   createInitialDisplayState,
   createInitialEditorState,
@@ -78,12 +79,18 @@ export function PageEditorProvider({ children }: PropsWithChildren) {
 
 export function usePageEditor(page: MainPageKey) {
   const context = useContext(EditorContext);
+  const settings = useSettingsRuntime();
   if (!context) throw new Error('usePageEditor must be used inside PageEditorProvider');
+  const storedDisplayConfig=context.getDisplayConfig(page);
+  const displayConfig=settings.prefs.display.optimizationEnabled
+    ?storedDisplayConfig
+    :createInitialDisplayState()[page];
 
   return {
     hydrated:context.hydrated,
     config: context.getPageConfig(page),
-    displayConfig:context.getDisplayConfig(page),
+    displayConfig,
+    storedDisplayConfig,
     replacePageConfig: (config: Record<string, FrameEditorConfig>) => context.replacePageConfig(page, config),
     updateDisplayConfig:(patch:Partial<PageDisplayConfig>)=>context.updateDisplayConfig(page,patch),
     resetPage: () => context.resetPage(page),
