@@ -31,9 +31,16 @@ const clean=(value:unknown)=>decodeHtml(String(value??''))
   .replace(/\s+/g,' ')
   .trim();
 
-const unique=(rows:readonly NetworkSearchResult[])=>Array.from(
-  new Map(rows.filter(row=>row.title&&/^https?:\/\//i.test(row.url)).map(row=>[row.url.toLowerCase(),row])).values(),
-);
+const unique=(rows:readonly NetworkSearchResult[])=>{
+  const seen=new Set<string>();
+  return rows.filter(row=>{
+    if(!row.title||!/^https?:\/\//i.test(row.url))return false;
+    const key=row.url.toLowerCase();
+    if(seen.has(key))return false;
+    seen.add(key);
+    return true;
+  });
+};
 
 function unwrapDuckUrl(raw:string){
   const decoded=decodeHtml(raw.trim());
