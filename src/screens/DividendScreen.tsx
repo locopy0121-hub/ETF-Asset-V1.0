@@ -9,6 +9,7 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import { usePageEditor } from '../editor/pageEditor';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
@@ -22,6 +23,18 @@ const nowIso=()=>new Date().toISOString().slice(0,10);
 export function DividendScreen() {
   const finance=useFinance();
   const aiNews=useAiNewsRuntime();
+  const editor=usePageEditor('dividend');
+  const display=editor.displayConfig;
+  const dividendAiVisible=display.dividendAiVisible??true;
+  const calendarCellHeight=display.dividendCalendarCellHeight??45;
+  const calendarDayFontSize=display.dividendCalendarDayFontSize??12;
+  const calendarDotSize=display.dividendCalendarDotSize??5;
+  const calendarWeekdayVisible=display.dividendCalendarWeekdayVisible??true;
+  const calendarEventDotsVisible=display.dividendCalendarEventDotsVisible??true;
+  const calendarLegendVisible=display.dividendCalendarLegendVisible??true;
+  const dividendListRowPadding=display.dividendListRowPadding??11;
+  const dividendTrendHeight=display.dividendTrendHeight??108;
+  const dividendTrendBarWidthPct=display.dividendTrendBarWidthPct??70;
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [month,setMonth]=useState(nowIso().slice(0,7));
   const today=nowIso();
@@ -62,7 +75,7 @@ export function DividendScreen() {
               <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
               <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
             </View>
-            <View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>
+            {dividendAiVisible?<View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>:null}
           </FrameCard>
         },
         {key:'dividend-calendar',element:
@@ -72,19 +85,19 @@ export function DividendScreen() {
               <Text style={styles.month}>{month.replace('-',' 年 ')} 月</Text>
               <Pressable onPress={()=>shiftMonth(1)}><Text style={styles.arrow}>›</Text></Pressable>
             </View>
-            <View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>
+            {calendarWeekdayVisible?<View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>:null}
             <View style={styles.grid}>{Array.from({length:calendarCells},(_,i)=>{
               const day=i-firstWeekday+1;
               const valid=day>=1&&day<=daysInMonth;
               const event=valid?events.get(day):undefined;
               const status=event?(event.date<today?'已入帳':event.date===today?'待入帳':'預估'):null;
               const statusColor=status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:status?colors.primary:'transparent';
-              return <View key={i} style={[styles.day,event&&styles.eventDay]}>
-                <Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>
-                {event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}
+              return <View key={i} style={[styles.day,{height:calendarCellHeight},event&&styles.eventDay]}>
+                <Text style={[styles.dayText,{fontSize:calendarDayFontSize},!valid&&styles.dayGhost]}>{valid?day:''}</Text>
+                {calendarEventDotsVisible&&event?<View style={[styles.eventDot,{width:calendarDotSize,height:calendarDotSize,borderRadius:calendarDotSize/2,backgroundColor:statusColor}]}/>:null}
               </View>;
             })}</View>
-            <View style={styles.legend}><Legend color={colors.primary} label="預估"/><Legend color={colors.warning} label="待入帳"/><Legend color={colors.gain} label="已入帳"/></View>
+            {calendarLegendVisible?<View style={styles.legend}><Legend color={colors.primary} label="預估"/><Legend color={colors.warning} label="待入帳"/><Legend color={colors.gain} label="已入帳"/></View>:null}
           </FrameCard>
         },
         {key:'dividend-list',element:
@@ -92,7 +105,7 @@ export function DividendScreen() {
             {monthRows.length?monthRows.map(row=>{
               const amount=calculateLedgerCashFlow(row);
               const status=row.date<today?'已入帳':row.date===today?'待入帳':'預估';
-              return <View key={row.id} style={styles.dividendRow}>
+              return <View key={row.id} style={[styles.dividendRow,{paddingVertical:dividendListRowPadding}]}>
                 <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
                 <View style={{flex:1}}>
                   <Text style={styles.stockName}>{row.name}</Text>
@@ -108,11 +121,11 @@ export function DividendScreen() {
         },
         {key:'annual-trend',element:
           <FrameCard title="年度趨勢">
-            <View style={styles.bars}>{monthTotals.map((amount,index)=>{
+            <View style={[styles.bars,{height:dividendTrendHeight}]}>{monthTotals.map((amount,index)=>{
               const key=year+'-'+String(index+1).padStart(2,'0');
               const h=Math.max(3,Math.round(amount/maxMonth*82));
               return <Pressable key={key} onPress={()=>setMonth(key)} style={styles.barCol}>
-                <View style={[styles.bar,{height:h}]}/><Text style={styles.barLabel}>{index+1}</Text>
+                <View style={[styles.bar,{height:h,width:`${dividendTrendBarWidthPct}%`}]}/><Text style={styles.barLabel}>{index+1}</Text>
               </Pressable>;
             })}</View>
           </FrameCard>
