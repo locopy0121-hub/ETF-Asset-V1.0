@@ -64,8 +64,11 @@ assert.match(frameCard,/FrameLayout/);
 assert.match(frameCard,/FrameAppearance/);
 assert.match(frameCard,/cardCompact/);
 assert.match(frameCard,/cardDense/);
-assert.match(frameCard,/cardSoft/);
-assert.match(frameCard,/cardOutline/);
+assert.match(frameCard,/appearance === 'soft'/,'soft appearance runtime must remain available');
+assert.match(frameCard,/surfaceMuted/,'soft appearance must consume the theme muted surface');
+assert.match(frameCard,/appearance === 'outline'/,'outline appearance runtime must remain available');
+assert.match(frameCard,/borderWidth:2/,'outline appearance must retain emphasized border width');
+assert.match(frameCard,/theme\.primary/,'outline appearance must consume the theme primary color');
 
 const stack = fs.readFileSync('src/components/PageEditorStack.tsx','utf8');
 assert.match(stack,/filter\(item => config\[item\.key\]\?\.visible !== false\)/,'runtime must consume visibility');
