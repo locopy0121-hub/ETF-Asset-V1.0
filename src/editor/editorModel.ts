@@ -7,6 +7,9 @@ export type FrameAppearance = 'theme' | 'soft' | 'outline';
 export type FrameBehavior = 'manual' | 'auto' | 'locked';
 export type PortfolioViewMode = 'list' | 'wall';
 export type HoldingLayoutMode = 'list' | 'grid2' | 'grid3' | 'horizontal' | 'paged2';
+export type HoldingColumnCount = 1|2|3;
+export type HoldingScrollMode = 'none'|'horizontal';
+export type HoldingPrimaryField = 'price'|'marketValue'|'pnl'|'roi';
 
 export type DashboardMetricKey = 'totalMarketValue'|'totalPnl'|'totalUnrealizedProfit'|'realizedNetPnL'|'totalDividendsReceived'|'cashBalance'|'holdingCount';
 export type DashboardChartStyle = 'line'|'area'|'bar'|'horizontalBar'|'stackedBar'|'pie'|'donut'|'allocation'|'pnlTrend'|'dividendTrend'|'investVsValue'|'holdingWeight'|'costVsPrice'|'roiTrend'|'priceK'|'volume';
@@ -97,6 +100,9 @@ export type PageDisplayConfig = Readonly<{
   sortKey?: HoldingSortKey;
   portfolioViewMode?: PortfolioViewMode;
   holdingLayoutMode?: HoldingLayoutMode;
+  holdingColumns?: HoldingColumnCount;
+  holdingScrollMode?: HoldingScrollMode;
+  holdingPrimaryField?: HoldingPrimaryField;
   holdingWall?: HoldingWallConfig;
   newsVisibleCount?: number;
   newsHoldingsOnly?: boolean;
@@ -125,9 +131,9 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingColumns:2, holdingScrollMode:'none', holdingPrimaryField:'price', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
     ledger: {},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingColumns:1, holdingScrollMode:'none', holdingPrimaryField:'price' },
     dividend: {},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
@@ -277,10 +283,40 @@ export function mergeEditorState(raw:unknown):PageEditorState{
   };
 }
 
+const legacyHoldingLayout=(mode:HoldingLayoutMode|undefined):Readonly<{columns:HoldingColumnCount;scrollMode:HoldingScrollMode}>=>{
+  if(mode==='grid2')return {columns:2,scrollMode:'none'};
+  if(mode==='grid3')return {columns:3,scrollMode:'none'};
+  if(mode==='horizontal')return {columns:1,scrollMode:'horizontal'};
+  if(mode==='paged2')return {columns:2,scrollMode:'horizontal'};
+  return {columns:1,scrollMode:'none'};
+};
+const isQuoteStyle=(value:unknown):value is QuoteModuleStyle=>value==='quote'||value==='chart'||value==='compact'||value==='advanced';
+const normalizeHoldingColumns=(value:unknown,fallback:HoldingColumnCount):HoldingColumnCount=>value===2||value===3?value:value===1?1:fallback;
+const normalizeHoldingScrollMode=(value:unknown,fallback:HoldingScrollMode):HoldingScrollMode=>value==='horizontal'?'horizontal':value==='none'?'none':fallback;
+const normalizeHoldingPrimaryField=(value:unknown,fallback:HoldingPrimaryField):HoldingPrimaryField=>value==='marketValue'||value==='pnl'||value==='roi'||value==='price'?value:fallback;
+
+export function normalizePageDisplayConfig(page:MainPageKey,raw:PageDisplayConfig):PageDisplayConfig{
+  const defaults=createInitialDisplayState()[page];
+  const merged={...defaults,...raw};
+  if(page!=='home'&&page!=='portfolio')return merged;
+  const legacy=legacyHoldingLayout(raw.holdingLayoutMode);
+  const quoteStyle=isQuoteStyle(merged.quoteStyle)?merged.quoteStyle:'quote';
+  const defaultColumns=(defaults.holdingColumns??legacy.columns) as HoldingColumnCount;
+  const defaultScroll=(defaults.holdingScrollMode??legacy.scrollMode) as HoldingScrollMode;
+  const requestedColumns=normalizeHoldingColumns(raw.holdingColumns,raw.holdingLayoutMode?legacy.columns:defaultColumns);
+  const holdingColumns:HoldingColumnCount=quoteStyle==='chart'?1:requestedColumns;
+  const holdingScrollMode=normalizeHoldingScrollMode(raw.holdingScrollMode,raw.holdingLayoutMode?legacy.scrollMode:defaultScroll);
+  const holdingPrimaryField=normalizeHoldingPrimaryField(raw.holdingPrimaryField,(defaults.holdingPrimaryField??'price') as HoldingPrimaryField);
+  const holdingLayoutMode:HoldingLayoutMode=holdingScrollMode==='horizontal'
+    ?(holdingColumns===2?'paged2':'horizontal')
+    :(holdingColumns===3?'grid3':holdingColumns===2?'grid2':'list');
+  return {...merged,quoteStyle,holdingColumns,holdingScrollMode,holdingPrimaryField,holdingLayoutMode};
+}
+
 export function mergeDisplayState(raw:unknown):PageDisplayState{
   const defaults=createInitialDisplayState();
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
-  const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
+  const merge=(page:MainPageKey):PageDisplayConfig=>normalizePageDisplayConfig(page,{...defaults[page],...(source[page]??{})});
   const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts)};
   return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }
