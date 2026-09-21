@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FloatingDashboardChart } from '../components/FloatingDashboardChart';
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
@@ -11,6 +12,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { useFinance } from '../finance/FinanceRuntime';
@@ -25,6 +27,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const market=useMarketRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
+  const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
   const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
   const sortKey=(editor.displayConfig.sortKey??'pnl') as HoldingSortKey;
@@ -35,6 +38,31 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
   const portfolio=finance.snapshot.portfolio;
   const totalDividend=portfolio.totalDividendsReceived;
+  const dashboardMetrics=(editor.displayConfig.dashboardMetrics??[]) as readonly DashboardMetricKey[];
+  const dashboardCharts=(editor.displayConfig.dashboardCharts??[]) as readonly DashboardChartConfig[];
+  const dashboardMetricInfo:Record<DashboardMetricKey,{label:string;value:number;caption:string;tone?:'gain'|'loss'}>={
+    totalMarketValue:{label:'持股市值',value:portfolio.totalMarketValue,caption:'Finance Core'},
+    totalPnl:{label:'含息總損益',value:portfolio.totalPnl,caption:'含息',tone:portfolio.totalPnl>=0?'gain':'loss'},
+    totalUnrealizedProfit:{label:'未實現損益',value:portfolio.totalUnrealizedProfit,caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain':'loss'},
+    realizedNetPnL:{label:'已實現損益',value:portfolio.realizedNetPnL,caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain':'loss'},
+    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'V3.7.8'},
+    cashBalance:{label:'現金',value:finance.snapshot.cashBalance,caption:'Ledger'},
+    holdingCount:{label:'持股檔數',value:finance.holdings.length,caption:'檔'},
+  };
+  const chartSeries=(chart:DashboardChartConfig)=>{
+    const rows=finance.holdings.slice(0,8);
+    const labels=rows.map(row=>row.symbol);
+    switch(chart.source){
+      case 'pnl':return {labels,values:rows.map(row=>row.pnl)};
+      case 'dividend':return {labels,values:rows.map(row=>row.cumulativeDividend)};
+      case 'roi':return {labels,values:rows.map(row=>row.roi)};
+      case 'marketValue':
+      case 'allocation':
+      default:return {labels,values:rows.map(row=>row.marketValue)};
+    }
+  };
+  const chartCanvasHeight=Math.min(720,Math.max(220,...dashboardCharts.filter(chart=>chart.visible).map(chart=>chart.y+chart.height+8)));
+  const moveDashboardChart=(id:string,x:number,y:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,x,y}:chart)});
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??5)));
   const newsHoldingsOnly=editor.displayConfig.newsHoldingsOnly??true;
   const holdingSymbols=useMemo(()=>new Set(finance.holdings.map(x=>x.symbol.toUpperCase())),[finance.holdings]);
@@ -49,10 +77,11 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
             <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
             <View style={styles.metricRow}>
-              <MetricTile label="持股市值" value={money(portfolio.totalMarketValue)} caption="毛市值"/>
-              <MetricTile label="現金" value={money(finance.snapshot.cashBalance)} caption="Ledger"/>
-              <MetricTile label="累積淨股息" value={money(totalDividend)} caption="V3.7.8"/>
+              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} tone={item.tone}/>;})}
             </View>
+            {dashboardCharts.length?<View onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:chartCanvasHeight})} style={[styles.chartCanvas,{height:chartCanvasHeight}]}>
+              {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={{width:chartBounds.width,height:chartCanvasHeight}} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)}/>;})}
+            </View>:null}
           </FrameCard>
         },
         {key:'market-news',element:
@@ -122,6 +151,7 @@ const styles=StyleSheet.create({
   heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums']},
   heroDelta:{fontSize:13,fontWeight:'800'},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
+  chartCanvas:{position:'relative',overflow:'hidden',borderRadius:radius.lg,backgroundColor:colors.surfaceMuted},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},
   newsSymbol:{fontSize:10,fontWeight:'900',color:colors.primary,marginBottom:2},
