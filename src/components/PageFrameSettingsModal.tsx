@@ -114,7 +114,7 @@ export function PageFrameSettingsModal({
                 <EditorRow title="顯示內容" subtitle={value.visible?'此框架顯示':'此框架隱藏'}><Switch value={value.visible} disabled={locked} onValueChange={visibleValue=>patch(frame.key,{visible:visibleValue})} trackColor={{true:colors.primary}}/></EditorRow>
                 <EditorRow title="版面" subtitle="同類框架使用同一套版面工具"><ChoiceGroup disabled={locked} items={layouts} value={value.layout} onChange={layout=>patch(frame.key,{layout})}/></EditorRow>
                 <EditorRow title="外觀模式" subtitle="快速套用基本框架風格"><ChoiceGroup disabled={locked} items={appearances} value={value.appearance} onChange={appearance=>patch(frame.key,{appearance})}/></EditorRow>
-                <EditorRow title="排序／行為" subtitle="鎖定時禁止框架修改"><ChoiceGroup items={behaviors} value={value.behavior} onChange={behavior=>setBehavior(frame.key,behavior)}/></EditorRow>
+                <EditorRow title="排序 / 行為" subtitle="鎖定時禁止框架修改"><ChoiceGroup items={behaviors} value={value.behavior} onChange={behavior=>setBehavior(frame.key,behavior)}/></EditorRow>
                 <View style={styles.orderRow}>
                   <Pressable disabled={value.behavior!=='manual'||index===0} onPress={()=>move(frame.key,-1)} style={[styles.orderButton,(value.behavior!=='manual'||index===0)&&styles.disabled]}><Text style={styles.orderText}>↑ 上移</Text></Pressable>
                   <Text style={styles.orderIndex}>順位 {index+1}</Text>
