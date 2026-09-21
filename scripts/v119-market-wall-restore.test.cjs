@@ -6,17 +6,19 @@ const collection=fs.readFileSync('src/components/HoldingQuoteCollection.tsx','ut
 const card=fs.readFileSync('src/components/HoldingQuoteModule.tsx','utf8');
 const wall=fs.readFileSync('src/components/HoldingMarketWallEditor.tsx','utf8');
 
-assert.match(model,/holdingLayoutMode:'grid2'/,'home normal baseline must be two columns');
+assert.match(model,/holdingLayoutMode:'grid2'/,'home normal baseline must preserve two-column compatibility');
+assert.match(model,/holdingColumns:2/,'home composable baseline must remain two columns');
 assert.match(model,/legacyWrongWall/,'exact wrong default must migrate back to normal wall');
 assert.ok(ui.indexOf("field:'symbol'")<ui.indexOf("field:'name'"),'normal card header must show symbol before name');
 assert.match(ui,/field:'change',enabled:false/,'pure quote baseline must hide absolute change');
 assert.match(ui,/field:'changePercent',enabled:true/,'pure quote baseline must show percent change');
 assert.match(ui,/field:'roi',enabled:false/,'pure quote baseline must not crowd card with ROI');
 assert.match(ui,/field:'pnl',enabled:true,label:'損益'/,'pure quote baseline must show PnL');
-assert.match(ui,/borderWidth:1/,'normal card header divider must be restored');
-assert.match(home,/HoldingQuoteCollection rows=\{sorted\}/,'home must feed the complete sorted holdings collection');
+assert.match(ui,/header:\{visible:true,fontScale:\.82,[^}]*borderWidth:0\}/,'holding header must use the newer downweighted visual baseline');
+assert.match(home,/rows=\{sorted\}/,'home must feed the complete sorted holdings collection');
 assert.ok(!/sorted\.slice\(/.test(home),'home must never cap holdings');
-assert.match(collection,/rows\.map\(/,'all holdings must render');
+assert.match(collection,/data=\{\[\.\.\.rows\]\}/,'all holdings must feed the virtualized list');
+assert.match(collection,/for\(let i=0;i<rows\.length;i\+=effectiveColumns\)/,'horizontal pages must cover the full set');
 assert.ok(!wall.includes('miniSource')&&!wall.includes('copyMini'),'main wall must remain independent from Mini');
 assert.match(card,/groups\.header/);assert.match(card,/groups\.quote/);assert.match(card,/groups\.footer/);
 console.log('V1.0.19 market wall restore gate: PASS');
