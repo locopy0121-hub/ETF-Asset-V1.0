@@ -20,7 +20,7 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
-import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
+import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
@@ -57,11 +57,12 @@ function AppBody(){
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
 
+  const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
     if(!finance.hydrated)return;
     aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
-    if(aiNews.lastUpdatedAt==null)void aiNews.refresh();
-  },[finance.hydrated,finance.holdings,aiNews.setTrackedHoldings,aiNews.lastUpdatedAt]);
+    void aiNews.refresh();
+  },[finance.hydrated,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
@@ -86,8 +87,6 @@ function AppBody(){
   useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated)return;
     void syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot);
-    if(monitorSettings.config.enabled)void startNativeMonitor();
-    else void stopNativeMonitor();
   },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config]);
 
   const openHolding=(holding:HoldingQuote)=>setDetail(holding);
