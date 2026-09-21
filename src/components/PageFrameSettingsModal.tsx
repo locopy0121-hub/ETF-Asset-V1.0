@@ -203,9 +203,7 @@ function PortfolioToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
       <HoldingDisplayEditor value={value} onChange={onChange}/>
       <HoldingMarketWallEditor value={value.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>onChange({holdingWall})}/>
     </>}
-    <AccordionGroup title="持股試算" subtitle="試算視窗尺寸與顯示內容" expanded={false} onPress={()=>{}}>
-      <></>
-    </AccordionGroup>
+    <Text style={styles.dashboardTitle}>持股試算</Text>
     <EditorRow title="試算視窗高度" subtitle={`${Math.round(value.calculatorPanelHeightPct??92)}%`}><NumberStep label="%" value={value.calculatorPanelHeightPct??92} min={60} max={96} step={2} onChange={calculatorPanelHeightPct=>onChange({calculatorPanelHeightPct})}/></EditorRow>
     <SwitchRow label="顯示目前持股摘要" value={value.calculatorShowCurrentHolding??true} onChange={calculatorShowCurrentHolding=>onChange({calculatorShowCurrentHolding})}/>
     <SwitchRow label="顯示費用明細" value={value.calculatorShowFeeBreakdown??true} onChange={calculatorShowFeeBreakdown=>onChange({calculatorShowFeeBreakdown})}/>
