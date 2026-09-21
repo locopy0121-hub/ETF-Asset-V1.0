@@ -52,12 +52,13 @@ class TfAssetOverlayService:Service(){
   private fun prefs()=getSharedPreferences("tf_asset_native",0)
   private fun readConfig()=runCatching{JSONObject(prefs().getString("monitor_config","{}")?:"{}")}.getOrElse{JSONObject()}
   private fun readSnapshot()=runCatching{JSONObject(prefs().getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+  private fun effectiveMode(cfg:JSONObject)=prefs().getString("monitor_runtime_mode_override",null)?.let{if(it=="mini")"mini" else "normal"}?:cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
   private fun activeLayout(cfg:JSONObject)=cfg.optJSONObject(if(mode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
 
   private fun ensureView(){
     if(root!=null)return
     val cfg=readConfig()
-    mode=cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    mode=effectiveMode(cfg)
     val layout=activeLayout(cfg)
     val pxKey="monitor_"+mode+"_x";val pyKey="monitor_"+mode+"_y"
     val x=if(prefs().contains(pxKey))prefs().getInt(pxKey,layout.optInt("x",16)) else layout.optInt("x",16)
@@ -78,13 +79,13 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun layoutSignature(cfg:JSONObject):String{
-    val configMode=cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    val configMode=effectiveMode(cfg)
     val layout=cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
     return configMode+"|"+layout.toString()
   }
 
   private fun applyConfiguredLayoutIfChanged(cfg:JSONObject){
-    val nextMode=cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
+    val nextMode=effectiveMode(cfg)
     val nextLayout=cfg.optJSONObject(if(nextMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
     val signature=nextMode+"|"+nextLayout.toString()
     if(signature==lastLayoutSignature)return
@@ -111,6 +112,7 @@ class TfAssetOverlayService:Service(){
   private fun toggleMode(){
     val cfg=readConfig()
     mode=if(mode=="mini")"normal" else "mini"
+    prefs().edit().putString("monitor_runtime_mode_override",mode).apply()
     val layout=activeLayout(cfg)
     val p=params?:return
     p.width=layout.optInt("width",if(mode=="mini")360 else 320)
