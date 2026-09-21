@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONArray
 import org.json.JSONObject
@@ -162,9 +163,27 @@ class TfAssetOverlayService:Service(){
     val bg=color(style.optString("backgroundColor","#0F172A"),Color.rgb(15,23,42))
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
-    if(mode=="mini")renderMini(r,cfg,snap,style) else renderNormal(r,cfg,snap,style)
+    if(mode=="mini"){
+      fitMiniHeightToContent(cfg,snap,style)
+      renderMini(r,cfg,snap,style)
+    }else renderNormal(r,cfg,snap,style)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
+  }
+
+  private fun fitMiniHeightToContent(cfg:JSONObject,snap:JSONObject,style:JSONObject){
+    val configuredHeight=(cfg.optJSONObject("miniLayout")?:JSONObject()).optInt("height",330).coerceAtLeast(120)
+    val header=cfg.optJSONObject("miniHeader")?:JSONObject()
+    val headerHeight=if(header.optBoolean("visible",true))header.optInt("height",30).coerceIn(22,56) else 0
+    val padding=style.optInt("padding",6).coerceAtLeast(0)
+    val rows=orderedHoldings(snap,cfg).size
+    val contentHeight=padding*2+headerHeight+maxOf(1,rows)*28
+    val target=contentHeight.coerceIn(80,configuredHeight)
+    val p=params?:return
+    if(p.height!=target){
+      p.height=target
+      root?.let{wm.updateViewLayout(it,p)}
+    }
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
@@ -224,6 +243,44 @@ class TfAssetOverlayService:Service(){
           root.addView(textView(signed2(first,"changePercent")+"%",tone(first),14*fs,Gravity.START))
         }
       }
+      "market-wall"->{
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.chunked(2).forEach{pair->
+          val line=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
+          pair.forEach{row->line.addView(textView(quoteLine(row),tone(row),11*fs,Gravity.CENTER),weighted(1f))}
+          if(pair.size==1)line.addView(View(this),weighted(1f))
+          root.addView(line)
+        }
+      }
+      "heatmap"->{
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.forEach{row->root.addView(textView("■ "+row.optString("symbol","--")+"  "+signed2(row,"changePercent")+"%",tone(row),12*fs,Gravity.START))}
+      }
+      "pnl-wall"->{
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.sortedByDescending{it.optDouble("pnl",Double.NEGATIVE_INFINITY)}.forEach{row->
+          val pnl=row.optDouble("pnl",Double.NaN)
+          val pnlTone=if(!pnl.isFinite())neutral else if(pnl>0)gain else if(pnl<0)loss else neutral
+          root.addView(textView(row.optString("symbol","--")+"  損益 "+signedInteger(row,"pnl")+"  "+signed2(row,"roi")+"%",pnlTone,12*fs,Gravity.START))
+        }
+      }
+      "weight-wall"->{
+        val total=rows.sumOf{it.optDouble("marketValue",0.0).takeIf(Double::isFinite)?:0.0}
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.sortedByDescending{it.optDouble("marketValue",0.0)}.forEach{row->
+          val mv=row.optDouble("marketValue",0.0)
+          val weight=if(total>0)mv/total*100.0 else 0.0
+          root.addView(textView(row.optString("symbol","--")+"  "+String.format("%.1f%%",weight)+"  "+integer(row,"marketValue"),text,12*fs,Gravity.START))
+        }
+      }
+      "ticker"->{
+        val ticker=if(rows.isEmpty())"等待資料" else rows.joinToString("   •   "){quoteLine(it)}
+        root.addView(textView(ticker,if(rows.isEmpty())neutral else text,12*fs,Gravity.START))
+      }
+      "terminal"->{
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.forEach{row->root.addView(textView(row.optString("symbol","--")+" | "+number2(row,"price")+" | "+signed2(row,"changePercent")+"% | "+signedInteger(row,"pnl"),tone(row),11*fs,Gravity.START))}
+      }
       else->{
         val asset=snap.optJSONObject("asset")?:JSONObject()
         root.addView(textView("TF Asset  總資產 "+integer(asset,"totalAssets"),text,12*fs,Gravity.START))
@@ -263,6 +320,7 @@ class TfAssetOverlayService:Service(){
     val loss=color(style.optString("lossColor","#10B981"),Color.GREEN)
     val neutral=color(style.optString("neutralColor","#94A3B8"),Color.GRAY)
     val baseScale=style.optDouble("fontScale",.9).coerceIn(.7,1.8).toFloat()
+    val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
     rows.forEach{holding->
       val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;minimumHeight=28}
       columns.forEach{column->
@@ -274,9 +332,14 @@ class TfAssetOverlayService:Service(){
         val scale=(baseScale*column.optDouble("fontScale",1.0).coerceIn(.7,1.6)).toFloat()
         row.addView(textView(valueText,tone,11*scale,gravityFor(column.optString("align","left"))),weighted(column.optDouble("widthPercent",20.0).toFloat()))
       }
-      root.addView(row)
+      body.addView(row)
     }
-    if(rows.isEmpty())root.addView(textView("尚無持股資料",neutral,11*baseScale,Gravity.START))
+    if(rows.isEmpty())body.addView(textView("尚無持股資料",neutral,11*baseScale,Gravity.START))
+    val scroller=ScrollView(this).apply{
+      isFillViewport=true
+      addView(body,ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT,ScrollView.LayoutParams.WRAP_CONTENT))
+    }
+    root.addView(scroller,LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,0,1f))
   }
 
   private fun weighted(weight:Float)=LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
