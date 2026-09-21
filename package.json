@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v113 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v114 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -60,7 +60,10 @@
     "test:v112": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:release-v112",
     "test:monitor-layout-v113": "node scripts/monitor-layout-v113.test.cjs",
     "test:release-v113": "node scripts/release-v113.test.cjs",
-    "test:v113": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:monitor-layout-v113 && npm run test:release-v113"
+    "test:v113": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:monitor-layout-v113 && npm run test:release-v113",
+    "test:v114-upgrade": "node scripts/v114-refresh-widget-palette.test.cjs",
+    "test:release-v114": "node scripts/release-v114.test.cjs",
+    "test:v114": "npm run test:v109 && npm run test:realtime-v110 && npm run test:monitor-disabled-v110 && npm run test:monitor-size-v110 && npm run test:monitor-v111 && npm run test:monitor-market-wall-v112 && npm run test:monitor-layout-v113 && npm run test:v114-upgrade && npm run test:release-v114"
   },
   "dependencies": {
     "expo": "~57.0.21",
