@@ -22,6 +22,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'holding-dashboard', title:'持股分析儀表板', description:'市值、成本、損益、含息報酬' },
     { key:'allocation', title:'資產配置', description:'持股與資產分類占比' },
     { key:'holding-view', title:'持股檢視', description:'清單模式與行情牆模式共用框架' },
+    { key:'calculator-tool', title:'持股試算工具', description:'加碼試算、費用預估與情境結果' },
   ],
   dividend: [
     { key:'dividend-summary', title:'股息摘要', description:'本月、年度、月平均' },
