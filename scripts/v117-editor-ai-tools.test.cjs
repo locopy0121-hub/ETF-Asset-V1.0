@@ -13,14 +13,15 @@ assert.ok(!wall.includes('miniSource'),'main market wall editor must not depend 
 assert.ok(!wall.includes('copyMini'),'main market wall must not copy Mini');
 assert.ok(!wall.includes('複製 Mini 設定至主體行情牆'),'old Mini-copy action must be removed');
 
-assert.ok(!home.includes('Linking.openURL(item.url)'),'home news must not force an external browser');\nassert.match(home,/NewsReaderModal/,'home news must open the in-app reader');
+assert.ok(!home.includes('Linking.openURL(item.url)'),'home news must not force an external browser');
+assert.match(home,/NewsReaderModal/,'home news must open the in-app reader');
 assert.match(home,/FloatingDashboardChart/);
 assert.match(home,/dashboardMetrics/);
 assert.match(home,/dashboardCharts/);
 
 assert.match(ai,/AiQuestionBox/);
-assert.match(ai,/Linking\.openURL\(item\.url\)/);
-assert.match(ai,/搜尋 ETF、名稱或新聞關鍵字/);
+assert.ok(!ai.includes('Linking.openURL(item.url)'),'AI conversation must not behave like a news link list');
+assert.match(ai,/對話內新聞以文字摘要播送/);
 assert.match(dividend,/股息 AI 問答/);
 assert.match(dividend,/AiQuestionBox/);
 assert.match(question,/onAsk/);
@@ -28,7 +29,7 @@ assert.match(question,/送出/);
 
 assert.match(model,/DEFAULT_DASHBOARD_METRICS/);
 assert.match(model,/DEFAULT_DASHBOARD_CHARTS/);
-for(const token of ['line','area','bar','horizontalBar','stackedBar','pie','donut','allocation','pnlTrend','dividendTrend','investVsValue','holdingWeight','costVsPrice','roiTrend','priceK','volume'])assert.ok(model.includes(`'${token}'`),'chart style missing '+token);
+for(const token of ['line','area','bar','horizontalBar','stackedBar','pie','donut','allocation','pnlTrend','dividendTrend','investVsValue','holdingWeight','costVsPrice','roiTrend','priceK','volume'])assert.ok(model.includes("'"+token+"'"),'chart style missing '+token);
 assert.match(modal,/統一能力模型/);
 assert.match(modal,/＋ 新增圖表/);
 assert.match(modal,/自由拖移/);
