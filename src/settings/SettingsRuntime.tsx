@@ -27,6 +27,9 @@ export type DisplayPrefs=Readonly<{
   thousandsSeparator:boolean;
   dateFormat:DateFormat;
   profitColorMode:ProfitColorMode;
+  gainColor:string;
+  lossColor:string;
+  neutralColor:string;
 }>;
 export type TradeDefaults=Readonly<{
   brokerProfileId:string;
@@ -59,6 +62,9 @@ const DEFAULT_SETTINGS:SettingsPrefs={
     thousandsSeparator:true,
     dateFormat:'YYYY-MM-DD',
     profitColorMode:'red-up-green-down',
+    gainColor:'#EF4444',
+    lossColor:'#10B981',
+    neutralColor:'#64748B',
   },
   tradeDefaults:{
     brokerProfileId:'huanan-yongchang',
@@ -75,6 +81,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
   const t=input?.tradeDefaults;
   const lead=Math.max(0,Math.min(30,Math.floor(Number(n?.leadDays??DEFAULT_SETTINGS.notifications.leadDays))));
   const fontScale=Math.max(0.8,Math.min(1.4,Number(d?.fontScale??DEFAULT_SETTINGS.display.fontScale)));
+  const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
   return {
     schema:1,
     notifications:{
@@ -94,6 +101,9 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
       thousandsSeparator:d?.thousandsSeparator??DEFAULT_SETTINGS.display.thousandsSeparator,
       dateFormat:d?.dateFormat==='YYYY/MM/DD'?'YYYY/MM/DD':'YYYY-MM-DD',
       profitColorMode:d?.profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down',
+      gainColor:color(d?.gainColor,DEFAULT_SETTINGS.display.gainColor),
+      lossColor:color(d?.lossColor,DEFAULT_SETTINGS.display.lossColor),
+      neutralColor:color(d?.neutralColor,DEFAULT_SETTINGS.display.neutralColor),
     },
     tradeDefaults:{
       brokerProfileId:String(t?.brokerProfileId??DEFAULT_SETTINGS.tradeDefaults.brokerProfileId),
