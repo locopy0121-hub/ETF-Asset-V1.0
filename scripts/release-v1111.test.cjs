@@ -1,0 +1,26 @@
+const fs=require('fs');const assert=require('assert');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
+const ci=fs.readFileSync('.github/workflows/ci.yml','utf8');
+const workflow=fs.readFileSync('.github/workflows/release-v1.yml','utf8');
+
+assert.equal(pkg.version,'1.1.1');
+assert.equal(app.expo.version,'1.1.1');
+assert.equal(app.expo.android.versionCode,10101);
+assert.equal(app.expo.android.package,'com.tfasset.app');
+assert.equal(app.expo.ios.buildNumber,'10101');
+assert.match(settings,/const VERSION='1\.1\.1';/);
+assert.match(settings,/const BUILD='10101';/);
+assert.match(ci,/V1\.1\.1 Hard Gates/);
+assert.match(ci,/npm run test:v1_1_1/);
+assert.match(workflow,/TF Asset V1\.1\.1 GitHub APK/);
+assert.match(workflow,/Freeze V1\.1\.1 identity/);
+assert.match(workflow,/versionCode 10101/);
+assert.match(workflow,/versionName "1\.1\.1"/);
+assert.match(workflow,/TF-Asset-V1\.1\.1-github\.apk/);
+assert.match(workflow,/TF-Asset-V1\.1\.1-GitHub-APK/);
+assert.match(workflow,/npm run test:v1_1_1/);
+assert.ok(!/eas\s+build/i.test(workflow),'APK workflow must remain GitHub-only');
+for(const file of ['src/utils/etfCalculators.ts','src/finance/canonicalLedger.ts','docs/finance/CORE_LOCK.md'])assert.ok(fs.existsSync(file),file+' immutable core must remain present');
+console.log('V1.1.1 RELEASE IDENTITY: PASS');
