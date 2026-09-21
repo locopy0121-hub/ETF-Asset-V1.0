@@ -6,6 +6,7 @@ import {
   buildEtfScreenItem,
   fetchYahooEtfMetrics,
   filterEtfs,
+  filterEtfsForMetricEnrichment,
   type EtfIndustry,
   type EtfKind,
   type EtfMetrics,
@@ -29,18 +30,20 @@ export function EtfScreener({catalog}:{catalog:readonly EtfCatalogItem[]}){
   const [visibleCount,setVisibleCount]=useState(24);
 
   const rows=useMemo(()=>catalog.map(item=>buildEtfScreenItem(item,metrics[item.symbol])),[catalog,metrics]);
-  const filtered=useMemo(()=>filterEtfs(rows,{
+  const filters=useMemo(()=>({
     query,market,kind,industry,
     ...(numberOrUndefined(maxExpense)==null?{}:{maxExpenseRatioPct:numberOrUndefined(maxExpense)}),
     ...(numberOrUndefined(minYield)==null?{}:{minYieldPct:numberOrUndefined(minYield)}),
-  }),[rows,query,market,kind,industry,maxExpense,minYield]);
+  }),[query,market,kind,industry,maxExpense,minYield]);
+  const filtered=useMemo(()=>filterEtfs(rows,filters),[rows,filters]);
+  const enrichCandidates=useMemo(()=>filterEtfsForMetricEnrichment(rows,filters),[rows,filters]);
   const visible=filtered.slice(0,visibleCount);
 
   const enrich=async()=>{
     if(loading)return;
     setLoading(true);
     setProfileError(null);
-    const targets=filtered.filter(item=>metrics[item.symbol]==null).slice(0,12);
+    const targets=enrichCandidates.filter(item=>metrics[item.symbol]==null).slice(0,12);
     if(!targets.length){setLoading(false);return;}
     const settled=await Promise.allSettled(targets.map(async item=>({symbol:item.symbol,metrics:await fetchYahooEtfMetrics(item)})));
     const next={...metrics};
