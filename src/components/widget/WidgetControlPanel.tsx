@@ -79,7 +79,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
         {previewLines.map((line,index)=><Text key={index} numberOfLines={1} style={{color:line.profit&&value.profitColorFields.includes(line.field)?previewTone:value.style.textColor,fontWeight:index===0?'900':'800',fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale),textAlign:value.style.textAlign,marginTop:index===0?0:value.style.rowGap}}>{line.text}</Text>)}
         {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
       </View>
-      <Text style={styles.note}>2×2 所有項目皆可選；實際顯示數量依樣式容量決定，已選項目依上／下順序顯示。</Text>
+      <Text style={styles.note}>2×2 所有項目皆可選；行情牆會依桌面 Widget 實際寬高自動增加欄／列，拉高後最多可顯示 32 檔，未選 ETF 時使用完整 Shared Snapshot 持股。</Text>
     </Section>
 
     <Section title="尺寸與模板">
