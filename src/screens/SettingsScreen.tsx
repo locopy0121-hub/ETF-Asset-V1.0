@@ -46,8 +46,8 @@ type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.0.17';
-const BUILD='10017';
+const VERSION='1.0.18';
+const BUILD='10018';
 
 export function SettingsScreen(){
   const finance=useFinance();
