@@ -243,6 +243,10 @@ class TfAssetOverlayService:Service(){
         val wallStyle=wall.optJSONObject("style")?:JSONObject()
         val wallHeader=wall.optJSONObject("header")?:JSONObject()
         val wallFields=wall.optJSONArray("fields")?:JSONArray()
+        val wallLayout=cfg.optJSONObject("normalWallLayout")?:JSONObject()
+        val wallColumns=wallLayout.optInt("columns",2).coerceIn(1,4)
+        val wallColumnGap=wallLayout.optInt("columnGap",8).coerceIn(0,32)
+        val wallRowGap=wallLayout.optInt("rowGap",8).coerceIn(0,32)
         val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
         val wallSecondary=color(wallStyle.optString("secondaryTextColor",style.optString("secondaryTextColor","#CBD5E1")),secondary)
         val wallGain=color(wallStyle.optString("gainColor",style.optString("gainColor","#EF4444")),gain)
@@ -259,7 +263,14 @@ class TfAssetOverlayService:Service(){
         val footerFields=enabled.filter{it.optString("field")=="pnl"||it.optString("field")=="roi"||it.optString("field")=="marketValue"}
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.forEach{row->
+        var wallLine:LinearLayout?=null
+        rows.forEachIndexed{rowIndex,row->
+          if(rowIndex%wallColumns==0){
+            wallLine=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.TOP}
+            body.addView(wallLine,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{
+              bottomMargin=wallRowGap
+            })
+          }
           val card=LinearLayout(this).apply{
             orientation=LinearLayout.VERTICAL
             setPadding(wallPadding,wallPadding,wallPadding,wallPadding)
@@ -357,9 +368,15 @@ class TfAssetOverlayService:Service(){
             card.addView(footer,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
           }
 
-          body.addView(card,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{
-            bottomMargin=wallGap
+          wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{
+            if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap
           })
+          if(rowIndex==rows.lastIndex&&wallColumns>1){
+            val missing=wallColumns-1-(rowIndex%wallColumns)
+            repeat(missing){
+              wallLine?.addView(View(this),LinearLayoutParams(0,1,1f).apply{if(it<missing-1)rightMargin=wallColumnGap})
+            }
+          }
         }
         val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
         root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
@@ -460,9 +477,61 @@ class TfAssetOverlayService:Service(){
     }
     root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
     val asset=snap.optJSONObject("asset")?:JSONObject()
-    val totalReturn=asset.optDouble("totalReturn",Double.NaN)
-    val returnTone=if(!totalReturn.isFinite())neutral else if(totalReturn>0)gain else if(totalReturn<0)loss else neutral
-    root.addView(textView("總資產 "+integer(asset,"totalAssets")+"   市值 "+integer(asset,"marketValue")+"   總損益 "+signedInteger(asset,"totalReturn"),returnTone,10*baseScale,Gravity.CENTER))
+    val statusBar=cfg.optJSONObject("miniStatusBar")?:JSONObject()
+    val statusItemsJson=cfg.optJSONArray("miniStatusItems")
+    val statusItems=(0 until (statusItemsJson?.length()?:0)).mapNotNull{statusItemsJson?.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
+    if(statusBar.optBoolean("visible",true)&&statusItems.isNotEmpty()){
+      val statusBg=color(statusBar.optString("backgroundColor","#111827"),Color.rgb(17,24,39))
+      val statusAlpha=(statusBar.optDouble("backgroundOpacity",.96).coerceIn(.1,1.0)*255).roundToInt()
+      val statusText=color(statusBar.optString("textColor","#CBD5E1"),Color.LTGRAY)
+      val statusScale=statusBar.optDouble("fontScale",.85).coerceIn(.7,1.6).toFloat()
+      val statusBorder=color(statusBar.optString("borderColor","#334155"),Color.DKGRAY)
+      val statusBorderWidth=statusBar.optInt("borderWidth",1).coerceIn(0,4)
+      val statusColumns=statusBar.optInt("columns",3).coerceIn(1,4)
+      val statusWrap=LinearLayout(this).apply{
+        orientation=LinearLayout.VERTICAL
+        minimumHeight=statusBar.optInt("height",36).coerceIn(24,96)
+        setBackgroundColor(Color.argb(statusAlpha,Color.red(statusBg),Color.green(statusBg),Color.blue(statusBg)))
+        if(statusBorderWidth>0)setPadding(0,statusBorderWidth,0,0)
+      }
+      statusItems.chunked(statusColumns).forEach{items->
+        val statusRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
+        items.forEach{item->
+          val field=item.optString("field","totalAssets")
+          val label=item.optString("label",field)
+          val numeric=when(field){
+            "totalReturn"->asset.optDouble("totalReturn",Double.NaN)
+            "unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN)
+            "realizedPnl"->asset.optDouble("realizedPnl",Double.NaN)
+            else->Double.NaN
+          }
+          val useProfit=item.optBoolean("useProfitColor",false)
+          val tone=if(!useProfit||!numeric.isFinite())statusText else if(numeric>0)gain else if(numeric<0)loss else neutral
+          val valueText=when(field){
+            "holdingCount"->rows.size.toString()
+            "updatedAt"->snap.optString("generatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
+            "totalReturn"->signedInteger(asset,"totalReturn")
+            "unrealizedPnl"->signedInteger(asset,"unrealizedPnl")
+            "realizedPnl"->signedInteger(asset,"realizedPnl")
+            "totalAssets"->integer(asset,"totalAssets")
+            "marketValue"->integer(asset,"marketValue")
+            "cash"->integer(asset,"cash")
+            "dividendIncome"->integer(asset,"dividendIncome")
+            else->"--"
+          }
+          statusRow.addView(textView("$label $valueText",tone,9*statusScale,Gravity.CENTER),weighted(1f))
+        }
+        repeat((statusColumns-items.size).coerceAtLeast(0)){statusRow.addView(View(this),weighted(1f))}
+        statusWrap.addView(statusRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+      }
+      if(statusBorderWidth>0){
+        statusWrap.background=GradientDrawable().apply{
+          setColor(Color.argb(statusAlpha,Color.red(statusBg),Color.green(statusBg),Color.blue(statusBg)))
+          setStroke(statusBorderWidth,statusBorder)
+        }
+      }
+      root.addView(statusWrap,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
   }
 
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
