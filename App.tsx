@@ -20,7 +20,7 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
-import { consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
+import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget, startNativeMonitor, stopNativeMonitor } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
   return <SafeAreaProvider>
@@ -74,6 +74,14 @@ function AppBody(){
       if(requestedAt>0)void market.refresh({force:true});
     });
   },[market.hydrated,market.refresh]);
+
+  useEffect(()=>{
+    if(!market.hydrated||!monitorSettings.config.enabled)return;
+    const poll=()=>void consumeNativeMonitorForceRefreshRequest().then(requestedAt=>{if(requestedAt>0)void market.refresh({force:true});});
+    poll();
+    const timer=setInterval(poll,1000);
+    return()=>clearInterval(timer);
+  },[market.hydrated,market.refresh,monitorSettings.config.enabled]);
 
   useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated)return;
