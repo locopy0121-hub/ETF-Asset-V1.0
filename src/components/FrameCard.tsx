@@ -1,7 +1,7 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { FrameAppearance, FrameLayout } from '../editor/pageEditor';
+import type { FrameAppearance, FrameEditorConfig, FrameLayout } from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
 
 export type FrameCardProps = PropsWithChildren<{
@@ -9,9 +9,10 @@ export type FrameCardProps = PropsWithChildren<{
   action?: ReactNode;
   layout?: FrameLayout;
   appearance?: FrameAppearance;
+  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleAlign'|'backgroundColor'|'backgroundOpacity'|'borderColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'>>;
 }>;
 
-export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme' }: FrameCardProps) {
+export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle }: FrameCardProps) {
   return (
     <View style={[
       styles.card,
@@ -19,9 +20,17 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
       layout === 'dense' && styles.cardDense,
       appearance === 'soft' && styles.cardSoft,
       appearance === 'outline' && styles.cardOutline,
+      editorStyle&&{
+        backgroundColor:editorStyle.backgroundColor,
+        opacity:editorStyle.backgroundOpacity,
+        borderColor:editorStyle.borderColor,
+        borderWidth:editorStyle.borderWidth,
+        borderRadius:editorStyle.borderRadius,
+        ...(editorStyle.shadowEnabled?{elevation:4,shadowOpacity:editorStyle.shadowOpacity,shadowRadius:8,shadowOffset:{width:0,height:2}}:{}),
+      },
     ]}>
       <View style={styles.header}>
-        <Text style={[styles.title, layout === 'dense' && styles.titleDense]}>{title}</Text>
+        <Text style={[styles.title, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
         {action}
       </View>
       {children}
