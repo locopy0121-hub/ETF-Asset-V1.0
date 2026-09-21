@@ -19,7 +19,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V1.0.10 Development Gates
+      - name: V1.0.10 Hard Gates
         run: npm run test:v110
       - name: Expo dependency check
         run: npm run check:expo
