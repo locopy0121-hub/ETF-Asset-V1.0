@@ -89,10 +89,11 @@ jobs:
       - name: Inject Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
-          mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml
+          mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
           cp native/android/*.kt "$PKG_DIR/"
           cp native/android/res/layout/tf_asset_widget.xml ../TFAssetNative/android/app/src/main/res/layout/
           cp native/android/res/xml/tf_asset_widget_info.xml ../TFAssetNative/android/app/src/main/res/xml/
+          cp native/android/res/drawable/tf_asset_icon_*.xml ../TFAssetNative/android/app/src/main/res/drawable/
           python3 - <<'PY'
           from pathlib import Path
           main=Path('../TFAssetNative/android/app/src/main/java/com/tfasset/app/MainApplication.kt')
@@ -109,6 +110,25 @@ jobs:
           block='''\n    <receiver android:name=".TfAssetWidgetProvider" android:exported="true">\n      <intent-filter>\n        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n      </intent-filter>\n      <meta-data android:name="android.appwidget.provider" android:resource="@xml/tf_asset_widget_info" />\n    </receiver>\n    <service android:name=".TfAssetOverlayService" android:exported="false" />\n'''
           if 'TfAssetWidgetProvider' not in m:
               m=m.replace('</application>', block+'  </application>', 1)
+
+          import re
+          if 'MainActivityIcon01' not in m:
+              activity_match=re.search(r'(<activity\\b[^>]*android:name="\\.MainActivity"[\\s\\S]*?</activity>)',m)
+              if activity_match:
+                  activity=activity_match.group(1)
+                  activity=re.sub(r'<intent-filter>[\\s\\S]*?android.intent.action.MAIN[\\s\\S]*?android.intent.category.LAUNCHER[\\s\\S]*?</intent-filter>','',activity,count=1)
+                  m=m[:activity_match.start(1)]+activity+m[activity_match.end(1):]
+              aliases=[]
+              for i in range(1,11):
+                  n=f'{i:02d}'
+                  enabled='true' if i==1 else 'false'
+                  aliases.append(f'''    <activity-alias android:name=".MainActivityIcon{n}" android:enabled="{enabled}" android:exported="true" android:icon="@drawable/tf_asset_icon_{n}" android:label="@string/app_name" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity-alias>''')
+              m=m.replace('</application>','\\n'.join(aliases)+'\\n  </application>',1)
           manifest.write_text(m)
           PY
       - name: Install native workspace dependencies
