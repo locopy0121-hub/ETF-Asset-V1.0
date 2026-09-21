@@ -346,6 +346,10 @@ export function SettingsScreen(){
   function displaySection(){
     const d=settings.prefs.display;
     return <View style={styles.children}>
+      <View style={styles.panel}>
+        <ToggleRow label="顯示優化" value={d.optimizationEnabled} onChange={optimizationEnabled=>settings.patchDisplay({optimizationEnabled})}/>
+        <Text style={styles.note}>關閉時各頁使用原始顯示預設；已儲存的各頁顯示設定保留，重新開啟後恢復套用。設定頁本身不受影響。</Text>
+      </View>
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
       <ChildButton label="金額單位設定" summary={d.amountDecimals===2?'2 位小數':'整數'} active={displayPanel==='amount'} onPress={()=>setDisplayPanel(displayPanel==='amount'?null:'amount')}/>
