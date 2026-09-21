@@ -17,13 +17,14 @@ const distance=(touches:readonly {pageX:number;pageY:number}[])=>{
 };
 
 export function FloatingDashboardChart({
-  config,values,labels,bounds,onMove,
+  config,values,labels,bounds,onMove,onResize,
 }:{
   config:DashboardChartConfig;
   values:readonly number[];
   labels:readonly string[];
   bounds:{width:number;height:number};
   onMove:(x:number,y:number)=>void;
+  onResize:(width:number,height:number)=>void;
 }){
   const [zoom,setZoom]=useState(1);
   const [panIndex,setPanIndex]=useState(0);
@@ -32,6 +33,7 @@ export function FloatingDashboardChart({
   const maxX=Math.max(0,bounds.width-config.width),maxY=Math.max(0,bounds.height-config.height);
   const effectiveX=config.x<0?maxX:clamp(config.x,0,maxX),effectiveY=clamp(config.y,0,maxY);
   const moveStart=useRef({x:effectiveX,y:effectiveY});
+  const resizeStart=useRef({width:config.width,height:config.height});
   const gestureStart=useRef({zoom:1,pan:0,distance:0,tapAt:0});
 
   const safeValues=values.length?values:[0];
@@ -68,7 +70,9 @@ export function FloatingDashboardChart({
     onPanResponderRelease:(_,g)=>{
       if(config.touchThrough)return;
       if(!config.locked){
-        onMove(clamp(moveStart.current.x+g.dx,0,maxX),clamp(moveStart.current.y+g.dy,0,maxY));
+        const nextX=Math.round(clamp(moveStart.current.x+g.dx,0,maxX)/8)*8;
+        const nextY=Math.round(clamp(moveStart.current.y+g.dy,0,maxY)/8)*8;
+        onMove(nextX,nextY);
         return;
       }
       const small=Math.abs(g.dx)<5&&Math.abs(g.dy)<5;
@@ -79,6 +83,25 @@ export function FloatingDashboardChart({
       }
     },
   }),[config.touchThrough,config.locked,config.pinchZoomEnabled,config.panEnabled,config.doubleTapReset,config.zoomMin,config.zoomMax,config.width,effectiveX,effectiveY,maxX,maxY,onMove,zoom,panIndex,view.count]);
+
+  const resizeResponder=useMemo(()=>PanResponder.create({
+    onStartShouldSetPanResponder:()=>!config.locked,
+    onMoveShouldSetPanResponder:()=>!config.locked,
+    onPanResponderGrant:()=>{resizeStart.current={width:config.width,height:config.height};},
+    onPanResponderRelease:(_,g)=>{
+      if(config.locked)return;
+      const maxWidth=Math.max(140,bounds.width-effectiveX);
+      const maxHeight=Math.max(120,bounds.height-effectiveY);
+      let width=clamp(resizeStart.current.width+g.dx,140,maxWidth);
+      let height=clamp(resizeStart.current.height+g.dy,120,maxHeight);
+      if(config.aspectLocked){
+        const ratio=Math.max(.1,resizeStart.current.width/Math.max(1,resizeStart.current.height));
+        height=clamp(width/ratio,120,maxHeight);
+        width=clamp(height*ratio,140,maxWidth);
+      }
+      onResize(Math.round(width/8)*8,Math.round(height/8)*8);
+    },
+  }),[config.locked,config.width,config.height,config.aspectLocked,bounds.width,bounds.height,effectiveX,effectiveY,onResize]);
 
   if(!config.visible)return null;
   const styleLabel:Record<string,string>={
@@ -123,6 +146,7 @@ export function FloatingDashboardChart({
         <Text style={[styles.drag,{color:config.accentColor}]}>{config.locked?'🔒':'↕'}</Text>
       </View>
       {plot(false)}
+      {!config.locked?<View {...resizeResponder.panHandlers} style={[styles.resizeHandle,{borderColor:config.accentColor}]}><Text style={[styles.resizeGlyph,{color:config.accentColor}]}>↘</Text></View>:null}
     </View>
     <Modal visible={fullScreen} animationType="fade" onRequestClose={()=>setFullScreen(false)}>
       <View style={[styles.fullScreen,{backgroundColor:config.backgroundColor}]}>
@@ -144,6 +168,7 @@ const styles=StyleSheet.create({
   tooltip:{position:'absolute',right:4,top:4,borderWidth:1,borderRadius:8,paddingHorizontal:7,paddingVertical:5},tooltipText:{fontSize:8,fontWeight:'800'},
   dataLabels:{position:'absolute',left:0,right:0,bottom:2,flexDirection:'row',justifyContent:'space-around'},dataLabel:{fontSize:7,fontWeight:'800'},
   zoomBadge:{position:'absolute',left:4,top:4,fontSize:8,fontWeight:'900',opacity:.7},
+  resizeHandle:{position:'absolute',right:2,bottom:2,width:28,height:28,borderRightWidth:2,borderBottomWidth:2,alignItems:'center',justifyContent:'center'},resizeGlyph:{fontSize:14,fontWeight:'900'},
   fullScreen:{flex:1,paddingTop:48,paddingHorizontal:16,paddingBottom:24},fullHeader:{flexDirection:'row',alignItems:'center',gap:8},fullTitle:{flex:1,fontSize:20,fontWeight:'900'},fullClose:{width:44,height:44,alignItems:'center',justifyContent:'center'},fullCloseText:{fontSize:28,fontWeight:'900'},
   fullPlot:{flex:1,minHeight:240,paddingVertical:20},fullActions:{gap:10,alignItems:'center'},resetButton:{paddingHorizontal:14,paddingVertical:9,borderRadius:18,borderWidth:1},resetText:{fontSize:11,fontWeight:'900'},fullHint:{fontSize:10,opacity:.7},
 });
