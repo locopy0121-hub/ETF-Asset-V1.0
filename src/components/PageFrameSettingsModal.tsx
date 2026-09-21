@@ -6,6 +6,10 @@ import { DEFAULT_HOLDING_WALL_CONFIG } from '../domain/uiModels';
 import type { MainPageKey } from '../domain/pageRegistry';
 import {
   normalizeEditorConfig,
+  type DashboardChartConfig,
+  type DashboardChartSource,
+  type DashboardChartStyle,
+  type DashboardMetricKey,
   type FrameAppearance,
   type FrameBehavior,
   type FrameEditorConfig,
@@ -15,6 +19,7 @@ import {
 } from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
 import { HoldingMarketWallEditor } from './HoldingMarketWallEditor';
+import { ColorPalettePicker } from './ColorPalettePicker';
 
 const layouts: readonly { key: FrameLayout; label: string }[] = [
   { key: 'standard', label: '標準' },
@@ -213,6 +218,11 @@ export function PageFrameSettingsModal({
                 onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}
               />:null}
 
+              {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor
+                value={displayDraft}
+                onChange={patch=>setDisplayDraft(current=>({...current,...patch}))}
+              />:null}
+
               <Text style={styles.rule}>B 層只管理「{frame.title}」，不可直接改動其他框架。</Text>
             </View> : null}
           </View>;
@@ -220,6 +230,62 @@ export function PageFrameSettingsModal({
       </ScrollView>
     </View>
   </Modal>;
+}
+
+
+const dashboardMetricChoices:readonly {key:DashboardMetricKey;label:string}[]=[
+  {key:'totalMarketValue',label:'持股市值'},{key:'totalPnl',label:'含息總損益'},{key:'totalUnrealizedProfit',label:'未實現損益'},
+  {key:'realizedNetPnL',label:'已實現損益'},{key:'totalDividendsReceived',label:'累積淨股息'},{key:'cashBalance',label:'現金'},{key:'holdingCount',label:'持股檔數'},
+];
+const dashboardChartStyles:readonly {key:DashboardChartStyle;label:string}[]=[
+  {key:'line',label:'折線'},{key:'area',label:'面積'},{key:'bar',label:'長條'},{key:'horizontalBar',label:'水平長條'},{key:'stackedBar',label:'堆疊長條'},
+  {key:'pie',label:'圓餅'},{key:'donut',label:'甜甜圈'},{key:'allocation',label:'資產配置'},{key:'pnlTrend',label:'損益趨勢'},
+  {key:'dividendTrend',label:'股息趨勢'},{key:'investVsValue',label:'投入 vs 市值'},{key:'holdingWeight',label:'持股占比'},
+  {key:'costVsPrice',label:'成本 vs 市價'},{key:'roiTrend',label:'報酬率'},{key:'priceK',label:'價格／K 線'},{key:'volume',label:'成交量'},
+];
+const dashboardChartSources:readonly {key:DashboardChartSource;label:string}[]=[
+  {key:'allocation',label:'資產配置'},{key:'marketValue',label:'市值'},{key:'pnl',label:'損益'},{key:'dividend',label:'股息'},{key:'roi',label:'報酬率'},
+];
+
+function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange:(patch:Partial<PageDisplayConfig>)=>void}){
+  const metrics=value.dashboardMetrics??[];
+  const charts=value.dashboardCharts??[];
+  const toggleMetric=(key:DashboardMetricKey)=>onChange({dashboardMetrics:metrics.includes(key)?metrics.filter(item=>item!==key):[...metrics,key]});
+  const patchChart=(id:string,patch:Partial<DashboardChartConfig>)=>onChange({dashboardCharts:charts.map(chart=>chart.id===id?{...chart,...patch}:chart)});
+  const addChart=()=>{
+    const index=charts.length+1;
+    onChange({dashboardCharts:[...charts,{id:`chart-${Date.now()}`,title:`圖表 ${index}`,visible:true,style:'line',source:'marketValue',x:8+index*8,y:8+index*12,width:210,height:180,zIndex:index,locked:false,backgroundColor:'#FFFFFF',textColor:'#0F172A',accentColor:'#0066FF',opacity:1}]});
+  };
+  return <View style={styles.dashboardTools}>
+    <Text style={styles.dashboardTitle}>B 層內容工具</Text>
+    <Text style={styles.dashboardHint}>A 是資產儀表板框架；以下只新增／調整 A 內的直接 B 內容，不跨層。</Text>
+    <View style={styles.choiceGroup}>{dashboardMetricChoices.map(item=><Pressable key={item.key} onPress={()=>toggleMetric(item.key)} style={[styles.choice,metrics.includes(item.key)&&styles.choiceActive]}><Text style={[styles.choiceText,metrics.includes(item.key)&&styles.choiceTextActive]}>{item.label}</Text></Pressable>)}</View>
+    <View style={styles.chartHeader}><Text style={styles.dashboardTitle}>浮動圖表 Block</Text><Pressable onPress={addChart} style={styles.addChart}><Text style={styles.addChartText}>＋ 新增圖表</Text></Pressable></View>
+    <Text style={styles.dashboardHint}>圖表採自由座標；實際首頁可手指自由拖移。格線不限制位置，鎖定後才禁止拖移。</Text>
+    {charts.map((chart,index)=><View key={chart.id} style={styles.chartEditor}>
+      <View style={styles.chartHeader}><Text style={styles.chartName}>{chart.title} · 第 {index+1} 層</Text><Pressable onPress={()=>onChange({dashboardCharts:charts.filter(item=>item.id!==chart.id)})}><Text style={styles.deleteChart}>刪除</Text></Pressable></View>
+      <EditorRow title="顯示／鎖定" subtitle="未鎖定即可在首頁自由拖移">
+        <View style={styles.choiceGroup}><Pressable onPress={()=>patchChart(chart.id,{visible:!chart.visible})} style={[styles.choice,chart.visible&&styles.choiceActive]}><Text style={[styles.choiceText,chart.visible&&styles.choiceTextActive]}>{chart.visible?'顯示':'隱藏'}</Text></Pressable><Pressable onPress={()=>patchChart(chart.id,{locked:!chart.locked})} style={[styles.choice,chart.locked&&styles.choiceActive]}><Text style={[styles.choiceText,chart.locked&&styles.choiceTextActive]}>{chart.locked?'已鎖定':'自由拖移'}</Text></Pressable></View>
+      </EditorRow>
+      <EditorRow title="圖表樣式" subtitle="切換樣式不會清除位置、尺寸與資料來源"><ChoiceGroup items={dashboardChartStyles} value={chart.style} onChange={style=>patchChart(chart.id,{style})}/></EditorRow>
+      <EditorRow title="資料來源" subtitle="只讀 Finance Core / Shared Snapshot"><ChoiceGroup items={dashboardChartSources} value={chart.source} onChange={source=>patchChart(chart.id,{source})}/></EditorRow>
+      <EditorRow title="自由位置" subtitle={`X ${Math.round(chart.x)} / Y ${Math.round(chart.y)}`}>
+        <View style={styles.stepGrid}><NumberStep label="X" value={chart.x} min={0} max={1200} step={8} onChange={x=>patchChart(chart.id,{x})}/><NumberStep label="Y" value={chart.y} min={0} max={1600} step={8} onChange={y=>patchChart(chart.id,{y})}/></View>
+      </EditorRow>
+      <EditorRow title="尺寸" subtitle={`${Math.round(chart.width)} × ${Math.round(chart.height)} px`}>
+        <View style={styles.stepGrid}><NumberStep label="寬" value={chart.width} min={140} max={900} step={10} onChange={width=>patchChart(chart.id,{width})}/><NumberStep label="高" value={chart.height} min={120} max={700} step={10} onChange={height=>patchChart(chart.id,{height})}/></View>
+      </EditorRow>
+      <EditorRow title="圖層" subtitle="允許重疊；z-index 決定前後"><NumberStep label="層" value={chart.zIndex} min={0} max={99} step={1} onChange={zIndex=>patchChart(chart.id,{zIndex})}/></EditorRow>
+      <ColorPalettePicker label="圖表背景" value={chart.backgroundColor} onChange={backgroundColor=>patchChart(chart.id,{backgroundColor})}/>
+      <ColorPalettePicker label="圖表文字" value={chart.textColor} onChange={textColor=>patchChart(chart.id,{textColor})}/>
+      <ColorPalettePicker label="圖表主色" value={chart.accentColor} onChange={accentColor=>patchChart(chart.id,{accentColor})}/>
+      <EditorRow title="透明度" subtitle={`${Math.round(chart.opacity*100)}%`}><NumberStep label="%" value={Math.round(chart.opacity*100)} min={20} max={100} step={5} onChange={opacity=>patchChart(chart.id,{opacity:opacity/100})}/></EditorRow>
+    </View>)}
+  </View>;
+}
+
+function NumberStep({label,value,min,max,step,onChange}:{label:string;value:number;min:number;max:number;step:number;onChange:(value:number)=>void}){
+  return <View style={styles.numberStep}><Text style={styles.numberLabel}>{label}</Text><Pressable style={styles.numberButton} onPress={()=>onChange(Math.max(min,value-step))}><Text style={styles.numberButtonText}>−</Text></Pressable><Text style={styles.numberValue}>{Math.round(value)}</Text><Pressable style={styles.numberButton} onPress={()=>onChange(Math.min(max,value+step))}><Text style={styles.numberButtonText}>＋</Text></Pressable></View>;
 }
 
 function EditorRow({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
@@ -292,4 +358,19 @@ const styles = StyleSheet.create({
   disabled:{opacity:0.35},
   newsEditor:{gap:4},
   rule:{fontSize:11,lineHeight:17,color:colors.primary,marginTop:4,fontWeight:'700'},
+  dashboardTools:{gap:10,paddingTop:12,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
+  dashboardTitle:{fontSize:13,fontWeight:'900',color:colors.text},
+  dashboardHint:{fontSize:10,lineHeight:16,color:colors.textSecondary},
+  chartHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
+  addChart:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.primary},
+  addChartText:{fontSize:10,fontWeight:'900',color:'#FFFFFF'},
+  chartEditor:{gap:6,padding:10,borderWidth:1,borderColor:colors.border,borderRadius:radius.md},
+  chartName:{fontSize:11,fontWeight:'900',color:colors.text},
+  deleteChart:{fontSize:10,fontWeight:'900',color:colors.loss},
+  stepGrid:{gap:6},
+  numberStep:{flexDirection:'row',alignItems:'center',gap:6},
+  numberLabel:{width:24,fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  numberButton:{width:32,height:30,alignItems:'center',justifyContent:'center',borderRadius:radius.sm,backgroundColor:colors.surfaceMuted},
+  numberButtonText:{fontSize:14,fontWeight:'900',color:colors.primary},
+  numberValue:{minWidth:48,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
 });
