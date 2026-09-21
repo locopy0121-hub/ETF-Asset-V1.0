@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig, type HoldingWallFieldConfig } from '../domain/uiModels';
 import {
-  DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,DEFAULT_MINI_COLUMNS,DEFAULT_MINI_HEADER,
-  type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorSortKey,type MonitorStyle,type MiniColumnConfig,type MiniHeaderStyle,
+  DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,DEFAULT_MINI_COLUMNS,DEFAULT_MINI_HEADER,DEFAULT_MINI_STATUS_BAR,DEFAULT_MINI_STATUS_ITEMS,DEFAULT_MONITOR_WALL_LAYOUT,
+  type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorSortKey,type MonitorStyle,type MiniColumnConfig,type MiniHeaderStyle,type MiniStatusBarStyle,type MiniStatusItemConfig,type MonitorWallLayout,
 } from './monitorDomain';
 
 const STORAGE_KEY='@tf-asset/monitor-settings';
@@ -53,6 +53,37 @@ const normMiniColumns=(columns:readonly Partial<MiniColumnConfig>[]|undefined):r
     };
   });
 };
+
+
+const normMiniStatusBar=(bar:Partial<MiniStatusBarStyle>|undefined):MiniStatusBarStyle=>({
+  visible:bar?.visible??DEFAULT_MINI_STATUS_BAR.visible,
+  height:clamp(bar?.height,24,96,DEFAULT_MINI_STATUS_BAR.height),
+  columns:Math.round(clamp(bar?.columns,1,4,DEFAULT_MINI_STATUS_BAR.columns)),
+  backgroundColor:color(bar?.backgroundColor,DEFAULT_MINI_STATUS_BAR.backgroundColor),
+  backgroundOpacity:clamp(bar?.backgroundOpacity,.1,1,DEFAULT_MINI_STATUS_BAR.backgroundOpacity),
+  textColor:color(bar?.textColor,DEFAULT_MINI_STATUS_BAR.textColor),
+  fontScale:clamp(bar?.fontScale,.7,1.6,DEFAULT_MINI_STATUS_BAR.fontScale),
+  borderColor:color(bar?.borderColor,DEFAULT_MINI_STATUS_BAR.borderColor),
+  borderWidth:clamp(bar?.borderWidth,0,4,DEFAULT_MINI_STATUS_BAR.borderWidth),
+});
+const normMiniStatusItems=(items:readonly Partial<MiniStatusItemConfig>[]|undefined):readonly MiniStatusItemConfig[]=>{
+  const input=Array.isArray(items)?items:[];
+  const map=new Map(input.map(item=>[item.field,item]));
+  return DEFAULT_MINI_STATUS_ITEMS.map(defaultItem=>{
+    const item=map.get(defaultItem.field);
+    return {
+      field:defaultItem.field,
+      enabled:item?.enabled??defaultItem.enabled,
+      label:typeof item?.label==='string'&&item.label.trim()?item.label.trim().slice(0,8):defaultItem.label,
+      useProfitColor:item?.useProfitColor??defaultItem.useProfitColor,
+    };
+  });
+};
+const normWallLayout=(layout:Partial<MonitorWallLayout>|undefined):MonitorWallLayout=>({
+  columns:Math.round(clamp(layout?.columns,1,4,DEFAULT_MONITOR_WALL_LAYOUT.columns)),
+  columnGap:clamp(layout?.columnGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.columnGap),
+  rowGap:clamp(layout?.rowGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.rowGap),
+});
 
 const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
   const fallback=DEFAULT_HOLDING_WALL_CONFIG;
@@ -108,7 +139,10 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
     normalStyle:normStyle(input?.normalStyle,DEFAULT_MONITOR_STYLE),miniStyle:normStyle(input?.miniStyle,DEFAULT_MONITOR_CONFIG.miniStyle),
     miniHeader:normMiniHeader(input?.miniHeader),
     miniColumns:normMiniColumns(input?.miniColumns),
+    miniStatusBar:normMiniStatusBar(input?.miniStatusBar),
+    miniStatusItems:normMiniStatusItems(input?.miniStatusItems),
     normalWall:normWall(input?.normalWall),
+    normalWallLayout:normWallLayout(input?.normalWallLayout),
     effects:{
       refresh:VALID_EFFECTS.includes(effects?.refresh as MonitorEffect)?effects!.refresh:DEFAULT_MONITOR_EFFECTS.refresh,
       gain:VALID_EFFECTS.includes(effects?.gain as MonitorEffect)?effects!.gain:DEFAULT_MONITOR_EFFECTS.gain,
