@@ -22,7 +22,7 @@ jobs:
       - name: V1.1.1 Hard Gates
         run: npm run test:v1_1_1
       - name: V1.1.2 Incremental Gates
-        run: npm run test:v112-network
+        run: npm run test:v112-new
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
