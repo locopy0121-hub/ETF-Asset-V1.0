@@ -479,7 +479,13 @@ class TfAssetOverlayService:Service(){
     val asset=snap.optJSONObject("asset")?:JSONObject()
     val statusBar=cfg.optJSONObject("miniStatusBar")?:JSONObject()
     val statusItemsJson=cfg.optJSONArray("miniStatusItems")
-    val statusItems=(0 until (statusItemsJson?.length()?:0)).mapNotNull{statusItemsJson?.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
+    val statusItems=if(statusItemsJson==null||statusItemsJson.length()==0){
+      listOf(
+        JSONObject().put("field","totalAssets").put("label","總資產").put("enabled",true).put("useProfitColor",false),
+        JSONObject().put("field","marketValue").put("label","市值").put("enabled",true).put("useProfitColor",false),
+        JSONObject().put("field","totalReturn").put("label","總損益").put("enabled",true).put("useProfitColor",true)
+      )
+    }else (0 until statusItemsJson.length()).mapNotNull{statusItemsJson.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
     if(statusBar.optBoolean("visible",true)&&statusItems.isNotEmpty()){
       val statusBg=color(statusBar.optString("backgroundColor","#111827"),Color.rgb(17,24,39))
       val statusAlpha=(statusBar.optDouble("backgroundOpacity",.96).coerceIn(.1,1.0)*255).roundToInt()
