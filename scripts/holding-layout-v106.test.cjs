@@ -9,9 +9,12 @@ const editor=fs.readFileSync('src/editor/editorModel.ts','utf8');
 
 assert.ok(!/sortHoldingQuotes\(finance\.holdings[\s\S]{0,80}slice\(/.test(home),'home must not slice holdings after sorting');
 for(const mode of ['grid2','grid3','horizontal','paged2']){
-  assert.ok(portfolio.includes(mode),'portfolio missing legacy layout '+mode);
   assert.ok(collection.includes(mode),'collection missing legacy layout '+mode);
 }
+assert.ok(portfolio.includes('holdingColumns'),'portfolio must expose independent holding column state');
+assert.ok(portfolio.includes('holdingScrollMode'),'portfolio must expose independent holding scroll state');
+assert.ok(portfolio.includes('holdingPrimaryField'),'portfolio must expose primary metric state');
+assert.ok(portfolio.includes('橫向滑動'),'portfolio must allow horizontal scroll composition');
 assert.ok(home.includes('holdingColumns'),'home must expose independent holding column state');
 assert.ok(home.includes('holdingScrollMode'),'home must expose independent holding scroll state');
 assert.ok(home.includes('橫向滑動'),'home must allow horizontal scroll composition');
