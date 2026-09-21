@@ -23,6 +23,8 @@ jobs:
         run: npm run test:v118
       - name: V1.0.19 Dashboard Free-Layer Gate
         run: node scripts/v119-dashboard-free-layer.test.cjs
+      - name: V1.0.19 Market Wall Restore Gate
+        run: node scripts/v119-market-wall-restore.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
