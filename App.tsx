@@ -114,7 +114,7 @@ function AppBody(){
 
   return <View style={styles.root}>
     <View style={styles.screen}>{screen}</View>
-    <GlobalFloatingAi/>
+    <GlobalFloatingAi activePage={active}/>
     {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
       <View style={styles.nav}>
         {MAIN_PAGES.map(page=>{
