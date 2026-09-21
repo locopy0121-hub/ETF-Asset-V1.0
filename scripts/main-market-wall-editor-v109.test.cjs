@@ -7,6 +7,10 @@ const card=fs.readFileSync('src/components/HoldingQuoteModule.tsx','utf8');
 const modal=fs.readFileSync('src/components/PageFrameSettingsModal.tsx','utf8');
 const editor=fs.readFileSync('src/editor/editorModel.ts','utf8');
 const wallEditor=fs.readFileSync('src/components/HoldingMarketWallEditor.tsx','utf8');
+const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
+const release=fs.readFileSync('.github/workflows/release-v1.yml','utf8');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const app=JSON.parse(fs.readFileSync('app.json','utf8'));
 
 assert.match(home,/wallConfig=\{editor\.displayConfig\.holdingWall\}/,'home main market wall must consume its editor config');
 assert.ok(!/sortHoldingQuotes\(finance\.holdings[\s\S]{0,100}slice\(/.test(home),'home market wall must not cap holdings');
