@@ -236,13 +236,19 @@ class TfAssetOverlayService:Service(){
         }
       }
       "market-wall"->{
-        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.chunked(2).forEach{pair->
-          val line=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
-          pair.forEach{row->line.addView(textView(quoteLine(row),tone(row),11*fs,Gravity.CENTER),weighted(1f))}
-          if(pair.size==1)line.addView(View(this),weighted(1f))
-          root.addView(line)
+        val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.forEach{row->
+          val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(8,6,8,6)}
+          card.addView(textView(row.optString("name","")+"  "+row.optString("symbol","--"),text,12*fs,Gravity.START))
+          card.addView(textView(number2(row,"price")+"   "+signed2(row,"change")+"   "+signed2(row,"changePercent")+"%",tone(row),15*vs,Gravity.START))
+          val pnl=row.optDouble("pnl",Double.NaN)
+          val pnlTone=if(!pnl.isFinite())neutral else if(pnl>0)gain else if(pnl<0)loss else neutral
+          card.addView(textView("持股損益 "+signedInteger(row,"pnl")+"   報酬率 "+signed2(row,"roi")+"%   市值 "+integer(row,"marketValue"),pnlTone,10*fs,Gravity.START))
+          body.addView(card)
         }
+        val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
+        root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
       }
       "heatmap"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
