@@ -1,6 +1,5 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import type { MonitorConfig } from '../monitor/monitorDomain';
 import {
   DEFAULT_HOLDING_WALL_CONFIG,
   type HoldingWallAlign,
@@ -20,11 +19,9 @@ const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}
 export function HoldingMarketWallEditor({
   value,
   onChange,
-  miniSource,
 }:{
   value:HoldingWallConfig;
   onChange:(next:HoldingWallConfig)=>void;
-  miniSource:MonitorConfig;
 }){
   const patchHeader=(patch:Partial<HoldingWallConfig['header']>)=>onChange({...value,header:{...value.header,...patch}});
   const patchStyle=(patch:Partial<HoldingWallConfig['style']>)=>onChange({...value,style:{...value.style,...patch}});
@@ -44,49 +41,17 @@ export function HoldingMarketWallEditor({
     fields[target]=current;
     onChange({...value,fields});
   };
-  const copyMini=()=>{
-    const allowed=new Set<HoldingWallFieldKey>(['name','symbol','price','change','changePercent','pnl','roi','marketValue']);
-    const mapped=miniSource.miniColumns
-      .filter(column=>allowed.has(column.field as HoldingWallFieldKey))
-      .map(column=>({
-        field:column.field as HoldingWallFieldKey,
-        enabled:column.enabled,
-        label:column.label,
-        fontScale:column.fontScale,
-        align:column.align,
-        useProfitColor:column.useProfitColor,
-      }));
-    const missing=DEFAULT_HOLDING_WALL_CONFIG.fields.filter(item=>!mapped.some(mappedField=>mappedField.field===item.field));
-    onChange({
-      header:{
-        visible:miniSource.miniHeader.visible,
-        fontScale:miniSource.miniHeader.fontScale,
-        backgroundColor:miniSource.miniHeader.backgroundColor,
-        textColor:miniSource.miniHeader.textColor,
-        borderColor:miniSource.miniHeader.borderColor,
-        borderWidth:miniSource.miniHeader.borderWidth,
-      },
-      fields:[...mapped,...missing],
-      style:{
-        backgroundColor:miniSource.miniStyle.backgroundColor,
-        textColor:miniSource.miniStyle.textColor,
-        secondaryTextColor:miniSource.miniStyle.secondaryTextColor,
-        gainColor:miniSource.miniStyle.gainColor,
-        lossColor:miniSource.miniStyle.lossColor,
-        borderColor:miniSource.miniStyle.borderColor,
-        borderWidth:miniSource.miniStyle.borderWidth,
-        cornerRadius:miniSource.miniStyle.cornerRadius,
-        padding:miniSource.miniStyle.padding,
-        rowGap:miniSource.miniStyle.rowGap,
-      },
-    });
-  };
+  const createMainWallTool=()=>onChange({
+    header:{...DEFAULT_HOLDING_WALL_CONFIG.header},
+    fields:DEFAULT_HOLDING_WALL_CONFIG.fields.map(field=>({...field})),
+    style:{...DEFAULT_HOLDING_WALL_CONFIG.style},
+  });
 
   return <View style={styles.root}>
     <View style={styles.notice}>
       <Text style={styles.noticeTitle}>主體行情牆編輯模式</Text>
-      <Text style={styles.noticeText}>主體行情牆＝首頁大型持股卡片區。編輯方式比照 Mini：A 標題區控制母層，B 欄位只控制自己的顯示與樣式；不改 Mini 本身。</Text>
-      <Pressable onPress={copyMini} style={styles.copyButton}><Text style={styles.copyText}>複製 Mini 設定至主體行情牆</Text></Pressable>
+      <Text style={styles.noticeText}>主體行情牆是獨立工具。A 標題區控制母層，B 欄位只控制自己的顯示與樣式；不讀取、不複製、不覆寫 Mini 的版型與設定。</Text>
+      <Pressable onPress={createMainWallTool} style={styles.copyButton}><Text style={styles.copyText}>新建主體行情牆工具</Text></Pressable>
     </View>
 
     <View style={styles.block}>
