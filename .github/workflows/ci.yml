@@ -38,12 +38,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - name: Decide whether this commit requests Item 1 QA
+      - name: Decide whether this branch requests Item 1 QA
         id: qa_gate
         shell: bash
         run: |
-          MSG="$(git log -1 --pretty=%B)"
-          if [[ "$MSG" == *"[QA-ITEM1]"* ]]; then
+          if [[ -f .github/qa-item1.trigger ]] && grep -qx "run" .github/qa-item1.trigger; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
