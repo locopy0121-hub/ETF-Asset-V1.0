@@ -24,7 +24,11 @@ const portfolio=fs.readFileSync('src/screens/PortfolioScreen.tsx','utf8');
 const detail=fs.readFileSync('src/screens/HoldingDetailScreen.tsx','utf8');
 
 assert.match(market,/resolveTwseCurrentPrice/,'MarketRuntime must use the live TWSE resolver');
-assert.match(market,/TWSE incomplete snapshot/,'partial quote fetch must not publish as a successful full snapshot');
+assert.match(market,/updatedCount/,'market refresh must track usable quote count');
+assert.match(market,/unresolved/,'partial snapshots must preserve unresolved symbols instead of freezing all holdings');
+assert.match(market,/部分行情暫用上次資料/,'partial refresh must surface a non-blocking warning while keeping fresh rows');
+assert.match(market,/refreshPromiseRef/,'concurrent refresh calls must be coalesced');
+assert.match(market,/force:true/,'foreground refresh must use the force retry path');
 assert.match(market,/\[hydrated,trackedSymbols,refresh\]/,'newly tracked holdings must trigger immediate refresh');
 assert.match(finance,/\[entries,market\.setTrackedSymbols\]/,'finance holdings must register their symbols with market runtime');
 assert.match(finance,/\[initialCash,entries,canonicalQuotes\]/,'canonical finance snapshot must recompute when quotes change');
