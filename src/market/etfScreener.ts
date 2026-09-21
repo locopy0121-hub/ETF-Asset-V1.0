@@ -60,6 +60,14 @@ export function filterEtfs(items:readonly EtfScreenItem[],filters:EtfScreenFilte
   });
 }
 
+export function filterEtfsForMetricEnrichment(items:readonly EtfScreenItem[],filters:EtfScreenFilters){
+  return filterEtfs(items,{
+    ...filters,
+    maxExpenseRatioPct:undefined,
+    minYieldPct:undefined,
+  });
+}
+
 const rawNumber=(value:unknown):number|undefined=>{
   const raw=value&&typeof value==='object'&&'raw' in (value as Record<string,unknown>)?(value as Record<string,unknown>).raw:value;
   const n=Number(raw);
