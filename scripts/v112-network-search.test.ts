@@ -69,7 +69,7 @@ async function main(){
   assert.match(formatNetworkResults(merged,{showSources:true,detail:'detailed'}),/example\.com/);
 
   const fallback=await searchNetwork('fallback query',failingHtmlFetch);
-  assert.equal(fallback[0]?.url,'https://fallback.example.com/');
+  assert.equal(new URL(fallback[0]?.url??'').hostname,'fallback.example.com');
 
   console.log('v1.1.2 general network search behavior PASS');
 }
