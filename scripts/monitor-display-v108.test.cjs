@@ -22,7 +22,7 @@ assert.match(settings,/label:'資產權重牆'/,'資產權重牆 label missing')
 assert.match(settings,/label:'跑馬行情'/,'跑馬行情 label missing');
 assert.match(settings,/label:'純文字終端'/,'純文字終端 label missing');
 
-assert.match(native,/fitMiniHeightToContent/,'Mini adaptive-height gate missing');
+assert.ok(!native.includes('fitMiniHeightToContent'),'Mini must honor user-configured fixed height and must not auto-shrink to content');
 const mini=native.slice(native.indexOf('private fun renderMini'),native.indexOf('private fun weighted'));
 assert.match(mini,/ScrollView/,'Mini scrolling container missing');
 assert.ok(!mini.includes('ScrollView.LayoutParams'),'Mini ScrollView child must not use unresolved ScrollView.LayoutParams');
