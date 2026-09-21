@@ -49,12 +49,6 @@ const mockFetch=(async(input:RequestInfo|URL)=>{
   return new Response(JSON.stringify(['ETF',['Wikipedia ETF'],['Wiki fallback'],['https://zh.wikipedia.org/wiki/ETF']]),{status:200,headers:{'content-type':'application/json'}});
 }) as typeof fetch;
 
-const merged=await searchNetwork('ETF latest info',mockFetch);
-assert.equal(merged[0]?.title,'Example & Article');
-assert.equal(merged.filter(row=>row.url==='https://example.com/article?a=1').length,1);
-assert.ok(merged.some(row=>row.source==='Wikipedia'));
-assert.match(formatNetworkResults(merged,{showSources:true,detail:'detailed'}),/example\.com/);
-
 const failingHtmlFetch=(async(input:RequestInfo|URL)=>{
   const url=String(input);
   if(url.includes('html.duckduckgo.com'))return new Response('blocked',{status:503});
@@ -67,7 +61,17 @@ const failingHtmlFetch=(async(input:RequestInfo|URL)=>{
   return new Response(JSON.stringify(['Fallback',[],[],[]]),{status:200,headers:{'content-type':'application/json'}});
 }) as typeof fetch;
 
-const fallback=await searchNetwork('fallback query',failingHtmlFetch);
-assert.equal(fallback[0]?.url,'https://fallback.example.com/');
+async function main(){
+  const merged=await searchNetwork('ETF latest info',mockFetch);
+  assert.equal(merged[0]?.title,'Example & Article');
+  assert.equal(merged.filter(row=>row.url==='https://example.com/article?a=1').length,1);
+  assert.ok(merged.some(row=>row.source==='Wikipedia'));
+  assert.match(formatNetworkResults(merged,{showSources:true,detail:'detailed'}),/example\.com/);
 
-console.log('v1.1.2 general network search behavior PASS');
+  const fallback=await searchNetwork('fallback query',failingHtmlFetch);
+  assert.equal(fallback[0]?.url,'https://fallback.example.com/');
+
+  console.log('v1.1.2 general network search behavior PASS');
+}
+
+main().catch(error=>{console.error(error);process.exitCode=1;});
