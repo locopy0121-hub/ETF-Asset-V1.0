@@ -78,6 +78,9 @@ function normalize(input:Partial<WidgetConfig>|null|undefined):WidgetConfig{
       manualSymbols:uniqueStrings(sort?.manualSymbols),
     },
     selectedSymbols:uniqueStrings(input?.selectedSymbols),
+    profitColorFields:Array.isArray(input?.profitColorFields)?input!.profitColorFields.filter((x):x is WidgetField=>VALID_FIELDS.includes(x as WidgetField)):[...DEFAULT_WIDGET_CONFIG.profitColorFields],
+    wallColumns:Math.round(clamp(input?.wallColumns,1,4,DEFAULT_WIDGET_CONFIG.wallColumns)),
+    forceRefreshOnTap:input?.forceRefreshOnTap??DEFAULT_WIDGET_CONFIG.forceRefreshOnTap,
     tapTarget:input?.tapTarget==='portfolio'||input?.tapTarget==='dividend'?input.tapTarget:'home',
   };
 }
