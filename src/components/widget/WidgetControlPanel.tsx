@@ -11,7 +11,6 @@ import type {
   WidgetTemplate,
 } from '../../widget/widgetDomain';
 import { ColorPalettePicker } from '../ColorPalettePicker';
-import { DISPLAY_PALETTES } from '../../theme/displayPalettes';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type SymbolOption={symbol:string;name?:string};
@@ -114,21 +113,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       <Choice choices={['left','center','right'] as const} value={value.style.textAlign} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={textAlign=>patchStyle({textAlign})}/>
     </Section>
 
-    <Section title="全局調色盤">
-      <Text style={styles.note}>選一次套用整套 Widget 配色；下方個別顏色仍可再微調。</Text>
-      <View style={styles.row}>{DISPLAY_PALETTES.map(palette=><Pressable key={palette.key} onPress={()=>patchStyle({
-        backgroundColor:palette.backgroundColor,textColor:palette.textColor,secondaryTextColor:palette.secondaryTextColor,
-        gainColor:palette.gainColor,lossColor:palette.lossColor,neutralColor:palette.neutralColor,
-        borderColor:palette.borderColor,backgroundOpacity:palette.backgroundOpacity,
-      })} style={styles.paletteCard}>
-        <View style={[styles.palettePreview,{backgroundColor:palette.backgroundColor,borderColor:palette.borderColor}]}>
-          <View style={[styles.paletteDot,{backgroundColor:palette.textColor}]}/><View style={[styles.paletteDot,{backgroundColor:palette.gainColor}]}/><View style={[styles.paletteDot,{backgroundColor:palette.lossColor}]}/>
-        </View>
-        <Text style={styles.choiceText}>{palette.label}</Text>
-      </Pressable>)}</View>
-    </Section>
-
     <Section title="顏色與外觀">
+      <Text style={styles.note}>所有顏色一律由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
       <ColorPalettePicker label="背景" value={value.style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
       <ColorPalettePicker label="文字" value={value.style.textColor} onChange={textColor=>patchStyle({textColor})}/>
       <ColorPalettePicker label="次要文字" value={value.style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
@@ -194,7 +180,6 @@ const styles = StyleSheet.create({
   profitButtonTextOn:{color:colors.primary},
   symbolWrap:{flexDirection:'row',gap:6,flexWrap:'wrap'},
   symbolChip:{paddingHorizontal:8,paddingVertical:6,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
-  paletteCard:{gap:4,alignItems:'center'},palettePreview:{width:64,height:38,borderRadius:10,borderWidth:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:4},paletteDot:{width:10,height:10,borderRadius:5},
 });
 
 
