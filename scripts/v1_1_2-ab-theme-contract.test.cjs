@@ -12,6 +12,8 @@ const monitorRuntime=read('src/monitor/MonitorSettingsRuntime.tsx');
 const monitorNative=read('native/android/TfAssetOverlayService.kt');
 const settings=read('src/screens/SettingsScreen.tsx');
 const theme=read('src/theme/ThemeRuntime.tsx');
+const themeBackground=read('src/theme/ThemeBackgroundLayer.tsx');
+const backup=read('src/settings/BackupService.ts');
 const bridge=read('src/native/TfAssetNativeBridge.ts');
 const native=read('native/android/TfAssetNativeModule.kt');
 const releaseWorkflow=read('.github/workflows/release-v1.yml');
@@ -25,6 +27,10 @@ for(const token of ['bounceScale','staticEffectActive','"bounce"->1f','1.04f','1
 assert.match(widgetNative,/itemScale\*staticBounceScale/,'Widget summary bounce must affect rendered text size');
 assert.match(widgetNative,/RelativeSizeSpan\(scale\)/,'Widget wall must preserve per-field scale spans');
 assert.match(widgetNative,/fontScale"[\s\S]*?\*bounceScale\(visual,rendered\.second\)/,'Widget wall bounce must affect per-field relative size');
+assert.match(widget,/widgetFieldProfitValue\(previewSnapshot,row,field\)/,'Widget wall preview must color from each field numeric value');
+assert.match(widgetNative,/globalGap:Int,[\s\S]*?globalAlign:String/,'Widget wall must accept global alignment fallback');
+assert.match(widgetNative,/textAlign",""\)\.takeIf\(String::isNotBlank\)\?:globalAlign/,'Widget wall B alignment must inherit global alignment');
+assert.match(widgetNative,/effectTone=withAlpha\(tone,staticEffectAlpha\(visual,rendered\.second\)\)/,'Widget wall must render non-bounce static effects');
 for(let i=1;i<=4;i++)assert(widgetXml.includes('widget_wall_row_'+i),'Widget XML missing dynamic row '+i);
 
 for(const token of ['Normal A 顯示項目（母）','Mini A 項目列（母）','Mini B 欄位（子）','Mini 下方狀態列 A/B','主體行情牆 A/B 編輯','單項行距','單項特效'])assert(monitor.includes(token),'Monitor A-B UI missing '+token);
@@ -35,6 +41,10 @@ assert(monitorNative.includes('private fun jsonRawStrings'),'Monitor must preser
 assert.match(monitorNative,/selectedFields=jsonRawStrings\(cfg\.optJSONArray\("fields"\)\)/,'Normal monitor field keys must not be uppercased');
 assert.match(monitorNative,/jsonRawStrings[\s\S]*?\.trim\(\)\.takeIf\(String::isNotEmpty\)/,'Raw monitor field reader must preserve original key casing');
 assert.match(monitorNative,/selected=jsonStrings\(cfg\.optJSONArray\("selectedSymbols"\)\)/,'Symbol matching should retain uppercase normalization');
+assert.match(monitorNative,/valueScale=if\(isMonitorValueField\(field\)\)style\.optDouble\("valueFontScale",1\.0\)/,'Normal monitor must honor valueFontScale');
+assert.match(monitorNative,/if\(!animationsEnabled\)return/,'Monitor animation disable must gate item effects');
+assert.match(monitorNative,/"change"->changed/,'Monitor change trigger must require a real value change');
+assert.match(monitorNative,/previousEffectValues\[key\]=numeric/,'Monitor must retain prior effect values');
 
 assert(settings.includes('主題與背景'),'Theme settings entry missing');
 const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.indexOf('export const THEME_PRESETS'));
@@ -44,6 +54,10 @@ for(const key of ['midnight','ocean'])assert(theme.includes("key:'"+key+"',label
 assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
 assert.match(theme,/setNativeAppIcon\(prefs\.iconKey\)/,'Theme runtime must synchronize persisted/applied/reset iconKey to Android launcher');
 assert.match(theme,/\[hydrated,prefs\.iconKey\]/,'Native icon synchronization must react to every iconKey change after hydration');
+assert.match(themeBackground,/backgroundMode==='fitWidth'\?'contain':'cover'/,'Theme background fitWidth/fitHeight mapping must match labels');
+assert.match(backup,/customBackgroundUri\.startsWith\('content:\/\/'\)/,'Restore must sanitize external content background URIs');
+assert.match(backup,/sanitizeRestoredPayload\(selected\.payload\)/,'Local backup restore must sanitize theme background URI');
+assert.match(backup,/sanitizeRestoredPayload\(parsed\.payload\)/,'Imported backup restore must sanitize theme background URI');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
 for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
 for(const token of ['for i in range(1,11)','activity-alias','android:name=\".Icon01\"','android:name=\".Icon10\"','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release launcher alias injection missing '+token);
