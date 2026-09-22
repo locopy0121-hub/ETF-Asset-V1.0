@@ -1,6 +1,7 @@
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingSortKey, type HoldingWallConfig, type HoldingWallFieldConfig, type HoldingWallFieldKey, type QuoteModuleStyle } from '../domain/uiModels';
+import { DEFAULT_ITEM_EFFECT, ITEM_EFFECT_INTENSITIES, ITEM_EFFECT_KINDS, ITEM_EFFECT_SPEEDS, ITEM_EFFECT_TRIGGERS, type ItemEffectConfig } from '../domain/displayItemContract';
 
 export type FrameLayout = 'standard' | 'compact' | 'dense';
 export type FrameAppearance = 'theme' | 'soft' | 'outline';
@@ -140,7 +141,17 @@ const isFrameBehavior=(v:unknown):v is FrameBehavior=>v==='manual'||v==='auto'||
 
 const HOLDING_WALL_FIELDS:readonly HoldingWallFieldKey[]=['name','symbol','price','change','changePercent','pnl','roi','marketValue'];
 const clamp=(value:unknown,min:number,max:number,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
-const wallColor=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value:fallback;
+const wallColor=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
+const wallNullableColor=(value:unknown,fallback:string|null)=>value===undefined?fallback:value===null?null:typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
+const normalizeWallEffect=(raw:unknown,fallback:ItemEffectConfig=DEFAULT_ITEM_EFFECT):ItemEffectConfig=>{
+  const effect=(raw&&typeof raw==='object'?raw:{}) as Partial<ItemEffectConfig>;
+  return {
+    kind:ITEM_EFFECT_KINDS.includes(effect.kind as ItemEffectConfig['kind'])?effect.kind as ItemEffectConfig['kind']:fallback.kind,
+    trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?effect.trigger as ItemEffectConfig['trigger']:fallback.trigger,
+    speed:ITEM_EFFECT_SPEEDS.includes(effect.speed as ItemEffectConfig['speed'])?effect.speed as ItemEffectConfig['speed']:fallback.speed,
+    intensity:ITEM_EFFECT_INTENSITIES.includes(effect.intensity as ItemEffectConfig['intensity'])?effect.intensity as ItemEffectConfig['intensity']:fallback.intensity,
+  };
+};
 const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<HoldingWallConfig>;
   const header=(source.header??{}) as Partial<HoldingWallConfig['header']>;
@@ -162,13 +173,13 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       enabled:candidate?.enabled??fallback.enabled,
       label:typeof candidate?.label==='string'&&candidate.label.trim()?candidate.label.trim().slice(0,12):fallback.label,
       fontScale:clamp(candidate?.fontScale,.7,1.8,fallback.fontScale),
-      align:candidate?.align==='center'||candidate?.align==='right'?candidate.align:'left',
+      align:candidate?.align==='left'||candidate?.align==='center'||candidate?.align==='right'?candidate.align:fallback.align,
       useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
-      textColor:candidate?.textColor===undefined?fallback.textColor:candidate.textColor,
-      backgroundColor:candidate?.backgroundColor===undefined?fallback.backgroundColor:candidate.backgroundColor,
+      textColor:wallNullableColor(candidate?.textColor,fallback.textColor),
+      backgroundColor:wallNullableColor(candidate?.backgroundColor,fallback.backgroundColor),
       lineGap:candidate?.lineGap==null?fallback.lineGap:clamp(candidate.lineGap,0,32,fallback.lineGap??0),
       paddingY:clamp(candidate?.paddingY,0,16,fallback.paddingY),
-      effect:candidate?.effect??fallback.effect,
+      effect:normalizeWallEffect(candidate?.effect,fallback.effect),
     };
   }).filter(field=>HOLDING_WALL_FIELDS.includes(field.field));
   return {
@@ -179,7 +190,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       textColor:wallColor(header.textColor,DEFAULT_HOLDING_WALL_CONFIG.header.textColor),
       borderColor:wallColor(header.borderColor,DEFAULT_HOLDING_WALL_CONFIG.header.borderColor),
       borderWidth:clamp(header.borderWidth,0,4,DEFAULT_HOLDING_WALL_CONFIG.header.borderWidth),
-      effect:header.effect??DEFAULT_HOLDING_WALL_CONFIG.header.effect,
+      effect:normalizeWallEffect(header.effect,DEFAULT_HOLDING_WALL_CONFIG.header.effect),
     },
     fields,
     style:{
