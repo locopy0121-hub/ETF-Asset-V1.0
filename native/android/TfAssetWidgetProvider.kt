@@ -296,6 +296,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       "fade"->when(intensity){"soft"->.94f;"strong"->.72f;else->.84f}
       "pulse"->when(intensity){"soft"->.96f;"strong"->.78f;else->.88f}
       "flash-on-change"->when(intensity){"soft"->.92f;"strong"->.68f;else->.80f}
+      "bounce"->1f
       else->1f
     }
   }
