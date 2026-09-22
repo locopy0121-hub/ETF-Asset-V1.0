@@ -31,6 +31,8 @@ jobs:
         run: npm run test:v1_1_3-dividend-calendar
       - name: V1.1.3 system profit colors
         run: npm run test:v1_1_3-system-colors
+      - name: V1.1.3 user-visible version cleanup
+        run: npm run test:v1_1_3-visible-version
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
