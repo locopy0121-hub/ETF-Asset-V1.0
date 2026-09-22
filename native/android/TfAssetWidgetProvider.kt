@@ -232,6 +232,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val visual=fieldConfig.optJSONObject("visual")?:JSONObject()
       val label=fieldConfig.optString("label",defaultLabel(field))
       val rendered=renderField(field,asset,holding,label)
+      val paddingY=visual.optInt("paddingY",0).coerceIn(0,16)
+      if(paddingY>0){
+        val topPadStart=out.length
+        out.append("\u200B\n")
+        out.setSpan(AbsoluteSizeSpan(paddingY,true),topPadStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      }
       val start=out.length
       out.append(rendered.first)
       val end=out.length
@@ -259,11 +265,16 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       if(index<fields.lastIndex){
         out.append("\n")
         val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",globalGap).coerceIn(0,32) else globalGap.coerceIn(0,32)
-        if(gap>0){
+        val spacerHeight=(gap+paddingY).coerceIn(0,48)
+        if(spacerHeight>0){
           val spacerStart=out.length
           out.append("\u200B\n")
-          out.setSpan(AbsoluteSizeSpan(gap,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+          out.setSpan(AbsoluteSizeSpan(spacerHeight,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
+      }else if(paddingY>0){
+        val bottomPadStart=out.length
+        out.append("\n\u200B")
+        out.setSpan(AbsoluteSizeSpan(paddingY,true),bottomPadStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
     return out
