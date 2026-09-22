@@ -92,6 +92,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
 
     {value.mode==='mini'?<Section title="Mini B 欄位（子）">
       <Text style={styles.note}>一次只展開一個 B；資料列共用同一套 B 結構。</Text>
+      <Text style={styles.note}>Mini 列數不設限；超出固定高度時以捲動顯示，不截斷持股。</Text>
       {value.miniColumns.map((column,index)=>{
         const selected=editingKey==='mini:'+column.field;
         return <View key={column.field} style={styles.miniColumnCard}>
