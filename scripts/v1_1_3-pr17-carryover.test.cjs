@@ -4,7 +4,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 
 const native=read('native/android/TfAssetNativeModule.kt');
 const widget=read('native/android/TfAssetWidgetProvider.kt');
-const module=read('src/components/HoldingQuoteModule.tsx');
+const holdingModule=read('src/components/HoldingQuoteModule.tsx');
 const collection=read('src/components/HoldingQuoteCollection.tsx');
 const home=read('src/screens/HomeScreen.tsx');
 const portfolio=read('src/screens/PortfolioScreen.tsx');
@@ -14,13 +14,13 @@ const icon=native.slice(native.indexOf('@ReactMethod fun setAppIcon'),native.ind
 assert.match(icon,/app_icon_key[^\n]*\n\s*refreshWidget\(\)/,'App Icon must trigger a Widget refresh');
 
 // PR #17 item 2: header bounce has the requested visible vertical motion.
-const headerEffect=module.slice(module.indexOf('function EffectView('),module.indexOf('function effectActive('));
+const headerEffect=holdingModule.slice(holdingModule.indexOf('function EffectView('),holdingModule.indexOf('function effectActive('));
 assert.match(headerEffect,/effect\.kind==='bounce'/,'header must handle bounce kind');
 assert.match(headerEffect,/Animated\.timing\(translate/,'header bounce must drive translation');
 assert.match(headerEffect,/translateY:translate/,'header Animated.View must render translation');
 
 // PR #17 item 3: refresh-triggered effects track market generation on both pages.
-assert.match(module,/triggerToken=effect\.trigger==='refresh'\?refreshToken:numeric/);
+assert.match(holdingModule,/triggerToken=effect\.trigger==='refresh'\?refreshToken:numeric/);
 assert.match(headerEffect,/triggerToken=effect\.trigger==='refresh'\?refreshToken:numeric/);
 assert.match(collection,/refreshToken=\{refreshToken\}/);
 for(const [name,source] of [['Home',home],['Portfolio',portfolio]]){
