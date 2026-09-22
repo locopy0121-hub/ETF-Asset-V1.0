@@ -11,6 +11,8 @@ export type HoldingWallFieldConfig = Readonly<{
   fontScale: number;
   align: HoldingWallAlign;
   useProfitColor: boolean;
+  /** Dynamic background mode; separate from fixed Color Picker selection. */
+  useProfitBackground?:boolean;
   textColor:string|null;
   backgroundColor:string|null;
   lineGap:number|null;

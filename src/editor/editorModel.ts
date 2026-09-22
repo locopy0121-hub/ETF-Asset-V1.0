@@ -128,7 +128,7 @@ export function createInitialDisplayState(): PageDisplayState {
   return {
     home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
     ledger: {},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG },
     dividend: {},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
@@ -175,6 +175,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       fontScale:clamp(candidate?.fontScale,.7,1.8,fallback.fontScale),
       align:candidate?.align==='left'||candidate?.align==='center'||candidate?.align==='right'?candidate.align:fallback.align,
       useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
+      useProfitBackground:candidate?.useProfitBackground===true,
       textColor:wallNullableColor(candidate?.textColor,fallback.textColor),
       backgroundColor:wallNullableColor(candidate?.backgroundColor,fallback.backgroundColor),
       lineGap:candidate?.lineGap==null?fallback.lineGap:clamp(candidate.lineGap,0,32,fallback.lineGap??0),
@@ -299,5 +300,5 @@ export function mergeDisplayState(raw:unknown):PageDisplayState{
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
   const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
   const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts)};
-  return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
+  return {home,ledger:merge('ledger'),portfolio:{...merge('portfolio'),holdingWall:normalizeHoldingWall(source.portfolio?.holdingWall)},dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }

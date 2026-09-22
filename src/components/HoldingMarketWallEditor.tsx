@@ -111,6 +111,8 @@ export function HoldingMarketWallEditor({
               <Step label="字體" value={Math.round(field.fontScale*100)} min={70} max={200} step={5} suffix="%" onChange={fontScale=>patchField(field.field,{fontScale:fontScale/100})}/>
               <Choice value={field.align} onChange={align=>patchField(field.field,{align})}/>
               <Toggle label="套用損益色" value={field.useProfitColor} onChange={useProfitColor=>patchField(field.field,{useProfitColor})}/>
+              <Toggle label="背景隨損益自動變色" value={field.useProfitBackground===true} onChange={useProfitBackground=>patchField(field.field,{useProfitBackground})}/>
+              <Text style={styles.note}>開啟後背景按目前欄位損益狀態，沿用系統獲利／虧損／持平配色；關閉則恢復固定調色盤設定。</Text>
               <Toggle label="自訂文字顏色" value={field.textColor!=null} onChange={enabled=>patchField(field.field,{textColor:enabled?value.style.textColor:null})}/>
               {field.textColor?<ColorPalettePicker label="單項文字顏色" value={field.textColor} onChange={textColor=>patchField(field.field,{textColor})}/>:null}
               <Toggle label="自訂單項背景" value={field.backgroundColor!=null} onChange={enabled=>patchField(field.field,{backgroundColor:enabled?value.style.backgroundColor:null})}/>

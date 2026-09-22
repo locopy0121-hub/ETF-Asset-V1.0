@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
@@ -20,6 +20,7 @@ import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
+import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsControlBehavior';
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
@@ -61,13 +62,30 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+  const pageHistory=useRef<MainPageKey[]>([]);
+  const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
+  const aiUi=deriveAiUiState(settings.prefs.ai,active);
+  useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
+  useEffect(()=>{
+    const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
+      // React Native Modal.onRequestClose handles the currently open modal first.
+      if(detail){setDetail(null);return true;}
+      while(pageHistory.current.length){
+        const previous=pageHistory.current.pop()!;
+        if(previous!==active&&(previous!=='ai'||aiUi.showAiTab)){setActive(previous);return true;}
+      }
+      if(active!=='home'){setActive('home');return true;}
+      return false; // Only root with no earlier screen allows Android to leave the app.
+    });
+    return()=>subscription.remove();
+  },[active,detail,aiUi.showAiTab]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
-    if(!finance.hydrated)return;
+    if(!shouldRefreshAiNews(finance.hydrated,settings.hydrated,settings.prefs.ai))return;
     aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
     void aiNews.refresh();
-  },[finance.hydrated,aiHoldingKey]);
+  },[finance.hydrated,settings.hydrated,settings.prefs.ai.enabled,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
@@ -121,16 +139,16 @@ function AppBody(){
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
     <View style={styles.screen}>{screen}</View>
-    <GlobalFloatingAi/>
+    {aiUi.showFloatingAi?<GlobalFloatingAi/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
-        {MAIN_PAGES.map(page=>{
+        {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;
           return <Pressable
             key={page.key}
             accessibilityRole="tab"
             accessibilityState={{selected}}
-            onPress={()=>setActive(page.key)}
+            onPress={()=>navigatePage(page.key)}
             style={styles.navItem}
           >
             <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>
