@@ -50,8 +50,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.1.1';
-const BUILD='20101';
+const VERSION='2.1.2';
+const BUILD='20102';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -399,8 +399,8 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V2.1.1 全局設定、帳務明細及股息月曆修護（驗收中）" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V2.1.1 更新資訊">
+      <ChildButton label="更新資訊" summary="V2.1.2 全局設定、帳務明細及股息月曆修護（驗收中）" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V2.1.2 更新資訊">
         <Text style={styles.infoText}>新增 AI 助理與持股相關新聞自動取得，首頁市場新聞顯示代號、名稱、來源、日期與智慧摘要；首頁右上加入更新行情。總資產主值改採持股市值，不與現金合併。Monitor／Mini 修正雙擊切換回彈，並加入更新行情、縮小／放大與關閉控制。調色盤 V1.0.15 閃退修護持續保留。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'debug'))}/>
