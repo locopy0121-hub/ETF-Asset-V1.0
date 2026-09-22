@@ -45,7 +45,7 @@ const uniqueStrings=(value:unknown)=>Array.isArray(value)?Array.from(new Set(val
 const nullableColor=(value:unknown)=>value==null?null:typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():null;
 const normItemEffect=(effect:Partial<ItemEffectConfig>|undefined):ItemEffectConfig=>({
   kind:ITEM_EFFECT_KINDS.includes(effect?.kind as ItemEffectConfig['kind'])?effect!.kind as ItemEffectConfig['kind']:DEFAULT_ITEM_EFFECT.kind,
-  trigger:ITEM_EFFECT_TRIGGERS.includes(effect?.trigger as ItemEffectConfig['trigger'])?effect!.trigger as ItemEffectConfig['trigger']:DEFAULT_ITEM_EFFECT.trigger,
+  trigger:ITEM_EFFECT_TRIGGERS.includes(effect?.trigger as ItemEffectConfig['trigger'])?(effect?.trigger==='alert'?'change':effect!.trigger as ItemEffectConfig['trigger']):DEFAULT_ITEM_EFFECT.trigger,
   speed:ITEM_EFFECT_SPEEDS.includes(effect?.speed as ItemEffectConfig['speed'])?effect!.speed as ItemEffectConfig['speed']:DEFAULT_ITEM_EFFECT.speed,
   intensity:ITEM_EFFECT_INTENSITIES.includes(effect?.intensity as ItemEffectConfig['intensity'])?effect!.intensity as ItemEffectConfig['intensity']:DEFAULT_ITEM_EFFECT.intensity,
 });
