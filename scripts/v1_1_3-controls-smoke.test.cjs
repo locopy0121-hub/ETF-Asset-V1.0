@@ -24,7 +24,8 @@ assert.match(settings,/setAppPanel\(toggleExclusivePanel\(appPanel,/);
 assert.match(app,/const aiUi=deriveAiUiState\(settings\.prefs\.ai,active\)/);
 assert.match(app,/MAIN_PAGES\.filter\(page=>page\.key!=='ai'\|\|aiUi\.showAiTab\)/);
 assert.match(floating,/deriveAiUiState\(aiSettings\.prefs\.ai,'home'\)\.showFloatingAi/);
-assert.match(dividend,/aiSettings\.prefs\.ai\.enabled\?/);\nfor(const token of ['normalizeControlPrefs','patchPageTitle','patchAiPrefs','resolvePageTitle','deriveAiUiState','toggleExclusivePanel'])assert(behavior.includes(token),'Control behavior missing '+token);
+assert.match(dividend,/aiSettings\.prefs\.ai\.enabled\?/);
+for(const token of ['normalizeControlPrefs','patchPageTitle','patchAiPrefs','resolvePageTitle','deriveAiUiState','toggleExclusivePanel'])assert(behavior.includes(token),'Control behavior missing '+token);
 const screens={home:'HomeScreen',ledger:'LedgerScreen',portfolio:'PortfolioScreen',dividend:'DividendScreen',ai:'AiScreen'};
 for(const [key,screen] of Object.entries(screens)){
   const source=read('src/screens/'+screen+'.tsx');
