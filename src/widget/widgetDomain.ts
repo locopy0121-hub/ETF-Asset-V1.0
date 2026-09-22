@@ -144,6 +144,15 @@ export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
 export function widgetFieldStyle(config:WidgetConfig,field:WidgetField):WidgetFieldStyle{
   return config.fieldStyles.find(item=>item.field===field)??DEFAULT_WIDGET_FIELD_STYLES.find(item=>item.field===field)!;
 }
+export function updateWidgetFieldStyle(config:WidgetConfig,field:WidgetField,patch:Partial<WidgetFieldStyle>):WidgetConfig{
+  return {...config,fieldStyles:config.fieldStyles.map(item=>item.field===field?{...item,...patch}:item)};
+}
+export function updateWidgetFieldVisual(config:WidgetConfig,field:WidgetField,patch:Partial<ItemVisualOverride>):WidgetConfig{
+  const current=widgetFieldStyle(config,field);
+  const nextVisual={...current.visual,...patch};
+  const next=updateWidgetFieldStyle(config,field,{visual:nextVisual});
+  return {...next,profitColorFields:next.fieldStyles.filter(item=>item.visual.useProfitColor).map(item=>item.field)};
+}
 
 export function sortWidgetHoldings(snapshot: SharedSnapshot | null, config: WidgetConfig) {
   if (!snapshot) return [];
