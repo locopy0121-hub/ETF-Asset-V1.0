@@ -164,6 +164,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
 
     <Section title="A 顯示項目（母）">
       <Text style={styles.note}>A 只控制顯示／隱藏、順序與要編輯哪一項；上一個 B 會在選擇另一項時自動收合。</Text>
+      <Text style={styles.note}>2×2 所有項目皆可選；實際顯示數量依目前模板容量。</Text>
       {WIDGET_FIELDS.map(field=>{
         const active=value.fields.includes(field);
         const selected=editingField===field;
