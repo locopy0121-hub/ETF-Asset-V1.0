@@ -34,6 +34,7 @@ import {
   type BackupRecord,
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
+import { toggleExclusivePanel } from '../settings/settingsControlBehavior';
 import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
 import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
@@ -379,30 +380,30 @@ export function SettingsScreen(){
 
   function appSection(){
     return <View style={styles.children}>
-      <ChildButton label="各頁標題設定" summary="首頁／紀錄／庫存／股息／AI／設定" active={appPanel==='titles'} onPress={()=>setAppPanel(appPanel==='titles'?null:'titles')}/>
+      <ChildButton label="各頁標題設定" summary="首頁／紀錄／庫存／股息／AI／設定" active={appPanel==='titles'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'titles'))}/>
       {appPanel==='titles'?<Panel title="頁面標題">
         {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
           <Text style={styles.rowTitle}>{page.label}</Text>
           <TextInput accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
         </View>)}
       </Panel>:null}
-      <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(appPanel==='reset'?null:'reset')}/>
+      <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'reset'))}/>
       {appPanel==='reset'?<Panel title="還原預設設定">
         <Text style={styles.note}>只重設通知、顯示格式與交易預設值，不刪除交易、股息、持股與帳務資料。</Text>
         <ActionButton label="還原 App Preferences" onPress={()=>Alert.alert('確認重設','帳務資料不會被刪除。',[{text:'取消',style:'cancel'},{text:'重設',onPress:settings.resetPreferences}])}/>
       </Panel>:null}
-      <ChildButton label="版本資訊" summary={'v'+VERSION+' · '+BUILD} active={appPanel==='version'} onPress={()=>setAppPanel(appPanel==='version'?null:'version')}/>
+      <ChildButton label="版本資訊" summary={'v'+VERSION+' · '+BUILD} active={appPanel==='version'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'version'))}/>
       {appPanel==='version'?<Panel title="版本資訊">
         <StatusRow label="App" value="TF Asset｜資產管家"/>
         <StatusRow label="Version" value={VERSION}/>
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.1.2 A/B 編輯、Widget/Monitor、主題與 Carry-over 修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      <ChildButton label="更新資訊" summary="V1.1.2 A/B 編輯、Widget/Monitor、主題與 Carry-over 修護" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
       {appPanel==='updates'?<Panel title="V1.1.2 更新資訊">
         <Text style={styles.infoText}>新增 AI 助理與持股相關新聞自動取得，首頁市場新聞顯示代號、名稱、來源、日期與智慧摘要；首頁右上加入更新行情。總資產主值改採持股市值，不與現金合併。Monitor／Mini 修正雙擊切換回彈，並加入更新行情、縮小／放大與關閉控制。調色盤 V1.0.15 閃退修護持續保留。</Text>
       </Panel>:null}
-      <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
+      <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'debug'))}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
         <StatusRow label="Market Phase" value={market.phase}/>
         <StatusRow label="Market Source" value={market.config.source}/>
