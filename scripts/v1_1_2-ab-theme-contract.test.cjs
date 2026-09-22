@@ -26,6 +26,10 @@ for(const token of ['Normal A 顯示項目（母）','Mini A 項目列（母）'
 for(const token of ['normalItems','MonitorItemConfig','textColor:string|null','lineGap:number|null','effect:ItemEffectConfig'])assert(monitorDomain.includes(token),'Monitor domain missing '+token);
 for(const token of ['normNormalItems','normMiniColumns','normMiniStatusItems','normWall'])assert(monitorRuntime.includes(token),'Monitor persistence missing '+token);
 for(const token of ['normalItems','miniColumns','miniStatusItems','applyItemEffect','TranslateAnimation','monitor_runtime_mode_override'])assert(monitorNative.includes(token),'Monitor native A-B/effect path missing '+token);
+assert(monitorNative.includes('private fun jsonRawStrings'),'Monitor must preserve case-sensitive field identifiers');
+assert.match(monitorNative,/selectedFields=jsonRawStrings\(cfg\.optJSONArray\("fields"\)\)/,'Normal monitor field keys must not be uppercased');
+assert.match(monitorNative,/jsonRawStrings[\s\S]*?\.trim\(\)\.takeIf\(String::isNotEmpty\)/,'Raw monitor field reader must preserve original key casing');
+assert.match(monitorNative,/selected=jsonStrings\(cfg\.optJSONArray\("selectedSymbols"\)\)/,'Symbol matching should retain uppercase normalization');
 
 assert(settings.includes('主題與背景'),'Theme settings entry missing');
 assert.equal((theme.match(/data:image\/png;base64/g)||[]).length,10,'Theme runtime must contain 10 built-in backgrounds');
