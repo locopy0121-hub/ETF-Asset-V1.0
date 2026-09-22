@@ -9,7 +9,7 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import {buildDividendCalendarEvents,dividendCalendarTypeLabel,filterDividendCalendarEvents} from '../dividend/dividendCalendar';
+import {buildDividendCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents} from '../dividend/dividendCalendar';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
@@ -19,7 +19,7 @@ import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, spacing } from '../theme/tokens';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
-const nowIso=()=>new Date().toISOString().slice(0,10);
+const nowIso=()=>deviceLocalCalendarDate();
 
 export function DividendScreen() {
   const finance=useFinance();
@@ -50,7 +50,7 @@ export function DividendScreen() {
   },[calendarEvents,month]);
   const selectedEvents=monthEvents.filter(event=>event.date===selectedDate);
   const monthDate=new Date(month+'-01T12:00:00');
-  const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(d.toISOString().slice(0,7));};
+  const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(deviceLocalCalendarDate(d).slice(0,7));};
   const firstWeekday=monthDate.getDay();
   const nextMonth=new Date(monthDate);nextMonth.setMonth(nextMonth.getMonth()+1);
   const daysInMonth=Math.round((nextMonth.getTime()-monthDate.getTime())/86400000);
