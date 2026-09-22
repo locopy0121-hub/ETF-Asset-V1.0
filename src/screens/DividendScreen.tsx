@@ -14,6 +14,7 @@ import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
 import { calculateLedgerCashFlow, type DividendLedgerEntry } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, spacing } from '../theme/tokens';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
@@ -21,6 +22,7 @@ const nowIso=()=>new Date().toISOString().slice(0,10);
 
 export function DividendScreen() {
   const finance=useFinance();
+  const aiSettings=useSettingsRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [month,setMonth]=useState(nowIso().slice(0,7));
@@ -62,7 +64,7 @@ export function DividendScreen() {
               <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
               <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
             </View>
-            <View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>
+            {aiSettings.prefs.ai.enabled?<View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>:null}
           </FrameCard>
         },
         {key:'dividend-calendar',element:
