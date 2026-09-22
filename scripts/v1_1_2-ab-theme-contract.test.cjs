@@ -61,6 +61,10 @@ assert.match(backup,/sanitizeRestoredPayload\(selected\.payload\)/,'Local backup
 assert.match(backup,/sanitizeRestoredPayload\(parsed\.payload\)/,'Imported backup restore must sanitize theme background URI');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
 for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
+assert(native.includes('override fun onActivityResult(activity:Activity,requestCode:Int,resultCode:Int,data:Intent?)'),'RN 0.86 activity listener signature missing');
+assert(native.includes('val activity=reactContext.currentActivity'),'RN 0.86 current activity lookup missing');
+assert(monitorNative.includes('val fieldGravity=gravityFor('),'Monitor footer gravity must be bound outside LinearLayout.apply');
+assert(monitorNative.includes('10*fs,fieldGravity'),'Monitor footer label must use bound gravity');
 for(const token of ['node scripts/inject-v1_1_2-android.cjs','grep -c \'<activity-alias\''])assert(releaseWorkflow.includes(token),'Release workflow injection hook missing '+token);
 for(const token of ['activity-alias','for(let i=1;i<=10;i++)','String(i).padStart(2,\'0\')','android:name=\".Icon'])assert(releaseInject.includes(token),'Release launcher injection script missing '+token);
 for(const key of ['01','10'])assert(releaseInject.includes("['01','10']")||releaseInject.includes('Icon'+key),'Release launcher alias boundary missing Icon'+key);
