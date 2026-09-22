@@ -29,6 +29,8 @@ jobs:
         run: npm run test:v1_1_3-ai-holdings
       - name: V1.1.3 dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
+      - name: V1.1.3 system profit colors
+        run: npm run test:v1_1_3-system-colors
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
