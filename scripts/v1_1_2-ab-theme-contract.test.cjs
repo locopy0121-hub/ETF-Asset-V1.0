@@ -32,7 +32,8 @@ assert.match(monitorNative,/jsonRawStrings[\s\S]*?\.trim\(\)\.takeIf\(String::is
 assert.match(monitorNative,/selected=jsonStrings\(cfg\.optJSONArray\("selectedSymbols"\)\)/,'Symbol matching should retain uppercase normalization');
 
 assert(settings.includes('主題與背景'),'Theme settings entry missing');
-assert.equal((theme.match(/data:image\/png;base64/g)||[]).length,10,'Theme runtime must contain 10 built-in backgrounds');
+const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.indexOf('export const THEME_PRESETS'));
+assert.equal((backgroundBlock.match(/data:image\\/png;base64/g)||[]).length,10,'Theme runtime must contain 10 built-in backgrounds');
 for(const key of ['sky','midnight','sand','forest','violet','rose','aqua','amber','ocean','slate'])assert(theme.includes("key:'"+key+"'"),'Theme preset missing '+key);
 assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
