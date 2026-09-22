@@ -36,7 +36,7 @@ function parseRss(xml:string,h:TrackedHolding):AiNewsItem[]{
     const title=tag(block,'title');
     const publishedAt=tag(block,'pubDate');
     const url=link(block);
-    return {id:`${h.symbol}-${publishedAt||index}-${title}`,symbol:h.symbol,name:h.name,title,source:sourceFromTitle(title),publishedAt,url,summary:'',summaryStatus:'unavailable'};
+    return {id:`${h.symbol}-${publishedAt||index}-${title}`,symbol:h.symbol,name:h.name,title,source:sourceFromTitle(title),publishedAt,url,summary:'',summaryStatus:'unavailable' as const};
   }).filter(x=>x.title);
 }
 async function fetchHoldingNews(h:TrackedHolding){
