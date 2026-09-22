@@ -35,7 +35,7 @@ import {
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, setNativeAppIcon, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
@@ -430,11 +430,8 @@ export function SettingsScreen(){
         if(uri)theme.patch({customBackgroundUri:uri});
       }catch(error){Alert.alert('背景圖片選擇失敗',error instanceof Error?error.message:String(error));}
     };
-    const chooseIcon=async(iconKey:AppIconKey)=>{
+    const chooseIcon=(iconKey:AppIconKey)=>{
       theme.patch({iconKey});
-      if(nativeRuntimeAvailable){
-        try{await setNativeAppIcon(iconKey);}catch(error){Alert.alert('App Icon 套用失敗',error instanceof Error?error.message:String(error));}
-      }
     };
     return <Panel title="視覺主題與背景">
       <Text style={styles.note}>主題是全域視覺基底；Widget／Monitor／各 B 單項已自訂的顏色不會被這裡直接洗掉。</Text>
@@ -476,7 +473,7 @@ export function SettingsScreen(){
         {APP_ICON_KEYS.map((iconKey,index)=>{
           const preset=THEME_PRESETS[index]!;
           const active=theme.prefs.iconKey===iconKey;
-          return <Pressable key={iconKey} onPress={()=>void chooseIcon(iconKey)} style={[styles.iconChoice,{borderColor:active?theme.palette.primary:preset.border},active&&styles.iconChoiceActive]}><ImageBackground source={{uri:APP_ICON_PREVIEWS[index]}} style={styles.iconPreview} imageStyle={styles.iconPreviewImage}><Text style={styles.iconLabel}>{index+1}</Text></ImageBackground></Pressable>;
+          return <Pressable key={iconKey} onPress={()=>chooseIcon(iconKey)} style={[styles.iconChoice,{borderColor:active?theme.palette.primary:preset.border},active&&styles.iconChoiceActive]}><ImageBackground source={{uri:APP_ICON_PREVIEWS[index]}} style={styles.iconPreview} imageStyle={styles.iconPreviewImage}><Text style={styles.iconLabel}>{index+1}</Text></ImageBackground></Pressable>;
         })}
       </View>
 
