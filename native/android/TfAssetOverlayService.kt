@@ -165,8 +165,10 @@ class TfAssetOverlayService:Service(){
     })
     return rows
   }
-  private fun withWeights(rows:List<JSONObject>):List<JSONObject>{
-    val total=rows.sumOf{row->row.optDouble("marketValue",0.0).takeIf{it.isFinite()&&it>0}?:0.0}
+  private fun withWeights(rows:List<JSONObject>,snapshot:JSONObject):List<JSONObject>{
+    val canonicalTotal=(snapshot.optJSONObject("asset")?:JSONObject()).optDouble("marketValue",Double.NaN)
+    val fallbackTotal=rows.sumOf{row->row.optDouble("marketValue",0.0).takeIf{it.isFinite()&&it>0}?:0.0}
+    val total=if(canonicalTotal.isFinite()&&canonicalTotal>0)canonicalTotal else fallbackTotal
     return rows.map{row->
       val copy=JSONObject(row.toString())
       val marketValue=row.optDouble("marketValue",Double.NaN)
@@ -211,7 +213,7 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
-    val rows=withWeights(orderedHoldings(snap,cfg))
+    val rows=withWeights(orderedHoldings(snap,cfg),snap)
     val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE)
     val secondary=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
     val gain=color(style.optString("gainColor","#EF4444"),Color.RED)
@@ -504,7 +506,7 @@ class TfAssetOverlayService:Service(){
       root.addView(headerRow)
     }
 
-    val rows=withWeights(orderedHoldings(snap,cfg))
+    val rows=withWeights(orderedHoldings(snap,cfg),snap)
     val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE)
     val gain=color(style.optString("gainColor","#EF4444"),Color.RED)
     val loss=color(style.optString("lossColor","#10B981"),Color.GREEN)
