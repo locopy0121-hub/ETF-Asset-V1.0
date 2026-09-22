@@ -131,7 +131,7 @@ export function LedgerScreen() {
   const ordered=[...finance.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
 
   return <>
-    <PageShell title="帳務中心" subtitle="V3.7.8 Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell pageKey="ledger" title="帳務中心" subtitle="V3.7.8 Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="ledger" frames={[
         {key:'quick-entry',element:
           <FrameCard title="快速建檔">
