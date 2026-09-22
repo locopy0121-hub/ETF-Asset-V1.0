@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MainPageKey } from '../domain/pageRegistry';
+import { normalizeControlPrefs, patchAiPrefs, patchPageTitle } from './settingsControlBehavior';
 import {
   createContext,
   type PropsWithChildren,
@@ -85,19 +86,14 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
   const n=input?.notifications;
   const d=input?.display;
   const t=input?.tradeDefaults;
-  const rawTitles=input?.pageTitles??{};
-  const pageTitles:Partial<Record<MainPageKey,string>>={};
-  for(const key of ['home','ledger','portfolio','dividend','ai','settings'] as const){
-    const value=rawTitles[key];
-    if(typeof value==='string'&&value.trim())pageTitles[key]=value.trim().slice(0,48);
-  }
+  const controls=normalizeControlPrefs(input);
   const lead=Math.max(0,Math.min(30,Math.floor(Number(n?.leadDays??DEFAULT_SETTINGS.notifications.leadDays))));
   const fontScale=Math.max(0.8,Math.min(1.4,Number(d?.fontScale??DEFAULT_SETTINGS.display.fontScale)));
   const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
   return {
     schema:1,
-    pageTitles,
-    ai:{enabled:input?.ai?.enabled!==false,floatingButton:input?.ai?.floatingButton!==false},
+    pageTitles:controls.pageTitles,
+    ai:controls.ai,
     notifications:{
       exDividend:n?.exDividend??DEFAULT_SETTINGS.notifications.exDividend,
       dividend:n?.dividend??DEFAULT_SETTINGS.notifications.dividend,
@@ -168,8 +164,8 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     patchNotifications:patch=>setPrefs(current=>normalize({...current,notifications:{...current.notifications,...patch}})),
     patchDisplay:patch=>setPrefs(current=>normalize({...current,display:{...current.display,...patch}})),
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
-    patchPageTitle:(page,title)=>setPrefs(current=>normalize({...current,pageTitles:{...current.pageTitles,[page]:title}})),
-    patchAi:patch=>setPrefs(current=>normalize({...current,ai:{...current.ai,...patch}})),
+    patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
+    patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),
     resetPreferences:()=>setPrefs(DEFAULT_SETTINGS),
   }),[hydrated,prefs]);
 
