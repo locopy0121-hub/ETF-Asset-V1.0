@@ -116,3 +116,13 @@
 | G04／G05／G06／G08 | TF 頂部模塊深度編輯、月曆六樣式與尺寸、資產配置／OHLC K 線完整工具、主頁左右滑動 | 尚無此次完整實作或完整驗證證據 | 未完成 |
 
 **版本身份：** V2.1.2、Android `20102`、iOS `20102`，package `com.tfasset.app`。下一次正式更新最低遞增至 V2.1.3／20103，不可沿用 V2.1.2 當另一個已更新版本。只在全部原始 U01～U15＋G01～G08 通過核對後執行正式 GitHub-only APK Action。
+
+
+## 8. 2026-09-23 GO 續接：V2.1.3（U06 單張完整行情卡驗收準備）
+
+- **開工保險備份已完成**：`backup-v2.1.2-20260923-pre-go` 指向本輪修改前 SHA `dd41b8d787c41491860b53c08825d51a9ad7618d`，維持所有舊備份；不變更不可變金融核心。
+- **版本每次 +1**：此次工作樹由 V2.1.2／Android 20102 遞增為 **V2.1.3／Android 20103**；同步 `package.json`、`app.json`、設定顯示版本、備份識別、原生 QA 建置與測試契約。下次正式更新仍須遞增，不得重用 2.1.3。
+- **U06 局部修護**：`FloatingHoldingCardPreview` 直接重用現有 `HoldingQuoteModule`，保持單張完整行情卡；依首頁／庫存實際列表模式在窄版和完整版間切換、沿用目前圖表樣式和目前 AB 草稿。拖曳時夾限螢幕範圍，預覽尺寸不改正式卡片，支援收合／關閉；新增 `holdingPreviewModel.ts` 作為可測試的版面與邊界純函式。
+- **測試**：新增 `scripts/v2_1_3-preview.test.ts`，檢查尺寸邊界、雙欄／單欄顯示及共享原卡片 renderer 與草稿綁定；GitHub Actions [#693](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35799476397) quality PASS，QA APK 當時依閘門跳過。
+- **驗收界線**：此次 quality PASS 只是 CODE／邏輯與原始碼 Smoke 證據；尚未完成 Android 真機預覽視窗（拖曳、縮放、收合、背景顏色、損益欄位編輯、取消還原／套用保存與其他頁面範圍）驗收，U06 **仍非完整 PASS**，不可跳過先進 G01 或發布正式 Release。
+- 開發期僅可建立明確標示的 **V2.1.3 QA APK**，供 U06 裝置驗收；PR #20 保持 Draft、原 U01～U15 + G01～G08 全數不刪。
