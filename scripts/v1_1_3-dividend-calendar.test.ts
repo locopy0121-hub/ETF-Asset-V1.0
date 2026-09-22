@@ -17,6 +17,7 @@ const entries=[
 
 const events=buildDividendCalendarEvents(entries,'2026-09-22');
 assert.deepEqual(events.map(event=>({symbol:event.symbol,type:event.type,date:event.date,status:event.status})),[
+  {symbol:'0050',type:'lastBuyDate',date:'2026-09-19',status:'已完成'},
   {symbol:'0050',type:'exDate',date:'2026-09-20',status:'已完成'},
   {symbol:'0050',type:'recordDate',date:'2026-09-21',status:'已完成'},
   {symbol:'0050',type:'paymentDate',date:'2026-10-15',status:'預定'},
@@ -24,7 +25,7 @@ assert.deepEqual(events.map(event=>({symbol:event.symbol,type:event.type,date:ev
 ]);
 assert.equal(events.some(event=>event.symbol==='0056'&&event.type!=='paymentDate'),false,'must not invent missing dates');
 
-const onlyEx=filterDividendCalendarEvents(events,{showExDate:true,showRecordDate:false,showPaymentDate:false,showStatus:true});
+const onlyEx=filterDividendCalendarEvents(events,{showLastBuyDate:false,showExDate:true,showRecordDate:false,showPaymentDate:false,showStatus:true});
 assert.deepEqual(onlyEx.map(event=>event.type),['exDate']);
 assert.equal(filterDividendCalendarEvents(events,{showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:false}).every(event=>event.status===''),true);
 
@@ -37,7 +38,7 @@ const aiWithoutPayment=dividendEventToLedger({
 });
 assert.equal(aiWithoutPayment.date,'2026-09-22','AI source stores an ex-date in the ledger fallback');
 const pendingEvents=buildDividendCalendarEvents([aiWithoutPayment],'2026-09-22');
-assert.deepEqual(pendingEvents.map(event=>event.type),['exDate','recordDate'],
+assert.deepEqual(pendingEvents.map(event=>event.type),['lastBuyDate','exDate','recordDate'],
   'an unknown TWSE payment date must remain absent even when ledger date equals ex-date');
 assert.equal(pendingEvents.some(event=>event.type==='paymentDate'),false);
 
@@ -80,4 +81,4 @@ try{
   else process.env.TZ=savedTZ;
 }
 
-console.log('V1.1.3 dividend calendar events: PASS');
+console.log('V2.1.1 dividend calendar events and announced last purchase date: PASS');
