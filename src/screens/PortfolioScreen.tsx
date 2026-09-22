@@ -103,7 +103,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
       ]}/>
     </PageShell>
 
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewQuote={sorted[0]} onClose={()=>setSettingsOpen(false)}/>
     <CalculatorModal visible={calculatorOpen} onClose={()=>setCalculatorOpen(false)}/>
   </>;
 }
