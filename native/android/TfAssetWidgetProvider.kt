@@ -243,7 +243,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         customText!=null->customText
         else->text
       }
-      out.setSpan(ForegroundColorSpan(tone),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      val effectTone=withAlpha(tone,staticEffectAlpha(visual,rendered.second))
+      out.setSpan(ForegroundColorSpan(effectTone),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       val scale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*bounceScale(visual,rendered.second)
       out.setSpan(RelativeSizeSpan(scale),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       val bg=visual.optString("backgroundColor","")
@@ -286,20 +287,26 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     }
   }
 
-  private fun applyStaticEffect(views:RemoteViews,id:Int,visual:JSONObject,numeric:Double){
-    val effect=visual.optJSONObject("effect")?:return
+  private fun staticEffectAlpha(visual:JSONObject,numeric:Double):Float{
+    val effect=visual.optJSONObject("effect")?:return 1f
     val kind=effect.optString("kind","none")
-    if(kind=="none"){views.setFloat(id,"setAlpha",1f);return}
-    if(!staticEffectActive(effect,numeric)){views.setFloat(id,"setAlpha",1f);return}
+    if(kind=="none"||!staticEffectActive(effect,numeric))return 1f
     val intensity=effect.optString("intensity","medium")
-    val alpha=when(kind){
+    return when(kind){
       "fade"->when(intensity){"soft"->.94f;"strong"->.72f;else->.84f}
       "pulse"->when(intensity){"soft"->.96f;"strong"->.78f;else->.88f}
       "flash-on-change"->when(intensity){"soft"->.92f;"strong"->.68f;else->.80f}
-      "bounce"->1f
       else->1f
     }
-    views.setFloat(id,"setAlpha",alpha)
+  }
+
+  private fun withAlpha(tone:Int,alpha:Float):Int{
+    val a=(Color.alpha(tone)*alpha.coerceIn(0f,1f)).roundToInt().coerceIn(0,255)
+    return Color.argb(a,Color.red(tone),Color.green(tone),Color.blue(tone))
+  }
+
+  private fun applyStaticEffect(views:RemoteViews,id:Int,visual:JSONObject,numeric:Double){
+    views.setFloat(id,"setAlpha",staticEffectAlpha(visual,numeric))
   }
 
   private fun defaultLabel(field:String)=when(field){
