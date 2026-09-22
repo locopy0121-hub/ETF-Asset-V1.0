@@ -43,6 +43,7 @@ const effects:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const effectLabels:Record<WidgetEffect,string>={none:'無',fade:'淡入',pulse:'脈衝', 'flash-on-change':'變動閃爍'};
 const itemEffectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
 const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
+const WIDGET_EFFECT_TRIGGERS=ITEM_EFFECT_TRIGGERS.filter(trigger=>trigger!=='alert');
 const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
 const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
 const sortKeys:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
@@ -197,7 +198,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
             <Choice choices={ITEM_EFFECT_KINDS} value={config.visual.effect.kind} label={x=>itemEffectLabels[x]} onChange={kind=>patchItemEffect(field,{kind})}/>
             {config.visual.effect.kind!=='none'?<>
               <Text style={styles.label}>觸發條件</Text>
-              <Choice choices={ITEM_EFFECT_TRIGGERS} value={config.visual.effect.trigger} label={x=>triggerLabels[x]} onChange={trigger=>patchItemEffect(field,{trigger})}/>
+              <Choice choices={WIDGET_EFFECT_TRIGGERS} value={config.visual.effect.trigger} label={x=>triggerLabels[x]} onChange={trigger=>patchItemEffect(field,{trigger})}/>
               <Text style={styles.label}>速度</Text>
               <Choice choices={ITEM_EFFECT_SPEEDS} value={config.visual.effect.speed} label={x=>speedLabels[x]} onChange={speed=>patchItemEffect(field,{speed})}/>
               <Text style={styles.label}>強度</Text>
