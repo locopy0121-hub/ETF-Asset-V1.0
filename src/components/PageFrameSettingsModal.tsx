@@ -167,7 +167,7 @@ export function PageFrameSettingsModal({
           </View>;
         })}
       </ScrollView>
-      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} onDismiss={()=>setShowWallPreview(false)}/>:null}
+      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={(['grid2','grid3','paged2'].includes(displayDraft.holdingLayoutMode??'list'))?'narrow':'full'} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
