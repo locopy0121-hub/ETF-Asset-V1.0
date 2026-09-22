@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {PanResponder,Pressable,StyleSheet,Text,useWindowDimensions,View} from 'react-native';
 import type {HoldingQuote,HoldingWallConfig,QuoteModuleStyle} from '../domain/uiModels';
 import {HoldingQuoteModule} from './HoldingQuoteModule';
+import {clampPreviewPosition,previewLimit} from '../editor/holdingPreviewModel';
 
 /** Uses the EXISTING whole ETF card; edits are driven by the parent draft config. */
 export function FloatingHoldingCardPreview({item,config,style='quote',layout='narrow',onDismiss}:{item:HoldingQuote;config:HoldingWallConfig;style?:QuoteModuleStyle;layout?:'full'|'narrow';onDismiss:()=>void}){
@@ -13,17 +14,17 @@ export function FloatingHoldingCardPreview({item,config,style='quote',layout='na
   const origin=useRef({x:12,y:146});
   const bounds=useRef({maxX:0,maxY:0});
   const actualWidth=Math.min(width,Math.max(190,screenWidth-24));
-  const maxX=Math.max(0,screenWidth-actualWidth-8);
-  const maxY=Math.max(0,screenHeight-Math.min(panelHeight,screenHeight-16)-8);
+  const maxX=previewLimit(screenWidth,actualWidth);
+  const maxY=previewLimit(screenHeight,Math.min(panelHeight,screenHeight-16));
   bounds.current={maxX,maxY};
-  useEffect(()=>setPosition(p=>({x:Math.max(0,Math.min(p.x,maxX)),y:Math.max(0,Math.min(p.y,maxY))})),[maxX,maxY]);
+  useEffect(()=>setPosition(p=>({x:clampPreviewPosition(p.x,maxX),y:clampPreviewPosition(p.y,maxY)})),[maxX,maxY]);
   const pan=useRef(PanResponder.create({
     onStartShouldSetPanResponder:()=>false,
     onMoveShouldSetPanResponder:(_,gesture)=>Math.abs(gesture.dx)>4||Math.abs(gesture.dy)>4,
     onPanResponderGrant:()=>{origin.current={...positionRef.current};},
     onPanResponderMove:(_,g)=>setPosition({
-      x:Math.max(0,Math.min(origin.current.x+g.dx,bounds.current.maxX)),
-      y:Math.max(0,Math.min(origin.current.y+g.dy,bounds.current.maxY)),
+      x:clampPreviewPosition(origin.current.x+g.dx,bounds.current.maxX),
+      y:clampPreviewPosition(origin.current.y+g.dy,bounds.current.maxY),
     }),
   })).current;
   const positionRef=useRef(position);
