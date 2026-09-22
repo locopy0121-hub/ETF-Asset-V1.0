@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
+import { setNativeAppIcon } from '../native/TfAssetNativeBridge';
 
 export type ThemeKey='sky'|'midnight'|'sand'|'forest'|'violet'|'rose'|'aqua'|'amber'|'ocean'|'slate';
 export type ThemeBackgroundMode='fitWidth'|'fitHeight'|'fill';
@@ -127,6 +128,10 @@ export function ThemeRuntimeProvider({children}:PropsWithChildren){
   const [hydrated,setHydrated]=useState(false);
   useEffect(()=>{let alive=true;AsyncStorage.getItem(STORAGE_KEY).then(raw=>{if(alive&&raw)setPrefs(normalize(JSON.parse(raw) as Partial<ThemePrefs>));}).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});return()=>{alive=false;};},[]);
   useEffect(()=>{if(hydrated)AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(prefs)).catch(()=>{});},[hydrated,prefs]);
+  useEffect(()=>{
+    if(!hydrated)return;
+    void setNativeAppIcon(prefs.iconKey).catch(()=>{});
+  },[hydrated,prefs.iconKey]);
   const value=useMemo<Value>(()=>{
     const palette=THEME_PRESETS.find(x=>x.key===prefs.themeKey)??THEME_PRESETS[0]!;
      return {
