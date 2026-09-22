@@ -65,7 +65,7 @@ function textNews(items:readonly AiNewsItem[],symbol?:HoldingLike){
   const related=(symbol?items.filter(item=>item.symbol===symbol.symbol):items).slice(0,5);
   if(!related.length)return symbol?'目前沒有已取得的 '+symbol.symbol+' '+symbol.name+' 新聞。':'目前沒有已取得的持股新聞。';
   const intro=symbol?symbol.symbol+' '+symbol.name+' 最近新聞重點：':'目前持股最近有 '+related.length+' 則新聞重點：';
-  return [intro,...related.map((item,index)=>(index+1)+'. '+item.symbol+'｜'+item.title+'\n'+item.summary+'\n'+item.source+(item.publishedAt?' · '+newsDate(item.publishedAt):''))].join('\n\n');
+  return [intro,...related.map((item,index)=>(index+1)+'. '+item.symbol+'｜'+item.title+'\n'+(item.summaryStatus==='article'?item.summary:'（尚未取得可讀新聞正文，暫不提供摘要）')+'\n'+item.source+(item.publishedAt?' · '+newsDate(item.publishedAt):''))].join('\n\n');
 }
 
 export async function answerAiQuestion(
