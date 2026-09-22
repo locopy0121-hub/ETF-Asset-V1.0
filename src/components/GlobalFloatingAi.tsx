@@ -7,6 +7,7 @@ import { answerAiQuestion, type AiAssistantAction } from '../ai/aiAssistant';
 import { dividendEventToLedger } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
+import { deriveAiUiState } from '../settings/settingsControlBehavior';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
 import { AiQuestionBox } from './AiQuestionBox';
@@ -68,7 +69,7 @@ export function GlobalFloatingAi(){
   const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
-  if(!aiSettings.prefs.ai.enabled||!aiSettings.prefs.ai.floatingButton)return null;
+  if(!deriveAiUiState(aiSettings.prefs.ai,'home').showFloatingAi)return null;
 
   if(mode==='closed'){
     return <Pressable
