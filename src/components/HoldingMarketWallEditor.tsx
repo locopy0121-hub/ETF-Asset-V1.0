@@ -88,7 +88,7 @@ export function HoldingMarketWallEditor({
     </View>
 
     <View style={styles.block}>
-      <Text style={styles.blockTitle}>A 項目 → B 單項細部</Text>
+      <Text style={styles.blockTitle}>A 項目 → B 欄位（子）單項細部</Text>
       <Text style={styles.note}>每張持股卡共用同一份欄位配置；一次只展開一個 B，避免設定全部攤平。</Text>
       {FIELD_GROUPS.map(group=><View key={group.title} style={styles.group}>
         <Text style={styles.groupTitle}>{group.title}</Text>
