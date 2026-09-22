@@ -23,6 +23,7 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
 import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
+import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
 import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
@@ -167,7 +168,7 @@ export function PageFrameSettingsModal({
           </View>;
         })}
       </ScrollView>
-      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={(['grid2','grid3','paged2'].includes(displayDraft.holdingLayoutMode??'list'))?'narrow':'full'} onDismiss={()=>setShowWallPreview(false)}/>:null}
+      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
