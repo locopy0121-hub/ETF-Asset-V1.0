@@ -61,6 +61,7 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+  useEffect(()=>{if(!settings.prefs.ai.enabled&&active==='ai')setActive('home');},[settings.prefs.ai.enabled,active]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -121,10 +122,10 @@ function AppBody(){
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
     <View style={styles.screen}>{screen}</View>
-    <GlobalFloatingAi/>
+    {settings.prefs.ai.enabled&&settings.prefs.ai.floatingButton?<GlobalFloatingAi/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
-        {MAIN_PAGES.map(page=>{
+        {MAIN_PAGES.filter(page=>page.key!=='ai'||settings.prefs.ai.enabled).map(page=>{
           const selected=page.key===active;
           return <Pressable
             key={page.key}
