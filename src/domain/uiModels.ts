@@ -1,3 +1,4 @@
+import { DEFAULT_ITEM_EFFECT, type ItemEffectConfig } from './displayItemContract';
 export type QuoteModuleStyle = 'quote' | 'chart' | 'compact' | 'advanced';
 export type HoldingSortKey = 'manual' | 'changePct' | 'pnl' | 'roi' | 'marketValue' | 'weight' | 'price' | 'dividend';
 
@@ -10,6 +11,11 @@ export type HoldingWallFieldConfig = Readonly<{
   fontScale: number;
   align: HoldingWallAlign;
   useProfitColor: boolean;
+  textColor:string|null;
+  backgroundColor:string|null;
+  lineGap:number|null;
+  paddingY:number;
+  effect:ItemEffectConfig;
 }>;
 export type HoldingWallHeaderConfig = Readonly<{
   visible: boolean;
@@ -18,6 +24,7 @@ export type HoldingWallHeaderConfig = Readonly<{
   textColor: string;
   borderColor: string;
   borderWidth: number;
+  effect:ItemEffectConfig;
 }>;
 export type HoldingWallStyleConfig = Readonly<{
   backgroundColor: string;
@@ -38,16 +45,16 @@ export type HoldingWallConfig = Readonly<{
 }>;
 
 export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
-  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#738197',borderWidth:1},
+  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#738197',borderWidth:1,effect:{...DEFAULT_ITEM_EFFECT}},
   fields:[
-    {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true},
-    {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false},
-    {field:'price',enabled:true,label:'價格',fontScale:1,align:'left',useProfitColor:true},
-    {field:'changePercent',enabled:true,label:'漲跌%',fontScale:1,align:'right',useProfitColor:true},
-    {field:'change',enabled:false,label:'漲跌',fontScale:1,align:'right',useProfitColor:true},
-    {field:'pnl',enabled:true,label:'損益',fontScale:1,align:'right',useProfitColor:true},
-    {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true},
-    {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false},
+    {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'price',enabled:true,label:'價格',fontScale:1,align:'left',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'changePercent',enabled:true,label:'漲跌%',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'change',enabled:false,label:'漲跌',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'pnl',enabled:true,label:'損益',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
   ],
   style:{backgroundColor:'#0C121B',textColor:'#FFFFFF',secondaryTextColor:'#91A0B5',gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
 };
