@@ -186,7 +186,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         val rowIndex=index/wallColumns
         val columnIndex=index%wallColumns
         val id=wallGrid[rowIndex][columnIndex]
-        val card=buildWallCard(row,asset,wallFields,styles,text,gain,loss,neutral,legacyProfitFields,style.optInt("rowGap",6))
+        val card=buildWallCard(row,asset,wallFields,styles,text,gain,loss,neutral,legacyProfitFields,style.optInt("rowGap",6),style.optString("textAlign","left"))
         views.setViewVisibility(id,View.VISIBLE)
         views.setTextViewText(id,card)
         views.setTextColor(id,text)
@@ -222,7 +222,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     loss:Int,
     neutral:Int,
     legacyProfitFields:Set<String>,
-    globalGap:Int
+    globalGap:Int,
+    globalAlign:String
   ):CharSequence{
     val out=SpannableStringBuilder()
     fields.forEachIndexed{index,field->
@@ -247,7 +248,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       out.setSpan(RelativeSizeSpan(scale),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       val bg=visual.optString("backgroundColor","")
       if(bg.isNotBlank())out.setSpan(BackgroundColorSpan(parseColor(bg,Color.TRANSPARENT)),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-      val alignment=when(visual.optString("textAlign","")){
+      val alignment=when(visual.optString("textAlign","").takeIf(String::isNotBlank)?:globalAlign){
         "center"->Layout.Alignment.ALIGN_CENTER
         "right"->Layout.Alignment.ALIGN_OPPOSITE
         else->Layout.Alignment.ALIGN_NORMAL
