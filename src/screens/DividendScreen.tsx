@@ -29,6 +29,7 @@ export function DividendScreen() {
   const [month,setMonth]=useState(nowIso().slice(0,7));
   const today=nowIso();
   const [selectedDate,setSelectedDate]=useState(today);
+  const [selectedDividendId,setSelectedDividendId]=useState<string|null>(null);
   const dividends=useMemo(()=>finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend').sort((a,b)=>a.date.localeCompare(b.date)),[finance.entries]);
   const monthRows=dividends.filter(x=>x.date.startsWith(month));
   const monthTotal=monthRows.reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
@@ -97,11 +98,11 @@ export function DividendScreen() {
               const date=valid?month+'-'+String(day).padStart(2,'0'):'';
               return <Pressable key={i} disabled={!valid||!dayEvents.length} onPress={()=>setSelectedDate(date)} style={[styles.day,dayEvents.length>0&&styles.eventDay,selectedDate===date&&styles.selectedDay]}>
                 <Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>
-                {dayEvents.length?<View style={styles.eventDots}>{dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:event.type==='exDate'?colors.primary:event.type==='recordDate'?colors.warning:colors.gain}]}/>)}</View>:null}
+                {dayEvents.length?<View style={styles.eventDots}>{dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:event.type==='lastBuyDate'?'#8B5CF6':event.type==='exDate'?colors.primary:event.type==='recordDate'?colors.warning:colors.gain}]}/>)}</View>:null}
               </Pressable>;
             })}</View>
             {selectedEvents.length?<View style={styles.eventDetails}>{selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}><Text style={styles.eventType}>{dividendCalendarTypeLabel(event.type)}</Text><Text style={styles.eventText}>{event.symbol} {event.name} · {event.date}{event.status?' · '+event.status:''}</Text></View>)}</View>:null}
-            <View style={styles.legend}><Legend color={colors.primary} label="除息日"/><Legend color={colors.warning} label="股權登記日"/><Legend color={colors.gain} label="股息配發日"/></View>
+            <View style={styles.legend}><Legend color="#8B5CF6" label="最後購買日"/><Legend color={colors.primary} label="除息日"/><Legend color={colors.warning} label="股權登記日"/><Legend color={colors.gain} label="股息配發日"/></View>
           </FrameCard>
         },
         {key:'dividend-list',element:
@@ -109,17 +110,28 @@ export function DividendScreen() {
             {monthRows.length?monthRows.map(row=>{
               const amount=calculateLedgerCashFlow(row);
               const status=row.date<today?'已入帳':row.date===today?'待入帳':'預估';
-              return <View key={row.id} style={styles.dividendRow}>
+              return <Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看 ${row.symbol} 股息資訊`} onPress={()=>setSelectedDividendId(current=>current===row.id?null:row.id)} style={styles.dividendRow}>
                 <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
                 <View style={{flex:1}}>
                   <Text style={styles.stockName}>{row.name}</Text>
                   <Text style={styles.symbol}>{row.symbol} · {row.sharesHeld.toLocaleString('zh-TW')} 股 × {row.perShareAmount}</Text>
+                  <Text style={styles.symbol}>{selectedDividendId===row.id?'▲ 收合股息資訊':'▼ 查看股息資訊'}</Text>
+                  {selectedDividendId===row.id?<View style={styles.eventDetails}>
+                    <Text style={styles.eventText}>配息股數：{row.sharesHeld.toLocaleString('zh-TW')} 股</Text>
+                    <Text style={styles.eventText}>每股配息：NT$ {row.perShareAmount}</Text>
+                    <Text style={styles.eventText}>帳務日期：{row.date}</Text>
+                    {(['最後購買日','最後買進日','除息日','股權登記日','配發日'] as const).map(label=>{
+                      const value=String(row.note??'').match(new RegExp(label+'\\s*(\\d{4}-\\d{2}-\\d{2})'))?.[1];
+                      return <Text key={label} style={styles.eventText}>{label}：{value??'尚未取得可靠公告'}</Text>;
+                    })}
+                    <Text style={styles.eventText}>資料來源／備註：{row.note??'尚未記錄'}</Text>
+                  </View>:null}
                 </View>
                 <View style={{alignItems:'flex-end'}}>
                   <Text style={styles.dividendAmount}>NT$ {money(amount)}</Text>
                   <Text style={[styles.status,{color:status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:colors.primary}]}>{status}</Text>
                 </View>
-              </View>;
+              </Pressable>;
             }):<Text style={styles.empty}>本月尚無股息紀錄</Text>}
           </FrameCard>
         },
