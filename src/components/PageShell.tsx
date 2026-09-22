@@ -3,22 +3,27 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../theme/tokens';
+import type { MainPageKey } from '../domain/pageRegistry';
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
 
 type Props = PropsWithChildren<{
   title: string;
+  pageKey?: MainPageKey;
   subtitle?: string;
   actions?: ReactNode;
 }>;
 
-export function PageShell({ title, subtitle, actions, children }: Props) {
+export function PageShell({ title, pageKey, subtitle, actions, children }: Props) {
   const theme=useThemeRuntime();
+  const settings=useSettingsRuntime();
+  const displayedTitle=pageKey?settings.prefs.pageTitles[pageKey]||title:title;
   return (
     <SafeAreaView style={[styles.safe,{backgroundColor:'transparent'}]} edges={['top']}>
       <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
         <View style={styles.titleWrap}>
           <Text style={[styles.brand,{color:theme.palette.primary}]}>TF Asset</Text>
-          <Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>
+          <Text style={[styles.title,{color:theme.palette.text}]}>{displayedTitle}</Text>
           {subtitle ? <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>{subtitle}</Text> : null}
         </View>
         {actions ? <View style={styles.actions}>{actions}</View> : null}
