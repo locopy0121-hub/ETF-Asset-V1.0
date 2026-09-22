@@ -1,8 +1,9 @@
 import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 
-export type DividendCalendarEventType='exDate'|'recordDate'|'paymentDate';
+export type DividendCalendarEventType='lastBuyDate'|'exDate'|'recordDate'|'paymentDate';
 export type DividendCalendarStatus=''|'已完成'|'今日'|'預定';
 export type DividendCalendarPrefs=Readonly<{
+  showLastBuyDate?:boolean;
   showExDate:boolean;
   showRecordDate:boolean;
   showPaymentDate:boolean;
@@ -32,7 +33,7 @@ const dateFromNote=(note:string|undefined,label:string)=>{
   return match?.[1]??'';
 };
 const eventStatus=(date:string,today:string):DividendCalendarStatus=>date<today?'已完成':date===today?'今日':'預定';
-const TYPE_ORDER:Record<DividendCalendarEventType,number>={exDate:0,recordDate:1,paymentDate:2};
+const TYPE_ORDER:Record<DividendCalendarEventType,number>={lastBuyDate:0,exDate:1,recordDate:2,paymentDate:3};
 
 export function buildDividendCalendarEvents(
   entries:readonly DividendLedgerEntry[],
@@ -41,6 +42,8 @@ export function buildDividendCalendarEvents(
   const events:DividendCalendarEvent[]=[];
   for(const entry of entries){
     const declared=[
+      // Never infer this from ex-date minus a calendar day: TWSE holidays and settlement rules matter.
+      {type:'lastBuyDate' as const,date:dateFromNote(entry.note,'最後購買日')||dateFromNote(entry.note,'最後買進日')},
       {type:'exDate' as const,date:dateFromNote(entry.note,'除息日')},
       {type:'recordDate' as const,date:dateFromNote(entry.note,'股權登記日')},
       // AI-imported TWSE events may use an ex-date as the ledger date while payment is unannounced.
@@ -70,6 +73,7 @@ export function filterDividendCalendarEvents(
 ):DividendCalendarEvent[]{
   return events
     .filter(event=>
+      (event.type==='lastBuyDate'&&prefs.showLastBuyDate!==false)||
       (event.type==='exDate'&&prefs.showExDate)||
       (event.type==='recordDate'&&prefs.showRecordDate)||
       (event.type==='paymentDate'&&prefs.showPaymentDate)
@@ -78,6 +82,7 @@ export function filterDividendCalendarEvents(
 }
 
 export function dividendCalendarTypeLabel(type:DividendCalendarEventType){
+  if(type==='lastBuyDate')return '最後購買日';
   if(type==='exDate')return '除息日';
   if(type==='recordDate')return '股權登記日';
   return '股息配發日';
