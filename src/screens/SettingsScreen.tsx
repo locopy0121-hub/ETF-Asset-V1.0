@@ -34,7 +34,7 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
-import { APP_ICON_KEYS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
+import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
 import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, setNativeAppIcon, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
@@ -476,7 +476,7 @@ export function SettingsScreen(){
         {APP_ICON_KEYS.map((iconKey,index)=>{
           const preset=THEME_PRESETS[index]!;
           const active=theme.prefs.iconKey===iconKey;
-          return <Pressable key={iconKey} onPress={()=>void chooseIcon(iconKey)} style={[styles.iconChoice,{backgroundColor:preset.primary,borderColor:active?'#FFFFFF':preset.border},active&&styles.iconChoiceActive]}><Text style={styles.iconGlyph}>↗</Text><Text style={styles.iconLabel}>{index+1}</Text></Pressable>;
+          return <Pressable key={iconKey} onPress={()=>void chooseIcon(iconKey)} style={[styles.iconChoice,{borderColor:active?theme.palette.primary:preset.border},active&&styles.iconChoiceActive]}><ImageBackground source={{uri:APP_ICON_PREVIEWS[index]}} style={styles.iconPreview} imageStyle={styles.iconPreviewImage}><Text style={styles.iconLabel}>{index+1}</Text></ImageBackground></Pressable>;
         })}
       </View>
 
@@ -780,8 +780,9 @@ const styles=StyleSheet.create({
   iconGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},
   iconChoice:{width:44,height:44,borderRadius:12,borderWidth:2,alignItems:'center',justifyContent:'center'},
   iconChoiceActive:{borderWidth:3},
-  iconGlyph:{fontSize:18,fontWeight:'900',color:'#FFFFFF'},
-  iconLabel:{position:'absolute',right:3,bottom:1,fontSize:8,fontWeight:'900',color:'#FFFFFF'},
+  iconPreview:{flex:1,width:'100%',alignItems:'center',justifyContent:'center'},
+  iconPreviewImage:{borderRadius:10},
+  iconLabel:{position:'absolute',right:3,bottom:1,fontSize:8,fontWeight:'900',color:'#FFFFFF',textShadowColor:'#00000088',textShadowRadius:2},
   customThemeRow:{flexDirection:'row',alignItems:'center',gap:6,paddingVertical:6,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   smallAction:{paddingHorizontal:8,paddingVertical:6,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
   smallActionText:{fontSize:9,fontWeight:'900',color:colors.primary},
