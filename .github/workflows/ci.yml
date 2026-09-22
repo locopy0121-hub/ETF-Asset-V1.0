@@ -43,7 +43,7 @@ jobs:
   qa-apk:
     name: V2.1.2 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'uigo-v2.1.1-20260922'
+    if: github.event_name == 'pull_request' && github.head_ref == 'uigo-v2.1.1-20260922' && contains(github.event.pull_request.labels.*.name, 'qa-ready')
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 90
