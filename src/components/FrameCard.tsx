@@ -10,22 +10,35 @@ export type FrameCardProps = PropsWithChildren<{
   action?: ReactNode;
   layout?: FrameLayout;
   appearance?: FrameAppearance;
-  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleAlign'|'backgroundColor'|'backgroundOpacity'|'borderColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'>>;
+  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleAlign'|'backgroundColor'|'backgroundOpacity'|'backgroundBlend'|'borderColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'>>;
 }>;
+
+const backgroundLayerColor=(hex:string,opacity:number):string=>{
+  const match=/^#([0-9a-f]{6})$/i.exec(hex);
+  if(!match)return hex;
+  const n=match[1]!;
+  const alpha=Math.max(0,Math.min(1,opacity));
+  return `rgba(${parseInt(n.slice(0,2),16)},${parseInt(n.slice(2,4),16)},${parseInt(n.slice(4,6),16)},${alpha})`;
+};
 
 export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle }: FrameCardProps) {
   const theme=useThemeRuntime();
+  const blend=editorStyle?.backgroundBlend??true;
+  const configured=editorStyle?.backgroundColor;
+  const baseColor=blend&&(!configured||configured.toUpperCase()==='#FFFFFF')
+    ?(appearance==='soft'?theme.palette.surfaceMuted:theme.palette.surface)
+    :(configured??(appearance==='soft'?theme.palette.surfaceMuted:theme.palette.surface));
+  // Only the paint is translucent: opacity on the root would fade all user-configured children.
+  const backgroundColor=backgroundLayerColor(baseColor,blend?Math.min(editorStyle?.backgroundOpacity??1,.86):(editorStyle?.backgroundOpacity??1));
   return (
     <View style={[
       styles.card,
-      {backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
+      {backgroundColor,borderColor:theme.palette.border},
       layout === 'compact' && styles.cardCompact,
       layout === 'dense' && styles.cardDense,
-      appearance === 'soft' && {backgroundColor:theme.palette.surfaceMuted},
+      
       appearance === 'outline' && {borderWidth:2,borderColor:theme.palette.primary},
       editorStyle&&{
-        backgroundColor:editorStyle.backgroundColor,
-        opacity:editorStyle.backgroundOpacity,
         borderColor:editorStyle.borderColor,
         borderWidth:editorStyle.borderWidth,
         borderRadius:editorStyle.borderRadius,
