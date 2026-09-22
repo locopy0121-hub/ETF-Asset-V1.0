@@ -54,7 +54,7 @@ const DEFAULT_SETTINGS:SettingsPrefs={
   schema:1,
   pageTitles:{},
   ai:{enabled:true,floatingButton:true},
-  dividendCalendar:{showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true},
+  dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true},
   notifications:{
     exDividend:true,
     dividend:true,
@@ -99,6 +99,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
     pageTitles:controls.pageTitles,
     ai:controls.ai,
     dividendCalendar:{
+      showLastBuyDate:calendar?.showLastBuyDate!==false,
       showExDate:calendar?.showExDate!==false,
       showRecordDate:calendar?.showRecordDate!==false,
       showPaymentDate:calendar?.showPaymentDate!==false,
