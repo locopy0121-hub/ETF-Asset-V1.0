@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
@@ -62,8 +62,23 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+  const pageHistory=useRef<MainPageKey[]>([]);
+  const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
   const aiUi=deriveAiUiState(settings.prefs.ai,active);
   useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
+  useEffect(()=>{
+    const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
+      // React Native Modal.onRequestClose handles the currently open modal first.
+      if(detail){setDetail(null);return true;}
+      while(pageHistory.current.length){
+        const previous=pageHistory.current.pop()!;
+        if(previous!==active&&(previous!=='ai'||aiUi.showAiTab)){setActive(previous);return true;}
+      }
+      if(active!=='home'){setActive('home');return true;}
+      return false; // Only root with no earlier screen allows Android to leave the app.
+    });
+    return()=>subscription.remove();
+  },[active,detail,aiUi.showAiTab]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -133,7 +148,7 @@ function AppBody(){
             key={page.key}
             accessibilityRole="tab"
             accessibilityState={{selected}}
-            onPress={()=>setActive(page.key)}
+            onPress={()=>navigatePage(page.key)}
             style={styles.navItem}
           >
             <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>
