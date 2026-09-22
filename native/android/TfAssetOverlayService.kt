@@ -238,7 +238,8 @@ class TfAssetOverlayService:Service(){
         else->text
       }
       val scale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()
-      val view=textView(normalValue(row,field,item.optString("label",defaultMonitorLabel(field))),tone,baseSize*fs*scale,gravityFor(visual.optString("textAlign",style.optString("textAlign","left"))))
+      val valueScale=if(isMonitorValueField(field))style.optDouble("valueFontScale",1.0).coerceIn(.7,2.0).toFloat() else 1f
+      val view=textView(normalValue(row,field,item.optString("label",defaultMonitorLabel(field))),tone,baseSize*fs*valueScale*scale,gravityFor(visual.optString("textAlign",style.optString("textAlign","left"))))
       val bg=visual.optString("backgroundColor","")
       if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
       val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",style.optInt("rowGap",6)).coerceIn(0,32) else style.optInt("rowGap",6).coerceIn(0,32)
@@ -622,6 +623,7 @@ class TfAssetOverlayService:Service(){
     val pct=row.optDouble("changePercent",Double.NaN)
     return threshold.isFinite()&&pct.isFinite()&&abs(pct)>=threshold
   }
+  private fun isMonitorValueField(field:String)=field!="symbol"&&field!="name"&&field!="marketStatus"&&field!="updatedAt"
   private fun defaultProfitField(field:String)=field=="change"||field=="changePercent"||field=="pnl"||field=="roi"||field=="comprehensivePnl"
   private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"weight"->"權重";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
   private fun normalValue(row:JSONObject,field:String,label:String):String=when(field){
