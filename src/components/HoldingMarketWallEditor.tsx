@@ -29,6 +29,7 @@ const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}
 ];
 const effectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
 const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
+const WALL_EFFECT_TRIGGERS=ITEM_EFFECT_TRIGGERS.filter(trigger=>trigger!=='alert');
 const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
 const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
 
@@ -146,7 +147,7 @@ function EffectControls({value,onChange}:{value:ItemEffectConfig;onChange:(patch
     <StringChoice choices={ITEM_EFFECT_KINDS} value={value.kind} label={x=>effectLabels[x]} onChange={kind=>onChange({kind})}/>
     {value.kind!=='none'?<>
       <Text style={styles.label}>觸發條件</Text>
-      <StringChoice choices={ITEM_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/>
+      <StringChoice choices={WALL_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/>
       <Text style={styles.label}>速度</Text>
       <StringChoice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={x=>speedLabels[x]} onChange={speed=>onChange({speed})}/>
       <Text style={styles.label}>強度</Text>
