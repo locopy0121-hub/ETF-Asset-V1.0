@@ -132,6 +132,10 @@ class TfAssetOverlayService:Service(){
     if(array==null)return emptyList()
     return (0 until array.length()).mapNotNull{array.optString(it,"").trim().uppercase().takeIf(String::isNotEmpty)}
   }
+  private fun jsonRawStrings(array:JSONArray?):List<String>{
+    if(array==null)return emptyList()
+    return (0 until array.length()).mapNotNull{array.optString(it,"").trim().takeIf(String::isNotEmpty)}
+  }
   private fun jsonObjects(array:JSONArray?):List<JSONObject>{
     if(array==null)return emptyList()
     return (0 until array.length()).mapNotNull{array.optJSONObject(it)}
@@ -205,7 +209,7 @@ class TfAssetOverlayService:Service(){
     val neutral=color(style.optString("neutralColor","#94A3B8"),Color.GRAY)
     val fs=style.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat()
     val template=cfg.optString("template","portfolio")
-    val selectedFields=jsonStrings(cfg.optJSONArray("fields")).ifEmpty{listOf("symbol","price","changePercent","pnl")}
+    val selectedFields=jsonRawStrings(cfg.optJSONArray("fields")).ifEmpty{listOf("symbol","price","changePercent","pnl")}
     val itemMap=objectMap(cfg.optJSONArray("normalItems"),"field")
 
     fun addConfigured(container:LinearLayout,row:JSONObject,field:String,baseSize:Float=11f){
