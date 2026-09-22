@@ -182,7 +182,7 @@ export const DEFAULT_MINI_COLUMNS:readonly MiniColumnConfig[]=MONITOR_FIELDS.map
   enabled:['symbol','price','changePercent','pnl'].includes(field),
   widthPercent:field==='symbol'?22:field==='name'?28:field==='marketValue'||field==='comprehensivePnl'?24:field==='updatedAt'?26:20,
   align:field==='symbol'||field==='name'||field==='price'?'left':field==='marketStatus'?'center':'right',
-  fontScale:field==='name'||field==='marketStatus'?.9:field==='updatedAt'?.85:1,
+  fontScale:(field==='name'||field==='marketStatus')?0.9:field==='updatedAt'?0.85:1,
   useProfitColor:PROFIT_FIELDS.includes(field),
   label:MONITOR_FIELD_LABELS[field].replace('市場','').replace('時間',''),
   textColor:null,
