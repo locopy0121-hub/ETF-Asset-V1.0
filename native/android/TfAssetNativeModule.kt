@@ -20,7 +20,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   private var themePickerPromise:Promise?=null
 
   private val activityListener=object:BaseActivityEventListener(){
-    override fun onActivityResult(activity:Activity?,requestCode:Int,resultCode:Int,data:Intent?){
+    override fun onActivityResult(activity:Activity,requestCode:Int,resultCode:Int,data:Intent?){
       if(requestCode!=PICK_THEME_BACKGROUND)return
       val promise=themePickerPromise?:return
       themePickerPromise=null
@@ -95,7 +95,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
 
   @ReactMethod fun pickThemeBackground(promise:Promise){
     if(themePickerPromise!=null){promise.reject("THEME_PICKER_BUSY","背景圖片選擇器已開啟");return}
-    val activity=currentActivity
+    val activity=reactContext.currentActivity
     if(activity==null){promise.reject("NO_ACTIVITY","目前沒有可用 Activity");return}
     themePickerPromise=promise
     val intent=Intent(Intent.ACTION_OPEN_DOCUMENT).apply{
