@@ -19,7 +19,7 @@ export function HoldingQuoteCollection({
   layoutMode?:HoldingLayoutMode;
   onOpenHolding:(row:HoldingQuote)=>void;
   wallConfig?:HoldingWallConfig;
-  refreshToken?:string|number|null;
+  refreshToken?:string|number|null|undefined;
 }){
   const {width}=useWindowDimensions();
   const pageWidth=Math.max(280,width-64);
