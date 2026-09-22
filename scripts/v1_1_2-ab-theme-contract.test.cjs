@@ -21,6 +21,10 @@ for(const token of ['A 顯示項目（母）','B 單項細部','單項行距','�
 for(const token of ['fieldStyles','WidgetFieldStyle','updateWidgetFieldVisual'])assert(widgetDomain.includes(token),'Widget domain missing '+token);
 assert(widgetRuntime.includes('normFieldStyles'),'Widget persisted B normalization missing');
 for(const token of ['fieldStyles(config)','widget_wall_row_1','wallColumns','buildWallCard','setViewPadding'])assert(widgetNative.includes(token),'Widget native A-B/runtime missing '+token);
+for(const token of ['bounceScale','staticEffectActive','"bounce"->1f','1.04f','1.08f','1.12f'])assert(widgetNative.includes(token),'Widget native bounce representation missing '+token);
+assert.match(widgetNative,/itemScale\*staticBounceScale/,'Widget summary bounce must affect rendered text size');
+assert.match(widgetNative,/RelativeSizeSpan\(scale\)/,'Widget wall must preserve per-field scale spans');
+assert.match(widgetNative,/fontScale"[\s\S]*?\*bounceScale\(visual,rendered\.second\)/,'Widget wall bounce must affect per-field relative size');
 for(let i=1;i<=4;i++)assert(widgetXml.includes('widget_wall_row_'+i),'Widget XML missing dynamic row '+i);
 
 for(const token of ['Normal A 顯示項目（母）','Mini A 項目列（母）','Mini B 欄位（子）','Mini 下方狀態列 A/B','主體行情牆 A/B 編輯','單項行距','單項特效'])assert(monitor.includes(token),'Monitor A-B UI missing '+token);
