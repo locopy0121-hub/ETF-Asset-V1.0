@@ -1,0 +1,71 @@
+const fs=require('fs');const assert=require('assert');
+const read=p=>fs.readFileSync(p,'utf8');
+
+const widget=read('src/components/widget/WidgetControlPanel.tsx');
+const widgetDomain=read('src/widget/widgetDomain.ts');
+const widgetRuntime=read('src/widget/WidgetSettingsRuntime.tsx');
+const widgetNative=read('native/android/TfAssetWidgetProvider.kt');
+const widgetXml=read('native/android/res/layout/tf_asset_widget.xml');
+const monitor=read('src/components/monitor/MonitorControlPanel.tsx');
+const monitorDomain=read('src/monitor/monitorDomain.ts');
+const monitorRuntime=read('src/monitor/MonitorSettingsRuntime.tsx');
+const monitorNative=read('native/android/TfAssetOverlayService.kt');
+const settings=read('src/screens/SettingsScreen.tsx');
+const theme=read('src/theme/ThemeRuntime.tsx');
+const themeBackground=read('src/theme/ThemeBackgroundLayer.tsx');
+const backup=read('src/settings/BackupService.ts');
+const bridge=read('src/native/TfAssetNativeBridge.ts');
+const native=read('native/android/TfAssetNativeModule.kt');
+const releaseWorkflow=read('.github/workflows/release-v1.yml');
+const releaseInject=read('scripts/inject-v1_1_2-android.cjs');
+const snapshot=read('src/finance/sharedSnapshotAdapter.ts');
+
+for(const token of ['A 顯示項目（母）','B 單項細部','單項行距','單項特效','ITEM_EFFECT_TRIGGERS'])assert(widget.includes(token),'Widget A-B UI missing '+token);
+for(const token of ['fieldStyles','WidgetFieldStyle','updateWidgetFieldVisual'])assert(widgetDomain.includes(token),'Widget domain missing '+token);
+assert(widgetRuntime.includes('normFieldStyles'),'Widget persisted B normalization missing');
+for(const token of ['fieldStyles(config)','widget_wall_row_1','wallColumns','buildWallCard','setViewPadding'])assert(widgetNative.includes(token),'Widget native A-B/runtime missing '+token);
+for(const token of ['bounceScale','staticEffectActive','"bounce"->1f','1.04f','1.08f','1.12f'])assert(widgetNative.includes(token),'Widget native bounce representation missing '+token);
+assert.match(widgetNative,/itemScale\*staticBounceScale/,'Widget summary bounce must affect rendered text size');
+assert.match(widgetNative,/RelativeSizeSpan\(scale\)/,'Widget wall must preserve per-field scale spans');
+assert.match(widgetNative,/fontScale"[\s\S]*?\*bounceScale\(visual,rendered\.second\)/,'Widget wall bounce must affect per-field relative size');
+assert.match(widget,/widgetFieldProfitValue\(previewSnapshot,row,field\)/,'Widget wall preview must color from each field numeric value');
+assert.match(widgetNative,/globalGap:Int,[\s\S]*?globalAlign:String/,'Widget wall must accept global alignment fallback');
+assert.match(widgetNative,/textAlign",""\)\.takeIf\(String::isNotBlank\)\?:globalAlign/,'Widget wall B alignment must inherit global alignment');
+assert.match(widgetNative,/effectTone=withAlpha\(tone,staticEffectAlpha\(visual,rendered\.second\)\)/,'Widget wall must render non-bounce static effects');
+for(let i=1;i<=4;i++)assert(widgetXml.includes('widget_wall_row_'+i),'Widget XML missing dynamic row '+i);
+
+for(const token of ['Normal A 顯示項目（母）','Mini A 項目列（母）','Mini B 欄位（子）','Mini 下方狀態列 A/B','主體行情牆 A/B 編輯','單項行距','單項特效'])assert(monitor.includes(token),'Monitor A-B UI missing '+token);
+for(const token of ['normalItems','MonitorItemConfig','textColor:string|null','lineGap:number|null','effect:ItemEffectConfig'])assert(monitorDomain.includes(token),'Monitor domain missing '+token);
+for(const token of ['normNormalItems','normMiniColumns','normMiniStatusItems','normWall'])assert(monitorRuntime.includes(token),'Monitor persistence missing '+token);
+for(const token of ['normalItems','miniColumns','miniStatusItems','applyItemEffect','TranslateAnimation','monitor_runtime_mode_override'])assert(monitorNative.includes(token),'Monitor native A-B/effect path missing '+token);
+assert(monitorNative.includes('private fun jsonRawStrings'),'Monitor must preserve case-sensitive field identifiers');
+assert.match(monitorNative,/selectedFields=jsonRawStrings\(cfg\.optJSONArray\("fields"\)\)/,'Normal monitor field keys must not be uppercased');
+assert.match(monitorNative,/jsonRawStrings[\s\S]*?\.trim\(\)\.takeIf\(String::isNotEmpty\)/,'Raw monitor field reader must preserve original key casing');
+assert.match(monitorNative,/selected=jsonStrings\(cfg\.optJSONArray\("selectedSymbols"\)\)/,'Symbol matching should retain uppercase normalization');
+assert.match(monitorNative,/valueScale=if\(isMonitorValueField\(field\)\)style\.optDouble\("valueFontScale",1\.0\)/,'Normal monitor must honor valueFontScale');
+assert.match(monitorNative,/if\(!animationsEnabled\)return/,'Monitor animation disable must gate item effects');
+assert.match(monitorNative,/"change"->changed/,'Monitor change trigger must require a real value change');
+assert.match(monitorNative,/previousEffectValues\[key\]=numeric/,'Monitor must retain prior effect values');
+
+assert(settings.includes('主題與背景'),'Theme settings entry missing');
+const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.indexOf('export const THEME_PRESETS'));
+assert.equal(backgroundBlock.split('data:image/png;base64').length-1,10,'Theme runtime must contain 10 built-in backgrounds');
+for(const key of ['sky','midnight','sand','forest','violet','rose','aqua','amber','ocean','slate'])assert(theme.includes("key:'"+key+"'"),'Theme preset missing '+key);
+for(const key of ['midnight','ocean'])assert(theme.includes("key:'"+key+"',label:")&&new RegExp("key:'"+key+"'[^\\n]*dark:true").test(theme),'Dark preset must request light status-bar content: '+key);
+assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
+assert.match(theme,/setNativeAppIcon\(prefs\.iconKey\)/,'Theme runtime must synchronize persisted/applied/reset iconKey to Android launcher');
+assert.match(theme,/\[hydrated,prefs\.iconKey\]/,'Native icon synchronization must react to every iconKey change after hydration');
+assert.match(themeBackground,/backgroundMode==='fitWidth'\?'contain':'cover'/,'Theme background fitWidth/fitHeight mapping must match labels');
+assert.match(backup,/customBackgroundUri\.startsWith\('content:\/\/'\)/,'Restore must sanitize external content background URIs');
+assert.match(backup,/sanitizeRestoredPayload\(selected\.payload\)/,'Local backup restore must sanitize theme background URI');
+assert.match(backup,/sanitizeRestoredPayload\(parsed\.payload\)/,'Imported backup restore must sanitize theme background URI');
+for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
+for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
+for(const token of ['node scripts/inject-v1_1_2-android.cjs','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release workflow injection hook missing '+token);
+for(const token of ['activity-alias','for(let i=1;i<=10;i++)','String(i).padStart(2,\'0\')','android:name=\".Icon'])assert(releaseInject.includes(token),'Release launcher injection script missing '+token);
+for(const key of ['01','10'])assert(releaseInject.includes("['01','10']")||releaseInject.includes('Icon'+key),'Release launcher alias boundary missing Icon'+key);
+for(let i=1;i<=10;i++)assert(fs.existsSync('native/android/res/drawable/tf_icon_'+String(i).padStart(2,'0')+'.xml'),'Launcher icon '+i+' missing');
+
+assert.match(snapshot,/totalAssets:portfolio\.totalMarketValue/,'Shared totalAssets must stay market-value only');
+
+console.log('V1.1.2 A-B/theme/native source contract: PASS');

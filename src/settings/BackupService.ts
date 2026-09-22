@@ -10,14 +10,33 @@ export type BackupRecord=Readonly<{
 }>;
 
 const BACKUPS_KEY='@tf-asset/local-backups';
+const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='1.0.4';
+const APP_VERSION='1.1.2';
 
 function validPayload(value:unknown):value is Record<string,string>{
   if(!value||typeof value!=='object'||Array.isArray(value))return false;
   return Object.entries(value as Record<string,unknown>).every(([key,item])=>
     key.startsWith(PREFIX)&&key!==BACKUPS_KEY&&typeof item==='string'
   );
+}
+
+function sanitizeRestoredPayload(payload:Record<string,string>){
+  const next={...payload};
+  const raw=next[THEME_KEY];
+  if(!raw)return next;
+  try{
+    const theme=JSON.parse(raw) as Record<string,unknown>;
+    const clearExternalBackground=(snapshot:unknown)=>{
+      if(!snapshot||typeof snapshot!=='object'||Array.isArray(snapshot))return;
+      const item=snapshot as Record<string,unknown>;
+      if(typeof item.customBackgroundUri==='string'&&item.customBackgroundUri.startsWith('content://'))item.customBackgroundUri=null;
+    };
+    clearExternalBackground(theme);
+    if(Array.isArray(theme.customSlots))theme.customSlots.forEach(clearExternalBackground);
+    next[THEME_KEY]=JSON.stringify(theme);
+  }catch{}
+  return next;
 }
 
 async function collectPayload(){
@@ -69,7 +88,7 @@ export async function restoreLocalBackup(id:string){
   const selected=backups.find(item=>item.id===id);
   if(!selected)throw new Error('找不到指定備份');
   await createLocalBackup();
-  await AsyncStorage.multiSet(Object.entries(selected.payload));
+  await AsyncStorage.multiSet(Object.entries(sanitizeRestoredPayload(selected.payload)));
   return selected;
 }
 
@@ -90,7 +109,7 @@ export async function importTfAssetData(text:string){
     throw new Error('匯入格式或資料結構不符合 TF Asset 備份格式');
   }
   await createLocalBackup();
-  await AsyncStorage.multiSet(Object.entries(parsed.payload));
+  await AsyncStorage.multiSet(Object.entries(sanitizeRestoredPayload(parsed.payload)));
   return Object.keys(parsed.payload).length;
 }
 

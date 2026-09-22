@@ -3,6 +3,7 @@ import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native'
 
 import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
 import {colors,radius,spacing} from '../theme/tokens';
+import {useThemeRuntime} from '../theme/ThemeRuntime';
 
 type Message=Readonly<{id:string;role:'user'|'assistant';text:string;actions?:readonly AiAssistantAction[]}>;
 
@@ -19,6 +20,7 @@ export function AiQuestionBox({
   onAsk:(question:string)=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
   onAction?:(action:AiAssistantAction)=>void|Promise<void>;
 }){
+  const theme=useThemeRuntime();
   const [input,setInput]=useState('');
   const [messages,setMessages]=useState<Message[]>([]);
   const [asking,setAsking]=useState(false);
@@ -55,23 +57,23 @@ export function AiQuestionBox({
   };
 
   return <View style={styles.root}>
-    <Text style={styles.title}>{title}</Text>
-    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>{suggestions.map(item=><Pressable key={item} onPress={()=>void submit(item)} style={styles.chip}><Text style={styles.chipText}>{item}</Text></Pressable>)}</ScrollView>:null}
+    <Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>
+    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>{suggestions.map(item=><Pressable key={item} onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.chipText,{color:theme.palette.primary}]}>{item}</Text></Pressable>)}</ScrollView>:null}
     <ScrollView
       ref={scrollRef}
-      style={styles.threadViewport}
+      style={[styles.threadViewport,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface}]}
       contentContainerStyle={styles.thread}
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
       onContentSizeChange={()=>scrollRef.current?.scrollToEnd({animated:true})}
     >
-      {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?styles.user:styles.assistant]}>
-        <Text style={[styles.message,message.role==='user'&&styles.userText]}>{message.text}</Text>
+      {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?{backgroundColor:theme.palette.primary}:{backgroundColor:theme.palette.surfaceMuted}]}>
+        <Text style={[styles.message,{color:message.role==='user'?'#FFFFFF':theme.palette.text}]}>{message.text}</Text>
         {message.role==='assistant'&&message.actions?.length?<View style={styles.actions}>{message.actions.map(action=><View key={action.id} style={styles.actionLine}>
           <Pressable onPress={()=>void runAction(action)} style={[styles.actionButton,confirming===action.id&&styles.confirmButton]}><Text style={styles.actionText}>{confirming===action.id?'確認新增':action.label}</Text></Pressable>
           {confirming===action.id?<Pressable onPress={()=>setConfirming(null)} style={styles.cancelAction}><Text style={styles.cancelActionText}>取消</Text></Pressable>:null}
         </View>)}</View>:null}
-      </View>):<Text style={styles.empty}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
+      </View>):<Text style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
     </ScrollView>
     <View style={styles.inputRow}>
       <TextInput
@@ -79,12 +81,12 @@ export function AiQuestionBox({
         onChangeText={setInput}
         editable={!asking}
         placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
+        placeholderTextColor={theme.palette.textSecondary}
         returnKeyType="send"
         onSubmitEditing={()=>void submit()}
-        style={styles.input}
+        style={[styles.input,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface,color:theme.palette.text}]}
       />
-      <Pressable disabled={asking||!input.trim()} onPress={()=>void submit()} style={[styles.send,(asking||!input.trim())&&styles.disabled]}><Text style={styles.sendText}>{asking?'處理中':'送出'}</Text></Pressable>
+      <Pressable disabled={asking||!input.trim()} onPress={()=>void submit()} style={[styles.send,{backgroundColor:theme.palette.primary},(asking||!input.trim())&&styles.disabled]}><Text style={styles.sendText}>{asking?'處理中':'送出'}</Text></Pressable>
     </View>
   </View>;
 }

@@ -23,6 +23,8 @@ type TfAssetNativeModule={
   getMonitorStatus:()=>Promise<NativeMonitorStatus>;
   canDrawOverlays:()=>Promise<boolean>;
   openOverlaySettings:()=>Promise<boolean>;
+  pickThemeBackground:()=>Promise<string|null>;
+  setAppIcon:(iconKey:string)=>Promise<boolean>;
 };
 
 const native=NativeModules.TfAssetNative as TfAssetNativeModule|undefined;
@@ -44,3 +46,5 @@ export async function stopNativeMonitor(){return native?native.stopMonitor():fal
 export async function getNativeMonitorStatus(){return native?native.getMonitorStatus():null;}
 export async function canDrawOverlays(){return native?native.canDrawOverlays():false;}
 export async function openOverlaySettings(){return native?native.openOverlaySettings():false;}
+export async function pickNativeThemeBackground(){return native?native.pickThemeBackground():null;}
+export async function setNativeAppIcon(iconKey:string){return native?native.setAppIcon(iconKey):false;}

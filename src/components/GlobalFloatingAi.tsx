@@ -7,6 +7,7 @@ import { answerAiQuestion, type AiAssistantAction } from '../ai/aiAssistant';
 import { dividendEventToLedger } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
+import { useThemeRuntime } from '../theme/ThemeRuntime';
 import { AiQuestionBox } from './AiQuestionBox';
 
 type Mode='open'|'minimized'|'closed';
@@ -19,6 +20,7 @@ const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,valu
 export function GlobalFloatingAi(){
   const finance=useFinance();
   const ai=useAiNewsRuntime();
+  const theme=useThemeRuntime();
   const {width,height}=useWindowDimensions();
   const [mode,setMode]=useState<Mode>('minimized');
   const [position,setPosition]=useState<Point>({x:12,y:120});
@@ -69,26 +71,26 @@ export function GlobalFloatingAi(){
       accessibilityRole="button"
       accessibilityLabel="開啟全局 AI 助理"
       onPress={()=>changeMode('open')}
-      style={[styles.fab,{left:safePosition.x,top:safePosition.y}]}
+      style={[styles.fab,{left:safePosition.x,top:safePosition.y,backgroundColor:theme.palette.primary}]}
     ><Text style={styles.fabText}>AI</Text></Pressable>;
   }
 
   if(mode==='minimized'){
-    return <View style={[styles.minimized,{left:safePosition.x,top:safePosition.y,width:Math.min(190,panelWidth)}]}>
-      <View {...responder.panHandlers} style={styles.dragHandle}><Text style={styles.dragText}>⋮⋮ AI 助理</Text></View>
-      <Pressable onPress={()=>changeMode('open')} style={styles.miniAction}><Text style={styles.miniActionText}>展開</Text></Pressable>
-      <Pressable onPress={()=>changeMode('closed')} style={styles.closeAction}><Text style={styles.closeText}>×</Text></Pressable>
+    return <View style={[styles.minimized,{left:safePosition.x,top:safePosition.y,width:Math.min(190,panelWidth),backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
+      <View {...responder.panHandlers} style={styles.dragHandle}><Text style={[styles.dragText,{color:theme.palette.text}]}>⋮⋮ AI 助理</Text></View>
+      <Pressable onPress={()=>changeMode('open')} style={styles.miniAction}><Text style={[styles.miniActionText,{color:theme.palette.primary}]}>展開</Text></Pressable>
+      <Pressable onPress={()=>changeMode('closed')} style={styles.closeAction}><Text style={[styles.closeText,{color:theme.palette.textSecondary}]}>×</Text></Pressable>
     </View>;
   }
 
-  return <View style={[styles.panel,{left:safePosition.x,top:safePosition.y,width:panelWidth,maxHeight:CARD_HEIGHT}]}>
-    <View {...responder.panHandlers} style={styles.header}>
+  return <View style={[styles.panel,{left:safePosition.x,top:safePosition.y,width:panelWidth,maxHeight:CARD_HEIGHT,backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
+    <View {...responder.panHandlers} style={[styles.header,{backgroundColor:theme.palette.surfaceMuted,borderBottomColor:theme.palette.border}]}>
       <View style={{flex:1}}>
-        <Text style={styles.title}>AI 助理</Text>
-        <Text style={styles.subtitle}>全局浮動 · 財務資料／股息更新／行情／新聞整理</Text>
+        <Text style={[styles.title,{color:theme.palette.text}]}>AI 助理</Text>
+        <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>全局浮動 · 財務資料／股息更新／行情／新聞整理</Text>
       </View>
-      <Pressable onPress={()=>changeMode('minimized')} style={styles.headerAction}><Text style={styles.headerActionText}>−</Text></Pressable>
-      <Pressable onPress={()=>changeMode('closed')} style={styles.headerAction}><Text style={styles.headerActionText}>×</Text></Pressable>
+      <Pressable onPress={()=>changeMode('minimized')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text style={[styles.headerActionText,{color:theme.palette.primary}]}>−</Text></Pressable>
+      <Pressable onPress={()=>changeMode('closed')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text style={[styles.headerActionText,{color:theme.palette.primary}]}>×</Text></Pressable>
     </View>
     <View style={styles.body}>
       <AiQuestionBox
@@ -97,9 +99,9 @@ export function GlobalFloatingAi(){
         onAsk={ask}
         onAction={runAction}
       />
-      <View style={styles.statusRow}>
-        <Text style={styles.statusText}>持股 {finance.holdings.length} 檔 · 新聞 {ai.items.length} 則</Text>
-        <Pressable disabled={ai.refreshing} onPress={()=>void ai.refresh()}><Text style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
+      <View style={[styles.statusRow,{borderTopColor:theme.palette.border}]}>
+        <Text style={[styles.statusText,{color:theme.palette.textSecondary}]}>持股 {finance.holdings.length} 檔 · 新聞 {ai.items.length} 則</Text>
+        <Pressable disabled={ai.refreshing} onPress={()=>void ai.refresh()}><Text style={[styles.refreshText,{color:theme.palette.primary}]}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
       </View>
     </View>
   </View>;

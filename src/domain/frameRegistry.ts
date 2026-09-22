@@ -38,7 +38,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'data', title:'資料系統', description:'ETF 基礎資料、資料概況與完整性' },
     { key:'backup', title:'備份與還原', description:'備份、匯出、匯入、還原與安全清除' },
     { key:'monitor', title:'即時監控器', description:'Floating Monitor 模式、模板與刷新' },
-    { key:'display', title:'顯示與格式', description:'字體、金額、百分比、日期與損益色' },
+    { key:'display', title:'視覺與主題', description:'主題、背景、App Icon、字體、格式與損益色' },
     { key:'app', title:'App 管理', description:'預設設定、版本、更新與診斷資訊' },
     { key:'legal', title:'法律與資訊', description:'免責、行情、試算與關於 TF Asset' },
   ],

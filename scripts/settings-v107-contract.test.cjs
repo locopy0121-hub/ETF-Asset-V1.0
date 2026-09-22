@@ -10,10 +10,10 @@ const backup=fs.readFileSync('src/settings/BackupService.ts','utf8');
 const financeRuntime=fs.readFileSync('src/finance/FinanceRuntime.tsx','utf8');
 const app=fs.readFileSync('App.tsx','utf8');
 
-for(const label of ['系統設定','帳務系統','資料系統','備份與還原','即時監控器','顯示與格式','App 管理','法律與資訊']){
+for(const label of ['系統設定','帳務系統','資料系統','備份與還原','即時監控器','視覺與主題','App 管理','法律與資訊']){
   assert.ok(registry.includes(label),'missing settings top section: '+label);
 }
-for(const label of ['市場更新','背景執行與權限','效能與診斷','通知與提醒','帳務運算公式','券商與費率','交易預設值','帳務核心狀態','ETF 基礎資料','資料概況','資料完整性檢查','資料修復','立即備份','匯出資料','匯入資料','還原備份','清除帳務資料','Widget（mobile 桌面）','監控器總設定','Mini 模式','共用模板','損益顏色','呼吸燈與刷新','字體與顯示大小','金額格式','百分比格式','日期格式','還原預設設定','版本資訊','更新資訊','開發／診斷資訊','免責聲明','行情資料聲明','試算聲明','關於 TF Asset']){
+for(const label of ['市場更新','背景執行與權限','效能與診斷','通知與提醒','帳務運算公式','券商與費率','交易預設值','帳務核心狀態','ETF 基礎資料','資料概況','資料完整性檢查','資料修復','立即備份','匯出資料','匯入資料','還原備份','清除帳務資料','Widget（mobile 桌面）','監控器總設定','Mini 模式','共用模板','損益顏色','呼吸燈與刷新','主題與背景','字體與顯示大小','金額格式','百分比格式','日期格式','還原預設設定','版本資訊','更新資訊','開發／診斷資訊','免責聲明','行情資料聲明','試算聲明','關於 TF Asset']){
   assert.ok(settings.includes(label),'missing control center item: '+label);
 }
 

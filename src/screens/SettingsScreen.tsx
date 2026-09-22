@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ImageBackground,
   Linking,
   PermissionsAndroid,
   Platform,
@@ -33,7 +34,8 @@ import {
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
@@ -42,18 +44,19 @@ type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
 type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
-type DisplayPanel=null|'font'|'amount'|'percent'|'date'|'pnl';
+type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.1.1';
-const BUILD='10101';
+const VERSION='1.1.2';
+const BUILD='10102';
 
 export function SettingsScreen(){
   const finance=useFinance();
   const market=useMarketRuntime();
   const broker=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
+  const theme=useThemeRuntime();
   const monitor=useMonitorSettingsRuntime();
   const widget=useWidgetSettingsRuntime();
 
@@ -344,6 +347,8 @@ export function SettingsScreen(){
   function displaySection(){
     const d=settings.prefs.display;
     return <View style={styles.children}>
+      <ChildButton label="主題與背景" summary={theme.palette.label+' · 背景 '+(theme.prefs.customBackgroundUri?'自訂':String(theme.prefs.backgroundIndex+1))} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
+      {displayPanel==='theme'?<ThemePanel/>:null}
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
       <ChildButton label="金額格式" summary={d.amountDecimals===2?'2 位小數':'整數'} active={displayPanel==='amount'} onPress={()=>setDisplayPanel(displayPanel==='amount'?null:'amount')}/>
@@ -374,8 +379,8 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.0.17 行情牆工具新建、新聞原文、AI 問答、自由拖移圖表" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.0.17 更新資訊">
+      <ChildButton label="更新資訊" summary="V1.1.2 A/B 編輯、Widget/Monitor、主題與 Carry-over 修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      {appPanel==='updates'?<Panel title="V1.1.2 更新資訊">
         <Text style={styles.infoText}>新增 AI 助理與持股相關新聞自動取得，首頁市場新聞顯示代號、名稱、來源、日期與智慧摘要；首頁右上加入更新行情。總資產主值改採持股市值，不與現金合併。Monitor／Mini 修正雙擊切換回彈，並加入更新行情、縮小／放大與關閉控制。調色盤 V1.0.15 閃退修護持續保留。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
@@ -418,6 +423,70 @@ export function SettingsScreen(){
     </Panel>;
   }
 
+  function ThemePanel(){
+    const chooseCustomBackground=async()=>{
+      try{
+        const uri=await pickNativeThemeBackground();
+        if(uri)theme.patch({customBackgroundUri:uri});
+      }catch(error){Alert.alert('背景圖片選擇失敗',error instanceof Error?error.message:String(error));}
+    };
+    const chooseIcon=(iconKey:AppIconKey)=>{
+      theme.patch({iconKey});
+    };
+    return <Panel title="視覺主題與背景">
+      <Text style={styles.note}>主題是全域視覺基底；Widget／Monitor／各 B 單項已自訂的顏色不會被這裡直接洗掉。</Text>
+
+      <Text style={styles.subTitle}>10 組主題</Text>
+      <View style={styles.themeGrid}>
+        {THEME_PRESETS.map(preset=>{
+          const active=theme.prefs.themeKey===preset.key;
+          return <Pressable key={preset.key} onPress={()=>theme.selectTheme(preset.key)} style={[styles.themeCard,{backgroundColor:preset.surface,borderColor:active?preset.primary:preset.border},active&&styles.themeCardActive]}>
+            <View style={[styles.themeSwatch,{backgroundColor:preset.primary}]}/>
+            <Text style={[styles.themeName,{color:preset.text}]}>{preset.label}</Text>
+            <Text style={[styles.themeMeta,{color:preset.textSecondary}]}>{active?'使用中':'套用'}</Text>
+          </Pressable>;
+        })}
+      </View>
+
+      <Text style={styles.subTitle}>10 張內建背景</Text>
+      <View style={styles.backgroundGrid}>
+        {THEME_BACKGROUNDS.map((uri,index)=>{
+          const active=!theme.prefs.customBackgroundUri&&theme.prefs.backgroundIndex===index;
+          return <Pressable key={index} onPress={()=>theme.selectBackground(index)} style={[styles.backgroundChoice,active&&{borderColor:theme.palette.primary,borderWidth:2}]}>
+            <ImageBackground source={{uri}} style={styles.backgroundThumb} imageStyle={styles.backgroundThumbImage}><Text style={styles.backgroundIndex}>{index+1}</Text></ImageBackground>
+          </Pressable>;
+        })}
+      </View>
+
+      <ActionButton label="選擇自訂背景圖片" disabled={!nativeRuntimeAvailable} onPress={()=>void chooseCustomBackground()}/>
+      {theme.prefs.customBackgroundUri?<ActionButton label="改回內建背景" onPress={()=>theme.patch({customBackgroundUri:null})}/>:null}
+      {!nativeRuntimeAvailable?<Text style={styles.note}>自訂圖片與 App Icon 切換需 Android 原生 Runtime；一般主題與內建背景仍可使用。</Text>:null}
+
+      <ChoiceRow label="背景顯示方式" options={[{key:'fitWidth',label:'適寬'},{key:'fitHeight',label:'適高'},{key:'fill',label:'填滿'}]} value={theme.prefs.backgroundMode} onChange={mode=>theme.patch({backgroundMode:(mode==='fitWidth'||mode==='fitHeight'?mode:'fill') as ThemeBackgroundMode})}/>
+      <Stepper label="背景透明度" value={Math.round(theme.prefs.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={value=>theme.patch({backgroundOpacity:value/100})}/>
+      <Stepper label="背景模糊" value={theme.prefs.blurRadius} min={0} max={24} step={1} suffix="" onChange={blurRadius=>theme.patch({blurRadius})}/>
+      <ColorPalettePicker label="背景遮罩顏色" value={theme.prefs.maskColor} onChange={maskColor=>theme.patch({maskColor})}/>
+      <Stepper label="背景遮罩" value={Math.round(theme.prefs.maskOpacity*100)} min={0} max={90} step={5} suffix="%" onChange={value=>theme.patch({maskOpacity:value/100})}/>
+
+      <Text style={styles.subTitle}>10 組 App Icon</Text>
+      <View style={styles.iconGrid}>
+        {APP_ICON_KEYS.map((iconKey,index)=>{
+          const preset=THEME_PRESETS[index]!;
+          const active=theme.prefs.iconKey===iconKey;
+          return <Pressable key={iconKey} onPress={()=>chooseIcon(iconKey)} style={[styles.iconChoice,{borderColor:active?theme.palette.primary:preset.border},active&&styles.iconChoiceActive]}><ImageBackground source={{uri:APP_ICON_PREVIEWS[index]}} style={styles.iconPreview} imageStyle={styles.iconPreviewImage}><Text style={styles.iconLabel}>{index+1}</Text></ImageBackground></Pressable>;
+        })}
+      </View>
+
+      <Text style={styles.subTitle}>5 組自訂主題</Text>
+      {theme.prefs.customSlots.map((slot,index)=><View key={index} style={styles.customThemeRow}>
+        <View style={{flex:1}}><Text style={styles.rowTitle}>自訂主題 {index+1}</Text><Text style={styles.note}>{slot?((THEME_PRESETS.find(x=>x.key===slot.themeKey)?.label??slot.themeKey)+' · 背景 '+(slot.customBackgroundUri?'自訂':slot.backgroundIndex+1)):'尚未儲存'}</Text></View>
+        <Pressable style={styles.smallAction} onPress={()=>theme.saveSlot(index)}><Text style={styles.smallActionText}>儲存</Text></Pressable>
+        {slot?<><Pressable style={styles.smallAction} onPress={()=>theme.applySlot(index)}><Text style={styles.smallActionText}>套用</Text></Pressable><Pressable style={styles.smallAction} onPress={()=>theme.clearSlot(index)}><Text style={styles.smallActionText}>清除</Text></Pressable></>:null}
+      </View>)}
+      <ActionButton label="還原主題預設值" onPress={theme.reset}/>
+    </Panel>;
+  }
+
   function ProfitColorPanel(){
     const d=settings.prefs.display;
     return <Panel title="損益顏色">
@@ -430,21 +499,21 @@ export function SettingsScreen(){
     </Panel>;
   }
 
-  return <View style={styles.root}>
-    <View style={styles.header}>
-      <Text style={styles.eyebrow}>TF ASSET</Text>
-      <Text style={styles.title}>控制中心</Text>
-      <Text style={styles.subtitle}>系統、帳務、資料與顯示設定集中管理</Text>
+  return <View style={[styles.root,{backgroundColor:'transparent'}]}>
+    <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
+      <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
+      <Text style={[styles.title,{color:theme.palette.text}]}>控制中心</Text>
+      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、資料、主題與顯示設定集中管理</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {PAGE_FRAMES.settings.map((frame,index)=>{
         const open=top===frame.key;
-        return <View key={frame.key} style={styles.section}>
+        return <View key={frame.key} style={[styles.section,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
           <Pressable style={styles.topRow} onPress={()=>toggleTop(frame.key)}>
-            <View style={styles.index}><Text style={styles.indexText}>{index+1}</Text></View>
+            <View style={[styles.index,{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.indexText,{color:theme.palette.primary}]}>{index+1}</Text></View>
             <View style={{flex:1}}>
-              <Text style={styles.sectionTitle}>{frame.title}</Text>
-              <Text style={styles.sectionDesc}>{frame.description}</Text>
+              <Text style={[styles.sectionTitle,{color:theme.palette.text}]}>{frame.title}</Text>
+              <Text style={[styles.sectionDesc,{color:theme.palette.textSecondary}]}>{frame.description}</Text>
             </View>
             <Text style={styles.chevron}>{open?'⌄':'›'}</Text>
           </Pressable>
@@ -694,6 +763,26 @@ const styles=StyleSheet.create({
   stepText:{fontSize:18,fontWeight:'900',color:colors.primary},
   stepValue:{minWidth:84,textAlign:'center',fontSize:12,fontWeight:'900',color:colors.text},
   hiddenContractText:{height:0,opacity:0,fontSize:1},
+  themeGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},
+  themeCard:{width:'48%',minHeight:72,borderWidth:1,borderRadius:radius.md,padding:9,gap:5},
+  themeCardActive:{borderWidth:2},
+  themeSwatch:{width:24,height:8,borderRadius:4},
+  themeName:{fontSize:11,fontWeight:'900'},
+  themeMeta:{fontSize:9,fontWeight:'700'},
+  backgroundGrid:{flexDirection:'row',flexWrap:'wrap',gap:7},
+  backgroundChoice:{width:52,height:52,borderRadius:12,borderWidth:1,borderColor:colors.border,overflow:'hidden'},
+  backgroundThumb:{flex:1,alignItems:'center',justifyContent:'center'},
+  backgroundThumbImage:{borderRadius:11},
+  backgroundIndex:{fontSize:10,fontWeight:'900',color:'#FFFFFF',textShadowColor:'#00000088',textShadowRadius:3},
+  iconGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},
+  iconChoice:{width:44,height:44,borderRadius:12,borderWidth:2,alignItems:'center',justifyContent:'center'},
+  iconChoiceActive:{borderWidth:3},
+  iconPreview:{flex:1,width:'100%',alignItems:'center',justifyContent:'center'},
+  iconPreviewImage:{borderRadius:10},
+  iconLabel:{position:'absolute',right:3,bottom:1,fontSize:8,fontWeight:'900',color:'#FFFFFF',textShadowColor:'#00000088',textShadowRadius:2},
+  customThemeRow:{flexDirection:'row',alignItems:'center',gap:6,paddingVertical:6,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  smallAction:{paddingHorizontal:8,paddingVertical:6,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  smallActionText:{fontSize:9,fontWeight:'900',color:colors.primary},
 });
 
 

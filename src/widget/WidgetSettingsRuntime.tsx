@@ -11,17 +11,28 @@ import {
 import {
   DEFAULT_WIDGET_CONFIG,
   DEFAULT_WIDGET_EFFECTS,
+  DEFAULT_WIDGET_FIELD_STYLES,
   DEFAULT_WIDGET_SORT,
   DEFAULT_WIDGET_STYLE,
+  WIDGET_FIELDS,
   type WidgetConfig,
   type WidgetEffect,
   type WidgetField,
+  type WidgetFieldStyle,
   type WidgetSortKey,
   type WidgetTemplate,
 } from './widgetDomain';
+import {
+  DEFAULT_ITEM_EFFECT,
+  ITEM_EFFECT_INTENSITIES,
+  ITEM_EFFECT_KINDS,
+  ITEM_EFFECT_SPEEDS,
+  ITEM_EFFECT_TRIGGERS,
+  type ItemEffectConfig,
+} from '../domain/displayItemContract';
 
 const STORAGE_KEY='@tf-asset/widget-settings';
-const VALID_FIELDS:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
+const VALID_FIELDS:readonly WidgetField[]=WIDGET_FIELDS;
 const VALID_TEMPLATES:readonly WidgetTemplate[]=['asset-summary','quote-summary','compact','advanced','minimal','transparent','quote-wall'];
 const VALID_EFFECTS:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const VALID_SORTS:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
@@ -31,6 +42,35 @@ const clamp=(value:unknown,min:number,max:number,fallback:number)=>{
 };
 const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value:fallback;
 const uniqueStrings=(value:unknown)=>Array.isArray(value)?Array.from(new Set(value.map(x=>String(x).trim().toUpperCase()).filter(Boolean))):[];
+const nullableColor=(value:unknown)=>value==null?null:typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():null;
+const normItemEffect=(effect:Partial<ItemEffectConfig>|undefined):ItemEffectConfig=>({
+  kind:ITEM_EFFECT_KINDS.includes(effect?.kind as ItemEffectConfig['kind'])?effect!.kind as ItemEffectConfig['kind']:DEFAULT_ITEM_EFFECT.kind,
+  trigger:ITEM_EFFECT_TRIGGERS.includes(effect?.trigger as ItemEffectConfig['trigger'])?(effect?.trigger==='alert'?'change':effect!.trigger as ItemEffectConfig['trigger']):DEFAULT_ITEM_EFFECT.trigger,
+  speed:ITEM_EFFECT_SPEEDS.includes(effect?.speed as ItemEffectConfig['speed'])?effect!.speed as ItemEffectConfig['speed']:DEFAULT_ITEM_EFFECT.speed,
+  intensity:ITEM_EFFECT_INTENSITIES.includes(effect?.intensity as ItemEffectConfig['intensity'])?effect!.intensity as ItemEffectConfig['intensity']:DEFAULT_ITEM_EFFECT.intensity,
+});
+const normFieldStyles=(styles:readonly Partial<WidgetFieldStyle>[]|undefined,legacyProfit:readonly WidgetField[]|undefined):readonly WidgetFieldStyle[]=>{
+  const input=Array.isArray(styles)?styles:[];
+  const byField=new Map(input.map(item=>[item.field,item]));
+  return DEFAULT_WIDGET_FIELD_STYLES.map(fallback=>{
+    const item=byField.get(fallback.field);
+    const visual=item?.visual;
+    return {
+      field:fallback.field,
+      label:typeof item?.label==='string'&&item.label.trim()?item.label.trim().slice(0,16):fallback.label,
+      visual:{
+        fontScale:clamp(visual?.fontScale,.7,2,fallback.visual.fontScale),
+        textColor:nullableColor(visual?.textColor),
+        backgroundColor:nullableColor(visual?.backgroundColor),
+        textAlign:visual?.textAlign==='left'||visual?.textAlign==='center'||visual?.textAlign==='right'?visual.textAlign:null,
+        lineGap:visual?.lineGap==null?null:clamp(visual.lineGap,0,32,0),
+        paddingY:clamp(visual?.paddingY,0,16,fallback.visual.paddingY),
+        useProfitColor:visual?.useProfitColor??legacyProfit?.includes(fallback.field)??fallback.visual.useProfitColor,
+        effect:normItemEffect(visual?.effect),
+      },
+    };
+  });
+};
 
 function normalize(input:Partial<WidgetConfig>|null|undefined):WidgetConfig{
   const size=input?.size==='small'||input?.size==='medium'||input?.size==='large'?input.size:'2x2';
@@ -41,11 +81,14 @@ function normalize(input:Partial<WidgetConfig>|null|undefined):WidgetConfig{
   const fields=Array.isArray(input?.fields)
     ? input.fields.filter((x):x is WidgetField=>VALID_FIELDS.includes(x as WidgetField))
     : [...DEFAULT_WIDGET_CONFIG.fields];
+  const legacyProfit=Array.isArray(input?.profitColorFields)?input!.profitColorFields.filter((x):x is WidgetField=>VALID_FIELDS.includes(x as WidgetField)):[...DEFAULT_WIDGET_CONFIG.profitColorFields];
+  const fieldStyles=normFieldStyles(input?.fieldStyles,legacyProfit);
   return {
     enabled:input?.enabled??DEFAULT_WIDGET_CONFIG.enabled,
     size,
     template,
     fields:fields.length?fields:[...DEFAULT_WIDGET_CONFIG.fields],
+    fieldStyles,
     style:{
       fontScale:clamp(style?.fontScale,0.7,1.8,DEFAULT_WIDGET_STYLE.fontScale),
       titleFontScale:clamp(style?.titleFontScale,0.7,1.8,DEFAULT_WIDGET_STYLE.titleFontScale),
@@ -78,7 +121,7 @@ function normalize(input:Partial<WidgetConfig>|null|undefined):WidgetConfig{
       manualSymbols:uniqueStrings(sort?.manualSymbols),
     },
     selectedSymbols:uniqueStrings(input?.selectedSymbols),
-    profitColorFields:Array.isArray(input?.profitColorFields)?input!.profitColorFields.filter((x):x is WidgetField=>VALID_FIELDS.includes(x as WidgetField)):[...DEFAULT_WIDGET_CONFIG.profitColorFields],
+    profitColorFields:fieldStyles.filter(item=>item.visual.useProfitColor).map(item=>item.field),
     wallColumns:Math.round(clamp(input?.wallColumns,1,4,DEFAULT_WIDGET_CONFIG.wallColumns)),
     forceRefreshOnTap:input?.forceRefreshOnTap??DEFAULT_WIDGET_CONFIG.forceRefreshOnTap,
     tapTarget:input?.tapTarget==='portfolio'||input?.tapTarget==='dividend'?input.tapTarget:'home',

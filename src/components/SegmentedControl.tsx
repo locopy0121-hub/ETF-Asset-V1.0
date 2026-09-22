@@ -1,11 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
+import { useThemeRuntime } from '../theme/ThemeRuntime';
 
 export function SegmentedControl<T extends string>({items,value,onChange}:{items:readonly {key:T;label:string}[];value:T;onChange:(value:T)=>void}){
-  return <View style={styles.wrap}>{items.map(item=>{
+  const theme=useThemeRuntime();
+  return <View style={[styles.wrap,{backgroundColor:theme.palette.surfaceMuted}]}>{items.map(item=>{
     const active=item.key===value;
-    return <Pressable key={item.key} style={[styles.item,active&&styles.active]} onPress={()=>onChange(item.key)}>
-      <Text style={[styles.label,active&&styles.activeLabel]}>{item.label}</Text>
+    return <Pressable key={item.key} style={[styles.item,active&&{backgroundColor:theme.palette.primary}]} onPress={()=>onChange(item.key)}>
+      <Text style={[styles.label,{color:active?'#FFFFFF':theme.palette.textSecondary}]}>{item.label}</Text>
     </Pressable>;
   })}</View>;
 }

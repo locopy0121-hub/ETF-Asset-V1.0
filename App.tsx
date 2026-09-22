@@ -21,6 +21,8 @@ import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { colors, spacing } from './src/theme/tokens';
+import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
+import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
 import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 export default function App() {
@@ -28,18 +30,19 @@ export default function App() {
     <MarketRuntimeProvider>
       <AiNewsRuntimeProvider>
       <SettingsRuntimeProvider>
+      <ThemeRuntimeProvider>
       <MonitorSettingsRuntimeProvider>
       <WidgetSettingsRuntimeProvider>
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
-        <StatusBar barStyle="dark-content"/>
         <AppBody/>
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>
       </WidgetSettingsRuntimeProvider>
       </MonitorSettingsRuntimeProvider>
+      </ThemeRuntimeProvider>
       </SettingsRuntimeProvider>
       </AiNewsRuntimeProvider>
     </MarketRuntimeProvider>
@@ -52,6 +55,7 @@ function AppBody(){
   const aiNews=useAiNewsRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
+  const theme=useThemeRuntime();
   const monitorSettings=useMonitorSettingsRuntime();
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
@@ -104,18 +108,21 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated){
-    return <View style={styles.loading}>
-      <ActivityIndicator size="large" color={colors.primary}/>
-      <Text style={styles.loadingTitle}>TF Asset</Text>
-      <Text style={styles.loadingText}>正在載入帳務、行情與版面設定…</Text>
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!theme.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated){
+    return <View style={[styles.loading,{backgroundColor:theme.palette.background}]}>
+      <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
+      <ActivityIndicator size="large" color={theme.palette.primary}/>
+      <Text style={[styles.loadingTitle,{color:theme.palette.text}]}>TF Asset</Text>
+      <Text style={[styles.loadingText,{color:theme.palette.textSecondary}]}>正在載入帳務、行情、主題與版面設定…</Text>
     </View>;
   }
 
-  return <View style={styles.root}>
+  return <View style={[styles.root,{backgroundColor:theme.palette.background}]}>
+    <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
+    <ThemeBackgroundLayer/>
     <View style={styles.screen}>{screen}</View>
     <GlobalFloatingAi/>
-    {!detail?<SafeAreaView edges={['bottom']} style={styles.navSafe}>
+    {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
         {MAIN_PAGES.map(page=>{
           const selected=page.key===active;
@@ -126,8 +133,8 @@ function AppBody(){
             onPress={()=>setActive(page.key)}
             style={styles.navItem}
           >
-            <View style={[styles.navIcon,selected&&styles.navIconActive]}><Text style={[styles.navGlyph,selected&&styles.navGlyphActive]}>{glyph(page.key)}</Text></View>
-            <Text style={[styles.navText,selected&&styles.navTextSelected]}>{page.label}</Text>
+            <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>
+            <Text style={[styles.navText,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{page.label}</Text>
           </Pressable>;
         })}
       </View>

@@ -1,3 +1,5 @@
+import type { ItemVisualOverride } from '../domain/displayItemContract';
+import { DEFAULT_ITEM_VISUAL } from '../domain/displayItemContract';
 import type { SharedSnapshot } from '../domain/snapshot';
 
 export type WidgetSize = '2x2' | 'small' | 'medium' | 'large';
@@ -7,6 +9,22 @@ export type WidgetSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type WidgetSortDirection = 'asc' | 'desc';
 export type WidgetEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';
 export type WidgetTextAlign = 'left' | 'center' | 'right';
+
+export const WIDGET_FIELDS:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
+export const WIDGET_FIELD_LABELS:Record<WidgetField,string>={
+  appName:'App 名稱',totalAssets:'總資產',marketValue:'持股總市值',cash:'現金',unrealizedPnl:'未實現損益',realizedPnl:'已實現損益',
+  dividendIncome:'股息收入',totalReturn:'總報酬',symbol:'ETF 代號',name:'ETF 名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',
+  shares:'股數',avgCost:'成本均價',holdingMarketValue:'單檔市值',pnl:'持股損益',roi:'報酬%',comprehensivePnl:'含息損益',
+  marketStatus:'市場狀態',updatedAt:'最後更新',dailyPnl:'當日損益',quote:'行情'
+};
+
+const PROFIT_FIELDS:readonly WidgetField[]=['unrealizedPnl','realizedPnl','totalReturn','change','changePercent','pnl','roi','comprehensivePnl','dailyPnl','quote'];
+
+export type WidgetFieldStyle=Readonly<{
+  field:WidgetField;
+  label:string;
+  visual:ItemVisualOverride;
+}>;
 
 export type WidgetStyle = Readonly<{
   fontScale: number;
@@ -47,6 +65,7 @@ export type WidgetConfig = Readonly<{
   size: WidgetSize;
   template: WidgetTemplate;
   fields: readonly WidgetField[];
+  fieldStyles:readonly WidgetFieldStyle[];
   style: WidgetStyle;
   effects: WidgetEffects;
   sort: WidgetSort;
@@ -96,20 +115,44 @@ export const DEFAULT_WIDGET_SORT: WidgetSort = {
   manualSymbols: [],
 };
 
+export const DEFAULT_WIDGET_FIELD_STYLES:readonly WidgetFieldStyle[]=WIDGET_FIELDS.map(field=>({
+  field,
+  label:WIDGET_FIELD_LABELS[field],
+  visual:{
+    ...DEFAULT_ITEM_VISUAL,
+    effect:{...DEFAULT_ITEM_VISUAL.effect},
+    useProfitColor:PROFIT_FIELDS.includes(field),
+  },
+}));
+
 export const DEFAULT_WIDGET_CONFIG: WidgetConfig = {
   enabled: false,
   size: '2x2',
   template: 'asset-summary',
   fields: ['appName','totalAssets','symbol','price','changePercent'],
+  fieldStyles:DEFAULT_WIDGET_FIELD_STYLES,
   style: DEFAULT_WIDGET_STYLE,
   effects: DEFAULT_WIDGET_EFFECTS,
   sort: DEFAULT_WIDGET_SORT,
   selectedSymbols: [],
-  profitColorFields: ['unrealizedPnl','realizedPnl','totalReturn','change','changePercent','pnl','roi','comprehensivePnl','dailyPnl','quote'],
+  profitColorFields: [...PROFIT_FIELDS],
   wallColumns: 4,
   forceRefreshOnTap: true,
   tapTarget: 'home',
 };
+
+export function widgetFieldStyle(config:WidgetConfig,field:WidgetField):WidgetFieldStyle{
+  return config.fieldStyles.find(item=>item.field===field)??DEFAULT_WIDGET_FIELD_STYLES.find(item=>item.field===field)!;
+}
+export function updateWidgetFieldStyle(config:WidgetConfig,field:WidgetField,patch:Partial<WidgetFieldStyle>):WidgetConfig{
+  return {...config,fieldStyles:config.fieldStyles.map(item=>item.field===field?{...item,...patch}:item)};
+}
+export function updateWidgetFieldVisual(config:WidgetConfig,field:WidgetField,patch:Partial<ItemVisualOverride>):WidgetConfig{
+  const current=widgetFieldStyle(config,field);
+  const nextVisual={...current.visual,...patch};
+  const next=updateWidgetFieldStyle(config,field,{visual:nextVisual});
+  return {...next,profitColorFields:next.fieldStyles.filter(item=>item.visual.useProfitColor).map(item=>item.field)};
+}
 
 export function sortWidgetHoldings(snapshot: SharedSnapshot | null, config: WidgetConfig) {
   if (!snapshot) return [];

@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../theme/tokens';
+import { useThemeRuntime } from '../theme/ThemeRuntime';
 
 type Props = PropsWithChildren<{
   title: string;
@@ -11,13 +12,14 @@ type Props = PropsWithChildren<{
 }>;
 
 export function PageShell({ title, subtitle, actions, children }: Props) {
+  const theme=useThemeRuntime();
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safe,{backgroundColor:'transparent'}]} edges={['top']}>
+      <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
         <View style={styles.titleWrap}>
-          <Text style={styles.brand}>TF Asset</Text>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          <Text style={[styles.brand,{color:theme.palette.primary}]}>TF Asset</Text>
+          <Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>
+          {subtitle ? <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>{subtitle}</Text> : null}
         </View>
         {actions ? <View style={styles.actions}>{actions}</View> : null}
       </View>

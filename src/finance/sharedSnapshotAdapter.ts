@@ -21,7 +21,7 @@ export function buildSharedSnapshot(input:{
     generatedAt:updatedAt??new Date().toISOString(),
     source:'canonical-finance-core',
     asset:{
-      totalAssets:input.canonical.totalAssets,
+      totalAssets:portfolio.totalMarketValue,
       marketValue:portfolio.totalMarketValue,
       cash:input.canonical.cashBalance,
       unrealizedPnl:portfolio.totalUnrealizedProfit,

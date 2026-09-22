@@ -1,14 +1,30 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import {
+  ITEM_EFFECT_INTENSITIES,
+  ITEM_EFFECT_KINDS,
+  ITEM_EFFECT_SPEEDS,
+  ITEM_EFFECT_TRIGGERS,
+  type ItemEffectIntensity,
+  type ItemEffectKind,
+  type ItemEffectSpeed,
+  type ItemEffectTrigger,
+  type ItemVisualOverride,
+} from '../../domain/displayItemContract';
 import type { SharedSnapshot } from '../../domain/snapshot';
-import { sortWidgetHoldings } from '../../widget/widgetDomain';
-import type {
-  WidgetConfig,
-  WidgetEffect,
-  WidgetField,
-  WidgetSize,
-  WidgetSortKey,
-  WidgetTemplate,
+import {
+  WIDGET_FIELDS,
+  WIDGET_FIELD_LABELS,
+  sortWidgetHoldings,
+  widgetFieldStyle,
+  type WidgetConfig,
+  type WidgetEffect,
+  type WidgetField,
+  type WidgetFieldStyle,
+  type WidgetSize,
+  type WidgetSortKey,
+  type WidgetTemplate,
 } from '../../widget/widgetDomain';
 import { ColorPalettePicker } from '../ColorPalettePicker';
 import { colors, radius, spacing } from '../../theme/tokens';
@@ -23,26 +39,48 @@ type Props = {
 
 const sizes: readonly WidgetSize[] = ['2x2','small', 'medium', 'large'];
 const templates: readonly WidgetTemplate[] = ['asset-summary','quote-summary','compact','advanced','minimal','transparent','quote-wall'];
-const fields:readonly WidgetField[]=['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
-const fieldLabels:Record<WidgetField,string>={
-  appName:'App 名稱',totalAssets:'總資產',marketValue:'持股總市值',cash:'現金',unrealizedPnl:'未實現損益',realizedPnl:'已實現損益',
-  dividendIncome:'股息收入',totalReturn:'總報酬',symbol:'ETF 代號',name:'ETF 名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',
-  shares:'股數',avgCost:'成本均價',holdingMarketValue:'單檔市值',pnl:'持股損益',roi:'報酬%',comprehensivePnl:'含息損益',
-  marketStatus:'市場狀態',updatedAt:'最後更新',dailyPnl:'當日損益',quote:'行情'
-};
 const effects:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const effectLabels:Record<WidgetEffect,string>={none:'無',fade:'淡入',pulse:'脈衝', 'flash-on-change':'變動閃爍'};
+const itemEffectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
+const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
+const WIDGET_EFFECT_TRIGGERS=ITEM_EFFECT_TRIGGERS.filter(trigger=>trigger!=='alert');
+const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
+const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
 const sortKeys:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
 const sortLabels:Record<WidgetSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
+
 export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
-  const previewHolding=sortWidgetHoldings(previewSnapshot,value)[0];
-  const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>({field,...widgetFieldText(previewSnapshot,previewHolding,field)}));
-  const previewPct=previewHolding?.changePercent;
-  const previewTone=(previewPct??0)>=0?value.style.gainColor:value.style.lossColor;
+  const [editingField,setEditingField]=useState<WidgetField|null>(null);
+  const sortedRows=sortWidgetHoldings(previewSnapshot,value);
+  const previewHolding=sortedRows[0];
+  const wallSupported:readonly WidgetField[]=['symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
+  const selectedWallFields=value.fields.filter(field=>wallSupported.includes(field)).slice(0,4);
+  const wallPreviewFields=selectedWallFields.length?selectedWallFields:(['name','symbol','price','changePercent'] as const);
+  const wallPreviewRows=sortedRows.slice(0,Math.min(8,Math.max(1,value.wallColumns*2)));
+  const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>{
+    const config=widgetFieldStyle(value,field);
+    return {field,config,numeric:widgetFieldProfitValue(previewSnapshot,previewHolding,field),...widgetFieldText(previewSnapshot,previewHolding,field,config.label)};
+  });
   const patch=(patch:Partial<WidgetConfig>)=>onChange({...value,...patch});
   const patchStyle=(stylePatch:Partial<WidgetConfig['style']>)=>patch({style:{...value.style,...stylePatch}});
   const patchEffects=(p:Partial<WidgetConfig['effects']>)=>patch({effects:{...value.effects,...p}});
   const patchSort=(p:Partial<WidgetConfig['sort']>)=>patch({sort:{...value.sort,...p}});
+  const patchField=(field:WidgetField,change:Partial<WidgetFieldStyle>)=>patch({
+    fieldStyles:value.fieldStyles.map(item=>item.field===field?{...item,...change}:item),
+  });
+  const patchVisual=(field:WidgetField,change:Partial<ItemVisualOverride>)=>{
+    const current=widgetFieldStyle(value,field);
+    const next={...current.visual,...change};
+    const fieldStyles=value.fieldStyles.map(item=>item.field===field?{...item,visual:next}:item);
+    const profitColorFields=next.useProfitColor
+      ?Array.from(new Set([...value.profitColorFields,field]))
+      :value.profitColorFields.filter(item=>item!==field);
+    patch({fieldStyles,profitColorFields});
+  };
+  const patchItemEffect=(field:WidgetField,change:Partial<ItemVisualOverride['effect']>)=>{
+    const current=widgetFieldStyle(value,field);
+    patchVisual(field,{effect:{...current.visual.effect,...change}});
+  };
   const toggleField=(field:WidgetField)=>{
     const current=[...value.fields];
     patch({fields:current.includes(field)?current.filter(x=>x!==field):[...current,field]});
@@ -55,7 +93,6 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
     const a=current[index]!; const b=current[target]!; current[index]=b; current[target]=a;
     patch({fields:current});
   };
-  const toggleProfitColor=(field:WidgetField)=>patch({profitColorFields:value.profitColorFields.includes(field)?value.profitColorFields.filter(x=>x!==field):[...value.profitColorFields,field]});
   const toggleSymbol=(symbol:string)=>{
     const next=value.selectedSymbols.includes(symbol)
       ? value.selectedSymbols.filter(x=>x!==symbol)
@@ -67,7 +104,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
     <View style={styles.header}>
       <View style={{ flex: 1 }}>
         <Text style={styles.title}>手機桌面 Widget 編輯器</Text>
-        <Text style={styles.sub}>尺寸、欄位、排序、字體、顏色、透明度與特效皆為 Widget 專屬設定。</Text>
+        <Text style={styles.sub}>A 管理顯示項目與順序；點選 A 後只展開該項目的 B 細部設定。</Text>
       </View>
       <Pressable onPress={() => patch({enabled:!value.enabled})} style={[styles.pill,value.enabled&&styles.pillActive]}>
         <Text style={[styles.pillText,value.enabled&&styles.pillTextActive]}>{value.enabled?'已啟用':'未啟用'}</Text>
@@ -75,11 +112,45 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
     </View>
 
     <Section title="即時預覽">
-      <View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
-        {previewLines.map((line,index)=><Text key={index} numberOfLines={1} style={{color:line.profit&&value.profitColorFields.includes(line.field)?previewTone:value.style.textColor,fontWeight:index===0?'900':'800',fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale),textAlign:value.style.textAlign,marginTop:index===0?0:value.style.rowGap}}>{line.text}</Text>)}
-        {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
-      </View>
-      <Text style={styles.note}>2×2 所有項目皆可選；實際顯示數量依樣式容量決定，已選項目依上／下順序顯示。</Text>
+      {value.template==='quote-wall'
+        ?<View style={[styles.preview,styles.wallPreview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
+          {wallPreviewRows.map(row=><View key={row.symbol} style={[styles.wallPreviewCard,{flexBasis:value.wallColumns===1?'100%':value.wallColumns===2?'48%':value.wallColumns===3?'31%':'23%'}]}>
+            {wallPreviewFields.map((field,index)=>{
+              const config=widgetFieldStyle(value,field);
+              const visual=config.visual;
+              const line=widgetFieldText(previewSnapshot,row,field,config.label);
+              const numeric=widgetFieldProfitValue(previewSnapshot,row,field);
+              const tone=line.profit&&visual.useProfitColor?(numeric==null?value.style.neutralColor:numeric>0?value.style.gainColor:numeric<0?value.style.lossColor:value.style.neutralColor):(visual.textColor??value.style.textColor);
+              return <Text key={field} numberOfLines={1} style={{
+                color:tone,
+                backgroundColor:visual.backgroundColor??'transparent',
+                fontSize:10*value.style.fontScale*visual.fontScale,
+                fontWeight:'800',
+                textAlign:visual.textAlign??value.style.textAlign,
+                marginTop:index===0?0:(visual.lineGap??value.style.rowGap),
+                paddingVertical:visual.paddingY,
+              }}>{line.text}</Text>;
+            })}
+          </View>)}
+          {!wallPreviewRows.length?<Text style={{color:value.style.secondaryTextColor}}>尚無持股資料</Text>:null}
+        </View>
+        :<View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
+          {previewLines.map((line,index)=>{
+            const visual=line.config.visual;
+            const tone=line.profit&&visual.useProfitColor?(line.numeric==null?value.style.neutralColor:line.numeric>0?value.style.gainColor:line.numeric<0?value.style.lossColor:value.style.neutralColor):(visual.textColor??value.style.textColor);
+            return <Text key={line.field} numberOfLines={1} style={{
+              color:tone,
+              backgroundColor:visual.backgroundColor??'transparent',
+              fontWeight:index===0?'900':'800',
+              fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale)*visual.fontScale,
+              textAlign:visual.textAlign??value.style.textAlign,
+              marginTop:index===0?0:(visual.lineGap??value.style.rowGap),
+              paddingVertical:visual.paddingY,
+            }}>{line.text}</Text>;
+          })}
+          {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
+        </View>}
+      <Text style={styles.note}>預覽與桌面 Renderer 使用同一 A 順序／B 樣式；行情牆只取適用持股欄位，避免摘要預覽與實體行情牆不一致。</Text>
     </Section>
 
     <Section title="尺寸與模板">
@@ -90,12 +161,48 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       <Choice choices={['home','portfolio','dividend'] as const} value={value.tapTarget} label={x=>x==='home'?'首頁':x==='portfolio'?'庫存':'股息'} onChange={tapTarget=>patch({tapTarget})}/>
     </Section>
 
-    <Section title="顯示欄位與排序">
-      {fields.map(field=>{
+    <Section title="A 顯示項目（母）">
+      <Text style={styles.note}>A 只控制顯示／隱藏、順序與要編輯哪一項；上一個 B 會在選擇另一項時自動收合。</Text>
+      <Text style={styles.note}>2×2 所有項目皆可選；實際顯示數量依目前模板容量。</Text>
+      {WIDGET_FIELDS.map(field=>{
         const active=value.fields.includes(field);
-        return <View key={field} style={styles.orderRow}>
-          <Pressable onPress={()=>toggleField(field)} style={[styles.choice,active&&styles.choiceActive]}><Text style={[styles.choiceText,active&&styles.choiceTextActive]}>{fieldLabels[field]}</Text></Pressable>
-          {active?<><MiniButton label="↑" onPress={()=>moveField(field,-1)}/><MiniButton label="↓" onPress={()=>moveField(field,1)}/><Pressable onPress={()=>toggleProfitColor(field)} style={[styles.profitButton,value.profitColorFields.includes(field)&&styles.profitButtonOn]}><Text style={[styles.profitButtonText,value.profitColorFields.includes(field)&&styles.profitButtonTextOn]}>損益色</Text></Pressable></>:null}
+        const selected=editingField===field;
+        const config=widgetFieldStyle(value,field);
+        return <View key={field} style={styles.abCard}>
+          <View style={styles.orderRow}>
+            <Pressable onPress={()=>setEditingField(selected?null:field)} style={[styles.choice,selected&&styles.choiceActive]}>
+              <Text style={[styles.choiceText,selected&&styles.choiceTextActive]}>{config.label||WIDGET_FIELD_LABELS[field]}</Text>
+            </Pressable>
+            <Pressable onPress={()=>toggleField(field)} style={[styles.visibilityButton,active&&styles.visibilityButtonOn]}>
+              <Text style={[styles.visibilityText,active&&styles.visibilityTextOn]}>{active?'顯示':'隱藏'}</Text>
+            </Pressable>
+            {active?<><MiniButton label="↑" onPress={()=>moveField(field,-1)}/><MiniButton label="↓" onPress={()=>moveField(field,1)}/></>:null}
+          </View>
+          {selected?<View style={styles.bPanel}>
+            <Text style={styles.bTitle}>B 單項細部：{WIDGET_FIELD_LABELS[field]}</Text>
+            <LabelInput value={config.label} onChange={label=>patchField(field,{label:label.slice(0,16)})}/>
+            <Step label="單項字體" value={Math.round(config.visual.fontScale*100)} min={70} max={200} step={5} suffix="%" onChange={n=>patchVisual(field,{fontScale:n/100})}/>
+            <Toggle label="套用損益色" value={config.visual.useProfitColor} onChange={useProfitColor=>patchVisual(field,{useProfitColor})}/>
+            <Toggle label="自訂文字顏色" value={config.visual.textColor!=null} onChange={enabled=>patchVisual(field,{textColor:enabled?value.style.textColor:null})}/>
+            {config.visual.textColor?<ColorPalettePicker label="單項文字顏色" value={config.visual.textColor} onChange={textColor=>patchVisual(field,{textColor})}/>:null}
+            <Toggle label="自訂單項背景" value={config.visual.backgroundColor!=null} onChange={enabled=>patchVisual(field,{backgroundColor:enabled?value.style.backgroundColor:null})}/>
+            {config.visual.backgroundColor?<ColorPalettePicker label="單項背景" value={config.visual.backgroundColor} onChange={backgroundColor=>patchVisual(field,{backgroundColor})}/>:null}
+            <Text style={styles.label}>單項對齊</Text>
+            <Choice choices={['left','center','right'] as const} value={config.visual.textAlign??value.style.textAlign} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={textAlign=>patchVisual(field,{textAlign})}/>
+            <Toggle label="自訂行距" value={config.visual.lineGap!=null} onChange={enabled=>patchVisual(field,{lineGap:enabled?value.style.rowGap:null})}/>
+            {config.visual.lineGap!=null?<Step label="單項行距" value={config.visual.lineGap} min={0} max={32} step={1} suffix=" px" onChange={lineGap=>patchVisual(field,{lineGap})}/>:null}
+            <Step label="上下內距" value={config.visual.paddingY} min={0} max={16} step={1} suffix=" px" onChange={paddingY=>patchVisual(field,{paddingY})}/>
+            <Text style={styles.label}>單項特效</Text>
+            <Choice choices={ITEM_EFFECT_KINDS} value={config.visual.effect.kind} label={x=>itemEffectLabels[x]} onChange={kind=>patchItemEffect(field,{kind})}/>
+            {config.visual.effect.kind!=='none'?<>
+              <Text style={styles.label}>觸發條件</Text>
+              <Choice choices={WIDGET_EFFECT_TRIGGERS} value={config.visual.effect.trigger} label={x=>triggerLabels[x]} onChange={trigger=>patchItemEffect(field,{trigger})}/>
+              <Text style={styles.label}>速度</Text>
+              <Choice choices={ITEM_EFFECT_SPEEDS} value={config.visual.effect.speed} label={x=>speedLabels[x]} onChange={speed=>patchItemEffect(field,{speed})}/>
+              <Text style={styles.label}>強度</Text>
+              <Choice choices={ITEM_EFFECT_INTENSITIES} value={config.visual.effect.intensity} label={x=>intensityLabels[x]} onChange={intensity=>patchItemEffect(field,{intensity})}/>
+            </>:null}
+          </View>:null}
         </View>;
       })}
       <Text style={styles.label}>ETF 排序</Text>
@@ -104,17 +211,17 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       {availableSymbols.length?<View style={styles.symbolWrap}>{availableSymbols.map(row=><Pressable key={row.symbol} onPress={()=>toggleSymbol(row.symbol)} style={[styles.symbolChip,value.selectedSymbols.includes(row.symbol)&&styles.choiceActive]}><Text style={[styles.choiceText,value.selectedSymbols.includes(row.symbol)&&styles.choiceTextActive]}>{row.symbol}</Text></Pressable>)}</View>:<Text style={styles.note}>沒有持股時顯示全部 Snapshot 標的。</Text>}
     </Section>
 
-    <Section title="字體與版面">
+    <Section title="Widget 全域字體與版面">
       <Step label="全局字體" value={Math.round(value.style.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchStyle({fontScale:n/100})}/>
       <Step label="標題字體" value={Math.round(value.style.titleFontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchStyle({titleFontScale:n/100})}/>
       <Step label="數值字體" value={Math.round(value.style.valueFontScale*100)} min={70} max={200} step={5} suffix="%" onChange={n=>patchStyle({valueFontScale:n/100})}/>
       <Step label="內距" value={value.style.padding} min={0} max={32} step={2} suffix=" px" onChange={padding=>patchStyle({padding})}/>
-      <Step label="列間距" value={value.style.rowGap} min={0} max={24} step={2} suffix=" px" onChange={rowGap=>patchStyle({rowGap})}/>
+      <Step label="全域行距" value={value.style.rowGap} min={0} max={32} step={1} suffix=" px" onChange={rowGap=>patchStyle({rowGap})}/>
       <Choice choices={['left','center','right'] as const} value={value.style.textAlign} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={textAlign=>patchStyle({textAlign})}/>
     </Section>
 
-    <Section title="顏色與外觀">
-      <Text style={styles.note}>所有顏色一律由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
+    <Section title="Widget 全域顏色與外觀">
+      <Text style={styles.note}>B 未覆寫的項目繼承這裡；所有顏色一律使用調色盤。</Text>
       <ColorPalettePicker label="背景" value={value.style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
       <ColorPalettePicker label="文字" value={value.style.textColor} onChange={textColor=>patchStyle({textColor})}/>
       <ColorPalettePicker label="次要文字" value={value.style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
@@ -128,7 +235,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       <Toggle label="陰影" value={value.style.shadowEnabled} onChange={shadowEnabled=>patchStyle({shadowEnabled})}/>
     </Section>
 
-    <Section title="特效">
+    <Section title="全域特效（相容層）">
+      <Text style={styles.note}>保留舊全域特效供未指定 B 特效的舊設定相容；新單項效果以 B 設定為優先。</Text>
       <Toggle label="允許動畫" value={value.effects.animationsEnabled} onChange={animationsEnabled=>patchEffects({animationsEnabled})}/>
       <EffectChoice label="刷新" value={value.effects.refresh} onChange={refresh=>patchEffects({refresh})}/>
       <EffectChoice label="上漲" value={value.effects.gain} onChange={gain=>patchEffects({gain})}/>
@@ -136,7 +244,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       <EffectChoice label="警示" value={value.effects.alert} onChange={alert=>patchEffects({alert})}/>
     </Section>
 
-    <Text style={styles.note}>Widget 只讀 Shared Snapshot；此編輯器不建立第二套帳務公式。</Text>
+    <Text style={styles.note}>Widget 只讀 Shared Snapshot；A/B 只改顯示設定，不建立第二套帳務公式。</Text>
   </View>;
 }
 
@@ -146,6 +254,8 @@ function MiniButton({label,onPress}:{label:string;onPress:()=>void}){return <Pre
 function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(n:number)=>void}){return <View style={styles.stepRow}><Text style={styles.stepLabel}>{label}</Text><MiniButton label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.stepValue}>{value}{suffix}</Text><MiniButton label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
 function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(v:boolean)=>void}){return <Pressable onPress={()=>onChange(!value)} style={styles.toggleRow}><Text style={styles.stepLabel}>{label}</Text><Text style={[styles.toggleState,value&&styles.toggleStateOn]}>{value?'開':'關'}</Text></Pressable>;}
 function EffectChoice({label,value,onChange}:{label:string;value:WidgetEffect;onChange:(v:WidgetEffect)=>void}){return <View><Text style={styles.label}>{label}</Text><Choice choices={effects} value={value} label={x=>effectLabels[x]} onChange={onChange}/></View>;}
+function LabelInput({value,onChange}:{value:string;onChange:(value:string)=>void}){return <View style={styles.labelEdit}><Text style={styles.label}>顯示名稱</Text><TextInput value={value} onChangeText={onChange} style={styles.input}/></View>;}
+
 const styles = StyleSheet.create({
   card:{backgroundColor:colors.surfaceMuted,borderRadius:radius.lg,padding:spacing.md,borderWidth:1,borderColor:colors.border,gap:10},
   header:{flexDirection:'row',alignItems:'center',gap:8},
@@ -165,7 +275,7 @@ const styles = StyleSheet.create({
   choiceTextActive:{color:colors.primary},
   note:{fontSize:9,lineHeight:14,color:colors.textSecondary},
   preview:{minHeight:110,justifyContent:'center'},
-  orderRow:{flexDirection:'row',alignItems:'center',gap:6},
+  orderRow:{flexDirection:'row',alignItems:'center',gap:6,flexWrap:'wrap'},
   miniButton:{width:34,height:32,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface,alignItems:'center',justifyContent:'center'},
   miniButtonText:{fontSize:14,fontWeight:'900',color:colors.primary},
   stepRow:{flexDirection:'row',alignItems:'center',gap:6},
@@ -174,43 +284,66 @@ const styles = StyleSheet.create({
   toggleRow:{minHeight:36,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
   toggleState:{paddingHorizontal:10,paddingVertical:5,borderRadius:999,overflow:'hidden',backgroundColor:colors.surface,color:colors.textSecondary,fontSize:10,fontWeight:'900'},
   toggleStateOn:{backgroundColor:'#EFF6FF',color:colors.primary},
-  profitButton:{paddingHorizontal:8,paddingVertical:6,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
-  profitButtonOn:{borderColor:colors.primary,backgroundColor:'#EFF6FF'},
-  profitButtonText:{fontSize:9,fontWeight:'900',color:colors.textSecondary},
-  profitButtonTextOn:{color:colors.primary},
+  visibilityButton:{paddingHorizontal:8,paddingVertical:6,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  visibilityButtonOn:{borderColor:colors.primary,backgroundColor:'#EFF6FF'},
+  visibilityText:{fontSize:9,fontWeight:'900',color:colors.textSecondary},
+  visibilityTextOn:{color:colors.primary},
   symbolWrap:{flexDirection:'row',gap:6,flexWrap:'wrap'},
   symbolChip:{paddingHorizontal:8,paddingVertical:6,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  abCard:{gap:6,padding:8,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface},
+  bPanel:{gap:8,paddingTop:8,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
+  bTitle:{fontSize:10,fontWeight:'900',color:colors.primary},
+  labelEdit:{gap:4},
+  inlineValue:{fontSize:11,fontWeight:'900',color:colors.text},
+  input:{minHeight:38,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:10,paddingVertical:7,fontSize:11,fontWeight:'800',color:colors.text},
+  wallPreview:{flexDirection:'row',flexWrap:'wrap',alignContent:'flex-start',justifyContent:'space-between',gap:6},
+  wallPreviewCard:{borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,padding:6,minHeight:56},
 });
 
+function widgetFieldProfitValue(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField):number|null{
+  const asset=snapshot?.asset;
+  const value=field==='unrealizedPnl'?asset?.unrealizedPnl
+    :field==='realizedPnl'?asset?.realizedPnl
+    :field==='totalReturn'?asset?.totalReturn
+    :field==='change'?holding?.change
+    :field==='changePercent'?holding?.changePercent
+    :field==='pnl'?holding?.pnl
+    :field==='roi'?holding?.roi
+    :field==='comprehensivePnl'?holding?.comprehensivePnl
+    :field==='dailyPnl'?holding?.change
+    :field==='quote'?holding?.changePercent
+    :null;
+  return typeof value==='number'&&Number.isFinite(value)?value:null;
+}
 
-function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField):{text:string;profit:boolean}{
+function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField,label:string):{text:string;profit:boolean}{
   const asset=snapshot?.asset;
   const money=(v:number|undefined)=>v==null?'--':Math.round(v).toLocaleString('zh-TW');
   const signedMoney=(v:number|undefined)=>v==null?'--':`${v>=0?'+':''}${Math.round(v).toLocaleString('zh-TW')}`;
   const signed2=(v:number|null|undefined,suffix='')=>v==null?'--':`${v>=0?'+':''}${v.toFixed(2)}${suffix}`;
   switch(field){
     case 'appName':return {text:'TF Asset',profit:false};
-    case 'totalAssets':return {text:`總資產 NT$ ${money(asset?.totalAssets)}`,profit:false};
-    case 'marketValue':return {text:`總市值 NT$ ${money(asset?.marketValue)}`,profit:false};
-    case 'cash':return {text:`現金 NT$ ${money(asset?.cash)}`,profit:false};
-    case 'unrealizedPnl':return {text:`未實現 ${signedMoney(asset?.unrealizedPnl)}`,profit:true};
-    case 'realizedPnl':return {text:`已實現 ${signedMoney(asset?.realizedPnl)}`,profit:true};
-    case 'dividendIncome':return {text:`股息 ${money(asset?.dividendIncome)}`,profit:false};
-    case 'totalReturn':return {text:`總報酬 ${signedMoney(asset?.totalReturn)}`,profit:true};
+    case 'totalAssets':return {text:`${label} NT$ ${money(asset?.totalAssets)}`,profit:false};
+    case 'marketValue':return {text:`${label} NT$ ${money(asset?.marketValue)}`,profit:false};
+    case 'cash':return {text:`${label} NT$ ${money(asset?.cash)}`,profit:false};
+    case 'unrealizedPnl':return {text:`${label} ${signedMoney(asset?.unrealizedPnl)}`,profit:true};
+    case 'realizedPnl':return {text:`${label} ${signedMoney(asset?.realizedPnl)}`,profit:true};
+    case 'dividendIncome':return {text:`${label} ${money(asset?.dividendIncome)}`,profit:false};
+    case 'totalReturn':return {text:`${label} ${signedMoney(asset?.totalReturn)}`,profit:true};
     case 'symbol':return {text:holding?.symbol??'--',profit:false};
     case 'name':return {text:holding?.name??'--',profit:false};
-    case 'price':return {text:`價格 ${holding?.price==null?'--':holding.price.toFixed(2)}`,profit:false};
-    case 'change':return {text:`漲跌 ${signed2(holding?.change)}`,profit:true};
-    case 'changePercent':return {text:`漲跌% ${signed2(holding?.changePercent,'%')}`,profit:true};
-    case 'shares':return {text:`股數 ${holding?Math.round(holding.shares).toLocaleString('zh-TW'):'--'}`,profit:false};
-    case 'avgCost':return {text:`成本均 ${holding?holding.avgCost.toFixed(2):'--'}`,profit:false};
-    case 'holdingMarketValue':return {text:`單檔市值 ${money(holding?.marketValue)}`,profit:false};
-    case 'pnl':return {text:`持股損益 ${signedMoney(holding?.pnl)}`,profit:true};
-    case 'roi':return {text:`報酬% ${holding?signed2(holding.roi,'%'):'--'}`,profit:true};
-    case 'comprehensivePnl':return {text:`含息損益 ${signedMoney(holding?.comprehensivePnl)}`,profit:true};
-    case 'marketStatus':return {text:`狀態 ${holding?.marketStatus??'--'}`,profit:false};
-    case 'updatedAt':return {text:`更新 ${holding?.updatedAt?new Date(holding.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}`,profit:false};
-    case 'dailyPnl':return {text:`當日損益 ${signed2(holding?.change)}`,profit:true};
+    case 'price':return {text:`${label} ${holding?.price==null?'--':holding.price.toFixed(2)}`,profit:false};
+    case 'change':return {text:`${label} ${signed2(holding?.change)}`,profit:true};
+    case 'changePercent':return {text:`${label} ${signed2(holding?.changePercent,'%')}`,profit:true};
+    case 'shares':return {text:`${label} ${holding?Math.round(holding.shares).toLocaleString('zh-TW'):'--'}`,profit:false};
+    case 'avgCost':return {text:`${label} ${holding?holding.avgCost.toFixed(2):'--'}`,profit:false};
+    case 'holdingMarketValue':return {text:`${label} ${money(holding?.marketValue)}`,profit:false};
+    case 'pnl':return {text:`${label} ${signedMoney(holding?.pnl)}`,profit:true};
+    case 'roi':return {text:`${label} ${holding?signed2(holding.roi,'%'):'--'}`,profit:true};
+    case 'comprehensivePnl':return {text:`${label} ${signedMoney(holding?.comprehensivePnl)}`,profit:true};
+    case 'marketStatus':return {text:`${label} ${holding?.marketStatus??'--'}`,profit:false};
+    case 'updatedAt':return {text:`${label} ${holding?.updatedAt?new Date(holding.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}`,profit:false};
+    case 'dailyPnl':return {text:`${label} ${signed2(holding?.change)}`,profit:true};
     case 'quote':return {text:holding?`${holding.symbol} ${holding.price?.toFixed(2)??'--'} ${signed2(holding.changePercent,'%')}`:'尚無行情',profit:true};
   }
 }

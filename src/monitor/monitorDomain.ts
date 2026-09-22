@@ -1,12 +1,28 @@
+import {
+  DEFAULT_ITEM_EFFECT,
+  DEFAULT_ITEM_VISUAL,
+  type ItemEffectConfig,
+  type ItemVisualOverride,
+} from '../domain/displayItemContract';
 import type { SharedSnapshot } from '../domain/snapshot';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig } from '../domain/uiModels';
 
 export type MonitorMode = 'normal' | 'mini';
 export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact' | 'single' | 'dual' | 'advanced' | 'market-wall' | 'heatmap' | 'pnl-wall' | 'weight-wall' | 'ticker' | 'terminal';
-export type MonitorField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'marketValue' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt';
+export type MonitorField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'marketValue' | 'weight' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt';
 export type MonitorSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
 export type MonitorEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';
 export type MonitorTextAlign = 'left' | 'center' | 'right';
+
+export const MONITOR_FIELDS:readonly MonitorField[]=['symbol','name','price','change','changePercent','shares','avgCost','marketValue','weight','pnl','roi','comprehensivePnl','marketStatus','updatedAt'];
+export const MONITOR_FIELD_LABELS:Record<MonitorField,string>={symbol:'代號',name:'名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',shares:'股數',avgCost:'成本均',marketValue:'市值',weight:'權重',pnl:'損益',roi:'報酬%',comprehensivePnl:'含息損益',marketStatus:'市場狀態',updatedAt:'更新時間'};
+const PROFIT_FIELDS:readonly MonitorField[]=['change','changePercent','pnl','roi','comprehensivePnl'];
+
+export type MonitorItemConfig=Readonly<{
+  field:MonitorField;
+  label:string;
+  visual:ItemVisualOverride;
+}>;
 
 export type MiniHeaderStyle = Readonly<{
   visible:boolean;
@@ -17,6 +33,7 @@ export type MiniHeaderStyle = Readonly<{
   fontScale:number;
   borderColor:string;
   borderWidth:number;
+  effect:ItemEffectConfig;
 }>;
 
 export type MiniColumnConfig = Readonly<{
@@ -27,6 +44,11 @@ export type MiniColumnConfig = Readonly<{
   fontScale:number;
   useProfitColor:boolean;
   label:string;
+  textColor:string|null;
+  backgroundColor:string|null;
+  lineGap:number|null;
+  paddingY:number;
+  effect:ItemEffectConfig;
 }>;
 
 export type MiniStatusField = 'totalAssets' | 'marketValue' | 'totalReturn' | 'cash' | 'unrealizedPnl' | 'realizedPnl' | 'dividendIncome' | 'holdingCount' | 'updatedAt';
@@ -46,6 +68,13 @@ export type MiniStatusItemConfig = Readonly<{
   enabled:boolean;
   label:string;
   useProfitColor:boolean;
+  fontScale:number;
+  textColor:string|null;
+  backgroundColor:string|null;
+  align:MonitorTextAlign;
+  lineGap:number|null;
+  paddingY:number;
+  effect:ItemEffectConfig;
 }>;
 export type MonitorWallLayout = Readonly<{
   columns:number;
@@ -91,6 +120,7 @@ export type MonitorConfig = Readonly<{
   mode: MonitorMode;
   template: MonitorTemplate;
   fields: readonly MonitorField[];
+  normalItems:readonly MonitorItemConfig[];
   miniFields: readonly MonitorField[];
   selectedSymbols: readonly string[];
   showBreathingLight: boolean;
@@ -131,6 +161,11 @@ export const DEFAULT_MONITOR_STYLE:MonitorStyle={
   shadowEnabled:true,textAlign:'left',rowGap:6,padding:12,
 };
 export const DEFAULT_MONITOR_EFFECTS:MonitorEffects={refresh:'fade',gain:'none',loss:'none',alert:'pulse',animationsEnabled:true};
+export const DEFAULT_MONITOR_ITEMS:readonly MonitorItemConfig[]=MONITOR_FIELDS.map(field=>({
+  field,
+  label:MONITOR_FIELD_LABELS[field],
+  visual:{...DEFAULT_ITEM_VISUAL,effect:{...DEFAULT_ITEM_EFFECT},useProfitColor:PROFIT_FIELDS.includes(field)},
+}));
 export const DEFAULT_MINI_HEADER:MiniHeaderStyle={
   visible:true,
   height:30,
@@ -140,22 +175,22 @@ export const DEFAULT_MINI_HEADER:MiniHeaderStyle={
   fontScale:0.9,
   borderColor:'#334155',
   borderWidth:1,
+  effect:{...DEFAULT_ITEM_EFFECT},
 };
-export const DEFAULT_MINI_COLUMNS:readonly MiniColumnConfig[]=[
-  {field:'symbol',enabled:true,widthPercent:22,align:'left',fontScale:1,useProfitColor:false,label:'代號'},
-  {field:'name',enabled:false,widthPercent:28,align:'left',fontScale:.9,useProfitColor:false,label:'名稱'},
-  {field:'price',enabled:true,widthPercent:22,align:'right',fontScale:1,useProfitColor:false,label:'價格'},
-  {field:'change',enabled:false,widthPercent:18,align:'right',fontScale:1,useProfitColor:true,label:'漲跌'},
-  {field:'changePercent',enabled:true,widthPercent:20,align:'right',fontScale:1,useProfitColor:true,label:'漲跌%'},
-  {field:'shares',enabled:false,widthPercent:18,align:'right',fontScale:1,useProfitColor:false,label:'股數'},
-  {field:'avgCost',enabled:false,widthPercent:20,align:'right',fontScale:1,useProfitColor:false,label:'成本均'},
-  {field:'marketValue',enabled:false,widthPercent:24,align:'right',fontScale:1,useProfitColor:false,label:'市值'},
-  {field:'pnl',enabled:true,widthPercent:20,align:'right',fontScale:1,useProfitColor:true,label:'損益'},
-  {field:'roi',enabled:false,widthPercent:20,align:'right',fontScale:1,useProfitColor:true,label:'報酬%'},
-  {field:'comprehensivePnl',enabled:false,widthPercent:24,align:'right',fontScale:1,useProfitColor:true,label:'含息損益'},
-  {field:'marketStatus',enabled:false,widthPercent:18,align:'center',fontScale:.9,useProfitColor:false,label:'狀態'},
-  {field:'updatedAt',enabled:false,widthPercent:26,align:'right',fontScale:.85,useProfitColor:false,label:'更新'},
-];
+export const DEFAULT_MINI_COLUMNS:readonly MiniColumnConfig[]=MONITOR_FIELDS.map(field=>({
+  field,
+  enabled:['symbol','price','changePercent','pnl'].includes(field),
+  widthPercent:field==='symbol'?22:field==='name'?28:field==='marketValue'||field==='comprehensivePnl'?24:field==='updatedAt'?26:20,
+  align:field==='symbol'||field==='name'||field==='price'?'left':field==='marketStatus'?'center':'right',
+  fontScale:(field==='name'||field==='marketStatus')?0.9:field==='updatedAt'?0.85:1,
+  useProfitColor:PROFIT_FIELDS.includes(field),
+  label:MONITOR_FIELD_LABELS[field].replace('市場','').replace('時間',''),
+  textColor:null,
+  backgroundColor:null,
+  lineGap:null,
+  paddingY:0,
+  effect:{...DEFAULT_ITEM_EFFECT},
+}));
 export const DEFAULT_MINI_STATUS_BAR:MiniStatusBarStyle={
   visible:true,
   height:36,
@@ -167,16 +202,19 @@ export const DEFAULT_MINI_STATUS_BAR:MiniStatusBarStyle={
   borderColor:'#334155',
   borderWidth:1,
 };
+const miniStatus=(field:MiniStatusField,label:string,enabled:boolean,useProfitColor:boolean):MiniStatusItemConfig=>({
+  field,label,enabled,useProfitColor,fontScale:1,textColor:null,backgroundColor:null,align:'center',lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT},
+});
 export const DEFAULT_MINI_STATUS_ITEMS:readonly MiniStatusItemConfig[]=[
-  {field:'totalAssets',enabled:true,label:'總資產',useProfitColor:false},
-  {field:'marketValue',enabled:true,label:'市值',useProfitColor:false},
-  {field:'totalReturn',enabled:true,label:'總損益',useProfitColor:true},
-  {field:'cash',enabled:false,label:'現金',useProfitColor:false},
-  {field:'unrealizedPnl',enabled:false,label:'未實現',useProfitColor:true},
-  {field:'realizedPnl',enabled:false,label:'已實現',useProfitColor:true},
-  {field:'dividendIncome',enabled:false,label:'股息',useProfitColor:false},
-  {field:'holdingCount',enabled:false,label:'持股數',useProfitColor:false},
-  {field:'updatedAt',enabled:false,label:'更新',useProfitColor:false},
+  miniStatus('totalAssets','總資產',true,false),
+  miniStatus('marketValue','市值',true,false),
+  miniStatus('totalReturn','總損益',true,true),
+  miniStatus('cash','現金',false,false),
+  miniStatus('unrealizedPnl','未實現',false,true),
+  miniStatus('realizedPnl','已實現',false,true),
+  miniStatus('dividendIncome','股息',false,false),
+  miniStatus('holdingCount','持股數',false,false),
+  miniStatus('updatedAt','更新',false,false),
 ];
 export const DEFAULT_MONITOR_WALL_LAYOUT:MonitorWallLayout={columns:2,columnGap:8,rowGap:8};
 export const DEFAULT_MONITOR_SORT:MonitorSort={key:'manual',direction:'asc',manualSymbols:[]};
@@ -186,6 +224,7 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   mode: 'normal',
   template: 'portfolio',
   fields: ['symbol', 'price', 'changePercent', 'pnl'],
+  normalItems:DEFAULT_MONITOR_ITEMS,
   miniFields: ['symbol', 'price', 'changePercent'],
   selectedSymbols: [],
   showBreathingLight: true,
@@ -208,8 +247,12 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
 export function activeMonitorLayout(config: MonitorConfig) {return config.mode === 'normal' ? config.normalLayout : config.miniLayout;}
 export function activeMonitorStyle(config:MonitorConfig){return config.mode==='normal'?config.normalStyle:config.miniStyle;}
 export function activeMonitorFields(config: MonitorConfig) {return config.mode === 'normal' ? config.fields : config.miniFields;}
+export function monitorItem(config:MonitorConfig,field:MonitorField){return config.normalItems.find(item=>item.field===field)??DEFAULT_MONITOR_ITEMS.find(item=>item.field===field)!;}
 export function enabledMiniColumns(config:MonitorConfig){return config.miniColumns.filter(column=>column.enabled);}
 export function enabledMiniStatusItems(config:MonitorConfig){return config.miniStatusItems.filter(item=>item.enabled);}
+export function updateNormalItem(config:MonitorConfig,field:MonitorField,patch:Partial<MonitorItemConfig>):MonitorConfig{
+  return {...config,normalItems:config.normalItems.map(item=>item.field===field?{...item,...patch}:item)};
+}
 export function updateMiniStatusBar(config:MonitorConfig,patch:Partial<MiniStatusBarStyle>):MonitorConfig{
   return {...config,miniStatusBar:{...config.miniStatusBar,...patch}};
 }

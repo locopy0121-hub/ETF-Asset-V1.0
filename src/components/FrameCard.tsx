@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { FrameAppearance, FrameEditorConfig, FrameLayout } from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
+import { useThemeRuntime } from '../theme/ThemeRuntime';
 
 export type FrameCardProps = PropsWithChildren<{
   title: string;
@@ -13,13 +14,15 @@ export type FrameCardProps = PropsWithChildren<{
 }>;
 
 export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle }: FrameCardProps) {
+  const theme=useThemeRuntime();
   return (
     <View style={[
       styles.card,
+      {backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
       layout === 'compact' && styles.cardCompact,
       layout === 'dense' && styles.cardDense,
-      appearance === 'soft' && styles.cardSoft,
-      appearance === 'outline' && styles.cardOutline,
+      appearance === 'soft' && {backgroundColor:theme.palette.surfaceMuted},
+      appearance === 'outline' && {borderWidth:2,borderColor:theme.palette.primary},
       editorStyle&&{
         backgroundColor:editorStyle.backgroundColor,
         opacity:editorStyle.backgroundOpacity,
@@ -30,7 +33,7 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
       },
     ]}>
       <View style={styles.header}>
-        <Text style={[styles.title, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
+        <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
         {action}
       </View>
       {children}

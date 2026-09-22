@@ -11,9 +11,11 @@ const info=fs.readFileSync('native/android/res/xml/tf_asset_widget_info.xml','ut
 assert.match(domain,/WidgetSize = '2x2'/,'Widget 2x2 size contract missing');
 for(const field of ['appName','totalAssets','marketValue','cash','unrealizedPnl','realizedPnl','dividendIncome','totalReturn','symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt']){
   assert.ok(domain.includes("'"+field+"'"),'Widget field pool missing '+field);
-  assert.ok(runtime.includes("'"+field+"'"),'Widget persistence missing '+field);
   assert.ok(panel.includes(field),'Widget picker missing '+field);
 }
+assert.match(runtime,/WIDGET_FIELDS/,'Widget persistence must consume the canonical field pool');
+assert.match(runtime,/const VALID_FIELDS:readonly WidgetField\[\]=WIDGET_FIELDS/,'Widget persistence must validate against all canonical widget fields');
+assert.match(runtime,/input\.fields\.filter\(\(x\):x is WidgetField=>VALID_FIELDS\.includes/,'Widget persisted fields must be restored through canonical validation');
 assert.match(panel,/2×2 所有項目皆可選/,'2x2 all-item hint missing');
 assert.match(panel,/widgetTemplateCapacity\(value\.template\)/,'Widget preview capacity must follow display mode');
 assert.match(native,/val capacity=when\(template\)/,'Native widget must derive capacity from display mode');
