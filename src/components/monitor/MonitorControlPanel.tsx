@@ -240,7 +240,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   </View>;
 }
 
-function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:ReturnType<typeof sortMonitorHoldings>;wallRows:ReturnType<typeof chunk<ReturnType<typeof sortMonitorHoldings>[number]>>}){
+function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][]}){
   const style=activeMonitorStyle(value);
   if(value.mode==='mini'){
     const cols=enabledMiniColumns(value),statusItems=enabledMiniStatusItems(value);
