@@ -20,6 +20,7 @@ import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
+import { deriveAiUiState } from './src/settings/settingsControlBehavior';
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
@@ -61,7 +62,8 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
-  useEffect(()=>{if(!settings.prefs.ai.enabled&&active==='ai')setActive('home');},[settings.prefs.ai.enabled,active]);
+  const aiUi=deriveAiUiState(settings.prefs.ai,active);
+  useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -122,10 +124,10 @@ function AppBody(){
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
     <View style={styles.screen}>{screen}</View>
-    {settings.prefs.ai.enabled&&settings.prefs.ai.floatingButton?<GlobalFloatingAi/>:null}
+    {aiUi.showFloatingAi?<GlobalFloatingAi/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
-        {MAIN_PAGES.filter(page=>page.key!=='ai'||settings.prefs.ai.enabled).map(page=>{
+        {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;
           return <Pressable
             key={page.key}
