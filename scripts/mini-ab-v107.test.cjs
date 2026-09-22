@@ -20,7 +20,8 @@ for(const token of ['DEFAULT_MINI_COLUMNS.map','map.get(defaultColumn.field)','f
 assert.match(panel,/Mini A 項目列（母）/,'Mini A editor missing');
 assert.match(panel,/Mini B 欄位（子）/,'Mini B editor missing');
 assert.match(panel,/第 \{index\+1\} 欄/,'Mini B position hint missing');
-assert.match(panel,/previewRows\.map/,'Mini preview must render every row');
+assert.match(panel,/rows=\{previewRows\}/,'Mini preview must receive every sorted row');
+assert.match(panel,/\{rows\.map\(row=>/,'Mini preview must render every received row');
 assert.ok(!/previewRows\.(slice|filter\([^)]*index|splice)/.test(panel),'Mini preview must not truncate holdings');
 assert.match(native,/rows\.forEach\{holding->/,'Native Mini must render every holding row');
 assert.ok(!/orderedHoldings\([^)]*\)\.(take|slice|subList)/.test(native),'Native Mini must not truncate holdings');
