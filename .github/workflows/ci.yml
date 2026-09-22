@@ -31,8 +31,8 @@ jobs:
         run: npm run test:v1_1_3-dividend-calendar
       - name: V2.1.1 system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V2.1.1 user-visible version cleanup
-        run: npm run test:v1_1_3-visible-version
+      - name: V2.1.1 user-visible version and integration smoke
+        run: node scripts/v2_1_1-release.test.cjs
       - name: V2.1.1 release identity and UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
