@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import { DEFAULT_ITEM_EFFECT } from '../src/domain/displayItemContract';
+import { mergeDisplayState } from '../src/editor/editorModel';
 import { DEFAULT_HOLDING_WALL_CONFIG } from '../src/domain/uiModels';
 import {
   DEFAULT_MONITOR_CONFIG,
@@ -62,5 +63,33 @@ const wallAfter={
 assert.equal(wallAfter.fields.find(x=>x.field==='pnl')?.lineGap,16);
 assert.equal(wallAfter.fields.find(x=>x.field==='price')?.lineGap,null,'Market-wall B edit must not leak');
 assert.equal(wallBefore.fields.find(x=>x.field==='pnl')?.lineGap,null,'Market-wall edit must be immutable');
+
+const legacyHydrated=mergeDisplayState({home:{holdingWall:{
+  header:{visible:true},
+  fields:[{field:'pnl',enabled:true,label:'損益',fontScale:1,useProfitColor:true}],
+  style:{},
+}}});
+const legacyWall=legacyHydrated.home.holdingWall!;
+const legacyPnl=legacyWall.fields.find(x=>x.field==='pnl')!;
+assert.deepEqual(legacyWall.header.effect,DEFAULT_ITEM_EFFECT,'Legacy header without effect must hydrate a complete default effect');
+assert.deepEqual(legacyPnl.effect,DEFAULT_ITEM_EFFECT,'Legacy field without effect must hydrate a complete default effect');
+assert.equal(legacyPnl.align,DEFAULT_HOLDING_WALL_CONFIG.fields.find(x=>x.field==='pnl')!.align,'Legacy field must keep its original alignment default');
+assert.equal(legacyPnl.textColor,null);
+assert.equal(legacyPnl.backgroundColor,null);
+
+const savedEffect={kind:'bounce' as const,trigger:'gain' as const,speed:'fast' as const,intensity:'strong' as const};
+const savedHydrated=mergeDisplayState({home:{holdingWall:{
+  header:{...DEFAULT_HOLDING_WALL_CONFIG.header,effect:savedEffect},
+  fields:DEFAULT_HOLDING_WALL_CONFIG.fields.map(field=>field.field==='pnl'?{...field,textColor:'#abcdef',backgroundColor:'#123456',lineGap:13,paddingY:4,effect:savedEffect}:field),
+  style:DEFAULT_HOLDING_WALL_CONFIG.style,
+}}});
+const savedWall=savedHydrated.home.holdingWall!;
+const savedPnl=savedWall.fields.find(x=>x.field==='pnl')!;
+assert.deepEqual(savedWall.header.effect,savedEffect,'Saved header effect must survive hydration');
+assert.deepEqual(savedPnl.effect,savedEffect,'Saved field effect must survive hydration');
+assert.equal(savedPnl.textColor,'#ABCDEF','Saved field text color must survive hydration');
+assert.equal(savedPnl.backgroundColor,'#123456','Saved field background color must survive hydration');
+assert.equal(savedPnl.lineGap,13,'Saved field line gap must survive hydration');
+assert.equal(savedPnl.paddingY,4,'Saved field padding must survive hydration');
 
 console.log('V1.1.2 A-B behavior isolation: PASS');
