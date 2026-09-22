@@ -289,6 +289,8 @@ class TfAssetOverlayService:Service(){
         val wallCorner=wallStyle.optInt("cornerRadius",16).coerceIn(0,40)
         val enabled=(0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
         val headerFields=enabled.filter{it.optString("field")=="name"||it.optString("field")=="symbol"}
+        val quoteFields=enabled.filter{it.optString("field")=="price"||it.optString("field")=="change"||it.optString("field")=="changePercent"}
+        val footerFields=enabled.filter{it.optString("field")=="pnl"||it.optString("field")=="roi"||it.optString("field")=="marketValue"}
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
         var wallLine:LinearLayout?=null
@@ -298,38 +300,134 @@ class TfAssetOverlayService:Service(){
             body.addView(wallLine,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{bottomMargin=wallRowGap})
           }
           val card=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL;setPadding(wallPadding,wallPadding,wallPadding,wallPadding)
+            orientation=LinearLayout.VERTICAL
+            setPadding(wallPadding,wallPadding,wallPadding,wallPadding)
             background=GradientDrawable().apply{setColor(wallBackground);cornerRadius=wallCorner.toFloat();if(wallBorderWidth>0)setStroke(wallBorderWidth,wallBorder)}
           }
+
           if(wallHeader.optBoolean("visible",true)&&headerFields.isNotEmpty()){
             val headerBg=color(wallHeader.optString("backgroundColor",wallStyle.optString("backgroundColor","#0C121B")),wallBackground)
             val headerText=color(wallHeader.optString("textColor","#FFFFFF"),wallText)
+            val headerBorder=color(wallHeader.optString("borderColor",wallStyle.optString("borderColor","#334155")),wallBorder)
+            val headerBorderWidth=wallHeader.optInt("borderWidth",1).coerceIn(0,6)
             val headerScale=wallHeader.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat()
-            val headerRow=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(headerBg)}
-            headerFields.forEach{field->
-              val key=field.optString("field","symbol")
-              val view=textView(miniValue(row,key),headerText,12*headerScale*field.optDouble("fontScale",1.0).toFloat()*fs,gravityFor(field.optString("align","left")))
-              applyItemEffect(view,field.optJSONObject("effect"),miniNumeric(row,key),isAlert(row,cfg))
-              headerRow.addView(view)
+            val headerRow=LinearLayout(this).apply{
+              orientation=LinearLayout.HORIZONTAL
+              gravity=Gravity.CENTER_VERTICAL
+              setPadding(0,0,0,wallGap)
+              background=GradientDrawable().apply{setColor(headerBg);if(headerBorderWidth>0)setStroke(headerBorderWidth,headerBorder)}
             }
+            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+            headerFields.forEachIndexed{index,field->
+              val key=field.optString("field","symbol")
+              val numeric=miniNumeric(row,key)
+              val useProfit=field.optBoolean("useProfitColor",false)
+              val customText=field.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,headerText)}
+              val tone=when{
+                useProfit&&numeric!=null&&numeric>0->wallGain
+                useProfit&&numeric!=null&&numeric<0->wallLoss
+                useProfit&&numeric!=null->wallSecondary
+                customText!=null->customText
+                else->headerText
+              }
+              val base=if(index==0)15f else 11f
+              val view=textView(miniValue(row,key),tone,base*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*headerScale*fs,gravityFor(field.optString("align","left")))
+              val customBg=field.optString("backgroundColor","")
+              if(customBg.isNotBlank())view.setBackgroundColor(color(customBg,Color.TRANSPARENT))
+              val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",if(index==0)0 else 2).coerceIn(0,32) else if(index==0)0 else 2
+              val py=field.optInt("paddingY",0).coerceIn(0,16)
+              view.setPadding(3,gap+py,3,py)
+              applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+              nameWrap.addView(view)
+            }
+            headerRow.addView(nameWrap,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+            headerRow.addView(textView("›",wallSecondary,22*headerScale*fs,Gravity.END))
             applyItemEffect(headerRow,wallHeader.optJSONObject("effect"),row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},isAlert(row,cfg))
-            card.addView(headerRow)
+            card.addView(headerRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
           }
-          enabled.filterNot{headerFields.contains(it)}.forEach{field->
-            val key=field.optString("field","price")
-            val numeric=miniNumeric(row,key)
-            val useProfit=field.optBoolean("useProfitColor",false)
-            val customText=field.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,wallText)}
-            val tone=when{useProfit&&numeric!=null&&numeric>0->wallGain;useProfit&&numeric!=null&&numeric<0->wallLoss;useProfit&&numeric!=null->wallSecondary;customText!=null->customText;else->wallText}
-            val view=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(field.optString("align","left")))
-            val customBg=field.optString("backgroundColor","")
-            if(customBg.isNotBlank())view.setBackgroundColor(color(customBg,Color.TRANSPARENT))
-            val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",wallGap).coerceIn(0,32) else wallGap
-            val py=field.optInt("paddingY",0).coerceIn(0,16)
-            view.setPadding(3,gap+py,3,py)
-            applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
-            card.addView(view)
+
+          if(quoteFields.isNotEmpty()){
+            val quoteRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.BOTTOM;setPadding(0,wallGap,0,0)}
+            val primary=quoteFields.first()
+            val primaryKey=primary.optString("field","price")
+            val primaryNumeric=miniNumeric(row,primaryKey)
+            val primaryUseProfit=primary.optBoolean("useProfitColor",false)
+            val primaryCustomText=primary.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,wallText)}
+            val primaryTone=when{
+              primaryUseProfit&&primaryNumeric!=null&&primaryNumeric>0->wallGain
+              primaryUseProfit&&primaryNumeric!=null&&primaryNumeric<0->wallLoss
+              primaryUseProfit&&primaryNumeric!=null->wallSecondary
+              primaryCustomText!=null->primaryCustomText
+              else->wallText
+            }
+            val primaryView=textView(miniValue(row,primaryKey),primaryTone,29*primary.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(primary.optString("align","left")))
+            val primaryBg=primary.optString("backgroundColor","")
+            if(primaryBg.isNotBlank())primaryView.setBackgroundColor(color(primaryBg,Color.TRANSPARENT))
+            val primaryGap=if(primary.has("lineGap")&&!primary.isNull("lineGap"))primary.optInt("lineGap",0).coerceIn(0,32) else 0
+            val primaryPy=primary.optInt("paddingY",0).coerceIn(0,16)
+            primaryView.setPadding(3,primaryGap+primaryPy,3,primaryPy)
+            applyItemEffect(primaryView,primary.optJSONObject("effect"),primaryNumeric,isAlert(row,cfg))
+            quoteRow.addView(primaryView,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+            if(quoteFields.size>1){
+              val changeWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.END}
+              quoteFields.drop(1).forEach{field->
+                val key=field.optString("field","change")
+                val numeric=miniNumeric(row,key)
+                val useProfit=field.optBoolean("useProfitColor",false)
+                val customText=field.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,wallText)}
+                val tone=when{
+                  useProfit&&numeric!=null&&numeric>0->wallGain
+                  useProfit&&numeric!=null&&numeric<0->wallLoss
+                  useProfit&&numeric!=null->wallSecondary
+                  customText!=null->customText
+                  else->wallText
+                }
+                val view=textView(miniValue(row,key),tone,11*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(field.optString("align","right")))
+                val customBg=field.optString("backgroundColor","")
+                if(customBg.isNotBlank())view.setBackgroundColor(color(customBg,Color.TRANSPARENT))
+                val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",wallGap).coerceIn(0,32) else wallGap
+                val py=field.optInt("paddingY",0).coerceIn(0,16)
+                view.setPadding(3,gap+py,3,py)
+                applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+                changeWrap.addView(view)
+              }
+              quoteRow.addView(changeWrap)
+            }
+            card.addView(quoteRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
           }
+
+          if(footerFields.isNotEmpty()){
+            val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.BOTTOM;setPadding(0,wallGap,0,0)}
+            footerFields.forEachIndexed{index,field->
+              val key=field.optString("field","pnl")
+              val numeric=miniNumeric(row,key)
+              val useProfit=field.optBoolean("useProfitColor",false)
+              val customText=field.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,wallText)}
+              val tone=when{
+                useProfit&&numeric!=null&&numeric>0->wallGain
+                useProfit&&numeric!=null&&numeric<0->wallLoss
+                useProfit&&numeric!=null->wallSecondary
+                customText!=null->customText
+                else->wallText
+              }
+              val cell=LinearLayout(this).apply{
+                orientation=LinearLayout.VERTICAL
+                gravity=gravityFor(field.optString("align",if(index==0)"left" else "right"))
+              }
+              val customBg=field.optString("backgroundColor","")
+              if(customBg.isNotBlank())cell.setBackgroundColor(color(customBg,Color.TRANSPARENT))
+              val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",0).coerceIn(0,32) else 0
+              val py=field.optInt("paddingY",0).coerceIn(0,16)
+              cell.setPadding(0,gap+py,0,py)
+              cell.addView(textView(field.optString("label",key),wallSecondary,10*fs,gravity))
+              val valueView=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravity)
+              applyItemEffect(valueView,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+              cell.addView(valueView)
+              footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+            }
+            card.addView(footer,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+          }
+
           wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap})
           if(rowIndex==rows.lastIndex&&wallColumns>1){
             val missing=wallColumns-1-(rowIndex%wallColumns)
