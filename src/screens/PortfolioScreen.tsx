@@ -39,6 +39,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
 
   return <>
     <PageShell
+      pageKey="portfolio"
       title="持股分析"
       subtitle="V3.7.8 Canonical Portfolio"
       actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
