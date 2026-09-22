@@ -121,9 +121,9 @@ function WallText({
     numeric={numeric}
     refreshToken={refreshToken}
     numberOfLines={1}
+    inlineBackgroundColor={field.backgroundColor}
     style={{
       color:header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
-      backgroundColor:field.backgroundColor??'transparent',
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:field.align,
@@ -165,7 +165,7 @@ function WallMetric({
   </View>;
 }
 
-function EffectText({text,effect,numeric,refreshToken,style,numberOfLines}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;style:any;numberOfLines?:number}){
+function EffectText({text,effect,numeric,refreshToken,style,numberOfLines,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;style:any;numberOfLines?:number;inlineBackgroundColor?:string|null}){
   const anim=useRef(new Animated.Value(1)).current;
   const translate=useRef(new Animated.Value(0)).current;
   const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
@@ -194,7 +194,7 @@ function EffectText({text,effect,numeric,refreshToken,style,numberOfLines}:{text
     actual.start();
     return()=>actual.stop();
   },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,triggerToken]);
-  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]}>{text}</Animated.Text>;
+  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]} >{inlineBackgroundColor?<Text style={{backgroundColor:inlineBackgroundColor}}>{text}</Text>:text}</Animated.Text>;
 }
 
 function EffectView({effect,numeric,refreshToken,children}:{effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;children:ReactNode}){
