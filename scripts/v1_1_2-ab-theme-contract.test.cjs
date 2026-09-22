@@ -61,7 +61,9 @@ assert.match(backup,/sanitizeRestoredPayload\(selected\.payload\)/,'Local backup
 assert.match(backup,/sanitizeRestoredPayload\(parsed\.payload\)/,'Imported backup restore must sanitize theme background URI');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
 for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
-for(const token of ['node scripts/inject-v1_1_2-android.cjs','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release workflow injection hook missing '+token);\nfor(const token of ['activity-alias','for(let i=1;i<=10;i++)','String(i).padStart(2,\'0\')','android:name=\".Icon'])assert(releaseInject.includes(token),'Release launcher injection script missing '+token);\nfor(const key of ['01','10'])assert(releaseInject.includes("['01','10']")||releaseInject.includes('Icon'+key),'Release launcher alias boundary missing Icon'+key);
+for(const token of ['node scripts/inject-v1_1_2-android.cjs','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release workflow injection hook missing '+token);
+for(const token of ['activity-alias','for(let i=1;i<=10;i++)','String(i).padStart(2,\'0\')','android:name=\".Icon'])assert(releaseInject.includes(token),'Release launcher injection script missing '+token);
+for(const key of ['01','10'])assert(releaseInject.includes("['01','10']")||releaseInject.includes('Icon'+key),'Release launcher alias boundary missing Icon'+key);
 for(let i=1;i<=10;i++)assert(fs.existsSync('native/android/res/drawable/tf_icon_'+String(i).padStart(2,'0')+'.xml'),'Launcher icon '+i+' missing');
 
 assert.match(snapshot,/totalAssets:portfolio\.totalMarketValue/,'Shared totalAssets must stay market-value only');
