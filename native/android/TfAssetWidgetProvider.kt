@@ -6,12 +6,21 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.text.Layout
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.AbsoluteSizeSpan
+import android.text.style.AlignmentSpan
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.widget.RemoteViews
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 class TfAssetWidgetProvider : AppWidgetProvider() {
@@ -36,6 +45,13 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
   private fun jsonStrings(array:JSONArray?):List<String>{
     if(array==null)return emptyList()
     return (0 until array.length()).mapNotNull{array.optString(it,"").trim().takeIf(String::isNotEmpty)}
+  }
+
+  private fun fieldStyles(config:JSONObject):Map<String,JSONObject>{
+    val array=config.optJSONArray("fieldStyles")?:return emptyMap()
+    return (0 until array.length()).mapNotNull{array.optJSONObject(it)}
+      .mapNotNull{item->item.optString("field","").takeIf(String::isNotBlank)?.let{it to item}}
+      .toMap()
   }
 
   private fun compareNumber(a:Double,b:Double):Int{
@@ -74,18 +90,22 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val snapshot=runCatching{JSONObject(prefs.getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
     val style=config.optJSONObject("style")?:JSONObject()
     val asset=snapshot.optJSONObject("asset")?:JSONObject()
-    val first=orderedHoldings(snapshot,config).firstOrNull()
+    val holdings=orderedHoldings(snapshot,config)
+    val first=holdings.firstOrNull()
     val template=config.optString("template","asset-summary")
     val capacity=when(template){"minimal"->2;"compact"->3;"quote-summary","transparent"->4;"asset-summary"->5;else->6}
     val selectedFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}.take(capacity)
+    val styles=fieldStyles(config)
     val views=RemoteViews(context.packageName,R.layout.tf_asset_widget)
     val ids=intArrayOf(R.id.widget_line1,R.id.widget_line2,R.id.widget_line3,R.id.widget_line4,R.id.widget_line5,R.id.widget_line6)
-    val wallIds=intArrayOf(
-      R.id.widget_wall_1,R.id.widget_wall_2,R.id.widget_wall_3,R.id.widget_wall_4,
-      R.id.widget_wall_5,R.id.widget_wall_6,R.id.widget_wall_7,R.id.widget_wall_8,
-      R.id.widget_wall_9,R.id.widget_wall_10,R.id.widget_wall_11,R.id.widget_wall_12,
-      R.id.widget_wall_13,R.id.widget_wall_14,R.id.widget_wall_15,R.id.widget_wall_16
+    val wallGrid=arrayOf(
+      intArrayOf(R.id.widget_wall_1,R.id.widget_wall_2,R.id.widget_wall_3,R.id.widget_wall_4),
+      intArrayOf(R.id.widget_wall_5,R.id.widget_wall_6,R.id.widget_wall_7,R.id.widget_wall_8),
+      intArrayOf(R.id.widget_wall_9,R.id.widget_wall_10,R.id.widget_wall_11,R.id.widget_wall_12),
+      intArrayOf(R.id.widget_wall_13,R.id.widget_wall_14,R.id.widget_wall_15,R.id.widget_wall_16)
     )
+    val wallRowIds=intArrayOf(R.id.widget_wall_row_1,R.id.widget_wall_row_2,R.id.widget_wall_row_3,R.id.widget_wall_row_4)
+    val wallIds=wallGrid.flatMap{it.toList()}
 
     val text=parseColor(style.optString("textColor","#0F172A"),Color.rgb(15,23,42))
     val gain=parseColor(style.optString("gainColor","#EF4444"),Color.rgb(239,68,68))
@@ -99,11 +119,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val configuredColumns=config.optInt("wallColumns",4).coerceIn(1,4)
     val autoColumns=when{minWidth>=360->4;minWidth>=270->3;minWidth>=180->2;else->1}
     val wallColumns=minOf(configuredColumns,autoColumns)
-    val wallRows=(minHeight/92).coerceIn(1,4)
-    val wallCapacity=(wallColumns*wallRows).coerceIn(1,16)
-    val profitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
+    val maxWallRows=(minHeight/92).coerceIn(1,4)
+    val wallCapacity=(wallColumns*maxWallRows).coerceIn(1,16)
+    val legacyProfitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
     val titleFs=style.optDouble("titleFontScale",1.0).coerceIn(.7,1.8)*densityScale
-    val align=when(style.optString("textAlign","left")){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
+    val align=gravityFor(style.optString("textAlign","left"))
+    val density=context.resources.displayMetrics.density
 
     val wallMode=template=="quote-wall"
     views.setViewVisibility(R.id.widget_summary,if(wallMode)View.GONE else View.VISIBLE)
@@ -113,45 +134,62 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     views.setTextColor(R.id.widget_refresh,neutral)
     val forceRefreshEnabled=config.optBoolean("forceRefreshOnTap",true)
     views.setViewVisibility(R.id.widget_refresh,if(forceRefreshEnabled)View.VISIBLE else View.GONE)
+
     if(!wallMode){
       ids.forEachIndexed{index,id->
         val field=selectedFields.getOrNull(index)
         if(field==null){
           views.setViewVisibility(id,View.GONE)
         }else{
-          val rendered=renderField(field,asset,first)
+          val fieldConfig=styles[field]?:JSONObject()
+          val visual=fieldConfig.optJSONObject("visual")?:JSONObject()
+          val label=fieldConfig.optString("label",defaultLabel(field))
+          val rendered=renderField(field,asset,first,label)
+          val useProfit=if(visual.has("useProfitColor"))visual.optBoolean("useProfitColor",false) else legacyProfitFields.contains(field)
+          val customText=visual.optString("textColor","").takeIf(String::isNotBlank)?.let{parseColor(it,text)}
+          val tone=when{
+            useProfit&&rendered.second.isFinite()&&rendered.second>0->gain
+            useProfit&&rendered.second.isFinite()&&rendered.second<0->loss
+            useProfit&&rendered.second.isFinite()->neutral
+            customText!=null->customText
+            else->text
+          }
+          val itemScale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0)
+          val itemAlign=visual.optString("textAlign","").takeIf(String::isNotBlank)?.let(::gravityFor)?:align
+          val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",style.optInt("rowGap",6)).coerceIn(0,32) else style.optInt("rowGap",6).coerceIn(0,32)
+          val paddingY=visual.optInt("paddingY",0).coerceIn(0,16)
+          val bg=visual.optString("backgroundColor","").takeIf(String::isNotBlank)?.let{parseColor(it,Color.TRANSPARENT)}?:Color.TRANSPARENT
           views.setViewVisibility(id,View.VISIBLE)
           views.setTextViewText(id,rendered.first)
-          val useProfit=profitFields.contains(field)
-          views.setTextColor(id,when{
-            !useProfit||!rendered.second.isFinite()->text
-            rendered.second>0->gain
-            rendered.second<0->loss
-            else->neutral
-          })
-          views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,((if(index==0)13*titleFs else 11.5*fs)).toFloat())
-          views.setInt(id,"setGravity",align)
+          views.setTextColor(id,tone)
+          views.setInt(id,"setBackgroundColor",bg)
+          views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(((if(index==0)13*titleFs else 11.5*fs))*itemScale).toFloat())
+          views.setInt(id,"setGravity",itemAlign)
+          val top=((if(index==0)0 else gap)+paddingY)*density
+          views.setViewPadding(id,0,top.roundToInt(),0,(paddingY*density).roundToInt())
+          applyStaticEffect(views,id,visual,rendered.second)
         }
       }
       wallIds.forEach{views.setViewVisibility(it,View.GONE)}
+      wallRowIds.forEach{views.setViewVisibility(it,View.GONE)}
     }else{
-      val rows=orderedHoldings(snapshot,config).take(wallCapacity)
-      wallIds.forEachIndexed{index,id->
-        val row=rows.getOrNull(index)
-        if(row==null||index>=wallCapacity){
-          views.setViewVisibility(id,View.GONE)
-        }else{
-          val pct=row.optDouble("changePercent",Double.NaN)
-          val pnl=row.optDouble("pnl",Double.NaN)
-          val roi=row.optDouble("roi",Double.NaN)
-          val line=row.optString("name",row.optString("symbol","--"))+"\n"+
-            row.optString("symbol","--")+"  "+number2(row,"price")+"  "+signed2(pct,"%")+"\n"+
-            "持股損益 "+signedMoney(pnl)+"  報酬 "+signed2(roi,"%")
-          views.setViewVisibility(id,View.VISIBLE)
-          views.setTextViewText(id,line)
-          views.setTextColor(id,if(pct>0)gain else if(pct<0)loss else text)
-          views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs).toFloat())
-        }
+      ids.forEach{views.setViewVisibility(it,View.GONE)}
+      wallIds.forEach{views.setViewVisibility(it,View.GONE)}
+      wallRowIds.forEach{views.setViewVisibility(it,View.GONE)}
+      val rows=holdings.take(wallCapacity)
+      val visibleRows=if(rows.isEmpty())1 else ceil(rows.size.toDouble()/wallColumns).toInt().coerceIn(1,maxWallRows)
+      repeat(visibleRows){views.setViewVisibility(wallRowIds[it],View.VISIBLE)}
+      val supported=setOf("symbol","name","price","change","changePercent","shares","avgCost","holdingMarketValue","pnl","roi","comprehensivePnl","marketStatus","updatedAt","dailyPnl","quote")
+      val wallFields=selectedFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
+      rows.forEachIndexed{index,row->
+        val rowIndex=index/wallColumns
+        val columnIndex=index%wallColumns
+        val id=wallGrid[rowIndex][columnIndex]
+        val card=buildWallCard(row,asset,wallFields,styles,text,gain,loss,neutral,legacyProfitFields,style.optInt("rowGap",6))
+        views.setViewVisibility(id,View.VISIBLE)
+        views.setTextViewText(id,card)
+        views.setTextColor(id,text)
+        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs).toFloat())
       }
     }
 
@@ -173,34 +211,119 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     return views
   }
 
-  private fun renderField(field:String,asset:JSONObject,holding:JSONObject?):Pair<String,Double>{
+  private fun buildWallCard(
+    holding:JSONObject,
+    asset:JSONObject,
+    fields:List<String>,
+    styles:Map<String,JSONObject>,
+    text:Int,
+    gain:Int,
+    loss:Int,
+    neutral:Int,
+    legacyProfitFields:Set<String>,
+    globalGap:Int
+  ):CharSequence{
+    val out=SpannableStringBuilder()
+    fields.forEachIndexed{index,field->
+      val fieldConfig=styles[field]?:JSONObject()
+      val visual=fieldConfig.optJSONObject("visual")?:JSONObject()
+      val label=fieldConfig.optString("label",defaultLabel(field))
+      val rendered=renderField(field,asset,holding,label)
+      val start=out.length
+      out.append(rendered.first)
+      val end=out.length
+      val useProfit=if(visual.has("useProfitColor"))visual.optBoolean("useProfitColor",false) else legacyProfitFields.contains(field)
+      val customText=visual.optString("textColor","").takeIf(String::isNotBlank)?.let{parseColor(it,text)}
+      val tone=when{
+        useProfit&&rendered.second.isFinite()&&rendered.second>0->gain
+        useProfit&&rendered.second.isFinite()&&rendered.second<0->loss
+        useProfit&&rendered.second.isFinite()->neutral
+        customText!=null->customText
+        else->text
+      }
+      out.setSpan(ForegroundColorSpan(tone),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      val scale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()
+      out.setSpan(RelativeSizeSpan(scale),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      val bg=visual.optString("backgroundColor","")
+      if(bg.isNotBlank())out.setSpan(BackgroundColorSpan(parseColor(bg,Color.TRANSPARENT)),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      val alignment=when(visual.optString("textAlign","")){
+        "center"->Layout.Alignment.ALIGN_CENTER
+        "right"->Layout.Alignment.ALIGN_OPPOSITE
+        else->Layout.Alignment.ALIGN_NORMAL
+      }
+      out.setSpan(AlignmentSpan.Standard(alignment),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      if(index<fields.lastIndex){
+        out.append("\n")
+        val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",globalGap).coerceIn(0,32) else globalGap.coerceIn(0,32)
+        if(gap>0){
+          val spacerStart=out.length
+          out.append("\u200B\n")
+          out.setSpan(AbsoluteSizeSpan(gap,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+      }
+    }
+    return out
+  }
+
+  private fun applyStaticEffect(views:RemoteViews,id:Int,visual:JSONObject,numeric:Double){
+    val effect=visual.optJSONObject("effect")?:return
+    val kind=effect.optString("kind","none")
+    if(kind=="none"){views.setFloat(id,"setAlpha",1f);return}
+    val trigger=effect.optString("trigger","change")
+    val active=when(trigger){
+      "gain"->numeric.isFinite()&&numeric>0
+      "loss"->numeric.isFinite()&&numeric<0
+      "alert"->false
+      else->true
+    }
+    if(!active){views.setFloat(id,"setAlpha",1f);return}
+    val intensity=effect.optString("intensity","medium")
+    val alpha=when(kind){
+      "fade"->when(intensity){"soft"->.94f;"strong"->.72f;else->.84f}
+      "pulse"->when(intensity){"soft"->.96f;"strong"->.78f;else->.88f}
+      "flash-on-change"->when(intensity){"soft"->.92f;"strong"->.68f;else->.80f}
+      else->1f
+    }
+    views.setFloat(id,"setAlpha",alpha)
+  }
+
+  private fun defaultLabel(field:String)=when(field){
+    "appName"->"App 名稱";"totalAssets"->"總資產";"marketValue"->"總市值";"cash"->"現金"
+    "unrealizedPnl"->"未實現";"realizedPnl"->"已實現";"dividendIncome"->"股息";"totalReturn"->"總報酬"
+    "symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%"
+    "shares"->"股數";"avgCost"->"成本均";"holdingMarketValue"->"單檔市值";"pnl"->"持股損益";"roi"->"報酬%"
+    "comprehensivePnl"->"含息損益";"marketStatus"->"狀態";"updatedAt"->"更新";"dailyPnl"->"當日損益";"quote"->"行情"
+    else->field
+  }
+
+  private fun renderField(field:String,asset:JSONObject,holding:JSONObject?,label:String):Pair<String,Double>{
     val neutral=Double.NaN
     fun money(v:Double)=if(v.isFinite())String.format("%,.0f",v) else "--"
     fun signedMoney(v:Double)=if(v.isFinite())((if(v>=0)"+" else "")+String.format("%,.0f",v)) else "--"
     fun signed2(v:Double,suffix:String="")=if(v.isFinite())((if(v>=0)"+" else "")+String.format("%.2f",v)+suffix) else "--"
     return when(field){
       "appName"->"TF Asset" to neutral
-      "totalAssets"->("總資產 NT$ "+money(asset.optDouble("totalAssets",Double.NaN))) to neutral
-      "marketValue"->("總市值 NT$ "+money(asset.optDouble("marketValue",Double.NaN))) to neutral
-      "cash"->("現金 NT$ "+money(asset.optDouble("cash",Double.NaN))) to neutral
-      "unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN).let{("未實現 "+signedMoney(it)) to it}
-      "realizedPnl"->asset.optDouble("realizedPnl",Double.NaN).let{("已實現 "+signedMoney(it)) to it}
-      "dividendIncome"->("股息 "+money(asset.optDouble("dividendIncome",Double.NaN))) to neutral
-      "totalReturn"->asset.optDouble("totalReturn",Double.NaN).let{("總報酬 "+signedMoney(it)) to it}
+      "totalAssets"->("$label NT$ "+money(asset.optDouble("totalAssets",Double.NaN))) to neutral
+      "marketValue"->("$label NT$ "+money(asset.optDouble("marketValue",Double.NaN))) to neutral
+      "cash"->("$label NT$ "+money(asset.optDouble("cash",Double.NaN))) to neutral
+      "unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN).let{("$label "+signedMoney(it)) to it}
+      "realizedPnl"->asset.optDouble("realizedPnl",Double.NaN).let{("$label "+signedMoney(it)) to it}
+      "dividendIncome"->("$label "+money(asset.optDouble("dividendIncome",Double.NaN))) to neutral
+      "totalReturn"->asset.optDouble("totalReturn",Double.NaN).let{("$label "+signedMoney(it)) to it}
       "symbol"->(holding?.optString("symbol","--")?:"--") to neutral
       "name"->(holding?.optString("name","--")?:"--") to neutral
-      "price"->("價格 "+number2(holding,"price")) to neutral
-      "change"->valuePair("漲跌 ",holding,"change",false)
-      "changePercent"->valuePair("漲跌% ",holding,"changePercent",true)
-      "shares"->("股數 "+integer(holding,"shares")) to neutral
-      "avgCost"->("成本均 "+number2(holding,"avgCost")) to neutral
-      "holdingMarketValue"->("單檔市值 "+integer(holding,"marketValue")) to neutral
-      "pnl"->valuePair("持股損益 ",holding,"pnl",false,true)
-      "roi"->valuePair("報酬% ",holding,"roi",true)
-      "comprehensivePnl"->valuePair("含息損益 ",holding,"comprehensivePnl",false,true)
-      "marketStatus"->("狀態 "+(holding?.optString("marketStatus","--")?:"--")) to neutral
-      "updatedAt"->("更新 "+timeText(holding?.optString("updatedAt","")?:"")) to neutral
-      "dailyPnl"->valuePair("當日損益 ",holding,"change",false)
+      "price"->("$label "+number2(holding,"price")) to neutral
+      "change"->valuePair("$label ",holding,"change",false)
+      "changePercent"->valuePair("$label ",holding,"changePercent",true)
+      "shares"->("$label "+integer(holding,"shares")) to neutral
+      "avgCost"->("$label "+number2(holding,"avgCost")) to neutral
+      "holdingMarketValue"->("$label "+integer(holding,"marketValue")) to neutral
+      "pnl"->valuePair("$label ",holding,"pnl",false,true)
+      "roi"->valuePair("$label ",holding,"roi",true)
+      "comprehensivePnl"->valuePair("$label ",holding,"comprehensivePnl",false,true)
+      "marketStatus"->("$label "+(holding?.optString("marketStatus","--")?:"--")) to neutral
+      "updatedAt"->("$label "+timeText(holding?.optString("updatedAt","")?:"")) to neutral
+      "dailyPnl"->valuePair("$label ",holding,"change",false)
       "quote"->{
         val symbol=holding?.optString("symbol","--")?:"--"
         val price=number2(holding,"price")
@@ -211,8 +334,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     }
   }
 
+  private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
   private fun signed2(v:Double,suffix:String="")=if(v.isFinite())((if(v>=0)"+" else "")+String.format("%.2f",v)+suffix) else "--"
-  private fun signedMoney(v:Double)=if(v.isFinite())((if(v>=0)"+" else "")+String.format("%,.0f",v)) else "--"
   private fun valuePair(prefix:String,row:JSONObject?,key:String,percent:Boolean,money:Boolean=false):Pair<String,Double>{
     val v=row?.optDouble(key,Double.NaN)?:Double.NaN
     val text=if(!v.isFinite())"--" else if(money)(if(v>=0)"+" else "")+String.format("%,.0f",v) else (if(v>=0)"+" else "")+String.format("%.2f",v)+(if(percent)"%" else "")
