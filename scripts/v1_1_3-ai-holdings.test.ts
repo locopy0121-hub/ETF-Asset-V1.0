@@ -15,6 +15,7 @@ const entries=[
   {id:'b4',date:'2026-07-12',kind:'buy',symbol:'00878',name:'國泰永續高股息',shares:1200,price:21.5,amount:25800,fee:36,tax:0,cashFlow:-25836},
 ] as any;
 
+async function main(){
 const answer=await answerAiQuestion('我有哪些持股？',holdings,portfolio,[],entries);
 assert.equal(answer.intent,'holdings');
 for(const expected of [
@@ -34,3 +35,5 @@ assert.equal(dividend.intent,'dividend');
 assert.equal(dividend.actions?.[0]?.kind,'openDividend');
 
 console.log('V1.1.3 AI holdings and dividend actions: PASS');
+}
+void main();
