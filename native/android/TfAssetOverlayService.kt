@@ -13,12 +13,14 @@ import android.view.View
 import android.view.WindowManager
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
+import android.view.animation.TranslateAnimation
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams as LinearLayoutParams
 import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class TfAssetOverlayService:Service(){
@@ -71,10 +73,7 @@ class TfAssetOverlayService:Service(){
       PixelFormat.TRANSLUCENT
     ).apply{gravity=Gravity.TOP or Gravity.START;this.x=x;this.y=y}
     lastLayoutSignature=layoutSignature(cfg)
-    root=LinearLayout(this).apply{
-      orientation=LinearLayout.VERTICAL
-      setOnTouchListener(dragListener)
-    }
+    root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setOnTouchListener(dragListener)}
     wm.addView(root,params)
   }
 
@@ -133,6 +132,11 @@ class TfAssetOverlayService:Service(){
     if(array==null)return emptyList()
     return (0 until array.length()).mapNotNull{array.optString(it,"").trim().uppercase().takeIf(String::isNotEmpty)}
   }
+  private fun jsonObjects(array:JSONArray?):List<JSONObject>{
+    if(array==null)return emptyList()
+    return (0 until array.length()).mapNotNull{array.optJSONObject(it)}
+  }
+  private fun objectMap(array:JSONArray?,key:String):Map<String,JSONObject> = jsonObjects(array).mapNotNull{obj->obj.optString(key,"").takeIf(String::isNotBlank)?.let{it to obj}}.toMap()
 
   private fun orderedHoldings(snapshot:JSONObject,cfg:JSONObject):List<JSONObject>{
     val array=snapshot.optJSONArray("holdings")?:return emptyList()
@@ -157,7 +161,6 @@ class TfAssetOverlayService:Service(){
     })
     return rows
   }
-
   private fun compareNumber(a:Double,b:Double):Int{
     val aa=if(a.isFinite())a else Double.POSITIVE_INFINITY
     val bb=if(b.isFinite())b else Double.POSITIVE_INFINITY
@@ -176,9 +179,7 @@ class TfAssetOverlayService:Service(){
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
     renderWindowControls(r,style)
-    if(mode=="mini"){
-      renderMini(r,cfg,snap,style)
-    }else renderNormal(r,cfg,snap,style)
+    if(mode=="mini")renderMini(r,cfg,snap,style) else renderNormal(r,cfg,snap,style)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
   }
@@ -187,11 +188,7 @@ class TfAssetOverlayService:Service(){
     val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.END or Gravity.CENTER_VERTICAL}
     val text=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
     fun control(label:String,onClick:()->Unit):TextView=TextView(this).apply{
-      this.text=label
-      setTextColor(text)
-      textSize=10f
-      setPadding(12,7,12,7)
-      setOnClickListener{onClick()}
+      this.text=label;setTextColor(text);textSize=10f;setPadding(12,7,12,7);setOnClickListener{onClick()}
     }
     row.addView(control("↻ 更新行情"){prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply();render()})
     row.addView(control(if(mode=="mini")"□ 放大" else "— 縮小"){toggleMode()})
@@ -201,60 +198,71 @@ class TfAssetOverlayService:Service(){
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
     val rows=orderedHoldings(snap,cfg)
-    val first=rows.firstOrNull()
     val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE)
     val secondary=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
     val gain=color(style.optString("gainColor","#EF4444"),Color.RED)
     val loss=color(style.optString("lossColor","#10B981"),Color.GREEN)
     val neutral=color(style.optString("neutralColor","#94A3B8"),Color.GRAY)
     val fs=style.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat()
-    val vs=style.optDouble("valueFontScale",1.0).coerceIn(.7,2.0).toFloat()
     val template=cfg.optString("template","portfolio")
+    val selectedFields=jsonStrings(cfg.optJSONArray("fields")).ifEmpty{listOf("symbol","price","changePercent","pnl")}
+    val itemMap=objectMap(cfg.optJSONArray("normalItems"),"field")
 
-    fun tone(row:JSONObject):Int{
-      val pct=row.optDouble("changePercent",Double.NaN)
-      return if(!pct.isFinite())neutral else if(pct>0)gain else if(pct<0)loss else neutral
+    fun addConfigured(container:LinearLayout,row:JSONObject,field:String,baseSize:Float=11f){
+      val item=itemMap[field]?:JSONObject().put("field",field).put("label",defaultMonitorLabel(field))
+      val visual=item.optJSONObject("visual")?:JSONObject()
+      val numeric=miniNumeric(row,field)
+      val useProfit=visual.optBoolean("useProfitColor",defaultProfitField(field))
+      val customText=visual.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,text)}
+      val tone=when{
+        useProfit&&numeric!=null&&numeric>0->gain
+        useProfit&&numeric!=null&&numeric<0->loss
+        useProfit&&numeric!=null->neutral
+        customText!=null->customText
+        else->text
+      }
+      val scale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()
+      val view=textView(normalValue(row,field,item.optString("label",defaultMonitorLabel(field))),tone,baseSize*fs*scale,gravityFor(visual.optString("textAlign",style.optString("textAlign","left"))))
+      val bg=visual.optString("backgroundColor","")
+      if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
+      val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",style.optInt("rowGap",6)).coerceIn(0,32) else style.optInt("rowGap",6).coerceIn(0,32)
+      val py=visual.optInt("paddingY",0).coerceIn(0,16)
+      view.setPadding(3,gap+py,3,py)
+      applyItemEffect(view,visual.optJSONObject("effect"),numeric,isAlert(row,cfg))
+      container.addView(view,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
     }
-    fun quoteLine(row:JSONObject):String{
-      val symbol=row.optString("symbol","--")
-      val price=number2(row,"price")
-      val pct=signed2(row,"changePercent")+"%"
-      return "$symbol  $price  $pct"
+    fun addFields(container:LinearLayout,row:JSONObject,fields:List<String>,limit:Int=fields.size,baseSize:Float=11f){
+      fields.take(limit).forEach{addConfigured(container,row,it,baseSize)}
     }
 
     when(template){
       "compact"->{
-        root.addView(textView(first?.let{quoteLine(it)}?:"等待資料",first?.let{tone(it)}?:neutral,13*fs,Gravity.START))
+        val first=rows.firstOrNull()
+        if(first==null)root.addView(textView("等待資料",neutral,12*fs,Gravity.START)) else addFields(root,first,selectedFields,3,12f)
       }
       "quotes"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.take(4).forEach{row->root.addView(textView(quoteLine(row),tone(row),12*fs,Gravity.START))}
+        rows.take(4).forEach{row->
+          val line=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
+          selectedFields.take(4).forEach{field->
+            val cell=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+            addConfigured(cell,row,field,10f)
+            line.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
+          }
+          root.addView(line)
+        }
       }
       "dual"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.take(2).forEach{row->
-          root.addView(textView(row.optString("symbol","--")+" "+row.optString("name",""),text,12*fs,Gravity.START))
-          root.addView(textView(number2(row,"price")+"  "+signed2(row,"changePercent")+"%",tone(row),14*fs,Gravity.START))
-        }
+        rows.take(2).forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,selectedFields,4,11f);root.addView(card)}
       }
       "advanced"->{
-        if(first==null){root.addView(textView("等待資料",neutral,12*fs,Gravity.START))}
-        else{
-          root.addView(textView(first.optString("symbol","--")+" "+first.optString("name",""),text,12*fs,Gravity.START))
-          root.addView(textView("價格 "+number2(first,"price")+"  "+signed2(first,"changePercent")+"%",tone(first),17*vs,Gravity.START))
-          root.addView(textView("市值 "+integer(first,"marketValue"),secondary,11*fs,Gravity.START))
-          val pnl=first.optDouble("pnl",Double.NaN)
-          root.addView(textView("損益 "+signedInteger(first,"pnl")+"  報酬 "+signed2(first,"roi")+"%",if(!pnl.isFinite())neutral else if(pnl>0)gain else if(pnl<0)loss else neutral,11*fs,Gravity.START))
-          root.addView(textView("含息 "+signedInteger(first,"comprehensivePnl"),secondary,11*fs,Gravity.START))
-        }
+        val first=rows.firstOrNull()
+        if(first==null)root.addView(textView("等待資料",neutral,12*fs,Gravity.START)) else addFields(root,first,selectedFields,selectedFields.size,12f)
       }
       "single"->{
-        if(first==null){root.addView(textView("等待資料",neutral,12*fs,Gravity.START))}
-        else{
-          root.addView(textView(first.optString("symbol","--")+" "+first.optString("name",""),text,13*fs,Gravity.START))
-          root.addView(textView(number2(first,"price"),text,24*vs,Gravity.START))
-          root.addView(textView(signed2(first,"changePercent")+"%",tone(first),14*fs,Gravity.START))
-        }
+        val first=rows.firstOrNull()
+        if(first==null)root.addView(textView("等待資料",neutral,12*fs,Gravity.START)) else addFields(root,first,selectedFields,selectedFields.size,14f)
       }
       "market-wall"->{
         val wall=cfg.optJSONObject("normalWall")?:JSONObject()
@@ -272,128 +280,56 @@ class TfAssetOverlayService:Service(){
         val wallBorder=color(wallStyle.optString("borderColor",style.optString("borderColor","#334155")),Color.DKGRAY)
         val wallBackground=color(wallStyle.optString("backgroundColor",style.optString("backgroundColor","#0F172A")),Color.rgb(15,23,42))
         val wallPadding=wallStyle.optInt("padding",12).coerceIn(0,32)
-        val wallGap=wallStyle.optInt("rowGap",8).coerceIn(0,24)
+        val wallGap=wallStyle.optInt("rowGap",8).coerceIn(0,32)
         val wallBorderWidth=wallStyle.optInt("borderWidth",1).coerceIn(0,6)
         val wallCorner=wallStyle.optInt("cornerRadius",16).coerceIn(0,40)
         val enabled=(0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
         val headerFields=enabled.filter{it.optString("field")=="name"||it.optString("field")=="symbol"}
-        val quoteFields=enabled.filter{it.optString("field")=="price"||it.optString("field")=="change"||it.optString("field")=="changePercent"}
-        val footerFields=enabled.filter{it.optString("field")=="pnl"||it.optString("field")=="roi"||it.optString("field")=="marketValue"}
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
         var wallLine:LinearLayout?=null
         rows.forEachIndexed{rowIndex,row->
           if(rowIndex%wallColumns==0){
             wallLine=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.TOP}
-            body.addView(wallLine,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{
-              bottomMargin=wallRowGap
-            })
+            body.addView(wallLine,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{bottomMargin=wallRowGap})
           }
           val card=LinearLayout(this).apply{
-            orientation=LinearLayout.VERTICAL
-            setPadding(wallPadding,wallPadding,wallPadding,wallPadding)
-            background=GradientDrawable().apply{
-              setColor(wallBackground)
-              cornerRadius=wallCorner.toFloat()
-              if(wallBorderWidth>0)setStroke(wallBorderWidth,wallBorder)
-            }
+            orientation=LinearLayout.VERTICAL;setPadding(wallPadding,wallPadding,wallPadding,wallPadding)
+            background=GradientDrawable().apply{setColor(wallBackground);cornerRadius=wallCorner.toFloat();if(wallBorderWidth>0)setStroke(wallBorderWidth,wallBorder)}
           }
-
           if(wallHeader.optBoolean("visible",true)&&headerFields.isNotEmpty()){
-            val headerRow=LinearLayout(this).apply{
-              orientation=LinearLayout.HORIZONTAL
-              gravity=Gravity.CENTER_VERTICAL
-              val headerBg=color(wallHeader.optString("backgroundColor",wallStyle.optString("backgroundColor","#0C121B")),wallBackground)
-              setBackgroundColor(headerBg)
-              setPadding(0,0,0,wallGap)
-            }
+            val headerBg=color(wallHeader.optString("backgroundColor",wallStyle.optString("backgroundColor","#0C121B")),wallBackground)
             val headerText=color(wallHeader.optString("textColor","#FFFFFF"),wallText)
             val headerScale=wallHeader.optDouble("fontScale",1.0).coerceIn(.7,1.8).toFloat()
-            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
-            headerFields.forEachIndexed{index,field->
+            val headerRow=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(headerBg)}
+            headerFields.forEach{field->
               val key=field.optString("field","symbol")
-              val numeric=miniNumeric(row,key)
-              val useProfit=field.optBoolean("useProfitColor",false)
-              val tone=if(!useProfit||numeric==null)headerText else if(numeric>0)wallGain else if(numeric<0)wallLoss else wallSecondary
-              val base=if(index==0)15f else 11f
-              nameWrap.addView(textView(
-                miniValue(row,key),
-                tone,
-                base*field.optDouble("fontScale",1.0).toFloat()*headerScale*fs,
-                gravityFor(field.optString("align","left"))
-              ))
+              val view=textView(miniValue(row,key),headerText,12*headerScale*field.optDouble("fontScale",1.0).toFloat()*fs,gravityFor(field.optString("align","left")))
+              applyItemEffect(view,field.optJSONObject("effect"),miniNumeric(row,key),isAlert(row,cfg))
+              headerRow.addView(view)
             }
-            headerRow.addView(nameWrap,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
-            headerRow.addView(textView("›",wallSecondary,22*headerScale*fs,Gravity.END))
-            card.addView(headerRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+            applyItemEffect(headerRow,wallHeader.optJSONObject("effect"),row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},isAlert(row,cfg))
+            card.addView(headerRow)
           }
-
-          if(quoteFields.isNotEmpty()){
-            val quoteRow=LinearLayout(this).apply{
-              orientation=LinearLayout.HORIZONTAL
-              gravity=Gravity.BOTTOM
-              setPadding(0,wallGap,0,0)
-            }
-            val primary=quoteFields.first()
-            val primaryKey=primary.optString("field","price")
-            val primaryNumeric=miniNumeric(row,primaryKey)
-            val primaryUseProfit=primary.optBoolean("useProfitColor",false)
-            val primaryTone=if(!primaryUseProfit||primaryNumeric==null)wallText else if(primaryNumeric>0)wallGain else if(primaryNumeric<0)wallLoss else wallSecondary
-            quoteRow.addView(textView(
-              miniValue(row,primaryKey),
-              primaryTone,
-              29*primary.optDouble("fontScale",1.0).toFloat()*fs,
-              gravityFor(primary.optString("align","left"))
-            ),LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
-            if(quoteFields.size>1){
-              val changeWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.END}
-              quoteFields.drop(1).forEach{field->
-                val key=field.optString("field","change")
-                val numeric=miniNumeric(row,key)
-                val useProfit=field.optBoolean("useProfitColor",false)
-                val tone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else wallSecondary
-                changeWrap.addView(textView(
-                  miniValue(row,key),
-                  tone,
-                  11*field.optDouble("fontScale",1.0).toFloat()*fs,
-                  gravityFor(field.optString("align","right"))
-                ))
-              }
-              quoteRow.addView(changeWrap)
-            }
-            card.addView(quoteRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+          enabled.filterNot{headerFields.contains(it)}.forEach{field->
+            val key=field.optString("field","price")
+            val numeric=miniNumeric(row,key)
+            val useProfit=field.optBoolean("useProfitColor",false)
+            val customText=field.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,wallText)}
+            val tone=when{useProfit&&numeric!=null&&numeric>0->wallGain;useProfit&&numeric!=null&&numeric<0->wallLoss;useProfit&&numeric!=null->wallSecondary;customText!=null->customText;else->wallText}
+            val view=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(field.optString("align","left")))
+            val customBg=field.optString("backgroundColor","")
+            if(customBg.isNotBlank())view.setBackgroundColor(color(customBg,Color.TRANSPARENT))
+            val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",wallGap).coerceIn(0,32) else wallGap
+            val py=field.optInt("paddingY",0).coerceIn(0,16)
+            view.setPadding(3,gap+py,3,py)
+            applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+            card.addView(view)
           }
-
-          if(footerFields.isNotEmpty()){
-            val footer=LinearLayout(this).apply{
-              orientation=LinearLayout.HORIZONTAL
-              gravity=Gravity.BOTTOM
-              setPadding(0,wallGap,0,0)
-            }
-            footerFields.forEachIndexed{index,field->
-              val key=field.optString("field","pnl")
-              val numeric=miniNumeric(row,key)
-              val useProfit=field.optBoolean("useProfitColor",false)
-              val tone=if(!useProfit||numeric==null)wallText else if(numeric>0)wallGain else if(numeric<0)wallLoss else wallSecondary
-              val cell=LinearLayout(this).apply{
-                orientation=LinearLayout.VERTICAL
-                gravity=gravityFor(field.optString("align",if(index==0)"left" else "right"))
-                addView(textView(field.optString("label",key),wallSecondary,10*fs,gravity))
-                addView(textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).toFloat()*fs,gravity))
-              }
-              footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
-            }
-            card.addView(footer,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
-          }
-
-          wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{
-            if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap
-          })
+          wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap})
           if(rowIndex==rows.lastIndex&&wallColumns>1){
             val missing=wallColumns-1-(rowIndex%wallColumns)
-            repeat(missing){
-              wallLine?.addView(View(this),LinearLayoutParams(0,1,1f).apply{if(it<missing-1)rightMargin=wallColumnGap})
-            }
+            repeat(missing){wallLine?.addView(View(this),LinearLayoutParams(0,1,1f).apply{if(it<missing-1)rightMargin=wallColumnGap})}
           }
         }
         val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
@@ -401,41 +337,31 @@ class TfAssetOverlayService:Service(){
       }
       "heatmap"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.forEach{row->root.addView(textView("■ "+row.optString("symbol","--")+"  "+signed2(row,"changePercent")+"%",tone(row),12*fs,Gravity.START))}
+        rows.forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,selectedFields,4,11f);root.addView(card)}
       }
       "pnl-wall"->{
-        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.sortedByDescending{it.optDouble("pnl",Double.NEGATIVE_INFINITY)}.forEach{row->
-          val pnl=row.optDouble("pnl",Double.NaN)
-          val pnlTone=if(!pnl.isFinite())neutral else if(pnl>0)gain else if(pnl<0)loss else neutral
-          root.addView(textView(row.optString("symbol","--")+"  損益 "+signedInteger(row,"pnl")+"  "+signed2(row,"roi")+"%",pnlTone,12*fs,Gravity.START))
-        }
+        val sorted=rows.sortedByDescending{it.optDouble("pnl",Double.NEGATIVE_INFINITY)}
+        if(sorted.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        sorted.forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,selectedFields,4,11f);root.addView(card)}
       }
       "weight-wall"->{
-        val total=rows.sumOf{it.optDouble("marketValue",0.0).takeIf(Double::isFinite)?:0.0}
-        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.sortedByDescending{it.optDouble("marketValue",0.0)}.forEach{row->
-          val mv=row.optDouble("marketValue",0.0)
-          val weight=if(total>0)mv/total*100.0 else 0.0
-          root.addView(textView(row.optString("symbol","--")+"  "+String.format("%.1f%%",weight)+"  "+integer(row,"marketValue"),text,12*fs,Gravity.START))
-        }
+        val sorted=rows.sortedByDescending{it.optDouble("marketValue",0.0)}
+        if(sorted.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        sorted.forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,selectedFields,4,11f);root.addView(card)}
       }
       "ticker"->{
-        val ticker=if(rows.isEmpty())"等待資料" else rows.joinToString("   •   "){quoteLine(it)}
-        root.addView(textView(ticker,if(rows.isEmpty())neutral else text,12*fs,Gravity.START))
+        if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
+        rows.forEach{row->val line=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL};selectedFields.take(4).forEach{field->val cell=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addConfigured(cell,row,field,10f);line.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))};root.addView(line)}
       }
       "terminal"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        rows.forEach{row->root.addView(textView(row.optString("symbol","--")+" | "+number2(row,"price")+" | "+signed2(row,"changePercent")+"% | "+signedInteger(row,"pnl"),tone(row),11*fs,Gravity.START))}
+        rows.forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,selectedFields,4,10f);root.addView(card)}
       }
       else->{
         val asset=snap.optJSONObject("asset")?:JSONObject()
         root.addView(textView("TF Asset  總資產 "+integer(asset,"totalAssets"),text,12*fs,Gravity.START))
-        if(first==null){root.addView(textView("等待資料",neutral,12*fs,Gravity.START))}
-        else{
-          root.addView(textView(first.optString("symbol","--")+" "+first.optString("name",""),text,12*fs,Gravity.START))
-          root.addView(textView(number2(first,"price")+"  "+signed2(first,"changePercent")+"%",tone(first),16*vs,Gravity.START))
-        }
+        val first=rows.firstOrNull()
+        if(first==null)root.addView(textView("等待資料",neutral,12*fs,Gravity.START)) else addFields(root,first,selectedFields,selectedFields.size,12f)
       }
     }
   }
@@ -453,18 +379,15 @@ class TfAssetOverlayService:Service(){
     val header=cfg.optJSONObject("miniHeader")?:JSONObject()
     if(header.optBoolean("visible",true)&&columns.isNotEmpty()){
       val headerRow=LinearLayout(this).apply{
-        orientation=LinearLayout.HORIZONTAL
-        gravity=Gravity.CENTER_VERTICAL
-        minimumHeight=header.optInt("height",30)
+        orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;minimumHeight=header.optInt("height",30)
         val headerBg=color(header.optString("backgroundColor","#111827"),Color.rgb(17,24,39))
         val headerAlpha=(header.optDouble("backgroundOpacity",.96).coerceIn(.1,1.0)*255).roundToInt()
         setBackgroundColor(Color.argb(headerAlpha,Color.red(headerBg),Color.green(headerBg),Color.blue(headerBg)))
       }
       val headerText=color(header.optString("textColor","#CBD5E1"),Color.LTGRAY)
       val headerScale=header.optDouble("fontScale",.9).coerceIn(.7,1.6).toFloat()
-      columns.forEach{column->
-        headerRow.addView(textView(column.optString("label",column.optString("field","")),headerText,11*headerScale,gravityFor(column.optString("align","left"))),weighted(column.optDouble("widthPercent",20.0).toFloat()))
-      }
+      columns.forEach{column->headerRow.addView(textView(column.optString("label",column.optString("field","")),headerText,11*headerScale,gravityFor(column.optString("align","left"))),weighted(column.optDouble("widthPercent",20.0).toFloat()))}
+      applyItemEffect(headerRow,header.optJSONObject("effect"),null,false)
       root.addView(headerRow)
     }
 
@@ -482,18 +405,22 @@ class TfAssetOverlayService:Service(){
         val valueText=miniValue(holding,field)
         val numeric=miniNumeric(holding,field)
         val useProfit=column.optBoolean("useProfitColor",false)
-        val tone=if(!useProfit||numeric==null)text else if(numeric>0)gain else if(numeric<0)loss else neutral
-        val scale=(baseScale*column.optDouble("fontScale",1.0).coerceIn(.7,1.6)).toFloat()
-        row.addView(textView(valueText,tone,11*scale,gravityFor(column.optString("align","left"))),weighted(column.optDouble("widthPercent",20.0).toFloat()))
+        val customText=column.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,text)}
+        val tone=when{useProfit&&numeric!=null&&numeric>0->gain;useProfit&&numeric!=null&&numeric<0->loss;useProfit&&numeric!=null->neutral;customText!=null->customText;else->text}
+        val scale=(baseScale*column.optDouble("fontScale",1.0).coerceIn(.7,2.0)).toFloat()
+        val view=textView(valueText,tone,11*scale,gravityFor(column.optString("align","left")))
+        val bg=column.optString("backgroundColor","");if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
+        val gap=if(column.has("lineGap")&&!column.isNull("lineGap"))column.optInt("lineGap",style.optInt("rowGap",2)).coerceIn(0,32) else style.optInt("rowGap",2).coerceIn(0,32)
+        val py=column.optInt("paddingY",0).coerceIn(0,16);view.setPadding(3,gap+py,3,py)
+        applyItemEffect(view,column.optJSONObject("effect"),numeric,isAlert(holding,cfg))
+        row.addView(view,weighted(column.optDouble("widthPercent",20.0).toFloat()))
       }
       body.addView(row)
     }
     if(rows.isEmpty())body.addView(textView("尚無持股資料",neutral,11*baseScale,Gravity.START))
-    val scroller=ScrollView(this).apply{
-      isFillViewport=true
-      addView(body)
-    }
+    val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
     root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
+
     val asset=snap.optJSONObject("asset")?:JSONObject()
     val statusBar=cfg.optJSONObject("miniStatusBar")?:JSONObject()
     val statusItemsJson=cfg.optJSONArray("miniStatusItems")
@@ -513,8 +440,7 @@ class TfAssetOverlayService:Service(){
       val statusBorderWidth=statusBar.optInt("borderWidth",1).coerceIn(0,4)
       val statusColumns=statusBar.optInt("columns",3).coerceIn(1,4)
       val statusWrap=LinearLayout(this).apply{
-        orientation=LinearLayout.VERTICAL
-        minimumHeight=statusBar.optInt("height",36).coerceIn(24,96)
+        orientation=LinearLayout.VERTICAL;minimumHeight=statusBar.optInt("height",36).coerceIn(24,96)
         setBackgroundColor(Color.argb(statusAlpha,Color.red(statusBg),Color.green(statusBg),Color.blue(statusBg)))
         if(statusBorderWidth>0)setPadding(0,statusBorderWidth,0,0)
       }
@@ -523,14 +449,10 @@ class TfAssetOverlayService:Service(){
         items.forEach{item->
           val field=item.optString("field","totalAssets")
           val label=item.optString("label",field)
-          val numeric=when(field){
-            "totalReturn"->asset.optDouble("totalReturn",Double.NaN)
-            "unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN)
-            "realizedPnl"->asset.optDouble("realizedPnl",Double.NaN)
-            else->Double.NaN
-          }
+          val numeric=when(field){"totalReturn"->asset.optDouble("totalReturn",Double.NaN);"unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN);"realizedPnl"->asset.optDouble("realizedPnl",Double.NaN);else->Double.NaN}
           val useProfit=item.optBoolean("useProfitColor",false)
-          val tone=if(!useProfit||!numeric.isFinite())statusText else if(numeric>0)gain else if(numeric<0)loss else neutral
+          val customText=item.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,statusText)}
+          val tone=when{useProfit&&numeric.isFinite()&&numeric>0->gain;useProfit&&numeric.isFinite()&&numeric<0->loss;useProfit&&numeric.isFinite()->neutral;customText!=null->customText;else->statusText}
           val valueText=when(field){
             "holdingCount"->rows.size.toString()
             "updatedAt"->snap.optString("generatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
@@ -543,68 +465,79 @@ class TfAssetOverlayService:Service(){
             "dividendIncome"->integer(asset,"dividendIncome")
             else->"--"
           }
-          statusRow.addView(textView("$label $valueText",tone,9*statusScale,Gravity.CENTER),weighted(1f))
+          val view=textView("$label $valueText",tone,9*statusScale*item.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat(),gravityFor(item.optString("align","center")))
+          val bg=item.optString("backgroundColor","");if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
+          val gap=if(item.has("lineGap")&&!item.isNull("lineGap"))item.optInt("lineGap",0).coerceIn(0,32) else 0
+          val py=item.optInt("paddingY",0).coerceIn(0,16);view.setPadding(3,gap+py,3,py)
+          applyItemEffect(view,item.optJSONObject("effect"),numeric.takeIf{it.isFinite()},false)
+          statusRow.addView(view,weighted(1f))
         }
         repeat((statusColumns-items.size).coerceAtLeast(0)){statusRow.addView(View(this),weighted(1f))}
         statusWrap.addView(statusRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
       }
-      if(statusBorderWidth>0){
-        statusWrap.background=GradientDrawable().apply{
-          setColor(Color.argb(statusAlpha,Color.red(statusBg),Color.green(statusBg),Color.blue(statusBg)))
-          setStroke(statusBorderWidth,statusBorder)
-        }
-      }
+      if(statusBorderWidth>0)statusWrap.background=GradientDrawable().apply{setColor(Color.argb(statusAlpha,Color.red(statusBg),Color.green(statusBg),Color.blue(statusBg)));setStroke(statusBorderWidth,statusBorder)}
       root.addView(statusWrap,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
     }
   }
 
-  private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
-  private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{
-    text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)
+  private fun applyItemEffect(view:View,effect:JSONObject?,numeric:Double?,alert:Boolean){
+    if(effect==null)return
+    val kind=effect.optString("kind","none")
+    if(kind=="none")return
+    val trigger=effect.optString("trigger","change")
+    val active=when(trigger){"gain"->numeric!=null&&numeric>0;"loss"->numeric!=null&&numeric<0;"alert"->alert;else->true}
+    if(!active)return
+    val speed=effect.optString("speed","normal")
+    val duration=when(speed){"slow"->1200L;"fast"->360L;else->700L}
+    val intensity=effect.optString("intensity","medium")
+    val alpha=when(intensity){"soft"->.72f;"strong"->.20f;else->.45f}
+    val repeat=trigger=="always"
+    when(kind){
+      "fade"->view.startAnimation(AlphaAnimation(alpha,1f).apply{this.duration=duration;repeatCount=0})
+      "pulse","flash-on-change"->view.startAnimation(AlphaAnimation(alpha,1f).apply{this.duration=duration;repeatMode=Animation.REVERSE;repeatCount=if(repeat)Animation.INFINITE else 1})
+      "bounce"->{
+        val distance=when(intensity){"soft"->3f;"strong"->10f;else->6f}
+        view.startAnimation(TranslateAnimation(0f,0f,0f,-distance).apply{this.duration=duration/2;repeatMode=Animation.REVERSE;repeatCount=if(repeat)Animation.INFINITE else 1})
+      }
+    }
   }
-  private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
 
-  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){
-    "change"->row.optDouble("change",Double.NaN)
-    "changePercent"->row.optDouble("changePercent",Double.NaN)
-    "pnl"->row.optDouble("pnl",Double.NaN)
-    "roi"->row.optDouble("roi",Double.NaN)
-    "comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN)
-    else->Double.NaN
-  }.takeIf{it.isFinite()}
-
-  private fun miniValue(row:JSONObject,field:String):String=when(field){
+  private fun isAlert(row:JSONObject,cfg:JSONObject):Boolean{
+    val threshold=cfg.optDouble("alertChangePct",Double.NaN)
+    val pct=row.optDouble("changePercent",Double.NaN)
+    return threshold.isFinite()&&pct.isFinite()&&abs(pct)>=threshold
+  }
+  private fun defaultProfitField(field:String)=field=="change"||field=="changePercent"||field=="pnl"||field=="roi"||field=="comprehensivePnl"
+  private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
+  private fun normalValue(row:JSONObject,field:String,label:String):String=when(field){
     "symbol"->row.optString("symbol","--")
     "name"->row.optString("name","")
-    "price"->number2(row,"price")
-    "change"->signed2(row,"change")
-    "changePercent"->signed2(row,"changePercent")+"%"
-    "shares"->integer(row,"shares")
-    "avgCost"->number2(row,"avgCost")
-    "marketValue"->integer(row,"marketValue")
-    "pnl"->signedInteger(row,"pnl")
-    "roi"->signed2(row,"roi")+"%"
-    "comprehensivePnl"->signedInteger(row,"comprehensivePnl")
-    "marketStatus"->row.optString("marketStatus","--")
-    "updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
+    "price"->"$label "+number2(row,"price")
+    "change"->"$label "+signed2(row,"change")
+    "changePercent"->"$label "+signed2(row,"changePercent")+"%"
+    "shares"->"$label "+integer(row,"shares")
+    "avgCost"->"$label "+number2(row,"avgCost")
+    "marketValue"->"$label "+integer(row,"marketValue")
+    "pnl"->"$label "+signedInteger(row,"pnl")
+    "roi"->"$label "+signed2(row,"roi")+"%"
+    "comprehensivePnl"->"$label "+signedInteger(row,"comprehensivePnl")
+    "marketStatus"->"$label "+row.optString("marketStatus","--")
+    "updatedAt"->"$label "+row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
     else->"--"
   }
-  private fun number2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%.2f",v) else "--"}
+
+  private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
+  private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)}
+  private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
+  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
+  private fun miniValue(row:JSONObject,field:String):String=when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"};else->"--"}
+  private fun number2(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%.2f",v) else "--"}
   private fun signed2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%,.0f",v) else "--"}
   private fun signedInteger(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%,.0f",v) else "--"}
   private fun writeRuntimeStatus(running:Boolean,symbol:String?){
     val p=params
-    prefs().edit()
-      .putBoolean("monitor_running",running)
-      .putString("monitor_runtime_mode",mode)
-      .putInt("monitor_runtime_x",p?.x?:0)
-      .putInt("monitor_runtime_y",p?.y?:0)
-      .putInt("monitor_runtime_width",p?.width?:0)
-      .putInt("monitor_runtime_height",p?.height?:0)
-      .putLong("monitor_last_sync_at",System.currentTimeMillis())
-      .putString("monitor_display_symbol",symbol?:"")
-      .apply()
+    prefs().edit().putBoolean("monitor_running",running).putString("monitor_runtime_mode",mode).putInt("monitor_runtime_x",p?.x?:0).putInt("monitor_runtime_y",p?.y?:0).putInt("monitor_runtime_width",p?.width?:0).putInt("monitor_runtime_height",p?.height?:0).putLong("monitor_last_sync_at",System.currentTimeMillis()).putString("monitor_display_symbol",symbol?:"").apply()
   }
   private fun color(value:String,fallback:Int)=runCatching{Color.parseColor(value)}.getOrDefault(fallback)
 }
