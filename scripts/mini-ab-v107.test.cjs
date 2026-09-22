@@ -13,7 +13,9 @@ for(const token of ['MiniHeaderStyle','MiniColumnConfig','miniHeader','miniColum
 }
 for(const field of ['symbol','name','price','change','changePercent','shares','avgCost','marketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt']){
   assert.ok(domain.includes("'"+field+"'"),'Mini field pool missing '+field);
-  assert.ok(runtime.includes("'"+field+"'"),'Mini persistence missing '+field);
+}
+for(const token of ['DEFAULT_MINI_COLUMNS.map','map.get(defaultColumn.field)','field:defaultColumn.field','label:typeof column?.label','effect:normItemEffect(column?.effect)']){
+  assert.ok(runtime.includes(token),'Mini persistence normalization missing '+token);
 }
 assert.match(panel,/Mini A 項目列（母）/,'Mini A editor missing');
 assert.match(panel,/Mini B 欄位（子）/,'Mini B editor missing');
