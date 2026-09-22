@@ -20,7 +20,7 @@ import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
-import { deriveAiUiState } from './src/settings/settingsControlBehavior';
+import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsControlBehavior';
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
@@ -67,10 +67,10 @@ function AppBody(){
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
-    if(!finance.hydrated)return;
+    if(!shouldRefreshAiNews(finance.hydrated,settings.hydrated,settings.prefs.ai))return;
     aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
     void aiNews.refresh();
-  },[finance.hydrated,aiHoldingKey]);
+  },[finance.hydrated,settings.hydrated,settings.prefs.ai.enabled,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
