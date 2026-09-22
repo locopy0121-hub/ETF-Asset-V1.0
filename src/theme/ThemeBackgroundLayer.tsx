@@ -3,7 +3,7 @@ import {useThemeRuntime} from './ThemeRuntime';
 
 export function ThemeBackgroundLayer(){
   const theme=useThemeRuntime();
-  const resizeMode=theme.prefs.backgroundMode==='fill'?'cover':'contain';
+  const resizeMode=theme.prefs.backgroundMode==='fill'?'stretch':theme.prefs.backgroundMode==='fitWidth'?'cover':'contain';
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}>
     <ImageBackground
       source={{uri:theme.backgroundUri}}
