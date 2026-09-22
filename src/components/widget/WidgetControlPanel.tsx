@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
   ITEM_EFFECT_INTENSITIES,
@@ -227,7 +227,7 @@ function MiniButton({label,onPress}:{label:string;onPress:()=>void}){return <Pre
 function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(n:number)=>void}){return <View style={styles.stepRow}><Text style={styles.stepLabel}>{label}</Text><MiniButton label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.stepValue}>{value}{suffix}</Text><MiniButton label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
 function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(v:boolean)=>void}){return <Pressable onPress={()=>onChange(!value)} style={styles.toggleRow}><Text style={styles.stepLabel}>{label}</Text><Text style={[styles.toggleState,value&&styles.toggleStateOn]}>{value?'開':'關'}</Text></Pressable>;}
 function EffectChoice({label,value,onChange}:{label:string;value:WidgetEffect;onChange:(v:WidgetEffect)=>void}){return <View><Text style={styles.label}>{label}</Text><Choice choices={effects} value={value} label={x=>effectLabels[x]} onChange={onChange}/></View>;}
-function LabelInput({value,onChange}:{value:string;onChange:(value:string)=>void}){return <View style={styles.labelEdit}><Text style={styles.label}>顯示名稱</Text><Pressable onPress={()=>{}}><Text style={styles.inlineValue}>{value}</Text></Pressable><Text style={styles.note}>名稱沿用目前設定；文字輸入由既有編輯能力維持，避免誤觸鍵盤。</Text></View>;}
+function LabelInput({value,onChange}:{value:string;onChange:(value:string)=>void}){return <View style={styles.labelEdit}><Text style={styles.label}>顯示名稱</Text><TextInput value={value} onChangeText={onChange} style={styles.input}/></View>;}
 
 const styles = StyleSheet.create({
   card:{backgroundColor:colors.surfaceMuted,borderRadius:radius.lg,padding:spacing.md,borderWidth:1,borderColor:colors.border,gap:10},
@@ -268,6 +268,7 @@ const styles = StyleSheet.create({
   bTitle:{fontSize:10,fontWeight:'900',color:colors.primary},
   labelEdit:{gap:4},
   inlineValue:{fontSize:11,fontWeight:'900',color:colors.text},
+  input:{minHeight:38,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:10,paddingVertical:7,fontSize:11,fontWeight:'800',color:colors.text},
 });
 
 function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField,label:string):{text:string;profit:boolean}{
