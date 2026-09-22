@@ -8,6 +8,7 @@ import {
   resolvePageTitle,
   toggleExclusivePanel,
   resetLimitedPreferences,
+  shouldRefreshAiNews,
   type ControlPrefs,
 } from '../src/settings/settingsControlBehavior';
 
@@ -37,6 +38,12 @@ assert.deepEqual(deriveAiUiState(floatingOff.ai,'portfolio'),{
   showFloatingAi:false,
   nextActivePage:'portfolio',
 });
+
+assert.equal(shouldRefreshAiNews(true,true,{enabled:true,floatingButton:true}),true);
+assert.equal(shouldRefreshAiNews(true,true,{enabled:false,floatingButton:true}),false,
+  'disabled AI must block background news refresh');
+assert.equal(shouldRefreshAiNews(false,true,{enabled:true,floatingButton:true}),false);
+assert.equal(shouldRefreshAiNews(true,false,{enabled:true,floatingButton:true}),false);
 
 const restored=normalizeControlPrefs(JSON.parse(JSON.stringify({
   pageTitles:{home:'  保存後首頁  ',settings:'控制中心'},
