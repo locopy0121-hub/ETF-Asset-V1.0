@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import {buildDividendCalendarEvents,filterDividendCalendarEvents} from '../src/dividend/dividendCalendar';
+import {buildDividendCalendarEvents,deviceLocalCalendarDate,filterDividendCalendarEvents} from '../src/dividend/dividendCalendar';
 import {dividendEventToLedger} from '../src/ai/dividendAssistant';
 
 const entries=[
@@ -61,5 +61,23 @@ const sameDay=buildDividendCalendarEvents([aiWithoutPayment,manualReceipt],'2026
   .filter(event=>event.date==='2026-09-22');
 assert.equal(sameDay.length,2,'different same-day dividend events must not overwrite each other');
 assert.deepEqual(sameDay.map(event=>event.type),['exDate','paymentDate']);
+
+const savedTZ=process.env.TZ;
+try{
+  process.env.TZ='Asia/Taipei';
+  const localMidnight=new Date('2026-09-21T16:30:00Z'); // 2026-09-22 00:30 in Taiwan
+  assert.equal(deviceLocalCalendarDate(localMidnight),'2026-09-22');
+  assert.equal(deviceLocalCalendarDate(new Date('2026-09-30T16:30:00Z')),'2026-10-01',
+    'local month transition cannot use the preceding UTC month');
+  const localTodayStatus=buildDividendCalendarEvents([{
+    id:'local-day',date:'2026-09-22',kind:'dividend',
+    symbol:'0056',name:'元大高股息',perShareAmount:0.5,sharesHeld:100,note:'手動輸入',
+  }],deviceLocalCalendarDate(localMidnight));
+  assert.equal(localTodayStatus[0]?.status,'今日',
+    'a same-day dividend at Taiwan 00:30 must not remain marked as future');
+}finally{
+  if(savedTZ===undefined)delete process.env.TZ;
+  else process.env.TZ=savedTZ;
+}
 
 console.log('V1.1.3 dividend calendar events: PASS');
