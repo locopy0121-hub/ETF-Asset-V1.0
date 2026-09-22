@@ -23,7 +23,7 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
 import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
-import type {HoldingQuote} from '../domain/uiModels';
+import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
   {key:'standard',label:'標準'},{key:'compact',label:'緊湊'},{key:'dense',label:'密集'},
@@ -167,7 +167,7 @@ export function PageFrameSettingsModal({
           </View>;
         })}
       </ScrollView>
-      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onDismiss={()=>setShowWallPreview(false)}/>:null}
+      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
