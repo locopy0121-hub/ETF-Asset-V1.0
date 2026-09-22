@@ -27,7 +27,7 @@ export function HoldingQuoteModule({
   style?:QuoteModuleStyle;
   layout?:'full'|'narrow';
   wallConfig?:HoldingWallConfig;
-  refreshToken?:string|number|null;
+  refreshToken?:string|number|null|undefined;
   onPress?:()=>void;
 }){
   const change=item.price-item.previousClose;
@@ -103,7 +103,7 @@ function WallText({
   change:number;
   changePct:number;
   wall:HoldingWallConfig;
-  refreshToken?:string|number|null;
+  refreshToken?:string|number|null|undefined;
   header?:boolean;
   quotePrimary?:boolean;
   narrow?:boolean;
@@ -142,7 +142,7 @@ function WallMetric({
   change:number;
   changePct:number;
   wall:HoldingWallConfig;
-  refreshToken?:string|number|null;
+  refreshToken?:string|number|null|undefined;
   right?:boolean;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
@@ -165,7 +165,7 @@ function WallMetric({
   </View>;
 }
 
-function EffectText({text,effect,numeric,refreshToken,style,numberOfLines}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null;style:any;numberOfLines?:number}){
+function EffectText({text,effect,numeric,refreshToken,style,numberOfLines}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;style:any;numberOfLines?:number}){
   const anim=useRef(new Animated.Value(1)).current;
   const translate=useRef(new Animated.Value(0)).current;
   const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
@@ -197,7 +197,7 @@ function EffectText({text,effect,numeric,refreshToken,style,numberOfLines}:{text
   return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]}>{text}</Animated.Text>;
 }
 
-function EffectView({effect,numeric,refreshToken,children}:{effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null;children:ReactNode}){
+function EffectView({effect,numeric,refreshToken,children}:{effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;children:ReactNode}){
   const anim=useRef(new Animated.Value(1)).current;
   const translate=useRef(new Animated.Value(0)).current;
   const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
