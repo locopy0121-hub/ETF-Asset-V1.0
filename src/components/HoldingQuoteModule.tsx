@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
 
 import {
   DEFAULT_HOLDING_WALL_CONFIG,
@@ -8,7 +9,8 @@ import {
   type HoldingWallFieldKey,
   type QuoteModuleStyle,
 } from '../domain/uiModels';
-import { colors, radius, spacing } from '../theme/tokens';
+import type { ItemEffectConfig } from '../domain/displayItemContract';
+import { radius, spacing } from '../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const pct=(value:number)=>`${value>=0?'+':''}${value.toFixed(2)}%`;
@@ -47,25 +49,27 @@ export function HoldingQuoteModule({
   ]}>
     {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
     <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
-      {cfg.header.visible&&groups.header.length?<View style={[
-        styles.head,
-        {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
-      ]}>
-        <View style={styles.nameWrap}>
-          {groups.header.map((field,index)=><WallText
-            key={field.field}
-            field={field}
-            item={item}
-            change={change}
-            changePct={changePct}
-            wall={cfg}
-            header
-            narrow={narrow}
-            primary={index===0}
-          />)}
+      {cfg.header.visible&&groups.header.length?<EffectView effect={cfg.header.effect} numeric={changePct}>
+        <View style={[
+          styles.head,
+          {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
+        ]}>
+          <View style={styles.nameWrap}>
+            {groups.header.map((field,index)=><WallText
+              key={field.field}
+              field={field}
+              item={item}
+              change={change}
+              changePct={changePct}
+              wall={cfg}
+              header
+              narrow={narrow}
+              primary={index===0}
+            />)}
+          </View>
+          <Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>
         </View>
-        <Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>
-      </View>:null}
+      </EffectView>:null}
 
       {groups.quote.length?<View style={styles.quoteRow}>
         <View style={{flex:1}}>
@@ -101,22 +105,28 @@ function WallText({
   narrow?:boolean;
   primary?:boolean;
 }){
+  const numeric=fieldNumeric(field.field,item,change,changePct);
   const tone=fieldColor(field,item,change,wall);
   const value=fieldValue(field.field,item,change,changePct);
   const fontSize=header
     ?(primary?(narrow?12:15):11)*field.fontScale*wall.header.fontScale
     :(quotePrimary?(narrow?21:29):11)*field.fontScale;
-  return <Text
+  return <EffectText
+    text={value}
+    effect={field.effect}
+    numeric={numeric}
     numberOfLines={1}
     style={{
-      color:header&&!field.useProfitColor?wall.header.textColor:tone,
+      color:header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
+      backgroundColor:field.backgroundColor??'transparent',
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:field.align,
-      marginTop:header&&!primary?2:0,
+      marginTop:header&&!primary?(field.lineGap??2):(field.lineGap??0),
+      paddingVertical:field.paddingY,
       fontVariant:['tabular-nums'],
     }}
-  >{value}</Text>;
+  />;
 }
 
 function WallMetric({
@@ -129,25 +139,84 @@ function WallMetric({
   wall:HoldingWallConfig;
   right?:boolean;
 }){
-  return <View style={right?styles.rightMetric:undefined}>
-    <Text style={[styles.footerLabel,{color:wall.style.secondaryTextColor,textAlign:field.align}]}>{field.label}</Text>
-    <Text style={{
-      color:fieldColor(field,item,change,wall),
-      fontSize:12*field.fontScale,
-      fontWeight:'900',
-      marginTop:2,
-      textAlign:field.align,
-      fontVariant:['tabular-nums'],
-    }}>{fieldValue(field.field,item,change,changePct)}</Text>
+  const numeric=fieldNumeric(field.field,item,change,changePct);
+  return <View style={[right?styles.rightMetric:undefined,{backgroundColor:field.backgroundColor??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
+    <Text style={[styles.footerLabel,{color:field.textColor??wall.style.secondaryTextColor,textAlign:field.align}]}>{field.label}</Text>
+    <EffectText
+      text={fieldValue(field.field,item,change,changePct)}
+      effect={field.effect}
+      numeric={numeric}
+      style={{
+        color:fieldColor(field,item,change,wall),
+        fontSize:12*field.fontScale,
+        fontWeight:'900',
+        marginTop:2,
+        textAlign:field.align,
+        fontVariant:['tabular-nums'],
+      }}
+    />
   </View>;
 }
 
-function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig){
-  if(!field.useProfitColor)return field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor;
-  const value=field.field==='pnl'||field.field==='roi'?item.pnl:change;
-  return value>0?wall.style.gainColor:value<0?wall.style.lossColor:wall.style.secondaryTextColor;
+function EffectText({text,effect,numeric,style,numberOfLines}:{text:string;effect:ItemEffectConfig;numeric:number|null;style:any;numberOfLines?:number}){
+  const anim=useRef(new Animated.Value(1)).current;
+  const translate=useRef(new Animated.Value(0)).current;
+  useEffect(()=>{
+    anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
+    if(effect.kind==='none'||!effectActive(effect,numeric))return;
+    const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
+    const low=effect.intensity==='soft'?.78:effect.intensity==='strong'?.24:.48;
+    let runner:Animated.CompositeAnimation;
+    if(effect.kind==='bounce'){
+      const distance=effect.intensity==='soft'?-3:effect.intensity==='strong'?-10:-6;
+      runner=Animated.sequence([
+        Animated.timing(translate,{toValue:distance,duration:Math.round(duration/2),useNativeDriver:true}),
+        Animated.timing(translate,{toValue:0,duration:Math.round(duration/2),useNativeDriver:true}),
+      ]);
+    }else if(effect.kind==='fade'){
+      anim.setValue(low);
+      runner=Animated.timing(anim,{toValue:1,duration,useNativeDriver:true});
+    }else{
+      runner=Animated.sequence([
+        Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),
+        Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true}),
+      ]);
+    }
+    const actual=effect.trigger==='always'?Animated.loop(runner):runner;
+    actual.start();
+    return()=>actual.stop();
+  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
+  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]}>{text}</Animated.Text>;
 }
 
+function EffectView({effect,numeric,children}:{effect:ItemEffectConfig;numeric:number|null;children:React.ReactNode}){
+  const anim=useRef(new Animated.Value(1)).current;
+  useEffect(()=>{
+    anim.stopAnimation();anim.setValue(1);
+    if(effect.kind==='none'||!effectActive(effect,numeric))return;
+    const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
+    const low=effect.intensity==='soft'?.82:effect.intensity==='strong'?.3:.55;
+    const runner=Animated.sequence([Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true})]);
+    const actual=effect.trigger==='always'?Animated.loop(runner):runner;actual.start();return()=>actual.stop();
+  },[anim,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
+  return <Animated.View style={{opacity:anim}}>{children}</Animated.View>;
+}
+function effectActive(effect:ItemEffectConfig,numeric:number|null){
+  if(effect.trigger==='gain')return numeric!=null&&numeric>0;
+  if(effect.trigger==='loss')return numeric!=null&&numeric<0;
+  if(effect.trigger==='alert')return false;
+  return true;
+}
+
+function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig){
+  if(!field.useProfitColor)return field.textColor??(field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor);
+  const value=field.field==='pnl'||field.field==='roi'?item.pnl:field.field==='marketValue'?item.marketValue:change;
+  return value>0?wall.style.gainColor:value<0?wall.style.lossColor:(field.textColor??wall.style.secondaryTextColor);
+}
+function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
+  const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:null;
+  return typeof value==='number'&&Number.isFinite(value)?value:null;
+}
 function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   if(field==='name')return item.name;
   if(field==='symbol')return `${item.symbol}${item.pinned?'  • PIN':''}`;
