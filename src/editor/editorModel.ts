@@ -175,6 +175,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       fontScale:clamp(candidate?.fontScale,.7,1.8,fallback.fontScale),
       align:candidate?.align==='left'||candidate?.align==='center'||candidate?.align==='right'?candidate.align:fallback.align,
       useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
+      useProfitBackground:candidate?.useProfitBackground===true,
       textColor:wallNullableColor(candidate?.textColor,fallback.textColor),
       backgroundColor:wallNullableColor(candidate?.backgroundColor,fallback.backgroundColor),
       lineGap:candidate?.lineGap==null?fallback.lineGap:clamp(candidate.lineGap,0,32,fallback.lineGap??0),
