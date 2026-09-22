@@ -25,6 +25,8 @@ jobs:
         run: npm run test:v1_1_3-controls-smoke
       - name: V1.1.3 controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
+      - name: V1.1.3 AI holdings behavior
+        run: npm run test:v1_1_3-ai-holdings
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
