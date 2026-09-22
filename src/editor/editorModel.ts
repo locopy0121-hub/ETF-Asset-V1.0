@@ -147,7 +147,7 @@ const normalizeWallEffect=(raw:unknown,fallback:ItemEffectConfig=DEFAULT_ITEM_EF
   const effect=(raw&&typeof raw==='object'?raw:{}) as Partial<ItemEffectConfig>;
   return {
     kind:ITEM_EFFECT_KINDS.includes(effect.kind as ItemEffectConfig['kind'])?effect.kind as ItemEffectConfig['kind']:fallback.kind,
-    trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?effect.trigger as ItemEffectConfig['trigger']:fallback.trigger,
+    trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
     speed:ITEM_EFFECT_SPEEDS.includes(effect.speed as ItemEffectConfig['speed'])?effect.speed as ItemEffectConfig['speed']:fallback.speed,
     intensity:ITEM_EFFECT_INTENSITIES.includes(effect.intensity as ItemEffectConfig['intensity'])?effect.intensity as ItemEffectConfig['intensity']:fallback.intensity,
   };
