@@ -165,6 +165,16 @@ class TfAssetOverlayService:Service(){
     })
     return rows
   }
+  private fun withWeights(rows:List<JSONObject>):List<JSONObject>{
+    val total=rows.sumOf{row->row.optDouble("marketValue",0.0).takeIf{it.isFinite()&&it>0}?:0.0}
+    return rows.map{row->
+      val copy=JSONObject(row.toString())
+      val marketValue=row.optDouble("marketValue",Double.NaN)
+      if(total>0&&marketValue.isFinite())copy.put("weight",(marketValue/total)*100.0)
+      copy
+    }
+  }
+
   private fun compareNumber(a:Double,b:Double):Int{
     val aa=if(a.isFinite())a else Double.POSITIVE_INFINITY
     val bb=if(b.isFinite())b else Double.POSITIVE_INFINITY
@@ -201,7 +211,7 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
-    val rows=orderedHoldings(snap,cfg)
+    val rows=withWeights(orderedHoldings(snap,cfg))
     val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE)
     val secondary=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
     val gain=color(style.optString("gainColor","#EF4444"),Color.RED)
@@ -448,8 +458,9 @@ class TfAssetOverlayService:Service(){
       }
       "weight-wall"->{
         val sorted=rows.sortedByDescending{it.optDouble("marketValue",0.0)}
+        val weightFields=if(selectedFields.contains("weight"))selectedFields else listOf("weight")+selectedFields
         if(sorted.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
-        sorted.forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,selectedFields,4,11f);root.addView(card)}
+        sorted.forEach{row->val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL};addFields(card,row,weightFields,4,11f);root.addView(card)}
       }
       "ticker"->{
         if(rows.isEmpty())root.addView(textView("等待資料",neutral,12*fs,Gravity.START))
@@ -493,7 +504,7 @@ class TfAssetOverlayService:Service(){
       root.addView(headerRow)
     }
 
-    val rows=orderedHoldings(snap,cfg)
+    val rows=withWeights(orderedHoldings(snap,cfg))
     val text=color(style.optString("textColor","#FFFFFF"),Color.WHITE)
     val gain=color(style.optString("gainColor","#EF4444"),Color.RED)
     val loss=color(style.optString("lossColor","#10B981"),Color.GREEN)
@@ -610,7 +621,7 @@ class TfAssetOverlayService:Service(){
     return threshold.isFinite()&&pct.isFinite()&&abs(pct)>=threshold
   }
   private fun defaultProfitField(field:String)=field=="change"||field=="changePercent"||field=="pnl"||field=="roi"||field=="comprehensivePnl"
-  private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
+  private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"weight"->"權重";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
   private fun normalValue(row:JSONObject,field:String,label:String):String=when(field){
     "symbol"->row.optString("symbol","--")
     "name"->row.optString("name","")
@@ -620,6 +631,7 @@ class TfAssetOverlayService:Service(){
     "shares"->"$label "+integer(row,"shares")
     "avgCost"->"$label "+number2(row,"avgCost")
     "marketValue"->"$label "+integer(row,"marketValue")
+    "weight"->"$label "+number2(row,"weight")+"%"
     "pnl"->"$label "+signedInteger(row,"pnl")
     "roi"->"$label "+signed2(row,"roi")+"%"
     "comprehensivePnl"->"$label "+signedInteger(row,"comprehensivePnl")
@@ -631,8 +643,8 @@ class TfAssetOverlayService:Service(){
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
   private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)}
   private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
-  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
-  private fun miniValue(row:JSONObject,field:String):String=when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"};else->"--"}
+  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);"weight"->row.optDouble("weight",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
+  private fun miniValue(row:JSONObject,field:String):String=when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"};else->"--"}
   private fun number2(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%.2f",v) else "--"}
   private fun signed2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%,.0f",v) else "--"}
