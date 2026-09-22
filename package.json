@@ -103,7 +103,8 @@
     "test:v1_1_3-pr17-carryover": "node scripts/v1_1_3-pr17-carryover.test.cjs",
     "test:v2_1_2": "npm run test:v1_1_2 && npm run test:v1_1_3-controls-smoke && npm run test:v1_1_3-controls-runtime && npm run test:v1_1_3-ai-holdings && npm run test:v1_1_3-dividend-calendar && npm run test:v1_1_3-system-colors && npm run test:v1_1_3-pr17-carryover && node scripts/v2_1_1-release.test.cjs && npm run test:news-v212",
     "test:news-v212": "tsx scripts/v2_1_2-news-summary.test.ts",
-    "test:v2_1_3": "npm run test:v1_1_2 && npm run test:v1_1_3-controls-smoke && npm run test:v1_1_3-controls-runtime && npm run test:v1_1_3-ai-holdings && npm run test:v1_1_3-dividend-calendar && npm run test:v1_1_3-system-colors && npm run test:v1_1_3-pr17-carryover && node scripts/v2_1_1-release.test.cjs && npm run test:news-v212"
+    "test:v2_1_3": "npm run test:v1_1_2 && npm run test:v1_1_3-controls-smoke && npm run test:v1_1_3-controls-runtime && npm run test:v1_1_3-ai-holdings && npm run test:v1_1_3-dividend-calendar && npm run test:v1_1_3-system-colors && npm run test:v1_1_3-pr17-carryover && node scripts/v2_1_1-release.test.cjs && npm run test:news-v212 && npm run test:preview-v213",
+    "test:preview-v213": "tsx scripts/v2_1_3-preview.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
