@@ -36,6 +36,7 @@ assert(settings.includes('主題與背景'),'Theme settings entry missing');
 const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.indexOf('export const THEME_PRESETS'));
 assert.equal(backgroundBlock.split('data:image/png;base64').length-1,10,'Theme runtime must contain 10 built-in backgrounds');
 for(const key of ['sky','midnight','sand','forest','violet','rose','aqua','amber','ocean','slate'])assert(theme.includes("key:'"+key+"'"),'Theme preset missing '+key);
+for(const key of ['midnight','ocean'])assert(theme.includes("key:'"+key+"',label:")&&new RegExp("key:'"+key+"'[^\\n]*dark:true").test(theme),'Dark preset must request light status-bar content: '+key);
 assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
 assert.match(theme,/setNativeAppIcon\(prefs\.iconKey\)/,'Theme runtime must synchronize persisted/applied/reset iconKey to Android launcher');
 assert.match(theme,/\[hydrated,prefs\.iconKey\]/,'Native icon synchronization must react to every iconKey change after hydration');
