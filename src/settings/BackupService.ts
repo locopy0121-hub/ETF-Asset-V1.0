@@ -11,7 +11,7 @@ export type BackupRecord=Readonly<{
 
 const BACKUPS_KEY='@tf-asset/local-backups';
 const PREFIX='@tf-asset/';
-const APP_VERSION='1.0.4';
+const APP_VERSION='1.1.2';
 
 function validPayload(value:unknown):value is Record<string,string>{
   if(!value||typeof value!=='object'||Array.isArray(value))return false;
