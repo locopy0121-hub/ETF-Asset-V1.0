@@ -1,5 +1,5 @@
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 
 import {
   DEFAULT_HOLDING_WALL_CONFIG,
@@ -189,7 +189,7 @@ function EffectText({text,effect,numeric,style,numberOfLines}:{text:string;effec
   return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]}>{text}</Animated.Text>;
 }
 
-function EffectView({effect,numeric,children}:{effect:ItemEffectConfig;numeric:number|null;children:React.ReactNode}){
+function EffectView({effect,numeric,children}:{effect:ItemEffectConfig;numeric:number|null;children:ReactNode}){
   const anim=useRef(new Animated.Value(1)).current;
   useEffect(()=>{
     anim.stopAnimation();anim.setValue(1);
