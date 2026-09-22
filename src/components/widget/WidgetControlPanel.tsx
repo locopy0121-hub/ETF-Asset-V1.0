@@ -59,10 +59,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
   const wallPreviewRows=sortedRows.slice(0,Math.min(8,Math.max(1,value.wallColumns*2)));
   const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>{
     const config=widgetFieldStyle(value,field);
-    return {field,config,...widgetFieldText(previewSnapshot,previewHolding,field,config.label)};
+    return {field,config,numeric:widgetFieldProfitValue(previewSnapshot,previewHolding,field),...widgetFieldText(previewSnapshot,previewHolding,field,config.label)};
   });
-  const previewPct=previewHolding?.changePercent;
-  const previewTone=(previewPct??0)>=0?value.style.gainColor:value.style.lossColor;
   const patch=(patch:Partial<WidgetConfig>)=>onChange({...value,...patch});
   const patchStyle=(stylePatch:Partial<WidgetConfig['style']>)=>patch({style:{...value.style,...stylePatch}});
   const patchEffects=(p:Partial<WidgetConfig['effects']>)=>patch({effects:{...value.effects,...p}});
@@ -121,8 +119,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
               const config=widgetFieldStyle(value,field);
               const visual=config.visual;
               const line=widgetFieldText(previewSnapshot,row,field,config.label);
-              const numeric=row.changePercent??0;
-              const tone=line.profit&&visual.useProfitColor?(numeric>=0?value.style.gainColor:value.style.lossColor):(visual.textColor??value.style.textColor);
+              const numeric=widgetFieldProfitValue(previewSnapshot,row,field);
+              const tone=line.profit&&visual.useProfitColor?(numeric==null?value.style.neutralColor:numeric>0?value.style.gainColor:numeric<0?value.style.lossColor:value.style.neutralColor):(visual.textColor??value.style.textColor);
               return <Text key={field} numberOfLines={1} style={{
                 color:tone,
                 backgroundColor:visual.backgroundColor??'transparent',
@@ -139,7 +137,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
         :<View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
           {previewLines.map((line,index)=>{
             const visual=line.config.visual;
-            const tone=line.profit&&visual.useProfitColor?previewTone:(visual.textColor??value.style.textColor);
+            const tone=line.profit&&visual.useProfitColor?(line.numeric==null?value.style.neutralColor:line.numeric>0?value.style.gainColor:line.numeric<0?value.style.lossColor:value.style.neutralColor):(visual.textColor??value.style.textColor);
             return <Text key={line.field} numberOfLines={1} style={{
               color:tone,
               backgroundColor:visual.backgroundColor??'transparent',
@@ -301,6 +299,22 @@ const styles = StyleSheet.create({
   wallPreview:{flexDirection:'row',flexWrap:'wrap',alignContent:'flex-start',justifyContent:'space-between',gap:6},
   wallPreviewCard:{borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,padding:6,minHeight:56},
 });
+
+function widgetFieldProfitValue(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField):number|null{
+  const asset=snapshot?.asset;
+  const value=field==='unrealizedPnl'?asset?.unrealizedPnl
+    :field==='realizedPnl'?asset?.realizedPnl
+    :field==='totalReturn'?asset?.totalReturn
+    :field==='change'?holding?.change
+    :field==='changePercent'?holding?.changePercent
+    :field==='pnl'?holding?.pnl
+    :field==='roi'?holding?.roi
+    :field==='comprehensivePnl'?holding?.comprehensivePnl
+    :field==='dailyPnl'?holding?.change
+    :field==='quote'?holding?.changePercent
+    :null;
+  return typeof value==='number'&&Number.isFinite(value)?value:null;
+}
 
 function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField,label:string):{text:string;profit:boolean}{
   const asset=snapshot?.asset;
