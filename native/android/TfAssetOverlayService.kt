@@ -426,17 +426,18 @@ class TfAssetOverlayService:Service(){
                 customText!=null->customText
                 else->wallText
               }
+              val fieldGravity=gravityFor(field.optString("align",if(index==0)"left" else "right"))
               val cell=LinearLayout(this).apply{
                 orientation=LinearLayout.VERTICAL
-                gravity=gravityFor(field.optString("align",if(index==0)"left" else "right"))
+                gravity=fieldGravity
               }
               val customBg=field.optString("backgroundColor","")
               if(customBg.isNotBlank())cell.setBackgroundColor(color(customBg,Color.TRANSPARENT))
               val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",0).coerceIn(0,32) else 0
               val py=field.optInt("paddingY",0).coerceIn(0,16)
               cell.setPadding(0,gap+py,0,py)
-              cell.addView(textView(field.optString("label",key),wallSecondary,10*fs,gravity))
-              val valueView=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravity)
+              cell.addView(textView(field.optString("label",key),wallSecondary,10*fs,fieldGravity))
+              val valueView=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,fieldGravity)
               applyItemEffect(valueView,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:footer:$key")
               cell.addView(valueView)
               footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
