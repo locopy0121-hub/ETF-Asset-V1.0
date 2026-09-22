@@ -70,7 +70,7 @@ export function DividendScreen() {
   const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   return <>
-    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用 V3.7.8 Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="dividend" frames={[
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
