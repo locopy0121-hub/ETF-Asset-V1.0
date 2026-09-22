@@ -14,6 +14,7 @@ const settings=read('src/screens/SettingsScreen.tsx');
 const theme=read('src/theme/ThemeRuntime.tsx');
 const bridge=read('src/native/TfAssetNativeBridge.ts');
 const native=read('native/android/TfAssetNativeModule.kt');
+const releaseWorkflow=read('.github/workflows/release-v1.yml');
 const snapshot=read('src/finance/sharedSnapshotAdapter.ts');
 
 for(const token of ['A 顯示項目（母）','B 單項細部','單項行距','單項特效','ITEM_EFFECT_TRIGGERS'])assert(widget.includes(token),'Widget A-B UI missing '+token);
@@ -37,7 +38,8 @@ assert.equal(backgroundBlock.split('data:image/png;base64').length-1,10,'Theme r
 for(const key of ['sky','midnight','sand','forest','violet','rose','aqua','amber','ocean','slate'])assert(theme.includes("key:'"+key+"'"),'Theme preset missing '+key);
 assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
-for(const token of ['pickThemeBackground','setAppIcon','Icon01','Icon10'])assert(native.includes(token),'Native theme action missing '+token);
+for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
+for(const token of ['for i in range(1,11)','activity-alias','android:name=\".Icon01\"','android:name=\".Icon10\"','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release launcher alias injection missing '+token);
 for(let i=1;i<=10;i++)assert(fs.existsSync('native/android/res/drawable/tf_icon_'+String(i).padStart(2,'0')+'.xml'),'Launcher icon '+i+' missing');
 
 assert.match(snapshot,/totalAssets:portfolio\.totalMarketValue/,'Shared totalAssets must stay market-value only');
