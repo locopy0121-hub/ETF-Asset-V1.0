@@ -8,6 +8,7 @@ const settings=read('src/screens/SettingsScreen.tsx');
 const modal=read('src/components/PageFrameSettingsModal.tsx');
 const app=read('App.tsx');
 const floating=read('src/components/GlobalFloatingAi.tsx');
+const behavior=read('src/settings/settingsControlBehavior.ts');
 const dividend=read('src/screens/DividendScreen.tsx');
 assert.match(runtime,/pageTitles:Partial<Record<MainPageKey,string>>/);
 assert.match(runtime,/patchPageTitle:\(page:MainPageKey,title:string\)=>void/);
