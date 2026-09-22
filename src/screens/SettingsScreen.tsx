@@ -18,6 +18,7 @@ import { ColorPalettePicker } from '../components/ColorPalettePicker';
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import { MAIN_PAGES } from '../domain/pageRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
@@ -45,7 +46,7 @@ type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
 type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
-type AppPanel=null|'reset'|'version'|'updates'|'debug';
+type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
 const VERSION='1.1.2';
@@ -139,6 +140,7 @@ export function SettingsScreen(){
     if(key==='backup')return backupSection();
     if(key==='monitor')return monitorSection();
     if(key==='display')return displaySection();
+    if(key==='ai')return aiSection();
     if(key==='app')return appSection();
     if(key==='legal')return legalSection();
     return null;
@@ -365,8 +367,25 @@ export function SettingsScreen(){
     </View>;
   }
 
+  function aiSection(){
+    return <View style={styles.children}>
+      <Panel title="AI 助理控制">
+        <ToggleRow label="啟用 AI 助理" value={settings.prefs.ai.enabled} onChange={enabled=>settings.patchAi({enabled})}/>
+        <ToggleRow label="顯示 AI 浮動按鈕／視窗" value={settings.prefs.ai.floatingButton} disabled={!settings.prefs.ai.enabled} onChange={floatingButton=>settings.patchAi({floatingButton})}/>
+        <Text style={styles.note}>關閉浮動按鈕後，仍可從 AI 頁使用助理；關閉 AI 助理則隱藏 AI 頁與浮動視窗。</Text>
+      </Panel>
+    </View>;
+  }
+
   function appSection(){
     return <View style={styles.children}>
+      <ChildButton label="各頁標題設定" summary="首頁／紀錄／庫存／股息／AI／設定" active={appPanel==='titles'} onPress={()=>setAppPanel(appPanel==='titles'?null:'titles')}/>
+      {appPanel==='titles'?<Panel title="頁面標題">
+        {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
+          <Text style={styles.rowTitle}>{page.label}</Text>
+          <TextInput accessibilityLabel={page.label+'頁面標題'} value={settings.prefs.pageTitles[page.key]??page.title} onChangeText={value=>settings.patchPageTitle(page.key,value)} maxLength={48} style={styles.input}/>
+        </View>)}
+      </Panel>:null}
       <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(appPanel==='reset'?null:'reset')}/>
       {appPanel==='reset'?<Panel title="還原預設設定">
         <Text style={styles.note}>只重設通知、顯示格式與交易預設值，不刪除交易、股息、持股與帳務資料。</Text>
@@ -502,7 +521,7 @@ export function SettingsScreen(){
   return <View style={[styles.root,{backgroundColor:'transparent'}]}>
     <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
       <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
-      <Text style={[styles.title,{color:theme.palette.text}]}>控制中心</Text>
+      <Text style={[styles.title,{color:theme.palette.text}]}>{settings.prefs.pageTitles.settings||'控制中心'}</Text>
       <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、資料、主題與顯示設定集中管理</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
