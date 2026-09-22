@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MainPageKey } from '../domain/pageRegistry';
 import type { DividendCalendarPrefs } from '../dividend/dividendCalendar';
-import { normalizeControlPrefs, patchAiPrefs, patchPageTitle } from './settingsControlBehavior';
+import { normalizeControlPrefs, patchAiPrefs, patchPageTitle, resetLimitedPreferences } from './settingsControlBehavior';
 import {
   createContext,
   type PropsWithChildren,
@@ -178,7 +178,7 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
     patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),
     patchDividendCalendar:patch=>setPrefs(current=>normalize({...current,dividendCalendar:{...current.dividendCalendar,...patch}})),
-    resetPreferences:()=>setPrefs(DEFAULT_SETTINGS),
+    resetPreferences:()=>setPrefs(current=>normalize(resetLimitedPreferences(current,DEFAULT_SETTINGS))),
   }),[hydrated,prefs]);
 
   return <SettingsRuntimeContext.Provider value={value}>{children}</SettingsRuntimeContext.Provider>;
