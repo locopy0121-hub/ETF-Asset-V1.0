@@ -1,0 +1,14 @@
+# TF Asset V1.1.3 GO Release Checklist — 2026-09-22
+
+Project: locopy0121-hub/ETF-Asset-V1.0. Work branch: go-v1.1.3-20260922. Base version: 1.1.2 (Android versionCode 10102). Next version: 1.1.3 (proposed; not released).
+
+Original continuation scope from the 2026-09-22 conversation. Do not shrink, reset or silently mark PASS based solely on source text, CI, or APK.
+
+1. [x] Repo / previous incomplete list / safe backup. CODE and repository identity verified: main project TF Asset; prior unresolved items restored below; GitHub backup branch backup-v1.1.2-20260922 exists, package.json version 1.1.2 verified. No feature completion inferred.
+2. [ ] Page-title settings and AI controls, including the AI floating button. Acceptance: title settings for applicable pages (Settings page not 360-editable); persisted title changes render on correct screens; AI on/off and floating-button controls persist and work across relevant screens; A/B accordion hierarchy verified.
+3. [ ] AI actual holdings data, response layout and clickable dividend information. Acceptance: AI reads live Finance Runtime holdings and displays all entries with correct symbol/name/quantities and dates; rendered answers wrap cleanly; per-holding dividend information is navigable and consistent with Finance Runtime.
+4. [ ] Dividend calendar full event annotation; settings integration for each new feature; color tooling uses system gain/loss colors. Acceptance: distinguish ex-date/payment/record/status as available (do not invent missing dates); event details accessible; relevant setting controls available and persisted; color picker includes live system gain/loss/neutral choices without manual HEX.
+5. [ ] Remove user-visible obsolete 3.7.8 VERSION labeling (retain provenance/golden finance test references). Acceptance: user-facing screens show current TF Asset product/version; no core calculation changes; golden regressions continue to pass.
+6. [ ] Reconcile complete original checklist, verify CODE/RUNTIME/UI/RESULT for every item and full test gates; only then GitHub-only APK Action; monitor current run logs, verify Artifact/APK package com.tfasset.app, versionName/versionCode/file size and download URL. Acceptance: RELEASE PASS only with direct evidence; device-only checks labeled pending until verified.
+
+Hard rules: ERROR_LESSONS.md then Work_Project_Rules.md; immutable finance core; no V5 reuse, no EAS Build. On any FAIL stop on that item, fix and reverify. Build PASS is not feature PASS. Every version update increments formally. Never call APK ready until its artifact contents are proven.
