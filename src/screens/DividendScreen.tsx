@@ -95,7 +95,7 @@ export function DividendScreen() {
               const valid=day>=1&&day<=daysInMonth;
               const dayEvents=valid?(events.get(day)??[]):[];
               const date=valid?month+'-'+String(day).padStart(2,'0'):'';
-              return <Pressable key={i} disabled={!valid||!dayEvents.length} onPress={()=>setSelectedDate(date)} style={[styles.day,dayEvents.length&&styles.eventDay,selectedDate===date&&styles.selectedDay]}>
+              return <Pressable key={i} disabled={!valid||!dayEvents.length} onPress={()=>setSelectedDate(date)} style={[styles.day,dayEvents.length>0&&styles.eventDay,selectedDate===date&&styles.selectedDay]}>
                 <Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>
                 {dayEvents.length?<View style={styles.eventDots}>{dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:event.type==='exDate'?colors.primary:event.type==='recordDate'?colors.warning:colors.gain}]}/>)}</View>:null}
               </Pressable>;
