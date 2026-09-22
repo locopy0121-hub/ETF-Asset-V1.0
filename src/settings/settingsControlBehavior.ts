@@ -56,6 +56,27 @@ export function deriveAiUiState(ai:AiControlPrefs,activePage:MainPageKey){
   } as const;
 }
 
+/**
+ * Settings > App > Restore defaults intentionally affects only the three
+ * preference groups named in its confirmation dialog. Keep custom page titles,
+ * AI visibility and dividend-calendar filters intact.
+ */
+export function resetLimitedPreferences<T extends ControlPrefs & {
+  notifications:unknown;
+  display:unknown;
+  tradeDefaults:unknown;
+}>(
+  current:T,
+  defaults:Pick<T,'notifications'|'display'|'tradeDefaults'>,
+):T{
+  return {
+    ...current,
+    notifications:defaults.notifications,
+    display:defaults.display,
+    tradeDefaults:defaults.tradeDefaults,
+  };
+}
+
 export function toggleExclusivePanel<T extends string>(current:T|null,next:T):T|null{
   return current===next?null:next;
 }
