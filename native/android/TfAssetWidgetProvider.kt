@@ -94,7 +94,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val first=holdings.firstOrNull()
     val template=config.optString("template","asset-summary")
     val capacity=when(template){"minimal"->2;"compact"->3;"quote-summary","transparent"->4;"asset-summary"->5;else->6}
-    val selectedFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}.take(capacity)
+    val configuredFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}\n    val selectedFields=configuredFields.take(capacity)
     val styles=fieldStyles(config)
     val views=RemoteViews(context.packageName,R.layout.tf_asset_widget)
     val ids=intArrayOf(R.id.widget_line1,R.id.widget_line2,R.id.widget_line3,R.id.widget_line4,R.id.widget_line5,R.id.widget_line6)
@@ -181,7 +181,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val visibleRows=if(rows.isEmpty())1 else ceil(rows.size.toDouble()/wallColumns).toInt().coerceIn(1,maxWallRows)
       repeat(visibleRows){views.setViewVisibility(wallRowIds[it],View.VISIBLE)}
       val supported=setOf("symbol","name","price","change","changePercent","shares","avgCost","holdingMarketValue","pnl","roi","comprehensivePnl","marketStatus","updatedAt","dailyPnl","quote")
-      val wallFields=selectedFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
+      val wallFields=configuredFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
       rows.forEachIndexed{index,row->
         val rowIndex=index/wallColumns
         val columnIndex=index%wallColumns
