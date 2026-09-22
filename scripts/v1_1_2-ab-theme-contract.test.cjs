@@ -33,7 +33,7 @@ assert.match(monitorNative,/selected=jsonStrings\(cfg\.optJSONArray\("selectedSy
 
 assert(settings.includes('主題與背景'),'Theme settings entry missing');
 const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.indexOf('export const THEME_PRESETS'));
-assert.equal((backgroundBlock.match(/data:image\\/png;base64/g)||[]).length,10,'Theme runtime must contain 10 built-in backgrounds');
+assert.equal(backgroundBlock.split('data:image/png;base64').length-1,10,'Theme runtime must contain 10 built-in backgrounds');
 for(const key of ['sky','midnight','sand','forest','violet','rose','aqua','amber','ocean','slate'])assert(theme.includes("key:'"+key+"'"),'Theme preset missing '+key);
 assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
