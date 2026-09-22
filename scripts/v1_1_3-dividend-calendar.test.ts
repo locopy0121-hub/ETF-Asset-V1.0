@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 import {buildDividendCalendarEvents,filterDividendCalendarEvents} from '../src/dividend/dividendCalendar';
+import {dividendEventToLedger} from '../src/ai/dividendAssistant';
 
 const entries=[
   {
@@ -26,5 +27,39 @@ assert.equal(events.some(event=>event.symbol==='0056'&&event.type!=='paymentDate
 const onlyEx=filterDividendCalendarEvents(events,{showExDate:true,showRecordDate:false,showPaymentDate:false,showStatus:true});
 assert.deepEqual(onlyEx.map(event=>event.type),['exDate']);
 assert.equal(filterDividendCalendarEvents(events,{showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:false}).every(event=>event.status===''),true);
+
+const aiWithoutPayment=dividendEventToLedger({
+  id:'twse-pending',symbol:'00878',name:'國泰永續高股息',
+  exDate:'2026-09-22',lastPurchaseDate:'2026-09-21',
+  recordDate:'2026-09-23',paymentDate:'',perShareAmount:0.42,
+  eligibleShares:1000,estimatedDividend:420,distributionYield:1.2,
+  status:'待配發',alreadyRecorded:false,
+});
+assert.equal(aiWithoutPayment.date,'2026-09-22','AI source stores an ex-date in the ledger fallback');
+const pendingEvents=buildDividendCalendarEvents([aiWithoutPayment],'2026-09-22');
+assert.deepEqual(pendingEvents.map(event=>event.type),['exDate','recordDate'],
+  'an unknown TWSE payment date must remain absent even when ledger date equals ex-date');
+assert.equal(pendingEvents.some(event=>event.type==='paymentDate'),false);
+
+const aiWithPayment=dividendEventToLedger({
+  id:'twse-paid',symbol:'00878',name:'國泰永續高股息',
+  exDate:'2026-09-22',lastPurchaseDate:'2026-09-21',
+  recordDate:'2026-09-23',paymentDate:'2026-10-18',perShareAmount:0.42,
+  eligibleShares:1000,estimatedDividend:420,distributionYield:1.2,
+  status:'待配發',alreadyRecorded:false,
+});
+assert.equal(buildDividendCalendarEvents([aiWithPayment],'2026-09-22')
+  .find(event=>event.type==='paymentDate')?.date,'2026-10-18',
+  'an explicitly announced payment date must remain visible');
+
+const manualReceipt={
+  id:'manual-receipt',date:'2026-09-22',kind:'dividend' as const,
+  symbol:'0056',name:'元大高股息',perShareAmount:0.3,sharesHeld:800,
+  note:'手動輸入',
+};
+const sameDay=buildDividendCalendarEvents([aiWithoutPayment,manualReceipt],'2026-09-22')
+  .filter(event=>event.date==='2026-09-22');
+assert.equal(sameDay.length,2,'different same-day dividend events must not overwrite each other');
+assert.deepEqual(sameDay.map(event=>event.type),['exDate','paymentDate']);
 
 console.log('V1.1.3 dividend calendar events: PASS');
