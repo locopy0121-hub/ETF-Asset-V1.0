@@ -53,14 +53,14 @@ const BACKGROUNDS:readonly string[]=[
 
 export const THEME_PRESETS:readonly ThemePalette[]=[
  {key:'sky',label:'晴空藍',dark:false,background:'#F8FAFC',surface:'#FFFFFF',surfaceMuted:'#EFF6FF',border:'#DBEAFE',primary:'#0066FF',text:'#0F172A',textSecondary:'#64748B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
- {key:'midnight',label:'午夜藍',dark:true,background:'#08111F',surface:'#0F172A',surfaceMuted:'#172554',border:'#334155',primary:'#60A5FA',text:'#F8FAFC',textSecondary:'#CBD5E1',gain:'#FB7185',loss:'#34D399',flat:'#94A3B8',warning:'#FBBF24'},
+ {key:'midnight',label:'午夜藍',dark:false,background:'#08111F',surface:'#FFFFFF',surfaceMuted:'#EFF6FF',border:'#BFDBFE',primary:'#1D4ED8',text:'#0F172A',textSecondary:'#64748B',gain:'#E11D48',loss:'#059669',flat:'#64748B',warning:'#D97706'},
  {key:'sand',label:'暖沙',dark:false,background:'#FFF7ED',surface:'#FFFBF5',surfaceMuted:'#FFEDD5',border:'#FED7AA',primary:'#EA580C',text:'#431407',textSecondary:'#9A3412',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#D97706'},
  {key:'forest',label:'森林',dark:false,background:'#ECFDF5',surface:'#F7FFF9',surfaceMuted:'#D1FAE5',border:'#A7F3D0',primary:'#047857',text:'#064E3B',textSecondary:'#477569',gain:'#DC2626',loss:'#047857',flat:'#6B7280',warning:'#B45309'},
  {key:'violet',label:'紫晶',dark:false,background:'#FAF5FF',surface:'#FFFFFF',surfaceMuted:'#F3E8FF',border:'#E9D5FF',primary:'#7C3AED',text:'#2E1065',textSecondary:'#6B5A80',gain:'#E11D48',loss:'#059669',flat:'#7C7288',warning:'#D97706'},
  {key:'rose',label:'玫瑰',dark:false,background:'#FFF1F2',surface:'#FFFFFF',surfaceMuted:'#FFE4E6',border:'#FECDD3',primary:'#E11D48',text:'#4C0519',textSecondary:'#9F1239',gain:'#E11D48',loss:'#059669',flat:'#78716C',warning:'#D97706'},
  {key:'aqua',label:'青瓷',dark:false,background:'#F0FDFA',surface:'#FFFFFF',surfaceMuted:'#CCFBF1',border:'#99F6E4',primary:'#0F766E',text:'#134E4A',textSecondary:'#52736F',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'},
  {key:'amber',label:'琥珀',dark:false,background:'#FFFBEB',surface:'#FFFFFF',surfaceMuted:'#FEF3C7',border:'#FDE68A',primary:'#B45309',text:'#451A03',textSecondary:'#92400E',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#B45309'},
- {key:'ocean',label:'深海',dark:true,background:'#071A2B',surface:'#0B253C',surfaceMuted:'#0E3556',border:'#1D4F73',primary:'#38BDF8',text:'#F0F9FF',textSecondary:'#BAE6FD',gain:'#FB7185',loss:'#34D399',flat:'#7DD3FC',warning:'#FBBF24'},
+ {key:'ocean',label:'深海',dark:false,background:'#071A2B',surface:'#FFFFFF',surfaceMuted:'#E0F2FE',border:'#BAE6FD',primary:'#0284C7',text:'#0F172A',textSecondary:'#64748B',gain:'#E11D48',loss:'#059669',flat:'#64748B',warning:'#D97706'},
  {key:'slate',label:'霧銀',dark:false,background:'#F8FAFC',surface:'#FFFFFF',surfaceMuted:'#F1F5F9',border:'#CBD5E1',primary:'#475569',text:'#0F172A',textSecondary:'#64748B',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'}
 ];
 
@@ -128,13 +128,12 @@ export function ThemeRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{if(hydrated)AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(prefs)).catch(()=>{});},[hydrated,prefs]);
   const value=useMemo<Value>(()=>{
     const palette=THEME_PRESETS.find(x=>x.key===prefs.themeKey)??THEME_PRESETS[0]!;
-    const snapshot=():ThemeSnapshot=>({themeKey:prefs.themeKey,backgroundIndex:prefs.backgroundIndex,customBackgroundUri:prefs.customBackgroundUri,backgroundMode:prefs.backgroundMode,backgroundOpacity:prefs.backgroundOpacity,blurRadius:prefs.blurRadius,maskColor:prefs.maskColor,maskOpacity:prefs.maskOpacity,iconKey:prefs.iconKey});
-    return {
+     return {
       hydrated,prefs,palette,backgroundUri:prefs.customBackgroundUri??BACKGROUNDS[prefs.backgroundIndex]!,
       patch:patch=>setPrefs(current=>normalize({...current,...patch,customSlots:current.customSlots})),
       selectTheme:themeKey=>setPrefs(current=>normalize({...current,themeKey,customSlots:current.customSlots})),
       selectBackground:backgroundIndex=>setPrefs(current=>normalize({...current,backgroundIndex,customBackgroundUri:null,customSlots:current.customSlots})),
-      saveSlot:index=>setPrefs(current=>{if(index<0||index>=5)return current;const slots=[...current.customSlots];slots[index]=snapshot();return {...current,customSlots:slots};}),
+      saveSlot:index=>setPrefs(current=>{if(index<0||index>=5)return current;const slots=[...current.customSlots];slots[index]={themeKey:current.themeKey,backgroundIndex:current.backgroundIndex,customBackgroundUri:current.customBackgroundUri,backgroundMode:current.backgroundMode,backgroundOpacity:current.backgroundOpacity,blurRadius:current.blurRadius,maskColor:current.maskColor,maskOpacity:current.maskOpacity,iconKey:current.iconKey};return {...current,customSlots:slots};}),
       applySlot:index=>setPrefs(current=>{const slot=current.customSlots[index];return slot?normalize({...slot,customSlots:current.customSlots}):current;}),
       clearSlot:index=>setPrefs(current=>{if(index<0||index>=5)return current;const slots=[...current.customSlots];slots[index]=null;return {...current,customSlots:slots};}),
       reset:()=>setPrefs(DEFAULT_PREFS),
