@@ -9,31 +9,48 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import {buildDividendCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents} from '../dividend/dividendCalendar';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
 import { calculateLedgerCashFlow, type DividendLedgerEntry } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, spacing } from '../theme/tokens';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
-const nowIso=()=>new Date().toISOString().slice(0,10);
+const nowIso=()=>deviceLocalCalendarDate();
 
 export function DividendScreen() {
   const finance=useFinance();
+  const aiSettings=useSettingsRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [month,setMonth]=useState(nowIso().slice(0,7));
   const today=nowIso();
+  const [selectedDate,setSelectedDate]=useState(today);
   const dividends=useMemo(()=>finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend').sort((a,b)=>a.date.localeCompare(b.date)),[finance.entries]);
   const monthRows=dividends.filter(x=>x.date.startsWith(month));
   const monthTotal=monthRows.reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
   const year=month.slice(0,4);
   const annual=dividends.filter(x=>x.date.startsWith(year)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
   const monthlyAverage=annual/12;
-  const events=useMemo(()=>new Map(monthRows.map(x=>[Number(x.date.slice(-2)),x])),[monthRows]);
+  const calendarEvents=useMemo(()=>filterDividendCalendarEvents(
+    buildDividendCalendarEvents(dividends,today),
+    aiSettings.prefs.dividendCalendar,
+  ),[dividends,today,aiSettings.prefs.dividendCalendar]);
+  const monthEvents=calendarEvents.filter(event=>event.date.startsWith(month));
+  const events=useMemo(()=>{
+    const map=new Map<number,typeof monthEvents>();
+    for(const event of monthEvents){
+      const day=Number(event.date.slice(-2));
+      map.set(day,[...(map.get(day)??[]),event]);
+    }
+    return map;
+  },[calendarEvents,month]);
+  const selectedEvents=monthEvents.filter(event=>event.date===selectedDate);
   const monthDate=new Date(month+'-01T12:00:00');
-  const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(d.toISOString().slice(0,7));};
+  const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(deviceLocalCalendarDate(d).slice(0,7));};
   const firstWeekday=monthDate.getDay();
   const nextMonth=new Date(monthDate);nextMonth.setMonth(nextMonth.getMonth()+1);
   const daysInMonth=Math.round((nextMonth.getTime()-monthDate.getTime())/86400000);
@@ -53,7 +70,7 @@ export function DividendScreen() {
   const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   return <>
-    <PageShell title="股息中心" subtitle="股息淨額與現金入帳共用 V3.7.8 Core" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="dividend" frames={[
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
@@ -62,7 +79,7 @@ export function DividendScreen() {
               <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
               <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
             </View>
-            <View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>
+            {aiSettings.prefs.ai.enabled?<View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>:null}
           </FrameCard>
         },
         {key:'dividend-calendar',element:
@@ -76,15 +93,15 @@ export function DividendScreen() {
             <View style={styles.grid}>{Array.from({length:calendarCells},(_,i)=>{
               const day=i-firstWeekday+1;
               const valid=day>=1&&day<=daysInMonth;
-              const event=valid?events.get(day):undefined;
-              const status=event?(event.date<today?'已入帳':event.date===today?'待入帳':'預估'):null;
-              const statusColor=status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:status?colors.primary:'transparent';
-              return <View key={i} style={[styles.day,event&&styles.eventDay]}>
+              const dayEvents=valid?(events.get(day)??[]):[];
+              const date=valid?month+'-'+String(day).padStart(2,'0'):'';
+              return <Pressable key={i} disabled={!valid||!dayEvents.length} onPress={()=>setSelectedDate(date)} style={[styles.day,dayEvents.length>0&&styles.eventDay,selectedDate===date&&styles.selectedDay]}>
                 <Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>
-                {event?<View style={[styles.eventDot,{backgroundColor:statusColor}]}/>:null}
-              </View>;
+                {dayEvents.length?<View style={styles.eventDots}>{dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:event.type==='exDate'?colors.primary:event.type==='recordDate'?colors.warning:colors.gain}]}/>)}</View>:null}
+              </Pressable>;
             })}</View>
-            <View style={styles.legend}><Legend color={colors.primary} label="預估"/><Legend color={colors.warning} label="待入帳"/><Legend color={colors.gain} label="已入帳"/></View>
+            {selectedEvents.length?<View style={styles.eventDetails}>{selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}><Text style={styles.eventType}>{dividendCalendarTypeLabel(event.type)}</Text><Text style={styles.eventText}>{event.symbol} {event.name} · {event.date}{event.status?' · '+event.status:''}</Text></View>)}</View>:null}
+            <View style={styles.legend}><Legend color={colors.primary} label="除息日"/><Legend color={colors.warning} label="股權登記日"/><Legend color={colors.gain} label="股息配發日"/></View>
           </FrameCard>
         },
         {key:'dividend-list',element:
@@ -134,9 +151,15 @@ const styles=StyleSheet.create({
   grid:{flexDirection:'row',flexWrap:'wrap'},
   day:{width:'14.285%',height:45,alignItems:'center',justifyContent:'center',borderRadius:10},
   eventDay:{backgroundColor:colors.surfaceMuted},
+  selectedDay:{borderWidth:1,borderColor:colors.primary},
   dayText:{fontSize:12,fontWeight:'700',color:colors.text},
   dayGhost:{color:'transparent'},
-  eventDot:{width:5,height:5,borderRadius:3,marginTop:4},
+  eventDots:{flexDirection:'row',gap:2,marginTop:4},
+  eventDot:{width:5,height:5,borderRadius:3},
+  eventDetails:{gap:6,padding:10,borderRadius:10,backgroundColor:colors.surfaceMuted},
+  eventDetailRow:{flexDirection:'row',gap:8,alignItems:'flex-start'},
+  eventType:{width:72,fontSize:10,fontWeight:'900',color:colors.primary},
+  eventText:{flex:1,fontSize:10,lineHeight:16,color:colors.text},
   legend:{flexDirection:'row',gap:spacing.lg,justifyContent:'center'},
   legendItem:{flexDirection:'row',alignItems:'center',gap:5},
   legendDot:{width:7,height:7,borderRadius:4},

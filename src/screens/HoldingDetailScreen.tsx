@@ -40,7 +40,7 @@ export function HoldingDetailScreen({holding,onBack}:{holding:HoldingQuote;onBac
       <View style={styles.metrics}>
         <MetricTile label="持有股數" value={money(holding.shares)} caption="股"/>
         <MetricTile label="純成交均價" value={holding.tradeAvg.toFixed(2)} caption="不含費"/>
-        <MetricTile label="含費成本均價" value={holding.costAvg.toFixed(2)} caption="V3.7.8"/>
+        <MetricTile label="含費成本均價" value={holding.costAvg.toFixed(2)} caption="帳務核心"/>
         <MetricTile label="目前市值" value={money(holding.marketValue)} caption="NT$"/>
       </View>
     </FrameCard>
@@ -67,7 +67,7 @@ export function HoldingDetailScreen({holding,onBack}:{holding:HoldingQuote;onBac
     </FrameCard>
 
     <FrameCard title="試算入口">
-      <Text style={styles.muted}>庫存頁右上角「🧮」已接入 V3.7.8 試算核心；試算資料不回寫正式 Ledger。</Text>
+      <Text style={styles.muted}>庫存頁右上角「🧮」已接入正式試算核心；試算資料不回寫正式 Ledger。</Text>
     </FrameCard>
   </PageShell>;
 }

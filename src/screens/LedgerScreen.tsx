@@ -131,7 +131,7 @@ export function LedgerScreen() {
   const ordered=[...finance.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
 
   return <>
-    <PageShell title="帳務中心" subtitle="V3.7.8 Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell pageKey="ledger" title="帳務中心" subtitle="Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="ledger" frames={[
         {key:'quick-entry',element:
           <FrameCard title="快速建檔">
@@ -189,7 +189,7 @@ export function LedgerScreen() {
                 {kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
                 {sellExceedsHolding?<Text style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
                 {tradePreview?<View style={styles.previewCard}>
-                  <Text style={styles.previewTitle}>V3.7.8 入帳預覽</Text>
+                  <Text style={styles.previewTitle}>入帳預覽</Text>
                   <PreviewRow label="成交金額" value={money(tradePreview.amount)}/>
                   <PreviewRow label="公式手續費" value={money(tradePreview.calculatedFee)}/>
                   <PreviewRow label={fee.trim()?'實際手續費（已覆寫）':'實際手續費（公式固化）'} value={money(tradePreview.actualFee)} strong/>
@@ -203,7 +203,7 @@ export function LedgerScreen() {
 
               {kind==='dividend'?<>
                 <NumericField label="符合配息股數" value={dividendShares} onChange={setDividendShares} placeholder="0"/>
-                {dividendPreview?<View style={styles.previewCard}><Text style={styles.previewTitle}>V3.7.8 股息預覽</Text><PreviewRow label="淨入帳股息" value={money(dividendPreview.net)} strong/></View>:null}
+                {dividendPreview?<View style={styles.previewCard}><Text style={styles.previewTitle}>股息預覽</Text><PreviewRow label="淨入帳股息" value={money(dividendPreview.net)} strong/></View>:null}
               </>:null}
 
               <View><Text style={styles.fieldLabel}>備註</Text><TextInput style={styles.input} value={note} onChangeText={setNote} placeholder={kind==='other'?'例如：現金校正':'選填'} placeholderTextColor="#98A5B8"/></View>
