@@ -30,6 +30,7 @@ class TfAssetOverlayService:Service(){
   private var params:WindowManager.LayoutParams?=null
   private var mode="normal"
   private var lastLayoutSignature:String?=null
+  private var animationsEnabled=true
   private var downX=0f;private var downY=0f;private var startX=0;private var startY=0;private var lastTap=0L
 
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
@@ -186,6 +187,7 @@ class TfAssetOverlayService:Service(){
   private fun render(){
     val r=root?:return
     val cfg=readConfig()
+    animationsEnabled=(cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)
     val snap=readSnapshot()
     val style=cfg.optJSONObject(if(mode=="mini")"miniStyle" else "normalStyle")?:JSONObject()
     r.removeAllViews()
@@ -597,6 +599,8 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun applyItemEffect(view:View,effect:JSONObject?,numeric:Double?,alert:Boolean){
+    view.clearAnimation()
+    if(!animationsEnabled)return
     if(effect==null)return
     val kind=effect.optString("kind","none")
     if(kind=="none")return
