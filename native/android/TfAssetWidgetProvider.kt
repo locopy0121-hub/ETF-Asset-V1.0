@@ -163,7 +163,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
           views.setTextViewText(id,rendered.first)
           views.setTextColor(id,tone)
           views.setInt(id,"setBackgroundColor",bg)
-          views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(((if(index==0)13*titleFs else 11.5*fs))*itemScale).toFloat())
+          val staticBounceScale=bounceScale(visual,rendered.second)
+          views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(((if(index==0)13*titleFs else 11.5*fs))*itemScale*staticBounceScale).toFloat())
           views.setInt(id,"setGravity",itemAlign)
           val top=((if(index==0)0 else gap)+paddingY)*density
           views.setViewPadding(id,0,top.roundToInt(),0,(paddingY*density).roundToInt())
@@ -242,7 +243,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         else->text
       }
       out.setSpan(ForegroundColorSpan(tone),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-      val scale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()
+      val scale=visual.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*bounceScale(visual,rendered.second)
       out.setSpan(RelativeSizeSpan(scale),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       val bg=visual.optString("backgroundColor","")
       if(bg.isNotBlank())out.setSpan(BackgroundColorSpan(parseColor(bg,Color.TRANSPARENT)),start,end,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -265,23 +266,36 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     return out
   }
 
-  private fun applyStaticEffect(views:RemoteViews,id:Int,visual:JSONObject,numeric:Double){
-    val effect=visual.optJSONObject("effect")?:return
-    val kind=effect.optString("kind","none")
-    if(kind=="none"){views.setFloat(id,"setAlpha",1f);return}
-    val trigger=effect.optString("trigger","change")
-    val active=when(trigger){
+  private fun staticEffectActive(effect:JSONObject,numeric:Double):Boolean{
+    return when(effect.optString("trigger","change")){
       "gain"->numeric.isFinite()&&numeric>0
       "loss"->numeric.isFinite()&&numeric<0
       "alert"->false
       else->true
     }
-    if(!active){views.setFloat(id,"setAlpha",1f);return}
+  }
+
+  private fun bounceScale(visual:JSONObject,numeric:Double):Float{
+    val effect=visual.optJSONObject("effect")?:return 1f
+    if(effect.optString("kind","none")!="bounce"||!staticEffectActive(effect,numeric))return 1f
+    return when(effect.optString("intensity","medium")){
+      "soft"->1.04f
+      "strong"->1.12f
+      else->1.08f
+    }
+  }
+
+  private fun applyStaticEffect(views:RemoteViews,id:Int,visual:JSONObject,numeric:Double){
+    val effect=visual.optJSONObject("effect")?:return
+    val kind=effect.optString("kind","none")
+    if(kind=="none"){views.setFloat(id,"setAlpha",1f);return}
+    if(!staticEffectActive(effect,numeric)){views.setFloat(id,"setAlpha",1f);return}
     val intensity=effect.optString("intensity","medium")
     val alpha=when(kind){
       "fade"->when(intensity){"soft"->.94f;"strong"->.72f;else->.84f}
       "pulse"->when(intensity){"soft"->.96f;"strong"->.78f;else->.88f}
       "flash-on-change"->when(intensity){"soft"->.92f;"strong"->.68f;else->.80f}
+      "bounce"->1f
       else->1f
     }
     views.setFloat(id,"setAlpha",alpha)
