@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
@@ -40,6 +40,7 @@ export function LedgerScreen() {
   const [note,setNote]=useState('');
   const [confirmOpen,setConfirmOpen]=useState(false);
   const [dateOpen,setDateOpen]=useState(false);
+  const [selectedEntry,setSelectedEntry]=useState<CanonicalLedgerEntry|null>(null);
 
   const tradeMode=tradePlan==='ROUND_LOT'?'ROUND_LOT':'ODD_LOT';
   const selectedBrokerProfile=tradePlan==='RECURRING'?brokerSettings.recurringProfile:brokerSettings.activeProfile;
@@ -214,7 +215,7 @@ export function LedgerScreen() {
         },
         {key:'ledger-list',element:
           <FrameCard title="交易紀錄">
-            {ordered.slice(0,20).map(row=><View key={row.id} style={styles.tableRow}>
+            {ordered.slice(0,20).map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
               <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
               <View style={{flex:1}}>
@@ -222,8 +223,8 @@ export function LedgerScreen() {
                 {'symbol' in row?<Text style={styles.symbolName} numberOfLines={1}>{row.name}</Text>:null}
                 {row.kind==='buy'||row.kind==='sell'?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
               </View>
-              <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Pressable onPress={()=>finance.deleteEntry(row.id)}><Text style={styles.delete}>刪除</Text></Pressable></View>
-            </View>)}
+              <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Text style={styles.detailsHint}>點擊查看 ›</Text></View>
+            </Pressable>)}
           </FrameCard>
         },
         {key:'monthly-summary',element:
@@ -242,6 +243,32 @@ export function LedgerScreen() {
 
     <PageFrameSettingsModal visible={settingsOpen} pageKey="ledger" title="紀錄" frames={PAGE_FRAMES.ledger} onClose={()=>setSettingsOpen(false)}/>
     <DatePickerModal visible={dateOpen} value={date} onChange={setDate} onClose={()=>setDateOpen(false)}/>
+    <Modal visible={!!selectedEntry} transparent animationType="fade" onRequestClose={()=>setSelectedEntry(null)}>
+      <View style={styles.backdrop}><View style={styles.detailModal}>
+        <Text style={styles.modalTitle}>交易完整明細</Text>
+        {selectedEntry?<ScrollView contentContainerStyle={styles.detailRows}>
+          <PreviewRow label="交易類型" value={kindLabel(selectedEntry.kind)}/>
+          <PreviewRow label="日期" value={selectedEntry.date}/>
+          <PreviewRow label="標的" value={'symbol' in selectedEntry?`${selectedEntry.symbol} ${selectedEntry.name}`:selectedEntry.label}/>
+          {(selectedEntry.kind==='buy'||selectedEntry.kind==='sell')?<>
+            <PreviewRow label="成交股數" value={`${selectedEntry.shares.toLocaleString('zh-TW')} 股`}/>
+            <PreviewRow label="成交單價" value={`NT$ ${selectedEntry.price}`}/>
+            <PreviewRow label="純成交金額" value={`NT$ ${money(selectedEntry.amount)}`}/>
+            <PreviewRow label="實際手續費（歷史固化）" value={`NT$ ${money(selectedEntry.actualFee)}`}/>
+            {selectedEntry.kind==='sell'?<PreviewRow label="實際證交稅（歷史固化）" value={`NT$ ${money(selectedEntry.actualTax)}`}/>:null}
+          </>:selectedEntry.kind==='dividend'?<>
+            <PreviewRow label="每股股息" value={`NT$ ${selectedEntry.perShareAmount}`}/>
+            <PreviewRow label="配息股數" value={`${selectedEntry.sharesHeld.toLocaleString('zh-TW')} 股`}/>
+          </>:<PreviewRow label="現金調整" value={`NT$ ${money(selectedEntry.amount)}`}/>}
+          <PreviewRow label="現金流" value={`NT$ ${money(calculateLedgerCashFlow(selectedEntry))}`} strong/>
+          {'note' in selectedEntry&&selectedEntry.note?<Text style={styles.coreNote}>備註：{selectedEntry.note}</Text>:null}
+        </ScrollView>:null}
+        <View style={styles.confirmButtons}>
+          <Pressable style={styles.secondaryButton} onPress={()=>setSelectedEntry(null)}><Text style={styles.secondaryText}>關閉</Text></Pressable>
+          <Pressable style={styles.secondaryButton} onPress={()=>{const row=selectedEntry;if(!row)return;Alert.alert('刪除交易紀錄？','此操作會改變帳務、持股與現金，且無法復原。',[{text:'取消',style:'cancel'},{text:'確認刪除',style:'destructive',onPress:()=>{finance.deleteEntry(row.id);setSelectedEntry(null);}}]);}}><Text style={styles.delete}>刪除（再次確認）</Text></Pressable>
+        </View>
+      </View></View>
+    </Modal>
     <ConfirmModal visible={confirmOpen} title={`確認${kindLabel(kind)}入帳`} onCancel={()=>setConfirmOpen(false)} onConfirm={commitEntry}>
       <Text style={styles.confirmText}>日期：{date}</Text>
       {kind!=='other'&&quote?<Text style={styles.confirmText}>標的：{quote.symbol} {quote.name}</Text>:null}
@@ -418,7 +445,10 @@ const styles=StyleSheet.create({
   rowRight:{alignItems:'flex-end'},
   amount:{fontSize:11,fontWeight:'900',color:colors.text},
   fee:{fontSize:9,color:colors.textSecondary,marginTop:2},
-  delete:{fontSize:9,color:colors.loss,fontWeight:'800',marginTop:4},
+  delete:{fontSize:11,color:colors.loss,fontWeight:'800',marginTop:4},
+  detailsHint:{fontSize:10,color:colors.primary,fontWeight:'800',marginTop:4},
+  detailModal:{width:'100%',maxWidth:440,maxHeight:'85%',backgroundColor:colors.surface,borderRadius:22,padding:20,gap:16},
+  detailRows:{gap:12,paddingVertical:4},
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   monthLabel:{fontSize:11,fontWeight:'900',color:colors.textSecondary},
   backdrop:{flex:1,backgroundColor:'rgba(12,18,27,.45)',alignItems:'center',justifyContent:'center',padding:24},
