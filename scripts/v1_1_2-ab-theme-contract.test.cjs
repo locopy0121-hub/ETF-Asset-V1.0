@@ -17,6 +17,7 @@ const backup=read('src/settings/BackupService.ts');
 const bridge=read('src/native/TfAssetNativeBridge.ts');
 const native=read('native/android/TfAssetNativeModule.kt');
 const releaseWorkflow=read('.github/workflows/release-v1.yml');
+const releaseInject=read('scripts/inject-v1_1_2-android.cjs');
 const snapshot=read('src/finance/sharedSnapshotAdapter.ts');
 
 for(const token of ['A 顯示項目（母）','B 單項細部','單項行距','單項特效','ITEM_EFFECT_TRIGGERS'])assert(widget.includes(token),'Widget A-B UI missing '+token);
@@ -60,7 +61,7 @@ assert.match(backup,/sanitizeRestoredPayload\(selected\.payload\)/,'Local backup
 assert.match(backup,/sanitizeRestoredPayload\(parsed\.payload\)/,'Imported backup restore must sanitize theme background URI');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
 for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
-for(const token of ['for i in range(1,11)','activity-alias','android:name=\".Icon01\"','android:name=\".Icon10\"','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release launcher alias injection missing '+token);
+for(const token of ['node scripts/inject-v1_1_2-android.cjs','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release workflow injection hook missing '+token);\nfor(const token of ['activity-alias','for(let i=1;i<=10;i++)','String(i).padStart(2,\'0\')','android:name=\".Icon'])assert(releaseInject.includes(token),'Release launcher injection script missing '+token);\nfor(const key of ['01','10'])assert(releaseInject.includes("['01','10']")||releaseInject.includes('Icon'+key),'Release launcher alias boundary missing Icon'+key);
 for(let i=1;i<=10;i++)assert(fs.existsSync('native/android/res/drawable/tf_icon_'+String(i).padStart(2,'0')+'.xml'),'Launcher icon '+i+' missing');
 
 assert.match(snapshot,/totalAssets:portfolio\.totalMarketValue/,'Shared totalAssets must stay market-value only');
