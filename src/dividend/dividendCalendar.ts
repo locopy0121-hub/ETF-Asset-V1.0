@@ -35,7 +35,10 @@ export function buildDividendCalendarEvents(
     const declared=[
       {type:'exDate' as const,date:dateFromNote(entry.note,'除息日')},
       {type:'recordDate' as const,date:dateFromNote(entry.note,'股權登記日')},
-      {type:'paymentDate' as const,date:dateFromNote(entry.note,'配發日')||entry.date},
+      // AI-imported TWSE events may use an ex-date as the ledger date while payment is unannounced.
+      // Only manual/receipt ledger entries may use their ledger date as a payment-date fallback.
+      {type:'paymentDate' as const,date:dateFromNote(entry.note,'配發日')||
+        (String(entry.note??'').includes('TWSE 配息事件')?'':entry.date)},
     ];
     for(const item of declared){
       if(!item.date)continue;
