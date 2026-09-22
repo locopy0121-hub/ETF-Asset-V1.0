@@ -50,7 +50,12 @@ const sortLabels:Record<WidgetSortKey,string>={manual:'手動',symbol:'代號',p
 
 export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
   const [editingField,setEditingField]=useState<WidgetField|null>(null);
-  const previewHolding=sortWidgetHoldings(previewSnapshot,value)[0];
+  const sortedRows=sortWidgetHoldings(previewSnapshot,value);
+  const previewHolding=sortedRows[0];
+  const wallSupported:readonly WidgetField[]=['symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
+  const selectedWallFields=value.fields.filter(field=>wallSupported.includes(field)).slice(0,4);
+  const wallPreviewFields=selectedWallFields.length?selectedWallFields:(['name','symbol','price','changePercent'] as const);
+  const wallPreviewRows=sortedRows.slice(0,Math.min(8,Math.max(1,value.wallColumns*2)));
   const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>{
     const config=widgetFieldStyle(value,field);
     return {field,config,...widgetFieldText(previewSnapshot,previewHolding,field,config.label)};
@@ -108,23 +113,45 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
     </View>
 
     <Section title="即時預覽">
-      <View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
-        {previewLines.map((line,index)=>{
-          const visual=line.config.visual;
-          const tone=line.profit&&visual.useProfitColor?previewTone:(visual.textColor??value.style.textColor);
-          return <Text key={line.field} numberOfLines={1} style={{
-            color:tone,
-            backgroundColor:visual.backgroundColor??'transparent',
-            fontWeight:index===0?'900':'800',
-            fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale)*visual.fontScale,
-            textAlign:visual.textAlign??value.style.textAlign,
-            marginTop:index===0?0:(visual.lineGap??value.style.rowGap),
-            paddingVertical:visual.paddingY,
-          }}>{line.text}</Text>;
-        })}
-        {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
-      </View>
-      <Text style={styles.note}>預覽直接使用 A 順序與 B 單項樣式；2×2 實際可見數量仍受桌面尺寸與模板容量限制。</Text>
+      {value.template==='quote-wall'
+        ?<View style={[styles.preview,styles.wallPreview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
+          {wallPreviewRows.map(row=><View key={row.symbol} style={[styles.wallPreviewCard,{flexBasis:value.wallColumns===1?'100%':value.wallColumns===2?'48%':value.wallColumns===3?'31%':'23%'}]}>
+            {wallPreviewFields.map((field,index)=>{
+              const config=widgetFieldStyle(value,field);
+              const visual=config.visual;
+              const line=widgetFieldText(previewSnapshot,row,field,config.label);
+              const numeric=row.changePercent??0;
+              const tone=line.profit&&visual.useProfitColor?(numeric>=0?value.style.gainColor:value.style.lossColor):(visual.textColor??value.style.textColor);
+              return <Text key={field} numberOfLines={1} style={{
+                color:tone,
+                backgroundColor:visual.backgroundColor??'transparent',
+                fontSize:10*value.style.fontScale*visual.fontScale,
+                fontWeight:'800',
+                textAlign:visual.textAlign??value.style.textAlign,
+                marginTop:index===0?0:(visual.lineGap??value.style.rowGap),
+                paddingVertical:visual.paddingY,
+              }}>{line.text}</Text>;
+            })}
+          </View>)}
+          {!wallPreviewRows.length?<Text style={{color:value.style.secondaryTextColor}}>尚無持股資料</Text>:null}
+        </View>
+        :<View style={[styles.preview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
+          {previewLines.map((line,index)=>{
+            const visual=line.config.visual;
+            const tone=line.profit&&visual.useProfitColor?previewTone:(visual.textColor??value.style.textColor);
+            return <Text key={line.field} numberOfLines={1} style={{
+              color:tone,
+              backgroundColor:visual.backgroundColor??'transparent',
+              fontWeight:index===0?'900':'800',
+              fontSize:(index===0?14*value.style.titleFontScale:12*value.style.fontScale)*visual.fontScale,
+              textAlign:visual.textAlign??value.style.textAlign,
+              marginTop:index===0?0:(visual.lineGap??value.style.rowGap),
+              paddingVertical:visual.paddingY,
+            }}>{line.text}</Text>;
+          })}
+          {!previewLines.length?<Text style={{color:value.style.secondaryTextColor}}>請選擇顯示項目</Text>:null}
+        </View>}
+      <Text style={styles.note}>預覽與桌面 Renderer 使用同一 A 順序／B 樣式；行情牆只取適用持股欄位，避免摘要預覽與實體行情牆不一致。</Text>
     </Section>
 
     <Section title="尺寸與模板">
@@ -269,6 +296,8 @@ const styles = StyleSheet.create({
   labelEdit:{gap:4},
   inlineValue:{fontSize:11,fontWeight:'900',color:colors.text},
   input:{minHeight:38,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:10,paddingVertical:7,fontSize:11,fontWeight:'800',color:colors.text},
+  wallPreview:{flexDirection:'row',flexWrap:'wrap',alignContent:'flex-start',justifyContent:'space-between',gap:6},
+  wallPreviewCard:{borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,padding:6,minHeight:56},
 });
 
 function widgetFieldText(snapshot:SharedSnapshot|null,holding:SharedSnapshot['holdings'][number]|undefined,field:WidgetField,label:string):{text:string;profit:boolean}{
