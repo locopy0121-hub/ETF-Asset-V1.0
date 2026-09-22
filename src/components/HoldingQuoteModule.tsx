@@ -11,6 +11,7 @@ import {
 } from '../domain/uiModels';
 import type { ItemEffectConfig } from '../domain/displayItemContract';
 import { radius, spacing } from '../theme/tokens';
+import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const pct=(value:number)=>`${value>=0?'+':''}${value.toFixed(2)}%`;
@@ -110,6 +111,8 @@ function WallText({
   primary?:boolean;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
+  const systemColors=useSettingsRuntime().prefs.display;
+  const liveBackground=resolveWallBackground(field,item,change,systemColors);
   const tone=fieldColor(field,item,change,wall);
   const value=fieldValue(field.field,item,change,changePct);
   const fontSize=header
@@ -121,9 +124,9 @@ function WallText({
     numeric={numeric}
     refreshToken={refreshToken}
     numberOfLines={1}
-    inlineBackgroundColor={field.backgroundColor}
+    inlineBackgroundColor={liveBackground}
     style={{
-      color:header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
+      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:field.align,
@@ -146,15 +149,17 @@ function WallMetric({
   right?:boolean;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
-  return <View style={[right?styles.rightMetric:undefined,{backgroundColor:field.backgroundColor??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
-    <Text style={[styles.footerLabel,{color:field.textColor??wall.style.secondaryTextColor,textAlign:field.align}]}>{field.label}</Text>
+  const systemColors=useSettingsRuntime().prefs.display;
+  const liveBackground=resolveWallBackground(field,item,change,systemColors);
+  return <View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
+    <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':(field.textColor??wall.style.secondaryTextColor),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
       numeric={numeric}
       refreshToken={refreshToken}
       style={{
-        color:fieldColor(field,item,change,wall),
+        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':fieldColor(field,item,change,wall),
         fontSize:12*field.fontScale,
         fontWeight:'900',
         marginTop:2,
@@ -239,6 +244,12 @@ function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number
   if(!field.useProfitColor)return field.textColor??(field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor);
   const value=field.field==='pnl'||field.field==='roi'?item.pnl:field.field==='marketValue'?item.marketValue:change;
   return value>0?wall.style.gainColor:value<0?wall.style.lossColor:(field.textColor??wall.style.secondaryTextColor);
+}
+function resolveWallBackground(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,system:DisplayPrefs):string|null{
+  if(!field.useProfitBackground)return field.backgroundColor;
+  const value=field.field==='pnl'||field.field==='roi'||field.field==='marketValue'?item.pnl:change;
+  if(!Number.isFinite(value)||(field.field!=='pnl'&&field.field!=='roi'&&field.field!=='marketValue'&&!(item.previousClose>0)))return field.backgroundColor;
+  return value>0?system.gainColor:value<0?system.lossColor:system.neutralColor;
 }
 function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:null;
