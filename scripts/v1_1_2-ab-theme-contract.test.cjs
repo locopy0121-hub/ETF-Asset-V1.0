@@ -37,6 +37,8 @@ const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.inde
 assert.equal(backgroundBlock.split('data:image/png;base64').length-1,10,'Theme runtime must contain 10 built-in backgrounds');
 for(const key of ['sky','midnight','sand','forest','violet','rose','aqua','amber','ocean','slate'])assert(theme.includes("key:'"+key+"'"),'Theme preset missing '+key);
 assert(theme.includes('Array.from({length:5}'),'Theme runtime must maintain five custom slots');
+assert.match(theme,/setNativeAppIcon\(prefs\.iconKey\)/,'Theme runtime must synchronize persisted/applied/reset iconKey to Android launcher');
+assert.match(theme,/\[hydrated,prefs\.iconKey\]/,'Native icon synchronization must react to every iconKey change after hydration');
 for(const token of ['pickNativeThemeBackground','setNativeAppIcon'])assert(bridge.includes(token),'Native theme bridge missing '+token);
 for(const token of ['pickThemeBackground','setAppIcon','val selected="Icon"+suffix','val aliases=(1..10).map','setComponentEnabledSetting'])assert(native.includes(token),'Native theme action missing '+token);
 for(const token of ['for i in range(1,11)','activity-alias','android:name=\".Icon01\"','android:name=\".Icon10\"','grep -c \'activity-alias\''])assert(releaseWorkflow.includes(token),'Release launcher alias injection missing '+token);
