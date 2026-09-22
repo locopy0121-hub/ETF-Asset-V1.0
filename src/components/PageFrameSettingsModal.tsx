@@ -2,7 +2,7 @@ import {type ReactNode,useEffect,useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
-import type {MainPageKey} from '../domain/pageRegistry';
+import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
 import {
   normalizeEditorConfig,
@@ -41,7 +41,8 @@ export function PageFrameSettingsModal({
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
   const pageSettings=useSettingsRuntime();
-  const [titleDraft,setTitleDraft]=useState(pageSettings.prefs.pageTitles[pageKey]||title);
+  const defaultPageTitle=MAIN_PAGES.find(page=>page.key===pageKey)?.title??title;
+  const [titleDraft,setTitleDraft]=useState(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
@@ -50,7 +51,7 @@ export function PageFrameSettingsModal({
   useEffect(()=>{
     if(!visible)return;
     setDraft({...config});
-    setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||title);
+    setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
     setDisplayDraft({...displayConfig});
     setOpenFrame(null);
     setOpenGroup(null);
@@ -84,9 +85,9 @@ export function PageFrameSettingsModal({
     const key=`${frameKey}:${group}`;
     setOpenGroup(current=>current===key?null:key);
   };
-  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||title);onClose();};
+  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||defaultPageTitle);onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
-  const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,title);onClose();};
+  const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();};
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
     <View style={styles.root}>
