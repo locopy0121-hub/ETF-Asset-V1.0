@@ -433,6 +433,11 @@ export function SettingsScreen(){
       <StatusRow label="Android 通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
       <ToggleRow label="除息提醒" value={n.exDividend} onChange={exDividend=>settings.patchNotifications({exDividend})}/>
       <ToggleRow label="配息提醒" value={n.dividend} onChange={dividend=>settings.patchNotifications({dividend})}/>
+      <Text style={styles.subTitle}>股息月曆事件顯示</Text>
+      <ToggleRow label="顯示除息日" value={settings.prefs.dividendCalendar.showExDate} onChange={showExDate=>settings.patchDividendCalendar({showExDate})}/>
+      <ToggleRow label="顯示股權登記日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
+      <ToggleRow label="顯示股息配發日" value={settings.prefs.dividendCalendar.showPaymentDate} onChange={showPaymentDate=>settings.patchDividendCalendar({showPaymentDate})}/>
+      <ToggleRow label="顯示事件狀態" value={settings.prefs.dividendCalendar.showStatus} onChange={showStatus=>settings.patchDividendCalendar({showStatus})}/>
       <ToggleRow label="行情異常提醒" value={n.marketAlert} onChange={marketAlert=>settings.patchNotifications({marketAlert})}/>
       <ToggleRow label="更新失敗提醒" value={n.updateFailure} onChange={updateFailure=>settings.patchNotifications({updateFailure})}/>
       <ToggleRow label="備份提醒" value={n.backupReminder} onChange={backupReminder=>settings.patchNotifications({backupReminder})}/>
