@@ -243,7 +243,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
 
 function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][]}){
   const style=activeMonitorStyle(value);
-  const totalMarketValue=rows.reduce((sum,row)=>sum+(Number.isFinite(row.marketValue)?row.marketValue:0),0);
+  const totalMarketValue=(snapshot?.asset.marketValue??0)>0?(snapshot?.asset.marketValue??0):rows.reduce((sum,row)=>sum+(Number.isFinite(row.marketValue)?row.marketValue:0),0);
   if(value.mode==='mini'){
     const cols=enabledMiniColumns(value),statusItems=enabledMiniStatusItems(value);
     return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
