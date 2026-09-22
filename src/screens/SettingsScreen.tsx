@@ -383,7 +383,7 @@ export function SettingsScreen(){
       {appPanel==='titles'?<Panel title="頁面標題">
         {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
           <Text style={styles.rowTitle}>{page.label}</Text>
-          <TextInput accessibilityLabel={page.label+'頁面標題'} value={settings.prefs.pageTitles[page.key]??page.title} onChangeText={value=>settings.patchPageTitle(page.key,value)} maxLength={48} style={styles.input}/>
+          <TextInput accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
         </View>)}
       </Panel>:null}
       <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(appPanel==='reset'?null:'reset')}/>
