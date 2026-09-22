@@ -100,3 +100,19 @@
 - 更新 `PageFrameSettingsModal.tsx`、`HomeScreen.tsx`、`PortfolioScreen.tsx`，連接正式持股樣本而非捏造預覽數據；目前僅涵蓋首頁／庫存行情卡 U06 局部，其他框架需後續驗證。
 - 工作分支上的最新 `package.json`、`app.json`、設定頁、備份元資料、CI QA APK 指令及版本契約均使用 2.1.2／20102。CI 與真機結果必須逐一確認，未通過不可宣稱 Build 或 Release PASS。
 - **G01 新聞全文摘要等本次八項其餘要求與既有 U01～U15 不得縮減。** 特別是 G01 仍待修復，舊 QA APK 仍會複製新聞標題。
+
+
+## 7. V2.1.2 此次續修的程式證據及未完成項目（2026-09-23）
+
+**不以 Commit、版本號或 QA Build 取代功能驗收。最新已核對程式品質工作流程 #683 / 35797615086：quality 成功；正式 Release 未啟動，QA APK job 依 `qa-ready` 閘門跳過。**
+
+| 原清單 | 此次已寫入程式 | 尚未取得證據／缺口 | 狀態 |
+| --- | --- | --- | --- |
+| U06 | 新 `FloatingHoldingCardPreview.tsx` 直接重用 `HoldingQuoteModule`；首頁、庫存頁設定以真實持股 + draft 顯示一張完整小卡；拖移、縮放、收合、關閉 | 裝置實際拖曳／尺寸／位置驗收，以及其他框架的浮動預覽 | CODE 已寫入；未經完整驗收 |
+| G01 | `articleSummary.ts` 和 `AiNewsRuntime.tsx` 嘗試取得真實可讀新聞正文，從正文擷取重點；`NewsReaderModal.tsx`、AI 助理對不可取得正文的來源不再冒充 AI 摘要；新增純內容行為測試 | 媒體原文成功率、合法全文來源、真正 AI 摘要後端、真實新聞端到端驗證 | 部分實作，**不等於全文 AI 摘要已完成** |
+| G02 | `HoldingQuoteModule.tsx` 將自訂文字背景移至巢狀 Text，以文字範圍著色而非整行；主要行情卡現有共享 Renderer | Monitor／Mini／Widget Native 覆蓋及實機確認 | 部分實作，未經完整驗收 |
+| G03 | `uiModels.ts`、`editorModel.ts`、`HoldingMarketWallEditor.tsx` 新增獨立背景隨損益狀態切換並儲存；`HoldingQuoteModule.tsx` 依系統獲利／虧損／持平色即時取值 | 背景在所有表面／圖表／Widget／Monitor 動態連動與真機驗證 | 部分實作，未經完整驗收 |
+| G07 | `App.tsx` 使用 `BackHandler`＋頁籤瀏覽歷史，ETF 詳情與主 Tab 每次返回一層；根層才交還 Android 退出 | AI 浮動窗優先返回、全部巢狀編輯路徑及真機返回手勢 | 部分實作，未經完整驗收 |
+| G04／G05／G06／G08 | TF 頂部模塊深度編輯、月曆六樣式與尺寸、資產配置／OHLC K 線完整工具、主頁左右滑動 | 尚無此次完整實作或完整驗證證據 | 未完成 |
+
+**版本身份：** V2.1.2、Android `20102`、iOS `20102`，package `com.tfasset.app`。下一次正式更新最低遞增至 V2.1.3／20103，不可沿用 V2.1.2 當另一個已更新版本。只在全部原始 U01～U15＋G01～G08 通過核對後執行正式 GitHub-only APK Action。
