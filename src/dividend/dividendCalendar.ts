@@ -18,6 +18,14 @@ export type DividendCalendarEvent=Readonly<{
   status:DividendCalendarStatus;
 }>;
 
+/** Device-local calendar day, not the UTC day returned by toISOString(). */
+export function deviceLocalCalendarDate(now:Date=new Date()):string{
+  const year=now.getFullYear();
+  const month=String(now.getMonth()+1).padStart(2,'0');
+  const day=String(now.getDate()).padStart(2,'0');
+  return `${year}-${month}-${day}`;
+}
+
 const DATE_PATTERN='(\\d{4}-\\d{2}-\\d{2})';
 const dateFromNote=(note:string|undefined,label:string)=>{
   const match=String(note??'').match(new RegExp(label+'\\s*'+DATE_PATTERN));
