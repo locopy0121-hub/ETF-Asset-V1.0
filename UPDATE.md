@@ -90,3 +90,13 @@
 **追蹤方式：** G01～G08 必須與 U01～U15 同時 Final Checklist Reconciliation，對應重疊項可共用實作但各自獨立驗收，不得合併刪項。逐項標註 changed files、測試、CODE／RUNTIME／UI／RESULT 證據。若一項失敗須原地修復，禁止直接進正式 Action。涉及手機手勢的真機驗收未完成時只能稱 QA 候選版本。
 
 **目前真實狀態：** 本節是已落地的 GO 需求鎖定、既有程式碼尚未因此完成八項；正式 Action／正式 APK 仍受未完成 Gate 阻斷。
+
+
+## 6. 2026-09-23 版本遞增與 U06 單卡預覽續接
+
+- **版本規則重申：每次更新正式版必須遞增，不沿用上一版本。** 此次 PR #20 工作樹已從 V2.1.1 遞增至 **V2.1.2／Android versionCode 20102**；iOS buildNumber 亦同步。下一次更新不得再沿用 2.1.2。
+- 更新前備份：`backup-v2.1.1-20260923-pre-v2.1.2`；起點 commit `1e826c1be3c7e825f51e6a1772814c2f4752cd1a`。既有備份不刪。
+- **U06 開始實作，不是 PASS：** 新增 `FloatingHoldingCardPreview.tsx`，重用正式 `HoldingQuoteModule`，在首頁／庫存的行情牆 AB 設定顯示一張**完整**持股小卡，依目前編輯中的 `displayDraft.holdingWall` 即時重繪；不是六宮格、不是完整行情牆，也不是只有損益欄位。支援拖移、縮放比例、小窗收合及關閉；調整不直接寫正式設定。
+- 更新 `PageFrameSettingsModal.tsx`、`HomeScreen.tsx`、`PortfolioScreen.tsx`，連接正式持股樣本而非捏造預覽數據；目前僅涵蓋首頁／庫存行情卡 U06 局部，其他框架需後續驗證。
+- 工作分支上的最新 `package.json`、`app.json`、設定頁、備份元資料、CI QA APK 指令及版本契約均使用 2.1.2／20102。CI 與真機結果必須逐一確認，未通過不可宣稱 Build 或 Release PASS。
+- **G01 新聞全文摘要等本次八項其餘要求與既有 U01～U15 不得縮減。** 特別是 G01 仍待修復，舊 QA APK 仍會複製新聞標題。
