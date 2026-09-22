@@ -164,6 +164,11 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       fontScale:clamp(candidate?.fontScale,.7,1.8,fallback.fontScale),
       align:candidate?.align==='center'||candidate?.align==='right'?candidate.align:'left',
       useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
+      textColor:candidate?.textColor===undefined?fallback.textColor:candidate.textColor,
+      backgroundColor:candidate?.backgroundColor===undefined?fallback.backgroundColor:candidate.backgroundColor,
+      lineGap:candidate?.lineGap==null?fallback.lineGap:clamp(candidate.lineGap,0,32,fallback.lineGap??0),
+      paddingY:clamp(candidate?.paddingY,0,16,fallback.paddingY),
+      effect:candidate?.effect??fallback.effect,
     };
   }).filter(field=>HOLDING_WALL_FIELDS.includes(field.field));
   return {
@@ -174,6 +179,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       textColor:wallColor(header.textColor,DEFAULT_HOLDING_WALL_CONFIG.header.textColor),
       borderColor:wallColor(header.borderColor,DEFAULT_HOLDING_WALL_CONFIG.header.borderColor),
       borderWidth:clamp(header.borderWidth,0,4,DEFAULT_HOLDING_WALL_CONFIG.header.borderWidth),
+      effect:header.effect??DEFAULT_HOLDING_WALL_CONFIG.header.effect,
     },
     fields,
     style:{
