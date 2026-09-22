@@ -1,5 +1,5 @@
 import {type ReactNode,useEffect,useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,View} from 'react-native';
+import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
@@ -19,6 +19,7 @@ import {
 } from '../editor/pageEditor';
 import {AB_COLLAPSE_RULES,getComponentCapabilities} from '../editor/componentCapabilities';
 import {colors,radius,spacing} from '../theme/tokens';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
 
@@ -39,6 +40,8 @@ export function PageFrameSettingsModal({
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
+  const pageSettings=useSettingsRuntime();
+  const [titleDraft,setTitleDraft]=useState(pageSettings.prefs.pageTitles[pageKey]||title);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
@@ -47,6 +50,7 @@ export function PageFrameSettingsModal({
   useEffect(()=>{
     if(!visible)return;
     setDraft({...config});
+    setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||title);
     setDisplayDraft({...displayConfig});
     setOpenFrame(null);
     setOpenGroup(null);
@@ -80,9 +84,9 @@ export function PageFrameSettingsModal({
     const key=`${frameKey}:${group}`;
     setOpenGroup(current=>current===key?null:key);
   };
-  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);onClose();};
+  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||title);onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
-  const reset=()=>{resetPage();onClose();};
+  const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,title);onClose();};
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
     <View style={styles.root}>
@@ -96,6 +100,10 @@ export function PageFrameSettingsModal({
         <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <View style={styles.header}><Text style={styles.sectionTitle}>頁面標題</Text></View>
+          <View style={styles.body}><Text style={styles.rowHint}>編輯本頁上方顯示的標題，儲存後即時套用。</Text><TextInput accessibilityLabel="頁面標題" value={titleDraft} onChangeText={setTitleDraft} maxLength={48} style={styles.pageTitleInput}/></View>
+        </View>
         <View style={styles.toolbar}>
           <Text style={styles.toolbarText}>AB：預設收合 {AB_COLLAPSE_RULES.defaultCollapsed?'✓':'×'} · 同層單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
           <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
@@ -294,6 +302,7 @@ function ChoiceGroup<T extends string>({items,value,onChange,disabled=false}:{it
 
 const styles=StyleSheet.create({
   root:{flex:1,backgroundColor:colors.background},
+  pageTitleInput:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,minHeight:42,paddingHorizontal:12,color:colors.text,backgroundColor:colors.surface,fontSize:15},
   top:{paddingTop:56,paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,backgroundColor:colors.surface,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'flex-start',gap:spacing.sm},
   kicker:{fontSize:12,fontWeight:'800',color:colors.primary},title:{fontSize:26,fontWeight:'900',color:colors.text,marginTop:4},hint:{fontSize:12,color:colors.textSecondary,lineHeight:18,marginTop:5},
   cancel:{paddingHorizontal:12,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},cancelText:{color:colors.textSecondary,fontWeight:'800'},
