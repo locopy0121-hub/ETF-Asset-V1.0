@@ -31,6 +31,7 @@ class TfAssetOverlayService:Service(){
   private var mode="normal"
   private var lastLayoutSignature:String?=null
   private var animationsEnabled=true
+  private val previousEffectValues=mutableMapOf<String,Double?>()
   private var downX=0f;private var downY=0f;private var startX=0;private var startY=0;private var lastTap=0L
 
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
@@ -247,7 +248,7 @@ class TfAssetOverlayService:Service(){
       val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",style.optInt("rowGap",6)).coerceIn(0,32) else style.optInt("rowGap",6).coerceIn(0,32)
       val py=visual.optInt("paddingY",0).coerceIn(0,16)
       view.setPadding(3,gap+py,3,py)
-      applyItemEffect(view,visual.optJSONObject("effect"),numeric,isAlert(row,cfg))
+      applyItemEffect(view,visual.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal:${row.optString("symbol","")}:$field")
       container.addView(view,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
     }
     fun addFields(container:LinearLayout,row:JSONObject,fields:List<String>,limit:Int=fields.size,baseSize:Float=11f){
@@ -352,12 +353,12 @@ class TfAssetOverlayService:Service(){
               val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",if(index==0)0 else 2).coerceIn(0,32) else if(index==0)0 else 2
               val py=field.optInt("paddingY",0).coerceIn(0,16)
               view.setPadding(3,gap+py,3,py)
-              applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+              applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:header:$key")
               nameWrap.addView(view)
             }
             headerRow.addView(nameWrap,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             headerRow.addView(textView("›",wallSecondary,22*headerScale*fs,Gravity.END))
-            applyItemEffect(headerRow,wallHeader.optJSONObject("effect"),row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},isAlert(row,cfg))
+            applyItemEffect(headerRow,wallHeader.optJSONObject("effect"),row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:header")
             card.addView(headerRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
           }
 
@@ -381,7 +382,7 @@ class TfAssetOverlayService:Service(){
             val primaryGap=if(primary.has("lineGap")&&!primary.isNull("lineGap"))primary.optInt("lineGap",0).coerceIn(0,32) else 0
             val primaryPy=primary.optInt("paddingY",0).coerceIn(0,16)
             primaryView.setPadding(3,primaryGap+primaryPy,3,primaryPy)
-            applyItemEffect(primaryView,primary.optJSONObject("effect"),primaryNumeric,isAlert(row,cfg))
+            applyItemEffect(primaryView,primary.optJSONObject("effect"),primaryNumeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:quote:$primaryKey")
             quoteRow.addView(primaryView,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             if(quoteFields.size>1){
               val changeWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.END}
@@ -403,7 +404,7 @@ class TfAssetOverlayService:Service(){
                 val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",wallGap).coerceIn(0,32) else wallGap
                 val py=field.optInt("paddingY",0).coerceIn(0,16)
                 view.setPadding(3,gap+py,3,py)
-                applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+                applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:quote:$key")
                 changeWrap.addView(view)
               }
               quoteRow.addView(changeWrap)
@@ -436,7 +437,7 @@ class TfAssetOverlayService:Service(){
               cell.setPadding(0,gap+py,0,py)
               cell.addView(textView(field.optString("label",key),wallSecondary,10*fs,gravity))
               val valueView=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravity)
-              applyItemEffect(valueView,field.optJSONObject("effect"),numeric,isAlert(row,cfg))
+              applyItemEffect(valueView,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:footer:$key")
               cell.addView(valueView)
               footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             }
@@ -505,7 +506,7 @@ class TfAssetOverlayService:Service(){
       val headerText=color(header.optString("textColor","#CBD5E1"),Color.LTGRAY)
       val headerScale=header.optDouble("fontScale",.9).coerceIn(.7,1.6).toFloat()
       columns.forEach{column->headerRow.addView(textView(column.optString("label",column.optString("field","")),headerText,11*headerScale,gravityFor(column.optString("align","left"))),weighted(column.optDouble("widthPercent",20.0).toFloat()))}
-      applyItemEffect(headerRow,header.optJSONObject("effect"),null,false)
+      applyItemEffect(headerRow,header.optJSONObject("effect"),null,false,"mini:header")
       root.addView(headerRow)
     }
 
@@ -530,7 +531,7 @@ class TfAssetOverlayService:Service(){
         val bg=column.optString("backgroundColor","");if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
         val gap=if(column.has("lineGap")&&!column.isNull("lineGap"))column.optInt("lineGap",style.optInt("rowGap",2)).coerceIn(0,32) else style.optInt("rowGap",2).coerceIn(0,32)
         val py=column.optInt("paddingY",0).coerceIn(0,16);view.setPadding(3,gap+py,3,py)
-        applyItemEffect(view,column.optJSONObject("effect"),numeric,isAlert(holding,cfg))
+        applyItemEffect(view,column.optJSONObject("effect"),numeric,isAlert(holding,cfg),"mini:${holding.optString("symbol","")}:$field")
         row.addView(view,weighted(column.optDouble("widthPercent",20.0).toFloat()))
       }
       body.addView(row)
@@ -587,7 +588,7 @@ class TfAssetOverlayService:Service(){
           val bg=item.optString("backgroundColor","");if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
           val gap=if(item.has("lineGap")&&!item.isNull("lineGap"))item.optInt("lineGap",0).coerceIn(0,32) else 0
           val py=item.optInt("paddingY",0).coerceIn(0,16);view.setPadding(3,gap+py,3,py)
-          applyItemEffect(view,item.optJSONObject("effect"),numeric.takeIf{it.isFinite()},false)
+          applyItemEffect(view,item.optJSONObject("effect"),numeric.takeIf{it.isFinite()},false,"mini:status:$field")
           statusRow.addView(view,weighted(1f))
         }
         repeat((statusColumns-items.size).coerceAtLeast(0)){statusRow.addView(View(this),weighted(1f))}
@@ -598,14 +599,22 @@ class TfAssetOverlayService:Service(){
     }
   }
 
-  private fun applyItemEffect(view:View,effect:JSONObject?,numeric:Double?,alert:Boolean){
+  private fun applyItemEffect(view:View,effect:JSONObject?,numeric:Double?,alert:Boolean,key:String){
     view.clearAnimation()
-    if(!animationsEnabled)return
     if(effect==null)return
+    val trigger=effect.optString("trigger","change")
+    val hadPrevious=previousEffectValues.containsKey(key)
+    val previous=previousEffectValues[key]
+    previousEffectValues[key]=numeric
+    val changed=hadPrevious&&when{
+      previous==null&&numeric==null->false
+      previous==null||numeric==null->true
+      else->abs(previous-numeric)>1e-9
+    }
+    if(!animationsEnabled)return
     val kind=effect.optString("kind","none")
     if(kind=="none")return
-    val trigger=effect.optString("trigger","change")
-    val active=when(trigger){"gain"->numeric!=null&&numeric>0;"loss"->numeric!=null&&numeric<0;"alert"->alert;else->true}
+    val active=when(trigger){"gain"->numeric!=null&&numeric>0;"loss"->numeric!=null&&numeric<0;"alert"->alert;"change"->changed;else->true}
     if(!active)return
     val speed=effect.optString("speed","normal")
     val duration=when(speed){"slow"->1200L;"fast"->360L;else->700L}
