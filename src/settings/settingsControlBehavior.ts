@@ -48,6 +48,10 @@ export function resolvePageTitle(page:MainPageKey,fallback:string,titles:Control
   return titles[page]||fallback;
 }
 
+export function shouldRefreshAiNews(financeHydrated:boolean,settingsHydrated:boolean,ai:AiControlPrefs){
+  return financeHydrated&&settingsHydrated&&ai.enabled;
+}
+
 export function deriveAiUiState(ai:AiControlPrefs,activePage:MainPageKey){
   return {
     showAiTab:ai.enabled,
