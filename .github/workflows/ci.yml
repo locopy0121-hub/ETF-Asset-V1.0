@@ -33,6 +33,8 @@ jobs:
         run: npm run test:v1_1_3-system-colors
       - name: V1.1.3 user-visible version cleanup
         run: npm run test:v1_1_3-visible-version
+      - name: V1.1.3 release identity contract
+        run: npm run test:release-v1_1_3
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
