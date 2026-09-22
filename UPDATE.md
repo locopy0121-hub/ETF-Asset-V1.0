@@ -55,3 +55,18 @@
 - [ ] V2.1.1 GitHub APK build、完整 Artifact 驗證及最終交付報告。
 
 **禁止宣稱已交付：目前沒有 V2.1.1 APK，沒有通過 V2.1.1 的任何實機驗收，也尚未完成正式版本更新。**
+
+
+## 4. uiGo 續接實際修護進度（2026-09-23 台灣時間）
+
+以下是已提交至獨立工作分支的實際程式變更，**不等於功能或 Release PASS**：
+
+- **U10 帳務詳情（CODE 已提交）**：帳務列表改為可點擊整列，新增買入／賣出／股息／其他完整歷史數據檢視；刪除移入詳情並增加二次確認。檔案：`src/screens/LedgerScreen.tsx`。尚需驗證實機開啟／關閉、各筆欄位、刪除與編輯流程（編輯尚未完成）。
+- **U09 股息日曆（CODE 已提交）**：僅當來源明確記錄最後購買日時才建立事件；提供日曆標示與設定開關，拒絕用自然日減一猜測台股交易日。檔案：`src/dividend/dividendCalendar.ts`、`src/screens/DividendScreen.tsx`、`src/settings/SettingsRuntime.tsx`、`src/screens/SettingsScreen.tsx`。尚需核對實機與實際公告來源。
+- **U07／U08 庫存（CODE 已提交）**：庫存的持股行情牆接入與首頁同一套 `HoldingMarketWallEditor` 能力工具，**保存庫存獨立的設定**；庫存實際 `HoldingQuoteCollection` 讀取自身 wall config，且舊設定恢復時執行 normalize。檔案：`src/components/PageFrameSettingsModal.tsx`、`src/screens/PortfolioScreen.tsx`、`src/editor/editorModel.ts`。這僅覆蓋行情牆；持股分析與資產配置的完整工具仍待補齊。
+- **正式版本識別（CODE 已提交）**：`package.json`、`app.json`、設定頁及備份元資料均改為 V2.1.1，Android `versionCode=20101`，package 仍是 `com.tfasset.app`。
+- **GitHub-only QA APK 前置管線（已提交）**：PR #20 的專屬 QA workflow 於 quality gate 通過後，使用純 React Native Android Gradle，在 GitHub runner 建置及檢查 V2.1.1 QA APK；**QA APK 是供實機測試的候選物，不代表正式 Release**。
+- **PR 狀態**：已建立 draft PR [#20](https://github.com/locopy0121-hub/ETF-Asset-V1.0/pull/20)，保留 PR #19 未擅自合併。
+- **CI 失敗與原地修復**：首次 V2.1.1 run [35754476325](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35754476325) FAIL，實際原因是 V1.1.3 股息測試仍假設事件只有三種，與本次來源明確記載的最後購買日新增事件矛盾。已更新該測試的固定期待值，以及只顯示除息日時關閉最後購買日的篩選條件。後續 GitHub CI 將提供實際 PASS／FAIL 證據；不得自行標 PASS。
+
+**即使 QA APK 產出，U01～U15 全局矩陣仍必須以實際結果逐項驗證；本次暫無 Release PASS。**
