@@ -7,6 +7,7 @@ import {
   patchPageTitle,
   resolvePageTitle,
   toggleExclusivePanel,
+  resetLimitedPreferences,
   type ControlPrefs,
 } from '../src/settings/settingsControlBehavior';
 
@@ -45,6 +46,25 @@ assert.deepEqual(restored,{
   pageTitles:{home:'保存後首頁',settings:'控制中心'},
   ai:{enabled:false,floatingButton:false},
 });
+
+const preserved=resetLimitedPreferences({
+  pageTitles:{home:'我的首頁'},
+  ai:{enabled:false,floatingButton:false},
+  dividendCalendar:{showExDate:false,showRecordDate:true,showPaymentDate:false,showStatus:false},
+  notifications:{leadDays:9},
+  display:{fontScale:1.3},
+  tradeDefaults:{accountLabel:'自訂帳戶'},
+},{
+  notifications:{leadDays:1},
+  display:{fontScale:1},
+  tradeDefaults:{accountLabel:'主要帳戶'},
+});
+assert.deepEqual(preserved.pageTitles,{home:'我的首頁'});
+assert.deepEqual(preserved.ai,{enabled:false,floatingButton:false});
+assert.deepEqual(preserved.dividendCalendar,{showExDate:false,showRecordDate:true,showPaymentDate:false,showStatus:false});
+assert.deepEqual(preserved.notifications,{leadDays:1});
+assert.deepEqual(preserved.display,{fontScale:1});
+assert.deepEqual(preserved.tradeDefaults,{accountLabel:'主要帳戶'});
 
 assert.equal(toggleExclusivePanel(null,'titles'),'titles');
 assert.equal(toggleExclusivePanel('titles','titles'),null);
