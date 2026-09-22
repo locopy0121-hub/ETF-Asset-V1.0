@@ -191,15 +191,33 @@ function EffectText({text,effect,numeric,style,numberOfLines}:{text:string;effec
 
 function EffectView({effect,numeric,children}:{effect:ItemEffectConfig;numeric:number|null;children:ReactNode}){
   const anim=useRef(new Animated.Value(1)).current;
+  const translate=useRef(new Animated.Value(0)).current;
   useEffect(()=>{
-    anim.stopAnimation();anim.setValue(1);
+    anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
     if(effect.kind==='none'||!effectActive(effect,numeric))return;
     const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
     const low=effect.intensity==='soft'?.82:effect.intensity==='strong'?.3:.55;
-    const runner=Animated.sequence([Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true})]);
-    const actual=effect.trigger==='always'?Animated.loop(runner):runner;actual.start();return()=>actual.stop();
-  },[anim,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
-  return <Animated.View style={{opacity:anim}}>{children}</Animated.View>;
+    let runner:Animated.CompositeAnimation;
+    if(effect.kind==='bounce'){
+      const distance=effect.intensity==='soft'?-3:effect.intensity==='strong'?-10:-6;
+      runner=Animated.sequence([
+        Animated.timing(translate,{toValue:distance,duration:Math.round(duration/2),useNativeDriver:true}),
+        Animated.timing(translate,{toValue:0,duration:Math.round(duration/2),useNativeDriver:true}),
+      ]);
+    }else if(effect.kind==='fade'){
+      anim.setValue(low);
+      runner=Animated.timing(anim,{toValue:1,duration,useNativeDriver:true});
+    }else{
+      runner=Animated.sequence([
+        Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),
+        Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true}),
+      ]);
+    }
+    const actual=effect.trigger==='always'?Animated.loop(runner):runner;
+    actual.start();
+    return()=>actual.stop();
+  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
+  return <Animated.View style={{opacity:anim,transform:[{translateY:translate}]}}>{children}</Animated.View>;
 }
 function effectActive(effect:ItemEffectConfig,numeric:number|null){
   if(effect.trigger==='gain')return numeric!=null&&numeric>0;
