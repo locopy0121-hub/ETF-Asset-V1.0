@@ -156,7 +156,7 @@ export function PageFrameSettingsModal({
                   <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
                   <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
                 </View>:null}
-                {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>:null}
+                {((pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view'))?<HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
@@ -282,7 +282,7 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
 }
 
 function hasContentTools(pageKey:MainPageKey,frameKey:string){
-  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='ai'&&frameKey==='ai-news');
+  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='portfolio'&&frameKey==='holding-view')||(pageKey==='ai'&&frameKey==='ai-news');
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);
