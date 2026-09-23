@@ -14,7 +14,7 @@
 | 01 | 帳務核心鎖定 | 使用者確認正確，本輪禁止變動 |
 | 02 | 版本基準、備份與 APK | V2.1.13 QA 已建置與驗證；本輪 V2.1.14 前置備份已核對 |
 | 03 | ETF 分類／配息頻率 | V2.1.13 CODE/CI 成功；官方政策與實機仍待驗收 |
-| 04 | Widget 同步、桌面刷新與排列 | 本輪進行中；以下 CODE 已提交，尚待 CI 和實機 |
+| 04 | Widget 同步、桌面刷新與排列 | CODE／CI／QA APK 已 PASS，Android Widget 真機待驗 |
 | 05 | AI System 十二項能力 | 尚未進入本輪修改 |
 | 06 | A/B 編輯器與完整單卡預覽 | 尚未進入本輪修改 |
 | 07 | Android 返回、左右滑動及 K 線 | 尚未進入本輪修改 |
@@ -37,3 +37,13 @@
 
 ## 60 秒與聊天中斷續接
 先查此檔、`UPDATE.md`、本分支 SHA、PR/Action 最新 run。工具仍在執行時可依錯誤 log 原地恢復；若對話已中斷，無法自己啟動新對話，須依此檔續接，不能推定後續自動完成。
+
+## GitHub QA 完成證據（續接於聊天中斷後）
+- PR #31 保持 Draft：https://github.com/locopy0121-hub/ETF-Asset-V1.0/pull/31
+- 基準分支 Head commit：`1ef4795c633af6f1605589aad43fad8506941940`。
+- CI／APK run：https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35864099683；quality 成功；`V2.1.14 QA APK / native integration` 成功，原生 Gradle `BUILD SUCCESSFUL in 5m 35s`。
+- Artifact ID：`10752471195`，ZIP 封存檔 23,299,791 bytes，Artifact SHA-256：`409c71fefdaaad5416b341369745c0159dc3a679e8ee0cfc67522c82dcba62f5`。
+- QA APK 檔案 53,795,285 bytes；APK SHA-256：`89ab8d9d38dcc8d91db9797ee75993ee23668c9bb832c99e5f3a2df496f30b49`；ZIP 及 APK `unzip -t` PASS；badging：`com.tfasset.app`, `versionName 2.1.14`, `versionCode 20114`。
+- APK Artifact：https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35864099683/artifacts/10752471195
+- Android 實機尚待核實：桌面點擊更新行情成功／部分失敗提示、背景後回前景 canonical sharedSnapshot 刷新、4 欄及最後一列、各項設定。故第 04 項為 **CODE/CI/APK PASS，DEVICE PENDING**，非全功能 PASS。
+- 第 03 項真實官方收益分配資料仍是 NO PASS；保留，不在下一項默認成功。
