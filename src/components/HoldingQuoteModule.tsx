@@ -39,7 +39,7 @@ export function HoldingQuoteModule({
   const cfg=wallConfig;
   const cardStyle=cfg.style;
   const groups={
-    header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol')),
+    header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol'||field.field==='etfType'||field.field==='dividendType')),
     quote:cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent')),
     footer:cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue')),
   };
@@ -258,6 +258,8 @@ function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,
 function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   if(field==='name')return item.name;
   if(field==='symbol')return `${item.symbol}${item.pinned?'  • PIN':''}`;
+  if(field==='etfType')return item.etfType?.trim()||'類型待確認';
+  if(field==='dividendType')return item.dividendType?.trim()||'配息待確認';
   if(field==='price')return item.price.toFixed(2);
   if(field==='change')return `${change>=0?'▲':'▼'} ${change>=0?'+':''}${change.toFixed(2)}`;
   if(field==='changePercent')return pct(changePct);
