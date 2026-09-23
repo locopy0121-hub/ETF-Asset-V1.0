@@ -4,6 +4,8 @@ import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from '
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
+import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
+import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
 import {
   normalizeEditorConfig,
   type DashboardChartConfig,
@@ -22,6 +24,8 @@ import {colors,radius,spacing} from '../theme/tokens';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
+import {EtfBadgeEditor} from './EtfBadgeEditor';
+import {PortfolioListEditor} from './PortfolioListEditor';
 import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
 import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
 import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
@@ -57,8 +61,8 @@ export function PageFrameSettingsModal({
     setDraft({...config});
     setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
     setDisplayDraft({...displayConfig});
-    setOpenFrame(null);
-    setOpenGroup(null);
+    setOpenFrame(pageKey==='portfolio'?'holding-view':null);
+    setOpenGroup(pageKey==='portfolio'?'holding-view:content':null);
     setShowWallPreview(true);
   },[visible,config,displayConfig]);
 
@@ -161,14 +165,30 @@ export function PageFrameSettingsModal({
                   <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
                   <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
                 </View>:null}
-                {((pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view'))?<View><Pressable accessibilityLabel="切換單張小卡預覽" onPress={()=>setShowWallPreview(v=>!v)}><Text style={{color:colors.primary,fontWeight:'900',marginBottom:8}}>{showWallPreview?'隱藏':'顯示'}單張小卡即時預覽</Text></Pressable><HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/></View>:null}
+                {((pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view'))?<View style={{gap:16}}>
+                  {pageKey==='portfolio'?<View>
+                    <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                      badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} previewQuote={previewQuote}
+                      onChange={portfolioList=>setDisplayDraft(current=>({...current,portfolioList}))}/>
+                  </View>:null}
+                  <View>
+                    <Text style={{fontSize:14,fontWeight:'900',color:colors.text,marginBottom:8}}>行情牆卡片 A/B 編輯</Text>
+                    <Pressable accessibilityLabel="切換單張小卡預覽" onPress={()=>setShowWallPreview(v=>!v)}>
+                      <Text style={{color:colors.primary,fontWeight:'900',marginBottom:8}}>{showWallPreview?'隱藏':'顯示'}單張小卡即時預覽</Text>
+                    </Pressable>
+                    <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
+                      onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
+                  </View>
+                  <EtfBadgeEditor value={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
+                    onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}/>
+                </View>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
           </View>;
         })}
       </ScrollView>
-      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
+      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
