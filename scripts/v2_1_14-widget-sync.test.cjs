@@ -17,8 +17,10 @@ assert.match(receiver,/財務待同步/,
 assert.match(receiver,/行情更新失敗｜保留原資料/);
 assert.match(receiver,/quotes\.length\(\)==symbols\.size/,
   'Partial quote coverage must remain visible');
-assert.match(bridge,/canonicalQuoteAt>=nativeQuoteAt/,
-  'Old App settings snapshots may not erase newer native quote overrides');
+assert.match(bridge,/verifiedQuoteAt>0L && verifiedQuoteAt>=nativeQuoteAt/,
+  'Old App or startup fallback snapshots may not erase newer native quotes');
+assert.match(bridge,/canonicalSnapshot\.optJSONArray\("holdings"\)/,
+  'Only dated holdings quotes can prove that the App market snapshot is newer');
 assert.match(bridge,/if\(canReconcile\)/);
 assert.match(bridge,/edit\.remove\("wall_market_overrides"\)\.remove\("wall_market_refreshed_at"\)/);
 assert.match(bridge,/行情較新｜財務待同步/);
