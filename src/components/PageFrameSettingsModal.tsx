@@ -25,6 +25,7 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
 import {EtfBadgeEditor} from './EtfBadgeEditor';
+import {useMarketRuntime} from '../market/MarketRuntime';
 import {PortfolioListEditor} from './PortfolioListEditor';
 import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
 import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
@@ -48,11 +49,13 @@ export function PageFrameSettingsModal({
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
   const pageSettings=useSettingsRuntime();
+  const market=useMarketRuntime();
   const defaultPageTitle=MAIN_PAGES.find(page=>page.key===pageKey)?.title??title;
   const [titleDraft,setTitleDraft]=useState(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
   const [showWallPreview,setShowWallPreview]=useState(true);
+  const [contentTab,setContentTab]=useState<'list'|'wall'|'badges'>('list');
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
   const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
 
@@ -64,6 +67,7 @@ export function PageFrameSettingsModal({
     setOpenFrame(pageKey==='portfolio'?'holding-view':null);
     setOpenGroup(pageKey==='portfolio'?'holding-view:content':null);
     setShowWallPreview(true);
+    setContentTab(pageKey==='portfolio'?'list':'wall');
   },[visible,config,displayConfig]);
 
   const orderedFrames=useMemo(
@@ -166,21 +170,25 @@ export function PageFrameSettingsModal({
                   <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
                 </View>:null}
                 {((pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view'))?<View style={{gap:16}}>
-                  {pageKey==='portfolio'?<View>
+                  <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+                    {(pageKey==='portfolio'?([{key:'list',label:'清單欄位'},{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const):([{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const)).map(tab=><Pressable key={tab.key} accessibilityRole="button" onPress={()=>setContentTab(tab.key)} style={{backgroundColor:contentTab===tab.key?colors.primary:colors.surfaceMuted,paddingVertical:9,paddingHorizontal:12,borderRadius:18}}><Text style={{fontSize:11,fontWeight:'900',color:contentTab===tab.key?'#FFFFFF':colors.textSecondary}}>{tab.label}</Text></Pressable>)}
+                  </View>
+                  {pageKey==='portfolio'&&contentTab==='list'?<View>
                     <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
                       badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} previewQuote={previewQuote}
                       onChange={portfolioList=>setDisplayDraft(current=>({...current,portfolioList}))}/>
                   </View>:null}
-                  <View>
+                  {contentTab==='wall'?<View>
                     <Text style={{fontSize:14,fontWeight:'900',color:colors.text,marginBottom:8}}>行情牆卡片 A/B 編輯</Text>
                     <Pressable accessibilityLabel="切換單張小卡預覽" onPress={()=>setShowWallPreview(v=>!v)}>
                       <Text style={{color:colors.primary,fontWeight:'900',marginBottom:8}}>{showWallPreview?'隱藏':'顯示'}單張小卡即時預覽</Text>
                     </Pressable>
                     <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
                       onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
-                  </View>
-                  <EtfBadgeEditor value={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
-                    onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}/>
+                  </View>:null}
+                  {contentTab==='badges'?<EtfBadgeEditor value={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
+                    onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}
+                    catalogRefreshing={market.catalogRefreshing} onRefreshCatalog={()=>void market.refreshCatalog()}/>:null
                 </View>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
@@ -188,7 +196,7 @@ export function PageFrameSettingsModal({
           </View>;
         })}
       </ScrollView>
-      {previewQuote&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
+      {previewQuote&&contentTab==='wall'&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
