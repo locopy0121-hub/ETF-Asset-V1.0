@@ -134,3 +134,11 @@
 - 完整新規格與驗收條件見 [GO_V2_1_4_CHECKLIST.md](GO_V2_1_4_CHECKLIST.md) N01～N06：行情全局同步、桌面 Widget 點擊強制更新、全設定完整小卡預覽、ETF 分類及配息頻率官方資料自動判讀、新聞真正正文閱讀與 AI 摘要、主頁左右滑動與 Android 返回。**先前 U01～U15、G01～G08 全部保留**，重疊項可共享代碼、不可刪除驗收。
 - N02 初步程式修護：`App.tsx` 原本只在 component mount 後一次消費 Widget 原生點擊要求，桌面點擊開啟已在前景的 App 可能沒有新一輪消費；改為 App 前景每秒輪詢及返回前景即時查詢，防重入，透過 `market.refresh({force:true})` 呼叫既有行情 Runtime。Android Receiver 原有 `ACTION_FORCE_REFRESH`、時間戳與 PendingIntent 仍保留。**尚未驗證實體 Android 點擊、更新失敗提示及持股完整同步，N02 不得 PASS**。
 - [Draft PR #21](https://github.com/locopy0121-hub/ETF-Asset-V1.0/pull/21) 供開發期 CI，未合併、不是正式版。工作樹內目前 package/app version 仍為 2.1.3／20103；只有後續實作完成、同步更新設定及 QA Action 版本合約並重驗後才可稱 V2.1.4。未取得完整驗證前禁止正式 APK Action。
+
+
+## 10. 2026-09-23 GO V2.1.5 — ETF 種類／配息型態欄位
+
+- 起點 PR #21 V2.1.4 QA，開工前備份 `backup-v2.1.4-20260923-pre-tags`，新工作分支 `go-v2.1.5-20260923-etf-tags`；保留 U01–U15、G01–G08、N01–N06。
+- 本次新增 T01–T06，詳見 `GO_V2_1_5_CHECKLIST.md`；ETF 類型與配息型態已加入共用行情卡 AB 工具、設定正規化、首頁和庫存；未知顯示「待確認」，不從 ETF 名稱猜測配息政策。
+- TWSE 官方基金基本資料彙總表的可用欄位讀取已接入，但**尚未驗證官方實際欄位、資料完整性、發行商來源或全表分類**。Monitor／Mini／Widget 也尚未實裝兩個新欄位，因此 T03/T04 不是 PASS。
+- 工作版號 2.1.5／Android 20105，QA CI 採 GitHub-only Gradle APK；CODE 提交和 QA APK 不代表正式 Release。
