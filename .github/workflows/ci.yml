@@ -68,8 +68,8 @@ jobs:
 
       - name: Freeze V2.1.9 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "2.1.8"
-          test "$(node -p "require('./app.json').expo.version")" = "2.1.8"
+          test "$(node -p "require('./package.json').version")" = "2.1.9"
+          test "$(node -p "require('./app.json').expo.version")" = "2.1.9"
           test "$(node -p "require('./app.json').expo.android.versionCode")" = "20109"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
@@ -109,7 +109,7 @@ jobs:
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
           g=g.replace(/versionCode\s+\d+/,'versionCode 20109');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.1.8"');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.1.9"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -154,7 +154,7 @@ jobs:
           "$AAPT" dump badging TF-Asset-V2.1.9-QA.apk | tee TF-Asset-V2.1.9-badging.txt
           grep "package: name='com.tfasset.app'" TF-Asset-V2.1.9-badging.txt
           grep "versionCode='20109'" TF-Asset-V2.1.9-badging.txt
-          grep "versionName='2.1.8'" TF-Asset-V2.1.9-badging.txt
+          grep "versionName='2.1.9'" TF-Asset-V2.1.9-badging.txt
           file TF-Asset-V2.1.9-QA.apk
 
       - name: Upload validated APK artifact
