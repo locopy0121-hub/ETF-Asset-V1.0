@@ -9,7 +9,7 @@ import {EtfBadgeRow} from './EtfBadgeRow';
 /** Fixed identity column, independently scrollable user-configured snapshot columns. */
 export function PortfolioHoldingTable({rows,onOpenHolding,config=DEFAULT_PORTFOLIO_LIST,badges=DEFAULT_ETF_BADGES,refreshToken}:{
   rows:readonly HoldingQuote[];onOpenHolding?:(row:HoldingQuote)=>void;
-  config?:PortfolioListConfig;badges?:EtfBadgeConfig;refreshToken?:string|number|null;
+  config?:PortfolioListConfig;badges?:EtfBadgeConfig;refreshToken?:string|number|null|undefined;
 }){
   const columns=config.columns.filter(column=>column.enabled);
   const onOpen=(row:HoldingQuote)=>()=>onOpenHolding?.(row);
@@ -42,7 +42,7 @@ export function PortfolioHoldingTable({rows,onOpenHolding,config=DEFAULT_PORTFOL
     <Text style={styles.hint}>第一欄固定；數值欄可水平滑動及自訂顯示。純均價與含費均價獨立顯示，不重新計算帳務。</Text>
   </View>;
 }
-function PortfolioNumberCell({row,config,refreshToken}:{row:HoldingQuote;config:PortfolioColumnConfig;refreshToken?:string|number|null}){
+function PortfolioNumberCell({row,config,refreshToken}:{row:HoldingQuote;config:PortfolioColumnConfig;refreshToken?:string|number|null|undefined}){
   const shown=portfolioColumnValue(row,config.key),effect=config.effect;
   const opacity=useRef(new Animated.Value(1)).current;
   const shift=useRef(new Animated.Value(0)).current;
