@@ -43,7 +43,7 @@ jobs:
   qa-apk:
     name: V2.1.6 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.6-20260923-etf-tags'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.6-20260923-continuous'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 90
