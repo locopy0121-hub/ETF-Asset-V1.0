@@ -63,7 +63,13 @@ export function parseOfficialEtfRow(raw: Record<string, unknown>, fetchedAt: num
   if (!ETF_SYMBOL.test(symbol)) return null;
   const category = officialField(raw, '基金類型', '投資類型', 'ETF類別', 'ETF 類型', '指數類型');
   const payout = officialField(raw, '收益分配頻率', '配息頻率', '收益分配政策', '配息政策');
-  const etfType = normalizeOfficialEtfType(category);
+  // The official fund-basic-data feed publishes index names but typically has no payout-policy field.
+  // Use only explicit official index wording for a presentation category; do not guess payout from a name.
+  const indexName = officialField(raw, '標的指數/追蹤指數名稱', '標的指數／追蹤指數名稱', '標的指數名稱', '追蹤指數名稱');
+  const etfType = normalizeOfficialEtfType(category) ?? (
+    /高股息|高息|股息|股利/.test(indexName) ? '高股息型' :
+    /臺灣50|台灣50|臺灣五十|台灣五十|TOP50|大型權值|市值/.test(indexName) ? '市值型' : null
+  );
   const dividendType = normalizeOfficialDividendType(payout);
   if (!etfType && !dividendType) return null;
   const name = officialField(raw, '基金中文名稱', '基金簡稱', '基金名稱', 'ETF名稱', '證券名稱');
