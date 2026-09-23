@@ -18,3 +18,12 @@ Old U01-U15, G01-G08, N01-N06, T01-T06 all retained; no Codex review required fo
 | C09 | GitHub QA APK | Await Actions Quality + Gradle + artifact badging / SHA; not a formal release |
 
 An APK build passing does not mark C02-C08 Feature PASS. Every NO PASS requires source evidence and next fix plan.
+
+## 本輪 QA APK 結果（非正式 Release）
+
+- C01：PASS（GitHub 版本＋日期備份已建立）。
+- C02：CODE＋Quality PASS，Android 真機滑動與水平子元件衝突驗收未完成，NO PASS 結轉。
+- C03：CODE＋Quality＋原生 Build PASS；桌面點擊真正強制刷新／失敗狀態／數據同步真機待驗，NO PASS 結轉。
+- C04–C08：NO PASS 結轉，保留原 U/G/N/T 單項追蹤，不得刪除。
+- C09：QA APK Build PASS，GitHub Actions #709 / 35818971799 artifact 10732706763，APK SHA256 3bfcdeea1240b95cebaab305a3253e621d2f2c7f0cc51f040da07e734d64fe9e；實機安裝待使用者驗收。
+- 統計：9 項／2 建置及備份 PASS／7 功能未驗證或 NO PASS；本輪 QA APK 可供安裝，不是 GO ALL PASS／正式 Release。
