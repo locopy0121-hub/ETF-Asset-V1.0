@@ -188,7 +188,7 @@ export function PageFrameSettingsModal({
                   </View>:null}
                   {contentTab==='badges'?<EtfBadgeEditor value={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
                     onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}
-                    catalogRefreshing={market.catalogRefreshing} onRefreshCatalog={()=>void market.refreshCatalog()}/>:null
+                    catalogRefreshing={market.catalogRefreshing} onRefreshCatalog={()=>void market.refreshCatalog()}/>:null}
                 </View>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
