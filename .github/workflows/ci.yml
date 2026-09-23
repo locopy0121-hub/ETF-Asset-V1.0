@@ -43,7 +43,7 @@ jobs:
   qa-apk:
     name: V2.1.11 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.11-20260923-ai-dates-r3'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.11-20260923-news-coverage-r4'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 90
