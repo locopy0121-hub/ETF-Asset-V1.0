@@ -19,7 +19,7 @@ assert.ok(collection.includes("layout=\"narrow\""),'multi-column layout must use
 assert.ok(card.includes("narrowCard"),'quote card must support narrow layout');
 assert.ok(editor.includes('holdingLayoutMode'),'layout selection must persist in page editor display config');
 assert.match(editor,/home:\s*\{\s*quoteStyle:'quote',\s*sortKey:'pnl',\s*holdingLayoutMode:'grid2'/,'home layout must preserve the restored two-column default');
-assert.match(editor,/portfolio:\\s*\\{\\s*quoteStyle:'chart',\\s*sortKey:'manual',\\s*portfolioViewMode:'list',\\s*holdingLayoutMode:'list'/,'portfolio layout must have independent default');
+assert.match(editor,/portfolio:\s*\{\s*quoteStyle:'chart',\s*sortKey:'manual',\s*portfolioViewMode:'list',\s*holdingLayoutMode:'list'/,'portfolio layout must have independent default');
 assert.ok(editor.includes('portfolioList:DEFAULT_PORTFOLIO_LIST'),'portfolio default should preserve editable list configuration');
 assert.ok(editor.includes('etfBadges:DEFAULT_ETF_BADGES'),'portfolio default should preserve independent ETF labels');
 
