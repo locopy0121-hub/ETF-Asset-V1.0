@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -108,7 +108,8 @@
     "test:v2_1_4": "npm run test:v2_1_3 && node scripts/v2_1_1-release.test.cjs",
     "test:etf-tags-v215": "node scripts/v2_1_5-etf-tags.test.cjs",
     "test:v2_1_5": "npm run test:v2_1_4 && npm run test:etf-tags-v215",
-    "test:v2_1_6": "npm run test:v2_1_5 && node scripts/v2_1_6-navigation-widget.test.cjs"
+    "test:v2_1_6": "npm run test:v2_1_5 && node scripts/v2_1_6-navigation-widget.test.cjs",
+    "test:v2_1_8": "npm run test:v2_1_6 && tsx scripts/v2_1_8-widget-grid.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

@@ -169,3 +169,9 @@
 - APK `TF-Asset-V2.1.7-QA.apk`: 53,788,345 bytes, SHA-256 `5480b1829aaee9d52d888dcd3e77fee176f8afefdeb834fac56a99d96c48d0c4`; `unzip -t` PASS; `aapt` package `com.tfasset.app` version `2.1.7` / `20107` PASS.
 - **New D01–D08 completion counts:** D08 build evidence PASS (1/8); D01 and D02 CODE / BUILD success, device behavior still NO PASS; D03–D07 incomplete / NO PASS (7/8 items not fully Feature PASS). Original U/G/N/T/C entries retained independently. NO GO ALL PASS; PR remains Draft and no formal release.
 - Critical limitation: Widget can refresh native quote price/percentage in place without opening App, but financial holdings totals remain last canonical App snapshot until App is synchronized. Do not present the cached financial totals as fresh. Native device testing, real last-buy-day calendar/official source, AI auto-badges, independently editable label effects/color and dividend blink alerts remain pending.
+
+## 14. 五輪接力第 1 輪 V2.1.8 — Widget 多欄版面
+
+- Pre-edit backup verified: `backup-v2.1.7-20260923-five-rounds` from V2.1.7 source `df78171dfd514511eb55c73697709e2d70a267bb`.
+- New first-round grid helper ensures 1–4 columns with equal-width placeholders in the final row, up to 16 items matching four native rows. Widget preview uses explicit fixed rows instead of `justifyContent:space-between`, which distorted the incomplete last row. Native overflow title now displays visible/total holdings on small widgets.
+- V2.1.8 / 20108 in package, app, Settings, Backup, identity gate and QA workflow. Tests: `scripts/v2_1_8-widget-grid.test.ts`. User's prior D01 Widget desktop refresh accepted for observed operation, not canonical financial synchronization. Source-only changes are not device validation; keep earlier unresolved checklist entries.

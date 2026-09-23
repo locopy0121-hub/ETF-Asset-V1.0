@@ -181,6 +181,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val wallFontFactor=(perColumnDp/120.0).coerceIn(0.7,1.0)
     val maxWallRows=(minHeight/92).coerceIn(1,4)
     val wallCapacity=(wallColumns*maxWallRows).coerceIn(1,16)
+    // Four native grid slots per row; empty last-row cells remain invisible so columns never expand.
     val legacyProfitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
     val titleFs=style.optDouble("titleFontScale",1.0).coerceIn(.7,1.8)*densityScale
     val align=gravityFor(style.optString("textAlign","left"))
@@ -189,7 +190,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val wallMode=template=="quote-wall"
     views.setViewVisibility(R.id.widget_summary,if(wallMode)View.GONE else View.VISIBLE)
     views.setViewVisibility(R.id.widget_wall,if(wallMode)View.VISIBLE else View.GONE)
-    views.setTextViewText(R.id.widget_title,if(wallMode)"持股行情牆" else "TF Asset")
+    views.setTextViewText(R.id.widget_title,if(wallMode&&holdings.size>wallCapacity)"持股行情牆 · ${wallCapacity}/${holdings.size}" else if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
     views.setTextColor(R.id.widget_refresh,neutral)
     views.setTextViewText(R.id.widget_refresh,prefs.getString("widget_refresh_status","↻ 更新")?:"↻ 更新")

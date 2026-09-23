@@ -27,6 +27,7 @@ import {
   type WidgetTemplate,
 } from '../../widget/widgetDomain';
 import { ColorPalettePicker } from '../ColorPalettePicker';
+import { wallGridRows } from '../../widget/wallGridRows';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type SymbolOption={symbol:string;name?:string};
@@ -65,7 +66,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
   const wallSupported:readonly WidgetField[]=['symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
   const selectedWallFields=value.fields.filter(field=>wallSupported.includes(field)).slice(0,4);
   const wallPreviewFields=selectedWallFields.length?selectedWallFields:(['name','symbol','price','changePercent'] as const);
-  const wallPreviewRows=sortedRows.slice(0,Math.min(8,Math.max(1,value.wallColumns*2)));
+  const wallPreviewRows=sortedRows.slice(0,Math.min(16,Math.max(1,value.wallColumns*4)));
+  const wallPreviewGrid=wallGridRows(wallPreviewRows,value.wallColumns);
   const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>{
     const config=widgetFieldStyle(value,field);
     return {field,config,numeric:widgetFieldProfitValue(previewSnapshot,previewHolding,field),...widgetFieldText(previewSnapshot,previewHolding,field,config.label)};
@@ -128,7 +130,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       {previewSnapshot?<Text style={styles.note}>預覽持股 {sortedRows.length} 筆；目前顯示 {wallPreviewRows.length} 筆，超出預覽列數需在桌面 Widget 繼續檢查。</Text>:null}
       {value.template==='quote-wall'
         ?<View style={[styles.preview,styles.wallPreview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
-          {wallPreviewRows.map(row=><View key={row.symbol} style={[styles.wallPreviewCard,{flexBasis:value.wallColumns===1?'100%':value.wallColumns===2?'48%':value.wallColumns===3?'31%':'23%'}]}>
+          {wallPreviewGrid.map((gridRow,rowIndex)=><View key={'row-'+rowIndex} style={{flexDirection:'row',gap:6,width:'100%'}}>
+            {gridRow.map((row,columnIndex)=>row?<View key={row.symbol} style={[styles.wallPreviewCard,{flex:1,minWidth:0}]}>
             {wallPreviewFields.map((field,index)=>{
               const config=widgetFieldStyle(value,field);
               const visual=config.visual;
@@ -145,6 +148,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
                 paddingVertical:visual.paddingY,
               }}>{line.text}</Text>;
             })}
+          </View>:<View key={'empty-'+columnIndex} style={{flex:1,minWidth:0}}/>)}
           </View>)}
           {!wallPreviewRows.length?<Text style={{color:value.style.secondaryTextColor}}>尚無持股資料</Text>:null}
         </View>
@@ -310,7 +314,7 @@ const styles = StyleSheet.create({
   labelEdit:{gap:4},
   inlineValue:{fontSize:11,fontWeight:'900',color:colors.text},
   input:{minHeight:38,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:10,paddingVertical:7,fontSize:11,fontWeight:'800',color:colors.text},
-  wallPreview:{flexDirection:'row',flexWrap:'wrap',alignContent:'flex-start',justifyContent:'space-between',gap:6},
+  wallPreview:{gap:6,alignContent:'flex-start'},
   wallPreviewCard:{borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,padding:6,minHeight:56},
 });
 
