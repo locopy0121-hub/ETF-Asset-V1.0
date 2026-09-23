@@ -37,7 +37,30 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   init{reactContext.addActivityEventListener(activityListener)}
   override fun getName() = "TfAssetNative"
 
-  @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).apply(); refreshWidget(); promise.resolve(true) }
+  @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
+    // Do not let an older App/settings snapshot overwrite newer quotes fetched by the native Widget.
+    // Financial figures always come from the canonical App snapshot; this bridge never recalculates them.
+    val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
+    // generatedAt may be a startup fallback timestamp; only a verified market quote timestamp
+    // in canonical holdings can reconcile a newer quote fetched by the native Widget.
+    val canonicalHoldings=canonicalSnapshot.optJSONArray("holdings")?:org.json.JSONArray()
+    val verifiedQuoteAt=(0 until canonicalHoldings.length()).mapNotNull{index->
+      val row=canonicalHoldings.optJSONObject(index)?:return@mapNotNull null
+      runCatching{java.time.Instant.parse(row.optString("updatedAt","")).toEpochMilli()}.getOrNull()
+    }.maxOrNull()?:0L
+    val nativeQuoteAt=prefs.getLong("wall_market_refreshed_at",0L)
+    val canReconcile=nativeQuoteAt<=0L || (verifiedQuoteAt>0L && verifiedQuoteAt>=nativeQuoteAt)
+    val edit=prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson)
+    if(canReconcile){
+      edit.remove("wall_market_overrides").remove("wall_market_refreshed_at")
+        .putString("widget_refresh_status",if(nativeQuoteAt>0L)"行情與財務已同步" else "App 財務快照")
+    }else{
+      edit.putString("widget_refresh_status","行情較新｜財務待同步")
+    }
+    edit.apply()
+    refreshWidget()
+    promise.resolve(true)
+  }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
     val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
     val incomingMode=parsed.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
@@ -120,6 +143,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
         pm.setComponentEnabledSetting(ComponentName(reactContext.packageName,reactContext.packageName+"."+alias),state,PackageManager.DONT_KILL_APP)
       }
       prefs.edit().putString("app_icon_key",iconKey).apply()
+      refreshWidget()
     }.onSuccess{promise.resolve(true)}.onFailure{promise.reject("ICON_SWITCH_FAILED",it)}
   }
 
