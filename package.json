@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "2.1.16",
+  "version": "2.1.17",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -117,7 +117,8 @@
     "test:v2_1_13": "npm run test:v2_1_12 && tsx scripts/v2_1_13-etf-metadata.test.ts",
     "test:v2_1_14": "npm run test:v2_1_13 && node scripts/v2_1_14-widget-sync.test.cjs",
     "test:v2_1_15": "npm run test:v2_1_14 && tsx scripts/v2_1_15-ai-news.test.ts",
-    "test:v2_1_16": "npm run test:v2_1_15 && tsx scripts/v2_1_16-priority.test.ts"
+    "test:v2_1_16": "npm run test:v2_1_15 && tsx scripts/v2_1_16-priority.test.ts",
+    "test:v2_1_17": "npm run test:v2_1_16 && tsx scripts/v2_1_17-label-data.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
