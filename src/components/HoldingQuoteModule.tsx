@@ -56,7 +56,7 @@ export function HoldingQuoteModule({
   ]}>
     {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
     <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
-      {cfg.header.visible&&groups.header.length?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
+      {cfg.header.visible&&(groups.header.length>0||badgeConfig.order.some(key=>badgeConfig.badges[key].enabled))?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
         <View style={[
           styles.head,
           {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
@@ -83,7 +83,7 @@ export function HoldingQuoteModule({
 
       {groups.quote.length?<View style={styles.quoteRow}>
         <View style={{flex:1,minWidth:0}}>
-          <WallText field={groups.quote[0]! item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
+          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
         </View>
         {groups.quote.length>1?<View style={styles.changeWrap}>
           {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}/>)}
