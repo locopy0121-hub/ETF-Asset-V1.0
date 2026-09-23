@@ -72,10 +72,10 @@ export function normalizeEtfBadges(raw:unknown):EtfBadgeConfig{
   return {badges,order:[...new Set([...order,...KEYS])],reminderEvents:events};
 }
 /** Only existing dated dividend entries; never infer a last buy day from an ex-date. */
-export function todayEtfReminderMap(entries:readonly DividendLedgerEntry[],today=deviceLocalCalendarDate()):Map<string,EtfReminderType>{
+export function todayEtfReminderMap(entries:readonly DividendLedgerEntry[],today=deviceLocalCalendarDate(),allowedEvents:readonly EtfReminderType[]=DEFAULT_ETF_BADGES.reminderEvents):Map<string,EtfReminderType>{
   const result=new Map<string,EtfReminderType>();
   const events=buildDividendCalendarEvents(entries,today);
-  for(const type of EVENTS){
+  for(const type of EVENTS.filter(event=>allowedEvents.includes(event))){
     for(const event of events){
       if(event.date===today&&event.type===type&&!result.has(event.symbol))result.set(event.symbol,type);
     }
