@@ -83,7 +83,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
           if(quotes.length()==0)throw IllegalStateException("行情未提供可用報價")
           prefs.edit().putString("wall_market_overrides",quotes.toString())
             .putString("widget_refresh_status","↻ "+java.text.SimpleDateFormat("HH:mm",java.util.Locale.TAIWAN).format(java.util.Date()))
-            .putLong("widget_quote_refreshed_at",System.currentTimeMillis()).apply()
+            .putLong("wall_market_refreshed_at",System.currentTimeMillis()).apply()
         }catch(error:Exception){
           prefs.edit().putString("widget_refresh_status","更新失敗").apply()
         }
