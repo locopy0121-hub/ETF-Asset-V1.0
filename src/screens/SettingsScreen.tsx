@@ -50,8 +50,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.1.17';
-const BUILD='20117';
+const VERSION='2.1.18';
+const BUILD='20118';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -384,7 +384,9 @@ export function SettingsScreen(){
       {appPanel==='swipe'?<Panel title="主頁左右滑動">
         <Switch value={settings.prefs.navigation.swipeEnabled} onValueChange={swipeEnabled=>settings.patchNavigation({swipeEnabled})}/>
         <Stepper label="切換靈敏度（距離）" value={settings.prefs.navigation.swipeThreshold} min={50} max={150} step={10} suffix=" px" onChange={swipeThreshold=>settings.patchNavigation({swipeThreshold})}/>
-        <Text style={styles.note}>左右滑動依底部頁籤順序切換；需明顯水平位移，垂直捲動優先。詳細圖表與其他複雜手勢仍待實機驗收。</Text>
+        <Text style={styles.rowTitle}>僅從螢幕左右邊緣滑動（降低與橫向行情表、圖表衝突）</Text>
+        <Switch value={settings.prefs.navigation.swipeEdgeOnly} onValueChange={swipeEdgeOnly=>settings.patchNavigation({swipeEdgeOnly})}/>
+        <Text style={styles.note}>關閉時維持原全畫面左右滑動；開啟後只接受距左右邊緣 32 px 內起始的手勢。垂直捲動優先，圖表複合手勢仍須真機驗證。</Text>
       </Panel>:null}
       <ChildButton label="各頁標題設定" summary="首頁／紀錄／庫存／股息／AI／設定" active={appPanel==='titles'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'titles'))}/>
       {appPanel==='titles'?<Panel title="頁面標題">

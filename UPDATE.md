@@ -251,3 +251,13 @@
 CODE：基金官方明確追蹤指數文字可補充 ETF 類別（不推導配息頻率）；缺失欄位分別顯示「類別待確認／配息待確認」；已釘選星號與代號分開避免被擠壓；窄卡標籤可換行；庫存 A/B 頁直接切換清單／行情卡／標籤及提醒設定；提供官方類別手動刷新入口。新增 `scripts/v2_1_17-label-data.test.ts` 行為測試，版本／native QA pipeline 全數遞增至 2.1.17／20117。
 
 CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實際查證後才能填 PASS；舊功能未驗項仍是未完成。官方配息資料來源未提供完整政策時保留待確認，不虛構月配／季配／半年配。鎖定 Canonical Finance Core、Ledger 寫入、actualFee／tax 不變。
+
+
+## 2026-09-24 GO V2.1.18 八大項續接（第 07 項／返回與左右滑動）
+
+01:51 的最新 Android 截圖顯示 V2.1.17 的配息資訊仍為「配息待確認」。依使用者新指令，本輪不再卡在標籤，繼續八大項；第 03／06 項官方配息資料及實機驗收仍未完成，不能把靜態選項當真實頻率。
+
+- 基底 PR #34 head `b70e78238d28623bd9ce6e4a6e2f5ad7f2e40df8`，先建立並查驗 `backup-v2.1.17-20260924-pre-go-v2118`，獨立分支 `go-v2.1.18-20260924-navigation-layer`；版本 V2.1.18／Android/iOS 20118。
+- 第 07 項局部 CODE：以純函式返回路由讓浮動 AI 展開時先收起，其次詳情，然後主頁歷史，最後才退出；新增可選左右邊緣滑動並沿用既有全畫面手勢。詳見 `GO_V2_1_18_CHECKLIST.md`。
+- K 線、所有巢狀 Modal、頁面捲動位置及真實 Android 手勢仍待驗；G01–G08、U01–U15、原八大項全部結轉，Finance Core、Ledger 與 actualFee/tax 均不修改。
+- CI、QA APK、Artifact、SHA256 與 badging 必須按實際 Action 結果另行登記；不得把 CODE 當正式 Release。

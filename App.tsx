@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
+import {resolveBackNavigation,resolvePageSwipeDirection} from './src/domain/navigationGestures';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
 import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/finance/BrokerSettingsRuntime';
@@ -60,6 +61,9 @@ function AppBody(){
   const monitorSettings=useMonitorSettingsRuntime();
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
+  const {width:screenWidth}=useWindowDimensions();
+  const [floatingAiOpen,setFloatingAiOpen]=useState(false);
+  const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
   const pageHistory=useRef<MainPageKey[]>([]);
@@ -79,23 +83,24 @@ function AppBody(){
     const start=swipeStart.current;swipeStart.current=null;
     if(!start||detail||!settings.prefs.navigation.swipeEnabled)return;
     const dx=event.nativeEvent.pageX-start.x,dy=event.nativeEvent.pageY-start.y;
-    if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold||Math.abs(dx)<Math.abs(dy)*1.8)return;
+    if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold)return;
+    const direction=resolvePageSwipeDirection({startX:start.x,startY:start.y,endX:event.nativeEvent.pageX,endY:event.nativeEvent.pageY,screenWidth,enabled:settings.prefs.navigation.swipeEnabled,threshold:settings.prefs.navigation.swipeThreshold,edgeOnly:settings.prefs.navigation.swipeEdgeOnly,locked:detail!==null});
+    if(direction===null)return;
     swipeToAdjacent(dx<0?1:-1);
   };
   useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
   useEffect(()=>{
     const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
-      // React Native Modal.onRequestClose handles the currently open modal first.
-      if(detail){setDetail(null);return true;}
-      while(pageHistory.current.length){
-        const previous=pageHistory.current.pop()!;
-        if(previous!==active&&(previous!=='ai'||aiUi.showAiTab)){setActive(previous);return true;}
-      }
-      if(active!=='home'){setActive('home');return true;}
-      return false; // Only root with no earlier screen allows Android to leave the app.
+      // Native Modal.onRequestClose handles visible native dialogs first.
+      const decision=resolveBackNavigation({active,history:pageHistory.current,hasDetail:detail!==null,floatingExpanded:aiUi.showFloatingAi&&floatingAiOpen,showAiTab:aiUi.showAiTab});
+      pageHistory.current=decision.history;
+      if(decision.kind==='collapse-ai'){setAiCollapseSignal(value=>value+1);return true;}
+      if(decision.kind==='close-detail'){setDetail(null);return true;}
+      if(decision.kind==='navigate'&&decision.page){setActive(decision.page);return true;}
+      return false; // Leave only from root with no back stack.
     });
     return()=>subscription.remove();
-  },[active,detail,aiUi.showAiTab]);
+  },[active,detail,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -173,7 +178,7 @@ function AppBody(){
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
     <View style={styles.screen} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
-    {aiUi.showFloatingAi?<GlobalFloatingAi/>:null}
+    {aiUi.showFloatingAi?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
         {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{

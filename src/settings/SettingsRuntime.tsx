@@ -40,7 +40,7 @@ export type TradeDefaults=Readonly<{
   tradeKind:'buy'|'sell';
 }>;
 export type AiPrefs=Readonly<{enabled:boolean;floatingButton:boolean}>;
-export type NavigationPrefs=Readonly<{swipeEnabled:boolean;swipeThreshold:number}>;
+export type NavigationPrefs=Readonly<{swipeEnabled:boolean;swipeThreshold:number;swipeEdgeOnly:boolean}>;
 export type SettingsPrefs=Readonly<{
   schema:1;
   pageTitles:Partial<Record<MainPageKey,string>>;
@@ -56,7 +56,7 @@ const DEFAULT_SETTINGS:SettingsPrefs={
   schema:1,
   pageTitles:{},
   ai:{enabled:true,floatingButton:true},
-  navigation:{swipeEnabled:true,swipeThreshold:75},
+  navigation:{swipeEnabled:true,swipeThreshold:75,swipeEdgeOnly:false},
   dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true},
   notifications:{
     exDividend:true,
@@ -101,7 +101,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
     schema:1,
     pageTitles:controls.pageTitles,
     ai:controls.ai,
-    navigation:{swipeEnabled:input?.navigation?.swipeEnabled!==false,swipeThreshold:Math.round(Math.max(50,Math.min(150,Number(input?.navigation?.swipeThreshold)||75)))},
+    navigation:{swipeEnabled:input?.navigation?.swipeEnabled!==false,swipeThreshold:Math.round(Math.max(50,Math.min(150,Number(input?.navigation?.swipeThreshold)||75))),swipeEdgeOnly:input?.navigation?.swipeEdgeOnly===true},
     dividendCalendar:{
       showLastBuyDate:calendar?.showLastBuyDate!==false,
       showExDate:calendar?.showExDate!==false,

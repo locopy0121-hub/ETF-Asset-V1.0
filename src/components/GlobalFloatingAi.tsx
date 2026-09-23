@@ -19,7 +19,7 @@ const CARD_WIDTH=360;
 const CARD_HEIGHT=430;
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 
-export function GlobalFloatingAi(){
+export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSignal?:number;onExpandedChange?:(expanded:boolean)=>void}={}){
   const finance=useFinance();
   const ai=useAiNewsRuntime();
   const theme=useThemeRuntime();
@@ -28,6 +28,7 @@ export function GlobalFloatingAi(){
   const [mode,setMode]=useState<Mode>('minimized');
   const [position,setPosition]=useState<Point>({x:12,y:120});
   const dragStart=useRef<Point>({x:12,y:120});
+  const seenCollapse=useRef(collapseSignal);
 
   useEffect(()=>{let alive=true;AsyncStorage.getItem(STORAGE_KEY).then(raw=>{
     if(!alive||!raw)return;
@@ -47,6 +48,13 @@ export function GlobalFloatingAi(){
 
   const persist=(point:Point,nextMode=mode)=>AsyncStorage.setItem(STORAGE_KEY,JSON.stringify({...point,mode:nextMode})).catch(()=>{});
   const changeMode=(next:Mode)=>{setMode(next);void persist(safePosition,next);};
+  // This floating View is not an RN Modal, so top-level Android back must collapse it.
+  useEffect(()=>{onExpandedChange?.(mode==='open');return ()=>onExpandedChange?.(false);},[mode,onExpandedChange]);
+  useEffect(()=>{
+    if(collapseSignal===seenCollapse.current)return;
+    seenCollapse.current=collapseSignal;
+    if(mode==='open')changeMode('minimized');
+  },[collapseSignal,mode]);
 
   const responder=useMemo(()=>PanResponder.create({
     onStartShouldSetPanResponder:()=>true,
