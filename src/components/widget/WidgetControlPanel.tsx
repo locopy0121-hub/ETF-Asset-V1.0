@@ -35,6 +35,7 @@ type Props = {
   onChange: (value: WidgetConfig) => void;
   availableSymbols?: readonly SymbolOption[];
   previewSnapshot?: SharedSnapshot|null;
+  onRefresh?:()=>Promise<void>;
 };
 
 const sizes: readonly WidgetSize[] = ['2x2','small', 'medium', 'large'];
@@ -49,7 +50,15 @@ const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中
 const sortKeys:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
 const sortLabels:Record<WidgetSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
 
-export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
+export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null, onRefresh }: Props) {
+  const [refreshing,setRefreshing]=useState(false);
+  const [refreshError,setRefreshError]=useState('');
+  const forceRefresh=async()=>{
+    if(!onRefresh||refreshing)return;
+    setRefreshing(true);setRefreshError('');
+    try{await onRefresh();}catch(error){setRefreshError(error instanceof Error?error.message:'更新失敗');}
+    finally{setRefreshing(false);}
+  };
   const [editingField,setEditingField]=useState<WidgetField|null>(null);
   const sortedRows=sortWidgetHoldings(previewSnapshot,value);
   const previewHolding=sortedRows[0];
@@ -112,6 +121,11 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
     </View>
 
     <Section title="即時預覽">
+      <Pressable accessibilityRole="button" accessibilityLabel="點擊強制更新 Widget 行情" disabled={!onRefresh||refreshing} onPress={()=>void forceRefresh()} style={{alignSelf:'flex-end',padding:10,backgroundColor:colors.primary,borderRadius:8}}>
+        <Text style={{color:'#FFFFFF',fontWeight:'800'}}>{refreshing?'行情更新中…':'↻ 點擊更新行情'}</Text>
+      </Pressable>
+      {refreshError?<Text style={{color:'#EF4444'}}>更新失敗：{refreshError}</Text>:null}
+      {previewSnapshot?<Text style={styles.note}>預覽持股 {sortedRows.length} 筆；目前顯示 {wallPreviewRows.length} 筆，超出預覽列數需在桌面 Widget 繼續檢查。</Text>:null}
       {value.template==='quote-wall'
         ?<View style={[styles.preview,styles.wallPreview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
           {wallPreviewRows.map(row=><View key={row.symbol} style={[styles.wallPreviewCard,{flexBasis:value.wallColumns===1?'100%':value.wallColumns===2?'48%':value.wallColumns===3?'31%':'23%'}]}>
