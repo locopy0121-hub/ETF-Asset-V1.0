@@ -43,7 +43,7 @@ jobs:
   qa-apk:
     name: V2.1.16 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.16-20260923-ai-news'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.16-20260923-priority-labels-list'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 90
