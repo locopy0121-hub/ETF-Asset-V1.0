@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {extractArticleBody,extractArticleHighlights} from './articleSummary';
+import {selectNewsForEnrichment} from './newsCoverage';
 
 export type AiNewsItem=Readonly<{id:string;symbol:string;name:string;title:string;source:string;publishedAt:string;url:string;summary:string;summaryStatus?:'article'|'unavailable'}>;
 export type TrackedHolding=Readonly<{symbol:string;name:string}>;
@@ -62,17 +63,7 @@ export function AiNewsRuntimeProvider({children}:PropsWithChildren){
     const merged=Array.from(new Map(raw.map(item=>[(item.url||item.symbol+'|'+item.title).toLowerCase(),item])).values()).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||'')).slice(0,40);
     if(!merged.length)throw new Error('目前沒有可用的持股新聞');
     // Enrich the latest items using actual readable article paragraphs; do not treat RSS titles as AI summaries.
-    // Spread limited full-article fetches across distinct holdings, so one busy ETF cannot crowd out all others.
-    const newestBySymbol=new Map<string,AiNewsItem[]>();
-    for(const item of merged){const row=newestBySymbol.get(item.symbol)??[];row.push(item);newestBySymbol.set(item.symbol,row);}
-    const coverage:AiNewsItem[]=[];
-    while(coverage.length<8&&Array.from(newestBySymbol.values()).some(row=>row.length)){
-      for(const row of newestBySymbol.values()){
-        const item=row.shift();if(item)coverage.push(item);
-        if(coverage.length>=8)break;
-      }
-    }
-    const enriched=await Promise.all(coverage.map(articleHighlights));
+    // Distribute the article-fetch budget across all tracked holdings.\n    const coverage=selectNewsForEnrichment(merged,8);\n    const enriched=await Promise.all(coverage.map(articleHighlights));
     const enrichedById=new Map(enriched.map(item=>[item.id,item]));
     setItems(merged.map(item=>enrichedById.get(item.id)??item));setLastUpdatedAt(Date.now());
     const failures=settled.filter(x=>x.status==='rejected').length;
