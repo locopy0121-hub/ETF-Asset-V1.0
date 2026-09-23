@@ -62,8 +62,19 @@ export function AiNewsRuntimeProvider({children}:PropsWithChildren){
     const merged=Array.from(new Map(raw.map(item=>[(item.url||item.symbol+'|'+item.title).toLowerCase(),item])).values()).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||'')).slice(0,40);
     if(!merged.length)throw new Error('目前沒有可用的持股新聞');
     // Enrich the latest items using actual readable article paragraphs; do not treat RSS titles as AI summaries.
-    const enriched=await Promise.all(merged.slice(0,8).map(articleHighlights));
-    setItems([...enriched,...merged.slice(8)]);setLastUpdatedAt(Date.now());
+    // Spread limited full-article fetches across distinct holdings, so one busy ETF cannot crowd out all others.
+    const newestBySymbol=new Map<string,AiNewsItem[]>();
+    for(const item of merged){const row=newestBySymbol.get(item.symbol)??[];row.push(item);newestBySymbol.set(item.symbol,row);}
+    const coverage:AiNewsItem[]=[];
+    while(coverage.length<8&&Array.from(newestBySymbol.values()).some(row=>row.length)){
+      for(const row of newestBySymbol.values()){
+        const item=row.shift();if(item)coverage.push(item);
+        if(coverage.length>=8)break;
+      }
+    }
+    const enriched=await Promise.all(coverage.map(articleHighlights));
+    const enrichedById=new Map(enriched.map(item=>[item.id,item]));
+    setItems(merged.map(item=>enrichedById.get(item.id)??item));setLastUpdatedAt(Date.now());
     const failures=settled.filter(x=>x.status==='rejected').length;
     if(failures)setLastError(`部分來源暫時無法更新（${failures}/${settled.length}）`);
   }catch(error){setLastError(error instanceof Error?error.message:String(error));}finally{setRefreshing(false);}},[refreshing]);
