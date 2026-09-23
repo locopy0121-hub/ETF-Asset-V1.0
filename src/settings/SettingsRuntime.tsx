@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { MainPageKey } from '../domain/pageRegistry';
+import type { DividendCalendarPrefs } from '../dividend/dividendCalendar';
+import { normalizeControlPrefs, patchAiPrefs, patchPageTitle, resetLimitedPreferences } from './settingsControlBehavior';
 import {
   createContext,
   type PropsWithChildren,
@@ -36,8 +39,14 @@ export type TradeDefaults=Readonly<{
   accountLabel:string;
   tradeKind:'buy'|'sell';
 }>;
+export type AiPrefs=Readonly<{enabled:boolean;floatingButton:boolean}>;
+export type NavigationPrefs=Readonly<{swipeEnabled:boolean;swipeThreshold:number}>;
 export type SettingsPrefs=Readonly<{
   schema:1;
+  pageTitles:Partial<Record<MainPageKey,string>>;
+  ai:AiPrefs;
+  navigation:NavigationPrefs;
+  dividendCalendar:DividendCalendarPrefs;
   notifications:NotificationPrefs;
   display:DisplayPrefs;
   tradeDefaults:TradeDefaults;
@@ -45,6 +54,10 @@ export type SettingsPrefs=Readonly<{
 
 const DEFAULT_SETTINGS:SettingsPrefs={
   schema:1,
+  pageTitles:{},
+  ai:{enabled:true,floatingButton:true},
+  navigation:{swipeEnabled:true,swipeThreshold:75},
+  dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true},
   notifications:{
     exDividend:true,
     dividend:true,
@@ -79,11 +92,23 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
   const n=input?.notifications;
   const d=input?.display;
   const t=input?.tradeDefaults;
+  const controls=normalizeControlPrefs(input);
+  const calendar=input?.dividendCalendar;
   const lead=Math.max(0,Math.min(30,Math.floor(Number(n?.leadDays??DEFAULT_SETTINGS.notifications.leadDays))));
   const fontScale=Math.max(0.8,Math.min(1.4,Number(d?.fontScale??DEFAULT_SETTINGS.display.fontScale)));
   const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
   return {
     schema:1,
+    pageTitles:controls.pageTitles,
+    ai:controls.ai,
+    navigation:{swipeEnabled:input?.navigation?.swipeEnabled!==false,swipeThreshold:Math.round(Math.max(50,Math.min(150,Number(input?.navigation?.swipeThreshold)||75)))},
+    dividendCalendar:{
+      showLastBuyDate:calendar?.showLastBuyDate!==false,
+      showExDate:calendar?.showExDate!==false,
+      showRecordDate:calendar?.showRecordDate!==false,
+      showPaymentDate:calendar?.showPaymentDate!==false,
+      showStatus:calendar?.showStatus!==false,
+    },
     notifications:{
       exDividend:n?.exDividend??DEFAULT_SETTINGS.notifications.exDividend,
       dividend:n?.dividend??DEFAULT_SETTINGS.notifications.dividend,
@@ -119,6 +144,10 @@ type SettingsRuntimeValue=Readonly<{
   patchNotifications:(patch:Partial<NotificationPrefs>)=>void;
   patchDisplay:(patch:Partial<DisplayPrefs>)=>void;
   patchTradeDefaults:(patch:Partial<TradeDefaults>)=>void;
+  patchPageTitle:(page:MainPageKey,title:string)=>void;
+  patchAi:(patch:Partial<AiPrefs>)=>void;
+  patchNavigation:(patch:Partial<NavigationPrefs>)=>void;
+  patchDividendCalendar:(patch:Partial<DividendCalendarPrefs>)=>void;
   resetPreferences:()=>void;
 }>;
 
@@ -152,7 +181,11 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     patchNotifications:patch=>setPrefs(current=>normalize({...current,notifications:{...current.notifications,...patch}})),
     patchDisplay:patch=>setPrefs(current=>normalize({...current,display:{...current.display,...patch}})),
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
-    resetPreferences:()=>setPrefs(DEFAULT_SETTINGS),
+    patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
+    patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),
+    patchNavigation:patch=>setPrefs(current=>normalize({...current,navigation:{...current.navigation,...patch}})),
+    patchDividendCalendar:patch=>setPrefs(current=>normalize({...current,dividendCalendar:{...current.dividendCalendar,...patch}})),
+    resetPreferences:()=>setPrefs(current=>normalize(resetLimitedPreferences(current,DEFAULT_SETTINGS))),
   }),[hydrated,prefs]);
 
   return <SettingsRuntimeContext.Provider value={value}>{children}</SettingsRuntimeContext.Provider>;

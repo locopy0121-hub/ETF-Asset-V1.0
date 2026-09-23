@@ -1,0 +1,12 @@
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const read=p=>fs.readFileSync(p,'utf8');
+const ai=read('src/components/AiQuestionBox.tsx');
+const card=read('src/components/HoldingQuoteModule.tsx');
+assert.match(ai,/suggestionViewport:\{flexGrow:0,maxHeight:46\}/);
+assert.match(ai,/threadViewport:\{flexGrow:0,height:340,minHeight:240/);
+assert.doesNotMatch(ai,/root:\{height:310/);
+assert.match(ai,/nestedScrollEnabled/);
+assert.match(card,/narrowCard:\{flexDirection:'column',minHeight:168\}/);
+assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,20109);
+console.log('V2.1.9 AI suggestion, long-answer scroll, holding spacing and identity source contract: PASS');
