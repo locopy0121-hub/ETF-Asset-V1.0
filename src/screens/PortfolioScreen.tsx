@@ -15,6 +15,7 @@ import { sortHoldingQuotes } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
+import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 type ViewMode='list'|'wall';
@@ -23,6 +24,7 @@ const number=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFin
 
 export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)=>void}) {
   const finance=useFinance();
+  const market=useMarketRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [calculatorOpen,setCalculatorOpen]=useState(false);
   const editor=usePageEditor('portfolio');
@@ -34,13 +36,20 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
+  const sorted=useMemo(()=>{
+    const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
+    return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
+      ...item,etfType:tags.get(item.symbol)?.etfType??null,
+      dividendType:tags.get(item.symbol)?.dividendType??null,
+    }));
+  },[finance.holdings,sortKey,market.catalog]);
   const portfolio=finance.snapshot.portfolio;
 
   return <>
     <PageShell
+      pageKey="portfolio"
       title="持股分析"
-      subtitle="V3.7.8 Canonical Portfolio"
+      subtitle="正式 Canonical Portfolio"
       actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
     >
       <PageEditorStack pageKey="portfolio" frames={[
@@ -94,7 +103,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
                   </Pressable>
                 )}
               </View>
-              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} onOpenHolding={onOpenHolding}/>
+              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} {...(editor.displayConfig.holdingWall?{wallConfig:editor.displayConfig.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding}/>
               <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
           </FrameCard>
@@ -102,7 +111,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
       ]}/>
     </PageShell>
 
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewQuote={sorted[0]} onClose={()=>setSettingsOpen(false)}/>
     <CalculatorModal visible={calculatorOpen} onClose={()=>setCalculatorOpen(false)}/>
   </>;
 }
@@ -156,7 +165,7 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.modalBackdrop}><View style={styles.calculator}>
       <View style={styles.modalTop}><View><Text style={styles.modalKicker}>庫存工具</Text><Text style={styles.modalTitle}>持股試算</Text></View><Pressable onPress={onClose}><Text style={styles.done}>完成</Text></Pressable></View>
-      <Text style={styles.modalHint}>試算直接呼叫 V3.7.8 Canonical Core；不寫入 Ledger。</Text>
+      <Text style={styles.modalHint}>試算直接呼叫正式 Canonical Core；不寫入 Ledger。</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolChoices}>
         {finance.holdings.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}

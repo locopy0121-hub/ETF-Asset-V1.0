@@ -49,6 +49,7 @@ export function AiQuestionBox({
   };
 
   const runAction=async(action:AiAssistantAction)=>{
+    if(action.kind==='openDividend'){await submit(action.question);return;}
     if(!onAction)return;
     if(confirming!==action.id){setConfirming(action.id);return;}
     setConfirming(null);
@@ -67,7 +68,7 @@ export function AiQuestionBox({
       nestedScrollEnabled
       onContentSizeChange={()=>scrollRef.current?.scrollToEnd({animated:true})}
     >
-      {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?{backgroundColor:theme.palette.primary}:{backgroundColor:theme.palette.surfaceMuted}]}>
+      {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?styles.user:styles.assistant,{backgroundColor:message.role==='user'?theme.palette.primary:theme.palette.surfaceMuted}]}>
         <Text style={[styles.message,{color:message.role==='user'?'#FFFFFF':theme.palette.text}]}>{message.text}</Text>
         {message.role==='assistant'&&message.actions?.length?<View style={styles.actions}>{message.actions.map(action=><View key={action.id} style={styles.actionLine}>
           <Pressable onPress={()=>void runAction(action)} style={[styles.actionButton,confirming===action.id&&styles.confirmButton]}><Text style={styles.actionText}>{confirming===action.id?'確認新增':action.label}</Text></Pressable>
@@ -101,8 +102,8 @@ const styles=StyleSheet.create({
   thread:{gap:7,padding:8,paddingBottom:12},
   bubble:{maxWidth:'94%',paddingHorizontal:11,paddingVertical:9,borderRadius:radius.md},
   user:{alignSelf:'flex-end',backgroundColor:colors.primary},
-  assistant:{alignSelf:'flex-start',backgroundColor:colors.surfaceMuted},
-  message:{fontSize:11,lineHeight:17,color:colors.text},
+  assistant:{alignSelf:'flex-start',width:'94%',backgroundColor:colors.surfaceMuted},
+  message:{fontSize:11,lineHeight:18,color:colors.text,flexShrink:1},
   userText:{color:'#FFFFFF'},
   empty:{fontSize:10,lineHeight:16,color:colors.textSecondary,padding:8},
   actions:{gap:6,marginTop:8},

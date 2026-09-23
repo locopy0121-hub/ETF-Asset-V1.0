@@ -1,6 +1,7 @@
 package com.tfasset.app
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
@@ -32,12 +33,24 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
   override fun onReceive(context:Context,intent:Intent){
     super.onReceive(context,intent)
     if(intent.action==ACTION_FORCE_REFRESH){
+      // Native acknowledgement is visible immediately, even while the JS bridge wakes up.
+      val manager=AppWidgetManager.getInstance(context)
+      val ids=manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java))
+      ids.forEach{id->val progress=RemoteViews(context.packageName,R.layout.tf_asset_widget)
+        progress.setTextViewText(R.id.widget_refresh,"更新中…")
+        manager.partiallyUpdateAppWidget(id,progress)
+      }
       context.getSharedPreferences("tf_asset_native",0).edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis()).apply()
       val launch=context.packageManager.getLaunchIntentForPackage(context.packageName)
       if(launch!=null){
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         launch.putExtra("tfasset_force_market_refresh",true)
         context.startActivity(launch)
+      }else{
+        ids.forEach{id->val failed=RemoteViews(context.packageName,R.layout.tf_asset_widget)
+          failed.setTextViewText(R.id.widget_refresh,"無法更新")
+          manager.partiallyUpdateAppWidget(id,failed)
+        }
       }
     }
   }
@@ -94,7 +107,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val first=holdings.firstOrNull()
     val template=config.optString("template","asset-summary")
     val capacity=when(template){"minimal"->2;"compact"->3;"quote-summary","transparent"->4;"asset-summary"->5;else->6}
-    val selectedFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}.take(capacity)
+    val configuredFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}
+    val selectedFields=configuredFields.take(capacity)
     val styles=fieldStyles(config)
     val views=RemoteViews(context.packageName,R.layout.tf_asset_widget)
     val ids=intArrayOf(R.id.widget_line1,R.id.widget_line2,R.id.widget_line3,R.id.widget_line4,R.id.widget_line5,R.id.widget_line6)
@@ -119,6 +133,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val configuredColumns=config.optInt("wallColumns",4).coerceIn(1,4)
     val autoColumns=when{minWidth>=360->4;minWidth>=270->3;minWidth>=180->2;else->1}
     val wallColumns=minOf(configuredColumns,autoColumns)
+    val perColumnDp=minWidth.toDouble()/wallColumns
+    val wallFontFactor=(perColumnDp/120.0).coerceIn(0.7,1.0)
     val maxWallRows=(minHeight/92).coerceIn(1,4)
     val wallCapacity=(wallColumns*maxWallRows).coerceIn(1,16)
     val legacyProfitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
@@ -132,6 +148,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     views.setTextViewText(R.id.widget_title,if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
     views.setTextColor(R.id.widget_refresh,neutral)
+    views.setTextViewText(R.id.widget_refresh,"↻ 更新")
     val forceRefreshEnabled=config.optBoolean("forceRefreshOnTap",true)
     views.setViewVisibility(R.id.widget_refresh,if(forceRefreshEnabled)View.VISIBLE else View.GONE)
 
@@ -181,7 +198,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val visibleRows=if(rows.isEmpty())1 else ceil(rows.size.toDouble()/wallColumns).toInt().coerceIn(1,maxWallRows)
       repeat(visibleRows){views.setViewVisibility(wallRowIds[it],View.VISIBLE)}
       val supported=setOf("symbol","name","price","change","changePercent","shares","avgCost","holdingMarketValue","pnl","roi","comprehensivePnl","marketStatus","updatedAt","dailyPnl","quote")
-      val wallFields=selectedFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
+      val wallFields=configuredFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
       rows.forEachIndexed{index,row->
         val rowIndex=index/wallColumns
         val columnIndex=index%wallColumns
@@ -190,7 +207,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         views.setViewVisibility(id,View.VISIBLE)
         views.setTextViewText(id,card)
         views.setTextColor(id,text)
-        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs).toFloat())
+        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs*wallFontFactor).toFloat())
       }
     }
 
@@ -231,6 +248,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val visual=fieldConfig.optJSONObject("visual")?:JSONObject()
       val label=fieldConfig.optString("label",defaultLabel(field))
       val rendered=renderField(field,asset,holding,label)
+      val paddingY=visual.optInt("paddingY",0).coerceIn(0,16)
+      if(paddingY>0){
+        val topPadStart=out.length
+        out.append("\u200B\n")
+        out.setSpan(AbsoluteSizeSpan(paddingY,true),topPadStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      }
       val start=out.length
       out.append(rendered.first)
       val end=out.length
@@ -258,11 +281,16 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       if(index<fields.lastIndex){
         out.append("\n")
         val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",globalGap).coerceIn(0,32) else globalGap.coerceIn(0,32)
-        if(gap>0){
+        val spacerHeight=(gap+paddingY).coerceIn(0,48)
+        if(spacerHeight>0){
           val spacerStart=out.length
           out.append("\u200B\n")
-          out.setSpan(AbsoluteSizeSpan(gap,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+          out.setSpan(AbsoluteSizeSpan(spacerHeight,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
+      }else if(paddingY>0){
+        val bottomPadStart=out.length
+        out.append("\n\u200B")
+        out.setSpan(AbsoluteSizeSpan(paddingY,true),bottomPadStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
     return out

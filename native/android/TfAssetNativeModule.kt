@@ -120,6 +120,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
         pm.setComponentEnabledSetting(ComponentName(reactContext.packageName,reactContext.packageName+"."+alias),state,PackageManager.DONT_KILL_APP)
       }
       prefs.edit().putString("app_icon_key",iconKey).apply()
+      refreshWidget()
     }.onSuccess{promise.resolve(true)}.onFailure{promise.reject("ICON_SWITCH_FAILED",it)}
   }
 
