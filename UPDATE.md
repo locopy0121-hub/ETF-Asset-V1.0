@@ -142,3 +142,15 @@
 - 本次新增 T01–T06，詳見 `GO_V2_1_5_CHECKLIST.md`；ETF 類型與配息型態已加入共用行情卡 AB 工具、設定正規化、首頁和庫存；未知顯示「待確認」，不從 ETF 名稱猜測配息政策。
 - TWSE 官方基金基本資料彙總表的可用欄位讀取已接入，但**尚未驗證官方實際欄位、資料完整性、發行商來源或全表分類**。Monitor／Mini／Widget 也尚未實裝兩個新欄位，因此 T03/T04 不是 PASS。
 - 工作版號 2.1.5／Android 20105，QA CI 採 GitHub-only Gradle APK；CODE 提交和 QA APK 不代表正式 Release。
+
+
+## 11. 2026-09-23 GO V2.1.6 — 持續開發 QA APK 交付紀錄
+
+- 起點 V2.1.5 HEAD `23db8fa1e3a74963858d61504f947fcf4c95aef4`; 更新前獨立備份 `backup-v2.1.5-20260923-pre-go-v216` 已建立；本輪工作分支 `go-v2.1.6-20260923-continuous`，PR #23 為 draft、開發期不等 Codex 審查。
+- CODE：主頁已加水平觸控位移切換、設定中的滑動啟閉及 50–150px 距離設定；Android Widget 新增可視的「↻ 更新」點擊目標、原生點擊立即顯示「更新中…」，Widget 編輯器預覽也加入強制行情刷新入口及顯示筆數提示；四欄原生字級依單欄寬度縮放。**尚待 Android 真機驗證；不標記完整 Feature PASS。**
+- 版本同步 2.1.6 / 20106；package `com.tfasset.app`。金融不可變核心未修改。
+- 首次 Actions #706 quality PASS 但原生 APK job 被錯誤 head_ref 條件跳過；已修復，正式本輪 QA Actions #709 / `35818971799` quality 與 Gradle QA job 均 success，APK build source commit `37c9bcb17745bb098ed497c5c8bc0d45bb5b5175`。
+- [V2.1.6 QA APK 下載](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35818971799/artifacts/10732706763)；artifact ID `10732706763`、ZIP 23,297,066 bytes、ZIP SHA256 `0789621c706a1fd4b6ce5dd045500b248c9987411bb6aaa2ccfcc062cf3c1492`；APK 53,788,345 bytes、APK SHA256 `3bfcdeea1240b95cebaab305a3253e621d2f2c7f0cc51f040da07e734d64fe9e`。Workflow `unzip -t` PASS，`aapt` 驗證 `com.tfasset.app / 20106 / 2.1.6` PASS；原生 APK 尚待使用者安裝驗收。
+- 本輪 C01–C09 計 9 項：C01 與 C09 的備份／建置證據 PASS（2）；C02–C08 七項為功能尚未完整實機驗證、或歷史需求 NO PASS／結轉（7），不可將本輪 QA APK 稱為正式 Release。舊 U01–U15、G01–G08、N01–N06、T01–T06 原清單 35 條均保留，不以本輪計數覆蓋其獨立驗收狀態。
+- 下一輪優先實機查：桌面 Widget 點擊是否刷新且時間戳正確、App 前景／背景同步、七或八筆持股與四欄內容、主頁滑動及巢狀圖表衝突；官方 ETF 類型欄位完整驗證、新聞正文、股息 AB 設定及全部其他 NO PASS 持續結轉。
+
