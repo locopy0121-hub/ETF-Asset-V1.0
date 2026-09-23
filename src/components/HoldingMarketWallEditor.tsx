@@ -23,7 +23,7 @@ import { colors, radius, spacing } from '../theme/tokens';
 import { ColorPalettePicker } from './ColorPalettePicker';
 
 const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}[]=[
-  {title:'標題區',fields:['name','symbol']},
+  {title:'標題區',fields:['name','symbol','etfType','dividendType']},
   {title:'行情區',fields:['price','change','changePercent']},
   {title:'損益區',fields:['pnl','roi','marketValue']},
 ];
