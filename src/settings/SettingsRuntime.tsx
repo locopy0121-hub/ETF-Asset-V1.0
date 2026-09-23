@@ -40,10 +40,12 @@ export type TradeDefaults=Readonly<{
   tradeKind:'buy'|'sell';
 }>;
 export type AiPrefs=Readonly<{enabled:boolean;floatingButton:boolean}>;
+export type NavigationPrefs=Readonly<{swipeEnabled:boolean;swipeThreshold:number}>;
 export type SettingsPrefs=Readonly<{
   schema:1;
   pageTitles:Partial<Record<MainPageKey,string>>;
   ai:AiPrefs;
+  navigation:NavigationPrefs;
   dividendCalendar:DividendCalendarPrefs;
   notifications:NotificationPrefs;
   display:DisplayPrefs;
@@ -54,6 +56,7 @@ const DEFAULT_SETTINGS:SettingsPrefs={
   schema:1,
   pageTitles:{},
   ai:{enabled:true,floatingButton:true},
+  navigation:{swipeEnabled:true,swipeThreshold:75},
   dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true},
   notifications:{
     exDividend:true,
@@ -98,6 +101,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
     schema:1,
     pageTitles:controls.pageTitles,
     ai:controls.ai,
+    navigation:{swipeEnabled:input?.navigation?.swipeEnabled!==false,swipeThreshold:Math.round(Math.max(50,Math.min(150,Number(input?.navigation?.swipeThreshold)||75)))},
     dividendCalendar:{
       showLastBuyDate:calendar?.showLastBuyDate!==false,
       showExDate:calendar?.showExDate!==false,
@@ -142,6 +146,7 @@ type SettingsRuntimeValue=Readonly<{
   patchTradeDefaults:(patch:Partial<TradeDefaults>)=>void;
   patchPageTitle:(page:MainPageKey,title:string)=>void;
   patchAi:(patch:Partial<AiPrefs>)=>void;
+  patchNavigation:(patch:Partial<NavigationPrefs>)=>void;
   patchDividendCalendar:(patch:Partial<DividendCalendarPrefs>)=>void;
   resetPreferences:()=>void;
 }>;
@@ -178,6 +183,7 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
     patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
     patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),
+    patchNavigation:patch=>setPrefs(current=>normalize({...current,navigation:{...current.navigation,...patch}})),
     patchDividendCalendar:patch=>setPrefs(current=>normalize({...current,dividendCalendar:{...current.dividendCalendar,...patch}})),
     resetPreferences:()=>setPrefs(current=>normalize(resetLimitedPreferences(current,DEFAULT_SETTINGS))),
   }),[hydrated,prefs]);
