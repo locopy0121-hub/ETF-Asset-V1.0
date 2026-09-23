@@ -41,13 +41,16 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val manager=AppWidgetManager.getInstance(context)
       val ids=manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java))
       ids.forEach{id->val progress=RemoteViews(context.packageName,R.layout.tf_asset_widget)
-        progress.setTextViewText(R.id.widget_refresh,"更新中…")
+        progress.setTextViewText(R.id.widget_refresh,"行情更新中…")
         manager.partiallyUpdateAppWidget(id,progress)
       }
       // Do not launch MainActivity: a home-screen tap is a background quote refresh.
+      // Record the request so that App can reconcile canonical finances when it next enters foreground.
+      val prefs=context.getSharedPreferences("tf_asset_native",0)
+      prefs.edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis())
+        .putString("widget_refresh_status","行情更新中…").apply()
       val pendingResult=goAsync()
       Thread {
-        val prefs=context.getSharedPreferences("tf_asset_native",0)
         try {
           val snapshot=JSONObject(prefs.getString("snapshot","{}")?:"{}")
           val symbols=orderedHoldings(snapshot,JSONObject(prefs.getString("widget_config","{}")?:"{}"))
@@ -81,11 +84,17 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
             quotes.put(symbol,quote)
           }
           if(quotes.length()==0)throw IllegalStateException("行情未提供可用報價")
+          // Native refresh updates quotes only; money remains the last canonical App snapshot.
+          // The status must not claim that holding market values or profit were recalculated.
+          val quoteTime=System.currentTimeMillis()
+          val hhmm=java.text.SimpleDateFormat("HH:mm",java.util.Locale.TAIWAN).format(java.util.Date(quoteTime))
+          val coverage=if(quotes.length()==symbols.size)"" else " ${quotes.length()}/${symbols.size}"
           prefs.edit().putString("wall_market_overrides",quotes.toString())
-            .putString("widget_refresh_status","↻ "+java.text.SimpleDateFormat("HH:mm",java.util.Locale.TAIWAN).format(java.util.Date()))
-            .putLong("wall_market_refreshed_at",System.currentTimeMillis()).apply()
+            .putString("widget_refresh_status","行情${coverage} ${hhmm}｜財務待同步")
+            .putLong("wall_market_refreshed_at",quoteTime).apply()
         }catch(error:Exception){
-          prefs.edit().putString("widget_refresh_status","更新失敗").apply()
+          // On failure leave the previous canonical figures and any last-known-good quotes intact.
+          prefs.edit().putString("widget_refresh_status","行情更新失敗｜保留原資料").apply()
         }
         try { ids.forEach{id->manager.updateAppWidget(id,buildViews(context,id,manager))} }
         finally { pendingResult.finish() }
