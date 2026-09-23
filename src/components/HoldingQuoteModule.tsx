@@ -10,6 +10,8 @@ import {
   type QuoteModuleStyle,
 } from '../domain/uiModels';
 import type { ItemEffectConfig } from '../domain/displayItemContract';
+import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
+import {EtfBadgeRow} from './EtfBadgeRow';
 import { radius, spacing } from '../theme/tokens';
 import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 
@@ -21,6 +23,7 @@ export function HoldingQuoteModule({
   style='quote',
   layout='full',
   wallConfig=DEFAULT_HOLDING_WALL_CONFIG,
+  badgeConfig=DEFAULT_ETF_BADGES,
   refreshToken,
   onPress,
 }:{
@@ -28,6 +31,7 @@ export function HoldingQuoteModule({
   style?:QuoteModuleStyle;
   layout?:'full'|'narrow';
   wallConfig?:HoldingWallConfig;
+  badgeConfig?:EtfBadgeConfig;
   refreshToken?:string|number|null|undefined;
   onPress?:()=>void;
 }){
@@ -39,7 +43,7 @@ export function HoldingQuoteModule({
   const cfg=wallConfig;
   const cardStyle=cfg.style;
   const groups={
-    header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol'||field.field==='etfType'||field.field==='dividendType')),
+    header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol')),
     quote:cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent')),
     footer:cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue')),
   };
@@ -57,27 +61,29 @@ export function HoldingQuoteModule({
           styles.head,
           {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
         ]}>
-          <View style={styles.nameWrap}>
-            {groups.header.map((field,index)=><WallText
-              key={field.field}
-              field={field}
-              item={item}
-              change={change}
-              changePct={changePct}
-              wall={cfg}
-              refreshToken={refreshToken}
-              header
-              narrow={narrow}
-              primary={index===0}
+          <View style={styles.headerMain}>
+            <View style={styles.headerTop}>
+              <View style={styles.headerSymbol}>
+                {groups.header.filter(field=>field.field==='symbol').map(field=><WallText
+                  key={field.field} field={field} item={item} change={change} changePct={changePct}
+                  wall={cfg} refreshToken={refreshToken} header narrow={narrow} primary
+                />)}
+              </View>
+              <EtfBadgeRow etfType={item.etfType} dividendType={item.dividendType}
+                reminder={item.reminderEvent} config={badgeConfig} narrow={narrow} refreshToken={refreshToken}/>
+            </View>
+            {groups.header.filter(field=>field.field==='name').map(field=><WallText
+              key={field.field} field={field} item={item} change={change} changePct={changePct}
+              wall={cfg} refreshToken={refreshToken} header narrow={narrow}
             />)}
           </View>
-          <Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>
+          {!narrow?<Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>:null}
         </View>
       </EffectView>:null}
 
       {groups.quote.length?<View style={styles.quoteRow}>
-        <View style={{flex:1}}>
-          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
+        <View style={{flex:1,minWidth:0}}>
+          <WallText field={groups.quote[0]! item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
         </View>
         {groups.quote.length>1?<View style={styles.changeWrap}>
           {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}/>)}
@@ -117,7 +123,7 @@ function WallText({
   const value=fieldValue(field.field,item,change,changePct);
   const fontSize=header
     ?(primary?(narrow?12:15):11)*field.fontScale*wall.header.fontScale
-    :(quotePrimary?(narrow?21:29):11)*field.fontScale;
+    :(quotePrimary?(narrow?20:29):11)*field.fontScale;
   return <EffectText
     text={value}
     effect={field.effect}
@@ -129,7 +135,7 @@ function WallText({
       color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
-      textAlign:field.align,
+      textAlign:header&&field.field==='symbol'?'left':field.align,
       marginTop:header&&!primary?(field.lineGap??2):(field.lineGap??0),
       paddingVertical:field.paddingY,
       fontVariant:['tabular-nums'],
@@ -285,7 +291,9 @@ const styles=StyleSheet.create({
   sparkBar:{flex:1,borderRadius:3,opacity:0.9},
   body:{flex:1,padding:spacing.md,gap:8},
   head:{flexDirection:'row',alignItems:'flex-start',paddingBottom:5},
-  nameWrap:{flex:1,minWidth:0,paddingRight:4},
+  headerMain:{flex:1,minWidth:0,gap:3},
+  headerTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:3,minWidth:0},
+  headerSymbol:{flexShrink:0,maxWidth:'41%'},
   chevron:{fontSize:25,color:'#8292A8',lineHeight:26},
   quoteRow:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',gap:spacing.sm,paddingTop:5},
   changeWrap:{alignItems:'flex-end'},
