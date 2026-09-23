@@ -13,7 +13,7 @@ assert.equal(clampPreviewPosition(Number.NaN,92),0);
 const preview=fs.readFileSync('src/components/FloatingHoldingCardPreview.tsx','utf8');
 const editor=fs.readFileSync('src/components/PageFrameSettingsModal.tsx','utf8');
 const card=fs.readFileSync('src/components/HoldingQuoteModule.tsx','utf8');
-assert.match(preview,/<HoldingQuoteModule item=\{item\} wallConfig=\{config\} style=\{style\} layout=\{layout\}/);
+assert.match(preview,/<HoldingQuoteModule badgeConfig=\{badgeConfig\} item=\{item\} wallConfig=\{config\} style=\{style\} layout=\{layout\}/,'Whole-card preview reuses current renderer and includes editable ETF badges');
 assert.match(editor,/config=\{displayDraft\.holdingWall\?\?DEFAULT_HOLDING_WALL_CONFIG\}/);
 assert.match(editor,/layout=\{holdingPreviewLayout\(displayDraft\.holdingLayoutMode\)\}/);
 assert.match(card,/groups\.footer/);
