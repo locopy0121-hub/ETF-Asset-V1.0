@@ -206,3 +206,14 @@
 - 新增 scripts/v2_1_12-news-feed.test.ts，測試熱門 ETF 有 45 篇、另外兩檔各 5 篇時的分配與空資料。
 - 版本 V2.1.12 / Android 20112 / iOS buildNumber 20112，更新 Quality 與 QA APK workflow。不可變金融核心未修改。
 - 真機與新聞實際來源驗證未完成，不代表正式 Release。完整未完成項見 GO_V2_1_12_CHECKLIST.md 及歷史清單。
+
+
+## 2026-09-23 GO 八大項｜V2.1.13 QA 進度（持續更新）
+- Source: PR #29 V2.1.12 QA head `700fc3de3d4548721eb7f5028e466eb6fbca3031`，不是從落後的 main 修改。
+- 修改前備份 `backup-v2.1.12-20260923-pre-go8` 已由 GitHub branch API 查得相同 commit；工作分支 `go-v2.1.13-20260923-eight-items`。
+- 第 01 項：既有帳務核心已由使用者確認正確，本輪完全禁止更動。原本正確的 Monitor/Mini/股息/外觀均保留。
+- 第 02 項：已核對來源 branch、APK 候選版版本 2.1.12／20112，並建立更新前備份；本輪新版本已同步遞增至 **2.1.13／Android 20113／iOS 20113**，尚待實際 QA APK 和實機證據。
+- 第 03 項（CODE 已提交，非完整 PASS）：`src/market/etfMetadata.ts` 建立官方分類與收益分配頻率字串正規化；`MarketRuntime.tsx` 把 official metadata 按 symbol 與行情獨立合併、保留前次已驗證 metadata、按上次目錄更新嘗試時間及回到前景刷新。新增 `scripts/v2_1_13-etf-metadata.test.ts` 行為測試並納入 `test:v2_1_13`。
+- 不從 ETF 名稱、尚無配息紀錄或「每月評價」猜測配息政策；若來源不明則保持待確認。沒有授權來源結果之前，不能宣稱十檔官方 ETF 的實網分類已 PASS。
+- 仍待：CI 品質測試／APK Action、Artifact 實體與 badging／SHA、官方實網十檔來源與 Android 顯示驗證；其他第 04～08 項均未啟動，不宣稱完成。
+- 本輪完整範圍與可在串流中斷後續接的狀態：`GO_V2_1_13_CHECKLIST.md`。既有 U/G/N/T/C/D/R 問題不因 QA 版本升級而消失。
