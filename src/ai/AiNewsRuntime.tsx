@@ -60,7 +60,9 @@ export function AiNewsRuntimeProvider({children}:PropsWithChildren){
     if(!tracked.length){setItems([]);setLastUpdatedAt(Date.now());return;}
     const settled=await Promise.allSettled(tracked.map(fetchHoldingNews));
     const raw=settled.flatMap(x=>x.status==='fulfilled'?x.value:[]).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||''));
-    const merged=Array.from(new Map(raw.map(item=>[(item.url||item.symbol+'|'+item.title).toLowerCase(),item])).values()).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||'')).slice(0,40);
+    const unique=Array.from(new Map(raw.map(item=>[(item.url||item.symbol+'|'+item.title).toLowerCase(),item])).values()).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||''));
+    // Keep multiple ETFs represented in the 40-item feed, then display selected stories by actual date.
+    const merged=selectNewsForEnrichment(unique,40).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||''));
     if(!merged.length)throw new Error('目前沒有可用的持股新聞');
     // Enrich the latest items using actual readable article paragraphs; do not treat RSS titles as AI summaries.
     // Distribute the article-fetch budget across all tracked holdings.
