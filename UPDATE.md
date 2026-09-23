@@ -198,3 +198,11 @@
 - scripts/v2_1_11-news-coverage.test.ts：測試 3 檔持股混合文章分配、空資料及零預算。
 - 版本 2.1.11 / Android 20111 / iOS buildNumber 20111；舊功能不刪、不動不可變金融核心。
 - ETF 分類、新聞實際正文取得／授權限制、Widget 及歷史 U/G/N/T/C/D/R1-R3 持續 NO PASS，待 CI、QA APK、真機證據。詳 GO_V2_1_11_CHECKLIST.md。
+
+## 18. GO V2.1.12 第五輪 — 持股相關新聞清單公平涵蓋
+
+- 更新前備份 backup-v2.1.11-20260923-pre-go-v2112；來源 V2.1.11 QA APK #35843057904 / SHA a02623be1e33e94331d5b40f3f350131efd4843a。
+- 修正 AiNewsRuntime：40 篇列表亦使用依 ETF 輪流選取，避免某一檔大量新聞擠掉其他持股；選取後依新聞發布日期重新排序，來源不可閱讀則仍明示。
+- 新增 scripts/v2_1_12-news-feed.test.ts，測試熱門 ETF 有 45 篇、另外兩檔各 5 篇時的分配與空資料。
+- 版本 V2.1.12 / Android 20112 / iOS buildNumber 20112，更新 Quality 與 QA APK workflow。不可變金融核心未修改。
+- 真機與新聞實際來源驗證未完成，不代表正式 Release。完整未完成項見 GO_V2_1_12_CHECKLIST.md 及歷史清單。
