@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {extractArticleBody,extractArticleHighlights} from './articleSummary';
+import {isPublisherArticleUrl,resolvePublisherUrl} from './newsArticleResolver';
 import {selectNewsForEnrichment} from './newsCoverage';
 
 export type AiNewsItem=Readonly<{id:string;symbol:string;name:string;title:string;source:string;publishedAt:string;url:string;summary:string;summaryStatus?:'article'|'unavailable'}>;
@@ -20,14 +21,28 @@ const sourceFromTitle=(title:string)=>{const parts=title.split(' - ');return par
 async function articleHighlights(item:AiNewsItem):Promise<AiNewsItem>{
   if(!/^https:\/\//i.test(item.url))return {...item,summary:'',summaryStatus:'unavailable'};
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),6500);
+  const timer=setTimeout(()=>controller.abort(),9500);
   try{
-    const response=await fetch(item.url,{signal:controller.signal,headers:{Accept:'text/html'}});
-    if(!response.ok)return {...item,summary:'',summaryStatus:'unavailable'};
-    const html=(await response.text()).slice(0,750000);
-    const body=extractArticleBody(html);
+    const initial=await fetch(item.url,{signal:controller.signal,headers:{Accept:'text/html'}});
+    if(!initial.ok)return {...item,summary:'',summaryStatus:'unavailable'};
+    const firstHtml=(await initial.text()).slice(0,750000);
+    // Google News RSS often points at an aggregator, not the publisher's actual article.
+    // Only follow a publisher URL that is visible in the redirect result or HTML metadata.
+    const resolved=resolvePublisherUrl(firstHtml,initial.url||item.url);
+    if(!resolved)return {...item,summary:'',summaryStatus:'unavailable'};
+    const initialIsPublisher=isPublisherArticleUrl(initial.url||item.url);
+    const articleHtml=initialIsPublisher
+      ? firstHtml
+      : await (async()=>{
+        const direct=await fetch(resolved,{signal:controller.signal,headers:{Accept:'text/html'}});
+        if(!direct.ok||!isPublisherArticleUrl(direct.url||resolved))return '';
+        return (await direct.text()).slice(0,750000);
+      })();
+    const body=articleHtml?extractArticleBody(articleHtml):null;
     const highlights=body?extractArticleHighlights(body,item.title):[];
-    return highlights.length>=2?{...item,summary:highlights.map((point,i)=>`${i+1}. ${point}`).join('\n'),summaryStatus:'article'}:{...item,summary:'',summaryStatus:'unavailable'};
+    return highlights.length>=2
+      ?{...item,url:resolved,summary:highlights.map((point,i)=>`${i+1}. ${point}`).join('\n'),summaryStatus:'article'}
+      :{...item,url:resolved,summary:'',summaryStatus:'unavailable'};
   }catch{return {...item,summary:'',summaryStatus:'unavailable'};}
   finally{clearTimeout(timer);}
 }
@@ -52,7 +67,7 @@ export function AiNewsRuntimeProvider({children}:PropsWithChildren){
   const [lastUpdatedAt,setLastUpdatedAt]=useState<number|null>(null),[lastError,setLastError]=useState<string|null>(null);
   const [items,setItems]=useState<AiNewsItem[]>([]);
   const trackedRef=useRef<TrackedHolding[]>([]);
-  useEffect(()=>{let alive=true;AsyncStorage.getItem(KEY).then(raw=>{if(!alive||!raw)return;const p=JSON.parse(raw) as {items?:AiNewsItem[];lastUpdatedAt?:number};if(Array.isArray(p.items))setItems(p.items.map(item=>item.summaryStatus==='article'?item:{...item,summary:'',summaryStatus:'unavailable'}));if(Number.isFinite(Number(p.lastUpdatedAt)))setLastUpdatedAt(Number(p.lastUpdatedAt));}).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});return()=>{alive=false;};},[]);
+  useEffect(()=>{let alive=true;AsyncStorage.getItem(KEY).then(raw=>{if(!alive||!raw)return;const p=JSON.parse(raw) as {items?:AiNewsItem[];lastUpdatedAt?:number};if(Array.isArray(p.items))setItems(p.items.map(item=>item.summaryStatus==='article'&&isPublisherArticleUrl(item.url)?item:{...item,summary:'',summaryStatus:'unavailable'}));if(Number.isFinite(Number(p.lastUpdatedAt)))setLastUpdatedAt(Number(p.lastUpdatedAt));}).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});return()=>{alive=false;};},[]);
   useEffect(()=>{if(hydrated)AsyncStorage.setItem(KEY,JSON.stringify({items,lastUpdatedAt})).catch(()=>{});},[hydrated,items,lastUpdatedAt]);
   const setTrackedHoldings=useCallback((next:readonly TrackedHolding[])=>{trackedRef.current=Array.from(new Map(next.filter(x=>x.symbol).map(x=>[x.symbol,{symbol:x.symbol,name:x.name||x.symbol}])).values()).slice(0,12);},[]);
   const refresh=useCallback(async()=>{if(refreshing)return;setRefreshing(true);setLastError(null);try{
