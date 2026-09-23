@@ -23,7 +23,7 @@ import { colors, radius, spacing } from '../theme/tokens';
 import { ColorPalettePicker } from './ColorPalettePicker';
 
 const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}[]=[
-  {title:'標題區',fields:['name','symbol','etfType','dividendType']},
+  {title:'標題區',fields:['name','symbol']},
   {title:'行情區',fields:['price','change','changePercent']},
   {title:'損益區',fields:['pnl','roi','marketValue']},
 ];
@@ -90,7 +90,7 @@ export function HoldingMarketWallEditor({
 
     <View style={styles.block}>
       <Text style={styles.blockTitle}>A 項目 → B 欄位（子）單項細部</Text>
-      <Text style={styles.note}>每張持股卡共用同一份欄位配置；一次只展開一個 B，避免設定全部攤平。</Text>
+      <Text style={styles.note}>每張持股卡共用同一份欄位配置；一次只展開一個 B。ETF 類別／配息／提醒標籤改由下方「智慧標籤 A/B 編輯」獨立設定，避免重複控制。</Text>
       {FIELD_GROUPS.map(group=><View key={group.title} style={styles.group}>
         <Text style={styles.groupTitle}>{group.title}</Text>
         {value.fields.filter(field=>group.fields.includes(field.field)).map((field,index)=>{
