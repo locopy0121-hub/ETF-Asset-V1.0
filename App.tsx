@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, BackHandler, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
@@ -20,6 +20,7 @@ import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
+import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsControlBehavior';
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
@@ -61,13 +62,47 @@ function AppBody(){
   const editor=usePageEditor('home');
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+  const pageHistory=useRef<MainPageKey[]>([]);
+  const swipeStart=useRef<{x:number;y:number}|null>(null);
+  const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
+  const aiUi=deriveAiUiState(settings.prefs.ai,active);
+  const swipeToAdjacent=(direction:-1|1)=>{
+    const pages=MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab);
+    const index=pages.findIndex(page=>page.key===active);
+    const target=pages[index+direction];
+    if(target)navigatePage(target.key);
+  };
+  const onSwipeStart=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
+    swipeStart.current={x:event.nativeEvent.pageX,y:event.nativeEvent.pageY};
+  };
+  const onSwipeEnd=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
+    const start=swipeStart.current;swipeStart.current=null;
+    if(!start||detail||!settings.prefs.navigation.swipeEnabled)return;
+    const dx=event.nativeEvent.pageX-start.x,dy=event.nativeEvent.pageY-start.y;
+    if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold||Math.abs(dx)<Math.abs(dy)*1.8)return;
+    swipeToAdjacent(dx<0?1:-1);
+  };
+  useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
+  useEffect(()=>{
+    const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
+      // React Native Modal.onRequestClose handles the currently open modal first.
+      if(detail){setDetail(null);return true;}
+      while(pageHistory.current.length){
+        const previous=pageHistory.current.pop()!;
+        if(previous!==active&&(previous!=='ai'||aiUi.showAiTab)){setActive(previous);return true;}
+      }
+      if(active!=='home'){setActive('home');return true;}
+      return false; // Only root with no earlier screen allows Android to leave the app.
+    });
+    return()=>subscription.remove();
+  },[active,detail,aiUi.showAiTab]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
-    if(!finance.hydrated)return;
+    if(!shouldRefreshAiNews(finance.hydrated,settings.hydrated,settings.prefs.ai))return;
     aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
     void aiNews.refresh();
-  },[finance.hydrated,aiHoldingKey]);
+  },[finance.hydrated,settings.hydrated,settings.prefs.ai.enabled,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
@@ -76,9 +111,26 @@ function AppBody(){
 
   useEffect(()=>{
     if(!market.hydrated)return;
-    void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
-      if(requestedAt>0)void market.refresh({force:true});
+    // The Android widget receiver can deliver a new tap without remounting React.
+    // Consume requests while the app is foregrounded, and once upon resuming.
+    let alive=true;
+    let inFlight=false;
+    const poll=async()=>{
+      if(!alive||inFlight)return;
+      inFlight=true;
+      try{
+        const requestedAt=await consumeNativeWidgetForceRefreshRequest();
+        if(alive&&requestedAt>0)await market.refresh({force:true});
+      }catch(error){
+        console.warn('Widget forced quote refresh failed',error);
+      }finally{inFlight=false;}
+    };
+    void poll();
+    const widgetTimer=setInterval(()=>{if(AppState.currentState==='active')void poll();},1000);
+    const foreground=AppState.addEventListener('change',state=>{
+      if(state==='active')void poll();
     });
+    return()=>{alive=false;clearInterval(widgetTimer);foreground.remove();};
   },[market.hydrated,market.refresh]);
 
   useEffect(()=>{
@@ -120,17 +172,17 @@ function AppBody(){
   return <View style={[styles.root,{backgroundColor:theme.palette.background}]}>
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
-    <View style={styles.screen}>{screen}</View>
-    <GlobalFloatingAi/>
+    <View style={styles.screen} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
+    {aiUi.showFloatingAi?<GlobalFloatingAi/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
-        {MAIN_PAGES.map(page=>{
+        {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;
           return <Pressable
             key={page.key}
             accessibilityRole="tab"
             accessibilityState={{selected}}
-            onPress={()=>setActive(page.key)}
+            onPress={()=>navigatePage(page.key)}
             style={styles.navItem}
           >
             <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>

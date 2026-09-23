@@ -19,6 +19,6 @@ assert.ok(collection.includes("layout=\"narrow\""),'multi-column layout must use
 assert.ok(card.includes("narrowCard"),'quote card must support narrow layout');
 assert.ok(editor.includes('holdingLayoutMode'),'layout selection must persist in page editor display config');
 assert.match(editor,/home:\s*\{\s*quoteStyle:'quote',\s*sortKey:'pnl',\s*holdingLayoutMode:'grid2'/,'home layout must preserve the restored two-column default');
-assert.ok(editor.includes("portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' }"),'portfolio layout must have independent default');
+assert.match(editor,/portfolio:\s*\{\s*quoteStyle:'chart',\s*sortKey:'manual',\s*portfolioViewMode:'list',\s*holdingLayoutMode:'list'(?:,\s*holdingWall:DEFAULT_HOLDING_WALL_CONFIG)?\s*\}/,'portfolio layout must have independent default');
 
 console.log('V1.0.6 HOLDING LAYOUT: PASS');

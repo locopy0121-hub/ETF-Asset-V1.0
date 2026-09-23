@@ -39,6 +39,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'backup', title:'備份與還原', description:'備份、匯出、匯入、還原與安全清除' },
     { key:'monitor', title:'即時監控器', description:'Floating Monitor 模式、模板與刷新' },
     { key:'display', title:'視覺與主題', description:'主題、背景、App Icon、字體、格式與損益色' },
+    { key:'ai', title:'AI 控制', description:'AI 助理開關、浮動按鈕與顯示控制' },
     { key:'app', title:'App 管理', description:'預設設定、版本、更新與診斷資訊' },
     { key:'legal', title:'法律與資訊', description:'免責、行情、試算與關於 TF Asset' },
   ],
