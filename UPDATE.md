@@ -217,3 +217,13 @@
 - 不從 ETF 名稱、尚無配息紀錄或「每月評價」猜測配息政策；若來源不明則保持待確認。沒有授權來源結果之前，不能宣稱十檔官方 ETF 的實網分類已 PASS。
 - 仍待：CI 品質測試／APK Action、Artifact 實體與 badging／SHA、官方實網十檔來源與 Android 顯示驗證；其他第 04～08 項均未啟動，不宣稱完成。
 - 本輪完整範圍與可在串流中斷後續接的狀態：`GO_V2_1_13_CHECKLIST.md`。既有 U/G/N/T/C/D/R 問題不因 QA 版本升級而消失。
+
+## 2026-09-23 GO 接續｜V2.1.14 Widget 同步來源與可見狀態（第 04 項）
+
+- **使用者實測修正：** 安裝版本是 V2.1.13（原誤打 V2.1.14）。V2.1.13 安裝後「沒什麼變動」不代表 ETF 分類與配息已通過；第 03 項官方來源及實機驗收仍未 PASS。
+- **版本與備份：** 精確從 V2.1.13 PR #30 最新 SHA `414c85e4bd137f1400a9027672a512e128c6a5dc` 延續，備份 `backup-v2.1.13-20260923-pre-widget` 已核對同 SHA。新分支 `go-v2.1.14-20260923-widget-sync`，App/package/Android/iOS/Settings/Backup/QA CI 全部升至 **2.1.14／20114**。
+- **第 04 項原始碼確認：** Native Widget 在桌面上可獨立更新行情，但舊市值和損益取自上次 App Canonical snapshot，原 UI 未說明不同步。
+- **第 04 項 CODE：** Native Receiver 以行情與財務分離的刷新狀態明確告知使用者；點擊留下 timestamp，App 回到前景重新取得行情時使用現有 Canonical finance snapshot 同步；Native Bridge 僅在 App 有較新的已驗報價時間時才移除較新 native quote overrides；無新行情或 API 失敗不冒充財務更新。
+- **明確保護：** 既有金融公式、帳務寫入、Monitor/Mini 版面及舊 Widget 多欄排列不動。Native 不重新計算市值、費稅、損益。
+- **品質分級：** 此記錄僅記已提交程式；對應新 Native/JS 接線 Smoke 已加入 `test:v2_1_14`，仍待實際 CI、Gradle APK、Artifact/SHA/badging及 Android Widget 真機驗收。原始歷史清單完整保留，不能宣稱 GO ALL PASS。
+- **本次續接檔案：** `GO_V2_1_14_CHECKLIST.md`。
