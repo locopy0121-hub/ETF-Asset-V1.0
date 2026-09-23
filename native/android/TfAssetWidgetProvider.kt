@@ -45,6 +45,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         manager.partiallyUpdateAppWidget(id,progress)
       }
       // Do not launch MainActivity: a home-screen tap is a background quote refresh.
+      val pendingResult=goAsync()
       Thread {
         val prefs=context.getSharedPreferences("tf_asset_native",0)
         try {
@@ -86,7 +87,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         }catch(error:Exception){
           prefs.edit().putString("widget_refresh_status","更新失敗").apply()
         }
-        ids.forEach{id->manager.updateAppWidget(id,buildViews(context,id,manager))}
+        try { ids.forEach{id->manager.updateAppWidget(id,buildViews(context,id,manager))} }
+        finally { pendingResult.finish() }
       }.start()
     }
   }
