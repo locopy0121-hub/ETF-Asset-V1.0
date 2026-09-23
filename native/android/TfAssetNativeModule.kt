@@ -40,11 +40,16 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
     // Do not let an older App/settings snapshot overwrite newer quotes fetched by the native Widget.
     // Financial figures always come from the canonical App snapshot; this bridge never recalculates them.
-    val canonicalQuoteAt=runCatching{
-      java.time.Instant.parse(org.json.JSONObject(snapshotJson).optString("generatedAt","")).toEpochMilli()
-    }.getOrDefault(0L)
+    val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
+    // generatedAt may be a startup fallback timestamp; only a verified market quote timestamp
+    // in canonical holdings can reconcile a newer quote fetched by the native Widget.
+    val canonicalHoldings=canonicalSnapshot.optJSONArray("holdings")?:org.json.JSONArray()
+    val verifiedQuoteAt=(0 until canonicalHoldings.length()).mapNotNull{index->
+      val row=canonicalHoldings.optJSONObject(index)?:return@mapNotNull null
+      runCatching{java.time.Instant.parse(row.optString("updatedAt","")).toEpochMilli()}.getOrNull()
+    }.maxOrNull()?:0L
     val nativeQuoteAt=prefs.getLong("wall_market_refreshed_at",0L)
-    val canReconcile=nativeQuoteAt<=0L || (canonicalQuoteAt>0L && canonicalQuoteAt>=nativeQuoteAt)
+    val canReconcile=nativeQuoteAt<=0L || (verifiedQuoteAt>0L && verifiedQuoteAt>=nativeQuoteAt)
     val edit=prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson)
     if(canReconcile){
       edit.remove("wall_market_overrides").remove("wall_market_refreshed_at")
