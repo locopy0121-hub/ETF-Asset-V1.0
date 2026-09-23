@@ -37,7 +37,25 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   init{reactContext.addActivityEventListener(activityListener)}
   override fun getName() = "TfAssetNative"
 
-  @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).remove("wall_market_overrides").putString("widget_refresh_status","↻ 更新").apply(); refreshWidget(); promise.resolve(true) }
+  @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
+    // Do not let an older App/settings snapshot overwrite newer quotes fetched by the native Widget.
+    // Financial figures always come from the canonical App snapshot; this bridge never recalculates them.
+    val canonicalQuoteAt=runCatching{
+      java.time.Instant.parse(org.json.JSONObject(snapshotJson).optString("generatedAt","")).toEpochMilli()
+    }.getOrDefault(0L)
+    val nativeQuoteAt=prefs.getLong("wall_market_refreshed_at",0L)
+    val canReconcile=nativeQuoteAt<=0L || (canonicalQuoteAt>0L && canonicalQuoteAt>=nativeQuoteAt)
+    val edit=prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson)
+    if(canReconcile){
+      edit.remove("wall_market_overrides").remove("wall_market_refreshed_at")
+        .putString("widget_refresh_status",if(nativeQuoteAt>0L)"行情與財務已同步" else "App 財務快照")
+    }else{
+      edit.putString("widget_refresh_status","行情較新｜財務待同步")
+    }
+    edit.apply()
+    refreshWidget()
+    promise.resolve(true)
+  }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
     val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
     val incomingMode=parsed.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
