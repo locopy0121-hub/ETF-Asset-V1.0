@@ -162,3 +162,10 @@
 - Widget native tap no longer starts MainActivity. It requests live TWSE quote data on a background worker and redraws Widget; network failure shows failure without replacing cached figures. Cached canonical financial aggregates cannot be refreshed outside its finance core yet; device verification and full synchronization remain NO PASS.
 - Widget 1–4 column display fills incomplete rows with invisible placeholders to preserve widths; Android device layout validation pending.
 - ETF labels, editable color/effects and last-buy-day / dividend flash remain explicit NO PASS if not implemented and validated. GitHub QA build is not formal release.
+
+## 13. V2.1.7 QA build verification (2026-09-23)
+- Actual GitHub-only Quality and Gradle APK jobs both SUCCESS: https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35820954643 from app-source commit `06da86c3ed608a01ab1c24a40240d154c489d91f`.
+- Artifact `TF-Asset-V2.1.7-QA-APK` ID `10733321946`, ZIP size 23,296,018 bytes, ZIP SHA-256 `58e031807c5c82ee868f58fca820696db2a295ce67c198c21d89bfb7cd97bba5`.
+- APK `TF-Asset-V2.1.7-QA.apk`: 53,788,345 bytes, SHA-256 `5480b1829aaee9d52d888dcd3e77fee176f8afefdeb834fac56a99d96c48d0c4`; `unzip -t` PASS; `aapt` package `com.tfasset.app` version `2.1.7` / `20107` PASS.
+- **New D01–D08 completion counts:** D08 build evidence PASS (1/8); D01 and D02 CODE / BUILD success, device behavior still NO PASS; D03–D07 incomplete / NO PASS (7/8 items not fully Feature PASS). Original U/G/N/T/C entries retained independently. NO GO ALL PASS; PR remains Draft and no formal release.
+- Critical limitation: Widget can refresh native quote price/percentage in place without opening App, but financial holdings totals remain last canonical App snapshot until App is synchronized. Do not present the cached financial totals as fresh. Native device testing, real last-buy-day calendar/official source, AI auto-badges, independently editable label effects/color and dividend blink alerts remain pending.
