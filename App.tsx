@@ -63,8 +63,25 @@ function AppBody(){
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
   const pageHistory=useRef<MainPageKey[]>([]);
+  const swipeStart=useRef<{x:number;y:number}|null>(null);
   const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
   const aiUi=deriveAiUiState(settings.prefs.ai,active);
+  const swipeToAdjacent=(direction:-1|1)=>{
+    const pages=MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab);
+    const index=pages.findIndex(page=>page.key===active);
+    const target=pages[index+direction];
+    if(target)navigatePage(target.key);
+  };
+  const onSwipeStart=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
+    swipeStart.current={x:event.nativeEvent.pageX,y:event.nativeEvent.pageY};
+  };
+  const onSwipeEnd=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
+    const start=swipeStart.current;swipeStart.current=null;
+    if(!start||detail||!settings.prefs.navigation.swipeEnabled)return;
+    const dx=event.nativeEvent.pageX-start.x,dy=event.nativeEvent.pageY-start.y;
+    if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold||Math.abs(dx)<Math.abs(dy)*1.8)return;
+    swipeToAdjacent(dx<0?1:-1);
+  };
   useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
   useEffect(()=>{
     const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
@@ -155,7 +172,7 @@ function AppBody(){
   return <View style={[styles.root,{backgroundColor:theme.palette.background}]}>
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
-    <View style={styles.screen}>{screen}</View>
+    <View style={styles.screen} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
     {aiUi.showFloatingAi?<GlobalFloatingAi/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
