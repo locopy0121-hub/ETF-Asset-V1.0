@@ -1,5 +1,5 @@
 import {useMemo,useRef,useState} from 'react';
-import {Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
+import {Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 
 import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
 import {colors,radius,spacing} from '../theme/tokens';
@@ -50,6 +50,13 @@ export function AiQuestionBox({
 
   const runAction=async(action:AiAssistantAction)=>{
     if(action.kind==='openDividend'){await submit(action.question);return;}
+    if(action.kind==='openNews'){
+      try{
+        if(!/^https:\/\//i.test(action.url))throw new Error('新聞來源連結無效');
+        await Linking.openURL(action.url);
+      }catch(error){setMessages(current=>[...current,{id:'link-'+Date.now(),role:'assistant',text:'目前無法開啟新聞來源：'+(error instanceof Error?error.message:String(error))}]);}
+      return;
+    }
     if(!onAction)return;
     if(confirming!==action.id){setConfirming(action.id);return;}
     setConfirming(null);
