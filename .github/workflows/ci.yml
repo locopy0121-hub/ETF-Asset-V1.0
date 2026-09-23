@@ -1,4 +1,4 @@
-name: TF Asset CI
+name: TF Asset V2.1.17 CI / QA APK
 
 on:
   push:
@@ -19,9 +19,153 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V1.1.2 Hard Gates
-        run: npm run test:v1_1_2
+      - name: V2.1.17 aggregate gates
+        run: npm run test:v2_1_17
+      - name: V2.1.17 controls source smoke
+        run: npm run test:v1_1_3-controls-smoke
+      - name: V2.1.17 controls runtime behavior
+        run: npm run test:v1_1_3-controls-runtime
+      - name: V2.1.17 AI holdings behavior
+        run: npm run test:v1_1_3-ai-holdings
+      - name: V2.1.17 dividend calendar behavior
+        run: npm run test:v1_1_3-dividend-calendar
+      - name: V2.1.17 system profit colors
+        run: npm run test:v1_1_3-system-colors
+      - name: V2.1.17 user-visible version and integration smoke
+        run: node scripts/v2_1_1-release.test.cjs
+      - name: V2.1.17 release identity and UX controls
+        run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
         run: npm run doctor
+
+  qa-apk:
+    name: V2.1.17 QA APK / native integration
+    # This is an acceptance artifact, not the official release or permanent download.
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.17-20260924-label-data-layout'
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install source dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Freeze V2.1.17 identity
+        run: |
+          test "$(node -p "require('./package.json').version")" = "2.1.17"
+          test "$(node -p "require('./app.json').expo.version")" = "2.1.17"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "20117"
+          test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
+
+      - name: TypeScript
+        run: npm run typecheck
+
+      - name: V2.1.17 Hard Gates
+        run: npm run test:v2_1_17
+
+      - name: Create pure React Native Android build workspace
+        run: |
+          cd ..
+          npx --yes @react-native-community/cli@latest init TFAssetNative \
+            --version 0.86.3 \
+            --package-name com.tfasset.app \
+            --skip-install
+
+      - name: Inject TF Asset source and native dependencies
+        run: |
+          cp App.tsx ../TFAssetNative/App.tsx
+          rm -rf ../TFAssetNative/src
+          cp -R src ../TFAssetNative/src
+          cat > ../TFAssetNative/index.js <<'EOF'
+          import {AppRegistry} from 'react-native';
+          import App from './App';
+          import {name as appName} from './app.json';
+          AppRegistry.registerComponent(appName, () => App);
+          EOF
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='../TFAssetNative/package.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.dependencies['react-native-safe-area-context']='~5.7.0';
+          j.dependencies['@react-native-async-storage/async-storage']='2.2.0';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+
+          const gradle='../TFAssetNative/android/app/build.gradle';
+          let g=fs.readFileSync(gradle,'utf8');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 20117');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.1.17"');
+          fs.writeFileSync(gradle,g);
+
+          const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
+          let s=fs.readFileSync(strings,'utf8');
+          s=s.replace(/<string name="app_name">[\s\S]*?<\/string>/,'<string name="app_name">TF Asset 資產管家</string>');
+          fs.writeFileSync(strings,s);
+          NODE
+
+      - name: Inject V2.1.17 Android Widget and Floating Monitor
+        run: |
+          PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
+          mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
+          cp native/android/*.kt "$PKG_DIR/"
+          cp native/android/res/layout/tf_asset_widget.xml ../TFAssetNative/android/app/src/main/res/layout/
+          cp native/android/res/xml/tf_asset_widget_info.xml ../TFAssetNative/android/app/src/main/res/xml/
+          cp native/android/res/drawable/tf_icon_*.xml ../TFAssetNative/android/app/src/main/res/drawable/
+          node scripts/inject-v1_1_2-android.cjs
+          test "$(grep -c '<activity-alias' ../TFAssetNative/android/app/src/main/AndroidManifest.xml)" = "10"
+          grep 'android:name=".Icon01"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
+          grep 'android:name=".Icon10"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
+
+      - name: Install native workspace dependencies
+        working-directory: ../TFAssetNative
+        run: npm install --no-audit --no-fund
+
+      - name: Build release APK on GitHub runner
+        working-directory: ../TFAssetNative/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect and validate APK
+        run: |
+          APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" TF-Asset-V2.1.17-QA.apk
+          test "$(stat -c%s TF-Asset-V2.1.17-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V2.1.17-QA.apk
+          sha256sum TF-Asset-V2.1.17-QA.apk | tee TF-Asset-V2.1.17-QA.sha256
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          "$AAPT" dump badging TF-Asset-V2.1.17-QA.apk | tee TF-Asset-V2.1.17-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V2.1.17-badging.txt
+          grep "versionCode='20117'" TF-Asset-V2.1.17-badging.txt
+          grep "versionName='2.1.17'" TF-Asset-V2.1.17-badging.txt
+          file TF-Asset-V2.1.17-QA.apk
+
+      - name: Upload validated APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TF-Asset-V2.1.17-QA-APK
+          path: |
+            TF-Asset-V2.1.17-QA.apk
+            TF-Asset-V2.1.17-QA.sha256
+            TF-Asset-V2.1.17-badging.txt
+          if-no-files-found: error
+          retention-days: 30
+
+
