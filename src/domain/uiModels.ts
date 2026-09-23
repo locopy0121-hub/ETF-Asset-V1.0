@@ -2,7 +2,7 @@ import { DEFAULT_ITEM_EFFECT, type ItemEffectConfig } from './displayItemContrac
 export type QuoteModuleStyle = 'quote' | 'chart' | 'compact' | 'advanced';
 export type HoldingSortKey = 'manual' | 'changePct' | 'pnl' | 'roi' | 'marketValue' | 'weight' | 'price' | 'dividend';
 
-export type HoldingWallFieldKey = 'name' | 'symbol' | 'price' | 'change' | 'changePercent' | 'pnl' | 'roi' | 'marketValue';
+export type HoldingWallFieldKey = 'name' | 'symbol' | 'price' | 'change' | 'changePercent' | 'pnl' | 'roi' | 'marketValue' | 'etfType' | 'dividendType';
 export type HoldingWallAlign = 'left' | 'center' | 'right';
 export type HoldingWallFieldConfig = Readonly<{
   field: HoldingWallFieldKey;
@@ -50,6 +50,8 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
   header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#738197',borderWidth:1,effect:{...DEFAULT_ITEM_EFFECT}},
   fields:[
     {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'etfType',enabled:false,label:'ETF類型',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'dividendType',enabled:false,label:'配息型態',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
     {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
     {field:'price',enabled:true,label:'價格',fontScale:1,align:'left',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
     {field:'changePercent',enabled:true,label:'漲跌%',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
@@ -62,6 +64,9 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
 };
 
 export type HoldingQuote = {
+  /** Only authoritative exchange/issuer metadata; never infer from a ticker or price. */
+  etfType?: string | null;
+  dividendType?: string | null;
   symbol: string;
   name: string;
   shares: number;
