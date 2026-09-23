@@ -19,7 +19,7 @@ assert.equal(resolvePublisherUrl('<html><a href="https://publisher.example/story
 assert.equal(resolvePublisherUrl('<html/>','https://publisher.example/news'),'https://publisher.example/news');
 assert.equal(resolvePublisherUrl('<html/>','https://news.google.com/rss/articles/x'),null);
 
-const body='這是一則來自發行機構的新聞內容，完整說明事件時間與影響，也提醒讀者區分公告日期與交易日期。'.repeat(12);
+const body=('發行機構說明了基金最新公告內容與實際生效時間，並提醒投資人按照公告核對資料。'+'報導介紹相關市場資訊與影響因素，同時指出讀者應注意原始來源的發布日期。').repeat(6);
 const ld=JSON.stringify({'@context':'https://schema.org','@type':'NewsArticle',articleBody:body});
 const publisherHtml='<html><head><script type="application/ld+json">'+ld+'</script></head><body><main><div>文章</div></main></body></html>';
 assert.equal(extractArticleBody(publisherHtml),body,'Publisher JSON-LD article body may be used when <article> is missing');
@@ -38,7 +38,8 @@ async function checkAssistant(){
     [known]);
   assert.equal(result.intent,'news');
   assert.match(result.text,/非生成式 AI 摘要/);
-  assert.equal(result.actions?.[0]?.kind,'openNews');
-  assert.equal(result.actions?.[0]?.url,known.url);
+  const action=result.actions?.[0];
+  assert.equal(action?.kind,'openNews');
+  if(action?.kind==='openNews')assert.equal(action.url,known.url);
 }
 checkAssistant().then(()=>console.log('V2.1.15 publisher resolution, structured正文 and transparent news link tests PASS')).catch(e=>{console.error(e);process.exitCode=1;});
