@@ -10,11 +10,11 @@ export function EtfBadgeRow({etfType,dividendType,reminder,config,narrow=false,r
   const badges=config.order.filter(key=>config.badges[key].enabled&&(
     key!=='reminder'||(reminder!=null&&config.reminderEvents.includes(reminder))
   ));
-  return <View style={[styles.row,{gap:narrow?2:4}]}>
+  return <View style={[styles.row,narrow&&styles.narrowRow,{gap:narrow?2:4}]}>
     {badges.map(key=>{
       const configItem=config.badges[key];
       const sourceText=badgeDisplayText(key,etfType,dividendType,reminder);
-      const text=configItem.customText||sourceText;
+      const text=configItem.customText||(sourceText==='待確認'?(key==='etfType'?'類別待確認':'配息待確認'):sourceText);
       return <EtfBadge key={key} badgeKey={key} title={text} description={key==='reminder'&&reminder?etfReminderLabel(reminder):text} styleConfig={configItem} narrow={narrow} refreshToken={refreshToken}/>;
     })}
   </View>;
@@ -59,4 +59,5 @@ function EtfBadge({badgeKey,title,description,styleConfig,narrow,refreshToken}:{
 }
 const styles=StyleSheet.create({
   row:{flexDirection:'row',alignItems:'center',justifyContent:'flex-end',flexShrink:1,minWidth:0},
+  narrowRow:{flex:1,flexWrap:'wrap',alignContent:'center'},
 });
