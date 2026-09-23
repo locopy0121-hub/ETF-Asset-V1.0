@@ -4,8 +4,8 @@ import {badgeDisplayText,etfReminderLabel,type EtfBadgeConfig,type EtfBadgeKey,t
 
 /** Shared presentation for home cards and portfolio list. Code is rendered separately at left. */
 export function EtfBadgeRow({etfType,dividendType,reminder,config,narrow=false,refreshToken}:{
-  etfType?:string|null;dividendType?:string|null;reminder?:EtfReminderType|null;
-  config:EtfBadgeConfig;narrow?:boolean;refreshToken?:string|number|null;
+  etfType?:string|null|undefined;dividendType?:string|null|undefined;reminder?:EtfReminderType|null|undefined;
+  config:EtfBadgeConfig;narrow?:boolean;refreshToken?:string|number|null|undefined;
 }){
   const badges=config.order.filter(key=>config.badges[key].enabled&&(
     key!=='reminder'||(reminder!=null&&config.reminderEvents.includes(reminder))
@@ -20,7 +20,7 @@ export function EtfBadgeRow({etfType,dividendType,reminder,config,narrow=false,r
   </View>;
 }
 function EtfBadge({badgeKey,title,description,styleConfig,narrow,refreshToken}:{
-  badgeKey:EtfBadgeKey;title:string;description:string;styleConfig:EtfBadgeStyle;narrow:boolean;refreshToken?:string|number|null;
+  badgeKey:EtfBadgeKey;title:string;description:string;styleConfig:EtfBadgeStyle;narrow:boolean;refreshToken?:string|number|null|undefined;
 }){
   const opacity=useRef(new Animated.Value(1)).current;
   const shift=useRef(new Animated.Value(0)).current;
