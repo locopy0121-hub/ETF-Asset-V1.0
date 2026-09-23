@@ -19,7 +19,7 @@ import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolve
 
 export type MarketPhase = 'live' | 'afterHours' | 'offline';
 export type MarketSource = 'TWSE';
-export type EtfCatalogItem = Readonly<{ symbol:string; name:string; market:'TWSE'|'TPEx'|'fallback' }>;
+export type EtfCatalogItem = Readonly<{ symbol:string; name:string; market:'TWSE'|'TPEx'|'fallback'; etfType?:string|null; dividendType?:string|null; metadataSource?:string|null }>;
 
 export type MarketUpdateConfig = Readonly<{
   source: MarketSource;
@@ -130,6 +130,25 @@ async function fetchEtfCatalog():Promise<EtfCatalogItem[]>{
       }),
   ];
   await Promise.allSettled(requests);
+  // Only record taxonomy and payout cadence when an official feed actually provides them.
+  // Unavailable or unrecognized fields stay unknown instead of guessing from the ETF name.
+  try{
+    const response=await fetch('https://openapi.twse.com.tw/v1/opendata/t187ap47_L',{headers:{Accept:'application/json'}});
+    if(response.ok){
+      const data=await response.json() as Array<Record<string,unknown>>;
+      for(const raw of Array.isArray(data)?data:[]){
+        const code=String(raw['基金代號']??raw['證券代號']??raw['基金證券代號']??'').trim().toUpperCase();
+        if(!/^00[0-9A-Z]{2,6}$/.test(code))continue;
+        const category=String(raw['基金類型']??raw['投資類型']??'').trim();
+        const payout=String(raw['收益分配頻率']??raw['配息頻率']??'').trim();
+        const etfType=/^(市值型|高股息型|債券型|主題型|主動式|商品型|槓桿型|反向型)$/.test(category)?category:null;
+        const dividendType=/^(月配|雙月配|季配|半年配|年配|不配息|不定期)$/.test(payout)?payout:null;
+        if(!etfType&&!dividendType)continue;
+        const existing=rows.find(row=>row.symbol===code);
+        if(existing)Object.assign(existing,{etfType,dividendType,metadataSource:'TWSE 基金基本資料彙總表'});
+      }
+    }
+  }catch{ /* The catalog remains usable; missing taxonomy must remain explicitly unknown. */ }
   const unique=new Map<string,EtfCatalogItem>();
   for(const item of [...FALLBACK_CATALOG,...rows]) unique.set(item.symbol,item);
   return [...unique.values()].sort((a,b)=>a.symbol.localeCompare(b.symbol));
