@@ -152,7 +152,7 @@ export async function answerAiQuestion(
 
   if(includesAny(q,['持股','幾檔','有哪些'])){
     const rows=holdings.map((holding,index)=>
-      (index+1)+'. '+holding.symbol+' '+holding.name+'｜'+Number(holding.shares??0).toLocaleString('zh-TW')+' 股\n最近紀錄：'+annotatedEntryDate(entries,holding.symbol)
+      (index+1)+'. '+holding.symbol+' '+holding.name+'\n持有 '+Number(holding.shares??0).toLocaleString('zh-TW')+' 股\n最近紀錄：'+annotatedEntryDate(entries,holding.symbol)
     );
     return {
       intent:'holdings',
