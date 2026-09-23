@@ -1,11 +1,12 @@
 import {useEffect,useRef,useState} from 'react';
 import {PanResponder,Pressable,StyleSheet,Text,useWindowDimensions,View} from 'react-native';
 import type {HoldingQuote,HoldingWallConfig,QuoteModuleStyle} from '../domain/uiModels';
+import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {HoldingQuoteModule} from './HoldingQuoteModule';
 import {clampPreviewPosition,previewLimit} from '../editor/holdingPreviewModel';
 
 /** Uses the EXISTING whole ETF card; edits are driven by the parent draft config. */
-export function FloatingHoldingCardPreview({item,config,style='quote',layout='narrow',onDismiss}:{item:HoldingQuote;config:HoldingWallConfig;style?:QuoteModuleStyle;layout?:'full'|'narrow';onDismiss:()=>void}){
+export function FloatingHoldingCardPreview({item,config,badgeConfig=DEFAULT_ETF_BADGES,style='quote',layout='narrow',onDismiss}:{item:HoldingQuote;config:HoldingWallConfig;badgeConfig?:EtfBadgeConfig;style?:QuoteModuleStyle;layout?:'full'|'narrow';onDismiss:()=>void}){
   const {width:screenWidth,height:screenHeight}=useWindowDimensions();
   const [width,setWidth]=useState(250);
   const [collapsed,setCollapsed]=useState(false);
@@ -36,7 +37,7 @@ export function FloatingHoldingCardPreview({item,config,style='quote',layout='na
       <Pressable accessibilityLabel="關閉預覽" onPress={onDismiss} style={styles.control}><Text style={styles.controlText}>×</Text></Pressable>
     </View>
     {!collapsed?<View style={styles.body}>
-      <HoldingQuoteModule item={item} wallConfig={config} style={style} layout={layout}/>
+      <HoldingQuoteModule badgeConfig={badgeConfig} item={item} wallConfig={config} style={style} layout={layout}/>
       <View style={styles.resize}>
         <Pressable accessibilityLabel="縮小預覽" onPress={()=>setWidth(w=>Math.max(200,w-25))} style={styles.control}><Text style={styles.controlText}>－</Text></Pressable>
         <Text style={styles.widthText}>{actualWidth} px · 只影響預覽</Text>
