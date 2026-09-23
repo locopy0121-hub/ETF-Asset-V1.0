@@ -154,3 +154,11 @@
 - 本輪 C01–C09 計 9 項：C01 與 C09 的備份／建置證據 PASS（2）；C02–C08 七項為功能尚未完整實機驗證、或歷史需求 NO PASS／結轉（7），不可將本輪 QA APK 稱為正式 Release。舊 U01–U15、G01–G08、N01–N06、T01–T06 原清單 35 條均保留，不以本輪計數覆蓋其獨立驗收狀態。
 - 下一輪優先實機查：桌面 Widget 點擊是否刷新且時間戳正確、App 前景／背景同步、七或八筆持股與四欄內容、主頁滑動及巢狀圖表衝突；官方 ETF 類型欄位完整驗證、新聞正文、股息 AB 設定及全部其他 NO PASS 持續結轉。
 
+
+## 12. 2026-09-23 GO V2.1.7 — Widget 桌面背景行情初步修復
+
+- Before edits backed up V2.1.6 head 6e2764ce5acf31c277d407e42ef237f565eba2cc as backup-v2.1.6-20260923-pre-go-v217; work branch go-v2.1.7-20260923-widget-dividend-tags.
+- Scope and unresolved status in GO_V2_1_7_CHECKLIST.md. Original U/G/N/T/C list retained without declaring ALL PASS.
+- Widget native tap no longer starts MainActivity. It requests live TWSE quote data on a background worker and redraws Widget; network failure shows failure without replacing cached figures. Cached canonical financial aggregates cannot be refreshed outside its finance core yet; device verification and full synchronization remain NO PASS.
+- Widget 1–4 column display fills incomplete rows with invisible placeholders to preserve widths; Android device layout validation pending.
+- ETF labels, editable color/effects and last-buy-day / dividend flash remain explicit NO PASS if not implemented and validated. GitHub QA build is not formal release.
