@@ -1,4 +1,4 @@
-name: TF Asset V2.1.11 CI / QA APK
+name: TF Asset V2.1.12 CI / QA APK
 
 on:
   push:
@@ -19,21 +19,21 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V2.1.11 aggregate gates
-        run: npm run test:v2_1_11
-      - name: V2.1.11 controls source smoke
+      - name: V2.1.12 aggregate gates
+        run: npm run test:v2_1_12
+      - name: V2.1.12 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V2.1.11 controls runtime behavior
+      - name: V2.1.12 controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V2.1.11 AI holdings behavior
+      - name: V2.1.12 AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V2.1.11 dividend calendar behavior
+      - name: V2.1.12 dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V2.1.11 system profit colors
+      - name: V2.1.12 system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V2.1.11 user-visible version and integration smoke
+      - name: V2.1.12 user-visible version and integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V2.1.11 release identity and UX controls
+      - name: V2.1.12 release identity and UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -41,9 +41,9 @@ jobs:
         run: npm run doctor
 
   qa-apk:
-    name: V2.1.11 QA APK / native integration
+    name: V2.1.12 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.11-20260923-news-coverage-r4'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.1.12-20260923-news-feed-r5'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -66,17 +66,17 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V2.1.11 identity
+      - name: Freeze V2.1.12 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "2.1.11"
-          test "$(node -p "require('./app.json').expo.version")" = "2.1.11"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "20111"
+          test "$(node -p "require('./package.json').version")" = "2.1.12"
+          test "$(node -p "require('./app.json').expo.version")" = "2.1.12"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "20112"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V2.1.11 Hard Gates
+      - name: V2.1.12 Hard Gates
         run: npm run test:v2_1_6
 
       - name: Create pure React Native Android build workspace
@@ -108,8 +108,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 20111');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.1.11"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 20112');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.1.12"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -118,7 +118,7 @@ jobs:
           fs.writeFileSync(strings,s);
           NODE
 
-      - name: Inject V2.1.11 Android Widget and Floating Monitor
+      - name: Inject V2.1.12 Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
           mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
@@ -145,26 +145,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V2.1.11-QA.apk
-          test "$(stat -c%s TF-Asset-V2.1.11-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V2.1.11-QA.apk
-          sha256sum TF-Asset-V2.1.11-QA.apk | tee TF-Asset-V2.1.11-QA.sha256
+          cp "$APK_PATH" TF-Asset-V2.1.12-QA.apk
+          test "$(stat -c%s TF-Asset-V2.1.12-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V2.1.12-QA.apk
+          sha256sum TF-Asset-V2.1.12-QA.apk | tee TF-Asset-V2.1.12-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V2.1.11-QA.apk | tee TF-Asset-V2.1.11-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V2.1.11-badging.txt
-          grep "versionCode='20111'" TF-Asset-V2.1.11-badging.txt
-          grep "versionName='2.1.11'" TF-Asset-V2.1.11-badging.txt
-          file TF-Asset-V2.1.11-QA.apk
+          "$AAPT" dump badging TF-Asset-V2.1.12-QA.apk | tee TF-Asset-V2.1.12-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V2.1.12-badging.txt
+          grep "versionCode='20112'" TF-Asset-V2.1.12-badging.txt
+          grep "versionName='2.1.12'" TF-Asset-V2.1.12-badging.txt
+          file TF-Asset-V2.1.12-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V2.1.11-QA-APK
+          name: TF-Asset-V2.1.12-QA-APK
           path: |
-            TF-Asset-V2.1.11-QA.apk
-            TF-Asset-V2.1.11-QA.sha256
-            TF-Asset-V2.1.11-badging.txt
+            TF-Asset-V2.1.12-QA.apk
+            TF-Asset-V2.1.12-QA.sha256
+            TF-Asset-V2.1.12-badging.txt
           if-no-files-found: error
           retention-days: 30
 
