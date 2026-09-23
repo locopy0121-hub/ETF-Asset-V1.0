@@ -175,3 +175,11 @@
 - Pre-edit backup verified: `backup-v2.1.7-20260923-five-rounds` from V2.1.7 source `df78171dfd514511eb55c73697709e2d70a267bb`.
 - New first-round grid helper ensures 1–4 columns with equal-width placeholders in the final row, up to 16 items matching four native rows. Widget preview uses explicit fixed rows instead of `justifyContent:space-between`, which distorted the incomplete last row. Native overflow title now displays visible/total holdings on small widgets.
 - V2.1.8 / 20108 in package, app, Settings, Backup, identity gate and QA workflow. Tests: `scripts/v2_1_8-widget-grid.test.ts`. User's prior D01 Widget desktop refresh accepted for observed operation, not canonical financial synchronization. Source-only changes are not device validation; keep earlier unresolved checklist entries.
+
+## 15. 2026-09-23 GO V2.1.9 — 第二輪：AI 與持股卡版面
+
+- 本輪來源為已成功產出 APK 的 GitHub Actions run #35826645182（真正身份 V2.1.8 / 20108），從精確 HEAD `6d51c272c47b48cc10600b00151a263783a102fd` 接續，更新前先建立 `backup-v2.1.8-20260923-pre-go-v219`。
+- 本輪版本 V2.1.9 / 20109，開發期 QA APK，**不是正式 Release**，不等待 Codex review 才產出 QA APK。
+- 依使用者真機截圖調整 AI 快捷指令膠囊高度與文字置中，限制橫向建議列高度；解除對話框固定 310px，建立可獨立捲動且較高的回答區，輸入列不被長回答擠出；共用持股卡標題、標籤與價格區間增加間距。
+- ETF 未確認類型／配息官方欄位、日期異常提示、全局 AI 結構化回答、Native Widget／Monitor 財務同步及舊 U/G/N/T/C/D/R1 尚未完整驗收項目均保留 NO PASS，下一輪繼續。
+- 本輪增加 `scripts/v2_1_9-ai-layout.test.cjs` 原始碼版面契約測試，整合 V2.1.8 全部既有 Gate，GitHub CI 成功與裝置驗收分開紀錄。
