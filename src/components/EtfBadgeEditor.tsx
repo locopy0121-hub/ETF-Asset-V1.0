@@ -15,7 +15,7 @@ const SPEEDS:Record<ItemEffectSpeed,string>={slow:'慢',normal:'一般',fast:'�
 const INTENSITIES:Record<ItemEffectIntensity,string>={soft:'柔和',medium:'中',strong:'強'};
 const EVENT_LABELS:Record<EtfReminderType,string>={lastBuyDate:'最後買進日',exDate:'今日除息',paymentDate:'股息發放日'};
 
-export function EtfBadgeEditor({value,onChange}:{value:EtfBadgeConfig;onChange:(next:EtfBadgeConfig)=>void}){
+export function EtfBadgeEditor({value,onChange,catalogRefreshing=false,onRefreshCatalog}:{value:EtfBadgeConfig;onChange:(next:EtfBadgeConfig)=>void;catalogRefreshing?:boolean;onRefreshCatalog?:()=>void}){
   const [open,setOpen]=useState<EtfBadgeKey|null>('etfType');
   const [previewReminder,setPreviewReminder]=useState(true);
   const patch=(key:EtfBadgeKey,next:Partial<EtfBadgeStyle>)=>onChange({...value,badges:{...value.badges,[key]:{...value.badges[key],...next}}});
@@ -29,6 +29,8 @@ export function EtfBadgeEditor({value,onChange}:{value:EtfBadgeConfig;onChange:(
   return <View style={styles.root}>
     <Text style={styles.heading}>ETF 標籤｜A 群組、B 單項編輯</Text>
     <Text style={styles.hint}>代號固定靠左；類型、配息及提醒靠右。自訂文字只改畫面，不覆寫官方分類或配息資料。</Text>
+    {onRefreshCatalog?<Pressable accessibilityRole="button" accessibilityLabel="重新讀取官方ETF類別資料" disabled={catalogRefreshing} onPress={onRefreshCatalog} style={styles.refresh}><Text style={styles.refreshText}>{catalogRefreshing?'官方類別讀取中…':'↻ 重新查詢官方類別資料'}</Text></Pressable>:null}
+    <Text style={styles.hint}>官方基本資料可能未提供配息政策；配息欄仍以已核實的來源為準，缺資料保留待確認。</Text>
     {value.order.map((key,index)=>{
       const item=value.badges[key];
       return <View key={key} style={styles.card}>
@@ -106,5 +108,6 @@ const styles=StyleSheet.create({
   choices:{flexDirection:'row',flexWrap:'wrap',gap:5},chip:{paddingVertical:6,paddingHorizontal:9,backgroundColor:colors.surfaceMuted,borderRadius:12},chipOn:{backgroundColor:colors.primary},
   chipText:{fontSize:10,color:colors.textSecondary,fontWeight:'800'},chipTextOn:{color:'#FFF'},
   preview:{backgroundColor:'#151D2E',padding:8,borderRadius:12,gap:6},previewRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},code:{fontSize:15,fontWeight:'900',color:'#F87171'},
+  refresh:{alignSelf:'flex-start',paddingVertical:8,paddingHorizontal:12,borderWidth:1,borderColor:colors.primary,borderRadius:18},refreshText:{fontSize:11,fontWeight:'900',color:colors.primary},
   reset:{alignSelf:'flex-start'},resetText:{fontSize:11,color:colors.primary,fontWeight:'900'},
 });
