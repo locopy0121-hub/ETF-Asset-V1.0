@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "2.1.15",
+  "version": "2.1.16",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v2_1_15 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v2_1_16 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -116,7 +116,8 @@
     "test:v2_1_12": "npm run test:v2_1_11 && tsx scripts/v2_1_12-news-feed.test.ts",
     "test:v2_1_13": "npm run test:v2_1_12 && tsx scripts/v2_1_13-etf-metadata.test.ts",
     "test:v2_1_14": "npm run test:v2_1_13 && node scripts/v2_1_14-widget-sync.test.cjs",
-    "test:v2_1_15": "npm run test:v2_1_14 && tsx scripts/v2_1_15-ai-news.test.ts"
+    "test:v2_1_15": "npm run test:v2_1_14 && tsx scripts/v2_1_15-ai-news.test.ts",
+    "test:v2_1_16": "npm run test:v2_1_15 && tsx scripts/v2_1_16-priority.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
