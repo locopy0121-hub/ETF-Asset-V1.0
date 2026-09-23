@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingWallConfig, type QuoteModuleStyle } from '../domain/uiModels';
+import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import { spacing } from '../theme/tokens';
 import { HoldingQuoteModule } from './HoldingQuoteModule';
 
@@ -12,6 +13,7 @@ export function HoldingQuoteCollection({
   layoutMode='list',
   onOpenHolding,
   wallConfig,
+  badgeConfig,
   refreshToken,
 }:{
   rows:readonly HoldingQuote[];
@@ -19,11 +21,13 @@ export function HoldingQuoteCollection({
   layoutMode?:HoldingLayoutMode;
   onOpenHolding:(row:HoldingQuote)=>void;
   wallConfig?:HoldingWallConfig;
+  badgeConfig?:EtfBadgeConfig;
   refreshToken?:string|number|null|undefined;
 }){
   const {width}=useWindowDimensions();
   const pageWidth=Math.max(280,width-64);
   const effectiveWallConfig=wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
+  const effectiveBadgeConfig=badgeConfig??DEFAULT_ETF_BADGES;
   if(layoutMode==='horizontal'){
     const itemWidth=Math.max(230,Math.min(pageWidth-18,width*0.78));
     return <ScrollView
@@ -35,7 +39,7 @@ export function HoldingQuoteCollection({
       contentContainerStyle={styles.horizontal}
     >
       {rows.map(item=><View key={item.symbol} style={{width:itemWidth}}>
-        <HoldingQuoteModule item={item} style={style} wallConfig={effectiveWallConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>
+        <HoldingQuoteModule item={item} style={style} wallConfig={effectiveWallConfig} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>
       </View>)}
     </ScrollView>;
   }
@@ -53,7 +57,7 @@ export function HoldingQuoteCollection({
     >
       {pages.map((page,index)=><View key={index} style={[styles.page,{width:pageWidth}]}>
         {page.map(item=><View key={item.symbol} style={styles.half}>
-          <HoldingQuoteModule item={item} style={style} layout="narrow" wallConfig={effectiveWallConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>
+          <HoldingQuoteModule item={item} style={style} layout="narrow" wallConfig={effectiveWallConfig} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>
         </View>)}
       </View>)}
     </ScrollView>;
@@ -63,13 +67,13 @@ export function HoldingQuoteCollection({
     const widthStyle=layoutMode==='grid3'?styles.third:styles.half;
     return <View style={styles.grid}>
       {rows.map(item=><View key={item.symbol} style={widthStyle}>
-        <HoldingQuoteModule item={item} style={style} layout="narrow" wallConfig={effectiveWallConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>
+        <HoldingQuoteModule item={item} style={style} layout="narrow" wallConfig={effectiveWallConfig} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>
       </View>)}
     </View>;
   }
 
   return <View style={styles.list}>
-    {rows.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={style} wallConfig={effectiveWallConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>)}
+    {rows.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={style} wallConfig={effectiveWallConfig} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>)}
   </View>;
 }
 
