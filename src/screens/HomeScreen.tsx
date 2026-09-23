@@ -37,7 +37,13 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
+  const sorted=useMemo(()=>{
+    const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
+    return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
+      ...item,etfType:tags.get(item.symbol)?.etfType??null,
+      dividendType:tags.get(item.symbol)?.dividendType??null,
+    }));
+  },[finance.holdings,sortKey,market.catalog]);
   const portfolio=finance.snapshot.portfolio;
   const totalDividend=portfolio.totalDividendsReceived;
   const dashboardMetrics=(editor.displayConfig.dashboardMetrics??[]) as readonly DashboardMetricKey[];
