@@ -19,11 +19,13 @@ async function main(){
 const answer=await answerAiQuestion('我有哪些持股？',holdings,portfolio,[],entries);
 assert.equal(answer.intent,'holdings');
 for(const expected of [
-  '0050 元大台灣50｜170 股｜最近紀錄 2026-09-18',
-  '0056 元大高股息｜800 股｜最近紀錄 2026-08-22',
-  '00878 國泰永續高股息｜1,200 股｜最近紀錄 2026-07-12',
+  '0050 元大台灣50\n持有 170 股\n最近紀錄：2026-09-18',
+  '0056 元大高股息\n持有 800 股\n最近紀錄：2026-08-22',
+  '00878 國泰永續高股息\n持有 1,200 股\n最近紀錄：2026-07-12',
 ])assert.ok(answer.text.includes(expected),'missing '+expected);
 assert.equal(answer.actions?.length,3);
+const future=await answerAiQuestion('我有哪些持股？',holdings,portfolio,[],[...entries,{...entries[0],id:'future',date:'2099-01-01'}]);
+assert.ok(future.text.includes('2099-01-01（未來日期，請確認是否為預約交易）'));
 assert.deepEqual(answer.actions?.map(action=>({kind:action.kind,label:action.label,question:'question' in action?action.question:null})),[
   {kind:'openDividend',label:'查看 0050 股息資訊',question:'更新 0050 股息日'},
   {kind:'openDividend',label:'查看 0056 股息資訊',question:'更新 0056 股息日'},
