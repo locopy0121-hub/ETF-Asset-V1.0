@@ -20,7 +20,7 @@ export function PortfolioHoldingTable({rows,onOpenHolding,config=DEFAULT_PORTFOL
         {rows.map(row=><Pressable key={row.symbol} accessibilityRole="button" accessibilityLabel={'查看持股 '+row.symbol}
           onPress={onOpen(row)} style={[styles.fixedRow,{height:config.rowHeight}]}>
           <View style={styles.identity}>
-            <Text numberOfLines={1} style={styles.symbol}>{row.symbol}{row.pinned?' • PIN':''}</Text>
+            <View style={styles.symbolWrap}><Text numberOfLines={1} style={styles.symbol}>{row.symbol}</Text>{row.pinned?<Text accessibilityLabel="已釘選" style={styles.pinMarker}>★</Text>:null}</View>
             <EtfBadgeRow etfType={row.etfType} dividendType={row.dividendType} reminder={row.reminderEvent} config={badges} narrow refreshToken={refreshToken}/>
           </View>
           {config.showName?<Text numberOfLines={1} style={styles.name}>{row.name}</Text>:null}
@@ -82,7 +82,8 @@ const styles=StyleSheet.create({
   header:{justifyContent:'center',paddingHorizontal:8,backgroundColor:colors.surfaceMuted},
   fixedRow:{justifyContent:'center',paddingHorizontal:8,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border,gap:4},
   identity:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:2,minWidth:0},
-  symbol:{fontSize:12,fontWeight:'900',color:colors.text,flexShrink:0},
+  symbolWrap:{flexDirection:'row',alignItems:'center',gap:2,flexShrink:0},
+  symbol:{fontSize:12,fontWeight:'900',color:colors.text,flexShrink:0},pinMarker:{fontSize:9,fontWeight:'900',color:'#F59E0B'},
   name:{fontSize:10,color:colors.textSecondary},
   scroll:{minWidth:140},rightHeader:{flexDirection:'row',alignItems:'center',paddingHorizontal:6,backgroundColor:colors.surfaceMuted},
   rightRow:{flexDirection:'row',alignItems:'center',paddingHorizontal:6,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
