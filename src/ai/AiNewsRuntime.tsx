@@ -63,7 +63,9 @@ export function AiNewsRuntimeProvider({children}:PropsWithChildren){
     const merged=Array.from(new Map(raw.map(item=>[(item.url||item.symbol+'|'+item.title).toLowerCase(),item])).values()).sort((a,b)=>Date.parse(b.publishedAt||'')-Date.parse(a.publishedAt||'')).slice(0,40);
     if(!merged.length)throw new Error('目前沒有可用的持股新聞');
     // Enrich the latest items using actual readable article paragraphs; do not treat RSS titles as AI summaries.
-    // Distribute the article-fetch budget across all tracked holdings.\n    const coverage=selectNewsForEnrichment(merged,8);\n    const enriched=await Promise.all(coverage.map(articleHighlights));
+    // Distribute the article-fetch budget across all tracked holdings.
+    const coverage=selectNewsForEnrichment(merged,8);
+    const enriched=await Promise.all(coverage.map(articleHighlights));
     const enrichedById=new Map(enriched.map(item=>[item.id,item]));
     setItems(merged.map(item=>enrichedById.get(item.id)??item));setLastUpdatedAt(Date.now());
     const failures=settled.filter(x=>x.status==='rejected').length;
