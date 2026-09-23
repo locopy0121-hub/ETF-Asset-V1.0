@@ -139,7 +139,7 @@ const isFrameLayout=(v:unknown):v is FrameLayout=>v==='standard'||v==='compact'|
 const isFrameAppearance=(v:unknown):v is FrameAppearance=>v==='theme'||v==='soft'||v==='outline';
 const isFrameBehavior=(v:unknown):v is FrameBehavior=>v==='manual'||v==='auto'||v==='locked';
 
-const HOLDING_WALL_FIELDS:readonly HoldingWallFieldKey[]=['name','symbol','price','change','changePercent','pnl','roi','marketValue'];
+const HOLDING_WALL_FIELDS:readonly HoldingWallFieldKey[]=['name','symbol','etfType','dividendType','price','change','changePercent','pnl','roi','marketValue'];
 const clamp=(value:unknown,min:number,max:number,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
 const wallColor=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
 const wallNullableColor=(value:unknown,fallback:string|null)=>value===undefined?fallback:value===null?null:typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
