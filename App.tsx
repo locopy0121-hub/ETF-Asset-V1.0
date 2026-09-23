@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
@@ -94,9 +94,26 @@ function AppBody(){
 
   useEffect(()=>{
     if(!market.hydrated)return;
-    void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
-      if(requestedAt>0)void market.refresh({force:true});
+    // The Android widget receiver can deliver a new tap without remounting React.
+    // Consume requests while the app is foregrounded, and once upon resuming.
+    let alive=true;
+    let inFlight=false;
+    const poll=async()=>{
+      if(!alive||inFlight)return;
+      inFlight=true;
+      try{
+        const requestedAt=await consumeNativeWidgetForceRefreshRequest();
+        if(alive&&requestedAt>0)await market.refresh({force:true});
+      }catch(error){
+        console.warn('Widget forced quote refresh failed',error);
+      }finally{inFlight=false;}
+    };
+    void poll();
+    const widgetTimer=setInterval(()=>{if(AppState.currentState==='active')void poll();},1000);
+    const foreground=AppState.addEventListener('change',state=>{
+      if(state==='active')void poll();
     });
+    return()=>{alive=false;clearInterval(widgetTimer);foreground.remove();};
   },[market.hydrated,market.refresh]);
 
   useEffect(()=>{
