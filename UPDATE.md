@@ -242,3 +242,12 @@
 - App 版本 2.1.16／Android 20116／iOS 20116；候選 CODE 包含 ETF 代號左／三項標籤右、獨立提醒顯示開關及日期事件、庫存欄位 A/B 編輯、數值獨立橫向捲動及預覽。
 - 新增 `GO_V2_1_16_CHECKLIST.md` 明列 P01–P05 和歷史待驗；`test:v2_1_16` 已接線。此條記錄建立時 CI、QA APK、SHA、badging 和真機仍**待核實**，不得提前宣稱完成。
 - 不動 Canonical Finance Core／Ledger 寫入／費稅公式；官方 ETF metadata 十檔完整性及真實日期仍待驗。八大項暫停至本輪 QA APK 修護後接續。
+
+
+## 2026-09-24 GO V2.1.17 優先修護續接（QA，非正式 Release）
+
+本輪來源是 PR #33 V2.1.16 成功 CI／QA APK 的 head `d2cbe3683f85fff1184968e86f3006440e7209be`；已先建立及核實備份 `backup-v2.1.16-20260924-pre-go-v2117`。工作分支 `go-v2.1.17-20260924-label-data-layout`。新增本輪鎖定矩陣 `GO_V2_1_17_CHECKLIST.md`，V2.1.16 與原八大項驗收清單保留。
+
+CODE：基金官方明確追蹤指數文字可補充 ETF 類別（不推導配息頻率）；缺失欄位分別顯示「類別待確認／配息待確認」；已釘選星號與代號分開避免被擠壓；窄卡標籤可換行；庫存 A/B 頁直接切換清單／行情卡／標籤及提醒設定；提供官方類別手動刷新入口。新增 `scripts/v2_1_17-label-data.test.ts` 行為測試，版本／native QA pipeline 全數遞增至 2.1.17／20117。
+
+CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實際查證後才能填 PASS；舊功能未驗項仍是未完成。官方配息資料來源未提供完整政策時保留待確認，不虛構月配／季配／半年配。鎖定 Canonical Finance Core、Ledger 寫入、actualFee／tax 不變。
