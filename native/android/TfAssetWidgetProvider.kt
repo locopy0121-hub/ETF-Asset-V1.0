@@ -81,7 +81,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
             quotes.put(symbol,quote)
           }
           if(quotes.length()==0)throw IllegalStateException("行情未提供可用報價")
-          prefs.edit().putString("widget_quote_overrides",quotes.toString())
+          prefs.edit().putString("wall_market_overrides",quotes.toString())
             .putString("widget_refresh_status","↻ "+java.text.SimpleDateFormat("HH:mm",java.util.Locale.TAIWAN).format(java.util.Date()))
             .putLong("widget_quote_refreshed_at",System.currentTimeMillis()).apply()
         }catch(error:Exception){
@@ -141,7 +141,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val snapshot=runCatching{JSONObject(prefs.getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
     val style=config.optJSONObject("style")?:JSONObject()
     val asset=snapshot.optJSONObject("asset")?:JSONObject()
-    val quoteOverrides=runCatching{JSONObject(prefs.getString("widget_quote_overrides","{}")?:"{}")}.getOrElse{JSONObject()}
+    val quoteOverrides=runCatching{JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{JSONObject()}
     val holdings=orderedHoldings(snapshot,config).map { original ->
       val quote=quoteOverrides.optJSONObject(original.optString("symbol",""))
       if(quote==null) original else JSONObject(original.toString()).apply {
