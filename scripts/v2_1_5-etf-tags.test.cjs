@@ -11,7 +11,7 @@ const home=read('src/screens/HomeScreen.tsx');
 const portfolio=read('src/screens/PortfolioScreen.tsx');
 for(const name of ['etfType','dividendType']){
   assert.ok(model.includes("field:'"+name+"'"),name+' should have its own AB field');
-  assert.ok(editor.includes("'"+name+"'"),name+' should be editable');
+  assert.ok(editor.includes(name+":"),name+" should be editable in the active badge editor");
   assert.ok(renderer.includes("field==='"+name+"'"),name+' should render');
   assert.ok(normalize.includes("'"+name+"'"),name+' should migrate to saved settings');
   assert.ok(home.includes("tags.get(item.symbol)?."+name),name+' should appear on Home');
