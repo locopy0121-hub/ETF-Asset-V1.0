@@ -50,8 +50,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.1.8';
-const BUILD='20108';
+const VERSION='2.1.9';
+const BUILD='20109';
 
 export function SettingsScreen(){
   const finance=useFinance();
