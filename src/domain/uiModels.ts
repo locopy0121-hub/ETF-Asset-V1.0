@@ -1,4 +1,5 @@
 import { DEFAULT_ITEM_EFFECT, type ItemEffectConfig } from './displayItemContract';
+import type {EtfReminderType} from './etfBadges';
 export type QuoteModuleStyle = 'quote' | 'chart' | 'compact' | 'advanced';
 export type HoldingSortKey = 'manual' | 'changePct' | 'pnl' | 'roi' | 'marketValue' | 'weight' | 'price' | 'dividend';
 
@@ -67,6 +68,7 @@ export type HoldingQuote = {
   /** Only authoritative exchange/issuer metadata; never infer from a ticker or price. */
   etfType?: string | null;
   dividendType?: string | null;
+  reminderEvent?:EtfReminderType|null;
   symbol: string;
   name: string;
   shares: number;
