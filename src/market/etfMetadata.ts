@@ -66,9 +66,10 @@ export function parseOfficialEtfRow(raw: Record<string, unknown>, fetchedAt: num
   const etfType = normalizeOfficialEtfType(category);
   const dividendType = normalizeOfficialDividendType(payout);
   if (!etfType && !dividendType) return null;
+  const name = officialField(raw, '基金中文名稱', '基金簡稱', '基金名稱', 'ETF名稱', '證券名稱');
   return {
     symbol,
-    name: officialField(raw, '基金名稱', 'ETF名稱', '證券名稱') || undefined,
+    ...(name ? { name } : {}),
     etfType,
     dividendType,
     metadataSource: 'TWSE 基金基本資料彙總表',
