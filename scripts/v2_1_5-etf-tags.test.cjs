@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const read=p=>fs.readFileSync(p,'utf8');
 const model=read('src/domain/uiModels.ts');
-const editor=read('src/components/HoldingMarketWallEditor.tsx');
+const editor=read('src/components/EtfBadgeEditor.tsx');
 const renderer=read('src/components/HoldingQuoteModule.tsx');
 const normalize=read('src/editor/editorModel.ts');
 const market=read('src/market/MarketRuntime.tsx');
