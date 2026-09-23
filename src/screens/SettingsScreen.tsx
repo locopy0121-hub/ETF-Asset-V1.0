@@ -47,11 +47,11 @@ type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
 type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
-type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles';
+type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.1.5';
-const BUILD='20105';
+const VERSION='2.1.6';
+const BUILD='20106';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -299,7 +299,7 @@ export function SettingsScreen(){
       <Text style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
       <ChildButton label="Widget（mobile 桌面）" summary={widget.config.enabled?'已啟用 · '+widget.config.size:'未啟用'} active={monitorPanel==='widget'} onPress={()=>setMonitorPanel(monitorPanel==='widget'?null:'widget')}/>
       {monitorPanel==='widget'?<View style={{gap:8}}>
-        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot}/>
+        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot} onRefresh={async()=>{await market.refresh({force:true});await requestNativeWidgetRefresh();}}/>
         <Panel title="手機桌面 Widget 執行狀態">
           <StatusRow label="Android 原生橋接" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
           <ActionButton label="立即刷新手機桌面 Widget" disabled={!nativeRuntimeAvailable} onPress={()=>void requestNativeWidgetRefresh()}/>
@@ -380,6 +380,12 @@ export function SettingsScreen(){
 
   function appSection(){
     return <View style={styles.children}>
+      <ChildButton label="主頁左右滑動" summary={settings.prefs.navigation.swipeEnabled?'已啟用':'已關閉'} active={appPanel==='swipe'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'swipe'))}/>
+      {appPanel==='swipe'?<Panel title="主頁左右滑動">
+        <Switch value={settings.prefs.navigation.swipeEnabled} onValueChange={swipeEnabled=>settings.patchNavigation({swipeEnabled})}/>
+        <Stepper label="切換靈敏度（距離）" value={settings.prefs.navigation.swipeThreshold} min={50} max={150} step={10} suffix=" px" onChange={swipeThreshold=>settings.patchNavigation({swipeThreshold})}/>
+        <Text style={styles.note}>左右滑動依底部頁籤順序切換；需明顯水平位移，垂直捲動優先。詳細圖表與其他複雜手勢仍待實機驗收。</Text>
+      </Panel>:null}
       <ChildButton label="各頁標題設定" summary="首頁／紀錄／庫存／股息／AI／設定" active={appPanel==='titles'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'titles'))}/>
       {appPanel==='titles'?<Panel title="頁面標題">
         {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
@@ -399,8 +405,8 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V2.1.4 全局設定、帳務明細及股息月曆修護（驗收中）" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V2.1.4 更新資訊">
+      <ChildButton label="更新資訊" summary="V2.1.6 主頁滑動與 Widget 預覽更新入口（QA）" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V2.1.6 更新資訊">
         <Text style={styles.infoText}>新增 AI 助理與持股相關新聞自動取得，首頁市場新聞顯示代號、名稱、來源、日期與智慧摘要；首頁右上加入更新行情。總資產主值改採持股市值，不與現金合併。Monitor／Mini 修正雙擊切換回彈，並加入更新行情、縮小／放大與關閉控制。調色盤 V1.0.15 閃退修護持續保留。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'debug'))}/>
