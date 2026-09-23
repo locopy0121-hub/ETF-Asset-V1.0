@@ -14,7 +14,7 @@ assert.match(dividend,/openapi\.twse\.com\.tw\/v1\/exchangeReport\/TWT48U_ALL/);
 assert.match(dividend,/ETFortune\/dividendList/);assert.match(dividend,/STOCK_DAY/);
 for(const token of ['除息日','最後購買日','每股配息','符合持股','預估股息','配息率','股息配發日','狀態'])assert.ok(dividend.includes(token),'dividend field missing '+token);
 assert.match(dividend,/sharesOnDate/);assert.match(dividend,/alreadyRecorded/);assert.match(dividend,/dividendEventToLedger/);
-assert.match(question,/ScrollView/);assert.match(question,/height:310/);assert.match(question,/確認新增/);assert.match(question,/onAction/);
+assert.match(question,/ScrollView/);assert.match(question,/threadViewport:\\{flexGrow:0,height:340/);assert.match(question,/確認新增/);assert.match(question,/onAction/);
 assert.match(floating,/finance\.entries/);assert.match(floating,/dividendEventToLedger/);
 assert.match(ai,/財務資料與 App 操作型助理/);assert.match(ai,/對話內新聞以文字摘要播送/);
 assert.ok(!ai.includes('Linking.openURL(item.url)'),'AI conversation must not launch article links');
