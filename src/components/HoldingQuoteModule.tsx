@@ -68,6 +68,7 @@ export function HoldingQuoteModule({
                   key={field.field} field={field} item={item} change={change} changePct={changePct}
                   wall={cfg} refreshToken={refreshToken} header narrow={narrow} primary
                 />)}
+                {item.pinned?<Text accessibilityLabel="已釘選" style={styles.pinMarker}>★</Text>:null}
               </View>
               <EtfBadgeRow etfType={item.etfType} dividendType={item.dividendType}
                 reminder={item.reminderEvent} config={badgeConfig} narrow={narrow} refreshToken={refreshToken}/>
@@ -263,7 +264,7 @@ function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,
 }
 function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   if(field==='name')return item.name;
-  if(field==='symbol')return `${item.symbol}${item.pinned?'  • PIN':''}`;
+  if(field==='symbol')return item.symbol;
   if(field==='etfType')return item.etfType?.trim()||'類型待確認';
   if(field==='dividendType')return item.dividendType?.trim()||'配息待確認';
   if(field==='price')return item.price.toFixed(2);
@@ -293,7 +294,8 @@ const styles=StyleSheet.create({
   head:{flexDirection:'row',alignItems:'flex-start',paddingBottom:5},
   headerMain:{flex:1,minWidth:0,gap:3},
   headerTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:3,minWidth:0},
-  headerSymbol:{flexShrink:0,maxWidth:'41%'},
+  headerSymbol:{flexDirection:'row',alignItems:'center',gap:2,flexShrink:0,maxWidth:'41%'},
+  pinMarker:{fontSize:9,fontWeight:'900',color:'#FBBF24'},
   chevron:{fontSize:25,color:'#8292A8',lineHeight:26},
   quoteRow:{flexDirection:'row',alignItems:'flex-end',justifyContent:'space-between',gap:spacing.sm,paddingTop:5},
   changeWrap:{alignItems:'flex-end'},
