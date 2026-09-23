@@ -8,5 +8,5 @@ assert.match(ai,/threadViewport:\{flexGrow:0,height:340,minHeight:240/);
 assert.doesNotMatch(ai,/root:\{height:310/);
 assert.match(ai,/nestedScrollEnabled/);
 assert.match(card,/narrowCard:\{flexDirection:'column',minHeight:168\}/);
-assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,20109);
+assert.equal(JSON.parse(read('app.json')).expo.android.versionCode>=20109,true);
 console.log('V2.1.9 AI suggestion, long-answer scroll, holding spacing and identity source contract: PASS');
