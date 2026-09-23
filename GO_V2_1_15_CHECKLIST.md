@@ -16,7 +16,7 @@
 | 02 | APK 基準和完整備份 | 完成前置核對和 V2.1.14 備份；V2.1.15 APK 尚待完成 |
 | 03 | ETF 自動分類與配息 | 既有修復 CODE PASS；官方與 Android 未完成 |
 | 04 | Widget 更新與同步 | V2.1.14 CODE／CI／QA APK PASS；DEVICE PENDING |
-| 05 | AI System 十二項能力 | 本輪進行 **新聞原文與來源連動**；其餘能力保留 |
+| 05 | AI System 十二項能力 | 新聞原文與來源連動 CODE／CI／QA APK PASS；其餘 12 項子能力與來源實網／Android 待驗 |
 | 06 | A/B 配息類別、完整單卡預覽與保存 | 未開始 |
 | 07 | 返回、左右滑動及 K 線 | 未開始 |
 | 08 | Monitor／Mini | 現有功能 OK；僅待行情反應度優化 |
@@ -33,3 +33,12 @@
 - 完成後報告 CODE／QA 證據；第 05 項尚餘完整十二項 AI 能力中的未建置與實機驗收，不能宣告第 05 項全 PASS。
 - 後續仍依使用者逐項完成→回報→接續下一項流程，未能自動完成的實機驗收明確結轉。
 - 如聊天或 Actions 中斷，先查本檔、UPDATE.md、目前分支 SHA、PR、最新 Action／artifact，從已證實的最後進度接續；沒有外部自動化時無法自行在聊天中重啟。
+
+## CI／QA APK 完成證據（2026-09-23，中斷續接）
+- GitHub Actions：https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35867265887
+- Quality（包含 TypeScript、V2.1.14 歷史回歸、V2.1.15 新聞 URL／JSON-LD／AI 行為）成功。Android QA APK native integration 成功，Gradle `BUILD SUCCESSFUL in 5m 32s`。
+- Artifact：`10752697257`，https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/35867265887/artifacts/10752697257
+- 已下載並本地解壓驗證：ZIP `unzip -t` PASS；APK `unzip -t` PASS；APK 大小 **53,801,133 bytes**；SHA-256 `61427958fcb628c6dff61e6ab2099092ba4561654bf146687730b04cb9572755`，與封存內 SHA256 檔一致。
+- aapt package `com.tfasset.app`，`versionName=2.1.15`、`versionCode=20115` 均確認。
+- 這是 **CODE／CI／QA APK PASS**，不是官方新聞站實網全文或 Android 操作驗收通過；亦不是第 05 項十二項功能全 PASS，尤其真 LLM 摘要目前尚未實作。
+- 本輪工作仍在 Draft PR #32，不合併 main。第 03 項官方 ETF 配息來源及第 04 項 Widget 背景財務同步之實機驗收持續結轉。
