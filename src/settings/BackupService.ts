@@ -12,7 +12,7 @@ export type BackupRecord=Readonly<{
 const BACKUPS_KEY='@tf-asset/local-backups';
 const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='2.1.11';
+const APP_VERSION='2.1.12';
 
 function validPayload(value:unknown):value is Record<string,string>{
   if(!value||typeof value!=='object'||Array.isArray(value))return false;
