@@ -190,3 +190,11 @@
 - AI 持股清單改為單檔多行並隔開每一檔；最近紀錄日期超過裝置本地今天時標示「未來日期，請確認是否為預約交易」。只提示，**不擅自改寫真實 Ledger**。
 - 新版 V2.1.10 / 20110，GitHub-only QA APK，完整舊 Gate + 新純來源 Smoke。真實日期資料來源、時區、使用者的交易紀錄仍待實機驗收，金融核心未更動。
 - ETF 類型及配息頻率官方來源、Widget/Monitor 財務同步、新聞真實正文等歷史 NO PASS 原項持續結轉。
+
+## 17. GO V2.1.11 第四輪 — AI 新聞跨持股涵蓋
+
+- 更新前備份 backup-v2.1.10-20260923-pre-go-v2111；起點 8eec3eaa49c218361527d037409c99076579e4f2。
+- 新增 src/ai/newsCoverage.ts 純函式，依持股輪流選入最多 8 篇全文擷取，保留原有全域新聞日期排序，不再由單一熱門 ETF 佔滿擷取配額。
+- scripts/v2_1_11-news-coverage.test.ts：測試 3 檔持股混合文章分配、空資料及零預算。
+- 版本 2.1.11 / Android 20111 / iOS buildNumber 20111；舊功能不刪、不動不可變金融核心。
+- ETF 分類、新聞實際正文取得／授權限制、Widget 及歷史 U/G/N/T/C/D/R1-R3 持續 NO PASS，待 CI、QA APK、真機證據。詳 GO_V2_1_11_CHECKLIST.md。
