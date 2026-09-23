@@ -171,7 +171,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
       <Choice choices={sizes} value={value.size} label={x=>x==='2x2'?'2×2':x==='small'?'小型':x==='large'?'大型':'中型'} onChange={size=>patch({size})}/>
       <Choice choices={templates} value={value.template} label={x=>x==='asset-summary'?'資產摘要':x==='quote-summary'?'行情摘要':x==='compact'?'精簡':x==='advanced'?'進階資訊':x==='minimal'?'極簡':x==='quote-wall'?'行情牆':'透明'} onChange={template=>patch({template})}/>
       {value.template==='quote-wall'?<Step label="行情牆並排欄數" value={value.wallColumns} min={1} max={4} step={1} suffix=" 欄" onChange={wallColumns=>patch({wallColumns})}/>:null}
-      <Toggle label="點擊桌面 Widget 原地更新行情" value={value.forceRefreshOnTap} onChange={forceRefreshOnTap=>patch({forceRefreshOnTap})}/>
+      <Toggle label="點擊 Widget 強制更新" value={value.forceRefreshOnTap} onChange={forceRefreshOnTap=>patch({forceRefreshOnTap})}/>
       <Choice choices={['home','portfolio','dividend'] as const} value={value.tapTarget} label={x=>x==='home'?'首頁':x==='portfolio'?'庫存':'股息'} onChange={tapTarget=>patch({tapTarget})}/>
     </Section>
 
