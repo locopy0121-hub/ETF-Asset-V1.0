@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "2.1.11",
+  "version": "2.1.12",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -112,7 +112,8 @@
     "test:v2_1_8": "npm run test:v2_1_6 && tsx scripts/v2_1_8-widget-grid.test.ts",
     "test:v2_1_9": "npm run test:v2_1_8 && node scripts/v2_1_9-ai-layout.test.cjs",
     "test:v2_1_10": "npm run test:v2_1_9 && node scripts/v2_1_10-ai-dates.test.cjs",
-    "test:v2_1_11": "npm run test:v2_1_10 && tsx scripts/v2_1_11-news-coverage.test.ts"
+    "test:v2_1_11": "npm run test:v2_1_10 && tsx scripts/v2_1_11-news-coverage.test.ts",
+    "test:v2_1_12": "npm run test:v2_1_11 && tsx scripts/v2_1_12-news-feed.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
