@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {holdingPreviewLayout,previewLimit,clampPreviewPosition} from '../src/editor/holdingPreviewModel';
+
+for(const mode of ['grid2','grid3','paged2'])assert.equal(holdingPreviewLayout(mode),'narrow',mode);
+for(const mode of ['list','horizontal',undefined])assert.equal(holdingPreviewLayout(mode),'full',String(mode));
+assert.equal(previewLimit(360,260),92);
+assert.equal(previewLimit(200,260),0);
+assert.equal(clampPreviewPosition(-50,92),0);
+assert.equal(clampPreviewPosition(150,92),92);
+assert.equal(clampPreviewPosition(42,92),42);
+assert.equal(clampPreviewPosition(Number.NaN,92),0);
+const preview=fs.readFileSync('src/components/FloatingHoldingCardPreview.tsx','utf8');
+const editor=fs.readFileSync('src/components/PageFrameSettingsModal.tsx','utf8');
+const card=fs.readFileSync('src/components/HoldingQuoteModule.tsx','utf8');
+assert.match(preview,/<HoldingQuoteModule item=\{item\} wallConfig=\{config\} style=\{style\} layout=\{layout\}/);
+assert.match(editor,/config=\{displayDraft\.holdingWall\?\?DEFAULT_HOLDING_WALL_CONFIG\}/);
+assert.match(editor,/layout=\{holdingPreviewLayout\(displayDraft\.holdingLayoutMode\)\}/);
+assert.match(card,/groups\.footer/);
+assert.ok(!preview.includes('items.map('),'preview must not render an entire wall');
+console.log('V2.1.3 one-card preview geometry and draft-binding contract: PASS (device UI still pending)');

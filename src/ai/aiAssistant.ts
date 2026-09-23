@@ -2,12 +2,19 @@ import type {AiNewsItem} from './AiNewsRuntime';
 import {formatDividendEvent,refreshHoldingDividendEvents,type HoldingDividendEvent} from './dividendAssistant';
 import {calculateLedgerCashFlow,type CanonicalLedgerEntry} from '../finance/canonicalLedger';
 
-export type AiAssistantAction=Readonly<{
-  id:string;
-  kind:'addDividend';
-  label:string;
-  event:HoldingDividendEvent;
-}>;
+export type AiAssistantAction=
+  |Readonly<{
+    id:string;
+    kind:'addDividend';
+    label:string;
+    event:HoldingDividendEvent;
+  }>
+  |Readonly<{
+    id:string;
+    kind:'openDividend';
+    label:string;
+    question:string;
+  }>;
 
 export type AiAssistantAnswer=Readonly<{
   intent:'capabilities'|'news'|'dividend-update'|'dividend'|'performance'|'market-value'|'holdings'|'holding-detail'|'help';
@@ -42,12 +49,23 @@ const pct=(value:number|undefined)=>Number(value??0).toFixed(2);
 const includesAny=(text:string,words:readonly string[])=>words.some(word=>text.includes(word));
 const normalize=(value:string)=>value.trim().toLowerCase();
 const newsDate=(value:string)=>{const d=new Date(value);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('zh-TW');};
+const holdingEntryDate=(entries:readonly CanonicalLedgerEntry[],symbol:string)=>entries
+  .filter(entry=>'symbol' in entry&&entry.symbol===symbol)
+  .map(entry=>entry.date)
+  .sort()
+  .at(-1)??'尚無帳務日期';
+const openDividendAction=(holding:HoldingLike):AiAssistantAction=>({
+  id:'open-dividend-'+holding.symbol,
+  kind:'openDividend',
+  label:'查看 '+holding.symbol+' 股息資訊',
+  question:'更新 '+holding.symbol+' 股息日',
+});
 
 function textNews(items:readonly AiNewsItem[],symbol?:HoldingLike){
   const related=(symbol?items.filter(item=>item.symbol===symbol.symbol):items).slice(0,5);
   if(!related.length)return symbol?'目前沒有已取得的 '+symbol.symbol+' '+symbol.name+' 新聞。':'目前沒有已取得的持股新聞。';
   const intro=symbol?symbol.symbol+' '+symbol.name+' 最近新聞重點：':'目前持股最近有 '+related.length+' 則新聞重點：';
-  return [intro,...related.map((item,index)=>(index+1)+'. '+item.symbol+'｜'+item.title+'\n'+item.summary+'\n'+item.source+(item.publishedAt?' · '+newsDate(item.publishedAt):''))].join('\n\n');
+  return [intro,...related.map((item,index)=>(index+1)+'. '+item.symbol+'｜'+item.title+'\n'+(item.summaryStatus==='article'?item.summary:'（尚未取得可讀新聞正文，暫不提供摘要）')+'\n'+item.source+(item.publishedAt?' · '+newsDate(item.publishedAt):''))].join('\n\n');
 }
 
 export async function answerAiQuestion(
@@ -112,7 +130,7 @@ export async function answerAiQuestion(
       const max=Math.max(0,...totals),index=totals.indexOf(max);
       return {intent:'dividend',text:year+' 年目前股息最高月份為 '+(index+1)+' 月，淨股息 NT$ '+money(max)+'。'};
     }
-    if(symbol)return {intent:'dividend',text:symbol.symbol+' '+symbol.name+' 目前帳務累積股息 NT$ '+money(symbol.cumulativeDividend)+'。若要查下一次除息／配發或未登錄紀錄，請輸入「更新 '+symbol.symbol+' 股息日」。'};
+    if(symbol)return {intent:'dividend',text:symbol.symbol+' '+symbol.name+' 目前帳務累積股息 NT$ '+money(symbol.cumulativeDividend)+'。點擊下方按鈕可查下一次除息、配發與未登錄紀錄。',actions:[openDividendAction(symbol)]};
     return {intent:'dividend',text:'目前帳務累積淨股息 NT$ '+money(portfolio.totalDividendsReceived)+'。若要掃描持股最新除息與待補登紀錄，請輸入「更新持股股息日」。'};
   }
 
@@ -127,8 +145,14 @@ export async function answerAiQuestion(
   }
 
   if(includesAny(q,['持股','幾檔','有哪些'])){
-    const names=holdings.slice(0,20).map(h=>h.symbol+' '+h.name).join('、');
-    return {intent:'holdings',text:'目前共 '+holdings.length+' 檔持股'+(names?'：'+names:'')+'。'};
+    const rows=holdings.map((holding,index)=>
+      (index+1)+'. '+holding.symbol+' '+holding.name+'｜'+Number(holding.shares??0).toLocaleString('zh-TW')+' 股｜最近紀錄 '+holdingEntryDate(entries,holding.symbol)
+    );
+    return {
+      intent:'holdings',
+      text:holdings.length?'目前共 '+holdings.length+' 檔持股：\n\n'+rows.join('\n'):'目前沒有持股。',
+      actions:holdings.map(openDividendAction),
+    };
   }
 
   if(symbol){
