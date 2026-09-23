@@ -15,7 +15,7 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
-import {todayEtfReminderMap} from '../domain/etfBadges';
+import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
 import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { useFinance } from '../finance/FinanceRuntime';
