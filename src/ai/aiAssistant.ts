@@ -54,6 +54,12 @@ const holdingEntryDate=(entries:readonly CanonicalLedgerEntry[],symbol:string)=>
   .map(entry=>entry.date)
   .sort()
   .at(-1)??'尚無帳務日期';
+const annotatedEntryDate=(entries:readonly CanonicalLedgerEntry[],symbol:string)=>{
+  const latest=holdingEntryDate(entries,symbol);
+  const now=new Date();
+  const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  return /^\d{4}-\d{2}-\d{2}$/.test(latest)&&latest>today?latest+'（未來日期，請確認是否為預約交易）':latest;
+};
 const openDividendAction=(holding:HoldingLike):AiAssistantAction=>({
   id:'open-dividend-'+holding.symbol,
   kind:'openDividend',
@@ -146,11 +152,11 @@ export async function answerAiQuestion(
 
   if(includesAny(q,['持股','幾檔','有哪些'])){
     const rows=holdings.map((holding,index)=>
-      (index+1)+'. '+holding.symbol+' '+holding.name+'｜'+Number(holding.shares??0).toLocaleString('zh-TW')+' 股｜最近紀錄 '+holdingEntryDate(entries,holding.symbol)
+      (index+1)+'. '+holding.symbol+' '+holding.name+'｜'+Number(holding.shares??0).toLocaleString('zh-TW')+' 股\n最近紀錄：'+annotatedEntryDate(entries,holding.symbol)
     );
     return {
       intent:'holdings',
-      text:holdings.length?'目前共 '+holdings.length+' 檔持股：\n\n'+rows.join('\n'):'目前沒有持股。',
+      text:holdings.length?'目前共 '+holdings.length+' 檔持股：\n\n'+rows.join('\n\n'):'目前沒有持股。',
       actions:holdings.map(openDividendAction),
     };
   }
