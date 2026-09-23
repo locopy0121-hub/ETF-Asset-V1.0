@@ -11,6 +11,7 @@ import {
 } from '../domain/uiModels';
 import type { ItemEffectConfig } from '../domain/displayItemContract';
 import { radius, spacing } from '../theme/tokens';
+import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const pct=(value:number)=>`${value>=0?'+':''}${value.toFixed(2)}%`;
@@ -20,12 +21,14 @@ export function HoldingQuoteModule({
   style='quote',
   layout='full',
   wallConfig=DEFAULT_HOLDING_WALL_CONFIG,
+  refreshToken,
   onPress,
 }:{
   item:HoldingQuote;
   style?:QuoteModuleStyle;
   layout?:'full'|'narrow';
   wallConfig?:HoldingWallConfig;
+  refreshToken?:string|number|null|undefined;
   onPress?:()=>void;
 }){
   const change=item.price-item.previousClose;
@@ -49,7 +52,7 @@ export function HoldingQuoteModule({
   ]}>
     {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
     <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
-      {cfg.header.visible&&groups.header.length?<EffectView effect={cfg.header.effect} numeric={changePct}>
+      {cfg.header.visible&&groups.header.length?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
         <View style={[
           styles.head,
           {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
@@ -62,6 +65,7 @@ export function HoldingQuoteModule({
               change={change}
               changePct={changePct}
               wall={cfg}
+              refreshToken={refreshToken}
               header
               narrow={narrow}
               primary={index===0}
@@ -73,19 +77,19 @@ export function HoldingQuoteModule({
 
       {groups.quote.length?<View style={styles.quoteRow}>
         <View style={{flex:1}}>
-          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} quotePrimary narrow={narrow}/>
+          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
         </View>
         {groups.quote.length>1?<View style={styles.changeWrap}>
-          {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} narrow={narrow}/>)}
+          {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}/>)}
         </View>:null}
       </View>:null}
 
       {!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardStyle.borderColor}]}>
         <View style={{flex:1}}>
-          <WallMetric field={groups.footer[0]!} item={item} change={change} changePct={changePct} wall={cfg}/>
+          <WallMetric field={groups.footer[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken}/>
         </View>
         {groups.footer.length>1?<View style={styles.rightMetric}>
-          {groups.footer.slice(1).map(field=><WallMetric key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} right/>)}
+          {groups.footer.slice(1).map(field=><WallMetric key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} right/>)}
         </View>:null}
       </View>:null}
     </View>
@@ -93,19 +97,22 @@ export function HoldingQuoteModule({
 }
 
 function WallText({
-  field,item,change,changePct,wall,header=false,quotePrimary=false,narrow=false,primary=false,
+  field,item,change,changePct,wall,refreshToken,header=false,quotePrimary=false,narrow=false,primary=false,
 }:{
   field:HoldingWallFieldConfig;
   item:HoldingQuote;
   change:number;
   changePct:number;
   wall:HoldingWallConfig;
+  refreshToken?:string|number|null|undefined;
   header?:boolean;
   quotePrimary?:boolean;
   narrow?:boolean;
   primary?:boolean;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
+  const systemColors=useSettingsRuntime().prefs.display;
+  const liveBackground=resolveWallBackground(field,item,change,systemColors);
   const tone=fieldColor(field,item,change,wall);
   const value=fieldValue(field.field,item,change,changePct);
   const fontSize=header
@@ -115,10 +122,11 @@ function WallText({
     text={value}
     effect={field.effect}
     numeric={numeric}
+    refreshToken={refreshToken}
     numberOfLines={1}
+    inlineBackgroundColor={liveBackground}
     style={{
-      color:header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
-      backgroundColor:field.backgroundColor??'transparent',
+      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:field.align,
@@ -130,24 +138,28 @@ function WallText({
 }
 
 function WallMetric({
-  field,item,change,changePct,wall,right=false,
+  field,item,change,changePct,wall,refreshToken,right=false,
 }:{
   field:HoldingWallFieldConfig;
   item:HoldingQuote;
   change:number;
   changePct:number;
   wall:HoldingWallConfig;
+  refreshToken?:string|number|null|undefined;
   right?:boolean;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
-  return <View style={[right?styles.rightMetric:undefined,{backgroundColor:field.backgroundColor??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
-    <Text style={[styles.footerLabel,{color:field.textColor??wall.style.secondaryTextColor,textAlign:field.align}]}>{field.label}</Text>
+  const systemColors=useSettingsRuntime().prefs.display;
+  const liveBackground=resolveWallBackground(field,item,change,systemColors);
+  return <View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
+    <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':(field.textColor??wall.style.secondaryTextColor),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
       numeric={numeric}
+      refreshToken={refreshToken}
       style={{
-        color:fieldColor(field,item,change,wall),
+        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':fieldColor(field,item,change,wall),
         fontSize:12*field.fontScale,
         fontWeight:'900',
         marginTop:2,
@@ -158,9 +170,10 @@ function WallMetric({
   </View>;
 }
 
-function EffectText({text,effect,numeric,style,numberOfLines}:{text:string;effect:ItemEffectConfig;numeric:number|null;style:any;numberOfLines?:number}){
+function EffectText({text,effect,numeric,refreshToken,style,numberOfLines,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;style:any;numberOfLines?:number;inlineBackgroundColor?:string|null}){
   const anim=useRef(new Animated.Value(1)).current;
   const translate=useRef(new Animated.Value(0)).current;
+  const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
   useEffect(()=>{
     anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
     if(effect.kind==='none'||!effectActive(effect,numeric))return;
@@ -185,21 +198,40 @@ function EffectText({text,effect,numeric,style,numberOfLines}:{text:string;effec
     const actual=effect.trigger==='always'?Animated.loop(runner):runner;
     actual.start();
     return()=>actual.stop();
-  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
-  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]}>{text}</Animated.Text>;
+  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,triggerToken]);
+  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]} >{inlineBackgroundColor?<Text style={{backgroundColor:inlineBackgroundColor}}>{text}</Text>:text}</Animated.Text>;
 }
 
-function EffectView({effect,numeric,children}:{effect:ItemEffectConfig;numeric:number|null;children:ReactNode}){
+function EffectView({effect,numeric,refreshToken,children}:{effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;children:ReactNode}){
   const anim=useRef(new Animated.Value(1)).current;
+  const translate=useRef(new Animated.Value(0)).current;
+  const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
   useEffect(()=>{
-    anim.stopAnimation();anim.setValue(1);
+    anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
     if(effect.kind==='none'||!effectActive(effect,numeric))return;
     const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
     const low=effect.intensity==='soft'?.82:effect.intensity==='strong'?.3:.55;
-    const runner=Animated.sequence([Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true})]);
-    const actual=effect.trigger==='always'?Animated.loop(runner):runner;actual.start();return()=>actual.stop();
-  },[anim,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
-  return <Animated.View style={{opacity:anim}}>{children}</Animated.View>;
+    let runner:Animated.CompositeAnimation;
+    if(effect.kind==='bounce'){
+      const distance=effect.intensity==='soft'?-3:effect.intensity==='strong'?-10:-6;
+      runner=Animated.sequence([
+        Animated.timing(translate,{toValue:distance,duration:Math.round(duration/2),useNativeDriver:true}),
+        Animated.timing(translate,{toValue:0,duration:Math.round(duration/2),useNativeDriver:true}),
+      ]);
+    }else if(effect.kind==='fade'){
+      anim.setValue(low);
+      runner=Animated.timing(anim,{toValue:1,duration,useNativeDriver:true});
+    }else{
+      runner=Animated.sequence([
+        Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),
+        Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true}),
+      ]);
+    }
+    const actual=effect.trigger==='always'?Animated.loop(runner):runner;
+    actual.start();
+    return()=>actual.stop();
+  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,triggerToken]);
+  return <Animated.View style={{opacity:anim,transform:[{translateY:translate}]}}>{children}</Animated.View>;
 }
 function effectActive(effect:ItemEffectConfig,numeric:number|null){
   if(effect.trigger==='gain')return numeric!=null&&numeric>0;
@@ -212,6 +244,12 @@ function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number
   if(!field.useProfitColor)return field.textColor??(field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor);
   const value=field.field==='pnl'||field.field==='roi'?item.pnl:field.field==='marketValue'?item.marketValue:change;
   return value>0?wall.style.gainColor:value<0?wall.style.lossColor:(field.textColor??wall.style.secondaryTextColor);
+}
+function resolveWallBackground(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,system:DisplayPrefs):string|null{
+  if(!field.useProfitBackground)return field.backgroundColor;
+  const value=field.field==='pnl'||field.field==='roi'||field.field==='marketValue'?item.pnl:change;
+  if(!Number.isFinite(value)||(field.field!=='pnl'&&field.field!=='roi'&&field.field!=='marketValue'&&!(item.previousClose>0)))return field.backgroundColor;
+  return value>0?system.gainColor:value<0?system.lossColor:system.neutralColor;
 }
 function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:null;
