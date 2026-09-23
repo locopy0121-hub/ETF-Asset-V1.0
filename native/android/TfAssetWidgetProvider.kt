@@ -1,6 +1,7 @@
 package com.tfasset.app
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
@@ -32,12 +33,24 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
   override fun onReceive(context:Context,intent:Intent){
     super.onReceive(context,intent)
     if(intent.action==ACTION_FORCE_REFRESH){
+      // Native acknowledgement is visible immediately, even while the JS bridge wakes up.
+      val manager=AppWidgetManager.getInstance(context)
+      val ids=manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java))
+      ids.forEach{id->val progress=RemoteViews(context.packageName,R.layout.tf_asset_widget)
+        progress.setTextViewText(R.id.widget_refresh,"更新中…")
+        manager.partiallyUpdateAppWidget(id,progress)
+      }
       context.getSharedPreferences("tf_asset_native",0).edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis()).apply()
       val launch=context.packageManager.getLaunchIntentForPackage(context.packageName)
       if(launch!=null){
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         launch.putExtra("tfasset_force_market_refresh",true)
         context.startActivity(launch)
+      }else{
+        ids.forEach{id->val failed=RemoteViews(context.packageName,R.layout.tf_asset_widget)
+          failed.setTextViewText(R.id.widget_refresh,"無法更新")
+          manager.partiallyUpdateAppWidget(id,failed)
+        }
       }
     }
   }
@@ -120,6 +133,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val configuredColumns=config.optInt("wallColumns",4).coerceIn(1,4)
     val autoColumns=when{minWidth>=360->4;minWidth>=270->3;minWidth>=180->2;else->1}
     val wallColumns=minOf(configuredColumns,autoColumns)
+    val perColumnDp=minWidth.toDouble()/wallColumns
+    val wallFontFactor=(perColumnDp/120.0).coerceIn(0.7,1.0)
     val maxWallRows=(minHeight/92).coerceIn(1,4)
     val wallCapacity=(wallColumns*maxWallRows).coerceIn(1,16)
     val legacyProfitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
@@ -133,6 +148,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     views.setTextViewText(R.id.widget_title,if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
     views.setTextColor(R.id.widget_refresh,neutral)
+    views.setTextViewText(R.id.widget_refresh,"↻ 更新")
     val forceRefreshEnabled=config.optBoolean("forceRefreshOnTap",true)
     views.setViewVisibility(R.id.widget_refresh,if(forceRefreshEnabled)View.VISIBLE else View.GONE)
 
@@ -191,7 +207,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         views.setViewVisibility(id,View.VISIBLE)
         views.setTextViewText(id,card)
         views.setTextColor(id,text)
-        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs).toFloat())
+        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs*wallFontFactor).toFloat())
       }
     }
 
