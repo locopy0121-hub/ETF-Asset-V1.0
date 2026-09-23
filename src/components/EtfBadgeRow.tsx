@@ -1,6 +1,6 @@
 import {useEffect,useRef} from 'react';
 import {Animated,StyleSheet,Text,View} from 'react-native';
-import {badgeDisplayText,etfReminderLabel,type EtfBadgeConfig,type EtfBadgeKey,type EtfBadgeStyle,type EtfReminderType} from '../domain/etfBadges';
+import {badgePresentationText,etfReminderLabel,type EtfBadgeConfig,type EtfBadgeKey,type EtfBadgeStyle,type EtfReminderType} from '../domain/etfBadges';
 
 /** Shared presentation for home cards and portfolio list. Code is rendered separately at left. */
 export function EtfBadgeRow({etfType,dividendType,reminder,config,narrow=false,refreshToken}:{
@@ -13,8 +13,8 @@ export function EtfBadgeRow({etfType,dividendType,reminder,config,narrow=false,r
   return <View style={[styles.row,narrow&&styles.narrowRow,{gap:narrow?2:4}]}>
     {badges.map(key=>{
       const configItem=config.badges[key];
-      const sourceText=badgeDisplayText(key,etfType,dividendType,reminder);
-      const text=configItem.customText||(sourceText==='待確認'?(key==='etfType'?'類別待確認':'配息待確認'):sourceText);
+      const sourceText=badgePresentationText(key,etfType,dividendType,reminder);
+      const text=configItem.customText||sourceText;
       return <EtfBadge key={key} badgeKey={key} title={text} description={key==='reminder'&&reminder?etfReminderLabel(reminder):text} styleConfig={configItem} narrow={narrow} refreshToken={refreshToken}/>;
     })}
   </View>;
