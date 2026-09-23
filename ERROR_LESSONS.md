@@ -232,3 +232,12 @@
 > 以後不是「先做，再解釋為什麼對」，而是「先確認規則與證據，再做；做完後用證據證明沒有違反規則」。
 
 這才是 `ERROR_LESSONS.md` 真正應該達到的效果。
+
+
+29. **GO 最終結果必須交付新版 APK；每次 App 更新 Ver +1（2026-09-23 新增硬規則）**
+    - 使用者執行 GO 的最終交付物是本輪新版本、經 GitHub Actions 實際建置與 Artifact／完整性驗證成功的 APK，不是只有程式修改或 PR。
+    - 每輪 App 更新版本正式遞增一級，App 顯示、package.json、app.json、Android versionCode、iOS buildNumber、原生 CI／QA workflow 與備份版本一致；禁止復用上次更新版本或加「OA」尾碼。
+    - 本輪仍有真機待驗或原 Checklist 未全 PASS 時，應在品質與安全前置 Gate 允許後先交付**新版本 QA APK**供驗收；保留所有未完成項及正式 Release 阻斷，不以 QA 建置冒充正式 Release。
+    - Action 出錯就查 Log、原地修復、重驗、重新建置，最後必須核對 APK 檔案、SHA-256、包名、版本和實際下載連結。
+    - 若平台授權或技術阻斷使新 APK 尚未成功，清楚回報阻斷與未完成；不能僅憑「已提交修改」宣告 GO 完成，也不能承諾在本回合結束後無工具持續執行。
+    - 詳細版本一致性、QA／正式 Release 分流及交付證據依 Work_Project_Rules.md 第 26 節執行。

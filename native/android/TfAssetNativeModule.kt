@@ -37,7 +37,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   init{reactContext.addActivityEventListener(activityListener)}
   override fun getName() = "TfAssetNative"
 
-  @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).apply(); refreshWidget(); promise.resolve(true) }
+  @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){ prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson).remove("wall_market_overrides").putString("widget_refresh_status","↻ 更新").apply(); refreshWidget(); promise.resolve(true) }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
     val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
     val incomingMode=parsed.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
@@ -120,6 +120,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
         pm.setComponentEnabledSetting(ComponentName(reactContext.packageName,reactContext.packageName+"."+alias),state,PackageManager.DONT_KILL_APP)
       }
       prefs.edit().putString("app_icon_key",iconKey).apply()
+      refreshWidget()
     }.onSuccess{promise.resolve(true)}.onFailure{promise.reject("ICON_SWITCH_FAILED",it)}
   }
 
