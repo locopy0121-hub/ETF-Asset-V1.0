@@ -14,7 +14,7 @@ const SPEEDS:Record<ItemEffectSpeed,string>={slow:'慢',normal:'一般',fast:'�
 const INTENSITIES:Record<ItemEffectIntensity,string>={soft:'柔和',medium:'中',strong:'強'};
 
 export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_ETF_BADGES}:{
-  value:PortfolioListConfig;onChange:(next:PortfolioListConfig)=>void;previewQuote?:HoldingQuote;badges?:EtfBadgeConfig;
+  value:PortfolioListConfig;onChange:(next:PortfolioListConfig)=>void;previewQuote?:HoldingQuote|undefined;badges?:EtfBadgeConfig;
 }){
   const [editing,setEditing]=useState<PortfolioColumnKey|null>('shares');
   const patch=(key:PortfolioColumnKey,change:Partial<PortfolioColumnConfig>)=>
