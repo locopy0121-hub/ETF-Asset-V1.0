@@ -141,7 +141,7 @@ export function mergeEtfCatalog(
       name:existing?.name && existing.name!==policy.symbol?existing.name:policy.name,
       market:existing?.market??'fallback',
       etfType:existing?.etfType??policy.etfType,
-      dividendType:newerPolicy?existing!.dividendType:policy.dividendType,
+      dividendType:newerPolicy?(existing?.dividendType??policy.dividendType):policy.dividendType,
       metadataSource:existing?.metadataSource??null,
       metadataVerifiedAt:existing?.metadataVerifiedAt??null,
       dividendSource:newerPolicy?existing!.dividendSource??null:policy.issuer,
