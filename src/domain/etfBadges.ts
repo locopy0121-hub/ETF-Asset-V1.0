@@ -92,3 +92,9 @@ export function badgeDisplayText(key:EtfBadgeKey,etfType:string|null|undefined,d
   if(key==='dividendType')return dividendType?.trim()||'待確認';
   return reminder?etfReminderLabel(reminder):'';
 }
+
+/** Visible fallback labels distinguish taxonomy from payout policy without inventing metadata. */
+export function badgePresentationText(key:EtfBadgeKey,etfType:string|null|undefined,dividendType:string|null|undefined,reminder?:EtfReminderType|null):string{
+  const source=badgeDisplayText(key,etfType,dividendType,reminder);
+  return source==='待確認'?(key==='etfType'?'類別待確認':'配息待確認'):source;
+}
