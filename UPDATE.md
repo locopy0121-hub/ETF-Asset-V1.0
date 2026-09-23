@@ -261,3 +261,15 @@ CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實�
 - 第 07 項局部 CODE：以純函式返回路由讓浮動 AI 展開時先收起，其次詳情，然後主頁歷史，最後才退出；新增可選左右邊緣滑動並沿用既有全畫面手勢。詳見 `GO_V2_1_18_CHECKLIST.md`。
 - K 線、所有巢狀 Modal、頁面捲動位置及真實 Android 手勢仍待驗；G01–G08、U01–U15、原八大項全部結轉，Finance Core、Ledger 與 actualFee/tax 均不修改。
 - CI、QA APK、Artifact、SHA256 與 badging 必須按實際 Action 結果另行登記；不得把 CODE 當正式 Release。
+
+
+## 2026-09-24 GO V2.1.19｜原八大項第 03 項：發行人配息政策補源
+
+最新 Android 07:07 截圖中的 0050／00406A／009816／00713／00919／00878 顯示類別，但全部仍是「配息待確認」。根因是此前 t187ap47_L 分類 API 多數沒有收益分配週期欄位；僅擴大官方指數類別解析並不能填入配息。
+
+- 先以 PR #35 V2.1.18 HEAD `257a5f31ea2bad567eabd17aa72b50a3ec7c88e3` 建立並核實完整原始碼備份 `backup-v2.1.18-20260924-pre-go-v2119`；開設 `go-v2.1.19-20260924-official-dividend`，遞增 App 2.1.19／Android+iOS 20119。
+- 只在展示用市場 metadata 層增加 2026/09/24 核實的 11 檔發行人政策及官方來源 URL。初始化、斷網及舊快取都會自動套用；缺乏官方證據的 ETF 保留待確認；官方若提供更新且明確的收益分配欄位，可取代既有政策快照。
+- 首頁及庫存原本共享 MarketRuntime catalog，因此共用政策；設定頁 ETF 標籤編輯器另增 11 筆官方來源可點連結。僅展示分類／週期，不產生帳務交易、股息事件或提醒。
+- 核心計算、Ledger 固化費稅、Widget／Monitor 不改。新增行為測試，保留既有所有回歸。本輪 CI／QA APK／Artifact／SHA/badging 的真實結果後續補記；Android 實機與全市場來源覆蓋仍待驗。
+
+詳細 D01–D06、資料範圍與歷史結轉見 `GO_V2_1_19_CHECKLIST.md`。

@@ -17,6 +17,7 @@ import {
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
+import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
 export type { EtfCatalogItem } from './etfMetadata';
 
 export type MarketPhase = 'live' | 'afterHours' | 'offline';
@@ -67,7 +68,9 @@ type MarketRuntimeValue = {
 
 const STORAGE_KEY='@tf-asset/market-runtime';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
-const FALLBACK_CATALOG:EtfCatalogItem[]=FALLBACK_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'}));
+const FALLBACK_CATALOG:EtfCatalogItem[]=mergeEtfCatalog(
+  FALLBACK_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'})),[],[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES,
+);
 
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
 const hhmm=(value:string)=>{
@@ -149,7 +152,7 @@ async function fetchEtfCatalog(previous:readonly EtfCatalogItem[]):Promise<EtfCa
     }
   }catch{ /* The catalog remains usable; missing taxonomy must remain explicitly unknown. */ }
   // Join metadata by symbol independently of quote rows, preserving last-known-good values.
-  return mergeEtfCatalog(FALLBACK_CATALOG,previous,rows,official);
+  return mergeEtfCatalog(FALLBACK_CATALOG,previous,rows,official,VERIFIED_ISSUER_DIVIDEND_POLICIES);
 }
 
 async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[]):Promise<{quotes:RuntimeQuote[];updatedCount:number;unresolved:string[]}>{
@@ -233,7 +236,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
         if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes);
         if(Number.isFinite(Number(parsed.lastSuccessAt)))setLastSuccessAt(Number(parsed.lastSuccessAt));
-        if(Array.isArray(parsed.catalog)&&parsed.catalog.length){catalogRef.current=parsed.catalog;setCatalog(parsed.catalog);}
+        if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
+          // Apply new reviewed policies to old cached catalogues immediately on upgrade.
+          const restored=mergeEtfCatalog(FALLBACK_CATALOG,parsed.catalog,[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES);
+          catalogRef.current=restored;
+          setCatalog(restored);
+        }
         if(typeof parsed.catalogFetchedAt==='number'&&Number.isFinite(parsed.catalogFetchedAt))setCatalogFetchedAt(parsed.catalogFetchedAt);
       }
     }).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});

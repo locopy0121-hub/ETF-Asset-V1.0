@@ -1,10 +1,11 @@
 import {useState} from 'react';
-import {Pressable,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Linking,Pressable,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {
   DEFAULT_ETF_BADGES,type EtfBadgeConfig,type EtfBadgeKey,type EtfBadgeStyle,type EtfReminderType,
 } from '../domain/etfBadges';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger} from '../domain/displayItemContract';
 import {colors,spacing} from '../theme/tokens';
+import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from '../market/issuerDividendPolicies';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {EtfBadgeRow} from './EtfBadgeRow';
 
@@ -18,6 +19,7 @@ const EVENT_LABELS:Record<EtfReminderType,string>={lastBuyDate:'最後買進日'
 export function EtfBadgeEditor({value,onChange,catalogRefreshing=false,onRefreshCatalog}:{value:EtfBadgeConfig;onChange:(next:EtfBadgeConfig)=>void;catalogRefreshing?:boolean;onRefreshCatalog?:()=>void}){
   const [open,setOpen]=useState<EtfBadgeKey|null>('etfType');
   const [previewReminder,setPreviewReminder]=useState(true);
+  const [showOfficialSources,setShowOfficialSources]=useState(false);
   const patch=(key:EtfBadgeKey,next:Partial<EtfBadgeStyle>)=>onChange({...value,badges:{...value.badges,[key]:{...value.badges[key],...next}}});
   const patchEffect=(key:EtfBadgeKey,next:Partial<ItemEffectConfig>)=>patch(key,{effect:{...value.badges[key].effect,...next}});
   const move=(key:EtfBadgeKey,step:-1|1)=>{
@@ -30,7 +32,11 @@ export function EtfBadgeEditor({value,onChange,catalogRefreshing=false,onRefresh
     <Text style={styles.heading}>ETF 標籤｜A 群組、B 單項編輯</Text>
     <Text style={styles.hint}>代號固定靠左；類型、配息及提醒靠右。自訂文字只改畫面，不覆寫官方分類或配息資料。</Text>
     {onRefreshCatalog?<Pressable accessibilityRole="button" accessibilityLabel="重新讀取官方ETF類別資料" disabled={catalogRefreshing} onPress={onRefreshCatalog} style={styles.refresh}><Text style={styles.refreshText}>{catalogRefreshing?'官方類別讀取中…':'↻ 重新查詢官方類別資料'}</Text></Pressable>:null}
-    <Text style={styles.hint}>官方基本資料可能未提供配息政策；配息欄仍以已核實的來源為準，缺資料保留待確認。</Text>
+    <Text style={styles.hint}>本版內建 {VERIFIED_ISSUER_DIVIDEND_POLICIES.length} 檔已核實投信配息政策（2026/09/24）；新版首次開啟即會加入，舊快取自動升級。其他 ETF 缺少可靠來源時仍顯示「配息待確認」；配息週期不保證當期一定發放。</Text>
+    <Pressable accessibilityRole="button" onPress={()=>setShowOfficialSources(value=>!value)} style={styles.refresh}><Text style={styles.refreshText}>{showOfficialSources?'收起已核實資料來源':'查看已核實 ETF 配息來源及日期'}</Text></Pressable>
+    {showOfficialSources?<View style={styles.card}>{VERIFIED_ISSUER_DIVIDEND_POLICIES.map(policy=><Pressable accessibilityRole="link" key={policy.symbol} onPress={()=>void Linking.openURL(policy.sourceUrl)} style={styles.row}>
+      <Text style={styles.label}>{policy.symbol} · {policy.dividendType} · {policy.issuer}（{policy.checkedOn}） ↗</Text>
+    </Pressable>)}<Text style={styles.hint}>來源連結供核對投信公開政策；「重新查詢」目前更新證交所官方基本資料，不代表投信已公告新的配息政策。</Text></View>:null}
     {value.order.map((key,index)=>{
       const item=value.badges[key];
       return <View key={key} style={styles.card}>

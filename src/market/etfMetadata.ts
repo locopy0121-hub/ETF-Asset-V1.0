@@ -1,3 +1,5 @@
+import type {VerifiedIssuerDividendPolicy} from './issuerDividendPolicies';
+
 /** ETF reference-data normalization only. This module must never calculate ledger/portfolio amounts. */
 export type EtfCatalogItem = Readonly<{
   symbol: string;
@@ -7,6 +9,9 @@ export type EtfCatalogItem = Readonly<{
   dividendType?: string | null;
   metadataSource?: string | null;
   metadataVerifiedAt?: number | null;
+  dividendSource?: string | null;
+  dividendSourceUrl?: string | null;
+  dividendVerifiedAt?: number | null;
 }>;
 
 type OfficialMetadata = Readonly<{
@@ -16,6 +21,9 @@ type OfficialMetadata = Readonly<{
   dividendType?: string | null;
   metadataSource: string;
   metadataVerifiedAt: number;
+  dividendSource?: string | null;
+  dividendSourceUrl?: string | null;
+  dividendVerifiedAt?: number | null;
 }>;
 
 const ETF_SYMBOL = /^00[0-9A-Z]{2,6}$/;
@@ -80,6 +88,7 @@ export function parseOfficialEtfRow(raw: Record<string, unknown>, fetchedAt: num
     dividendType,
     metadataSource: 'TWSE 基金基本資料彙總表',
     metadataVerifiedAt: fetchedAt,
+    ...(dividendType?{dividendSource:'TWSE 官方 ETF 基本資料',dividendSourceUrl:'https://openapi.twse.com.tw/v1/opendata/t187ap47_L',dividendVerifiedAt:fetchedAt}:{}),
   };
 }
 
@@ -89,6 +98,7 @@ export function mergeEtfCatalog(
   previous: readonly EtfCatalogItem[],
   observed: readonly EtfCatalogItem[],
   official: readonly OfficialMetadata[],
+  issuerPolicies:readonly VerifiedIssuerDividendPolicy[]=[],
 ): EtfCatalogItem[] {
   const bySymbol = new Map<string, EtfCatalogItem>();
   for (const item of [...fallback, ...previous, ...observed]) {
@@ -101,6 +111,9 @@ export function mergeEtfCatalog(
       dividendType: item.dividendType ?? existing?.dividendType ?? null,
       metadataSource: item.metadataSource ?? existing?.metadataSource ?? null,
       metadataVerifiedAt: item.metadataVerifiedAt ?? existing?.metadataVerifiedAt ?? null,
+      dividendSource: item.dividendSource ?? existing?.dividendSource ?? null,
+      dividendSourceUrl: item.dividendSourceUrl ?? existing?.dividendSourceUrl ?? null,
+      dividendVerifiedAt: item.dividendVerifiedAt ?? existing?.dividendVerifiedAt ?? null,
     });
   }
   for (const item of official) {
@@ -113,6 +126,27 @@ export function mergeEtfCatalog(
       dividendType: item.dividendType ?? existing?.dividendType ?? null,
       metadataSource: item.metadataSource,
       metadataVerifiedAt: item.metadataVerifiedAt,
+      dividendSource:item.dividendType ? (item.dividendSource??item.metadataSource) : (existing?.dividendSource??null),
+      dividendSourceUrl:item.dividendType ? (item.dividendSourceUrl??null) : (existing?.dividendSourceUrl??null),
+      dividendVerifiedAt:item.dividendType ? (item.dividendVerifiedAt??item.metadataVerifiedAt) : (existing?.dividendVerifiedAt??null),
+    });
+  }
+  // An audited issuer policy fills empty / legacy values even without a quote or network.
+  // Explicit newer exchange payout-policy fields supersede the dated issuer snapshot.
+  for(const policy of issuerPolicies){
+    const existing=bySymbol.get(policy.symbol);
+    const newerPolicy=!!existing?.dividendType && (existing.dividendVerifiedAt??0)>policy.verifiedAt;
+    bySymbol.set(policy.symbol,{
+      symbol:policy.symbol,
+      name:existing?.name && existing.name!==policy.symbol?existing.name:policy.name,
+      market:existing?.market??'fallback',
+      etfType:existing?.etfType??policy.etfType,
+      dividendType:newerPolicy?existing!.dividendType:policy.dividendType,
+      metadataSource:existing?.metadataSource??null,
+      metadataVerifiedAt:existing?.metadataVerifiedAt??null,
+      dividendSource:newerPolicy?existing!.dividendSource??null:policy.issuer,
+      dividendSourceUrl:newerPolicy?existing!.dividendSourceUrl??null:policy.sourceUrl,
+      dividendVerifiedAt:newerPolicy?existing!.dividendVerifiedAt??null:policy.verifiedAt,
     });
   }
   return [...bySymbol.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
