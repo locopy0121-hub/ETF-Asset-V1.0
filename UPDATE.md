@@ -227,3 +227,11 @@
 - **明確保護：** 既有金融公式、帳務寫入、Monitor/Mini 版面及舊 Widget 多欄排列不動。Native 不重新計算市值、費稅、損益。
 - **品質分級：** 此記錄僅記已提交程式；對應新 Native/JS 接線 Smoke 已加入 `test:v2_1_14`，仍待實際 CI、Gradle APK、Artifact/SHA/badging及 Android Widget 真機驗收。原始歷史清單完整保留，不能宣稱 GO ALL PASS。
 - **本次續接檔案：** `GO_V2_1_14_CHECKLIST.md`。
+
+## 2026-09-23 GO 第 05 項第一輪｜V2.1.15 AI 新聞來源與全文透明化
+- 基準 V2.1.14 PR #31 `f968b958b6987056bed926851b4a66ed68ae0810`；更新前備份 `backup-v2.1.14-20260923-pre-ai` 已核對一致。版本 2.1.15／Android 20115／iOS 20115，仍是開發用 QA。
+- 新增 `newsArticleResolver.ts`：僅遵循可核實的原始出版社 HTTPS URL；當 Google News RSS 連結未轉向出版社、HTML 亦無可核實來源時，保留 unavailable，不從標題猜測。
+- `articleSummary.ts` 增加 JSON-LD `NewsArticle.articleBody` 實質正文候選，仍需要足夠文字；`AiNewsRuntime.tsx` 區分 Google 聚合頁和出版社正文，不能把 RSS 當全文。
+- AI 對話及浮動視窗可以點擊開啟新聞來源；標示已取得正文時只是 **原文重點節錄，並非生成式 AI 摘要**。本輪未假造或聲稱串接 LLM／API 金鑰，其他十二項能力仍待獨立建置與驗收。
+- 新增行為測試 `scripts/v2_1_15-ai-news.test.ts` 並沿用 V2.1.14 全部測試。具體 CODE／CI／QA APK／真實來源、實機狀態請以 `GO_V2_1_15_CHECKLIST.md` 後續證據為準。
+- 第 03 項官方分類與配息來源、第四項 Widget 手機同步測試未完成，保持待驗而非硬改 PASS；金融核心只讀不變。
