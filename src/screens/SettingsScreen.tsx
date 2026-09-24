@@ -32,12 +32,14 @@ import {
   listLocalBackups,
   restoreLocalBackup,
   type BackupRecord,
+  inspectTfAssetBackup,recordVerifiedExternalBackup,lastVerifiedExternalBackup,
+  type VerifiedExternalBackup,
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { toggleExclusivePanel } from '../settings/settingsControlBehavior';
 import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, backupDocumentPickerAvailable, saveExternalBackup, chooseExternalBackup, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
@@ -74,6 +76,11 @@ export function SettingsScreen(){
   const [legalPanel,setLegalPanel]=useState<LegalPanel>(null);
   const [backups,setBackups]=useState<BackupRecord[]>([]);
   const [backupStatus,setBackupStatus]=useState('');
+  const [backupBusy,setBackupBusy]=useState(false);
+  const [verifiedExternal,setVerifiedExternal]=useState<VerifiedExternalBackup|null>(null);
+  const [chosenDocument,setChosenDocument]=useState<null|{
+    name:string;text:string;entries:number;keys:number;exportedAt:string;
+  }>(null);
   const [exportText,setExportText]=useState('');
   const [importText,setImportText]=useState('');
   const [storageStats,setStorageStats]=useState({keys:0,bytes:0});
@@ -100,7 +107,7 @@ export function SettingsScreen(){
     setStorageStats(stats);
   };
 
-  useEffect(()=>{void reloadBackupMeta();},[]);
+  useEffect(()=>{void reloadBackupMeta();void lastVerifiedExternalBackup().then(setVerifiedExternal);},[]);
   useEffect(()=>{
     if(Platform.OS!=='android'||Number(Platform.Version)<33){
       setNotificationPermission('unsupported');
@@ -248,51 +255,127 @@ export function SettingsScreen(){
     </View>;
   }
 
+  async function saveBackupFile(){
+    if(backupBusy||!finance.hydrated)return;
+    setBackupBusy(true);
+    try{
+      const document=await exportTfAssetData(); // blocks incomplete/missing Ledger
+      const suggested='TF-Asset-V2.3.1-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+      const receipt=await saveExternalBackup(document,suggested);
+      if(!receipt){setBackupStatus('已取消外部存檔；沒有建立新的備份檔。');return;}
+      const verified=await recordVerifiedExternalBackup(receipt,document);
+      setVerifiedExternal(verified);
+      setBackupStatus('外部檔案已寫入並逐位元組讀回驗證：'+verified.fileName+
+        '｜帳務筆數 '+verified.ledgerEntries+'。建議再用檔案管理器確認。');
+      await reloadBackupMeta();
+    }catch(error){Alert.alert('外部備份失敗',error instanceof Error?error.message:String(error));}
+    finally{setBackupBusy(false);}
+  }
+
+  async function chooseBackupFile(){
+    if(backupBusy)return;
+    setBackupBusy(true);
+    try{
+      const opened=await chooseExternalBackup();
+      if(!opened)return;
+      const inspected=inspectTfAssetBackup(opened.text);
+      setChosenDocument({name:opened.fileName,text:opened.text,
+        entries:inspected.ledgerEntries,keys:inspected.keys,exportedAt:inspected.exportedAt});
+      setBackupStatus('已完成檔案格式及帳務結構驗證；尚未匯入。');
+    }catch(error){Alert.alert('備份檔驗證失敗',error instanceof Error?error.message:String(error));}
+    finally{setBackupBusy(false);}
+  }
+
+  function confirmExternalImport(){
+    if(!chosenDocument)return;
+    const selected=chosenDocument;
+    Alert.alert('最後確認還原',selected.name+'｜'+selected.entries+' 筆帳務紀錄。\n還原前會備份目前的資料，確認後寫入；若目前有較新的紀錄請先另存外部備份。',[
+      {text:'取消',style:'cancel'},
+      {text:'確認還原',onPress:()=>void (async()=>{
+        setBackupBusy(true);
+        try{
+          const count=await importTfAssetData(selected.text);
+          setBackupStatus('已還原 '+count+' 個資料區；請完全關閉並重新開啟 App 驗證帳務筆數。切勿解除安裝。');
+          setChosenDocument(null);
+          await reloadBackupMeta();
+        }catch(error){Alert.alert('還原中止',error instanceof Error?error.message:String(error));}
+        finally{setBackupBusy(false);}
+      })()},
+    ]);
+  }
+
   function backupSection(){
     return <View style={styles.children}>
-      <ChildButton label="立即備份" summary={backups[0]?formatDate(backups[0].createdAt):'尚無本機備份'} active={backupPanel==='create'} onPress={()=>setBackupPanel(backupPanel==='create'?null:'create')}/>
-      {backupPanel==='create'?<Panel title="立即備份">
-        <StatusRow label="本機備份數" value={String(backups.length)}/>
-        <StatusRow label="最後備份" value={backups[0]?formatDate(backups[0].createdAt):'尚無'}/>
-        <ActionButton label="建立完整本機備份" onPress={async()=>{
-          const row=await createLocalBackup();
-          setBackupStatus('備份完成：'+formatDate(row.createdAt));
-          await reloadBackupMeta();
-        }}/>
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
-      </Panel>:null}
-      <ChildButton label="匯出資料" summary="TF Asset JSON" active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
-      {backupPanel==='export'?<Panel title="匯出資料">
-        <ActionButton label="產生匯出內容" onPress={async()=>setExportText(await exportTfAssetData())}/>
+      <Text style={styles.dangerText}>重要：App 內備份和 SQLite 都屬於 App 私有資料；解除安裝／清除資料會一起消失。外部 JSON 必須另存至手機目錄或雲端磁碟。</Text>
+      <StatusRow label="最近一次外部存檔紀錄" value={verifiedExternal?
+        verifiedExternal.fileName+'｜'+formatDate(verifiedExternal.createdAt):
+        '尚無；不得把本機備份當成外部備份'}/>
+      <StatusRow label="最近外部備份帳務筆數" value={verifiedExternal?String(verifiedExternal.ledgerEntries):'尚無'}/>
+      <ChildButton label="選擇目錄建立外部備份" summary="Android 系統檔案視窗｜寫入＋讀回校驗"
+        active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
+      {backupPanel==='export'?<Panel title="真正的外部 JSON 檔案">
+        <Text style={styles.note}>將包含完整 Ledger、設定和本機備份歷史。只有 Android 回傳寫入及讀回校驗成功才記錄外部存檔。</Text>
+        <ActionButton label={backupBusy?'備份中…':'選擇手機／雲端目錄並建立備份'}
+          disabled={!backupDocumentPickerAvailable||backupBusy||!finance.hydrated}
+          onPress={()=>void saveBackupFile()}/>
+        {!backupDocumentPickerAvailable?<Text style={styles.dangerText}>本環境缺少 Android 外部檔案選擇器，不可宣稱已備份。</Text>:null}
+        <ActionButton label="備用：產生 JSON 文字自行保存" disabled={backupBusy||!finance.hydrated}
+          onPress={()=>void exportTfAssetData().then(setExportText).catch(error=>Alert.alert('產生 JSON 失敗',String(error)))}/>
         {exportText?<TextInput style={[styles.input,styles.multiline]} multiline value={exportText} onChangeText={setExportText}/>:null}
-        <Text style={styles.note}>匯出內容可全選複製保存；不包含其他 App 的資料。</Text>
+        <Text style={styles.note}>儲存紀錄只能證明當時成功寫入，不能保證檔案之後沒有被刪除，請在檔案管理器檢查。</Text>
       </Panel>:null}
-      <ChildButton label="匯入資料" summary="先驗證再寫入" active={backupPanel==='import'} onPress={()=>setBackupPanel(backupPanel==='import'?null:'import')}/>
-      {backupPanel==='import'?<Panel title="匯入資料">
-        <TextInput style={[styles.input,styles.multiline]} multiline placeholder="貼上 TF Asset 匯出的 JSON" value={importText} onChangeText={setImportText}/>
-        <ActionButton label="驗證並匯入" disabled={!importText.trim()} onPress={async()=>{
-          try{
-            const count=await importTfAssetData(importText);
-            setBackupStatus('匯入完成 '+count+' 個資料區；重新啟動 App 後載入。');
-            await reloadBackupMeta();
-          }catch(error){Alert.alert('匯入失敗',error instanceof Error?error.message:String(error));}
+      <ChildButton label="建立 App 內暫存備份" summary={backups.length+' 份｜卸載時全數遺失'}
+        active={backupPanel==='create'} onPress={()=>setBackupPanel(backupPanel==='create'?null:'create')}/>
+      {backupPanel==='create'?<Panel title="本機暫存">
+        <ActionButton label="建立本機備份（非外部檔案）" disabled={!finance.hydrated||backupBusy} onPress={()=>void createLocalBackup().then(row=>{
+          setBackupStatus('本機暫存完成：'+formatDate(row.createdAt)+'；仍須外部存檔。');void reloadBackupMeta();
+        }).catch(error=>Alert.alert('本機暫存失敗',String(error)))}/>
+        <StatusRow label="本機備份數" value={String(backups.length)}/>
+      </Panel>:null}
+      <ChildButton label="選檔驗證後還原" summary="不自動覆寫，顯示帳務筆數後最後確認"
+        active={backupPanel==='import'} onPress={()=>setBackupPanel(backupPanel==='import'?null:'import')}/>
+      {backupPanel==='import'?<Panel title="外部檔案還原">
+        <ActionButton label={backupBusy?'驗證中…':'選擇 JSON 備份檔案'} disabled={!backupDocumentPickerAvailable||backupBusy}
+          onPress={()=>void chooseBackupFile()}/>
+        <TextInput style={[styles.input,styles.multiline]} multiline placeholder="或貼上舊版 TF Asset JSON"
+          value={importText} onChangeText={setImportText}/>
+        <ActionButton label="驗證貼上的 JSON" disabled={!importText.trim()||backupBusy} onPress={()=>{
+          try{const info=inspectTfAssetBackup(importText);
+            setChosenDocument({name:'貼上文字',text:importText,entries:info.ledgerEntries,
+              keys:info.keys,exportedAt:info.exportedAt});}
+          catch(error){Alert.alert('格式驗證失敗',String(error));}
         }}/>
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
+        {chosenDocument?<View style={styles.formula}>
+          <StatusRow label="所選備份" value={chosenDocument.name}/>
+          <StatusRow label="帳務交易筆數" value={String(chosenDocument.entries)}/>
+          <StatusRow label="資料區數" value={String(chosenDocument.keys)}/>
+          <StatusRow label="備份建立時間" value={formatDate(chosenDocument.exportedAt)}/>
+          <ActionButton label="最後確認並還原" disabled={backupBusy} onPress={confirmExternalImport}/>
+        </View>:null}
       </Panel>:null}
-      <ChildButton label="還原備份" summary={backups.length+' 份可用'} active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
-      {backupPanel==='restore'?<Panel title="還原備份">
-        {backups.length===0?<Text style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable key={row.id} style={styles.restoreRow} onPress={()=>Alert.alert('確認還原','還原前會先建立目前狀態的安全備份。',[{text:'取消',style:'cancel'},{text:'還原',onPress:()=>void restoreLocalBackup(row.id).then(()=>{setBackupStatus('還原完成；重新啟動 App 後載入。');void reloadBackupMeta();})}])}>
-          <View style={{flex:1}}><Text style={styles.rowTitle}>{formatDate(row.createdAt)}</Text><Text style={styles.note}>{row.keys} 個資料區 · {formatBytes(row.bytes)} · v{row.appVersion}</Text></View><Text style={styles.chevron}>›</Text>
+      <ChildButton label="還原 App 內備份" summary={backups.length+' 份（非外部存檔）'}
+        active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
+      {backupPanel==='restore'?<Panel title="本機備份還原">
+        {backups.length===0?<Text style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable
+          key={row.id} style={styles.restoreRow} onPress={()=>Alert.alert('確認本機還原',
+          '所選備份 '+formatDate(row.createdAt)+'。還原前會先儲存目前帳務；建議先外部存檔。',[
+          {text:'取消',style:'cancel'},
+          {text:'還原',onPress:()=>void restoreLocalBackup(row.id).then(()=>{
+            setBackupStatus('本機備份還原完成；完全關閉再重啟 App 查核。');void reloadBackupMeta();
+          }).catch(error=>Alert.alert('還原失敗',String(error)))},
+        ])}>
+          <View style={{flex:1}}><Text style={styles.rowTitle}>{formatDate(row.createdAt)}</Text>
+          <Text style={styles.note}>{row.keys} 個資料區 · {formatBytes(row.bytes)} · v{row.appVersion}</Text></View>
+          <Text style={styles.chevron}>›</Text>
         </Pressable>)}
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
       </Panel>:null}
-      <ChildButton label="清除帳務資料" summary="危險操作 · 只清 Ledger" danger active={backupPanel==='clear'} onPress={()=>setBackupPanel(backupPanel==='clear'?null:'clear')}/>
-      {backupPanel==='clear'?<Panel title="清除帳務資料">
-        <Text style={styles.dangerText}>會清除：期初現金、買進／賣出／股息／其他 Ledger，以及由它們投影出的持股。</Text>
-        <Text style={styles.note}>不會清除：券商設定、行情設定、ETF Catalog、顯示設定與 Monitor 設定。</Text>
-        <ActionButton danger label="建立安全備份後清除帳務" onPress={()=>Alert.alert('第一次確認','將清除全部帳務資料，但保留其他設定。',[{text:'取消',style:'cancel'},{text:'繼續',style:'destructive',onPress:()=>Alert.alert('最後確認','此操作會讓 Ledger 變成空白、期初現金變為 0。',[{text:'取消',style:'cancel'},{text:'確認清除',style:'destructive',onPress:()=>void createLocalBackup().then(()=>{finance.clearFinance();setBackupStatus('帳務資料已清除，安全備份已建立。');void reloadBackupMeta();})}])}])}/>
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
+      <ChildButton label="清除帳務資料" summary="資料安全鎖：本輪暫停危險清除"
+        danger active={backupPanel==='clear'} onPress={()=>setBackupPanel(backupPanel==='clear'?null:'clear')}/>
+      {backupPanel==='clear'?<Panel title="帳務刪除保護">
+        <Text style={styles.dangerText}>V2.3.1 開發階段禁用清除帳務。外部檔案的最近存檔紀錄不能證明它仍存在、也不能證明包含最新交易。</Text>
+        <ActionButton label="先建立外部 JSON 備份" onPress={()=>setBackupPanel('export')}/>
       </Panel>:null}
+      {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
     </View>;
   }
 
