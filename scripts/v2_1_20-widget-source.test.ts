@@ -38,15 +38,17 @@ assert.equal(snapshot.generatedAt,new Date(first+8_000).toISOString(),'Snapshot 
 // but are intentionally not a substitute for testing an actual Android Widget.
 const native=readFileSync('native/android/TfAssetWidgetProvider.kt','utf8');
 const bridge=readFileSync('native/android/TfAssetNativeModule.kt','utf8');
+const nativeCenter=readFileSync('native/android/TfAssetMarketCenter.kt','utf8');
 const market=readFileSync('src/market/MarketRuntime.tsx','utf8');
-assert.match(native,/sourceQuoteAt\(row,now\)/);
-assert.match(native,/sourceAt<=maxOf\(previousOverrideAt,canonicalAt\)/);
-assert.match(native,/putLong\("wall_market_source_at",newestSourceAt\)/);
-assert.match(native,/來源無新報價/);
-assert.match(bridge,/pending\.length\(\)==0/);
-assert.match(bridge,/canonicalAt<nativeAt/);
-assert.match(bridge,/TfAssetWidgetProvider\.ACTION_FORCE_REFRESH/,'Manual Native call must fetch, not just repaint');
-assert.match(market,/if\(result\.updatedCount===0\)/);
+// V2.3.1 replaces a second Widget API client with the same Android market DB
+// service that every React screen reads. Preserve the exchange-time invariant.
+assert.match(native,/TfAssetMarketCenter\(context\)\.refresh\(symbols\)/);
+assert.doesNotMatch(native,/getStockInfo\.jsp/,'Widget must not contain a second unofficial MIS client');
+assert.match(nativeCenter,/exchangeAt\(row,now\)/);
+assert.match(nativeCenter,/sourceQuoteAt/);
+assert.match(bridge,/TfAssetMarketCenter\(reactContext\)\.refresh/);
+assert.match(bridge,/TfAssetWidgetProvider\.ACTION_FORCE_REFRESH/);
+assert.match(market,/refreshUnifiedMarketData\(symbolsRef\.current\)/);
 assert.doesNotMatch(market,/setLastSuccessAt\(Date\.now\(\)\)/);
 const ui=readFileSync('src/components/widget/WidgetControlPanel.tsx','utf8');
 assert.match(ui,/刷新秒數＝前景查詢間隔/);
