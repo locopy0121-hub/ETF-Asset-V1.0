@@ -479,7 +479,7 @@ class TfAssetOverlayService:Service(){
       }
       else->{
         val asset=snap.optJSONObject("asset")?:JSONObject()
-        root.addView(textView("TF Asset  總資產 "+integer(asset,"totalAssets"),text,12*fs,Gravity.START))
+        root.addView(textView("TF Asset  總資產 "+(if(asset.optBoolean("valuationComplete",true))integer(asset,"totalAssets") else "估值待核對"),text,12*fs,Gravity.START))
         val first=rows.firstOrNull()
         if(first==null)root.addView(textView("等待資料",neutral,12*fs,Gravity.START)) else addFields(root,first,selectedFields,selectedFields.size,12f)
       }
@@ -573,7 +573,7 @@ class TfAssetOverlayService:Service(){
           val useProfit=item.optBoolean("useProfitColor",false)
           val customText=item.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,statusText)}
           val tone=when{useProfit&&numeric.isFinite()&&numeric>0->gain;useProfit&&numeric.isFinite()&&numeric<0->loss;useProfit&&numeric.isFinite()->neutral;customText!=null->customText;else->statusText}
-          val valueText=when(field){
+          val valueText=if(!asset.optBoolean("valuationComplete",true)&&field in setOf("totalReturn","unrealizedPnl","totalAssets","marketValue"))"待核對" else when(field){
             "holdingCount"->rows.size.toString()
             "updatedAt"->snap.optString("generatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
             "totalReturn"->signedInteger(asset,"totalReturn")
@@ -640,7 +640,9 @@ class TfAssetOverlayService:Service(){
   private fun isMonitorValueField(field:String)=field!="symbol"&&field!="name"&&field!="marketStatus"&&field!="updatedAt"
   private fun defaultProfitField(field:String)=field=="change"||field=="changePercent"||field=="pnl"||field=="roi"||field=="comprehensivePnl"
   private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"weight"->"權重";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
-  private fun normalValue(row:JSONObject,field:String,label:String):String=when(field){
+  private fun normalValue(row:JSONObject,field:String,label:String):String{
+    if(row.isNull("price")&&field in setOf("price","change","changePercent","marketValue","weight","pnl","roi","comprehensivePnl"))return "$label 待取得"
+    return when(field){
     "symbol"->row.optString("symbol","--")
     "name"->row.optString("name","")
     "price"->"$label "+number2(row,"price")
@@ -656,13 +658,17 @@ class TfAssetOverlayService:Service(){
     "marketStatus"->"$label "+row.optString("marketStatus","--")
     "updatedAt"->"$label "+row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
     else->"--"
+    }
   }
 
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
   private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)}
   private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
   private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);"weight"->row.optDouble("weight",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
-  private fun miniValue(row:JSONObject,field:String):String=when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"};else->"--"}
+  private fun miniValue(row:JSONObject,field:String):String{
+    if(row.isNull("price")&&field in setOf("price","change","changePercent","marketValue","weight","pnl","roi","comprehensivePnl"))return "待取得"
+    return when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"};else->"--"}
+  }
   private fun number2(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%.2f",v) else "--"}
   private fun signed2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%,.0f",v) else "--"}
