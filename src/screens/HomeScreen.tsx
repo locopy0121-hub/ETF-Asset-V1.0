@@ -15,6 +15,8 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
+import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
+import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
@@ -37,8 +39,17 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
+  const sorted=useMemo(()=>{
+    const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
+    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,editor.displayConfig.etfBadges?.reminderEvents);
+    return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
+      ...item,etfType:tags.get(item.symbol)?.etfType??null,
+      dividendType:tags.get(item.symbol)?.dividendType??null,
+      reminderEvent:reminders.get(item.symbol)??null,
+    }));
+  },[finance.holdings,finance.entries,sortKey,market.catalog,editor.displayConfig.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
+  const valuationComplete=finance.valuationComplete;
   const totalDividend=portfolio.totalDividendsReceived;
   const dashboardMetrics=(editor.displayConfig.dashboardMetrics??[]) as readonly DashboardMetricKey[];
   const dashboardCharts=(editor.displayConfig.dashboardCharts??[]) as readonly DashboardChartConfig[];
@@ -47,7 +58,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
     totalPnl:{label:'含息總損益',value:portfolio.totalPnl,caption:'含息',tone:portfolio.totalPnl>=0?'gain':'loss'},
     totalUnrealizedProfit:{label:'未實現損益',value:portfolio.totalUnrealizedProfit,caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain':'loss'},
     realizedNetPnL:{label:'已實現損益',value:portfolio.realizedNetPnL,caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain':'loss'},
-    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'V3.7.8'},
+    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'帳務核心'},
     cashBalance:{label:'現金',value:finance.snapshot.cashBalance,caption:'Ledger'},
     holdingCount:{label:'持股檔數',value:finance.holdings.length,caption:'檔'},
   };
@@ -77,7 +88,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
   return <>
-    <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+    <PageShell pageKey="home" title="資產儀表板" subtitle="所有資產與損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <View
         style={styles.pageLayer}
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
@@ -88,12 +99,12 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <View style={styles.dashboardTop}>
               <View style={styles.dashboardSummary}>
                 <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
-                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
+                <Text style={styles.heroValue}>{valuationComplete?'NT$ '+money(portfolio.totalMarketValue):'估值待核對'}</Text>
+                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
               </View>
             </View>
             <View style={styles.metricRow}>
-              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
+              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={!valuationComplete&&['totalMarketValue','totalPnl','totalUnrealizedProfit','totalAssets','marketValue'].includes(key)?'待核對':key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
             </View>
           </FrameCard>
         },
@@ -136,18 +147,18 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
                 </Pressable>
               )}
             </View>
-            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
+            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={editor.displayConfig.etfBadges??DEFAULT_ETF_BADGES} wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
             <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },
         {key:'pnl-detail',element:
           <FrameCard title="損益明細">
             <View style={styles.metricRow}>
-              <MetricTile label="純價差未實現" value={money(portfolio.totalPriceUnrealizedProfit)} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
-              <MetricTile label="淨清算未實現" value={money(portfolio.totalUnrealizedProfit)} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
+              <MetricTile label="純價差未實現" value={valuationComplete?money(portfolio.totalPriceUnrealizedProfit):"待核對"} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
+              <MetricTile label="淨清算未實現" value={valuationComplete?money(portfolio.totalUnrealizedProfit):"待核對"} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
               <MetricTile label="已實現" value={money(portfolio.realizedNetPnL)} caption="歷史賣出" tone={portfolio.realizedNetPnL>=0?'gain':'loss'}/>
             </View>
-            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>NT$ {money(portfolio.totalPnl)}</Text></View>
+            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?"NT$ "+money(portfolio.totalPnl):"待核對"}</Text></View>
           </FrameCard>
         },
       ]}/>
@@ -155,7 +166,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
       </View>
     </PageShell>
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 

@@ -1,0 +1,22 @@
+{
+  "name": "tf-asset-market-center",
+  "version": "2.3.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/index.mjs && node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "redis": "^4.7.0",
+    "pg": "^8.13.3",
+    "node-cron": "^3.0.3",
+    "ws": "^8.18.0"
+  }
+}

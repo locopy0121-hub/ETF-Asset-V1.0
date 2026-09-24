@@ -2,6 +2,13 @@ import { freezeTradeEntry, type CanonicalLedgerEntry, type MarketQuoteInput } fr
 
 export type RuntimeQuote = MarketQuoteInput & Readonly<{
   previousClose: number;
+  /** Timestamp from the exchange feed; never the HTTP receipt time. */
+  sourceQuoteAt?:number|null;
+  quality?:'trade'|'official_close';
+  previousCloseKnown?:boolean;
+  source?:'TWSE_MIS'|'TWSE_DAILY'|'TPEX_DAILY';
+  checkedAt?:number;
+  marketDataVersion?:number;
   sparkline: readonly number[];
   pinned?: boolean;
 }>;
