@@ -23,6 +23,8 @@ import { MAIN_PAGES } from '../domain/pageRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
+import { auditCashSources, LEGACY_DEFAULT_CASH, LEGACY_REVERSAL_LABEL } from '../finance/cashAudit';
+import { TF_LEDGER_KEY } from '../settings/backupDocumentFormat';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
 import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import {
@@ -45,7 +47,7 @@ import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
 type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
-type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
+type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
@@ -53,8 +55,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.3.2';
-const BUILD='20302';
+const VERSION='2.3.3';
+const BUILD='20303';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -81,6 +83,7 @@ export function SettingsScreen(){
   const [backups,setBackups]=useState<BackupRecord[]>([]);
   const [backupStatus,setBackupStatus]=useState('');
   const [backupBusy,setBackupBusy]=useState(false);
+  const [cashCorrectionBusy,setCashCorrectionBusy]=useState(false);
   const [verifiedExternal,setVerifiedExternal]=useState<VerifiedExternalBackup|null>(null);
   const [chosenDocument,setChosenDocument]=useState<null|{
     name:string;text:string;entries:number;keys:number;exportedAt:string;
@@ -283,7 +286,7 @@ export function SettingsScreen(){
     setBackupBusy(true);
     try{
       const document=await exportTfAssetData(); // blocks incomplete/missing Ledger
-      const suggested='TF-Asset-V2.3.2-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+      const suggested='TF-Asset-V2.3.3-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
       const receipt=await saveExternalBackup(document,suggested);
       if(!receipt){setBackupStatus('已取消外部存檔；沒有建立新的備份檔。');return;}
       const verified=await recordVerifiedExternalBackup(receipt,document);
