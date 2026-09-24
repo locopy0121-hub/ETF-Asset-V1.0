@@ -54,7 +54,7 @@ export function HoldingQuoteModule({
     narrow&&styles.narrowCard,
     {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
-    {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
+    {showChart&&item.quoteVerified!==false?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
     <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
       {cfg.header.visible&&(groups.header.length>0||badgeConfig.order.some(key=>badgeConfig.badges[key].enabled))?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
         <View style={[
@@ -82,6 +82,12 @@ export function HoldingQuoteModule({
         </View>
       </EffectView>:null}
 
+      <Text style={{fontSize:10,color:item.quoteVerified===false?'#F59E0B':'#94A3B8'}}>
+        {item.quoteVerified===false?'行情待取得｜估值待核對':
+          (item.quoteQuality==='official_close'?'官方收盤參考':'實際成交')+'｜'+
+          (item.quoteSourceAt?new Date(item.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'來源待核對')+
+          '｜資料版本 '+(item.marketDataVersion??0)}
+      </Text>
       {groups.quote.length?<View style={styles.quoteRow}>
         <View style={{flex:1,minWidth:0}}>
           <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
@@ -263,6 +269,8 @@ function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,
   return typeof value==='number'&&Number.isFinite(value)?value:null;
 }
 function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
+  if(item.quoteVerified===false&&['price','change','changePercent','pnl','roi','marketValue'].includes(field))return '待取得';
+  if(item.previousCloseKnown===false&&['change','changePercent'].includes(field))return '前收待取得';
   if(field==='name')return item.name;
   if(field==='symbol')return item.symbol;
   if(field==='etfType')return item.etfType?.trim()||'類型待確認';
