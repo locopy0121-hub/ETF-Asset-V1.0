@@ -17,7 +17,7 @@ import {
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
-import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData} from '../native/TfAssetNativeBridge';
+import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData,setNativeMarketBackendUrl} from '../native/TfAssetNativeBridge';
 import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
@@ -28,6 +28,8 @@ export type MarketSource = 'TWSE';
 
 export type MarketUpdateConfig = Readonly<{
   source: MarketSource;
+  /** Empty until an actual HTTPS backend is deployed and verified. */
+  backendUrl?:string;
   scheduleEnabled: boolean;
   refreshOnForeground: boolean;
   stopAll: boolean;
@@ -37,6 +39,7 @@ export type MarketUpdateConfig = Readonly<{
 
 export const DEFAULT_MARKET_UPDATE: MarketUpdateConfig = {
   source: 'TWSE',
+  backendUrl:'',
   scheduleEnabled: true,
   refreshOnForeground: true,
   stopAll: false,
@@ -264,9 +267,15 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       if(legacy){
         const parsed=JSON.parse(legacy) as Partial<PersistedMarketState>;
         if(parsed.schema===1){
-          if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,
-            live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},
-            afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
+          if(parsed.config){
+            const next={...DEFAULT_MARKET_UPDATE,...parsed.config,
+              live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},
+              afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}};
+            // The persisted user-approved server URL is applied before the
+            // first native read/refresh. Ledger migration is not involved.
+            if(unifiedMarketCenterAvailable)await setNativeMarketBackendUrl(next.backendUrl??'');
+            setConfigState(next);
+          }
           if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
             const restored=mergeEtfCatalog(FALLBACK_CATALOG,parsed.catalog,[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES);
             catalogRef.current=restored;
@@ -325,7 +334,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
     const normalized=symbols.map(x=>x.trim().toUpperCase()).filter(Boolean);
     // Follow the current holdings/watchlist rather than keeping sold securities forever.
-    setTrackedSymbolsState(normalized.length?Array.from(new Set(normalized)):FALLBACK_QUOTES.map(x=>x.symbol));
+    const next=normalized.length?Array.from(new Set(normalized)):FALLBACK_QUOTES.map(x=>x.symbol);
+    setTrackedSymbolsState(current=>current.length===next.length&&current.every((code,i)=>code===next[i])?current:next);
   },[]);
 
   const refresh=useCallback((options?:{force?:boolean}):Promise<MarketRefreshResult>=>{
@@ -407,6 +417,42 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       setCatalogRefreshing(false);
     }
   },[]);
+
+  // One backend event broadcasts the changed market version; native retrieves
+  // and commits the authoritative server snapshot into the shared SQLite DB.
+  // Android background may suspend this socket: no false 'live' status.
+  useEffect(()=>{
+    if(!hydrated||!unifiedMarketCenterAvailable)return;
+    void setNativeMarketBackendUrl(config.backendUrl??'').then(()=>refresh({force:true}))
+      .catch(error=>setLastError('行情中心網址設定失敗：'+String(error)));
+  },[hydrated,config.backendUrl,refresh]);
+
+  useEffect(()=>{
+    const endpoint=config.backendUrl?.trim()??'';
+    if(!hydrated||!endpoint.startsWith('https://')||!trackedSymbols.length)return;
+    let socket:WebSocket|null=null;
+    let closed=false;
+    const open=()=>{
+      if(closed||AppState.currentState!=='active')return;
+      try{
+        socket=new WebSocket(endpoint.replace(/^https:/,'wss:')+
+          '/v1/market/events?symbols='+encodeURIComponent(trackedSymbols.join(',')));
+        socket.onmessage=(event)=>{
+          try{
+            const incoming=JSON.parse(String(event.data)) as {type?:string;symbols?:string[]};
+            if(incoming.type==='market_changed'&&incoming.symbols?.some(symbol=>trackedSymbols.includes(symbol)))
+              void refresh({force:true});
+          }catch{}
+        };
+      }catch(error){setLastError('行情中心推送暫時無法連線');}
+    };
+    open();
+    const sub=AppState.addEventListener('change',next=>{
+      if(next==='active')open();
+      else{socket?.close();socket=null;}
+    });
+    return()=>{closed=true;sub.remove();socket?.close();};
+  },[hydrated,config.backendUrl,trackedSymbols,refresh]);
 
   const phase=resolveMarketPhase(config);
 
