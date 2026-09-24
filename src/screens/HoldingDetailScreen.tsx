@@ -11,13 +11,16 @@ import { colors, radius, spacing } from '../theme/tokens';
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const ranges=['1日','1週','1月','3月','1年','全部'] as const;
 
-export function HoldingDetailScreen({holding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
+export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
   const finance=useFinance();
+  // Detail must subscribe to the current canonical projection, not a stale tapped row.
+  const holding=finance.holdings.find(row=>row.symbol===initialHolding.symbol)??initialHolding;
   const [range,setRange]=useState<(typeof ranges)[number]>('1日');
   const change=holding.price-holding.previousClose;
   const changePct=holding.previousClose>0?change/holding.previousClose*100:0;
   const history=[...finance.entries].filter(entry=>'symbol' in entry&&entry.symbol===holding.symbol).sort((a,b)=>b.date.localeCompare(a.date));
-  const updatedAt=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+  const quoteLabel=holding.quoteVerified===false?'行情待取得':holding.quoteQuality==='official_close'?'官方收盤參考':'實際成交';
+  const sourceTime=holding.quoteSourceAt?new Date(holding.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚無';
 
   return <PageShell
     title={holding.name}
@@ -25,9 +28,9 @@ export function HoldingDetailScreen({holding,onBack}:{holding:HoldingQuote;onBac
     actions={<Pressable style={styles.backButton} onPress={onBack}><Text style={styles.backText}>返回</Text></Pressable>}
   >
     <FrameCard title="即時行情">
-      <Text style={[styles.price,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.price.toFixed(2)}</Text>
-      <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{change>0?'▲':change<0?'▼':'●'} {change>=0?'+':''}{change.toFixed(2)}　{changePct>=0?'+':''}{changePct.toFixed(2)}%</Text>
-      <View style={styles.marketMeta}><Text style={styles.meta}>昨收 {holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>畫面時間 {updatedAt}</Text></View>
+      <Text style={[styles.price,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'行情待取得':holding.price.toFixed(2)}</Text>
+      <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'估值待核對':holding.previousCloseKnown===false?'前收待取得':(change>0?'▲':change<0?'▼':'●')+' '+(change>=0?'+':'')+change.toFixed(2)+'　'+(changePct>=0?'+':'')+changePct.toFixed(2)+'%'}</Text>
+      <View style={styles.marketMeta}><Text style={styles.meta}>前收 {holding.previousCloseKnown===false?'待取得':holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>{quoteLabel}｜來源 {sourceTime}｜v{holding.marketDataVersion??0}</Text></View>
       <View style={styles.rangeRow}>{ranges.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
       <View style={styles.sparkline}>{holding.sparkline.map((v,i)=>{
         const min=Math.min(...holding.sparkline),max=Math.max(...holding.sparkline),rangeValue=Math.max(0.01,max-min);
@@ -41,21 +44,21 @@ export function HoldingDetailScreen({holding,onBack}:{holding:HoldingQuote;onBac
         <MetricTile label="持有股數" value={money(holding.shares)} caption="股"/>
         <MetricTile label="純成交均價" value={holding.tradeAvg.toFixed(2)} caption="不含費"/>
         <MetricTile label="含費成本均價" value={holding.costAvg.toFixed(2)} caption="帳務核心"/>
-        <MetricTile label="目前市值" value={money(holding.marketValue)} caption="NT$"/>
+        <MetricTile label="目前市值" value={holding.quoteVerified===false?'待核對':money(holding.marketValue)} caption="NT$"/>
       </View>
     </FrameCard>
 
     <FrameCard title="損益拆解">
       <View style={styles.metrics}>
-        <MetricTile label="純價差損益" value={money(holding.pricePnl)} caption="毛市值－純成交成本" tone={holding.pricePnl>=0?'gain':'loss'}/>
-        <MetricTile label="淨清算未實現" value={money(holding.pnl)} caption={(holding.roi>=0?'+':'')+holding.roi.toFixed(2)+'%'} tone={holding.pnl>=0?'gain':'loss'}/>
+        <MetricTile label="純價差損益" value={holding.quoteVerified===false?'待核對':money(holding.pricePnl)} caption="毛市值－純成交成本" tone={holding.pricePnl>=0?'gain':'loss'}/>
+        <MetricTile label="淨清算未實現" value={holding.quoteVerified===false?'待核對':money(holding.pnl)} caption={(holding.roi>=0?'+':'')+holding.roi.toFixed(2)+'%'} tone={holding.pnl>=0?'gain':'loss'}/>
         <MetricTile label="已實現" value={money(holding.realizedPnl)} caption="歷史賣出" tone={holding.realizedPnl>=0?'gain':'loss'}/>
-        <MetricTile label="含息總損益" value={money(holding.comprehensivePnl)} caption="Canonical" tone={holding.comprehensivePnl>=0?'gain':'loss'}/>
+        <MetricTile label="含息總損益" value={holding.quoteVerified===false?'待核對':money(holding.comprehensivePnl)} caption="Canonical" tone={holding.comprehensivePnl>=0?'gain':'loss'}/>
       </View>
     </FrameCard>
 
     <FrameCard title="股息">
-      <View style={styles.metrics}><MetricTile label="累積淨股息" value={money(holding.cumulativeDividend)} caption="NT$" tone="gain"/><MetricTile label="持股占比" value={holding.weight.toFixed(1)+'%'} caption="目前組合"/></View>
+      <View style={styles.metrics}><MetricTile label="累積淨股息" value={money(holding.cumulativeDividend)} caption="NT$" tone="gain"/><MetricTile label="持股占比" value={finance.valuationComplete?holding.weight.toFixed(1)+'%':'待核對'} caption="目前組合"/></View>
     </FrameCard>
 
     <FrameCard title="交易與股息紀錄">
