@@ -158,48 +158,10 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val config=runCatching{JSONObject(prefs.getString("widget_config","{}")?:"{}")}.getOrElse{JSONObject()}
     val snapshot=runCatching{JSONObject(prefs.getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
     val style=config.optJSONObject("style")?:JSONObject()
-    val center=TfAssetMarketCenter(context)
-    val stored=center.snapshot()
-    val version=stored.optLong("version",0L)
-    val rows=stored.optJSONArray("quotes")?:JSONArray()
-    val bySymbol=(0 until rows.length()).mapNotNull{rows.optJSONObject(it)}
-      .associateBy{it.optString("symbol","")}
-    val canonical=orderedHoldings(snapshot,config)
-    val canonicalVersion=snapshot.optLong("marketDataVersion",-1L)
-    val hasAllQuotes=canonical.all{bySymbol.containsKey(it.optString("symbol",""))}
-    val pricesMatch=canonical.all{original->
-      val quote=bySymbol[original.optString("symbol","")]?:return@all false
-      kotlin.math.abs(quote.optDouble("currentPrice",Double.NaN)-
-        original.optDouble("price",Double.NaN))<0.0001
-    }
-    val financeSynchronized=canonicalVersion==version&&hasAllQuotes&&pricesMatch
-    val asset=JSONObject((snapshot.optJSONObject("asset")?:JSONObject()).toString()).apply{
-      if(!financeSynchronized){
-        listOf("totalAssets","marketValue","unrealizedPnl","totalReturn").forEach{put(it,JSONObject.NULL)}
-      }
-    }
-    val holdings=canonical.map{original->
-      val quote=bySymbol[original.optString("symbol","")]
-      JSONObject(original.toString()).apply{
-        if(quote==null){
-          listOf("price","previousClose","change","changePercent","updatedAt","marketValue",
-            "pnl","roi","comprehensivePnl").forEach{put(it,JSONObject.NULL)}
-          put("marketStatus","待取得")
-        }else{
-          val price=quote.optDouble("currentPrice",Double.NaN)
-          val close=quote.optDouble("previousClose",Double.NaN)
-          put("price",price)
-          put("previousClose",if(close>0)close else JSONObject.NULL)
-          put("change",if(close>0)price-close else JSONObject.NULL)
-          put("changePercent",if(close>0)(price-close)/close*100 else JSONObject.NULL)
-          put("updatedAt",Instant.ofEpochMilli(quote.optLong("sourceQuoteAt")).toString())
-          put("marketStatus",if(quote.optString("quality")=="trade")"實際成交" else "官方收盤參考")
-          if(!financeSynchronized){
-            listOf("marketValue","pnl","roi","comprehensivePnl").forEach{put(it,JSONObject.NULL)}
-          }
-        }
-      }
-    }
+    // All native surfaces use the exact same SQLite/version presentation adapter.
+    val displayed=TfAssetMarketPresentation.decorate(context,snapshot)
+    val asset=displayed.optJSONObject("asset")?:JSONObject()
+    val holdings=orderedHoldings(displayed,config)
     val first=holdings.firstOrNull()
     val template=config.optString("template","asset-summary")
     val capacity=when(template){"minimal"->2;"compact"->3;"quote-summary","transparent"->4;"asset-summary"->5;else->6}
