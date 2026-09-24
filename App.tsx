@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, BackHandler, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
+import {resolveBackNavigation,resolvePageSwipeDirection} from './src/domain/navigationGestures';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
 import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/finance/BrokerSettingsRuntime';
@@ -20,6 +21,7 @@ import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
+import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsControlBehavior';
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
@@ -59,15 +61,53 @@ function AppBody(){
   const monitorSettings=useMonitorSettingsRuntime();
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
+  const {width:screenWidth}=useWindowDimensions();
+  const [floatingAiOpen,setFloatingAiOpen]=useState(false);
+  const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+  const pageHistory=useRef<MainPageKey[]>([]);
+  const swipeStart=useRef<{x:number;y:number}|null>(null);
+  const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
+  const aiUi=deriveAiUiState(settings.prefs.ai,active);
+  const swipeToAdjacent=(direction:-1|1)=>{
+    const pages=MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab);
+    const index=pages.findIndex(page=>page.key===active);
+    const target=pages[index+direction];
+    if(target)navigatePage(target.key);
+  };
+  const onSwipeStart=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
+    swipeStart.current={x:event.nativeEvent.pageX,y:event.nativeEvent.pageY};
+  };
+  const onSwipeEnd=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
+    const start=swipeStart.current;swipeStart.current=null;
+    if(!start||detail||!settings.prefs.navigation.swipeEnabled)return;
+    const dx=event.nativeEvent.pageX-start.x,dy=event.nativeEvent.pageY-start.y;
+    if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold)return;
+    const direction=resolvePageSwipeDirection({startX:start.x,startY:start.y,endX:event.nativeEvent.pageX,endY:event.nativeEvent.pageY,screenWidth,enabled:settings.prefs.navigation.swipeEnabled,threshold:settings.prefs.navigation.swipeThreshold,edgeOnly:settings.prefs.navigation.swipeEdgeOnly,locked:detail!==null});
+    if(direction===null)return;
+    swipeToAdjacent(dx<0?1:-1);
+  };
+  useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
+  useEffect(()=>{
+    const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
+      // Native Modal.onRequestClose handles visible native dialogs first.
+      const decision=resolveBackNavigation({active,history:pageHistory.current,hasDetail:detail!==null,floatingExpanded:aiUi.showFloatingAi&&floatingAiOpen,showAiTab:aiUi.showAiTab});
+      pageHistory.current=decision.history;
+      if(decision.kind==='collapse-ai'){setAiCollapseSignal(value=>value+1);return true;}
+      if(decision.kind==='close-detail'){setDetail(null);return true;}
+      if(decision.kind==='navigate'&&decision.page){setActive(decision.page);return true;}
+      return false; // Leave only from root with no back stack.
+    });
+    return()=>subscription.remove();
+  },[active,detail,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
-    if(!finance.hydrated)return;
+    if(!shouldRefreshAiNews(finance.hydrated,settings.hydrated,settings.prefs.ai))return;
     aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
     void aiNews.refresh();
-  },[finance.hydrated,aiHoldingKey]);
+  },[finance.hydrated,settings.hydrated,settings.prefs.ai.enabled,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
@@ -76,9 +116,26 @@ function AppBody(){
 
   useEffect(()=>{
     if(!market.hydrated)return;
-    void consumeNativeWidgetForceRefreshRequest().then(requestedAt=>{
-      if(requestedAt>0)void market.refresh({force:true});
+    // The Android widget receiver can deliver a new tap without remounting React.
+    // Consume requests while the app is foregrounded, and once upon resuming.
+    let alive=true;
+    let inFlight=false;
+    const poll=async()=>{
+      if(!alive||inFlight)return;
+      inFlight=true;
+      try{
+        const requestedAt=await consumeNativeWidgetForceRefreshRequest();
+        if(alive&&requestedAt>0)await market.refresh({force:true});
+      }catch(error){
+        console.warn('Widget forced quote refresh failed',error);
+      }finally{inFlight=false;}
+    };
+    void poll();
+    const widgetTimer=setInterval(()=>{if(AppState.currentState==='active')void poll();},1000);
+    const foreground=AppState.addEventListener('change',state=>{
+      if(state==='active')void poll();
     });
+    return()=>{alive=false;clearInterval(widgetTimer);foreground.remove();};
   },[market.hydrated,market.refresh]);
 
   useEffect(()=>{
@@ -120,17 +177,17 @@ function AppBody(){
   return <View style={[styles.root,{backgroundColor:theme.palette.background}]}>
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
-    <View style={styles.screen}>{screen}</View>
-    <GlobalFloatingAi/>
+    <View style={styles.screen} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
+    {aiUi.showFloatingAi?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
     {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
-        {MAIN_PAGES.map(page=>{
+        {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;
           return <Pressable
             key={page.key}
             accessibilityRole="tab"
             accessibilityState={{selected}}
-            onPress={()=>setActive(page.key)}
+            onPress={()=>navigatePage(page.key)}
             style={styles.navItem}
           >
             <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>

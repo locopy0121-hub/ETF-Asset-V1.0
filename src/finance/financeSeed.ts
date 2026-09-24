@@ -2,6 +2,8 @@ import { freezeTradeEntry, type CanonicalLedgerEntry, type MarketQuoteInput } fr
 
 export type RuntimeQuote = MarketQuoteInput & Readonly<{
   previousClose: number;
+  /** Timestamp from the exchange feed; never the HTTP receipt time. */
+  sourceQuoteAt?:number|null;
   sparkline: readonly number[];
   pinned?: boolean;
 }>;

@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {resolveBackNavigation,resolvePageSwipeDirection} from '../src/domain/navigationGestures';
+
+const base={active:'portfolio' as const,history:['home' as const,'ledger' as const],hasDetail:false,floatingExpanded:false,showAiTab:true};
+assert.equal(resolveBackNavigation({...base,floatingExpanded:true,hasDetail:true}).kind,'collapse-ai');
+assert.equal(resolveBackNavigation({...base,hasDetail:true}).kind,'close-detail');
+assert.deepEqual(resolveBackNavigation(base),{kind:'navigate',page:'ledger',history:['home']});
+assert.deepEqual(resolveBackNavigation({...base,history:['home','ai'],showAiTab:false}),{kind:'navigate',page:'home',history:[]});
+assert.deepEqual(resolveBackNavigation({...base,history:[]}),{kind:'navigate',page:'home',history:[]});
+assert.equal(resolveBackNavigation({...base,active:'home',history:[]}).kind,'exit');
+const gesture={startX:180,startY:200,endX:80,endY:211,screenWidth:390,enabled:true,threshold:75,edgeOnly:false,locked:false};
+assert.equal(resolvePageSwipeDirection(gesture),1);
+assert.equal(resolvePageSwipeDirection({...gesture,startX:80,endX:180}),-1);
+assert.equal(resolvePageSwipeDirection({...gesture,endX:150}),null);
+assert.equal(resolvePageSwipeDirection({...gesture,endY:390}),null);
+assert.equal(resolvePageSwipeDirection({...gesture,enabled:false}),null);
+assert.equal(resolvePageSwipeDirection({...gesture,locked:true}),null);
+assert.equal(resolvePageSwipeDirection({...gesture,edgeOnly:true}),null);
+assert.equal(resolvePageSwipeDirection({...gesture,edgeOnly:true,startX:16,endX:120}),-1);
+assert.equal(resolvePageSwipeDirection({...gesture,edgeOnly:true,startX:374,endX:260}),1);
+const app=readFileSync('App.tsx','utf8'),floating=readFileSync('src/components/GlobalFloatingAi.tsx','utf8');
+assert.match(app,/resolveBackNavigation/);
+assert.match(app,/onExpandedChange=\{setFloatingAiOpen\}/);
+assert.match(floating,/collapseSignal/);
+assert.match(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/swipeEdgeOnly/);
+console.log('V2.1.18 navigation unit and integration smoke PASS; Android device and nested Modal paths remain pending');
