@@ -1,28 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  buildBackupDocument,parseBackupDocument,validBackupPayload,
+  TF_BACKUPS_KEY,TF_LAST_EXTERNAL_BACKUP_KEY,
+  type BackupHistoryEntry,type InspectedBackup,
+} from './backupDocumentFormat';
 
-export type BackupRecord=Readonly<{
-  id:string;
-  createdAt:string;
-  appVersion:string;
-  keys:number;
-  bytes:number;
-  payload:Record<string,string>;
+export type BackupRecord=BackupHistoryEntry;
+export type VerifiedExternalBackup=Readonly<{
+  fileName:string;uri:string;bytes:number;createdAt:string;ledgerEntries:number;verified:true;
 }>;
-
-const BACKUPS_KEY='@tf-asset/local-backups';
+const BACKUPS_KEY=TF_BACKUPS_KEY;
+const LAST_EXTERNAL_BACKUP_KEY=TF_LAST_EXTERNAL_BACKUP_KEY;
 const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='2.1.21';
+const APP_VERSION='2.2.1';
 
-function validPayload(value:unknown):value is Record<string,string>{
-  if(!value||typeof value!=='object'||Array.isArray(value))return false;
-  return Object.entries(value as Record<string,unknown>).every(([key,item])=>
-    key.startsWith(PREFIX)&&key!==BACKUPS_KEY&&typeof item==='string'
-  );
-}
+const validPayload=validBackupPayload;
 
 function sanitizeRestoredPayload(payload:Record<string,string>){
   const next={...payload};
+  // An external URI from another installation is not proof that this device has that file.
+  delete next[LAST_EXTERNAL_BACKUP_KEY];
   const raw=next[THEME_KEY];
   if(!raw)return next;
   try{
@@ -92,25 +90,66 @@ export async function restoreLocalBackup(id:string){
   return selected;
 }
 
+export function inspectTfAssetBackup(text:string):InspectedBackup{
+  return parseBackupDocument(text).inspection;
+}
+
 export async function exportTfAssetData(){
   const payload=await collectPayload();
-  return JSON.stringify({
-    product:'TF Asset',
-    version:1,
-    appVersion:APP_VERSION,
-    exportedAt:new Date().toISOString(),
-    payload,
-  },null,2);
+  return buildBackupDocument({
+    payload,history:await readBackups(),appVersion:APP_VERSION,exportedAt:new Date().toISOString(),
+  });
 }
 
 export async function importTfAssetData(text:string){
-  const parsed=JSON.parse(text) as {product?:unknown;version?:unknown;payload?:unknown};
-  if(parsed.product!=='TF Asset'||parsed.version!==1||!validPayload(parsed.payload)){
-    throw new Error('匯入格式或資料結構不符合 TF Asset 備份格式');
-  }
+  // Reject corrupt, foreign or ledger-less data BEFORE writing a single live storage key.
+  const parsed=parseBackupDocument(text);
+  const incoming=sanitizeRestoredPayload(parsed.payload);
+  const before=await collectPayload();
   await createLocalBackup();
-  await AsyncStorage.multiSet(Object.entries(sanitizeRestoredPayload(parsed.payload)));
-  return Object.keys(parsed.payload).length;
+  try{
+    await AsyncStorage.multiSet(Object.entries(incoming));
+    const verify=await AsyncStorage.multiGet(Object.keys(incoming));
+    if(verify.some(([key,value])=>value!==incoming[key]))throw new Error('寫入後校驗不一致');
+    if(parsed.history.length){
+      const local=await readBackups();
+      const merged=[...local,...parsed.history];
+      const seen=new Set<string>();
+      await writeBackups(merged.filter(row=>{
+        if(seen.has(row.id))return false;
+        seen.add(row.id);return true;
+      }));
+    }
+    return Object.keys(incoming).length;
+  }catch(error){
+    // Best effort rollback when a storage failure interrupts import.
+    const introduced=Object.keys(incoming).filter(key=>!(key in before));
+    if(introduced.length)await AsyncStorage.multiRemove(introduced);
+    if(Object.keys(before).length)await AsyncStorage.multiSet(Object.entries(before));
+    throw new Error('匯入中止，已嘗試回復匯入前資料：'+(error instanceof Error?error.message:String(error)));
+  }
+}
+
+/** This receipt is recorded ONLY after Android SAF has written AND byte-for-byte read back the external file. */
+export async function recordVerifiedExternalBackup(receipt:{
+  fileName:string;uri:string;bytes:number;verified:true;
+},documentText:string){
+  if(receipt.verified!==true)throw new Error('尚未核實備份文件寫入');
+  const details=inspectTfAssetBackup(documentText);
+  const record:VerifiedExternalBackup={
+    fileName:receipt.fileName,uri:receipt.uri,bytes:receipt.bytes,
+    createdAt:new Date().toISOString(),ledgerEntries:details.ledgerEntries,verified:true,
+  };
+  await AsyncStorage.setItem(LAST_EXTERNAL_BACKUP_KEY,JSON.stringify(record));
+  return record;
+}
+export async function lastVerifiedExternalBackup():Promise<VerifiedExternalBackup|null>{
+  try{
+    const raw=await AsyncStorage.getItem(LAST_EXTERNAL_BACKUP_KEY);
+    if(!raw)return null;
+    const value=JSON.parse(raw) as VerifiedExternalBackup;
+    return value?.verified===true&&typeof value.fileName==='string'&&typeof value.createdAt==='string'?value:null;
+  }catch{return null;}
 }
 
 export async function clearFinanceStorage(){
