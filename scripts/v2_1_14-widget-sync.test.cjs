@@ -25,7 +25,7 @@ assert.match(bridge,/canonicalSnapshot\.optJSONArray\("holdings"\)/,
 assert.match(bridge,/if\(canReconcile&&allSynced\)/,'Global sync requires every native-touched holding to have an equal-or-newer canonical quote time');
 assert.match(bridge,/canonicalAt<nativeAt/,'Per-symbol quote freshness must block an unrelated ticker from clearing native overlays');
 assert.match(bridge,/edit\.remove\("wall_market_overrides"\)\.remove\("wall_market_refreshed_at"\)/);
-assert.match(bridge,/行情較新｜財務待同步/);
+assert.match(bridge,/行情較新.*財務待同步/,'Pending per-symbol count may be displayed without suppressing the unsynchronized status');
 assert.match(app,/consumeNativeWidgetForceRefreshRequest/);
 assert.match(app,/market\.refresh\(\{force:true\}\)/);
 assert.match(app,/syncNativeWidget\(widgetSettings\.config,finance\.sharedSnapshot\)/);
