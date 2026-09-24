@@ -12,6 +12,7 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type DividendLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
 import { useBrokerSettingsRuntime } from '../finance/BrokerSettingsRuntime';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
+import { auditCashSources } from '../finance/cashAudit';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
@@ -130,6 +131,7 @@ export function LedgerScreen() {
   const monthNet=monthEntries.reduce((s,e)=>s+calculateLedgerCashFlow(e),0);
 
   const ordered=[...finance.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+  const cashSources=auditCashSources(finance.initialCash,finance.entries);
 
   return <>
     <PageShell pageKey="ledger" title="帳務中心" subtitle="Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
@@ -215,6 +217,13 @@ export function LedgerScreen() {
         },
         {key:'ledger-list',element:
           <FrameCard title="交易紀錄">
+            <View style={styles.previewCard}>
+              <Text style={styles.previewTitle}>現金來源：期初金額不屬於交易</Text>
+              <PreviewRow label="期初現金" value={'NT$ '+money(cashSources.opening)}/>
+              <PreviewRow label="買賣、股息與調整淨現金流" value={'NT$ '+money(cashSources.netMovement)}/>
+              <PreviewRow label="目前現金" value={'NT$ '+money(cashSources.cashBalance)} strong/>
+              {cashSources.possibleLegacyDefault?<Text style={styles.validationError}>含舊版預設的 750,000 元；請至設定 → 帳務系統 → 現金來源核對。</Text>:null}
+            </View>
             {ordered.slice(0,20).map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
               <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
