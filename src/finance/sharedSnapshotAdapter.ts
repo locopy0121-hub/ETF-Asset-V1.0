@@ -15,11 +15,15 @@ export function buildSharedSnapshot(input:{
   generatedAt:number|null;
   /** Display-only exchange timestamps per security; independent of portfolio arithmetic. */
   quoteSourceTimes?:readonly {symbol:string;sourceQuoteAt?:number|null}[];
+  marketDataVersion?:number;
+  valuationComplete?:boolean;
 }):SharedSnapshot{
   const portfolio=input.canonical.portfolio;
   const quoteTimes=new Map(input.quoteSourceTimes?.map(row=>[row.symbol,row.sourceQuoteAt??null])??[]);
   return {
     contractVersion:1,
+    ...(input.marketDataVersion===undefined?{}:{marketDataVersion:input.marketDataVersion}),
+    ...(input.valuationComplete===undefined?{}:{valuationComplete:input.valuationComplete}),
     generatedAt:input.generatedAt==null?new Date().toISOString():new Date(input.generatedAt).toISOString(),
     source:'canonical-finance-core',
     asset:{
@@ -38,12 +42,13 @@ export function buildSharedSnapshot(input:{
         id:row.symbol,
         symbol:row.symbol,
         name:row.name,
-        price:row.price,
-        previousClose:row.previousClose,
-        change,
-        changePercent,
-        marketStatus:statusFor(row.price,row.previousClose),
-        updatedAt:(quoteTimes.get(row.symbol)??0)>0?new Date(quoteTimes.get(row.symbol)!).toISOString():null,
+        price:row.quoteVerified===false?null:row.price,
+        previousClose:row.quoteVerified===false?null:row.previousClose,
+        change:row.quoteVerified===false?null:change,
+        changePercent:row.quoteVerified===false?null:changePercent,
+        marketStatus:row.quoteVerified===false?'unavailable':statusFor(row.price,row.previousClose),
+        marketQuality:row.quoteQuality??(row.quoteVerified===false?'unavailable':'trade'),
+        updatedAt:row.quoteVerified===false?null:(quoteTimes.get(row.symbol)??0)>0?new Date(quoteTimes.get(row.symbol)!).toISOString():null,
         shares:row.shares,
         avgCost:row.avgCost,
         marketValue:row.marketValue,
