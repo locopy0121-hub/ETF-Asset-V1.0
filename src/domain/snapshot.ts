@@ -16,6 +16,7 @@ export type HoldingSnapshot = Readonly<{
   changePercent: number | null;
   marketStatus: MarketStatus;
   updatedAt: string | null;
+  marketQuality?:'trade'|'official_close'|'unavailable';
   shares: number;
   avgCost: number;
   marketValue: number;
@@ -36,6 +37,8 @@ export type AssetSnapshot = Readonly<{
 
 export type SharedSnapshot = Readonly<{
   contractVersion: 1;
+  marketDataVersion?:number;
+  valuationComplete?:boolean;
   generatedAt: string;
   source: 'canonical-finance-core';
   asset: AssetSnapshot;
