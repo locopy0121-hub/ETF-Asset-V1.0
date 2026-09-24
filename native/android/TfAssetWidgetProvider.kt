@@ -498,6 +498,10 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     fun money(v:Double)=if(v.isFinite())String.format("%,.0f",v) else "--"
     fun signedMoney(v:Double)=if(v.isFinite())((if(v>=0)"+" else "")+String.format("%,.0f",v)) else "--"
     fun signed2(v:Double,suffix:String="")=if(v.isFinite())((if(v>=0)"+" else "")+String.format("%.2f",v)+suffix) else "--"
+    val valuationComplete=asset.optBoolean("valuationComplete",true)
+    val unverified=holding?.isNull("price")==true
+    if(!valuationComplete&&field in setOf("totalAssets","marketValue","unrealizedPnl","totalReturn"))return ("$label 估值待核對") to neutral
+    if(unverified&&field in setOf("price","change","changePercent","holdingMarketValue","pnl","roi","comprehensivePnl","dailyPnl","quote"))return ("$label 待取得") to neutral
     return when(field){
       "appName"->"TF Asset" to neutral
       "totalAssets"->("$label NT$ "+money(asset.optDouble("totalAssets",Double.NaN))) to neutral
