@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {parseTwseQuoteSourceAt,verifiedTwseTrade,pickFreshestVerifiedTrade,isNewSourceTick} from '../src/market/quoteFreshness';
+
+const at=Date.parse('2026-09-24T09:39:49+08:00');
+const old={c:'0050',ex:'tse',d:'20260924',t:'09:39:47',tlong:String(at-2_000),z:'112.05',y:'112.40',v:'10000'};
+const fresh={...old,ex:'otc',t:'09:39:49',tlong:String(at),z:'112.10',v:'10200'};
+assert.equal(parseTwseQuoteSourceAt(fresh,at+150),at);
+assert.equal(parseTwseQuoteSourceAt({...fresh,tlong:String(at+60_000)},at+150),at,
+  'Inconsistent tlong must not override the actual local exchange trade time');
+assert.equal(pickFreshestVerifiedTrade(old,fresh,at+150),fresh);
+assert.equal(pickFreshestVerifiedTrade(fresh,old,at+150),fresh,'Server response ordering must not regress prices');
+assert.deepEqual(verifiedTwseTrade(fresh,at+150),{price:112.1,sourceAt:at});
+assert.equal(isNewSourceTick(at,at),false,'Same-second network poll is not a new trade');
+assert.equal(isNewSourceTick(at,at-2_000),true);
+const bookOnly={...fresh,t:'09:39:50',tlong:String(at+1_000),z:'-',pz:'112.20',b:'112.15_112.10_',a:'112.25_112.30_',v:'10200'};
+assert.equal(verifiedTwseTrade(bookOnly,at+1_150),null,'Book-only quote must not silently replace a traded price');
+assert.equal(pickFreshestVerifiedTrade(fresh,bookOnly,at+1_150),fresh);
+assert.equal(pickFreshestVerifiedTrade(bookOnly,fresh,at+1_150),fresh);
+const sameSecond={...fresh,z:'112.11',v:'10199'};
+assert.equal(pickFreshestVerifiedTrade(fresh,sameSecond,at+150),fresh,'Do not regress equal timestamp and volume');
+assert.equal(pickFreshestVerifiedTrade(sameSecond,fresh,at+150),fresh,'Higher verified cumulative volume wins same-tick duplicates');
+const invalid={...fresh,d:'20260230'};
+assert.equal(verifiedTwseTrade(invalid,at+150),null);
+
+const native=readFileSync('native/android/TfAssetWidgetProvider.kt','utf8');
+const bridge=readFileSync('native/android/TfAssetNativeModule.kt','utf8');
+const market=readFileSync('src/market/MarketRuntime.tsx','utf8');
+const ci=readFileSync('.github/workflows/ci.yml','utf8');
+assert.match(native,/best\[symbol\]=row to sourceAt/,'Native must dedupe by last trade per code');
+assert.match(native,/optString\("z"/,'Native must use last traded price');
+assert.match(native,/connection\.useCaches=false/,'Background refresh must bypass HTTP caches');
+assert.match(native,/widget_last_query_at/,'Lookup time and source time must be distinct');
+assert.match(native,/同秒價差/,'Show diagnostic rather than hiding a same-tick price disagreement');
+assert.match(native,/財務待同步/,'Background price must not masquerade as a recalculated asset value');
+assert.match(bridge,/canonicalAt==nativeAt&&!samePrice/,'Only equal timestamp AND price clears native overlay');
+assert.match(market,/pickFreshestVerifiedTrade\(existing,row,now\)/);
+assert.match(market,/if\(!verifiedTwseTrade\(row,now\)\)/,'App must reject book-only updates as trades');
+assert.match(ci,/V2\.1\.21-QA\.apk/);
+console.log('V2.1.21 real traded price, per-ticker source time, duplicate channel, cache, overlay safety and QA contract: PASS; Android device still pending.');
