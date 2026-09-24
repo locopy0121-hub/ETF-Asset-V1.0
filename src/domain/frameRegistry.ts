@@ -35,7 +35,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
   settings: [
     { key:'system', title:'系統設定', description:'行情、背景、權限、診斷與通知' },
     { key:'accounting', title:'帳務系統', description:'公式、券商費率、交易預設與核心狀態' },
-    { key:'data', title:'資料系統', description:'ETF 基礎資料、資料概況與完整性' },
+    { key:'data', title:'資料系統', description:'統一即時行情、ETF 標籤、行情牆 A/B 編輯與資料完整性' },
     { key:'backup', title:'備份與還原', description:'備份、匯出、匯入、還原與安全清除' },
     { key:'monitor', title:'即時監控器', description:'Floating Monitor 模式、模板與刷新' },
     { key:'display', title:'視覺與主題', description:'主題、背景、App Icon、字體、格式與損益色' },
