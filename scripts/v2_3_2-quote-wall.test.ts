@@ -40,7 +40,7 @@ const module=read('src/components/HoldingQuoteModule.tsx');
 const collection=read('src/components/HoldingQuoteCollection.tsx');
 const tickerView=read('src/components/HoldingQuoteTicker.tsx');
 assert.match(settings,/行情牆專用 A\/B 進階編輯/);
-assert.match(settings,/統一行情資料中心\/即時更新/);
+assert.match(settings,/統一行情資料中心／即時更新/);
 assert.match(settings,/initialContentTab=\{marketEditorTab\}/);
 assert.match(settings,/顯示來源時間與資料版本/);
 assert.match(prefs,/marketCard:\{showQuoteMetadata:false\}/);
