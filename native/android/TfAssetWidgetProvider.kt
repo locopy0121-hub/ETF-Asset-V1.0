@@ -1,6 +1,7 @@
 package com.tfasset.app
 
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
@@ -22,24 +23,137 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.ResolverStyle
 
 class TfAssetWidgetProvider : AppWidgetProvider() {
-  companion object{const val ACTION_FORCE_REFRESH="com.tfasset.app.WIDGET_FORCE_REFRESH"}
+  companion object{
+    const val ACTION_FORCE_REFRESH="com.tfasset.app.WIDGET_FORCE_REFRESH"
+    @Volatile private var refreshing=false
+  }
   override fun onUpdate(context:Context,manager:AppWidgetManager,ids:IntArray){ ids.forEach { manager.updateAppWidget(it,buildViews(context,it,manager)) } }
   override fun onAppWidgetOptionsChanged(context:Context,manager:AppWidgetManager,appWidgetId:Int,newOptions:android.os.Bundle){
     manager.updateAppWidget(appWidgetId,buildViews(context,appWidgetId,manager))
   }
+  /** TWSE MIS supplies the trade-date d and exchange-time t; HTTP receipt time is never a quote tick. */
+  private fun sourceQuoteAt(row:JSONObject,now:Long):Long?{
+    val d=row.optString("d","").trim()
+    val t=row.optString("t","").trim()
+    if(!Regex("^\\d{8}$").matches(d)||!Regex("^\\d{2}:\\d{2}:\\d{2}$").matches(t))return null
+    val parsed=runCatching{
+      LocalDateTime.parse("$d $t",DateTimeFormatter.ofPattern("uuuuMMdd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT))
+        .atZone(ZoneId.of("Asia/Taipei")).toInstant().toEpochMilli()
+    }.getOrNull()?:return null
+    return parsed.takeIf{it>0L&&it<=now+120_000L&&it>=now-31L*86_400_000L}
+  }
+
+  private fun parsedTimestamp(value:String):Long=
+    runCatching{Instant.parse(value).toEpochMilli()}.getOrDefault(0L)
+
+  private fun exchangeClock(value:Long):String=
+    if(value<=0L)"--:--:--" else java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.TAIWAN)
+      .apply{timeZone=java.util.TimeZone.getTimeZone("Asia/Taipei")}.format(java.util.Date(value))
+
   override fun onReceive(context:Context,intent:Intent){
     super.onReceive(context,intent)
-    if(intent.action==ACTION_FORCE_REFRESH){
-      context.getSharedPreferences("tf_asset_native",0).edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis()).apply()
-      val launch=context.packageManager.getLaunchIntentForPackage(context.packageName)
-      if(launch!=null){
-        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        launch.putExtra("tfasset_force_market_refresh",true)
-        context.startActivity(launch)
-      }
+    if(intent.action!=ACTION_FORCE_REFRESH)return
+    synchronized(TfAssetWidgetProvider::class.java){
+      if(refreshing)return
+      refreshing=true
     }
+    // A user tap performs an actual network request; merely repainting must never advance the quote clock.
+    val manager=AppWidgetManager.getInstance(context)
+    val ids=manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java))
+    ids.forEach{id->val progress=RemoteViews(context.packageName,R.layout.tf_asset_widget)
+      progress.setTextViewText(R.id.widget_refresh,"行情更新中…")
+      progress.setTextViewText(R.id.widget_refresh_status,"正在向交易所取得報價…")
+      manager.partiallyUpdateAppWidget(id,progress)
+    }
+    val prefs=context.getSharedPreferences("tf_asset_native",0)
+    prefs.edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis())
+      .putString("widget_refresh_status","行情更新中…").apply()
+    val pendingResult=goAsync()
+    Thread{
+      try{
+        val snapshot=JSONObject(prefs.getString("snapshot","{}")?:"{}")
+        val symbols=orderedHoldings(snapshot,JSONObject(prefs.getString("widget_config","{}")?:"{}"))
+          .map{it.optString("symbol","")}.filter{it.matches(Regex("[0-9A-Za-z]{4,8}"))}.distinct()
+        if(symbols.isEmpty())throw IllegalStateException("無持股行情")
+        val channels=symbols.flatMap{listOf("tse_${it}.tw","otc_${it}.tw")}.joinToString("|")
+        val url="https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch="+URLEncoder.encode(channels,"UTF-8")+"&json=1&delay=0&_="+System.currentTimeMillis()
+        val connection=URL(url).openConnection() as HttpURLConnection
+        connection.connectTimeout=8000
+        connection.readTimeout=8000
+        connection.setRequestProperty("Accept","application/json")
+        val payload=try{
+          if(connection.responseCode!=200)throw IllegalStateException("行情 HTTP "+connection.responseCode)
+          JSONObject(connection.inputStream.bufferedReader().use{it.readText()})
+        }finally{connection.disconnect()}
+        val canonical=snapshot.optJSONArray("holdings")?:JSONArray()
+        val oldOverrides=if(prefs.contains("wall_market_source_at"))
+          runCatching{JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{JSONObject()}
+        else JSONObject() // Old native HTTP receipt times cannot be trusted as source timestamps.
+        val quotes=JSONObject()
+        val rows=payload.optJSONArray("msgArray")?:JSONArray()
+        val now=System.currentTimeMillis()
+        var validSourceCount=0
+        var latestSeenAt=0L
+        for(index in 0 until rows.length()){
+          val row=rows.optJSONObject(index)?:continue
+          val symbol=row.optString("c","")
+          if(!symbols.contains(symbol))continue
+          val current=listOf("z","pz","b","a").asSequence().map{row.optString(it,"").split("_").firstOrNull()?.toDoubleOrNull()}
+            .firstOrNull{it!=null&&it>0}?:continue
+          val sourceAt=sourceQuoteAt(row,now)?:continue
+          validSourceCount+=1
+          latestSeenAt=maxOf(latestSeenAt,sourceAt)
+          val previousOverrideAt=parsedTimestamp(oldOverrides.optJSONObject(symbol)?.optString("updatedAt","")?:"")
+          val canonicalRow=(0 until canonical.length()).mapNotNull{canonical.optJSONObject(it)}
+            .firstOrNull{it.optString("symbol","")==symbol}
+          val canonicalAt=parsedTimestamp(canonicalRow?.optString("updatedAt","")?:"")
+          if(sourceAt<=maxOf(previousOverrideAt,canonicalAt))continue // A repeated source tick is NOT updated data.
+          val previous=row.optString("y","").toDoubleOrNull()
+          val quote=JSONObject().put("price",current).put("updatedAt",Instant.ofEpochMilli(sourceAt).toString())
+          if(previous!=null&&previous>0){
+            quote.put("previousClose",previous)
+            quote.put("change",current-previous)
+            quote.put("changePercent",(current-previous)/previous*100)
+          }
+          quotes.put(symbol,quote)
+        }
+        if(validSourceCount==0)throw IllegalStateException("交易所未提供可核實的行情時間")
+        if(quotes.length()==0){
+          val lastKnown=prefs.getLong("wall_market_refreshed_at",0L)
+          val sourceTime=maxOf(lastKnown,latestSeenAt)
+          prefs.edit().putString("widget_refresh_status","來源無新報價 ${exchangeClock(sourceTime)}｜資料未更新").apply()
+        }else{
+          // Preserve other unsynchronized quotes when an API response covers only part of the holdings.
+          val merged=JSONObject(oldOverrides.toString())
+          val iterator=quotes.keys()
+          while(iterator.hasNext()){val symbol=iterator.next();merged.put(symbol,quotes.getJSONObject(symbol))}
+          val previousAt=prefs.getLong("wall_market_refreshed_at",0L)
+          val newestSourceAt=maxOf(previousAt,latestSeenAt)
+          val coverage=if(quotes.length()==symbols.size)"" else " ${quotes.length()}/${symbols.size}"
+          prefs.edit().putString("wall_market_overrides",merged.toString())
+            .putString("widget_refresh_status","行情${coverage} ${exchangeClock(newestSourceAt)}｜財務待同步")
+            .putLong("wall_market_refreshed_at",newestSourceAt)
+            .putLong("wall_market_source_at",newestSourceAt).apply()
+        }
+      }catch(error:Exception){
+        // Keep last verified exchange quote and canonical asset values unchanged.
+        prefs.edit().putString("widget_refresh_status","行情更新失敗｜保留原資料").apply()
+      }finally{
+        refreshing=false
+        try{ids.forEach{id->manager.updateAppWidget(id,buildViews(context,id,manager))}}
+        finally{pendingResult.finish()}
+      }
+    }.start()
   }
 
   private fun jsonStrings(array:JSONArray?):List<String>{
@@ -90,11 +204,18 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val snapshot=runCatching{JSONObject(prefs.getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
     val style=config.optJSONObject("style")?:JSONObject()
     val asset=snapshot.optJSONObject("asset")?:JSONObject()
-    val holdings=orderedHoldings(snapshot,config)
+    val quoteOverrides=runCatching{JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{JSONObject()}
+    val holdings=orderedHoldings(snapshot,config).map { original ->
+      val quote=quoteOverrides.optJSONObject(original.optString("symbol",""))
+      if(quote==null) original else JSONObject(original.toString()).apply {
+        listOf("price","previousClose","change","changePercent","updatedAt").forEach{key->if(quote.has(key))put(key,quote.get(key))}
+      }
+    }
     val first=holdings.firstOrNull()
     val template=config.optString("template","asset-summary")
     val capacity=when(template){"minimal"->2;"compact"->3;"quote-summary","transparent"->4;"asset-summary"->5;else->6}
-    val selectedFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}.take(capacity)
+    val configuredFields=jsonStrings(config.optJSONArray("fields")).ifEmpty{listOf("appName","totalAssets","symbol","price","changePercent")}
+    val selectedFields=configuredFields.take(capacity)
     val styles=fieldStyles(config)
     val views=RemoteViews(context.packageName,R.layout.tf_asset_widget)
     val ids=intArrayOf(R.id.widget_line1,R.id.widget_line2,R.id.widget_line3,R.id.widget_line4,R.id.widget_line5,R.id.widget_line6)
@@ -119,8 +240,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val configuredColumns=config.optInt("wallColumns",4).coerceIn(1,4)
     val autoColumns=when{minWidth>=360->4;minWidth>=270->3;minWidth>=180->2;else->1}
     val wallColumns=minOf(configuredColumns,autoColumns)
+    val perColumnDp=minWidth.toDouble()/wallColumns
+    val wallFontFactor=(perColumnDp/120.0).coerceIn(0.7,1.0)
     val maxWallRows=(minHeight/92).coerceIn(1,4)
     val wallCapacity=(wallColumns*maxWallRows).coerceIn(1,16)
+    // Four native grid slots per row; empty last-row cells remain invisible so columns never expand.
     val legacyProfitFields=jsonStrings(config.optJSONArray("profitColorFields")).toSet()
     val titleFs=style.optDouble("titleFontScale",1.0).coerceIn(.7,1.8)*densityScale
     val align=gravityFor(style.optString("textAlign","left"))
@@ -129,9 +253,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val wallMode=template=="quote-wall"
     views.setViewVisibility(R.id.widget_summary,if(wallMode)View.GONE else View.VISIBLE)
     views.setViewVisibility(R.id.widget_wall,if(wallMode)View.VISIBLE else View.GONE)
-    views.setTextViewText(R.id.widget_title,if(wallMode)"持股行情牆" else "TF Asset")
+    views.setTextViewText(R.id.widget_title,if(wallMode&&holdings.size>wallCapacity)"持股行情牆 · ${wallCapacity}/${holdings.size}" else if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
     views.setTextColor(R.id.widget_refresh,neutral)
+    views.setTextViewText(R.id.widget_refresh,"↻ 更新")
+    views.setTextColor(R.id.widget_refresh_status,neutral)
+    views.setTextViewText(R.id.widget_refresh_status,prefs.getString("widget_refresh_status","行情尚未核實｜點擊更新")?:"行情尚未核實｜點擊更新")
     val forceRefreshEnabled=config.optBoolean("forceRefreshOnTap",true)
     views.setViewVisibility(R.id.widget_refresh,if(forceRefreshEnabled)View.VISIBLE else View.GONE)
 
@@ -181,7 +308,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val visibleRows=if(rows.isEmpty())1 else ceil(rows.size.toDouble()/wallColumns).toInt().coerceIn(1,maxWallRows)
       repeat(visibleRows){views.setViewVisibility(wallRowIds[it],View.VISIBLE)}
       val supported=setOf("symbol","name","price","change","changePercent","shares","avgCost","holdingMarketValue","pnl","roi","comprehensivePnl","marketStatus","updatedAt","dailyPnl","quote")
-      val wallFields=selectedFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
+      val wallFields=configuredFields.filter{supported.contains(it)}.take(4).ifEmpty{listOf("name","symbol","price","changePercent")}
+      // Preserve a fixed column grid: hidden columns are GONE, empty trailing cells INVISIBLE.
+      repeat(visibleRows){r->repeat(4){c->
+        views.setViewVisibility(wallGrid[r][c],if(c>=wallColumns)View.GONE else View.INVISIBLE)
+      }}
       rows.forEachIndexed{index,row->
         val rowIndex=index/wallColumns
         val columnIndex=index%wallColumns
@@ -190,7 +321,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         views.setViewVisibility(id,View.VISIBLE)
         views.setTextViewText(id,card)
         views.setTextColor(id,text)
-        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs).toFloat())
+        views.setTextViewTextSize(id,TypedValue.COMPLEX_UNIT_SP,(10.5*fs*wallFontFactor).toFloat())
       }
     }
 
@@ -199,15 +330,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val alpha=(opacity.coerceIn(.1,1.0)*255).roundToInt()
     views.setInt(R.id.widget_root,"setBackgroundColor",Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
 
-    val launch=context.packageManager.getLaunchIntentForPackage(context.packageName)
-    if(launch!=null){
-      val pending=PendingIntent.getActivity(context,appWidgetId,launch,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-      views.setOnClickPendingIntent(R.id.widget_root,pending)
-    }
     if(forceRefreshEnabled){
       val refreshIntent=Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_FORCE_REFRESH)
       val refreshPending=PendingIntent.getBroadcast(context,10000+appWidgetId,refreshIntent,PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+      views.setOnClickPendingIntent(R.id.widget_root,refreshPending)
       views.setOnClickPendingIntent(R.id.widget_refresh,refreshPending)
+      wallIds.forEach{views.setOnClickPendingIntent(it,refreshPending)}
     }
     return views
   }
@@ -231,6 +359,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       val visual=fieldConfig.optJSONObject("visual")?:JSONObject()
       val label=fieldConfig.optString("label",defaultLabel(field))
       val rendered=renderField(field,asset,holding,label)
+      val paddingY=visual.optInt("paddingY",0).coerceIn(0,16)
+      if(paddingY>0){
+        val topPadStart=out.length
+        out.append("\u200B\n")
+        out.setSpan(AbsoluteSizeSpan(paddingY,true),topPadStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+      }
       val start=out.length
       out.append(rendered.first)
       val end=out.length
@@ -258,11 +392,16 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       if(index<fields.lastIndex){
         out.append("\n")
         val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",globalGap).coerceIn(0,32) else globalGap.coerceIn(0,32)
-        if(gap>0){
+        val spacerHeight=(gap+paddingY).coerceIn(0,48)
+        if(spacerHeight>0){
           val spacerStart=out.length
           out.append("\u200B\n")
-          out.setSpan(AbsoluteSizeSpan(gap,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+          out.setSpan(AbsoluteSizeSpan(spacerHeight,true),spacerStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
+      }else if(paddingY>0){
+        val bottomPadStart=out.length
+        out.append("\n\u200B")
+        out.setSpan(AbsoluteSizeSpan(paddingY,true),bottomPadStart,out.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
       }
     }
     return out
