@@ -27,7 +27,7 @@ assert.equal(parseOfficialEtfRow({'基金代號':'00919','基金中文名稱':'�
 assert.equal(parseOfficialEtfRow({'基金代號':'00409A','基金類型':'主動式ETF','配息頻率':'每月評價／可能不分配'},date)?.dividendType,null);
 assert.equal(badgePresentationText('etfType',null,null),'類別待確認');
 assert.equal(badgePresentationText('dividendType',null,null),'配息待確認');
-assert.equal(badgePresentationText('etfType','市值型',null),'市值型');
+assert.equal(badgePresentationText('etfType','市值型',null),'市值','UI hides only the final 型; raw metadata stays 市值型');
 assert.equal(badgePresentationText('dividendType',null,'半年配'),'半年配');
 assert.equal(badgePresentationText('reminder',null,null),'','No spurious reminder badges');
 const settings=normalizeEtfBadges({...DEFAULT_ETF_BADGES,badges:{...DEFAULT_ETF_BADGES.badges,reminder:{...DEFAULT_ETF_BADGES.badges.reminder,enabled:false}}});
