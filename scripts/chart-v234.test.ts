@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {parseTwseDailyRow,parseTwseMonthly,fetchOfficialDailyHistory} from '../src/market/twseDailyHistory';
 
-const valid=['115/09/22','1,250,100','4,500','2,500,000','51.25','52.15','50.90','51.85'];
+const valid=['115/09/22','1,250,100','2,500,000','51.25','52.15','50.90','51.85','+0.1','3,000'];
 assert.deepEqual(parseTwseDailyRow(valid),{
  date:'2026-09-22',open:51.25,high:52.15,low:50.9,close:51.85,volume:1250100,source:'TWSE'
 });
