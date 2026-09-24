@@ -15,6 +15,7 @@ import {
 } from 'react';
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
+import {restoreVerifiedQuotes,isVerifiedRuntimeQuote} from './quoteProvenance';
 import { resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt,pickFreshestVerifiedTrade,verifiedTwseTrade} from './quoteFreshness';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
@@ -178,39 +179,24 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
   const unresolved:string[]=[];
   let updatedCount=0,usableCount=0;
   let newestSourceAt:number|null=null;
-  const next=symbols.map(symbol=>{
-    const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
+  const next=symbols.flatMap((symbol):RuntimeQuote[]=>{
+    const old=previous.find(x=>x.symbol===symbol&&isVerifiedRuntimeQuote(x,now));
     const row=bySymbol.get(symbol);
+    const trade=verifiedTwseTrade(row,now);
     if(!verifiedTwseTrade(row,now)){
       unresolved.push(symbol);
-      if(old)return old;
-      const missing:RuntimeQuote={
-        symbol,
-        name:symbol,
-        currentPrice:0,
-        previousClose:0,
-        liquidationTradeMode:'ROUND_LOT',
-        dividendFrequency:4,
-        sparkline:[0],
-      };
-      return missing;
+      // Missing z is NOT a zero-price trade. Never introduce seeded prices here.
+      return old?[old]:[];
     }
-    // A cached MIS row is NOT a new quote just because HTTP returned 200.
-    const sourceQuoteAt=parseTwseQuoteSourceAt(row,now);
-    if(sourceQuoteAt===null){
-      unresolved.push(symbol+'(來源時間缺失)');
-      const missing:RuntimeQuote={symbol,name:symbol,currentPrice:0,previousClose:0,
-        liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,sparkline:[0]};
-      return old??missing;
-    }
+    const sourceQuoteAt=trade!.sourceAt;
     usableCount+=1;
-    if(!isNewSourceTick(sourceQuoteAt,old?.sourceQuoteAt))return old!;
+    if(old&&!isNewSourceTick(sourceQuoteAt,old.sourceQuoteAt))return [old];
     updatedCount+=1;
     newestSourceAt=Math.max(newestSourceAt??0,sourceQuoteAt);
-    const currentPrice=verifiedTwseTrade(row,now)!.price;
+    const currentPrice=trade!.price;
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
-    return {
+    return [{
       symbol,
       name:String(row?.n??old?.name??symbol),
       currentPrice,
@@ -221,14 +207,14 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
       ...(old?.pinned==null?{}:{pinned:old.pinned}),
       sparkline:sparkline.length?sparkline:[currentPrice],
-    };
+    }];
   });
   return {quotes:next,updatedCount,usableCount,newestSourceAt,unresolved};
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
-  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[...FALLBACK_QUOTES]);
+  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[]);
   const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>(()=>FALLBACK_QUOTES.map(x=>x.symbol));
   const [hydrated,setHydrated]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
@@ -243,7 +229,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const catalogRefreshingRef=useRef(false);
   const refreshingRef=useRef(false);
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
-  const quotesRef=useRef<RuntimeQuote[]>([...FALLBACK_QUOTES]);
+  const quotesRef=useRef<RuntimeQuote[]>([]);
   const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
 
   useEffect(()=>{
@@ -253,9 +239,15 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       const parsed=JSON.parse(raw) as Partial<PersistedMarketState>;
       if(parsed.schema===1){
         if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
-        if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes);
+        if(Array.isArray(parsed.quotes)){
+          const verified=restoreVerifiedQuotes(parsed.quotes,parsed.quoteClockVersion);
+          quotesRef.current=verified;
+          setQuotes(verified);
+        }
         if(parsed.quoteClockVersion===2&&typeof parsed.lastSuccessAt==='number'&&Number.isFinite(parsed.lastSuccessAt)){
-          setLastSuccessAt(parsed.lastSuccessAt);
+          const verified=restoreVerifiedQuotes(parsed.quotes,parsed.quoteClockVersion);
+          const latest=verified.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
+          if(latest>0)setLastSuccessAt(latest);
         } // Ignore pre-v2.1.20 HTTP receipt timestamps from legacy caches.
         if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
           // Apply new reviewed policies to old cached catalogues immediately on upgrade.
@@ -308,7 +300,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
             if(result.usableCount<=0)throw new Error('TWSE 無可靠報價時間或可用行情');
             if(result.updatedCount===0){
               // No source time advanced: do not alter finance, cached quotes, or 'last updated'.
-              setLastError('行情來源尚無新資料（維持前次更新時間）');
+              setLastError(result.unresolved.length?'行情待核對：'+result.unresolved.join(','):'行情來源尚無新資料（維持前次更新時間）');
               return 'unchanged';
             }
             quotesRef.current=result.quotes;
