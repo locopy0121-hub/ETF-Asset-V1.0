@@ -50,8 +50,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.1.20';
-const BUILD='20120';
+const VERSION='2.3.1';
+const BUILD='20301';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -149,8 +149,8 @@ export function SettingsScreen(){
 
   function systemSection(){
     return <View style={styles.children}>
-      <ChildButton label="市場更新" summary={marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError}/>:null}
+      <ChildButton label="行情資料中心／市場更新" summary={'v'+market.marketDataVersion+'｜'+marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
+      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -169,6 +169,8 @@ export function SettingsScreen(){
         <StatusRow label="Build" value={BUILD}/>
         <StatusRow label="帳務 Runtime" value={finance.hydrated?'正常':'載入中'}/>
         <StatusRow label="行情 Runtime" value={market.hydrated?'正常':'載入中'}/>
+        <StatusRow label="統一行情資料庫版本" value={String(market.marketDataVersion)}/>
+        <StatusRow label="缺少的 ETF" value={market.missingSymbols.join("、")||"無"}/>
         <StatusRow label="券商 Runtime" value={broker.hydrated?'正常':'載入中'}/>
         <StatusRow label="設定 Runtime" value={settings.hydrated?'正常':'載入中'}/>
         <StatusRow label="最後行情成功" value={formatTime(market.lastSuccessAt)}/>
@@ -657,11 +659,32 @@ type MarketPanelProps={
   onRefresh:()=>void;
   lastSuccessAt:number|null;
   lastError:string|null;
+  marketDataVersion:number;
+  missingSymbols:readonly string[];
+  quoteCount:number;
 };
 
-function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError}:MarketPanelProps){
+function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount}:MarketPanelProps){
+  const [urlDraft,setUrlDraft]=useState(config.backendUrl??'');
+  useEffect(()=>{setUrlDraft(config.backendUrl??'');},[config.backendUrl]);
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
-  return <Panel title="市場更新">
+  return <Panel title="行情資料中心（唯一行情入口）">
+    <StatusRow label="資料中心模式" value={config.backendUrl?'遠端 HTTPS 後端＋本機 SQLite':'本機官方資料中心（尚未部署後端）'}/>
+    <StatusRow label="統一 SQLite 資料版本" value={String(marketDataVersion)}/>
+    <StatusRow label="官方行情資料筆數" value={String(quoteCount)}/>
+    <StatusRow label="待取得代號" value={missingSymbols.join('、')||'無'}/>
+    <Text style={styles.fieldLabel}>已部署的 HTTPS 資料中心網址</Text>
+    <TextInput accessibilityLabel="行情資料中心 HTTPS 網址" style={styles.input} keyboardType="url"
+      autoCapitalize="none" autoCorrect={false} placeholder="https://您的資料中心網域"
+      value={urlDraft} onChangeText={setUrlDraft}/>
+    <ActionButton label="儲存並連線資料中心" onPress={()=>{
+      const endpoint=urlDraft.trim().replace(/\/$/,'');
+      if(endpoint&&(!/^https:\/\/[a-zA-Z0-9.-]+(?::\d+)?(?:\/[a-zA-Z0-9/_-]*)?$/.test(endpoint))){
+        Alert.alert('網址無效','只接受不含帳密或查詢參數的 HTTPS 網址。');return;
+      }
+      patch({backendUrl:endpoint});
+    }}/>
+    <Text style={styles.note}>未部署時維持本機 SQLite 備援模式，不假裝已連接雲端。資料中心只接收 ETF 代號，不接收私密 Ledger。</Text>
     <StatusRow label="行情來源" value={config.source}/>
     <StatusRow label="最近成功" value={formatTime(lastSuccessAt)}/>
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
