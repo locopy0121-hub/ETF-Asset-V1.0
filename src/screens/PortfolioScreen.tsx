@@ -50,6 +50,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
     }));
   },[finance.holdings,finance.entries,sortKey,market.catalog,editor.displayConfig.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
+  const valuationComplete=finance.valuationComplete;
 
   return <>
     <PageShell
@@ -62,19 +63,20 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
         {key:'holding-dashboard',element:
           <FrameCard title="持股分析儀表板">
             <View style={styles.metrics}>
-              <MetricTile label="總市值" value={money(portfolio.totalMarketValue)} caption="NT$"/>
+              <MetricTile label="總市值" value={valuationComplete?money(portfolio.totalMarketValue):"估值待核對"} caption="NT$"/>
               <MetricTile label="純成交成本" value={money(portfolio.totalTradeCost)} caption="不含費"/>
               <MetricTile label="含費成本" value={money(portfolio.totalInvestmentCost)} caption="Canonical"/>
-              <MetricTile label="含息總損益" value={money(portfolio.totalPnl)} caption="已實現＋未實現＋股息" tone={portfolio.totalPnl>=0?'gain':'loss'}/>
+              <MetricTile label="含息總損益" value={valuationComplete?money(portfolio.totalPnl):"估值待核對"} caption="已實現＋未實現＋股息" tone={portfolio.totalPnl>=0?'gain':'loss'}/>
             </View>
           </FrameCard>
         },
         {key:'allocation',element:
           <FrameCard title="資產配置">
-            {sorted.map(item=><View key={item.symbol} style={styles.allocationRow}>
+            {!valuationComplete?<Text style={styles.tableRule}>部分持股尚缺官方行情；資產占比暫不顯示，帳務成本仍保留。</Text>:null}
+            {valuationComplete?sorted.map(item=><View key={item.symbol} style={styles.allocationRow}>
               <View style={styles.allocationLabel}><Text style={styles.allocationSymbol}>{item.symbol}</Text><Text style={styles.allocationPct}>{item.weight.toFixed(1)}%</Text></View>
               <View style={styles.track}><View style={[styles.fill,{width:`${Math.min(100,Math.max(0,item.weight))}%`}]}/></View>
-            </View>)}
+            </View>):null}
           </FrameCard>
         },
         {key:'holding-view',element:
