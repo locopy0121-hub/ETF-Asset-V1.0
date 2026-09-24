@@ -63,7 +63,11 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
         val nativeAt=quoteAt(old)
         val current=holdings.firstOrNull{it.optString("symbol","")==symbol}
         val canonicalAt=quoteAt(current)
-        if(nativeAt<=0L||canonicalAt<nativeAt)pending.put(symbol,old)
+        val nativePrice=old.optDouble("price",Double.NaN)
+        val canonicalPrice=current?.optDouble("price",Double.NaN)?:Double.NaN
+        val samePrice=nativePrice.isFinite()&&canonicalPrice.isFinite()&&kotlin.math.abs(nativePrice-canonicalPrice)<0.0001
+        // Equal clock + different price is not evidence of synchronized canonical finance.
+        if(nativeAt<=0L||canonicalAt<nativeAt||(canonicalAt==nativeAt&&!samePrice))pending.put(symbol,old)
       }
       val allSynced=pending.length()==0
       // Keep the previous source-contract gate; all holdings must also be checked individually.
