@@ -34,6 +34,7 @@ export type DisplayPrefs=Readonly<{
   lossColor:string;
   neutralColor:string;
 }>;
+export type MarketCardPrefs=Readonly<{showQuoteMetadata:boolean}>;
 export type TradeDefaults=Readonly<{
   brokerProfileId:string;
   accountLabel:string;
@@ -49,6 +50,7 @@ export type SettingsPrefs=Readonly<{
   dividendCalendar:DividendCalendarPrefs;
   notifications:NotificationPrefs;
   display:DisplayPrefs;
+  marketCard:MarketCardPrefs;
   tradeDefaults:TradeDefaults;
 }>;
 
@@ -79,6 +81,7 @@ const DEFAULT_SETTINGS:SettingsPrefs={
     lossColor:'#10B981',
     neutralColor:'#64748B',
   },
+  marketCard:{showQuoteMetadata:false},
   tradeDefaults:{
     brokerProfileId:'huanan-yongchang',
     accountLabel:'主要帳戶',
@@ -130,6 +133,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
       lossColor:color(d?.lossColor,DEFAULT_SETTINGS.display.lossColor),
       neutralColor:color(d?.neutralColor,DEFAULT_SETTINGS.display.neutralColor),
     },
+    marketCard:{showQuoteMetadata:input?.marketCard?.showQuoteMetadata===true},
     tradeDefaults:{
       brokerProfileId:String(t?.brokerProfileId??DEFAULT_SETTINGS.tradeDefaults.brokerProfileId),
       accountLabel:String(t?.accountLabel??DEFAULT_SETTINGS.tradeDefaults.accountLabel),
@@ -143,6 +147,7 @@ type SettingsRuntimeValue=Readonly<{
   prefs:SettingsPrefs;
   patchNotifications:(patch:Partial<NotificationPrefs>)=>void;
   patchDisplay:(patch:Partial<DisplayPrefs>)=>void;
+  patchMarketCard:(patch:Partial<MarketCardPrefs>)=>void;
   patchTradeDefaults:(patch:Partial<TradeDefaults>)=>void;
   patchPageTitle:(page:MainPageKey,title:string)=>void;
   patchAi:(patch:Partial<AiPrefs>)=>void;
@@ -180,6 +185,7 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     prefs,
     patchNotifications:patch=>setPrefs(current=>normalize({...current,notifications:{...current.notifications,...patch}})),
     patchDisplay:patch=>setPrefs(current=>normalize({...current,display:{...current.display,...patch}})),
+    patchMarketCard:patch=>setPrefs(current=>normalize({...current,marketCard:{...current.marketCard,...patch}})),
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
     patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
     patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),
