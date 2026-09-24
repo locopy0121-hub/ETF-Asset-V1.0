@@ -334,7 +334,7 @@ export function SettingsScreen(){
         <ActionButton label="前往外部存檔" onPress={()=>setBackupPanel('export')}/>
         {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
       </Panel>:null}
-      <ChildButton label="匯出備份檔案" summary={verifiedExternal?'最近已讀回核實':'選擇手機／雲端資料夾'} active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
+      <ChildButton label="匯出資料／備份檔案" summary={verifiedExternal?'最近已讀回核實':'選擇手機／雲端資料夾'} active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
       {backupPanel==='export'?<Panel title="選擇目錄並存檔">
         <Text style={styles.note}>開啟 Android 系統存檔視窗，選擇「下載」、其他手機目錄或可用的 Google Drive。產生含帳務、App 設定與本機歷史備份的 JSON；寫入後重新讀取比對才顯示成功。</Text>
         <ActionButton label={fileBusy?'檔案處理中…':'選擇儲存位置並建立 JSON 檔案'} disabled={!backupDocumentPickerAvailable||fileBusy||!finance.hydrated} onPress={()=>void exportSelectedDocument()}/>
@@ -349,7 +349,7 @@ export function SettingsScreen(){
         <Text style={styles.note}>單純產生 JSON 文字不代表已存檔；請確認外部檔案可從檔案管理器找到。</Text>
         {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
       </Panel>:null}
-      <ChildButton label="選擇檔案還原" summary="先選檔驗證 → 預覽 → 最後確認" active={backupPanel==='import'} onPress={()=>setBackupPanel(backupPanel==='import'?null:'import')}/>
+      <ChildButton label="匯入資料／選擇檔案還原" summary="先選檔驗證 → 預覽 → 最後確認" active={backupPanel==='import'} onPress={()=>setBackupPanel(backupPanel==='import'?null:'import')}/>
       {backupPanel==='import'?<Panel title="從手機／雲端選擇備份">
         <ActionButton label={fileBusy?'檔案處理中…':'選擇 JSON 備份檔案'} disabled={!backupDocumentPickerAvailable||fileBusy||!finance.hydrated} onPress={()=>void pickBackupDocument()}/>
         <Text style={styles.note}>也可使用舊版貼上格式（v1 JSON）：</Text>
@@ -366,7 +366,7 @@ export function SettingsScreen(){
         </View>:null}
         {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
       </Panel>:null}
-      <ChildButton label="還原 App 內備份" summary={backups.length+' 份（僅本機）'} active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
+      <ChildButton label="還原備份（App 內）" summary={backups.length+' 份（僅本機）'} active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
       {backupPanel==='restore'?<Panel title="本機備份還原">
         <Text style={styles.dangerText}>本機備份不會在解除安裝後保留；建議先匯出外部檔案。</Text>
         {backups.length===0?<Text style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable key={row.id} style={styles.restoreRow} onPress={()=>Alert.alert('確認還原','還原前會先建立目前狀態的本機安全備份。',[{text:'取消',style:'cancel'},{text:'還原',onPress:()=>void restoreLocalBackup(row.id).then(()=>{setBackupStatus('還原完成；重新啟動 App 後載入。');void reloadBackupMeta();}).catch(error=>fileError('還原失敗',error))}])}>
