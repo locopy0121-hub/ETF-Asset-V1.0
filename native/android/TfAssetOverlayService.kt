@@ -1,6 +1,10 @@
 package com.tfasset.app
 
 import android.app.Service
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.os.Handler
+import android.os.Looper
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -31,6 +35,7 @@ class TfAssetOverlayService:Service(){
   private var mode="normal"
   private var lastLayoutSignature:String?=null
   private var animationsEnabled=true
+  @Volatile private var marketRefreshInProgress=false
   private val previousEffectValues=mutableMapOf<String,Double?>()
   private var downX=0f;private var downY=0f;private var startX=0;private var startY=0;private var lastTap=0L
 
@@ -209,10 +214,56 @@ class TfAssetOverlayService:Service(){
     fun control(label:String,onClick:()->Unit):TextView=TextView(this).apply{
       this.text=label;setTextColor(text);textSize=10f;setPadding(12,7,12,7);setOnClickListener{onClick()}
     }
-    row.addView(control("↻ 更新行情"){prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply();render()})
+    val currentStatus=prefs().getString("monitor_quote_refresh_status",null)
+    row.addView(control(if(marketRefreshInProgress)"↻ 查詢中…" else currentStatus?:"↻ 更新行情"){forceRefreshMarket()})
     row.addView(control(if(mode=="mini")"□ 放大" else "— 縮小"){toggleMode()})
     row.addView(control("× 關閉"){prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
     root.addView(row,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+  }
+
+  /**
+   * Overlay refresh must perform a real native fetch even when the App is closed.
+   * Prices enter the same SQLite market store used by App and Widget. Financial
+   * amounts still come exclusively from the canonical App snapshot.
+   */
+  private fun forceRefreshMarket(){
+    if(marketRefreshInProgress)return
+    marketRefreshInProgress=true
+    prefs().edit().putString("monitor_quote_refresh_status","↻ 查詢中…").apply()
+    render()
+    Thread{
+      val status=try{
+        val raw=JSONObject(prefs().getString("snapshot","{}")?:"{}")
+        val holdings=raw.optJSONArray("holdings")?:JSONArray()
+        val symbols=(0 until holdings.length()).mapNotNull{holdings.optJSONObject(it)?.optString("symbol","")}
+          .map{it.trim().uppercase()}.filter{it.matches(Regex("[0-9A-Z]{4,8}"))}.distinct()
+        if(symbols.isEmpty())"無持股代號｜未更新" else {
+          val state=TfAssetMarketCenter(this).refresh(symbols)
+          val changed=state.optInt("updatedCount",0)
+          val missing=state.optJSONArray("missing")?.length()?:0
+          // Only exchange-sourced SQLite writes count as updated; re-rendering never does.
+          val detail=if(missing>0)"｜待取得 ${missing}檔" else ""
+          if(state.optBoolean("degraded",false))"後端連線異常｜沿用已驗證行情"+detail
+          else if(changed>0)"更新 ${changed}檔"+detail
+          else "無新行情"+detail
+        }
+      }catch(error:Exception){
+        "查詢失敗｜保留上次行情"
+      }
+      prefs().edit().putString("monitor_quote_refresh_status",status)
+        .putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply()
+      // Refresh existing Widget views from the shared market store; do not open App.
+      val manager=AppWidgetManager.getInstance(this)
+      val target=ComponentName(this,TfAssetWidgetProvider::class.java)
+      val ids=manager.getAppWidgetIds(target)
+      if(ids.isNotEmpty())sendBroadcast(Intent(this,TfAssetWidgetProvider::class.java)
+        .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+        .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids))
+      Handler(Looper.getMainLooper()).post{
+        marketRefreshInProgress=false
+        if(root!=null)render()
+      }
+    }.start()
   }
 
   private fun renderNormal(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
