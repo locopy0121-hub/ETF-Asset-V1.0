@@ -38,24 +38,61 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   override fun getName() = "TfAssetNative"
 
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
-    // Do not let an older App/settings snapshot overwrite newer quotes fetched by the native Widget.
-    // Financial figures always come from the canonical App snapshot; this bridge never recalculates them.
+    // Finance amounts always come from the App's canonical snapshot; Native only overlays prices.
     val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
-    // generatedAt may be a startup fallback timestamp; only a verified market quote timestamp
-    // in canonical holdings can reconcile a newer quote fetched by the native Widget.
     val canonicalHoldings=canonicalSnapshot.optJSONArray("holdings")?:org.json.JSONArray()
-    val verifiedQuoteAt=(0 until canonicalHoldings.length()).mapNotNull{index->
-      val row=canonicalHoldings.optJSONObject(index)?:return@mapNotNull null
-      runCatching{java.time.Instant.parse(row.optString("updatedAt","")).toEpochMilli()}.getOrNull()
-    }.maxOrNull()?:0L
+    val holdings=(0 until canonicalHoldings.length()).mapNotNull{canonicalHoldings.optJSONObject(it)}
+    fun quoteAt(row:org.json.JSONObject?):Long=runCatching{
+      java.time.Instant.parse(row?.optString("updatedAt","")?:"").toEpochMilli()
+    }.getOrDefault(0L)
+    val verifiedQuoteAt=holdings.map{quoteAt(it)}.maxOrNull()?:0L
     val nativeQuoteAt=prefs.getLong("wall_market_refreshed_at",0L)
-    val canReconcile=nativeQuoteAt<=0L || (verifiedQuoteAt>0L && verifiedQuoteAt>=nativeQuoteAt)
+    val hasNativeSource=prefs.contains("wall_market_source_at")
+    val nativeOverrides=runCatching{org.json.JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
     val edit=prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson)
-    if(canReconcile){
+    if(!hasNativeSource&&nativeOverrides.length()>0){
+      // Migrate legacy v2.1.19 HTTP-receipt timestamps: they are not valid exchange freshness proof.
       edit.remove("wall_market_overrides").remove("wall_market_refreshed_at")
-        .putString("widget_refresh_status",if(nativeQuoteAt>0L)"行情與財務已同步" else "App 財務快照")
+        .putString("widget_refresh_status","舊版行情時間未核實｜請更新")
     }else{
-      edit.putString("widget_refresh_status","行情較新｜財務待同步")
+      val pending=org.json.JSONObject()
+      val keys=nativeOverrides.keys()
+      while(keys.hasNext()){
+        val symbol=keys.next()
+        val old=nativeOverrides.optJSONObject(symbol)?:continue
+        val nativeAt=quoteAt(old)
+        val current=holdings.firstOrNull{it.optString("symbol","")==symbol}
+        val canonicalAt=quoteAt(current)
+        if(nativeAt<=0L||canonicalAt<nativeAt)pending.put(symbol,old)
+      }
+      val allSynced=pending.length()==0
+      // Keep the previous source-contract gate; all holdings must also be checked individually.
+      val canReconcile=nativeQuoteAt<=0L || (verifiedQuoteAt>0L && verifiedQuoteAt>=nativeQuoteAt && allSynced)
+      val clock=java.text.SimpleDateFormat("HH:mm:ss",java.util.Locale.TAIWAN)
+        .apply{timeZone=java.util.TimeZone.getTimeZone("Asia/Taipei")}
+      if(canReconcile&&allSynced){
+        edit.remove("wall_market_overrides").remove("wall_market_refreshed_at").remove("wall_market_source_at")
+        val everyHoldingDated=holdings.isNotEmpty()&&holdings.all{quoteAt(it)>0L}
+        val shownTime=verifiedQuoteAt.takeIf{it>0L}?.let{clock.format(java.util.Date(it))}
+        val status=when{
+          shownTime==null->"行情尚未核實｜App 財務快照"
+          !everyHoldingDated->"部分行情 $shownTime｜財務按已取得資料"
+          else->"行情 $shownTime｜財務已同步"
+        }
+        edit.putString("widget_refresh_status",status)
+      }else{
+        // A single newer native symbol is enough to block a misleading global 'fully synced' label.
+        edit.putString("wall_market_overrides",pending.toString())
+          .putString("widget_refresh_status","行情較新 ${pending.length()} 檔｜財務待同步")
+        if(pending.length()>0){
+          val oldestNewer=(0 until pending.length()).mapNotNull{index->
+            val symbol=pending.keys().asSequence().elementAtOrNull(index)?:return@mapNotNull null
+            quoteAt(pending.optJSONObject(symbol)).takeIf{it>0L}
+          }.maxOrNull()?:nativeQuoteAt
+          edit.putLong("wall_market_refreshed_at",oldestNewer)
+          edit.putLong("wall_market_source_at",oldestNewer)
+        }
+      }
     }
     edit.apply()
     refreshWidget()

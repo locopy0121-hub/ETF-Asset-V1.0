@@ -124,7 +124,7 @@ export function FinanceProvider({children}:PropsWithChildren){
     };
   }).filter(x=>x.shares>0),[snapshot,market.quotes]);
 
-  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt}),[snapshot,holdings,market.lastSuccessAt]);
+  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes}),[snapshot,holdings,market.lastSuccessAt,market.quotes]);
 
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,

@@ -16,6 +16,7 @@ import {
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
+import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
 export type { EtfCatalogItem } from './etfMetadata';
@@ -46,6 +47,8 @@ type PersistedMarketState = {
   config: MarketUpdateConfig;
   quotes: RuntimeQuote[];
   lastSuccessAt: number | null;
+  /** Legacy receipt timestamps are not trusted when migrating to version 2. */
+  quoteClockVersion?:2;
   catalog?: EtfCatalogItem[];
   catalogFetchedAt?: number | null; // Last refresh attempt; metadataVerifiedAt tracks successful official rows.
 };
@@ -155,8 +158,8 @@ async function fetchEtfCatalog(previous:readonly EtfCatalogItem[]):Promise<EtfCa
   return mergeEtfCatalog(FALLBACK_CATALOG,previous,rows,official,VERIFIED_ISSUER_DIVIDEND_POLICIES);
 }
 
-async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[]):Promise<{quotes:RuntimeQuote[];updatedCount:number;unresolved:string[]}>{
-  if(!symbols.length)return {quotes:[...previous],updatedCount:0,unresolved:[]};
+async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[],now=Date.now()):Promise<{quotes:RuntimeQuote[];updatedCount:number;usableCount:number;newestSourceAt:number|null;unresolved:string[]}>{
+  if(!symbols.length)return {quotes:[...previous],updatedCount:0,usableCount:0,newestSourceAt:null,unresolved:[]};
   const channels=symbols.flatMap(symbol=>[`tse_${symbol}.tw`,`otc_${symbol}.tw`]).join('|');
   const url='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch='+encodeURIComponent(channels)+'&json=1&delay=0&_='+Date.now();
   const response=await fetch(url,{headers:{Accept:'application/json'}});
@@ -171,7 +174,8 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     bySymbol.set(symbol,pickBetterTwseRow(existing,row));
   }
   const unresolved:string[]=[];
-  let updatedCount=0;
+  let updatedCount=0,usableCount=0;
+  let newestSourceAt:number|null=null;
   const next=symbols.map(symbol=>{
     const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
     const row=bySymbol.get(symbol);
@@ -189,7 +193,16 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       };
       return missing;
     }
+    // A cached MIS row is NOT a new quote just because HTTP returned 200.
+    const sourceQuoteAt=parseTwseQuoteSourceAt(row,now);
+    if(sourceQuoteAt===null){unresolved.push(symbol+'(來源時間缺失)');return old??{
+      symbol,name:symbol,currentPrice:0,previousClose:0,
+      liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,sparkline:[0],
+    };}
+    usableCount+=1;
+    if(!isNewSourceTick(sourceQuoteAt,old?.sourceQuoteAt))return old!;
     updatedCount+=1;
+    newestSourceAt=Math.max(newestSourceAt??0,sourceQuoteAt);
     const currentPrice=resolveTwseCurrentPrice(row);
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
@@ -198,6 +211,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       name:String(row?.n??old?.name??symbol),
       currentPrice,
       previousClose,
+      sourceQuoteAt,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
       dividendFrequency:old?.dividendFrequency??4,
       ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
@@ -205,7 +219,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       sparkline:sparkline.length?sparkline:[currentPrice],
     };
   });
-  return {quotes:next,updatedCount,unresolved};
+  return {quotes:next,updatedCount,usableCount,newestSourceAt,unresolved};
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
@@ -215,6 +229,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [hydrated,setHydrated]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [lastSuccessAt,setLastSuccessAt]=useState<number|null>(null);
+  // lastSuccessAt is now the latest verified exchange source tick, never Date.now().
   const [lastError,setLastError]=useState<string|null>(null);
   const [catalog,setCatalog]=useState<EtfCatalogItem[]>(FALLBACK_CATALOG);
   const [catalogFetchedAt,setCatalogFetchedAt]=useState<number|null>(null);
@@ -235,7 +250,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       if(parsed.schema===1){
         if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
         if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes);
-        if(Number.isFinite(Number(parsed.lastSuccessAt)))setLastSuccessAt(Number(parsed.lastSuccessAt));
+        if(parsed.quoteClockVersion===2&&typeof parsed.lastSuccessAt==='number'&&Number.isFinite(parsed.lastSuccessAt)){
+          setLastSuccessAt(parsed.lastSuccessAt);
+        } // Ignore pre-v2.1.20 HTTP receipt timestamps from legacy caches.
         if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
           // Apply new reviewed policies to old cached catalogues immediately on upgrade.
           const restored=mergeEtfCatalog(FALLBACK_CATALOG,parsed.catalog,[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES);
@@ -255,7 +272,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedMarketState={schema:1,config,quotes,lastSuccessAt,catalog,catalogFetchedAt};
+    const payload:PersistedMarketState={schema:1,quoteClockVersion:2,config,quotes,lastSuccessAt,catalog,catalogFetchedAt};
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
   },[hydrated,config,quotes,lastSuccessAt,catalog,catalogFetchedAt]);
 
@@ -284,11 +301,16 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         for(let attempt=1;attempt<=attempts;attempt+=1){
           try{
             const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
-            if(result.updatedCount<=0)throw new Error('TWSE no usable live quotes');
+            if(result.usableCount<=0)throw new Error('TWSE 無可靠報價時間或可用行情');
+            if(result.updatedCount===0){
+              // No source time advanced: do not alter finance, cached quotes, or 'last updated'.
+              setLastError('行情來源尚無新資料（維持前次更新時間）');
+              return;
+            }
             quotesRef.current=result.quotes;
             setQuotes(result.quotes);
-            setLastSuccessAt(Date.now());
-            setLastError(result.unresolved.length?'部分行情暫用上次資料：'+result.unresolved.join(','):null);
+            if(result.newestSourceAt!==null)setLastSuccessAt(current=>Math.max(current??0,result.newestSourceAt!));
+            setLastError(result.unresolved.length?'部分行情未更新：'+result.unresolved.join(','):null);
             return;
           }catch(error){
             lastFailure=error;
