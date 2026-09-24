@@ -22,7 +22,8 @@ assert.match(bridge,/verifiedQuoteAt>0L && verifiedQuoteAt>=nativeQuoteAt/,
   'Old App or startup fallback snapshots may not erase newer native quotes');
 assert.match(bridge,/canonicalSnapshot\.optJSONArray\("holdings"\)/,
   'Only dated holdings quotes can prove that the App market snapshot is newer');
-assert.match(bridge,/if\(canReconcile\)/);
+assert.match(bridge,/if\(canReconcile&&allSynced\)/,'Global sync requires every native-touched holding to have an equal-or-newer canonical quote time');
+assert.match(bridge,/canonicalAt<nativeAt/,'Per-symbol quote freshness must block an unrelated ticker from clearing native overlays');
 assert.match(bridge,/edit\.remove\("wall_market_overrides"\)\.remove\("wall_market_refreshed_at"\)/);
 assert.match(bridge,/行情較新｜財務待同步/);
 assert.match(app,/consumeNativeWidgetForceRefreshRequest/);
