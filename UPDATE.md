@@ -290,3 +290,12 @@ CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實�
 - 根據代碼盤點：前版 Native 混用 z/pz/b/a 為顯示價；App 對重覆 TSE/OTC 回傳以 z/盤口欄位分數選取，未依真實來源時間排序；Bridge 在來源秒數相等時未同時核對價格即解除原生 overlay。上述可能造成不一致，但不能在沒有逐檔真實 API 抓包前確定哪一個是截圖差價的單一原因。
 - 本輪只允許真正 last trade z + 交易所 d/t（有一致 tlong 時支援毫秒）推進報價；TWSE/TPEx 重複行以逐檔來源時間去重；Native 不強行以 pz / bid / ask 假充成交，關閉 HTTP 快取；Widget 將查詢時間、已驗行情、更新/待更新數與同秒價差分開；App/Native 同秒價格不同時保留 overlay 待同步，核心財務不可改。詳 GO_V2_1_21_CHECKLIST.md。
 - QA 與真機分開；只有 Actions 完成才填 APK/Artifact/SHA/badging PASS，不得宣稱實機刷新或跨來源價差已解決。第 05–08 項與歷史未完成清單完整保留。
+
+
+## 2026-09-24 GO V2.2.1｜行情回歸事故、外部檔案備份與明確驗收（進行中）
+- 使用者指定由 V2.1.21 升至 V2.2.1／20201，先處理 0056／00406A 零報價及 0050／00919／00713 種子價混入，再完成 Android 系統檔案選擇器的可攜式外部備份。
+- 在任何程式修改前，已建立精確 GitHub **原始碼**快照 `backup-v2.1.21-20260924-pre-go-v221`，來源 V2.1.21 HEAD `a29140a74ac73b985338891b09937923188cdff1`，工作分支 `go-v2.2.1-20260924-quotes-backup-saf`，Draft PR #39。
+- 重大事故：使用者解除安裝 V2.1.21 降回 V2.1.20，舊本機 App 私有資料與內建備份可能已遺失。GitHub 程式碼快照**不是手機帳務備份**，不會恢復任何遭系統刪除的交易紀錄；不可再建議解除安裝或清除 App 資料。
+- 市場 Runtime 改為僅接納具正確 TWSE 成交價與來源時間的逐檔報價，剔除種子價格、零值與無憑據舊快取；缺行情仍保留 Ledger 真實持股，UI／Native 顯示待取得或估值待核對，不把交易參考價偽裝成市場即時價。獨立行情回歸已在中途 Actions #35951092040 通過 TypeScript、完整舊聚合與新行為測試；最終 V2.2.1 重驗仍待核實。
+- 外部備份采用 Android SAF 系統 CREATE_DOCUMENT／OPEN_DOCUMENT，使用者可選手機資料夾或裝置已啟用的雲端提供者，完整 v2 JSON 包含現有 TF Asset 資料與前 10 份本機歷史備份。原生寫入後即刻讀回 byte-for-byte 比對，未比對完成絕不宣稱成功；選檔還原先格式核驗／預覽／確認，匯入前保留目前本機安全備份並寫後校驗。舊 v1 外部 JSON 支援驗證還原。
+- 保持 Canonical Core 三個鎖定檔案、Ledger 寫入、actualFee／tax 計算零更動。GitHub QA APK、Artifact／SHA／aapt／簽章與 Android 真機覆蓋安裝、外部備份還原均應獨立驗證；**QA build≠裝置 PASS≠正式 Release**。完整本輪鎖定矩陣見 `GO_V2_2_1_CHECKLIST.md`，舊八大項及歷史 U/G/N/T/C/D/R 全部繼承。
