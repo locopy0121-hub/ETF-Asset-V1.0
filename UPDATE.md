@@ -282,3 +282,11 @@ CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實�
 - Android Widget 桌面點擊／設定手動刷新啟動真實背景網路；只有比該檔上次 native／App 有效來源時間新的報價才更新價格。來源重複顯示「無新報價」、失敗保留先前資料，行情新於 App 財務時顯示「財務待同步」，不使用 HTTP 收取時間冒充交易所回報時間。Widget 將刷新按鈕與獨立狀態列分開。
 - Android 限制：`updatePeriodMillis` 仍是 30 分鐘；App 前景每 N 秒**嘗試查詢**，不保證每 N 秒必有新成交，更不聲稱背景可強制每 5 秒。完整 W01–W06／歷史八大項保護見 `GO_V2_1_20_CHECKLIST.md`。
 - Finance Core／Ledger 公式、actualFee/tax、已經實機 PASS 的 ETF 配息分類均不動。CI、APK、SHA、版本 badging 與 Android 實機需獨立取證，不能以本行宣告完成。
+
+
+## 2026-09-24 GO V2.1.21｜第 04 項 Widget 實機差價續修
+
+- 兩張截圖顯示桌面七檔中多檔與另一 App 庫存行情存在差值；兩個畫面並非同時封包/相同來源，不能證明 TWSE 遺漏了新 tick。本輪先從 V2.1.20 QA HEAD `a54ae06e9c4968f7780aba17cd6c6d0d5a5371d7` 及已驗證備份 `backup-v2.1.20-20260924-pre-go-v2121` 進入 V2.1.21／20121 獨立分支。
+- 根據代碼盤點：前版 Native 混用 z/pz/b/a 為顯示價；App 對重覆 TSE/OTC 回傳以 z/盤口欄位分數選取，未依真實來源時間排序；Bridge 在來源秒數相等時未同時核對價格即解除原生 overlay。上述可能造成不一致，但不能在沒有逐檔真實 API 抓包前確定哪一個是截圖差價的單一原因。
+- 本輪只允許真正 last trade z + 交易所 d/t（有一致 tlong 時支援毫秒）推進報價；TWSE/TPEx 重複行以逐檔來源時間去重；Native 不強行以 pz / bid / ask 假充成交，關閉 HTTP 快取；Widget 將查詢時間、已驗行情、更新/待更新數與同秒價差分開；App/Native 同秒價格不同時保留 overlay 待同步，核心財務不可改。詳 GO_V2_1_21_CHECKLIST.md。
+- QA 與真機分開；只有 Actions 完成才填 APK/Artifact/SHA/badging PASS，不得宣稱實機刷新或跨來源價差已解決。第 05–08 項與歷史未完成清單完整保留。
