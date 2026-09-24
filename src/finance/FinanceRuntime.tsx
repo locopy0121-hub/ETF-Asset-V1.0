@@ -110,7 +110,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       symbol:summary.etfCode,
       name:(verified&&quote!.name!==summary.etfCode?quote!.name:catalogName&&catalogName!==summary.etfCode?catalogName:summary.name),
       quoteVerified:verified,
-      quoteSourceAt:verified?quote!.sourceQuoteAt:null,
+      quoteSourceAt:verified?(quote!.sourceQuoteAt??null):null,
       shares:summary.totalShares,
       price:summary.currentPrice,
       previousClose,
