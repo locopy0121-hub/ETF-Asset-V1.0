@@ -283,7 +283,7 @@ export function SettingsScreen(){
     setBackupBusy(true);
     try{
       const document=await exportTfAssetData(); // blocks incomplete/missing Ledger
-      const suggested='TF-Asset-V2.3.1-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+      const suggested='TF-Asset-V2.3.2-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
       const receipt=await saveExternalBackup(document,suggested);
       if(!receipt){setBackupStatus('已取消外部存檔；沒有建立新的備份檔。');return;}
       const verified=await recordVerifiedExternalBackup(receipt,document);
