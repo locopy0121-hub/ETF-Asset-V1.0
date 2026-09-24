@@ -9,6 +9,7 @@ assert.equal(parseTwseDailyRow(['115/02/30',...valid.slice(1)]),null,'reject inv
 assert.equal(parseTwseDailyRow(['115/09/22','-','0','52','50','51','52']),null,'reject inconsistent OHLC');
 assert.equal(parseTwseDailyRow(['115/09/22','100','0','52','53','51','--']),null,'never invent missing close');
 assert.deepEqual(parseTwseMonthly({stat:'沒有符合條件的資料',data:[valid]}),[],'non-OK must not pass');
+async function main(){
 const oldFetch=globalThis.fetch;
 let calls=0;
 try{
@@ -24,3 +25,5 @@ try{
 }finally{globalThis.fetch=oldFetch;}
 await assert.rejects(()=>fetchOfficialDailyHistory('0050',13),/無效/);
 console.log('V2.3.4 item 7 official OHLCV parser, source, missing-data, request tests: PASS');
+}
+void main().catch(error=>{console.error(error);process.exitCode=1;});
