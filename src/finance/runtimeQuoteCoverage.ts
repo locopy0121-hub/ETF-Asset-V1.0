@@ -1,5 +1,6 @@
 import type { CanonicalLedgerEntry, MarketQuoteInput } from './canonicalLedger';
 import type { RuntimeQuote } from './financeSeed';
+import {isVerifiedRuntimeQuote} from '../market/quoteProvenance';
 
 function latestTradeBySymbol(entries:readonly CanonicalLedgerEntry[]){
   const map=new Map<string,Extract<CanonicalLedgerEntry,{kind:'buy'|'sell'}>>();
@@ -15,7 +16,7 @@ export function ensureLedgerQuoteCoverage(
   entries:readonly CanonicalLedgerEntry[],
   marketQuotes:readonly RuntimeQuote[],
 ):MarketQuoteInput[]{
-  const bySymbol=new Map<string,MarketQuoteInput>(marketQuotes.map(quote=>[quote.symbol,quote]));
+  const bySymbol=new Map<string,MarketQuoteInput>(marketQuotes.filter(quote=>isVerifiedRuntimeQuote(quote)).map(quote=>[quote.symbol,quote]));
   const latest=latestTradeBySymbol(entries);
   for(const [symbol,trade] of latest){
     if(bySymbol.has(symbol))continue;
