@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, go-v2.3.1-20260924-unified-market-center]
+    branches: [main, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall]
 
 jobs:
   quality:
@@ -20,7 +20,7 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
       - name: V2.3.2 aggregate gates
-        run: npm run test:v2_3_2
+        run: npm run test:v2_3_3
       - name: V2.3.2 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
       - name: V2.3.2 controls runtime behavior
@@ -31,7 +31,7 @@ jobs:
         run: npm run test:v1_1_3-dividend-calendar
       - name: V2.3.2 system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V2.3.2 user-visible version and integration smoke
+      - name: V2.3.3 user-visible version and integration smoke
         run: node scripts/v2_1_1-release.test.cjs
       - name: V2.3.2 release identity and UX controls
         run: node scripts/v2_1_1-release.test.cjs
