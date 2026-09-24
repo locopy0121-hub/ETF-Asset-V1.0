@@ -248,6 +248,28 @@ export function SettingsScreen(){
         <ChoiceRow label="預設交易類型" options={[{key:'buy',label:'買進'},{key:'sell',label:'賣出'}]} value={settings.prefs.tradeDefaults.tradeKind} onChange={tradeKind=>settings.patchTradeDefaults({tradeKind:tradeKind==='sell'?'sell':'buy'})}/>
         <Text style={styles.note}>只影響之後新開啟的交易表單，不改歷史紀錄。</Text>
       </Panel>:null}
+      <ChildButton label="現金來源／期初現金核對" summary={'期初 NT$ '+Math.round(finance.initialCash).toLocaleString('zh-TW')+' · 逐項對帳'} active={accountingPanel==='cash'} onPress={()=>setAccountingPanel(accountingPanel==='cash'?null:'cash')}/>
+      {accountingPanel==='cash'?<Panel title="現金來源對帳（金融核心只讀）">
+        {!finance.hydrated?<Text style={styles.note}>帳務資料讀取中。</Text>:(()=>{
+          const audit=auditCashSources(finance.initialCash,finance.entries);
+          const fmt=(value:number)=>'NT$ '+Math.round(value).toLocaleString('zh-TW');
+          return <>
+            <StatusRow label="期初現金（非交易紀錄）" value={fmt(audit.opening)}/>
+            <StatusRow label="買進現金支出" value={fmt(audit.buyOutflow)}/>
+            <StatusRow label="賣出淨流入" value={fmt(audit.sellInflow)}/>
+            <StatusRow label="已入帳股息" value={fmt(audit.dividendInflow)}/>
+            <StatusRow label="其他現金調整淨額" value={fmt(audit.otherNet)}/>
+            <StatusRow label="現金餘額" value={fmt(audit.cashBalance)}/>
+            <Text style={styles.note}>期初現金獨立儲存，不屬於歷史交易。已儲存的舊金額不會因 App 更新而自動歸零。</Text>
+            {audit.possibleLegacyDefault?<View>
+              <Text style={styles.dangerText}>偵測到舊版內建的 750,000 元期初值，仍需你確認是否為真實資金。沖回前請先建立外部備份。</Text>
+              <ActionButton label="先建立外部備份" onPress={()=>{setTop('backup');setBackupPanel('export');setAccountingPanel(null);}}/>
+              <ActionButton label={cashCorrectionBusy?'正在備份與核對…':'確認非本人資金，沖回 750,000 元'} disabled={cashCorrectionBusy||backupBusy} danger onPress={confirmLegacyCashCorrection}/>
+            </View>:null}
+            {audit.hasLegacyReversal?<Text style={styles.note}>已有舊版期初現金沖回紀錄，請至帳務中心核對。</Text>:null}
+          </>;
+        })()}
+      </Panel>:null}
       <ChildButton label="帳務核心狀態" summary="Canonical · 歷史費稅鎖定" active={accountingPanel==='core'} onPress={()=>setAccountingPanel(accountingPanel==='core'?null:'core')}/>
       {accountingPanel==='core'?<Panel title="帳務核心狀態">
         <StatusRow label="金融核心" value="Canonical Finance Core"/>
