@@ -65,6 +65,9 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
 };
 
 export type HoldingQuote = {
+  /** False means Core valuation uses transaction-price reference, not a verified market quote. */
+  quoteVerified?: boolean;
+  quoteSourceAt?: number|null;
   /** Only authoritative exchange/issuer metadata; never infer from a ticker or price. */
   etfType?: string | null;
   dividendType?: string | null;
