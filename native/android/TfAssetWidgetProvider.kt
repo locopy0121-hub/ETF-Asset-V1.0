@@ -96,8 +96,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         val detail=if(missing.length()>0)
           "｜待取得 "+(0 until minOf(3,missing.length())).joinToString(","){missing.optString(it)}
           else ""
-        prefs.edit().putString("widget_refresh_status",status+detail+"｜財務按 App 快照同步")
-          .putLong("wall_market_source_at",System.currentTimeMillis()).apply()
+        val newest=(0 until rows.length()).mapNotNull{rows.optJSONObject(it)?.optLong("sourceQuoteAt",0L)}
+          .maxOrNull()?:0L
+        val edit=prefs.edit().putString("widget_refresh_status",status+detail+"｜財務按 App 快照同步")
+        if(newest>0L)edit.putLong("wall_market_source_at",newest)
+        edit.apply()
       }catch(error:Exception){
         prefs.edit().putString("widget_refresh_status","行情資料中心查詢失敗｜保留已驗證資料").apply()
       }finally{
@@ -155,12 +158,46 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val config=runCatching{JSONObject(prefs.getString("widget_config","{}")?:"{}")}.getOrElse{JSONObject()}
     val snapshot=runCatching{JSONObject(prefs.getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
     val style=config.optJSONObject("style")?:JSONObject()
-    val asset=snapshot.optJSONObject("asset")?:JSONObject()
-    val quoteOverrides=runCatching{JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{JSONObject()}
-    val holdings=orderedHoldings(snapshot,config).map { original ->
-      val quote=quoteOverrides.optJSONObject(original.optString("symbol",""))
-      if(quote==null) original else JSONObject(original.toString()).apply {
-        listOf("price","previousClose","change","changePercent","updatedAt").forEach{key->if(quote.has(key))put(key,quote.get(key))}
+    val center=TfAssetMarketCenter(context)
+    val stored=center.snapshot()
+    val version=stored.optLong("version",0L)
+    val rows=stored.optJSONArray("quotes")?:JSONArray()
+    val bySymbol=(0 until rows.length()).mapNotNull{rows.optJSONObject(it)}
+      .associateBy{it.optString("symbol","")}
+    val canonical=orderedHoldings(snapshot,config)
+    val canonicalVersion=snapshot.optLong("marketDataVersion",-1L)
+    val hasAllQuotes=canonical.all{bySymbol.containsKey(it.optString("symbol",""))}
+    val pricesMatch=canonical.all{original->
+      val quote=bySymbol[original.optString("symbol","")]?:return@all false
+      kotlin.math.abs(quote.optDouble("currentPrice",Double.NaN)-
+        original.optDouble("price",Double.NaN))<0.0001
+    }
+    val financeSynchronized=canonicalVersion==version&&hasAllQuotes&&pricesMatch
+    val asset=JSONObject((snapshot.optJSONObject("asset")?:JSONObject()).toString()).apply{
+      if(!financeSynchronized){
+        listOf("totalAssets","marketValue","unrealizedPnl","totalReturn").forEach{put(it,JSONObject.NULL)}
+      }
+    }
+    val holdings=canonical.map{original->
+      val quote=bySymbol[original.optString("symbol","")]
+      JSONObject(original.toString()).apply{
+        if(quote==null){
+          listOf("price","previousClose","change","changePercent","updatedAt","marketValue",
+            "pnl","roi","comprehensivePnl").forEach{put(it,JSONObject.NULL)}
+          put("marketStatus","待取得")
+        }else{
+          val price=quote.optDouble("currentPrice",Double.NaN)
+          val close=quote.optDouble("previousClose",Double.NaN)
+          put("price",price)
+          put("previousClose",if(close>0)close else JSONObject.NULL)
+          put("change",if(close>0)price-close else JSONObject.NULL)
+          put("changePercent",if(close>0)(price-close)/close*100 else JSONObject.NULL)
+          put("updatedAt",Instant.ofEpochMilli(quote.optLong("sourceQuoteAt")).toString())
+          put("marketStatus",if(quote.optString("quality")=="trade")"實際成交" else "官方收盤參考")
+          if(!financeSynchronized){
+            listOf("marketValue","pnl","roi","comprehensivePnl").forEach{put(it,JSONObject.NULL)}
+          }
+        }
       }
     }
     val first=holdings.firstOrNull()
