@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "2.1.20",
+  "version": "2.3.1",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v2_1_20 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v2_3_1 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -124,7 +124,9 @@
     "test:issuer-policies-v219": "tsx scripts/v2_1_19-issuer-policies.test.ts",
     "test:v2_1_19": "npm run test:v2_1_18 && npm run test:issuer-policies-v219",
     "test:widget-source-v220": "tsx scripts/v2_1_20-widget-source.test.ts",
-    "test:v2_1_20": "npm run test:v2_1_19 && npm run test:widget-source-v220"
+    "test:v2_1_20": "npm run test:v2_1_19 && npm run test:widget-source-v220",
+    "test:market-center-v231": "node scripts/v2_3_1-market-center.test.cjs",
+    "test:v2_3_1": "npm run test:v2_1_20 && npm run test:market-center-v231"
   },
   "dependencies": {
     "expo": "~57.0.21",
