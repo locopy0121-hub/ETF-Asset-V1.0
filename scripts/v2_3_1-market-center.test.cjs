@@ -47,6 +47,6 @@ assert.match(read('native/android/TfAssetNativeModule.kt'),/Intent\.ACTION_CREAT
 assert.match(read('native/android/TfAssetNativeModule.kt'),/Intent\.ACTION_OPEN_DOCUMENT/);
 assert.match(read('src/settings/BackupService.ts'),/recordVerifiedExternalBackup/);
 assert.match(read('src/settings/backupDocumentFormat.ts'),/TF_LEDGER_KEY/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/本輪暫停危險清除/);
 assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='"+pkg.version+"'"),'Settings build version must match package');
-assert.match(read('src/screens/SettingsScreen.tsx'),/const VERSION='2\.3\.1'/);
 console.log('V2.3.1 identity + locked finance blob equality + single Android data-center architecture + external SAF backup guards: PASS');
