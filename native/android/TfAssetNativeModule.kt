@@ -37,6 +37,35 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   init{reactContext.addActivityEventListener(activityListener)}
   override fun getName() = "TfAssetNative"
 
+  /**
+   * App and Widget both use the SAME official fetcher and SQLite repository.
+   * Network/disk work stays off the UI and React Native bridge threads.
+   */
+  @ReactMethod fun refreshUnifiedMarketData(symbolsJson:String,promise:Promise){
+    val requested=runCatching{
+      val array=org.json.JSONArray(symbolsJson)
+      (0 until array.length()).map{array.optString(it,"")}
+    }.getOrElse{
+      promise.reject("MARKET_SYMBOLS","ETF 追蹤清單格式錯誤",it);return
+    }
+    Thread{
+      try{
+        val result=TfAssetMarketCenter(reactContext).refresh(requested)
+        promise.resolve(result.toString())
+        refreshWidget()
+        reactContext.sendBroadcast(Intent(reactContext,TfAssetOverlayService::class.java)
+          .setAction(TfAssetOverlayService.ACTION_REFRESH))
+      }catch(error:Exception){promise.reject("MARKET_REFRESH",error)}
+    }.start()
+  }
+
+  @ReactMethod fun readUnifiedMarketData(promise:Promise){
+    Thread{
+      try{promise.resolve(TfAssetMarketCenter(reactContext).snapshot().toString())}
+      catch(error:Exception){promise.reject("MARKET_READ",error)}
+    }.start()
+  }
+
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
     // Finance amounts always come from the App's canonical snapshot; Native only overlays prices.
     val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
