@@ -79,7 +79,7 @@ jobs:
   qa-apk:
     name: V2.3.5 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.3.5-20260925-item7-charts'
+    if: github.event_name == 'pull_request' && github.head_ref == 'fix-v2.3.5-20260925-alphanumeric-chart'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
