@@ -13,7 +13,7 @@ const result=auditMarketSymbols(
     row('0050','trade',now-3_000),
     row('00919','official_close',now-86_400_000),
     row('00878','trade',now-120_000),
-    {...row('00929','trade',now-1_000),source:undefined},
+    (()=>{const invalid={...row('00929','trade',now-1_000)};delete invalid.source;return invalid;})(),
   ],['00878'],now,
 );
 assert.deepEqual(result.map(x=>x.symbol),['0050','00919','00878','00929']);
