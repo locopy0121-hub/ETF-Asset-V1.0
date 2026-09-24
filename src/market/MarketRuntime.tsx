@@ -16,7 +16,7 @@ import {
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
-import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
+import {isNewSourceTick,parseTwseQuoteSourceAt,pickFreshestVerifiedTrade,verifiedTwseTrade} from './quoteFreshness';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
 export type { EtfCatalogItem } from './etfMetadata';
@@ -173,7 +173,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     const symbol=String(row.c??'').trim();
     if(!symbol)continue;
     const existing=bySymbol.get(symbol);
-    bySymbol.set(symbol,pickBetterTwseRow(existing,row));
+    bySymbol.set(symbol,pickFreshestVerifiedTrade(existing,row,now));
   }
   const unresolved:string[]=[];
   let updatedCount=0,usableCount=0;
@@ -181,7 +181,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
   const next=symbols.map(symbol=>{
     const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
     const row=bySymbol.get(symbol);
-    if(!hasUsableTwseQuote(row)){
+    if(!verifiedTwseTrade(row,now)){
       unresolved.push(symbol);
       if(old)return old;
       const missing:RuntimeQuote={
@@ -207,7 +207,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     if(!isNewSourceTick(sourceQuoteAt,old?.sourceQuoteAt))return old!;
     updatedCount+=1;
     newestSourceAt=Math.max(newestSourceAt??0,sourceQuoteAt);
-    const currentPrice=resolveTwseCurrentPrice(row);
+    const currentPrice=verifiedTwseTrade(row,now)!.price;
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
     return {
