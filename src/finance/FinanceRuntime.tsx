@@ -113,7 +113,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       quoteQuality:verified?(quote!.quality??'trade'):'unavailable',
       quoteSourceAt:verified?(quote!.sourceQuoteAt??null):null,
       marketDataVersion:market.marketDataVersion,
-      previousCloseKnown:verified?quote!.previousClose!==quote!.currentPrice:false,
+      previousCloseKnown:verified?quote!.previousCloseKnown!==false:false,
       shares:summary.totalShares,
       price:summary.currentPrice,
       previousClose,
