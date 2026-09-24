@@ -198,6 +198,38 @@ export function SettingsScreen(){
     </View>;
   }
 
+
+  function confirmLegacyCashCorrection(){
+    const audit=auditCashSources(finance.initialCash,finance.entries);
+    if(!finance.hydrated||cashCorrectionBusy||!audit.possibleLegacyDefault)return;
+    Alert.alert('確認舊版初始現金','目前存在 NT$ 750,000 期初現金。若並非本人資金，可新增一筆 -750,000 的可追查沖回紀錄。現金可能轉為負數，不會刪除買賣或股息紀錄。請先至備份與還原建立外部檔案。',[
+      {text:'取消',style:'cancel'},
+      {text:'先備份並建立沖回',style:'destructive',onPress:()=>void(async()=>{
+        setCashCorrectionBusy(true);
+        try{
+          if(!auditCashSources(finance.initialCash,finance.entries).possibleLegacyDefault)
+            throw new Error('初始現金狀態已有變化，請重新核對');
+          const backup=await createLocalBackup();
+          const raw=backup.payload[TF_LEDGER_KEY];
+          if(!raw)throw new Error('本機備份缺少 Ledger，沖回已取消');
+          const saved=JSON.parse(raw) as {initialCash?:number;entries?:unknown[]};
+          if(saved.initialCash!==finance.initialCash||
+            JSON.stringify(saved.entries)!==JSON.stringify(finance.entries))
+            throw new Error('本機備份與目前紀錄不一致，尚未執行沖回；請先確認帳務已儲存');
+          const now=new Date();
+          const day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),
+            String(now.getDate()).padStart(2,'0')].join('-');
+          finance.addOther({id:'legacy-opening-cash-reversal-'+now.getTime(),date:day,
+            kind:'other',label:LEGACY_REVERSAL_LABEL,amount:-LEGACY_DEFAULT_CASH});
+          await reloadBackupMeta();
+          Alert.alert('已送入沖回紀錄','已先建立 App 內備份。請開啟帳務中心核對沖回交易與現金餘額，並另存外部備份。不要解除安裝。');
+        }catch(error){
+          Alert.alert('沖回中止',error instanceof Error?error.message:String(error));
+        }finally{setCashCorrectionBusy(false);}
+      })()},
+    ]);
+  }
+
   function accountingSection(){
     const p=broker.activeProfile;
     return <View style={styles.children}>
