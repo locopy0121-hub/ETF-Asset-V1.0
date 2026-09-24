@@ -12,7 +12,8 @@ const legacy=auditCashSources(LEGACY_DEFAULT_CASH,previous);
 assert.equal(legacy.opening,750000);
 assert.equal(legacy.cashBalance,726021);
 assert.equal(legacy.possibleLegacyDefault,true);
-assert.equal(previous[0].amount,-23979,'audit must never mutate historical entries');
+assert.deepEqual(previous,[{id:'real-test-outflow',date:'2026-09-24',kind:'other',label:'已記錄的現金支出',amount:-23979}],
+  'audit must never mutate historical entries');
 const adjusted=auditCashSources(LEGACY_DEFAULT_CASH,[...previous,
   {id:'user-confirmed-reversal',date:'2026-09-24',kind:'other',label:LEGACY_REVERSAL_LABEL,amount:-750000}]);
 assert.equal(adjusted.cashBalance,-23979);
