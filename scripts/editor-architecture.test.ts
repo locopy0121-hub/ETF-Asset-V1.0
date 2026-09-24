@@ -85,7 +85,8 @@ for (const [file,page] of [
 }
 
 const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
-assert.doesNotMatch(settings,/pageKey=["']settings["']|PAGE_FRAMES\.settings|usePageEditor\(['"]settings['"]\)/,'Settings page must remain outside editable page frames');
+assert.doesNotMatch(settings,/pageKey=["']settings["']|frames=\{PAGE_FRAMES\.settings\}|usePageEditor\(['"]settings['"]\)/,'Settings page must remain outside editable page frames');
+assert.match(settings,/PAGE_FRAMES\.settings\.map\(/,'Settings must retain the read-only settings category list');
 // Settings may launch A/B tools for other pages, but must never itself become editable.
 if(settings.includes('PageFrameSettingsModal')){
   assert.match(settings,/const \[marketEditorTarget,setMarketEditorTarget\]=useState<'home'\|'portfolio'\|null>\(null\)/,'Settings A/B launcher must only target home and portfolio');
