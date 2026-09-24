@@ -43,9 +43,10 @@ const behaviors:readonly {key:FrameBehavior;label:string}[]=[
 const aligns=([{key:'left',label:'靠左'},{key:'center',label:'置中'},{key:'right',label:'靠右'}] as const);
 
 export function PageFrameSettingsModal({
-  visible,pageKey,title,frames,onClose,previewQuote,
+  visible,pageKey,title,frames,onClose,previewQuote,initialContentTab,
 }:{
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;previewQuote?:HoldingQuote|undefined;
+  initialContentTab?:'wall'|'badges'|undefined;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
   const pageSettings=useSettingsRuntime();
@@ -64,11 +65,12 @@ export function PageFrameSettingsModal({
     setDraft({...config});
     setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
     setDisplayDraft({...displayConfig});
-    setOpenFrame(pageKey==='portfolio'?'holding-view':null);
-    setOpenGroup(pageKey==='portfolio'?'holding-view:content':null);
+    const editFrame=pageKey==='portfolio'?'holding-view':pageKey==='home'?'holding-quotes':null;
+    setOpenFrame(initialContentTab?editFrame:(pageKey==='portfolio'?editFrame:null));
+    setOpenGroup(initialContentTab&&editFrame?editFrame+':content':(pageKey==='portfolio'?'holding-view:content':null));
     setShowWallPreview(true);
-    setContentTab(pageKey==='portfolio'?'list':'wall');
-  },[visible,config,displayConfig]);
+    setContentTab(initialContentTab??(pageKey==='portfolio'?'list':'wall'));
+  },[visible,config,displayConfig,initialContentTab]);
 
   const orderedFrames=useMemo(
     ()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),

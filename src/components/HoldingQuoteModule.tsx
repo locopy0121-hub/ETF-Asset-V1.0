@@ -35,6 +35,7 @@ export function HoldingQuoteModule({
   refreshToken?:string|number|null|undefined;
   onPress?:()=>void;
 }){
+  const showQuoteMetadata=useSettingsRuntime().prefs.marketCard.showQuoteMetadata;
   const change=item.price-item.previousClose;
   const changePct=item.previousClose>0?(change/item.previousClose)*100:0;
   const compact=style==='compact';
@@ -82,12 +83,12 @@ export function HoldingQuoteModule({
         </View>
       </EffectView>:null}
 
-      <Text style={{fontSize:10,color:item.quoteVerified===false?'#F59E0B':'#94A3B8'}}>
+      {(showQuoteMetadata||item.quoteVerified===false)?<Text style={{fontSize:10,color:item.quoteVerified===false?'#F59E0B':'#94A3B8'}}>
         {item.quoteVerified===false?'行情待取得｜估值待核對':
           (item.quoteQuality==='official_close'?'官方收盤參考':'實際成交')+'｜'+
           (item.quoteSourceAt?new Date(item.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'來源待核對')+
           '｜資料版本 '+(item.marketDataVersion??0)}
-      </Text>
+      </Text>:null}
       {groups.quote.length?<View style={styles.quoteRow}>
         <View style={{flex:1,minWidth:0}}>
           <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
@@ -273,7 +274,7 @@ function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,ch
   if(item.previousCloseKnown===false&&['change','changePercent'].includes(field))return '前收待取得';
   if(field==='name')return item.name;
   if(field==='symbol')return item.symbol;
-  if(field==='etfType')return item.etfType?.trim()||'類型待確認';
+  if(field==='etfType')return item.etfType?.trim().replace(/型$/u,'')||'類別待確認';
   if(field==='dividendType')return item.dividendType?.trim()||'配息待確認';
   if(field==='price')return item.price.toFixed(2);
   if(field==='change')return `${change>=0?'▲':'▼'} ${change>=0?'+':''}${change.toFixed(2)}`;

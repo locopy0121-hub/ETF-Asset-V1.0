@@ -14,9 +14,9 @@ const locked={
 for(const [path,expected] of Object.entries(locked))
   assert.equal(blob(path),expected,'Locked finance file differs from V2.1.20 backup: '+path);
 const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'2.3.1');
-assert.equal(app.expo.version,'2.3.1');
-assert.equal(app.expo.android.versionCode,20301);
+assert.ok(/^2\.3\.[12]$/.test(pkg.version),'Expected V2.3.1 baseline or V2.3.2 continuation');
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,20300+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.android.package,'com.tfasset.app');
 const market=read('src/market/MarketRuntime.tsx');
 const db=read('native/android/TfAssetMarketDatabase.kt');
@@ -48,5 +48,5 @@ assert.match(read('native/android/TfAssetNativeModule.kt'),/Intent\.ACTION_OPEN_
 assert.match(read('src/settings/BackupService.ts'),/recordVerifiedExternalBackup/);
 assert.match(read('src/settings/backupDocumentFormat.ts'),/TF_LEDGER_KEY/);
 assert.match(read('src/screens/SettingsScreen.tsx'),/本輪暫停危險清除/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/const VERSION='2\.3\.1'/);
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='"+pkg.version+"'"),'Settings build version must match package');
 console.log('V2.3.1 identity + locked finance blob equality + single Android data-center architecture + external SAF backup guards: PASS');

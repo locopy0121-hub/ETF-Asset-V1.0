@@ -85,7 +85,14 @@ for (const [file,page] of [
 }
 
 const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
-assert.ok(!settings.includes('PageFrameSettingsModal'),'Settings page must remain outside page-frame editor');
+assert.doesNotMatch(settings,/pageKey=["']settings["']|frames=\{PAGE_FRAMES\.settings\}|usePageEditor\(['"]settings['"]\)/,'Settings page must remain outside editable page frames');
+assert.match(settings,/PAGE_FRAMES\.settings\.map\(/,'Settings must retain the read-only settings category list');
+// Settings may launch A/B tools for other pages, but must never itself become editable.
+if(settings.includes('PageFrameSettingsModal')){
+  assert.match(settings,/const \[marketEditorTarget,setMarketEditorTarget\]=useState<'home'\|'portfolio'\|null>\(null\)/,'Settings A/B launcher must only target home and portfolio');
+  assert.match(settings,/pageKey=\{marketEditorTarget\}/,'A/B modal must bind the target page, never Settings');
+  assert.match(settings,/frames=\{PAGE_FRAMES\[marketEditorTarget\]\}/,'A/B modal must use target page frames');
+}
 
 const registry=fs.readFileSync('src/domain/frameRegistry.ts','utf8');
 assert.match(registry,/key:'holding-view'/,'portfolio must expose actual holding-view frame');

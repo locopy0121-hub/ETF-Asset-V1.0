@@ -18,7 +18,7 @@ for(const name of ['etfType','dividendType']){
   assert.ok(portfolio.includes("tags.get(item.symbol)?."+name),name+' should appear in Portfolio');
 }
 assert.ok(market.includes('https://openapi.twse.com.tw/v1/opendata/t187ap47_L'));
-assert.ok(renderer.includes("類型待確認")&&renderer.includes("配息待確認"));
+assert.ok(renderer.includes("類別待確認")&&renderer.includes("配息待確認"));
 assert.ok(market.includes("if(!etfType&&!dividendType)continue"));
 for(const forbidden of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts']){
   assert.ok(fs.existsSync(forbidden));

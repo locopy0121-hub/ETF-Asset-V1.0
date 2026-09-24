@@ -198,6 +198,16 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       effect:normalizeWallEffect(header.effect,DEFAULT_HOLDING_WALL_CONFIG.header.effect),
     },
     fields,
+    ticker:{
+      enabled:source.ticker?.enabled===true,
+      direction:source.ticker?.direction==='right'?'right':'left',
+      speed:clamp(source.ticker?.speed,15,150,DEFAULT_HOLDING_WALL_CONFIG.ticker!.speed),
+      itemGap:clamp(source.ticker?.itemGap,0,64,DEFAULT_HOLDING_WALL_CONFIG.ticker!.itemGap),
+      showPrice:source.ticker?.showPrice!==false,
+      showChange:source.ticker?.showChange!==false,
+      textColor:wallColor(source.ticker?.textColor,DEFAULT_HOLDING_WALL_CONFIG.ticker!.textColor),
+      backgroundColor:wallColor(source.ticker?.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.ticker!.backgroundColor),
+    },
     style:{
       backgroundColor:wallColor(style.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.style.backgroundColor),
       textColor:wallColor(style.textColor,DEFAULT_HOLDING_WALL_CONFIG.style.textColor),
