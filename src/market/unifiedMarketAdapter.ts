@@ -33,6 +33,7 @@ export function marketRowsToRuntimeQuotes(
       currentPrice:row.currentPrice,previousClose:prev,
       sourceQuoteAt:row.sourceQuoteAt,
       quality:row.quality,source:row.source,checkedAt:row.checkedAt,
+      previousCloseKnown:row.previousClose!==null||(old?.previousCloseKnown===true),
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
       dividendFrequency:old?.dividendFrequency??4,
