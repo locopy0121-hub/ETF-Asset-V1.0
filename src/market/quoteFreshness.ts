@@ -16,8 +16,34 @@ export function parseTwseQuoteSourceAt(row:TwseTimestampRow|undefined,now=Date.n
   const check=new Date(sourceAt+8*3_600_000);
   if(check.getUTCFullYear()!==y||check.getUTCMonth()!==m-1||check.getUTCDate()!==d)return null;
   if(!Number.isFinite(now)||sourceAt>now+120_000||sourceAt<now-31*86_400_000)return null;
+  // Optional exchange epoch milliseconds; never trust a conflicting network timestamp.
+  const rawLong=String(row.tlong??'').trim();
+  if(/^\d{13}$/.test(rawLong)){
+    const tlong=Number(rawLong);
+    if(Number.isFinite(tlong)&&Math.abs(tlong-sourceAt)<1_000)return tlong;
+  }
   return sourceAt;
 }
 export function isNewSourceTick(sourceAt:number|null,previous:number|null|undefined){
   return sourceAt!==null&&Number.isFinite(sourceAt)&&sourceAt>0&&sourceAt>(previous??0);
+}
+
+/** Only the exchange last-trade z may advance a verified traded price; bid/ask are indicative. */
+export function verifiedTwseTrade(row:TwseTimestampRow|undefined,now=Date.now()):{price:number;sourceAt:number}|null{
+  if(!row)return null;
+  const price=Number(String(row.z??'').trim());
+  const sourceAt=parseTwseQuoteSourceAt(row,now);
+  return Number.isFinite(price)&&price>0&&sourceAt!==null?{price,sourceAt}:null;
+}
+
+/** The response may contain both TWSE and TPEx channels for the same symbol. */
+export function pickFreshestVerifiedTrade(current:TwseTimestampRow|undefined,next:TwseTimestampRow,now=Date.now()):TwseTimestampRow{
+  if(!current)return next;
+  const a=verifiedTwseTrade(current,now),b=verifiedTwseTrade(next,now);
+  if(!a)return b?next:current;
+  if(!b)return current;
+  if(a.sourceAt!==b.sourceAt)return b.sourceAt>a.sourceAt?next:current;
+  const volume=(row:TwseTimestampRow)=>Number(String(row.v??'').trim());
+  const oldVolume=volume(current),newVolume=volume(next);
+  return Number.isFinite(newVolume)&&Number.isFinite(oldVolume)&&newVolume>oldVolume?next:current;
 }
