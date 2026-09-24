@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {HoldingQuoteTicker} from './HoldingQuoteTicker';
 
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingWallConfig, type QuoteModuleStyle } from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
@@ -28,6 +29,7 @@ export function HoldingQuoteCollection({
   const pageWidth=Math.max(280,width-64);
   const effectiveWallConfig=wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
   const effectiveBadgeConfig=badgeConfig??DEFAULT_ETF_BADGES;
+  const content=(()=>{
   if(layoutMode==='horizontal'){
     const itemWidth=Math.max(230,Math.min(pageWidth-18,width*0.78));
     return <ScrollView
@@ -75,9 +77,15 @@ export function HoldingQuoteCollection({
   return <View style={styles.list}>
     {rows.map(item=><HoldingQuoteModule key={item.symbol} item={item} style={style} wallConfig={effectiveWallConfig} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken} onPress={()=>onOpenHolding(item)}/>)}
   </View>;
+  })();
+  return <View style={styles.collection}>
+    {effectiveWallConfig.ticker?.enabled?<HoldingQuoteTicker rows={rows} config={effectiveWallConfig.ticker}/>:null}
+    {content}
+  </View>;
 }
 
 const styles=StyleSheet.create({
+  collection:{gap:0},
   list:{gap:spacing.sm},
   grid:{flexDirection:'row',flexWrap:'wrap',gap:spacing.sm,alignItems:'stretch'},
   half:{width:'48.5%'},
