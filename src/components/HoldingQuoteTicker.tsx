@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Animated,StyleSheet,Text,View} from 'react-native';
 import type {HoldingQuote,WallTickerConfig} from '../domain/uiModels';
+import {quoteTickerCell} from '../domain/quoteTicker';
 
 /** A-layer presentation-only ticker. It NEVER polls, changes a source clock or writes finance data. */
 export function HoldingQuoteTicker({rows,config}:{rows:readonly HoldingQuote[];config:WallTickerConfig}){
@@ -22,14 +23,7 @@ export function HoldingQuoteTicker({rows,config}:{rows:readonly HoldingQuote[];c
     return ()=>animation.stop();
   },[position,config.enabled,config.direction,config.speed,viewportWidth,contentWidth]);
   if(!config.enabled||rows.length===0)return null;
-  const cells=rows.slice(0,40).map(row=>{
-    const confirmed=row.quoteVerified!==false&&Number.isFinite(row.price)&&row.price>0;
-    const change=row.previousCloseKnown!==false&&row.previousClose>0
-      ?((row.price-row.previousClose)/row.previousClose)*100:null;
-    return confirmed
-      ?[row.symbol,row.name,config.showPrice?row.price.toFixed(2):'',config.showChange&&change!=null?(change>=0?'+':'')+change.toFixed(2)+'%':''].filter(Boolean).join('  ')
-      :row.symbol+'  行情待取得';
-  });
+  const cells=rows.slice(0,40).map(row=>quoteTickerCell(row,config));
   return <View style={[styles.viewport,{backgroundColor:config.backgroundColor}]}
     onLayout={e=>setViewportWidth(e.nativeEvent.layout.width)} accessible accessibilityLabel={cells.join('；')}>
     <Animated.View onLayout={e=>setContentWidth(e.nativeEvent.layout.width)}
