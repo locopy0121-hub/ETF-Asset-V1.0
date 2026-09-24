@@ -197,10 +197,12 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     }
     // A cached MIS row is NOT a new quote just because HTTP returned 200.
     const sourceQuoteAt=parseTwseQuoteSourceAt(row,now);
-    if(sourceQuoteAt===null){unresolved.push(symbol+'(來源時間缺失)');return old??{
-      symbol,name:symbol,currentPrice:0,previousClose:0,
-      liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,sparkline:[0],
-    };}
+    if(sourceQuoteAt===null){
+      unresolved.push(symbol+'(來源時間缺失)');
+      const missing:RuntimeQuote={symbol,name:symbol,currentPrice:0,previousClose:0,
+        liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,sparkline:[0]};
+      return old??missing;
+    }
     usableCount+=1;
     if(!isNewSourceTick(sourceQuoteAt,old?.sourceQuoteAt))return old!;
     updatedCount+=1;
