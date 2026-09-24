@@ -5,6 +5,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   /** Timestamp from the exchange feed; never the HTTP receipt time. */
   sourceQuoteAt?:number|null;
   quality?:'trade'|'official_close';
+  previousCloseKnown?:boolean;
   source?:'TWSE_MIS'|'TWSE_DAILY'|'TPEX_DAILY';
   checkedAt?:number;
   marketDataVersion?:number;
