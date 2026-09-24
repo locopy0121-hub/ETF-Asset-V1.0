@@ -59,6 +59,20 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     }.start()
   }
 
+  @ReactMethod fun setMarketBackendUrl(url:String,promise:Promise){
+    val endpoint=url.trim().trimEnd('/')
+    if(endpoint.isNotEmpty()&&(!endpoint.startsWith("https://")||
+       endpoint.contains("@")||endpoint.contains("#")||endpoint.contains("?")||
+       endpoint.length>200)){
+      promise.reject("BAD_MARKET_URL","後端網址必須是 HTTPS，不可含帳密或查詢參數")
+      return
+    }
+    // Only the independent market source changes. Ledger and fee/tax persistence
+    // are not accessed by any market-backend setting.
+    prefs.edit().putString("market_backend_url",endpoint).apply()
+    promise.resolve(true)
+  }
+
   @ReactMethod fun readUnifiedMarketData(promise:Promise){
     Thread{
       try{promise.resolve(TfAssetMarketCenter(reactContext).snapshot().toString())}
