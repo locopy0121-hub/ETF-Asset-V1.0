@@ -24,6 +24,7 @@ export type UnifiedMarketSnapshot=Readonly<{
 type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   readUnifiedMarketData:()=>Promise<string>;
+  setMarketBackendUrl:(url:string)=>Promise<boolean>;
   syncWidget:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   syncMonitor:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   requestWidgetRefresh:()=>Promise<boolean>;
@@ -72,4 +73,9 @@ export async function refreshUnifiedMarketData(symbols:readonly string[]):Promis
   if(!unifiedMarketCenterAvailable||!native)throw new Error('Android 行情資料中心尚未安裝');
   const raw=await native.refreshUnifiedMarketData(JSON.stringify(symbols));
   return JSON.parse(raw) as UnifiedMarketSnapshot;
+}
+
+export async function setNativeMarketBackendUrl(url:string){
+  if(!unifiedMarketCenterAvailable||!native)return false;
+  return native.setMarketBackendUrl(url);
 }
