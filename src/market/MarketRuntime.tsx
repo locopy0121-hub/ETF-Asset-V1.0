@@ -17,6 +17,8 @@ import {
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
+import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData} from '../native/TfAssetNativeBridge';
+import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
 export type { EtfCatalogItem } from './etfMetadata';
@@ -65,13 +67,17 @@ type MarketRuntimeValue = {
   lastError: string | null;
   catalog: readonly EtfCatalogItem[];
   catalogRefreshing: boolean;
+  /** One SQLite commit version, shared across all React screens, Widget and Monitor. */
+  marketDataVersion:number;
+  missingSymbols:readonly string[];
   setConfig: (next: MarketUpdateConfig) => void;
   refresh: (options?:{ force?: boolean }) => Promise<MarketRefreshResult>;
   refreshCatalog: () => Promise<void>;
   setTrackedSymbols: (symbols: readonly string[]) => void;
 };
 
-const STORAGE_KEY='@tf-asset/market-runtime';
+const LEGACY_STORAGE_KEY='@tf-asset/market-runtime';
+const STORAGE_KEY='@tf-asset/market-runtime-v231';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
 const FALLBACK_CATALOG:EtfCatalogItem[]=mergeEtfCatalog(
   FALLBACK_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'})),[],[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES,
@@ -228,7 +234,10 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
-  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[...FALLBACK_QUOTES]);
+  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[]);
+  const [marketDataVersion,setMarketDataVersion]=useState(0);
+  const marketVersionRef=useRef(0);
+  const [missingSymbols,setMissingSymbols]=useState<string[]>([]);
   const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>(()=>FALLBACK_QUOTES.map(x=>x.symbol));
   const [hydrated,setHydrated]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
@@ -243,29 +252,53 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const catalogRefreshingRef=useRef(false);
   const refreshingRef=useRef(false);
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
-  const quotesRef=useRef<RuntimeQuote[]>([...FALLBACK_QUOTES]);
+  const quotesRef=useRef<RuntimeQuote[]>([]);
   const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
 
   useEffect(()=>{
     let alive=true;
-    AsyncStorage.getItem(STORAGE_KEY).then(raw=>{
-      if(!alive||!raw)return;
-      const parsed=JSON.parse(raw) as Partial<PersistedMarketState>;
-      if(parsed.schema===1){
-        if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
-        if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes);
-        if(parsed.quoteClockVersion===2&&typeof parsed.lastSuccessAt==='number'&&Number.isFinite(parsed.lastSuccessAt)){
-          setLastSuccessAt(parsed.lastSuccessAt);
-        } // Ignore pre-v2.1.20 HTTP receipt timestamps from legacy caches.
-        if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
-          // Apply new reviewed policies to old cached catalogues immediately on upgrade.
-          const restored=mergeEtfCatalog(FALLBACK_CATALOG,parsed.catalog,[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES);
-          catalogRef.current=restored;
-          setCatalog(restored);
+    (async()=>{
+      const current=await AsyncStorage.getItem(STORAGE_KEY);
+      const legacy=current??await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
+      if(!alive)return;
+      if(legacy){
+        const parsed=JSON.parse(legacy) as Partial<PersistedMarketState>;
+        if(parsed.schema===1){
+          if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,
+            live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},
+            afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
+          if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
+            const restored=mergeEtfCatalog(FALLBACK_CATALOG,parsed.catalog,[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES);
+            catalogRef.current=restored;
+            setCatalog(restored);
+          }
+          if(typeof parsed.catalogFetchedAt==='number'&&Number.isFinite(parsed.catalogFetchedAt)){
+            setCatalogFetchedAt(parsed.catalogFetchedAt);
+          }
+          // V2.1.20 used some indicative book/seed prices. Never migrate that
+          // unproven price cache into the new verified SQLite database.
+          if(!unifiedMarketCenterAvailable&&Array.isArray(parsed.quotes)){
+            const safe=parsed.quotes.filter(row=>row.currentPrice>0&&typeof row.sourceQuoteAt==='number'
+              &&row.sourceQuoteAt>0&&row.sourceQuoteAt<Date.now()+120_000
+              &&row.sourceQuoteAt>Date.now()-31*86_400_000);
+            quotesRef.current=safe;
+            setQuotes(safe);
+          }
         }
-        if(typeof parsed.catalogFetchedAt==='number'&&Number.isFinite(parsed.catalogFetchedAt))setCatalogFetchedAt(parsed.catalogFetchedAt);
       }
-    }).catch(()=>{}).finally(()=>{if(alive)setHydrated(true);});
+      if(unifiedMarketCenterAvailable){
+        const snapshot=await loadUnifiedMarketData();
+        if(!alive)return;
+        const restored=marketRowsToRuntimeQuotes(snapshot,quotesRef.current);
+        quotesRef.current=restored;
+        setQuotes(restored);
+        marketVersionRef.current=snapshot.version;
+        setMarketDataVersion(snapshot.version);
+        const latest=restored.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
+        if(latest>0)setLastSuccessAt(latest);
+      }
+    })().catch(error=>{if(alive)setLastError('行情資料中心載入失敗：'+String(error));})
+      .finally(()=>{if(alive)setHydrated(true);});
     return()=>{alive=false;};
   },[]);
 
@@ -276,7 +309,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedMarketState={schema:1,quoteClockVersion:2,config,quotes,lastSuccessAt,catalog,catalogFetchedAt};
+    // Source of truth for Android quotes is SQLite; AsyncStorage stores only presentation/settings.
+    const payload:PersistedMarketState={schema:1,quoteClockVersion:2,config,quotes:unifiedMarketCenterAvailable?[]:quotes,lastSuccessAt,catalog,catalogFetchedAt};
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
   },[hydrated,config,quotes,lastSuccessAt,catalog,catalogFetchedAt]);
 
@@ -290,7 +324,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
     const normalized=symbols.map(x=>x.trim().toUpperCase()).filter(Boolean);
-    setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])));
+    // Follow the current holdings/watchlist rather than keeping sold securities forever.
+    setTrackedSymbolsState(normalized.length?Array.from(new Set(normalized)):FALLBACK_QUOTES.map(x=>x.symbol));
   },[]);
 
   const refresh=useCallback((options?:{force?:boolean}):Promise<MarketRefreshResult>=>{
@@ -304,6 +339,30 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         const attempts=options?.force?3:2;
         for(let attempt=1;attempt<=attempts;attempt+=1){
           try{
+            if(unifiedMarketCenterAvailable){
+              // Native App and Widget call the same official fetcher; one SQLite
+              // transaction publishes a single versioned snapshot to every screen.
+              const state=await refreshUnifiedMarketData(symbolsRef.current);
+              const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
+              const currentVersion=marketVersionRef.current;
+              setMissingSymbols(Array.isArray(state.missing)?state.missing:[]);
+              if(state.version>currentVersion){
+                quotesRef.current=next;
+                setQuotes(next);
+                marketVersionRef.current=state.version;
+                setMarketDataVersion(state.version);
+                const newest=next.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
+                if(newest>0)setLastSuccessAt(current=>Math.max(current??0,newest));
+              }
+              if(next.length===0){
+                setLastError('交易所尚無可核實行情；原始帳務資料不受影響');
+                return 'error';
+              }
+              const missing=Array.isArray(state.missing)?state.missing:[];
+              const errors=Array.isArray(state.errors)?state.errors:[];
+              setLastError(missing.length?'行情中心尚缺 '+missing.join('、'):(errors.length?errors[0]??null:null));
+              return state.updatedCount&&state.updatedCount>0?'updated':'unchanged';
+            }
             const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
             if(result.usableCount<=0)throw new Error('TWSE 無可靠報價時間或可用行情');
             if(result.updatedCount===0){
@@ -383,8 +442,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[config.refreshOnForeground,refresh]);
 
   const value=useMemo<MarketRuntimeValue>(()=>({
-    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,setConfig,refresh,refreshCatalog,setTrackedSymbols,
-  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,setConfig,refresh,refreshCatalog,setTrackedSymbols]);
+    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols,
+  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols]);
 
   return <MarketRuntimeContext.Provider value={value}>{children}</MarketRuntimeContext.Provider>;
 }
