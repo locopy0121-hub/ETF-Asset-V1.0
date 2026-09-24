@@ -230,7 +230,7 @@ export function SettingsScreen(){
       {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
       <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
       {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
-        <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，絕不套用 360 編輯器。</Text>
+        <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
         <ActionButton label="編輯首頁行情牆" onPress={()=>openMarketEditor('home','wall')}/>
         <ActionButton label="編輯庫存行情牆" onPress={()=>openMarketEditor('portfolio','wall')}/>
       </Panel>:null}
