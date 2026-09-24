@@ -85,12 +85,12 @@ for (const [file,page] of [
 }
 
 const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
-assert.doesNotMatch(settings,/pageKey=["']settings["']|PAGE_FRAMES\\.settings|usePageEditor\\(['"]settings['"]\\)/,'Settings page must remain outside editable page frames');
+assert.doesNotMatch(settings,/pageKey=["']settings["']|PAGE_FRAMES\.settings|usePageEditor\(['"]settings['"]\)/,'Settings page must remain outside editable page frames');
 // Settings may launch A/B tools for other pages, but must never itself become editable.
 if(settings.includes('PageFrameSettingsModal')){
-  assert.match(settings,/const \\[marketEditorTarget,setMarketEditorTarget\\]=useState<'home'\\|'portfolio'\\|null>\\(null\\)/,'Settings A/B launcher must only target home and portfolio');
-  assert.match(settings,/pageKey=\\{marketEditorTarget\\}/,'A/B modal must bind the target page, never Settings');
-  assert.match(settings,/frames=\\{PAGE_FRAMES\\[marketEditorTarget\\]\\}/,'A/B modal must use target page frames');
+  assert.match(settings,/const \[marketEditorTarget,setMarketEditorTarget\]=useState<'home'\|'portfolio'\|null>\(null\)/,'Settings A/B launcher must only target home and portfolio');
+  assert.match(settings,/pageKey=\{marketEditorTarget\}/,'A/B modal must bind the target page, never Settings');
+  assert.match(settings,/frames=\{PAGE_FRAMES\[marketEditorTarget\]\}/,'A/B modal must use target page frames');
 }
 
 const registry=fs.readFileSync('src/domain/frameRegistry.ts','utf8');
