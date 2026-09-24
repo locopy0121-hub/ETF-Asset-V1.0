@@ -25,6 +25,8 @@ type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   readUnifiedMarketData:()=>Promise<string>;
   setMarketBackendUrl:(url:string)=>Promise<boolean>;
+  saveBackupDocument:(text:string,fileName:string)=>Promise<ExternalBackupReceipt|null>;
+  openBackupDocument:()=>Promise<OpenedBackupDocument|null>;
   syncWidget:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   syncMonitor:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   requestWidgetRefresh:()=>Promise<boolean>;
@@ -78,4 +80,23 @@ export async function refreshUnifiedMarketData(symbols:readonly string[]):Promis
 export async function setNativeMarketBackendUrl(url:string){
   if(!unifiedMarketCenterAvailable||!native)return false;
   return native.setMarketBackendUrl(url);
+}
+
+
+export type ExternalBackupReceipt=Readonly<{
+  uri:string;fileName:string;bytes:number;verified:true;
+}>;
+export type OpenedBackupDocument=Readonly<{
+  uri:string;fileName:string;bytes:number;text:string;
+}>;
+export const backupDocumentPickerAvailable=Platform.OS==='android'
+  &&typeof native?.saveBackupDocument==='function'
+  &&typeof native?.openBackupDocument==='function';
+export async function saveExternalBackup(text:string,fileName:string):Promise<ExternalBackupReceipt|null>{
+  if(!backupDocumentPickerAvailable||!native)throw new Error('Android 外部 JSON 備份檔案選擇器無法使用');
+  return native.saveBackupDocument(text,fileName);
+}
+export async function chooseExternalBackup():Promise<OpenedBackupDocument|null>{
+  if(!backupDocumentPickerAvailable||!native)throw new Error('Android 外部 JSON 還原選擇器無法使用');
+  return native.openBackupDocument();
 }
