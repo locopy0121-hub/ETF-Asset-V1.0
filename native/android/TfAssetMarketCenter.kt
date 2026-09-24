@@ -101,11 +101,87 @@ internal class TfAssetMarketCenter(private val context:Context){
       .put("quality","official_close").put("source",market)
   }
 
+  /**
+   * When a verified HTTPS backend is configured, ALL native surfaces consume
+   * its single versioned market API. No independent official HTTP request runs
+   * on the phone. Without deployment the local official source remains an
+   * explicitly labeled QA fallback, never an imaginary cloud deployment.
+   */
+  private fun remoteSnapshot(base:String,symbols:List<String>,now:Long):JSONObject{
+    val prefs=context.getSharedPreferences("tf_asset_native",0)
+    val clientId=prefs.getString("market_client_id",null)
+      ?.takeIf{it.matches(Regex("[a-zA-Z0-9_-]{8,64}"))}
+      ?:("android_"+java.util.UUID.randomUUID().toString().replace("-","")).also{
+        prefs.edit().putString("market_client_id",it).apply()
+      }
+    try{
+      val subscribe=(URL(base+"/v1/market/subscriptions").openConnection() as HttpURLConnection).apply{
+        requestMethod="POST"
+        doOutput=true
+        connectTimeout=3500
+        readTimeout=3500
+        setRequestProperty("Content-Type","application/json")
+      }
+      try{
+        val body=JSONObject().put("clientId",clientId).put("symbols",JSONArray(symbols)).toString()
+        subscribe.outputStream.use{it.write(body.toByteArray(Charsets.UTF_8))}
+        subscribe.inputStream.close()
+      }finally{subscribe.disconnect()}
+    }catch(_:Exception){ /* Static backend watches still allow cache reads. */ }
+    val url=base+"/v1/market/quotes?symbols="+URLEncoder.encode(symbols.joinToString(","),"UTF-8")
+    val raw=fetchJson(url)
+    val result=JSONObject(raw)
+    val rows=result.optJSONArray("quotes")?:JSONArray()
+    val candidates=mutableListOf<JSONObject>()
+    for(index in 0 until rows.length()){
+      val row=rows.optJSONObject(index)?:continue
+      val source=row.optString("source","")
+      val quality=row.optString("quality","")
+      val code=row.optString("symbol","").trim().uppercase()
+      if(!symbols.contains(code)||source !in setOf("TWSE_MIS","TWSE_DAILY","TPEX_DAILY")||
+        quality !in setOf("trade","official_close"))continue
+      candidates.add(row)
+    }
+    val committed=db.upsertVerified(candidates,now)
+    val local=db.snapshot(symbols)
+    val covered=(0 until local.getJSONArray("quotes").length()).mapNotNull{
+      local.getJSONArray("quotes").optJSONObject(it)?.optString("symbol","")
+    }.toSet()
+    val missing=symbols.filterNot{covered.contains(it)}
+    local.put("updatedCount",committed.optInt("updatedCount",0))
+      .put("conflictCount",committed.optInt("conflictCount",0))
+      .put("coveredCount",covered.size).put("requestedCount",symbols.size)
+      .put("queriedAt",now).put("missing",JSONArray(missing))
+      .put("backendVersion",result.optLong("version",0L))
+      .put("mode","remote_backend")
+      .put("degraded",result.optBoolean("degraded",false))
+      .put("errors",result.optJSONArray("errors")?:JSONArray())
+    return local
+  }
+
   fun refresh(requested:Collection<String>):JSONObject=synchronized(FETCH_LOCK){
     val symbols=requested.map{it.trim().uppercase()}.filter{CODE.matches(it)}.distinct()
     val now=System.currentTimeMillis()
     if(symbols.isEmpty())return@synchronized db.snapshot().put("updatedCount",0)
       .put("coveredCount",0).put("missing",JSONArray()).put("queriedAt",now)
+    val backend=context.getSharedPreferences("tf_asset_native",0)
+      .getString("market_backend_url","")?.trim()?.trimEnd('/')?:""
+    if(backend.startsWith("https://")&&!backend.contains("@")){
+      try{return@synchronized remoteSnapshot(backend,symbols,now)}
+      catch(error:Exception){
+        // A missing backend does not authorize a second phone-side crawler.
+        // Preserve last verified SQLite rows and show explicit degraded status.
+        val old=db.snapshot(symbols)
+        val available=(0 until old.getJSONArray("quotes").length()).mapNotNull{
+          old.getJSONArray("quotes").optJSONObject(it)?.optString("symbol","")
+        }.toSet()
+        return@synchronized old.put("updatedCount",0).put("mode","remote_degraded")
+          .put("degraded",true).put("queriedAt",now)
+          .put("requestedCount",symbols.size).put("coveredCount",available.size)
+          .put("missing",JSONArray(symbols.filterNot{available.contains(it)}))
+          .put("errors",JSONArray(listOf("行情後端暫時無法連線："+(error.message?:"網路錯誤"))))
+      }
+    }
     val wanted=symbols.toSet()
     val candidates=mutableListOf<JSONObject>()
     val errors=mutableListOf<String>()
