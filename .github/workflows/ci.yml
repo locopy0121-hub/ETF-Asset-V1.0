@@ -21,6 +21,8 @@ jobs:
         run: npm run typecheck
       - name: V2.1.21 aggregate gates
         run: npm run test:v2_1_21
+      - name: V2.2.1 market regression behavior
+        run: npx tsx scripts/v2_2_1-quote-safety.test.ts
       - name: V2.1.21 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
       - name: V2.1.21 controls runtime behavior
