@@ -36,5 +36,5 @@ assert.match(native,/財務待同步/,'Background price must not masquerade as a
 assert.match(bridge,/canonicalAt==nativeAt&&!samePrice/,'Only equal timestamp AND price clears native overlay');
 assert.match(market,/pickFreshestVerifiedTrade\(existing,row,now\)/);
 assert.match(market,/if\(!verifiedTwseTrade\(row,now\)\)/,'App must reject book-only updates as trades');
-assert.match(ci,/V2\.1\.21-QA\.apk/);
+assert.match(ci,/V2\.2\.1-QA\.apk/);
 console.log('V2.1.21 real traded price, per-ticker source time, duplicate channel, cache, overlay safety and QA contract: PASS; Android device still pending.');
