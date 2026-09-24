@@ -55,7 +55,7 @@ class TfAssetOverlayService:Service(){
 
   private fun prefs()=getSharedPreferences("tf_asset_native",0)
   private fun readConfig()=runCatching{JSONObject(prefs().getString("monitor_config","{}")?:"{}")}.getOrElse{JSONObject()}
-  private fun readSnapshot()=runCatching{JSONObject(prefs().getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+  private fun readSnapshot()=runCatching{TfAssetMarketPresentation.decorate(this,JSONObject(prefs().getString("snapshot","{}")?:"{}"))}.getOrElse{JSONObject()}
   private fun effectiveMode(cfg:JSONObject)=prefs().getString("monitor_runtime_mode_override",null)?.let{if(it=="mini")"mini" else "normal"}?:cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
   private fun activeLayout(cfg:JSONObject)=cfg.optJSONObject(if(mode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
 
