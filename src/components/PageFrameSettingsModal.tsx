@@ -1,9 +1,11 @@
 import {type ReactNode,useEffect,useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,View} from 'react-native';
+import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
-import type {MainPageKey} from '../domain/pageRegistry';
+import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
+import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
+import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
 import {
   normalizeEditorConfig,
   type DashboardChartConfig,
@@ -19,8 +21,15 @@ import {
 } from '../editor/pageEditor';
 import {AB_COLLAPSE_RULES,getComponentCapabilities} from '../editor/componentCapabilities';
 import {colors,radius,spacing} from '../theme/tokens';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
+import {EtfBadgeEditor} from './EtfBadgeEditor';
+import {useMarketRuntime} from '../market/MarketRuntime';
+import {PortfolioListEditor} from './PortfolioListEditor';
+import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
+import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
+import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
   {key:'standard',label:'標準'},{key:'compact',label:'緊湊'},{key:'dense',label:'密集'},
@@ -34,22 +43,31 @@ const behaviors:readonly {key:FrameBehavior;label:string}[]=[
 const aligns=([{key:'left',label:'靠左'},{key:'center',label:'置中'},{key:'right',label:'靠右'}] as const);
 
 export function PageFrameSettingsModal({
-  visible,pageKey,title,frames,onClose,
+  visible,pageKey,title,frames,onClose,previewQuote,
 }:{
-  visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;
+  visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;previewQuote?:HoldingQuote|undefined;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
+  const pageSettings=useSettingsRuntime();
+  const market=useMarketRuntime();
+  const defaultPageTitle=MAIN_PAGES.find(page=>page.key===pageKey)?.title??title;
+  const [titleDraft,setTitleDraft]=useState(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
+  const [showWallPreview,setShowWallPreview]=useState(true);
+  const [contentTab,setContentTab]=useState<'list'|'wall'|'badges'>('list');
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
   const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
 
   useEffect(()=>{
     if(!visible)return;
     setDraft({...config});
+    setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
     setDisplayDraft({...displayConfig});
-    setOpenFrame(null);
-    setOpenGroup(null);
+    setOpenFrame(pageKey==='portfolio'?'holding-view':null);
+    setOpenGroup(pageKey==='portfolio'?'holding-view:content':null);
+    setShowWallPreview(true);
+    setContentTab(pageKey==='portfolio'?'list':'wall');
   },[visible,config,displayConfig]);
 
   const orderedFrames=useMemo(
@@ -80,9 +98,9 @@ export function PageFrameSettingsModal({
     const key=`${frameKey}:${group}`;
     setOpenGroup(current=>current===key?null:key);
   };
-  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);onClose();};
+  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||defaultPageTitle);onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
-  const reset=()=>{resetPage();onClose();};
+  const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();};
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
     <View style={styles.root}>
@@ -96,6 +114,10 @@ export function PageFrameSettingsModal({
         <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <View style={styles.header}><Text style={styles.sectionTitle}>頁面標題</Text></View>
+          <View style={styles.body}><Text style={styles.rowHint}>編輯本頁上方顯示的標題，儲存後即時套用。</Text><TextInput accessibilityLabel="頁面標題" value={titleDraft} onChangeText={setTitleDraft} maxLength={48} style={styles.pageTitleInput}/></View>
+        </View>
         <View style={styles.toolbar}>
           <Text style={styles.toolbarText}>AB：預設收合 {AB_COLLAPSE_RULES.defaultCollapsed?'✓':'×'} · 同層單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
           <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
@@ -147,13 +169,34 @@ export function PageFrameSettingsModal({
                   <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
                   <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
                 </View>:null}
-                {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>:null}
+                {((pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view'))?<View style={{gap:16}}>
+                  <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+                    {(pageKey==='portfolio'?([{key:'list',label:'清單欄位'},{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const):([{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const)).map(tab=><Pressable key={tab.key} accessibilityRole="button" onPress={()=>setContentTab(tab.key)} style={{backgroundColor:contentTab===tab.key?colors.primary:colors.surfaceMuted,paddingVertical:9,paddingHorizontal:12,borderRadius:18}}><Text style={{fontSize:11,fontWeight:'900',color:contentTab===tab.key?'#FFFFFF':colors.textSecondary}}>{tab.label}</Text></Pressable>)}
+                  </View>
+                  {pageKey==='portfolio'&&contentTab==='list'?<View>
+                    <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                      badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} previewQuote={previewQuote}
+                      onChange={portfolioList=>setDisplayDraft(current=>({...current,portfolioList}))}/>
+                  </View>:null}
+                  {contentTab==='wall'?<View>
+                    <Text style={{fontSize:14,fontWeight:'900',color:colors.text,marginBottom:8}}>行情牆卡片 A/B 編輯</Text>
+                    <Pressable accessibilityLabel="切換單張小卡預覽" onPress={()=>setShowWallPreview(v=>!v)}>
+                      <Text style={{color:colors.primary,fontWeight:'900',marginBottom:8}}>{showWallPreview?'隱藏':'顯示'}單張小卡即時預覽</Text>
+                    </Pressable>
+                    <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
+                      onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
+                  </View>:null}
+                  {contentTab==='badges'?<EtfBadgeEditor value={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
+                    onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}
+                    catalogRefreshing={market.catalogRefreshing} onRefreshCatalog={()=>void market.refreshCatalog()}/>:null}
+                </View>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
           </View>;
         })}
       </ScrollView>
+      {previewQuote&&contentTab==='wall'&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
@@ -273,7 +316,7 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
 }
 
 function hasContentTools(pageKey:MainPageKey,frameKey:string){
-  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='ai'&&frameKey==='ai-news');
+  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='portfolio'&&frameKey==='holding-view')||(pageKey==='ai'&&frameKey==='ai-news');
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);
@@ -294,6 +337,7 @@ function ChoiceGroup<T extends string>({items,value,onChange,disabled=false}:{it
 
 const styles=StyleSheet.create({
   root:{flex:1,backgroundColor:colors.background},
+  pageTitleInput:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,minHeight:42,paddingHorizontal:12,color:colors.text,backgroundColor:colors.surface,fontSize:15},
   top:{paddingTop:56,paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,backgroundColor:colors.surface,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'flex-start',gap:spacing.sm},
   kicker:{fontSize:12,fontWeight:'800',color:colors.primary},title:{fontSize:26,fontWeight:'900',color:colors.text,marginTop:4},hint:{fontSize:12,color:colors.textSecondary,lineHeight:18,marginTop:5},
   cancel:{paddingHorizontal:12,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},cancelText:{color:colors.textSecondary,fontWeight:'800'},

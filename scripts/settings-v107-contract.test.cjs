@@ -7,6 +7,7 @@ const settingsRuntime=fs.readFileSync('src/settings/SettingsRuntime.tsx','utf8')
 const monitorRuntime=fs.readFileSync('src/monitor/MonitorSettingsRuntime.tsx','utf8');
 const widgetRuntime=fs.readFileSync('src/widget/WidgetSettingsRuntime.tsx','utf8');
 const backup=fs.readFileSync('src/settings/BackupService.ts','utf8');
+const backupFormat=fs.readFileSync('src/settings/backupDocumentFormat.ts','utf8');
 const financeRuntime=fs.readFileSync('src/finance/FinanceRuntime.tsx','utf8');
 const app=fs.readFileSync('App.tsx','utf8');
 
@@ -30,8 +31,9 @@ assert.match(settings,/MonitorControlPanel/,'Monitor control must remain exposed
 assert.match(backup,/createLocalBackup/,'local backup missing');
 assert.match(backup,/restoreLocalBackup/,'restore missing');
 assert.match(backup,/await createLocalBackup\(\)/,'restore\/import must safety-backup first');
-assert.match(backup,/parsed\.product!=='TF Asset'/,'import product validation missing');
-assert.match(backup,/parsed\.version!==1/,'import schema validation missing');
+assert.match(backupFormat,/parsed\.product!=='TF Asset'/,'import product validation missing');
+assert.match(backup,/parseBackupDocument\(text\)/,'preflight validation must run before import writes');
+assert.match(backupFormat,/parsed\.version!==1&&parsed\.version!==2/,'v1 and v2 import schema validation missing');
 assert.match(financeRuntime,/clearFinance:\(\)=>\{/,'safe clearFinance runtime missing');
 assert.match(financeRuntime,/setInitialCash\(0\)/,'clearFinance must zero initial cash');
 assert.match(financeRuntime,/setEntries\(\[\]\)/,'clearFinance must empty ledger');

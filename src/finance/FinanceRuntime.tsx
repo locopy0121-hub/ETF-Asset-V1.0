@@ -23,6 +23,7 @@ import {
 import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
 import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
+import {isVerifiedRuntimeQuote} from '../market/quoteProvenance';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=1;
@@ -41,6 +42,7 @@ type FinanceContextValue = {
   snapshot: ReturnType<typeof calculateCanonicalLedgerSnapshot>;
   sharedSnapshot: SharedSnapshot;
   holdings: HoldingQuote[];
+  valuationComplete: boolean;
   addTrade: (input: Parameters<typeof freezeTradeEntry>[0]) => void;
   addDividend: (entry: DividendLedgerEntry) => void;
   addOther: (entry: OtherCashLedgerEntry) => void;
@@ -101,10 +103,14 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
     const quote=market.quotes.find(x=>x.symbol===summary.etfCode);
-    const previousClose=quote?.previousClose??summary.currentPrice;
+    const verified=isVerifiedRuntimeQuote(quote);
+    const catalogName=market.catalog.find(x=>x.symbol===summary.etfCode)?.name;
+    const previousClose=verified?quote!.previousClose:summary.currentPrice;
     return {
       symbol:summary.etfCode,
-      name:summary.name,
+      name:(verified&&quote!.name!==summary.etfCode?quote!.name:catalogName&&catalogName!==summary.etfCode?catalogName:summary.name),
+      quoteVerified:verified,
+      quoteSourceAt:verified?(quote!.sourceQuoteAt??null):null,
       shares:summary.totalShares,
       price:summary.currentPrice,
       previousClose,
@@ -122,9 +128,10 @@ export function FinanceProvider({children}:PropsWithChildren){
       pinned:quote?.pinned??false,
       sparkline:[...(quote?.sparkline??[summary.currentPrice])],
     };
-  }).filter(x=>x.shares>0),[snapshot,market.quotes]);
+  }).filter(x=>x.shares>0),[snapshot,market.quotes,market.catalog]);
+  const valuationComplete=holdings.every(row=>row.quoteVerified===true);
 
-  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt}),[snapshot,holdings,market.lastSuccessAt]);
+  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes}),[snapshot,holdings,market.lastSuccessAt,market.quotes]);
 
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,
@@ -134,6 +141,7 @@ export function FinanceProvider({children}:PropsWithChildren){
     snapshot,
     sharedSnapshot,
     holdings,
+    valuationComplete,
     addTrade:input=>setEntries(current=>{
       const candidate=[...current,freezeTradeEntry(input)];
       return validateLedgerSequence(candidate).length===0?candidate:current;
@@ -152,7 +160,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       setInitialCash(0);
       setEntries([]);
     },
-  }),[hydrated,initialCash,entries,snapshot,sharedSnapshot,holdings,market.quotes]);
+  }),[hydrated,initialCash,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }

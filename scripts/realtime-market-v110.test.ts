@@ -23,7 +23,10 @@ const home=fs.readFileSync('src/screens/HomeScreen.tsx','utf8');
 const portfolio=fs.readFileSync('src/screens/PortfolioScreen.tsx','utf8');
 const detail=fs.readFileSync('src/screens/HoldingDetailScreen.tsx','utf8');
 
-assert.match(market,/resolveTwseCurrentPrice/,'MarketRuntime must use the live TWSE resolver');
+// V2.1.21: a book quote is not a verifiable new LAST TRADE. Keep the legacy
+// resolver utility tests above, but require the live runtime to use z + d/t.
+assert.match(market,/verifiedTwseTrade\(row,now\)/,'MarketRuntime must verify the last-traded TWSE price and exchange timestamp');
+assert.match(market,/pickFreshestVerifiedTrade\(existing,row,now\)/,'Duplicate channels must prefer the freshest verified trade');
 assert.match(market,/updatedCount/,'market refresh must track usable quote count');
 assert.match(market,/unresolved/,'partial snapshots must preserve unresolved symbols instead of freezing all holdings');
 assert.match(market,/部分行情暫用上次資料/,'partial refresh must surface a non-blocking warning while keeping fresh rows');

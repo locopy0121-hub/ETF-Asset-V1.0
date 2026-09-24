@@ -25,6 +25,7 @@ export type HoldingSnapshot = Readonly<{
 }>;
 
 export type AssetSnapshot = Readonly<{
+  valuationComplete?: boolean;
   totalAssets: number;
   marketValue: number;
   cash: number;

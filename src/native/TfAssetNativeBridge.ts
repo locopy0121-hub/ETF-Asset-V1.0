@@ -12,7 +12,11 @@ export type NativeMonitorStatus=Readonly<{
   displaySymbol:string;
 }>;
 
+export type ExternalBackupReceipt=Readonly<{uri:string;fileName:string;bytes:number;verified:true}>;
+export type SelectedBackupDocument=Readonly<{uri:string;fileName:string;bytes:number;text:string}>;
 type TfAssetNativeModule={
+  saveBackupDocument:(text:string,fileName:string)=>Promise<ExternalBackupReceipt|null>;
+  openBackupDocument:()=>Promise<SelectedBackupDocument|null>;
   syncWidget:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   syncMonitor:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   requestWidgetRefresh:()=>Promise<boolean>;
@@ -48,3 +52,16 @@ export async function canDrawOverlays(){return native?native.canDrawOverlays():f
 export async function openOverlaySettings(){return native?native.openOverlaySettings():false;}
 export async function pickNativeThemeBackground(){return native?native.pickThemeBackground():null;}
 export async function setNativeAppIcon(iconKey:string){return native?native.setAppIcon(iconKey):false;}
+
+/** Android Storage Access Framework: document lives in the selected provider, not app-private AsyncStorage. */
+export const backupDocumentPickerAvailable=Platform.OS==='android'
+  &&typeof native?.saveBackupDocument==='function'
+  &&typeof native?.openBackupDocument==='function';
+export async function saveExternalBackup(text:string,fileName:string):Promise<ExternalBackupReceipt|null>{
+  if(!backupDocumentPickerAvailable||!native)throw new Error('目前版本未安裝 Android 外部備份功能');
+  return native.saveBackupDocument(text,fileName);
+}
+export async function chooseExternalBackup():Promise<SelectedBackupDocument|null>{
+  if(!backupDocumentPickerAvailable||!native)throw new Error('目前版本未安裝 Android 外部備份功能');
+  return native.openBackupDocument();
+}
