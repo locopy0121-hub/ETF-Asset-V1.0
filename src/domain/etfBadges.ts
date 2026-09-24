@@ -96,5 +96,6 @@ export function badgeDisplayText(key:EtfBadgeKey,etfType:string|null|undefined,d
 /** Visible fallback labels distinguish taxonomy from payout policy without inventing metadata. */
 export function badgePresentationText(key:EtfBadgeKey,etfType:string|null|undefined,dividendType:string|null|undefined,reminder?:EtfReminderType|null):string{
   const source=badgeDisplayText(key,etfType,dividendType,reminder);
-  return source==='待確認'?(key==='etfType'?'類別待確認':'配息待確認'):source;
+  const shown=source==='待確認'?(key==='etfType'?'類別待確認':'配息待確認'):source;
+  return key==='etfType'&&shown.endsWith('型')?shown.slice(0,-1):shown;
 }
