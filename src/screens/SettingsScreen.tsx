@@ -55,8 +55,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.3.3';
-const BUILD='20303';
+const VERSION='2.3.4';
+const BUILD='20304';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -340,7 +340,7 @@ export function SettingsScreen(){
     setBackupBusy(true);
     try{
       const document=await exportTfAssetData(); // blocks incomplete/missing Ledger
-      const suggested='TF-Asset-V2.3.3-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+      const suggested='TF-Asset-V2.3.4-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
       const receipt=await saveExternalBackup(document,suggested);
       if(!receipt){setBackupStatus('已取消外部存檔；沒有建立新的備份檔。');return;}
       const verified=await recordVerifiedExternalBackup(receipt,document);

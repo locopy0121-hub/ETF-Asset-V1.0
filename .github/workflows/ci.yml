@@ -1,10 +1,10 @@
-name: TF Asset V2.3.3 CI / QA APK
+name: TF Asset V2.3.4 CI / QA APK
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall]
+    branches: [main, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall, fix-v2.3.3-20260924-cash-audit]
 
 jobs:
   quality:
@@ -19,21 +19,21 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V2.3.3 aggregate gates
-        run: npm run test:v2_3_3
-      - name: V2.3.3 controls source smoke
+      - name: V2.3.4 aggregate gates
+        run: npm run test:v2_3_4
+      - name: V2.3.4 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V2.3.3 controls runtime behavior
+      - name: V2.3.4 controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V2.3.3 AI holdings behavior
+      - name: V2.3.4 AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V2.3.3 dividend calendar behavior
+      - name: V2.3.4 dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V2.3.3 system profit colors
+      - name: V2.3.4 system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V2.3.3 user-visible version and integration smoke
+      - name: V2.3.4 user-visible version and integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V2.3.3 release identity and UX controls
+      - name: V2.3.4 release identity and UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -41,7 +41,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V2.3.3 Node/Redis/PostgreSQL integration
+    name: V2.3.4 Node/Redis/PostgreSQL integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -77,9 +77,9 @@ jobs:
         run: npm run check
 
   qa-apk:
-    name: V2.3.3 QA APK / native integration
+    name: V2.3.4 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && (github.head_ref == 'go-v2.3.3-20260924-cash-audit-qa' || github.head_ref == 'fix-v2.3.3-20260924-cash-audit')
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v2.3.4-20260925-item7-charts'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -102,18 +102,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V2.3.3 identity
+      - name: Freeze V2.3.4 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "2.3.3"
-          test "$(node -p "require('./app.json').expo.version")" = "2.3.3"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "20303"
+          test "$(node -p "require('./package.json').version")" = "2.3.4"
+          test "$(node -p "require('./app.json').expo.version")" = "2.3.4"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "20304"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V2.3.3 Hard Gates
-        run: npm run test:v2_3_3
+      - name: V2.3.4 Hard Gates
+        run: npm run test:v2_3_4
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -144,8 +144,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 20303');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.3.3"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 20304');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "2.3.4"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -154,7 +154,7 @@ jobs:
           fs.writeFileSync(strings,s);
           NODE
 
-      - name: Inject V2.3.3 Android Widget and Floating Monitor
+      - name: Inject V2.3.4 Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
           mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
@@ -181,26 +181,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V2.3.3-QA.apk
-          test "$(stat -c%s TF-Asset-V2.3.3-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V2.3.3-QA.apk
-          sha256sum TF-Asset-V2.3.3-QA.apk | tee TF-Asset-V2.3.3-QA.sha256
+          cp "$APK_PATH" TF-Asset-V2.3.4-QA.apk
+          test "$(stat -c%s TF-Asset-V2.3.4-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V2.3.4-QA.apk
+          sha256sum TF-Asset-V2.3.4-QA.apk | tee TF-Asset-V2.3.4-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V2.3.3-QA.apk | tee TF-Asset-V2.3.3-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V2.3.3-badging.txt
-          grep "versionCode='20303'" TF-Asset-V2.3.3-badging.txt
-          grep "versionName='2.3.3'" TF-Asset-V2.3.3-badging.txt
-          file TF-Asset-V2.3.3-QA.apk
+          "$AAPT" dump badging TF-Asset-V2.3.4-QA.apk | tee TF-Asset-V2.3.4-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V2.3.4-badging.txt
+          grep "versionCode='20304'" TF-Asset-V2.3.4-badging.txt
+          grep "versionName='2.3.4'" TF-Asset-V2.3.4-badging.txt
+          file TF-Asset-V2.3.4-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V2.3.3-QA-APK
+          name: TF-Asset-V2.3.4-QA-APK
           path: |
-            TF-Asset-V2.3.3-QA.apk
-            TF-Asset-V2.3.3-QA.sha256
-            TF-Asset-V2.3.3-badging.txt
+            TF-Asset-V2.3.4-QA.apk
+            TF-Asset-V2.3.4-QA.sha256
+            TF-Asset-V2.3.4-badging.txt
           if-no-files-found: error
           retention-days: 30
 
