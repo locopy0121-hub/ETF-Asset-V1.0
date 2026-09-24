@@ -44,6 +44,8 @@ export function HoldingMarketWallEditor({
   const patchHeader=(patch:Partial<HoldingWallConfig['header']>)=>onChange({...value,header:{...value.header,...patch}});
   const patchHeaderEffect=(patch:Partial<ItemEffectConfig>)=>patchHeader({effect:{...value.header.effect,...patch}});
   const patchStyle=(patch:Partial<HoldingWallConfig['style']>)=>onChange({...value,style:{...value.style,...patch}});
+  const ticker=value.ticker??DEFAULT_HOLDING_WALL_CONFIG.ticker!;
+  const patchTicker=(patch:Partial<typeof ticker>)=>onChange({...value,ticker:{...ticker,...patch}});
   const patchField=(field:HoldingWallFieldKey,patch:Partial<HoldingWallFieldConfig>)=>onChange({...value,fields:value.fields.map(item=>item.field===field?{...item,...patch}:item)});
   const patchFieldEffect=(field:HoldingWallFieldKey,patch:Partial<ItemEffectConfig>)=>{
     const current=value.fields.find(item=>item.field===field);
@@ -68,6 +70,7 @@ export function HoldingMarketWallEditor({
     header:{...DEFAULT_HOLDING_WALL_CONFIG.header,effect:{...DEFAULT_HOLDING_WALL_CONFIG.header.effect}},
     fields:DEFAULT_HOLDING_WALL_CONFIG.fields.map(field=>({...field,effect:{...field.effect}})),
     style:{...DEFAULT_HOLDING_WALL_CONFIG.style},
+    ticker:{...DEFAULT_HOLDING_WALL_CONFIG.ticker!},
   });
 
   return <View style={styles.root}>
@@ -125,6 +128,21 @@ export function HoldingMarketWallEditor({
           </View>;
         })}
       </View>)}
+    </View>
+
+    <View style={styles.block}>
+      <Text style={styles.blockTitle}>A 跑馬行情（整體）</Text>
+      <Text style={styles.note}>行情牆上方共用跑馬燈；滾動只是展示特效，不代表有新交易所報價。無資料時明示待取得。</Text>
+      <Toggle label="啟用跑馬燈" value={ticker.enabled} onChange={enabled=>patchTicker({enabled})}/>
+      {ticker.enabled?<>
+        <StringChoice choices={['left','right'] as const} value={ticker.direction} label={x=>x==='left'?'向左':'向右'} onChange={direction=>patchTicker({direction})}/>
+        <Step label="移動速度" value={ticker.speed} min={15} max={150} step={5} suffix=" px/秒" onChange={speed=>patchTicker({speed})}/>
+        <Step label="項目間距" value={ticker.itemGap} min={0} max={64} step={4} suffix=" px" onChange={itemGap=>patchTicker({itemGap})}/>
+        <Toggle label="顯示價格" value={ticker.showPrice} onChange={showPrice=>patchTicker({showPrice})}/>
+        <Toggle label="顯示漲跌幅" value={ticker.showChange} onChange={showChange=>patchTicker({showChange})}/>
+        <ColorPalettePicker label="跑馬燈文字" value={ticker.textColor} onChange={textColor=>patchTicker({textColor})}/>
+        <ColorPalettePicker label="跑馬燈背景" value={ticker.backgroundColor} onChange={backgroundColor=>patchTicker({backgroundColor})}/>
+      </>:null}
     </View>
 
     <View style={styles.block}>
