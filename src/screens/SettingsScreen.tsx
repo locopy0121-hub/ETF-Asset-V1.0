@@ -23,6 +23,8 @@ import { MAIN_PAGES } from '../domain/pageRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
+import { auditCashSources, LEGACY_DEFAULT_CASH, LEGACY_REVERSAL_LABEL } from '../finance/cashAudit';
+import { TF_LEDGER_KEY } from '../settings/backupDocumentFormat';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
 import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import {
@@ -45,7 +47,7 @@ import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
 type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
-type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
+type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
@@ -53,8 +55,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.3.2';
-const BUILD='20302';
+const VERSION='2.3.3';
+const BUILD='20303';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -81,6 +83,7 @@ export function SettingsScreen(){
   const [backups,setBackups]=useState<BackupRecord[]>([]);
   const [backupStatus,setBackupStatus]=useState('');
   const [backupBusy,setBackupBusy]=useState(false);
+  const [cashCorrectionBusy,setCashCorrectionBusy]=useState(false);
   const [verifiedExternal,setVerifiedExternal]=useState<VerifiedExternalBackup|null>(null);
   const [chosenDocument,setChosenDocument]=useState<null|{
     name:string;text:string;entries:number;keys:number;exportedAt:string;
@@ -195,6 +198,38 @@ export function SettingsScreen(){
     </View>;
   }
 
+
+  function confirmLegacyCashCorrection(){
+    const audit=auditCashSources(finance.initialCash,finance.entries);
+    if(!finance.hydrated||cashCorrectionBusy||!audit.possibleLegacyDefault)return;
+    Alert.alert('確認舊版初始現金','目前存在 NT$ 750,000 期初現金。若並非本人資金，可新增一筆 -750,000 的可追查沖回紀錄。現金可能轉為負數，不會刪除買賣或股息紀錄。請先至備份與還原建立外部檔案。',[
+      {text:'取消',style:'cancel'},
+      {text:'先備份並建立沖回',style:'destructive',onPress:()=>void(async()=>{
+        setCashCorrectionBusy(true);
+        try{
+          if(!auditCashSources(finance.initialCash,finance.entries).possibleLegacyDefault)
+            throw new Error('初始現金狀態已有變化，請重新核對');
+          const backup=await createLocalBackup();
+          const raw=backup.payload[TF_LEDGER_KEY];
+          if(!raw)throw new Error('本機備份缺少 Ledger，沖回已取消');
+          const saved=JSON.parse(raw) as {initialCash?:number;entries?:unknown[]};
+          if(saved.initialCash!==finance.initialCash||
+            JSON.stringify(saved.entries)!==JSON.stringify(finance.entries))
+            throw new Error('本機備份與目前紀錄不一致，尚未執行沖回；請先確認帳務已儲存');
+          const now=new Date();
+          const day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),
+            String(now.getDate()).padStart(2,'0')].join('-');
+          finance.addOther({id:'legacy-opening-cash-reversal-'+now.getTime(),date:day,
+            kind:'other',label:LEGACY_REVERSAL_LABEL,amount:-LEGACY_DEFAULT_CASH});
+          await reloadBackupMeta();
+          Alert.alert('已送入沖回紀錄','已先建立 App 內備份。請開啟帳務中心核對沖回交易與現金餘額，並另存外部備份。不要解除安裝。');
+        }catch(error){
+          Alert.alert('沖回中止',error instanceof Error?error.message:String(error));
+        }finally{setCashCorrectionBusy(false);}
+      })()},
+    ]);
+  }
+
   function accountingSection(){
     const p=broker.activeProfile;
     return <View style={styles.children}>
@@ -212,6 +247,28 @@ export function SettingsScreen(){
         <TextInput style={styles.input} value={settings.prefs.tradeDefaults.accountLabel} onChangeText={accountLabel=>settings.patchTradeDefaults({accountLabel})}/>
         <ChoiceRow label="預設交易類型" options={[{key:'buy',label:'買進'},{key:'sell',label:'賣出'}]} value={settings.prefs.tradeDefaults.tradeKind} onChange={tradeKind=>settings.patchTradeDefaults({tradeKind:tradeKind==='sell'?'sell':'buy'})}/>
         <Text style={styles.note}>只影響之後新開啟的交易表單，不改歷史紀錄。</Text>
+      </Panel>:null}
+      <ChildButton label="現金來源／期初現金核對" summary={'期初 NT$ '+Math.round(finance.initialCash).toLocaleString('zh-TW')+' · 逐項對帳'} active={accountingPanel==='cash'} onPress={()=>setAccountingPanel(accountingPanel==='cash'?null:'cash')}/>
+      {accountingPanel==='cash'?<Panel title="現金來源對帳（金融核心只讀）">
+        {!finance.hydrated?<Text style={styles.note}>帳務資料讀取中。</Text>:(()=>{
+          const audit=auditCashSources(finance.initialCash,finance.entries);
+          const fmt=(value:number)=>'NT$ '+Math.round(value).toLocaleString('zh-TW');
+          return <>
+            <StatusRow label="期初現金（非交易紀錄）" value={fmt(audit.opening)}/>
+            <StatusRow label="買進現金支出" value={fmt(audit.buyOutflow)}/>
+            <StatusRow label="賣出淨流入" value={fmt(audit.sellInflow)}/>
+            <StatusRow label="已入帳股息" value={fmt(audit.dividendInflow)}/>
+            <StatusRow label="其他現金調整淨額" value={fmt(audit.otherNet)}/>
+            <StatusRow label="現金餘額" value={fmt(audit.cashBalance)}/>
+            <Text style={styles.note}>期初現金獨立儲存，不屬於歷史交易。已儲存的舊金額不會因 App 更新而自動歸零。</Text>
+            {audit.possibleLegacyDefault?<View>
+              <Text style={styles.dangerText}>偵測到舊版內建的 750,000 元期初值，仍需你確認是否為真實資金。沖回前請先建立外部備份。</Text>
+              <ActionButton label="先建立外部備份" onPress={()=>{setTop('backup');setBackupPanel('export');setAccountingPanel(null);}}/>
+              <ActionButton label={cashCorrectionBusy?'正在備份與核對…':'確認非本人資金，沖回 750,000 元'} disabled={cashCorrectionBusy||backupBusy} danger onPress={confirmLegacyCashCorrection}/>
+            </View>:null}
+            {audit.hasLegacyReversal?<Text style={styles.note}>已有舊版期初現金沖回紀錄，請至帳務中心核對。</Text>:null}
+          </>;
+        })()}
       </Panel>:null}
       <ChildButton label="帳務核心狀態" summary="Canonical · 歷史費稅鎖定" active={accountingPanel==='core'} onPress={()=>setAccountingPanel(accountingPanel==='core'?null:'core')}/>
       {accountingPanel==='core'?<Panel title="帳務核心狀態">
@@ -283,7 +340,7 @@ export function SettingsScreen(){
     setBackupBusy(true);
     try{
       const document=await exportTfAssetData(); // blocks incomplete/missing Ledger
-      const suggested='TF-Asset-V2.3.2-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+      const suggested='TF-Asset-V2.3.3-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
       const receipt=await saveExternalBackup(document,suggested);
       if(!receipt){setBackupStatus('已取消外部存檔；沒有建立新的備份檔。');return;}
       const verified=await recordVerifiedExternalBackup(receipt,document);

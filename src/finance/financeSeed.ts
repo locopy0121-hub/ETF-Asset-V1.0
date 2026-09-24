@@ -13,7 +13,8 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   pinned?: boolean;
 }>;
 
-export const INITIAL_CASH=750_000;
+// New accounts start without fictitious money. Persisted older balances are never reset.
+export const INITIAL_CASH=0;
 
 /** Emergency/cache bootstrap only. Never treat these values as live market truth. */
 export const FALLBACK_QUOTES:readonly RuntimeQuote[]=[
@@ -38,4 +39,6 @@ const dividends:CanonicalLedgerEntry[]=[
   {id:'seed-d-00919',date:'2026-09-12',kind:'dividend',symbol:'00919',name:'群益台灣精選高息',perShareAmount:0.72,sharesHeld:4000},
 ];
 
-export const SEED_LEDGER:readonly CanonicalLedgerEntry[]=[...trades,...dividends];
+// Retain historical sample data only as explicit test/example fixtures.
+export const EXAMPLE_LEDGER:readonly CanonicalLedgerEntry[]=[...trades,...dividends];
+export const SEED_LEDGER:readonly CanonicalLedgerEntry[]=[];
