@@ -53,6 +53,8 @@ type PersistedMarketState = {
   catalogFetchedAt?: number | null; // Last refresh attempt; metadataVerifiedAt tracks successful official rows.
 };
 
+export type MarketRefreshResult='updated'|'unchanged'|'error';
+
 type MarketRuntimeValue = {
   hydrated: boolean;
   config: MarketUpdateConfig;
@@ -64,7 +66,7 @@ type MarketRuntimeValue = {
   catalog: readonly EtfCatalogItem[];
   catalogRefreshing: boolean;
   setConfig: (next: MarketUpdateConfig) => void;
-  refresh: (options?:{ force?: boolean }) => Promise<void>;
+  refresh: (options?:{ force?: boolean }) => Promise<MarketRefreshResult>;
   refreshCatalog: () => Promise<void>;
   setTrackedSymbols: (symbols: readonly string[]) => void;
 };
@@ -238,7 +240,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const catalogFetchedAtRef=useRef<number|null>(null);
   const catalogRefreshingRef=useRef(false);
   const refreshingRef=useRef(false);
-  const refreshPromiseRef=useRef<Promise<void>|null>(null);
+  const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
   const quotesRef=useRef<RuntimeQuote[]>([...FALLBACK_QUOTES]);
   const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
 
@@ -289,9 +291,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])));
   },[]);
 
-  const refresh=useCallback((options?:{force?:boolean})=>{
+  const refresh=useCallback((options?:{force?:boolean}):Promise<MarketRefreshResult>=>{
     if(refreshPromiseRef.current)return refreshPromiseRef.current;
-    const task=(async()=>{
+    const task=(async():Promise<MarketRefreshResult>=>{
       refreshingRef.current=true;
       setRefreshing(true);
       setLastError(null);
@@ -305,13 +307,13 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
             if(result.updatedCount===0){
               // No source time advanced: do not alter finance, cached quotes, or 'last updated'.
               setLastError('行情來源尚無新資料（維持前次更新時間）');
-              return;
+              return 'unchanged';
             }
             quotesRef.current=result.quotes;
             setQuotes(result.quotes);
             if(result.newestSourceAt!==null)setLastSuccessAt(current=>Math.max(current??0,result.newestSourceAt!));
             setLastError(result.unresolved.length?'部分行情未更新：'+result.unresolved.join(','):null);
-            return;
+            return 'updated';
           }catch(error){
             lastFailure=error;
             if(attempt<attempts)await new Promise(resolve=>setTimeout(resolve,options?.force?350:650));
@@ -320,6 +322,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         throw lastFailure instanceof Error?lastFailure:new Error(String(lastFailure??'TWSE refresh failed'));
       }catch(error){
         setLastError(error instanceof Error?error.message:String(error));
+        return 'error';
       }finally{
         refreshingRef.current=false;
         setRefreshing(false);

@@ -32,6 +32,17 @@
             android:textSize="13sp"/>
     </LinearLayout>
 
+    <!-- Source-verified status is separate from the tap target: no overflowing countdown on the button. -->
+    <TextView
+        android:id="@+id/widget_refresh_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="10sp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:contentDescription="最近一次可核實行情更新狀態"
+        android:text="行情尚未核實｜點擊更新" />
+
     <LinearLayout
         android:id="@+id/widget_summary"
         android:layout_width="match_parent"

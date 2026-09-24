@@ -273,3 +273,12 @@ CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實�
 - 核心計算、Ledger 固化費稅、Widget／Monitor 不改。新增行為測試，保留既有所有回歸。本輪 CI／QA APK／Artifact／SHA/badging 的真實結果後續補記；Android 實機與全市場來源覆蓋仍待驗。
 
 詳細 D01–D06、資料範圍與歷史結轉見 `GO_V2_1_19_CHECKLIST.md`。
+
+
+## 2026-09-24 GO V2.1.20｜八大項第 04 項：Widget 真實資料刷新與來源秒數
+
+- 起點 PR #36 V2.1.19 QA `88783e091451d2071b8785dc637c9892ba65e4aa`，使用者已在 Android 截圖確認四檔 ETF 的配息方式顯示；先建立 `backup-v2.1.19-20260924-pre-widget-v2120` 並核實來源，工作分支 `go-v2.1.20-20260924-widget-source-freshness`。
+- 使用者新增硬性要求：**秒數跳動必須代表真實行情資料更新，而不是時鐘動畫**。本輪 MarketRuntime 只使用證交所 MIS `d`/`t` 來源時間判斷新 tick，資料沒變不重設最後更新時間；SharedSnapshot 每一檔持股採自己的已核實來源時間，財務金額仍由 Canonical Core 提供。
+- Android Widget 桌面點擊／設定手動刷新啟動真實背景網路；只有比該檔上次 native／App 有效來源時間新的報價才更新價格。來源重複顯示「無新報價」、失敗保留先前資料，行情新於 App 財務時顯示「財務待同步」，不使用 HTTP 收取時間冒充交易所回報時間。Widget 將刷新按鈕與獨立狀態列分開。
+- Android 限制：`updatePeriodMillis` 仍是 30 分鐘；App 前景每 N 秒**嘗試查詢**，不保證每 N 秒必有新成交，更不聲稱背景可強制每 5 秒。完整 W01–W06／歷史八大項保護見 `GO_V2_1_20_CHECKLIST.md`。
+- Finance Core／Ledger 公式、actualFee/tax、已經實機 PASS 的 ETF 配息分類均不動。CI、APK、SHA、版本 badging 與 Android 實機需獨立取證，不能以本行宣告完成。

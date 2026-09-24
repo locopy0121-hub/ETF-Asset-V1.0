@@ -72,6 +72,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val ids=manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java))
     ids.forEach{id->val progress=RemoteViews(context.packageName,R.layout.tf_asset_widget)
       progress.setTextViewText(R.id.widget_refresh,"行情更新中…")
+      progress.setTextViewText(R.id.widget_refresh_status,"正在向交易所取得報價…")
       manager.partiallyUpdateAppWidget(id,progress)
     }
     val prefs=context.getSharedPreferences("tf_asset_native",0)
@@ -255,7 +256,9 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     views.setTextViewText(R.id.widget_title,if(wallMode&&holdings.size>wallCapacity)"持股行情牆 · ${wallCapacity}/${holdings.size}" else if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
     views.setTextColor(R.id.widget_refresh,neutral)
-    views.setTextViewText(R.id.widget_refresh,prefs.getString("widget_refresh_status","↻ 更新")?:"↻ 更新")
+    views.setTextViewText(R.id.widget_refresh,"↻ 更新")
+    views.setTextColor(R.id.widget_refresh_status,neutral)
+    views.setTextViewText(R.id.widget_refresh_status,prefs.getString("widget_refresh_status","行情尚未核實｜點擊更新")?:"行情尚未核實｜點擊更新")
     val forceRefreshEnabled=config.optBoolean("forceRefreshOnTap",true)
     views.setViewVisibility(R.id.widget_refresh,if(forceRefreshEnabled)View.VISIBLE else View.GONE)
 

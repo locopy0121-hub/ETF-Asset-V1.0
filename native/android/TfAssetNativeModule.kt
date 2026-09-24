@@ -115,7 +115,12 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     if(!prefs.getBoolean("monitor_user_closed",false)) reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
     promise.resolve(true)
   }
-  @ReactMethod fun requestWidgetRefresh(promise:Promise){ refreshWidget(); promise.resolve(true) }
+  @ReactMethod fun requestWidgetRefresh(promise:Promise){
+    // A manual refresh must request REAL quotes; repainting the cached snapshot is not a refresh.
+    reactContext.sendBroadcast(Intent(reactContext,TfAssetWidgetProvider::class.java)
+      .setAction(TfAssetWidgetProvider.ACTION_FORCE_REFRESH))
+    promise.resolve(true)
+  }
   @ReactMethod fun consumeWidgetForceRefreshRequest(promise:Promise){
     val at=prefs.getLong("widget_force_refresh_requested_at",0L)
     if(at>0L)prefs.edit().remove("widget_force_refresh_requested_at").apply()

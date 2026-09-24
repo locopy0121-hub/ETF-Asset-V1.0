@@ -127,6 +127,8 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
         <Text style={{color:'#FFFFFF',fontWeight:'800'}}>{refreshing?'行情更新中…':'↻ 點擊更新行情'}</Text>
       </Pressable>
       {refreshError?<Text style={{color:'#EF4444'}}>更新失敗：{refreshError}</Text>:null}
+      <Text style={styles.note}>刷新秒數＝前景查詢間隔，不是畫面假跳秒。只有證交所回傳較新的報價時間，才更新 Widget 的行情時間；若未變更、來源缺時間或連線失敗，保留上次成功資料。Android 背景排程受系統限制，桌面可點擊實際網路刷新。</Text>
+      <Text style={styles.note}>已核實報價時間：{previewSnapshot?.holdings.map(row=>row.updatedAt).filter((time):time is string=>!!time).sort().at(-1)?.replace('T',' ').slice(0,19)??'尚未取得'}</Text>
       {previewSnapshot?<Text style={styles.note}>預覽持股 {sortedRows.length} 筆；目前顯示 {wallPreviewRows.length} 筆，超出預覽列數需在桌面 Widget 繼續檢查。</Text>:null}
       {value.template==='quote-wall'
         ?<View style={[styles.preview,styles.wallPreview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>

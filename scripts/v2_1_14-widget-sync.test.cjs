@@ -11,7 +11,8 @@ const widgetSettings=read('src/widget/WidgetSettingsRuntime.tsx');
 assert.match(receiver,/ACTION_FORCE_REFRESH/);
 assert.match(receiver,/putLong\("widget_force_refresh_requested_at",System\.currentTimeMillis\(\)\)/,
   'A native Widget tap must be consumed on next App foreground');
-assert.match(receiver,/putString\("wall_market_overrides",quotes\.toString\(\)\)/);
+assert.match(receiver,/putString\("wall_market_overrides",merged\.toString\(\)\)/,
+  'Partial quote updates must merge with existing unsynced native overrides');
 assert.match(receiver,/財務待同步/,
   'Price-only background updates must not claim current profit or market value');
 assert.match(receiver,/行情更新失敗｜保留原資料/);
