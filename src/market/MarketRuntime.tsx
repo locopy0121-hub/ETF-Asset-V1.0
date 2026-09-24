@@ -15,7 +15,7 @@ import {
 } from 'react';
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
-import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
+import { resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt,pickFreshestVerifiedTrade,verifiedTwseTrade} from './quoteFreshness';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
