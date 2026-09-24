@@ -314,7 +314,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
             quotesRef.current=result.quotes;
             setQuotes(result.quotes);
             if(result.newestSourceAt!==null)setLastSuccessAt(current=>Math.max(current??0,result.newestSourceAt!));
-            setLastError(result.unresolved.length?'部分行情未更新：'+result.unresolved.join(','):null);
+            setLastError(result.unresolved.length?'部分行情暫用上次資料：'+result.unresolved.join(','):null);
             return 'updated';
           }catch(error){
             lastFailure=error;
