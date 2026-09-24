@@ -26,6 +26,8 @@ import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
 import { auditCashSources, LEGACY_DEFAULT_CASH, LEGACY_REVERSAL_LABEL } from '../finance/cashAudit';
 import { TF_LEDGER_KEY } from '../settings/backupDocumentFormat';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
+import { auditMarketSymbols, MARKET_AUDIT_LABEL } from '../market/marketQuoteAudit';
+import type { RuntimeQuote } from '../finance/financeSeed';
 import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import {
   createLocalBackup,
@@ -55,8 +57,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='2.3.3';
-const BUILD='20303';
+const VERSION='2.3.4';
+const BUILD='20304';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -164,7 +166,7 @@ export function SettingsScreen(){
   function systemSection(){
     return <View style={styles.children}>
       <ChildButton label="行情資料中心／市場更新" summary={'v'+market.marketDataVersion+'｜'+marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
+      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} trackedSymbols={market.trackedSymbols} quotes={market.quotes}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -284,7 +286,7 @@ export function SettingsScreen(){
   function dataSection(){
     return <View style={styles.children}>
       <ChildButton label="統一行情資料中心／即時更新" summary={'版本 '+market.marketDataVersion+' · '+marketPhaseLabel(market.phase)} active={dataPanel==='market'} onPress={()=>setDataPanel(dataPanel==='market'?null:'market')}/>
-      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
+      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} trackedSymbols={market.trackedSymbols} quotes={market.quotes}/>:null}
       <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
       {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
         <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
@@ -839,17 +841,31 @@ type MarketPanelProps={
   marketDataVersion:number;
   missingSymbols:readonly string[];
   quoteCount:number;
+  trackedSymbols:readonly string[];
+  quotes:readonly RuntimeQuote[];
 };
 
-function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount}:MarketPanelProps){
+function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount,trackedSymbols,quotes}:MarketPanelProps){
   const [urlDraft,setUrlDraft]=useState(config.backendUrl??'');
   useEffect(()=>{setUrlDraft(config.backendUrl??'');},[config.backendUrl]);
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
+  const audit=auditMarketSymbols(trackedSymbols,quotes,missingSymbols);
+  const verified=audit.filter(row=>row.status==='verified_trade'||row.status==='verified_official_close').length;
   return <Panel title="行情資料中心（唯一行情入口）">
     <StatusRow label="資料中心模式" value={config.backendUrl?'遠端 HTTPS 後端＋本機 SQLite':'本機官方資料中心（尚未部署後端）'}/>
     <StatusRow label="統一 SQLite 資料版本" value={String(marketDataVersion)}/>
     <StatusRow label="官方行情資料筆數" value={String(quoteCount)}/>
     <StatusRow label="待取得代號" value={missingSymbols.join('、')||'無'}/>
+    <StatusRow label="逐檔最新來源已核實" value={verified+' / '+audit.length}/>
+    <Text style={styles.fieldLabel}>逐檔行情來源對帳（非持股紀錄）</Text>
+    <Text style={styles.note}>成交來源時間與查詢時間分開；重新查詢不代表有新成交。官方收盤價不標成盤中即時價，失聯僅保留上次可信來源。</Text>
+    {audit.map(item=><View key={item.symbol} style={styles.scheduleBox}>
+      <StatusRow label={item.symbol} value={MARKET_AUDIT_LABEL[item.status]}/>
+      <StatusRow label="最後可信報價" value={item.price===null?'無':String(item.price)}/>
+      <StatusRow label="數據來源／版本" value={(item.source??'待核實')+' / '+(item.marketDataVersion??'—')}/>
+      <StatusRow label="交易所來源時間" value={formatTime(item.sourceQuoteAt)}/>
+      <StatusRow label="資料中心查詢時間" value={formatTime(item.checkedAt)}/>
+    </View>)}
     <Text style={styles.fieldLabel}>已部署的 HTTPS 資料中心網址</Text>
     <TextInput accessibilityLabel="行情資料中心 HTTPS 網址" style={styles.input} keyboardType="url"
       autoCapitalize="none" autoCorrect={false} placeholder="https://您的資料中心網域"

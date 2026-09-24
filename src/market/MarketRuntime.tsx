@@ -73,6 +73,7 @@ type MarketRuntimeValue = {
   /** One SQLite commit version, shared across all React screens, Widget and Monitor. */
   marketDataVersion:number;
   missingSymbols:readonly string[];
+  trackedSymbols:readonly string[];
   setConfig: (next: MarketUpdateConfig) => void;
   refresh: (options?:{ force?: boolean }) => Promise<MarketRefreshResult>;
   refreshCatalog: () => Promise<void>;
@@ -299,6 +300,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         const snapshot=await loadUnifiedMarketData();
         if(!alive)return;
         const restored=marketRowsToRuntimeQuotes(snapshot,quotesRef.current);
+        setMissingSymbols(Array.isArray(snapshot.missing)?snapshot.missing:[]);
         quotesRef.current=restored;
         setQuotes(restored);
         marketVersionRef.current=snapshot.version;
@@ -488,8 +490,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[config.refreshOnForeground,refresh]);
 
   const value=useMemo<MarketRuntimeValue>(()=>({
-    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols,
-  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols]);
+    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,trackedSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols,
+  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,trackedSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols]);
 
   return <MarketRuntimeContext.Provider value={value}>{children}</MarketRuntimeContext.Provider>;
 }
