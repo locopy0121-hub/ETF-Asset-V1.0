@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { ColorPalettePicker } from '../components/ColorPalettePicker';
+import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
@@ -45,7 +46,7 @@ import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 type PluginPanel=null|'widget'|'monitor';
 type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
-type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
+type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
 type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
@@ -69,6 +70,9 @@ export function SettingsScreen(){
   const [systemPanel,setSystemPanel]=useState<SystemPanel>(null);
   const [accountingPanel,setAccountingPanel]=useState<AccountingPanel>(null);
   const [dataPanel,setDataPanel]=useState<DataPanel>(null);
+  const [marketEditorTarget,setMarketEditorTarget]=useState<'home'|'portfolio'|null>(null);
+  const [marketEditorTab,setMarketEditorTab]=useState<'wall'|'badges'>('wall');
+  const openMarketEditor=(page:'home'|'portfolio',tab:'wall'|'badges')=>{setMarketEditorTab(tab);setMarketEditorTarget(page);};
   const [backupPanel,setBackupPanel]=useState<BackupPanel>(null);
   const [monitorPanel,setMonitorPanel]=useState<MonitorPanel>(null);
   const [displayPanel,setDisplayPanel]=useState<DisplayPanel>(null);
@@ -222,6 +226,25 @@ export function SettingsScreen(){
 
   function dataSection(){
     return <View style={styles.children}>
+      <ChildButton label="統一行情資料中心／即時更新" summary={'版本 '+market.marketDataVersion+' · '+marketPhaseLabel(market.phase)} active={dataPanel==='market'} onPress={()=>setDataPanel(dataPanel==='market'?null:'market')}/>
+      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
+      <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
+      {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
+        <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，絕不套用 360 編輯器。</Text>
+        <ActionButton label="編輯首頁行情牆" onPress={()=>openMarketEditor('home','wall')}/>
+        <ActionButton label="編輯庫存行情牆" onPress={()=>openMarketEditor('portfolio','wall')}/>
+      </Panel>:null}
+      <ChildButton label="ETF 分類、配息與提醒" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
+      {dataPanel==='badges'?<Panel title="ETF 智慧標籤 A/B">
+        <Text style={styles.note}>僅變更畫面標籤；官方分類與配息原始資料保持不變，未知資料仍標示待確認。</Text>
+        <ActionButton label="編輯首頁標籤" onPress={()=>openMarketEditor('home','badges')}/>
+        <ActionButton label="編輯庫存標籤" onPress={()=>openMarketEditor('portfolio','badges')}/>
+      </Panel>:null}
+      <ChildButton label="行情卡片資訊顯示" summary={settings.prefs.marketCard.showQuoteMetadata?'顯示來源時間與版本':'精簡模式 · 隱藏來源時間與版本'} active={dataPanel==='metadata'} onPress={()=>setDataPanel(dataPanel==='metadata'?null:'metadata')}/>
+      {dataPanel==='metadata'?<Panel title="行情卡片資訊">
+        <ToggleRow label="顯示來源時間與資料版本" value={settings.prefs.marketCard.showQuoteMetadata} onChange={showQuoteMetadata=>settings.patchMarketCard({showQuoteMetadata})}/>
+        <Text style={styles.note}>預設隱藏價格上方的冗長資訊；無法取得行情時仍保留警示。真正來源更新時間與資料中心診斷保持可查，不用畫面跳秒冒充新報價。</Text>
+      </Panel>:null}
       <ChildButton label="ETF 基礎資料" summary={market.catalog.length+' 筆'} active={dataPanel==='catalog'} onPress={()=>setDataPanel(dataPanel==='catalog'?null:'catalog')}/>
       {dataPanel==='catalog'?<Panel title="ETF 基礎資料">
         <StatusRow label="資料來源" value="TWSE + TPEx"/>
@@ -641,6 +664,20 @@ export function SettingsScreen(){
       })}
       <View style={{height:24}}/>
     </ScrollView>
+    {marketEditorTarget?<PageFrameSettingsModal
+      key={marketEditorTarget+marketEditorTab}
+      visible={true}
+      pageKey={marketEditorTarget}
+      title={marketEditorTarget==='home'?'首頁行情牆':'庫存行情牆'}
+      frames={PAGE_FRAMES[marketEditorTarget]}
+      initialContentTab={marketEditorTab}
+      onClose={()=>setMarketEditorTarget(null)}
+      previewQuote={finance.holdings[0]?{
+        ...finance.holdings[0],
+        etfType:market.catalog.find(item=>item.symbol===finance.holdings[0]?.symbol)?.etfType??null,
+        dividendType:market.catalog.find(item=>item.symbol===finance.holdings[0]?.symbol)?.dividendType??null,
+      }:undefined}
+    />:null}
   </View>;
 }
 
