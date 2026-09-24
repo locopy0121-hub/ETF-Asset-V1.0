@@ -12,9 +12,11 @@ assert.deepEqual(parseTwseMonthly({stat:'沒有符合條件的資料',data:[vali
 async function main(){
 const oldFetch=globalThis.fetch;
 let calls=0;
+ let suffixCalls=0;
 try{
  globalThis.fetch=async(input:RequestInfo|URL)=>{
    calls++;
+   if(String(input).includes('stockNo=00406A'))suffixCalls++;
    assert.match(String(input),/twse\.com\.tw\/exchangeReport\/STOCK_DAY/);
    return {ok:true,json:async()=>({stat:'OK',data:[valid]})} as Response;
  };
@@ -22,6 +24,9 @@ try{
  assert.equal(calls,2);
  assert.equal(rows.length,1,'dedupe matching dates');
  assert.equal(rows[0]?.date,'2026-09-22');
+ const alphanumeric=await fetchOfficialDailyHistory('00406A',1,new Date('2026-09-25T00:00:00Z'));
+ assert.equal(suffixCalls,1,'00406A must reach official source instead of failing local validation');
+ assert.equal(alphanumeric.length,1);
 }finally{globalThis.fetch=oldFetch;}
 await assert.rejects(()=>fetchOfficialDailyHistory('0050',13),/無效/);
 console.log('V2.3.4 item 7 official OHLCV parser, source, missing-data, request tests: PASS');
