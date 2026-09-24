@@ -54,6 +54,8 @@ export function normalizePortfolioList(raw:unknown):PortfolioListConfig{
 }
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 export function portfolioColumnValue(row:HoldingQuote,key:PortfolioColumnKey):{value:string;tone:'gain'|'loss'|'flat'|'default';numeric:number}{
+  if(row.quoteVerified===false&&['price','changePct','marketValue','pnl','roi','weight','comprehensivePnl'].includes(key))
+    return {value:'待取得',tone:'default',numeric:0};
   const change=row.price-row.previousClose;
   const percent=row.previousClose>0?change/row.previousClose*100:0;
   if(key==='shares')return {value:money(row.shares),tone:'default',numeric:row.shares};
