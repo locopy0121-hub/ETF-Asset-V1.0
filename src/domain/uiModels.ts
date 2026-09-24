@@ -41,10 +41,21 @@ export type HoldingWallStyleConfig = Readonly<{
   padding: number;
   rowGap: number;
 }>;
+export type WallTickerConfig = Readonly<{
+  enabled:boolean;
+  direction:'left'|'right';
+  speed:number;
+  itemGap:number;
+  showPrice:boolean;
+  showChange:boolean;
+  textColor:string;
+  backgroundColor:string;
+}>;
 export type HoldingWallConfig = Readonly<{
   header: HoldingWallHeaderConfig;
   fields: readonly HoldingWallFieldConfig[];
   style: HoldingWallStyleConfig;
+  ticker?:WallTickerConfig;
 }>;
 
 export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
@@ -61,6 +72,7 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
     {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
     {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
   ],
+  ticker:{enabled:false,direction:'left',speed:55,itemGap:24,showPrice:true,showChange:true,textColor:'#DCEAFE',backgroundColor:'#101B2B'},
   style:{backgroundColor:'#0C121B',textColor:'#FFFFFF',secondaryTextColor:'#91A0B5',gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
 };
 
