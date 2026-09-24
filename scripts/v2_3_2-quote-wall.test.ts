@@ -7,10 +7,10 @@ import {mergeDisplayState} from '../src/editor/editorModel';
 
 const read=(path:string)=>readFileSync(path,'utf8');
 const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'2.3.2');
+assert.ok(['2.3.2','2.3.3'].includes(pkg.version),'V2.3.2 market wall behavior must survive V2.3.3');
 assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,20302);
-assert.equal(app.expo.ios.buildNumber,'20302');
+assert.equal(app.expo.android.versionCode,20300+Number(pkg.version.split('.')[2]));
+assert.equal(app.expo.ios.buildNumber,String(20300+Number(pkg.version.split('.')[2])));
 
 assert.equal(badgePresentationText('etfType','高股息型','季配'),'高股息');
 assert.equal(badgePresentationText('etfType','市值型','半年配'),'市值');
