@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { OfficialCandleChart } from '../components/OfficialCandleChart';
+import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
@@ -9,13 +11,28 @@ import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
-const ranges=['1日','1週','1月','3月','1年','全部'] as const;
+const ranges=['1月','3月','1年'] as const;
 
 export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
   const finance=useFinance();
   // Detail must subscribe to the current canonical projection, not a stale tapped row.
   const holding=finance.holdings.find(row=>row.symbol===initialHolding.symbol)??initialHolding;
-  const [range,setRange]=useState<(typeof ranges)[number]>('1日');
+  const [range,setRange]=useState<(typeof ranges)[number]>('1月');
+  const [candles,setCandles]=useState<DailyCandle[]>([]);
+  const [historyLoading,setHistoryLoading]=useState(false);
+  const [historyError,setHistoryError]=useState<string|null>(null);
+  useEffect(()=>{
+    let active=true;
+    const abort=new AbortController();
+    setHistoryLoading(true);
+    setHistoryError(null);
+    setCandles([]);
+    fetchOfficialDailyHistory(holding.symbol,range==='1月'?1:range==='3月'?3:12,new Date(),abort.signal)
+      .then(rows=>{if(active)setCandles(rows);})
+      .catch(error=>{if(active)setHistoryError(error instanceof Error?error.message:'官方歷史行情不可用');})
+      .finally(()=>{if(active)setHistoryLoading(false);});
+    return()=>{active=false;abort.abort();};
+  },[holding.symbol,range]);
   const change=holding.price-holding.previousClose;
   const changePct=holding.previousClose>0?change/holding.previousClose*100:0;
   const history=[...finance.entries].filter(entry=>'symbol' in entry&&entry.symbol===holding.symbol).sort((a,b)=>b.date.localeCompare(a.date));
@@ -32,11 +49,8 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
       <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'估值待核對':holding.previousCloseKnown===false?'前收待取得':(change>0?'▲':change<0?'▼':'●')+' '+(change>=0?'+':'')+change.toFixed(2)+'　'+(changePct>=0?'+':'')+changePct.toFixed(2)+'%'}</Text>
       <View style={styles.marketMeta}><Text style={styles.meta}>前收 {holding.previousCloseKnown===false?'待取得':holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>{quoteLabel}｜來源 {sourceTime}｜v{holding.marketDataVersion??0}</Text></View>
       <View style={styles.rangeRow}>{ranges.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
-      <View style={styles.sparkline}>{holding.sparkline.map((v,i)=>{
-        const min=Math.min(...holding.sparkline),max=Math.max(...holding.sparkline),rangeValue=Math.max(0.01,max-min);
-        return <View key={i} style={[styles.sparkBar,{height:18+(v-min)/rangeValue*72,backgroundColor:change>=0?colors.gain:colors.loss}]}/>;
-      })}</View>
-      {range!=='1日'?<Text style={styles.rangeHint}>目前種子行情只有 1 日資料；其他區間已建立切換介面，接入歷史行情後直接沿用。</Text>:null}
+      <OfficialCandleChart candles={candles} loading={historyLoading} error={historyError} rangeLabel={range}/>
+      <Text style={styles.rangeHint}>目前支援臺灣證交所官方日 K。週線／分時線與上櫃 ETF 在有可信來源前不顯示示意圖。</Text>
     </FrameCard>
 
     <FrameCard title="持股資訊">
