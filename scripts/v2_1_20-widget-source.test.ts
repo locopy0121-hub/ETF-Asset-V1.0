@@ -42,7 +42,8 @@ const market=readFileSync('src/market/MarketRuntime.tsx','utf8');
 assert.match(native,/sourceQuoteAt\(row,now\)/);
 assert.match(native,/sourceAt<=maxOf\(previousOverrideAt,canonicalAt\)/);
 assert.match(native,/putLong\("wall_market_source_at",newestSourceAt\)/);
-assert.match(native,/來源無新報價/);
+// V2.1.21 copy is more precise: a successful request can return no newer VERIFIED TRADE.
+assert.match(native,/未有較新成交/,'No new exchange trade must preserve old quote timestamps');
 assert.match(bridge,/pending\.length\(\)==0/);
 assert.match(bridge,/canonicalAt<nativeAt/);
 assert.match(bridge,/TfAssetWidgetProvider\.ACTION_FORCE_REFRESH/,'Manual Native call must fetch, not just repaint');
