@@ -50,7 +50,9 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       LocalDateTime.parse("$d $t",DateTimeFormatter.ofPattern("uuuuMMdd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT))
         .atZone(ZoneId.of("Asia/Taipei")).toInstant().toEpochMilli()
     }.getOrNull()?:return null
-    return parsed.takeIf{it>0L&&it<=now+120_000L&&it>=now-31L*86_400_000L}
+    val tlong=row.optString("tlong","").trim().takeIf{Regex("^\\d{13}$").matches(it)}?.toLongOrNull()
+    val source=if(tlong!=null&&kotlin.math.abs(tlong-parsed)<1_000L)tlong else parsed
+    return source.takeIf{it>0L&&it<=now+120_000L&&it>=now-31L*86_400_000L}
   }
 
   private fun parsedTimestamp(value:String):Long=
@@ -67,12 +69,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       if(refreshing)return
       refreshing=true
     }
-    // A user tap performs an actual network request; merely repainting must never advance the quote clock.
     val manager=AppWidgetManager.getInstance(context)
     val ids=manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java))
     ids.forEach{id->val progress=RemoteViews(context.packageName,R.layout.tf_asset_widget)
       progress.setTextViewText(R.id.widget_refresh,"行情更新中…")
-      progress.setTextViewText(R.id.widget_refresh_status,"正在向交易所取得報價…")
+      progress.setTextViewText(R.id.widget_refresh_status,"正在查詢交易所最新成交…")
       manager.partiallyUpdateAppWidget(id,progress)
     }
     val prefs=context.getSharedPreferences("tf_asset_native",0)
@@ -83,70 +84,104 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       try{
         val snapshot=JSONObject(prefs.getString("snapshot","{}")?:"{}")
         val symbols=orderedHoldings(snapshot,JSONObject(prefs.getString("widget_config","{}")?:"{}"))
-          .map{it.optString("symbol","")}.filter{it.matches(Regex("[0-9A-Za-z]{4,8}"))}.distinct()
+          .map{it.optString("symbol","").trim().uppercase()}
+          .filter{it.matches(Regex("[0-9A-Za-z]{4,8}"))}.distinct()
         if(symbols.isEmpty())throw IllegalStateException("無持股行情")
         val channels=symbols.flatMap{listOf("tse_${it}.tw","otc_${it}.tw")}.joinToString("|")
         val url="https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch="+URLEncoder.encode(channels,"UTF-8")+"&json=1&delay=0&_="+System.currentTimeMillis()
         val connection=URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout=8000
-        connection.readTimeout=8000
+        connection.connectTimeout=4500
+        connection.readTimeout=4500
+        connection.useCaches=false
         connection.setRequestProperty("Accept","application/json")
+        connection.setRequestProperty("Cache-Control","no-cache, no-store")
+        connection.setRequestProperty("Pragma","no-cache")
+        connection.setRequestProperty("Referer","https://mis.twse.com.tw/stock/index.jsp")
         val payload=try{
           if(connection.responseCode!=200)throw IllegalStateException("行情 HTTP "+connection.responseCode)
           JSONObject(connection.inputStream.bufferedReader().use{it.readText()})
         }finally{connection.disconnect()}
+        val now=System.currentTimeMillis()
+        prefs.edit().putLong("widget_last_query_at",now).apply()
         val canonical=snapshot.optJSONArray("holdings")?:JSONArray()
+        val canonicalMap=(0 until canonical.length()).mapNotNull{canonical.optJSONObject(it)}
+          .associateBy{it.optString("symbol","").uppercase()}
         val oldOverrides=if(prefs.contains("wall_market_source_at"))
           runCatching{JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{JSONObject()}
-        else JSONObject() // Old native HTTP receipt times cannot be trusted as source timestamps.
-        val quotes=JSONObject()
+        else JSONObject()
+        // The server can return TSE and TPEx rows for the same code: choose the
+        // latest verifiable last trade, never the last row or an indicative bid/ask.
+        val best=linkedMapOf<String,Pair<JSONObject,Long>>()
         val rows=payload.optJSONArray("msgArray")?:JSONArray()
-        val now=System.currentTimeMillis()
-        var validSourceCount=0
-        var latestSeenAt=0L
         for(index in 0 until rows.length()){
           val row=rows.optJSONObject(index)?:continue
-          val symbol=row.optString("c","")
+          val symbol=row.optString("c","").trim().uppercase()
           if(!symbols.contains(symbol))continue
-          val current=listOf("z","pz","b","a").asSequence().map{row.optString(it,"").split("_").firstOrNull()?.toDoubleOrNull()}
-            .firstOrNull{it!=null&&it>0}?:continue
+          val trade=row.optString("z","").toDoubleOrNull()
+          if(trade==null||!trade.isFinite()||trade<=0.0)continue
           val sourceAt=sourceQuoteAt(row,now)?:continue
-          validSourceCount+=1
-          latestSeenAt=maxOf(latestSeenAt,sourceAt)
-          val previousOverrideAt=parsedTimestamp(oldOverrides.optJSONObject(symbol)?.optString("updatedAt","")?:"")
-          val canonicalRow=(0 until canonical.length()).mapNotNull{canonical.optJSONObject(it)}
-            .firstOrNull{it.optString("symbol","")==symbol}
-          val canonicalAt=parsedTimestamp(canonicalRow?.optString("updatedAt","")?:"")
-          if(sourceAt<=maxOf(previousOverrideAt,canonicalAt))continue // A repeated source tick is NOT updated data.
-          val previous=row.optString("y","").toDoubleOrNull()
-          val quote=JSONObject().put("price",current).put("updatedAt",Instant.ofEpochMilli(sourceAt).toString())
-          if(previous!=null&&previous>0){
-            quote.put("previousClose",previous)
-            quote.put("change",current-previous)
-            quote.put("changePercent",(current-previous)/previous*100)
-          }
-          quotes.put(symbol,quote)
+          val existing=best[symbol]
+          val newVolume=row.optString("v","").toDoubleOrNull()?:0.0
+          val oldVolume=existing?.first?.optString("v","")?.toDoubleOrNull()?:0.0
+          if(existing==null||sourceAt>existing.second||(sourceAt==existing.second&&newVolume>oldVolume))
+            best[symbol]=row to sourceAt
         }
-        if(validSourceCount==0)throw IllegalStateException("交易所未提供可核實的行情時間")
-        if(quotes.length()==0){
-          val lastKnown=prefs.getLong("wall_market_refreshed_at",0L)
-          val sourceTime=maxOf(lastKnown,latestSeenAt)
-          prefs.edit().putString("widget_refresh_status","來源無新報價 ${exchangeClock(sourceTime)}｜資料未更新").apply()
+        if(best.isEmpty()){
+          // HTTP 200, a book-only response and a source tick are different events.
+          prefs.edit().putString("widget_refresh_status",
+            "查詢${exchangeClock(now)}｜未有可核實成交\n保留原價與前次來源時間").apply()
         }else{
-          // Preserve other unsynchronized quotes when an API response covers only part of the holdings.
-          val merged=JSONObject(oldOverrides.toString())
-          val iterator=quotes.keys()
-          while(iterator.hasNext()){val symbol=iterator.next();merged.put(symbol,quotes.getJSONObject(symbol))}
-          val previousAt=prefs.getLong("wall_market_refreshed_at",0L)
-          val newestSourceAt=maxOf(previousAt,latestSeenAt)
-          val coverage=if(quotes.length()==symbols.size)"" else " ${quotes.length()}/${symbols.size}"
-          prefs.edit().putString("wall_market_overrides",merged.toString())
-            .putString("widget_refresh_status","行情${coverage} ${exchangeClock(newestSourceAt)}｜財務待同步")
-            .putLong("wall_market_refreshed_at",newestSourceAt)
-            .putLong("wall_market_source_at",newestSourceAt).apply()
+          val quotes=JSONObject()
+          var latestSeenAt=0L
+          var conflicts=0
+          val waiting=mutableListOf<String>()
+          for(symbol in symbols){
+            val pair=best[symbol]
+            if(pair==null){waiting.add(symbol);continue}
+            val (row,sourceAt)=pair
+            latestSeenAt=maxOf(latestSeenAt,sourceAt)
+            val current=row.optString("z","").toDoubleOrNull()?:continue
+            val previousOverrideAt=parsedTimestamp(oldOverrides.optJSONObject(symbol)?.optString("updatedAt","")?:"")
+            val canonicalRow=canonicalMap[symbol]
+            val canonicalAt=parsedTimestamp(canonicalRow?.optString("updatedAt","")?:"")
+            if(sourceAt<=maxOf(previousOverrideAt,canonicalAt)){
+              val prior=if(previousOverrideAt>=canonicalAt)oldOverrides.optJSONObject(symbol) else canonicalRow
+              val priorPrice=prior?.optDouble("price",Double.NaN)?:Double.NaN
+              if(sourceAt==maxOf(previousOverrideAt,canonicalAt)&&priorPrice.isFinite()&&kotlin.math.abs(priorPrice-current)>0.0001)
+                conflicts++
+              waiting.add(symbol)
+              continue
+            }
+            val previous=row.optString("y","").toDoubleOrNull()
+            val quote=JSONObject().put("price",current).put("updatedAt",Instant.ofEpochMilli(sourceAt).toString())
+            if(previous!=null&&previous>0.0){
+              quote.put("previousClose",previous)
+              quote.put("change",current-previous)
+              quote.put("changePercent",(current-previous)/previous*100)
+            }
+            quotes.put(symbol,quote)
+          }
+          val previouslyVerified=prefs.getLong("wall_market_refreshed_at",0L)
+          if(quotes.length()==0){
+            val latest=maxOf(previouslyVerified,latestSeenAt)
+            val stale=if(waiting.isEmpty())"" else "｜待核對 "+waiting.take(3).joinToString(",")
+            val mismatch=if(conflicts>0)"｜同秒價差${conflicts}檔" else ""
+            prefs.edit().putString("widget_refresh_status",
+              "查詢${exchangeClock(now)}｜來源${exchangeClock(latest)}\n未有較新成交${stale}${mismatch}").apply()
+          }else{
+            val merged=JSONObject(oldOverrides.toString())
+            val iterator=quotes.keys()
+            while(iterator.hasNext()){val symbol=iterator.next();merged.put(symbol,quotes.getJSONObject(symbol))}
+            val newestSourceAt=maxOf(previouslyVerified,latestSeenAt)
+            val coverage=if(quotes.length()==symbols.size)"" else " ${quotes.length()}/${symbols.size}"
+            val stale=if(waiting.isEmpty())"" else "｜待更新 "+waiting.take(3).joinToString(",")
+            prefs.edit().putString("wall_market_overrides",merged.toString())
+              .putString("widget_refresh_status","來源${exchangeClock(newestSourceAt)}｜更新${quotes.length()}檔${coverage}\n財務待同步${stale}")
+              .putLong("wall_market_refreshed_at",newestSourceAt)
+              .putLong("wall_market_source_at",newestSourceAt).apply()
+          }
         }
       }catch(error:Exception){
-        // Keep last verified exchange quote and canonical asset values unchanged.
         prefs.edit().putString("widget_refresh_status","行情更新失敗｜保留原資料").apply()
       }finally{
         refreshing=false
