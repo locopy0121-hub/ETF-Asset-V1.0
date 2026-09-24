@@ -71,6 +71,11 @@ export type HoldingQuote = {
   reminderEvent?:EtfReminderType|null;
   symbol: string;
   name: string;
+  quoteVerified?: boolean;
+  quoteQuality?: 'trade'|'official_close'|'unavailable';
+  quoteSourceAt?: number|null;
+  marketDataVersion?:number;
+  previousCloseKnown?:boolean;
   shares: number;
   price: number;
   previousClose: number;
