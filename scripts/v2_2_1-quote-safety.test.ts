@@ -6,7 +6,7 @@ import {ensureLedgerQuoteCoverage} from '../src/finance/runtimeQuoteCoverage';
 import {freezeTradeEntry,calculateCanonicalLedgerSnapshot} from '../src/finance/canonicalLedger';
 import {buildSharedSnapshot} from '../src/finance/sharedSnapshotAdapter';
 
-const now=Date.parse('2026-09-24T11:00:00+08:00');
+const now=Date.now();
 const at=now-60_000;
 const verified={symbol:'0050',name:'元大台灣50',currentPrice:112.1,previousClose:111.2,
   sourceQuoteAt:at,liquidationTradeMode:'ROUND_LOT' as const,dividendFrequency:4 as const,sparkline:[112.1]};
@@ -42,8 +42,8 @@ const share=buildSharedSnapshot({canonical:snapshot,holdings:[{
   cumulativeDividend:0,realizedPnl:0,comprehensivePnl:0,sparkline:[],
 }],generatedAt:null,quoteSourceTimes:[]});
 assert.equal(share.asset.valuationComplete,false);
-assert.equal(share.holdings[0].price,null,'Native surfaces must not present trade reference as live');
-assert.equal(share.holdings[0].marketStatus,'unavailable');
+assert.equal(share.holdings[0]?.price,null,'Native surfaces must not present trade reference as live');
+assert.equal(share.holdings[0]?.marketStatus,'unavailable');
 for(const path of ['src/screens/HomeScreen.tsx','src/screens/PortfolioScreen.tsx','src/screens/HoldingDetailScreen.tsx',
   'src/components/HoldingQuoteModule.tsx','src/domain/portfolioList.ts']){
   assert.match(readFileSync(path,'utf8'),/待核對|待取得/,'Unverified valuation visibly labeled: '+path);
