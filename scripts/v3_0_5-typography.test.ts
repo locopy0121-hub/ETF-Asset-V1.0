@@ -48,7 +48,7 @@ assert.ok(stack.includes("kind:'prefix'")&&stack.includes("id:'prefix:'"));
 assert.ok(stack.includes('override.prefixText!==undefined?appearance.prefixText:content'));
 for(const key of ['override.fontWeight','override.fontStyle','override.textDecorationLine',
   'override.letterSpacing','override.lineHeight','override.prefixGap'])assert.ok(stack.includes(key),key);
-for(const key of ['options[fieldName]','key===\'prefixText\'','prefixGap:[0,48,1]'])
+for(const key of ['options[optionName]','key===\'prefixText\'','prefixGap:[0,48,1]'])
   assert.ok(dock.includes(key),key);
 assert.ok(metric.includes('editorStyle?.fontWeight')&&metric.includes('editorStyle?.fontStyle'));
 assert.ok(inspector.includes('if(!engineer.enabled&&!appearance.visible)return null'));
