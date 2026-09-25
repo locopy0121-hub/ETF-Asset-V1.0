@@ -5,6 +5,7 @@ import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
 import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type TargetGeometry} from './workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
+import {colorWithAlpha} from './frameEffects';
 import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
@@ -43,7 +44,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const spatial={transform:[{translateX:displacement.x},{translateY:displacement.y}],
     ...(override.height!==undefined?{height:override.height}:{})};
   const wrapperStyle=customized&&['wall','portfolio-list','control','generic'].includes(target.kind)?{
-    ...(override.backgroundColor||override.backgroundProfitColor?{backgroundColor:resolvedAppearance.backgroundColor}:{}),
+    ...(override.backgroundColor||override.backgroundProfitColor||override.backgroundOpacity!==undefined?{backgroundColor:colorWithAlpha(resolvedAppearance.backgroundColor,appearance.backgroundOpacity)}:{}),
     ...(override.borderColor||override.borderProfitColor?{borderColor:resolvedAppearance.borderColor}:{}),
     ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
     ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
