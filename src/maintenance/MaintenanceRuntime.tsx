@@ -171,10 +171,14 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       displayTouched:[...new Set([...current.displayTouched,...Object.keys(patch) as (keyof PageDisplayConfig)[]])],
     }:current),
     install:templateId=>setSession(current=>{
-      if(!current||current.scope!=='frame'||current.draftInstances.length>=30)return current;
+      if(!current||current.draftInstances.length>=30)return current;
+      const selected=current.scope==='instance'?current.draftInstances.find(item=>item.id===current.instanceId):undefined;
+      if(current.scope!=='frame'&&!(selected&&selected.templateId==='parent-frame'&&isEngineerOwnedInstance(selected)))return current;
       const id='i-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
       const instance=instantiateComponent(templateId,id);
-      return {...current,draftInstances:[...current.draftInstances,instance],focusInstanceId:id};
+      // Parent frames live at the local root; other new components can be nested inside one.
+      const located=selected&&instance.templateId!=='parent-frame'?{...instance,parentId:selected.id}:instance;
+      return {...current,draftInstances:[...current.draftInstances,located],focusInstanceId:id};
     }),
     remove:id=>setSession(current=>{
       if(!current||!['frame','instance'].includes(current.scope))return current;
