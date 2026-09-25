@@ -1,3 +1,4 @@
+import type {TextStyle} from 'react-native';
 import type {MainPageKey} from '../domain/pageRegistry';
 import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
@@ -13,7 +14,7 @@ export type TargetAppearance=Readonly<{
   backgroundProfitColor?:boolean;borderProfitColor?:boolean;
   profitToneOverride?:'auto'|FinancialTone;
   borderWidth:number;borderRadius:number;padding:number;opacity:number;
-  fontWeight:'normal'|'bold'|'100'|'200'|'300'|'400'|'500'|'600'|'700'|'800'|'900';
+  fontWeight:TextStyle['fontWeight'];
   fontStyle:'normal'|'italic';textDecorationLine:'none'|'underline'|'line-through'|'underline line-through';
   letterSpacing:number;lineHeight:number;prefixText:string;prefixGap:number;
   align:'left'|'center'|'right';useProfitColor:boolean;
