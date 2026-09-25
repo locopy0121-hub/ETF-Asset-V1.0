@@ -1,11 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
+import type {TargetOverride} from '../maintenance/inspectionModel';
 import type {TargetAppearance} from '../maintenance/inspectionModel';
 
 export function MetricTile({label,value,caption,tone='default',editorStyle}:{
   label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
-  editorStyle?:TargetAppearance;
+  editorStyle?:TargetOverride;
 }){
   const theme=useThemeRuntime();
   const toneColor=tone==='gain'?theme.palette.gain:tone==='loss'?theme.palette.loss:theme.palette.text;

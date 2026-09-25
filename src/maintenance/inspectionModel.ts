@@ -2,7 +2,7 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
-export type TargetKind='metric'|'text'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic';
+export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic';
 export type TargetProperty=Readonly<{name:string;value:string;readOnly?:boolean}>;
 export type TargetAppearance=Readonly<{
   visible:boolean;fontSize:number;labelFontSize:number;captionFontSize:number;
@@ -57,6 +57,7 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(field==='target:labelText')return kind==='metric'||kind==='text';
   if(field==='target:captionText')return kind==='metric';
+  if(field==='target:labelColor')return kind==='metric'||kind==='text';
   if(field==='target:labelFontSize'||field==='target:captionFontSize')return kind==='metric';
   if(field==='target:useProfitColor')return kind==='metric'||kind==='quote-card';
   if(kind==='wall'||kind==='portfolio-list'||kind==='control'){

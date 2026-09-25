@@ -102,7 +102,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <View style={styles.dashboardTop}>
               <View style={styles.dashboardSummary}>
                 <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                <Text style={styles.heroValue}>{valuationComplete?'NT$ '+money(portfolio.totalMarketValue):'估值待核對'}</Text>
+                <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52} accessibilityLabel="目前持股總市值">{valuationComplete?'NT$ '+money(portfolio.totalMarketValue):'估值待核對'}</Text>
                 <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
               </View>
             </View>
