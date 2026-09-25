@@ -24,13 +24,24 @@ export function MaintenanceWorkbench(){
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
+  const [showAllSkills,setShowAllSkills]=useState(false);
   const [saving,setSaving]=useState(false);
-  useEffect(()=>{setOpenSkill(session?.scope==='target'?'typography':null);setOpenTool(null);},[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
+  useEffect(()=>{
+    setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
+      session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
+      session.target?.kind==='control'?'conditions':'typography':null);
+    setOpenTool(null);setShowAllSkills(false);
+  },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
   const instance=session.draftInstances.find(item=>item.id===focused);
   const selectedTarget=session.scope==='target'?session.target:undefined;
   const pendingSelection=maintenance.selection?.page===session.page&&maintenance.selection.frameKey===session.frameKey?maintenance.selection:null;
+  // The engineer retains every skill. Present applicable tools first for THIS selected A-layer.
+  const displaySkills=ENGINEER_SKILLS.map(group=>({...group,
+    tools:showAllSkills?group.tools:group.tools.filter(tool=>toolUsable(tool,session)),
+  })).filter(group=>showAllSkills||group.tools.length>0);
+  const applicableCount=ENGINEER_SKILLS.flatMap(group=>group.tools).filter(tool=>toolUsable(tool,session)).length;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
   const apply=async()=>{
     if(saving)return;
@@ -49,7 +60,16 @@ export function MaintenanceWorkbench(){
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
     <ScrollView style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
-      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>全部技能均可查看；既有頁面設定工具已歸入相應技能。原地輕點選取元件，再點小扳手進入該元件編輯；未適配能力標示待接入。</Text>
+      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:7}}>
+        <Text style={[styles.hint,{color:theme.palette.textSecondary,flex:1,marginBottom:0}]}>
+          {showAllSkills?'全部技能樹（未適配工具清楚標示）':`目前可用 ${applicableCount} 種工具；與當前元件無關的工具先收起。`}
+        </Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={showAllSkills?'只顯示適用技能':'查看全部維護技能'}
+          onPress={()=>{setShowAllSkills(value=>!value);setOpenTool(null);}}
+          style={[styles.choice,{borderColor:theme.palette.primary}]}>
+          <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>{showAllSkills?'適用技能':'全部技能'}</Text>
+        </Pressable>
+      </View>
       {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選取 {pendingSelection.label}，點上方小扳手讀取其目前設定。</Text>:null}
       {selectedTarget?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginBottom:8}]}>
         <Text style={[styles.label,{color:theme.palette.text}]}>App 即時元件檢視｜{selectedTarget.label}</Text>
@@ -59,7 +79,7 @@ export function MaintenanceWorkbench(){
         </View>)}
         <Text style={[styles.small,{color:theme.palette.textSecondary,marginTop:7}]}>資料值唯讀；下方工具修改顯示屬性或本頁設定，不修改來源帳務。</Text>
       </View>:null}
-      {ENGINEER_SKILLS.map(skillItem=><View key={skillItem.id} style={[styles.group,{borderColor:theme.palette.border}]}>
+      {displaySkills.map(skillItem=><View key={skillItem.id} style={[styles.group,{borderColor:theme.palette.border}]}>
         <Pressable accessibilityRole="button" onPress={()=>selectSkill(skillItem.id)} style={styles.groupTitle}>
           <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label}</Text>
           <Text style={{color:theme.palette.primary}}>{openSkill===skillItem.id?'⌄':'›'}</Text>

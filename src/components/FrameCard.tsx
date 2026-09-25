@@ -35,9 +35,12 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
         ...(editorStyle.minHeight!==undefined?{minHeight:editorStyle.minHeight}:{}),
         ...(editorStyle.shadowEnabled?{elevation:4,shadowOpacity:editorStyle.shadowOpacity,shadowRadius:8,shadowOffset:{width:0,height:2}}:{}),
       },
-      workActive&&{borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary},
       workHidden&&{opacity:.5},
     ]}>
+      {workActive?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
+        borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
+        borderRadius:editorStyle?.borderRadius??radius.lg,
+      }]}/>:null}
       <View style={styles.header}>
         <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
         {action}

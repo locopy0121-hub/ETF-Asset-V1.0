@@ -5,6 +5,7 @@ import type { FrameCardProps } from './FrameCard';
 import { MetricTile } from './MetricTile';
 import { HoldingQuoteCollection } from './HoldingQuoteCollection';
 import { SegmentedControl } from './SegmentedControl';
+import {AiQuestionBox} from './AiQuestionBox';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import {InstalledFrameComponents} from '../maintenance/MaintenanceWorkbench';
@@ -36,8 +37,12 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         },
       };
       return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
-        {(appearance,customized)=><MetricTile {...props} {...(customized?{editorStyle:appearance}:{})}/>}
+        {(_appearance,customized,override)=><MetricTile {...props} {...(customized?{editorStyle:override}:{})}/>}
       </InspectableTarget>;
+    }
+    if(child.type===AiQuestionBox){
+      const props=child.props as ComponentProps<typeof AiQuestionBox>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof AiQuestionBox>>,{...props,maintenance:frame});
     }
     if(child.type===HoldingQuoteCollection){
       const props=child.props as ComponentProps<typeof HoldingQuoteCollection>;
@@ -63,22 +68,31 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         const color=typeof raw?.color==='string'&&/^#[0-9a-f]{6}$/i.test(raw.color)?raw.color:'#0F172A';
         const bg=typeof raw?.backgroundColor==='string'&&/^#[0-9a-f]{6}$/i.test(raw.backgroundColor)?raw.backgroundColor:'#FFFFFF';
         const size=typeof raw?.fontSize==='number'?raw.fontSize:13;
+        const isDataValue=/NT\$\s*[-+]?\s*[\d,]+(?:\.\d+)?|^[+-]?[\d,]+(?:\.\d+)?%?$/.test(content)
+          ||!!raw?.fontVariant?.includes('tabular-nums');
         const target:InspectedTarget={
-          id:'text:'+nodeId,kind:'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+          id:'text:'+nodeId,kind:isDataValue?'value':'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
           properties:[{name:'原畫面文字',value:content,readOnly:true},{name:'原字號',value:size+' px',readOnly:true},
-            {name:'原文字顏色',value:color,readOnly:true}],
+            {name:'原文字顏色',value:color,readOnly:true},
+            ...(isDataValue?[{name:'資料保護',value:'原始數值不可由文字工具覆寫',readOnly:true}]:[])],
           base:{...TARGET_APPEARANCE,fontSize:size,textColor:color,backgroundColor:bg,
             align:raw?.textAlign==='center'||raw?.textAlign==='right'?raw.textAlign:'left',
             borderWidth:typeof raw?.borderWidth==='number'?raw.borderWidth:0,
             padding:typeof raw?.padding==='number'?raw.padding:0,borderRadius:typeof raw?.borderRadius==='number'?raw.borderRadius:0},
         };
         return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>
-          {(appearance,customized)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
-            ...props,children:customized?(appearance.labelText||appearance.captionText||content):content,
-            style:customized?[props.style,{color:appearance.textColor,fontSize:appearance.fontSize,
-              textAlign:appearance.align,backgroundColor:appearance.backgroundColor,
-              borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,
-              borderRadius:appearance.borderRadius,padding:appearance.padding}]:props.style,
+          {(appearance,customized,override)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
+            ...props,children:customized&&!isDataValue?(appearance.labelText||appearance.captionText||content):content,
+            style:customized?[props.style,{
+              ...(override.textColor?{color:appearance.textColor}:{}),
+              ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
+              ...(override.align?{textAlign:appearance.align}:{}),
+              ...(override.backgroundColor?{backgroundColor:appearance.backgroundColor}:{}),
+              ...(override.borderColor?{borderColor:appearance.borderColor}:{}),
+              ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
+              ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
+              ...(override.padding!==undefined?{padding:appearance.padding}:{}),
+            }]:props.style,
           })}
         </InspectableTarget>;
       }

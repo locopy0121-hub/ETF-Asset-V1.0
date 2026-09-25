@@ -14,7 +14,7 @@ const locked={
 for(const [path,expected] of Object.entries(locked))
   assert.equal(blob(path),expected,'Locked finance file differs from V2.1.20 backup: '+path);
 const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
-assert.ok(/^2\.3\.[123456]$/.test(pkg.version)||['3.0.1','3.0.2'].includes(pkg.version),'Expected V2.3.x continuation or V3.0.1 engineer upgrade');
+assert.ok(/^2\.3\.[123456]$/.test(pkg.version)||['3.0.1','3.0.2','3.0.3'].includes(pkg.version),'Expected V2.3.x continuation or V3.0.1 engineer upgrade');
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,pkg.version.startsWith('3.0.')?30000+Number(pkg.version.split('.')[2]):20300+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.android.package,'com.tfasset.app');

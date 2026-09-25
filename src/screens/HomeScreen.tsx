@@ -102,7 +102,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <View style={styles.dashboardTop}>
               <View style={styles.dashboardSummary}>
                 <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                <Text style={styles.heroValue}>{valuationComplete?'NT$ '+money(portfolio.totalMarketValue):'估值待核對'}</Text>
+                <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52} accessibilityLabel="目前持股總市值">{valuationComplete?'NT$ '+money(portfolio.totalMarketValue):'估值待核對'}</Text>
                 <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
               </View>
             </View>
@@ -182,7 +182,8 @@ const styles=StyleSheet.create({
   heroDelta:{fontSize:13,fontWeight:'800'},
   pageLayer:{position:'relative'},
   dashboardTop:{minHeight:150,justifyContent:'flex-start'},
-  dashboardSummary:{width:'48%',gap:6},
+  // A narrow fixed 48% hero column clips long NT$ balances on real devices.
+  dashboardSummary:{width:'100%',gap:6},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},
