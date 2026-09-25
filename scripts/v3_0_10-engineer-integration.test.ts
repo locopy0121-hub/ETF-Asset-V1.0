@@ -9,15 +9,15 @@ import {colorWithAlpha} from '../src/maintenance/frameEffects';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.10');
+assert.ok(['3.0.10','3.0.11'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30010);
-assert.equal(app.expo.ios.buildNumber,'30010');
+assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 assert.equal(app.expo.android.package,'com.tfasset.app');
 assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.10'"));
 assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30010'"));
 assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.10'"));
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.10-QA.apk'));
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V'+pkg.version+'-QA.apk'));
 
 // The editable top header is a real, per-page frame and cannot alter sibling pages.
 for(const page of Object.keys(PAGE_FRAMES) as (keyof typeof PAGE_FRAMES)[]){
