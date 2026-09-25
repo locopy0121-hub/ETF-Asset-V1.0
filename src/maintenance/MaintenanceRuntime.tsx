@@ -58,6 +58,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [saved,setSaved]=useState<Record<string,MaintenanceInstance[]>>({});
   const [targetStyles,setTargetStyles]=useState<Record<string,Record<string,TargetOverride>>>({});
   const [sharedStyles,setSharedStyles]=useState<Partial<Record<TargetKind,TargetOverride>>>({});
+  const [localOnlyKeys,setLocalOnlyKeys]=useState<Record<string,string[]>>({});
   const [workspaces,setWorkspaces]=useState<Record<string,WorkspaceConfig>>({});
   const [liveBounds,setLiveBounds]=useState<Record<string,{width:number;height:number}>>({});
   const [liveRects,setLiveRects]=useState<Record<string,Record<string,PositionedRect>>>({});
@@ -74,6 +75,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       if(parsed.schema===2||parsed.schema===3){
         setSaved(normalizeSaved(parsed.instances));
         setTargetStyles(normalizeTargetMap(parsed.targets));
+        if(parsed.localOnlyKeys&&typeof parsed.localOnlyKeys==='object'&&!Array.isArray(parsed.localOnlyKeys)){
+          setLocalOnlyKeys(Object.fromEntries(Object.entries(parsed.localOnlyKeys as Record<string,unknown>)
+            .filter(([key,value])=>key.length<260&&Array.isArray(value))
+            .map(([key,value])=>[key,(value as unknown[]).filter((field):field is string=>typeof field==='string'&&
+              VISUAL_TARGET_KEYS.includes(field as keyof TargetAppearance))])));
+        }
         if(parsed.sharedStyles&&typeof parsed.sharedStyles==='object'&&!Array.isArray(parsed.sharedStyles)){
           const kinds:readonly TargetKind[]=['metric','text','value','action','quote-card','wall','portfolio-list','control','generic','prefix'];
           const shared=parsed.sharedStyles as Record<string,unknown>;
@@ -121,7 +128,10 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const group=sharedStyles[kind]??{};
       const active=session?.scope==='target'&&session.target?.kind===kind&&session.syncSameKind;
       const changed=active?Object.fromEntries(session.sharedTouched.map(field=>[field,session.draftTargets[session.target!.id]?.[field]])):{};
-      const merged={...group,...local,...changed};
+      const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
+        .filter(field=>local[field as keyof TargetOverride]!==undefined)
+        .map(field=>[field,local[field as keyof TargetOverride]]));
+      const merged={...local,...group,...isolated,...changed};
       return active&&session.target?.id===id&&session.target?.page===page&&session.target.frameKey===frameKey?
         {...merged,...session.draftTargets[id]}:merged;
     },
@@ -220,24 +230,26 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       let nextTargets={...targetStyles,[key]:Object.fromEntries(
         Object.entries(session.draftTargets).map(([id,override])=>[id,normalizeTargetOverride(override)]))};
       let nextShared={...sharedStyles};
+      let nextLocalOnly={...localOnlyKeys};
+      if(session.scope==='target'&&session.target&&session.sharedTouched.length){
+        const itemKey=key+':'+session.target.id;
+        const previous=nextLocalOnly[itemKey]??[];
+        nextLocalOnly[itemKey]=session.syncSameKind?
+          previous.filter(field=>!session.sharedTouched.includes(field as keyof TargetAppearance)):
+          [...new Set([...previous,...session.sharedTouched])];
+      }
       if(session.scope==='target'&&session.target&&session.syncSameKind&&session.sharedTouched.length){
         const kind=session.target.kind;
         const edited=session.draftTargets[session.target.id]??{};
         const changed=Object.fromEntries(session.sharedTouched.filter(field=>edited[field]!==undefined)
           .map(field=>[field,edited[field]]));
         nextShared={...nextShared,[kind]:normalizeTargetOverride({...nextShared[kind],...changed})};
-        // Previously saved instance-level values must not mask newly synchronized fields.
-        nextTargets=Object.fromEntries(Object.entries(nextTargets).map(([scope,items])=>[scope,
-          Object.fromEntries(Object.entries(items).map(([id,override])=>{
-            if(scope===key&&id===session.target!.id)return [id,override];
-            const remaining={...override};for(const field of Object.keys(changed))delete remaining[field as keyof TargetOverride];
-            return [id,remaining];
-          }))]));
       }
       try{
         // One key contains both local instance and native target overrides. No finance keys.
         await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY,JSON.stringify({
-          schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace,sharedStyles:nextShared,
+          schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace,
+          sharedStyles:nextShared,localOnlyKeys:nextLocalOnly,
         }));
         const normalized=normalizeEditorConfig(session.page,{...editor.config,[session.frameKey]:session.draft});
         editor.replacePageConfig(normalized);
@@ -245,12 +257,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           const patch=Object.fromEntries(session.displayTouched.map(field=>[field,session.draftDisplay[field]])) as Partial<PageDisplayConfig>;
           editor.updateDisplayConfig(patch);
         }
-        setSaved(nextSaved);setTargetStyles(nextTargets);setSharedStyles(nextShared);setWorkspaces(nextWorkspace);
+        setSaved(nextSaved);setTargetStyles(nextTargets);setSharedStyles(nextShared);setLocalOnlyKeys(nextLocalOnly);setWorkspaces(nextWorkspace);
         setSelection(null);setSession(null);
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,sharedStyles,workspaces,liveBounds,liveRects,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }
