@@ -13,7 +13,7 @@ export type TargetAppearance=Readonly<{
   textProfitColor?:boolean;labelProfitColor?:boolean;captionProfitColor?:boolean;
   backgroundProfitColor?:boolean;borderProfitColor?:boolean;
   profitToneOverride?:'auto'|FinancialTone;
-  borderWidth:number;borderRadius:number;padding:number;opacity:number;
+  borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   fontWeight:TextStyle['fontWeight'];fontFamily:'system'|'sans-serif'|'sans-serif-condensed'|'serif'|'monospace';
   fontStyle:'normal'|'italic';textDecorationLine:'none'|'underline'|'line-through'|'underline line-through';
   labelFontWeight:TextStyle['fontWeight'];captionFontWeight:TextStyle['fontWeight'];
@@ -38,7 +38,7 @@ const clamp=(n:unknown,min:number,max:number,fallback:number)=>typeof n==='numbe
 export const TARGET_APPEARANCE:TargetAppearance={
   visible:true,fontSize:17,labelFontSize:11,captionFontSize:10,textColor:'#0F172A',labelColor:'#64748B',captionColor:'#64748B',
   backgroundColor:'#F4ECFF',borderColor:'#DDD1EF',borderWidth:0,borderRadius:12,padding:10,
-  opacity:1,align:'left',useProfitColor:true,labelText:'',captionText:'',
+  opacity:1,backgroundOpacity:1,align:'left',useProfitColor:true,labelText:'',captionText:'',
   fontWeight:'normal',fontFamily:'system',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
   labelFontWeight:'700',captionFontWeight:'normal',labelFontStyle:'normal',captionFontStyle:'normal',
   labelLetterSpacing:0,captionLetterSpacing:0,labelLineHeight:0,captionLineHeight:0,
@@ -48,7 +48,7 @@ export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetY',-24,24],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96]] as const){
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetY',-24,24],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96]] as const){
     if(typeof v[field]==='number'&&Number.isFinite(v[field]))o[field]=clamp(v[field],min,max,min);
   }
   for(const field of ['textColor','labelColor','captionColor','backgroundColor','borderColor'] as const)
