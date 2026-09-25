@@ -4,6 +4,8 @@ import {Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react
 import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
 import {colors,radius,spacing} from '../theme/tokens';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
+import {InspectableTarget} from '../maintenance/InspectableTarget';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
 
 type Message=Readonly<{id:string;role:'user'|'assistant';text:string;actions?:readonly AiAssistantAction[]}>;
 
@@ -13,12 +15,14 @@ export function AiQuestionBox({
   suggestions=[],
   onAsk,
   onAction,
+  maintenance,
 }:{
   title?:string;
   placeholder?:string;
   suggestions?:readonly string[];
   onAsk:(question:string)=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
   onAction?:(action:AiAssistantAction)=>void|Promise<void>;
+  maintenance?:FrameMaintenanceContext;
 }){
   const theme=useThemeRuntime();
   const [input,setInput]=useState('');
@@ -27,6 +31,10 @@ export function AiQuestionBox({
   const [confirming,setConfirming]=useState<string|null>(null);
   const scrollRef=useRef<ScrollView|null>(null);
   const visible=useMemo(()=>messages.slice(-20),[messages]);
+  const inspected=(id:string,kind:InspectedTarget['kind'],label:string,properties:InspectedTarget['properties'],base=TARGET_APPEARANCE):InspectedTarget=>({
+    id,page:maintenance!.page,frameKey:maintenance!.frameKey,frameTitle:maintenance!.frameTitle,kind,label,properties,base,
+  });
+  const titleElement=<Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>;
 
   const submit=async(raw?:string)=>{
     const question=(raw??input).trim();
@@ -65,9 +73,36 @@ export function AiQuestionBox({
   };
 
   return <View style={styles.root}>
-    <Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>
-    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionViewport} contentContainerStyle={styles.suggestions}>{suggestions.map(item=><Pressable key={item} onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.chipText,{color:theme.palette.primary}]}>{item}</Text></Pressable>)}</ScrollView>:null}
-    <ScrollView
+    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:prompt-title','text','AI 指令標題',[
+      {name:'現用標題',value:title,readOnly:true},{name:'原字號',value:'13 px',readOnly:true},
+    ],{...TARGET_APPEARANCE,fontSize:13,backgroundColor:theme.palette.surface,textColor:theme.palette.text,padding:0})}>
+      {(appearance,customized,override)=><Text style={[styles.title,{color:theme.palette.text},customized&&{
+        ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
+        ...(override.textColor?{color:appearance.textColor}:{}),
+        ...(override.align?{textAlign:appearance.align}:{}),
+      }]}>{customized&&appearance.labelText?appearance.labelText:title}</Text>}
+    </InspectableTarget>:titleElement}
+    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionViewport} contentContainerStyle={styles.suggestions}>{suggestions.map((item,index)=>{
+      const chip=(background=theme.palette.surfaceMuted,color=theme.palette.primary,fontSize=12)=><Pressable key={item} onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:background}]}>
+        <Text style={[styles.chipText,{color,fontSize}]}>{item}</Text>
+      </Pressable>;
+      if(!maintenance)return chip();
+      return <InspectableTarget key={item} frame={maintenance} target={inspected('ai:quick-action:'+index,'action','快捷提問 '+item,[
+        {name:'原文案',value:item,readOnly:true},{name:'動作',value:'向 AI 發送此預設問題',readOnly:true},
+      ],{...TARGET_APPEARANCE,fontSize:12,textColor:theme.palette.primary,backgroundColor:theme.palette.surfaceMuted,padding:0})}>
+        {(appearance,customized,override)=>chip(
+          customized&&override.backgroundColor?appearance.backgroundColor:theme.palette.surfaceMuted,
+          customized&&override.textColor?appearance.textColor:theme.palette.primary,
+          customized&&override.fontSize!==undefined?appearance.fontSize:12,
+        )}
+      </InspectableTarget>;
+    })}</ScrollView>:null}
+    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:conversation','generic','AI 對話工作區',[
+      {name:'已顯示訊息數',value:String(visible.length),readOnly:true},
+      {name:'視窗原始高度',value:'340 dp',readOnly:true},
+      {name:'內容來源',value:'當前 App AI 對話執行結果',readOnly:true},
+    ],{...TARGET_APPEARANCE,backgroundColor:theme.palette.surface,padding:0})}>
+      {()=> <ScrollView
       ref={scrollRef}
       style={[styles.threadViewport,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface}]}
       contentContainerStyle={styles.thread}
@@ -82,7 +117,16 @@ export function AiQuestionBox({
           {confirming===action.id?<Pressable onPress={()=>setConfirming(null)} style={styles.cancelAction}><Text style={styles.cancelActionText}>取消</Text></Pressable>:null}
         </View>)}</View>:null}
       </View>):<Text style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
-    </ScrollView>
+    </ScrollView>}
+    </InspectableTarget>:<ScrollView
+      ref={scrollRef}
+      style={[styles.threadViewport,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface}]}
+      contentContainerStyle={styles.thread} keyboardShouldPersistTaps="handled" nestedScrollEnabled
+      onContentSizeChange={()=>scrollRef.current?.scrollToEnd({animated:true})}>
+      {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?styles.user:styles.assistant,{backgroundColor:message.role==='user'?theme.palette.primary:theme.palette.surfaceMuted}]}>
+        <Text style={[styles.message,{color:message.role==='user'?'#FFFFFF':theme.palette.text}]}>{message.text}</Text>
+      </View>):<Text style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
+    </ScrollView>}
     <View style={styles.inputRow}>
       <TextInput
         value={input}
