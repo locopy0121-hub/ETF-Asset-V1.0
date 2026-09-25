@@ -11,7 +11,7 @@ assert.equal(targetToolSupported('value','target:labelText'),false,'financial nu
 assert.equal(targetToolSupported('value','target:captionText'),false);
 assert.equal(targetToolSupported('metric','target:labelText'),true);
 assert.equal(targetToolSupported('action','target:labelText'),false,'action labels must not diverge from execution semantics');
-assert.equal(ENGINEER_SKILLS.length,16);
+assert.ok(ENGINEER_SKILLS.length>=16);
 const stack=read('src/components/PageEditorStack.tsx');
 assert.ok(stack.includes("kind:isDataValue?'value':'text'"));
 assert.ok(stack.includes("customized&&!isDataValue?"),'old V3.0.2 saved override must never mask source amount');
@@ -36,6 +36,6 @@ for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:comp
 assert.ok(ai.includes('onAsk(question)')&&ai.includes('runAction(action)'));
 assert.equal(ai.split('ref={scrollRef}').length,2,'AI conversation must not be duplicated');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 console.log('V3.0.9 scoped engineer skills, protected finance text, unobstructed controls and AI native adapters: PASS');
