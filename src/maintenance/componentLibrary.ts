@@ -8,8 +8,11 @@ export type MaintenanceInstance=Readonly<{
   id:string;templateId:string; text:string; visible:boolean;
   createdBy:'maintenance-engineer'; // Ownership is local to the one shared central library; built-ins have no instance.
   fontSize:number;color:string; marginTop:number;
+  parentId?:string; // Only an engineer-created parent frame in the same local scope.
+  frameWidth?:number;frameHeight?:number; // Undefined = content-driven; no implicit scrolling.
 }>;
 export const CENTRAL_COMPONENT_LIBRARY:readonly ComponentTemplate[]=[
+  {id:'parent-frame',kind:'frame',label:'新增父框架',description:'新增可放入工程師元件的獨立容器；尺寸與內部內容分開，預設不啟動捲動',category:'框架',installation:'ready',defaultText:'新父框架'},
   {id:'text-note',kind:'text',label:'文字備註',description:'可編輯的局部說明文字',category:'文字',installation:'ready',defaultText:'新增文字'},
   {id:'section-label',kind:'text',label:'區域標題',description:'目前框架內的文字標題',category:'文字',installation:'ready',defaultText:'新區域'},
   {id:'divider',kind:'divider',label:'分隔線',description:'分隔目前框架中的資訊',category:'框架',installation:'ready',defaultText:''},
@@ -28,10 +31,14 @@ export const readyComponents=()=>CENTRAL_COMPONENT_LIBRARY.filter(item=>item.ins
 export function instantiateComponent(templateId:string,id:string):MaintenanceInstance{
   const template=CENTRAL_COMPONENT_LIBRARY.find(item=>item.id===templateId&&item.installation==='ready');
   if(!template)throw new Error('尚未接入可實際安裝的元件：'+templateId);
-  return {id,templateId,createdBy:'maintenance-engineer',text:template.defaultText??'',visible:true,fontSize:templateId==='section-label'?17:13,color:'#0F172A',marginTop:6};
+  return {id,templateId,createdBy:'maintenance-engineer',text:template.defaultText??'',visible:true,fontSize:templateId==='section-label'?17:13,color:'#0F172A',marginTop:6,
+    ...(templateId==='parent-frame'?{frameWidth:320,frameHeight:240}: {})};
 }
 export function normalizeInstances(input:unknown):MaintenanceInstance[]{
   if(!Array.isArray(input))return [];
+  const validIds=new Set(input.filter(v=>v&&typeof v==='object'&&(v as Partial<MaintenanceInstance>).templateId==='parent-frame'&&
+    (v as Partial<MaintenanceInstance>).createdBy==='maintenance-engineer'&&
+    /^i-[a-z0-9-]{1,92}$/.test(String((v as Partial<MaintenanceInstance>).id??''))).map(v=>(v as MaintenanceInstance).id));
   return input.slice(0,30).flatMap((raw:unknown)=>{
     if(!raw||typeof raw!=='object')return [];
     const v=raw as Partial<MaintenanceInstance>;
@@ -43,7 +50,11 @@ export function normalizeInstances(input:unknown):MaintenanceInstance[]{
     const clamp=(x:unknown,min:number,max:number,def:number)=>typeof x==='number'&&Number.isFinite(x)?Math.max(min,Math.min(max,x)):def;
     return [{id:v.id.slice(0,96),templateId:v.templateId,createdBy:'maintenance-engineer' as const,
       text:String(v.text??'').slice(0,200),visible:v.visible!==false,fontSize:clamp(v.fontSize,10,36,13),
-      color:typeof v.color==='string'&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color:'#0F172A',marginTop:clamp(v.marginTop,0,32,6)}];
+      color:typeof v.color==='string'&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color:'#0F172A',marginTop:clamp(v.marginTop,0,32,6),
+      ...(v.templateId==='parent-frame'?{
+        frameWidth:clamp(v.frameWidth,160,1600,320),frameHeight:clamp(v.frameHeight,80,2400,240)}:{}),
+      ...(v.templateId!=='parent-frame'&&typeof v.parentId==='string'&&validIds.has(v.parentId)&&v.parentId!==v.id?{parentId:v.parentId}:{}),
+    }];
   });
 }
 
@@ -54,6 +65,11 @@ export function isEngineerOwnedInstance(item:MaintenanceInstance|undefined):bool
     readyComponents().some(template=>template.id===item.templateId);
 }
 export function removeEngineerOwnedInstance(instances:readonly MaintenanceInstance[],id:string):MaintenanceInstance[]{
-  const selected=instances.find(item=>item.id===id);
-  return isEngineerOwnedInstance(selected)?instances.filter(item=>!(item.id===id&&isEngineerOwnedInstance(item))):[...instances];
+  const selected=instances.find(item=>item.id===id&&isEngineerOwnedInstance(item));
+  if(!selected)return [...instances];
+  // Removing a parent never deletes its children: move them back to the local root.
+  return instances.filter(item=>!(item.id===id&&isEngineerOwnedInstance(item))).map(item=>{
+    if(item.parentId!==id)return item;
+    const {parentId,...child}=item;return child;
+  });
 }

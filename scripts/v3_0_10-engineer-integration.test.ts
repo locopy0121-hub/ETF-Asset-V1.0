@@ -9,7 +9,7 @@ import {colorWithAlpha} from '../src/maintenance/frameEffects';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.ok(['3.0.10','3.0.11'].includes(pkg.version));
+assert.ok(['3.0.10','3.0.11','3.0.12'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
@@ -50,7 +50,8 @@ assert.ok(dimensions.includes("maint.clearFrameDimension(axis)")&&dimensions.inc
 assert.ok(runtime.includes("clearFrameDimension:axis=>")&&runtime.includes('delete draft[axis]'));
 assert.ok(workbench.includes("<FrameDimensionsToolDetails/>"));
 assert.ok(frameCard.includes('editorStyle.width!==undefined')&&frameCard.includes('editorStyle.height!==undefined'));
-assert.ok(frameCard.includes('<ScrollView nestedScrollEnabled'),'explicit parent height must not clip child content');
+assert.ok(frameCard.includes("editorStyle.height!==undefined?{height:editorStyle.height,overflow:'visible'"),'resized parent must preserve child geometry');
+assert.ok(!frameCard.includes('<ScrollView nestedScrollEnabled'),'parent height must not automatically enable nested scrolling');
 
 // Native page header, including individually editable text and local background image.
 const shell=read('src/components/PageShell.tsx');

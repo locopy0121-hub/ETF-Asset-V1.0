@@ -58,7 +58,7 @@ export function FrameDimensionsToolDetails(){
     </View>;
   };
   return <View style={{marginTop:8,gap:7}}>
-    <Text style={{color:theme.palette.textSecondary,fontSize:12}}>此處調整真正的父框架，而不是虛線畫布。指定高度後內容不足時會內部捲動，不直接裁切文字或帳務數值。</Text>
+    <Text style={{color:theme.palette.textSecondary,fontSize:12}}>此處調整真正的父框架，而不是虛線畫布。指定高度只改父框架邊界，子元件維持尺寸與原位，不會擅自啟用內部捲動。內容超界時請使用工作區診斷調整。</Text>
     {numeric('width')}{numeric('height')}
     {!!error&&<Text style={{color:theme.palette.loss}}>{error}</Text>}
     <Text style={{color:theme.palette.textSecondary,fontSize:11}}>畫面上的變化為暫存預覽；取消還原，按工作台「儲存／套用」才持久化。</Text>

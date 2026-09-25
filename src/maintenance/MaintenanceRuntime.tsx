@@ -4,11 +4,14 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
-import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,type InspectedTarget,type TargetOverride} from './inspectionModel';
+import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
 const scopeId=(page:MainPageKey,frameKey:string)=>page+':'+frameKey;
+type StyleSyncScope='frame'|'page'|'app';
+const sharedKey=(page:MainPageKey,frameKey:string,kind:TargetKind,scope:StyleSyncScope)=>
+  scope==='frame'?`frame:${page}:${frameKey}:${kind}`:scope==='page'?`page:${page}:${kind}`:`app:${kind}`;
 
 export type MaintenanceSession=Readonly<{
   page:MainPageKey;frameKey:string;title:string;scope:'frame'|'instance'|'target';
@@ -17,11 +20,14 @@ export type MaintenanceSession=Readonly<{
   draftTargets:Readonly<Record<string,TargetOverride>>;
   draftWorkspace:WorkspaceConfig;
   draftDisplay:PageDisplayConfig;displayTouched:readonly (keyof PageDisplayConfig)[];
+  syncSameKind:boolean;syncScope:StyleSyncScope;sharedTouched:readonly (keyof TargetAppearance)[];
 }>;
 type MaintenanceContextValue=Readonly<{
   hydrated:boolean;enabled:boolean;session:MaintenanceSession|null;selection:InspectedTarget|null;
   getInstances:(page:MainPageKey,frameKey:string)=>readonly MaintenanceInstance[];
-  getTargetOverride:(page:MainPageKey,frameKey:string,id:string)=>TargetOverride;
+  getTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
+  setSyncSameKind:(enabled:boolean)=>void;
+  setSyncScope:(scope:StyleSyncScope)=>void;
   getWorkspace:(page:MainPageKey,frameKey:string)=>WorkspaceConfig;
   getWorkspaceBounds:(page:MainPageKey,frameKey:string)=>{width:number;height:number};
   getFrameRects:(page:MainPageKey,frameKey:string)=>Readonly<Record<string,PositionedRect>>;
@@ -55,6 +61,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const settings=useSettingsRuntime();
   const [saved,setSaved]=useState<Record<string,MaintenanceInstance[]>>({});
   const [targetStyles,setTargetStyles]=useState<Record<string,Record<string,TargetOverride>>>({});
+  const [sharedStyles,setSharedStyles]=useState<Record<string,TargetOverride>>({});
+  const [localOnlyKeys,setLocalOnlyKeys]=useState<Record<string,string[]>>({});
   const [workspaces,setWorkspaces]=useState<Record<string,WorkspaceConfig>>({});
   const [liveBounds,setLiveBounds]=useState<Record<string,{width:number;height:number}>>({});
   const [liveRects,setLiveRects]=useState<Record<string,Record<string,PositionedRect>>>({});
@@ -71,6 +79,24 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       if(parsed.schema===2||parsed.schema===3){
         setSaved(normalizeSaved(parsed.instances));
         setTargetStyles(normalizeTargetMap(parsed.targets));
+        if(parsed.localOnlyKeys&&typeof parsed.localOnlyKeys==='object'&&!Array.isArray(parsed.localOnlyKeys)){
+          setLocalOnlyKeys(Object.fromEntries(Object.entries(parsed.localOnlyKeys as Record<string,unknown>)
+            .filter(([key,value])=>key.length<260&&Array.isArray(value))
+            .map(([key,value])=>[key,(value as unknown[]).filter((field):field is string=>typeof field==='string'&&
+              VISUAL_TARGET_KEYS.includes(field as keyof TargetAppearance))])));
+        }
+        if(parsed.sharedStyles&&typeof parsed.sharedStyles==='object'&&!Array.isArray(parsed.sharedStyles)){
+          const kinds:readonly TargetKind[]=['metric','text','value','action','quote-card','wall','portfolio-list','control','generic','prefix'];
+          const shared=parsed.sharedStyles as Record<string,unknown>;
+          setSharedStyles(Object.fromEntries(Object.entries(shared).filter(([id])=>{
+            const kind=id.split(':').at(-1) as TargetKind;
+            return kinds.includes(kind)&&(kinds.includes(id as TargetKind)||id.startsWith('app:')||id.startsWith('page:')||id.startsWith('frame:'))&&id.length<=240;
+          }).map(([id,value])=>{
+            const normalized=normalizeTargetOverride(value);
+            const key=kinds.includes(id as TargetKind)?`app:${id}`:id;
+            return [key,Object.fromEntries(Object.entries(normalized).filter(([field])=>VISUAL_TARGET_KEYS.includes(field as keyof TargetAppearance)))];
+          })));
+        }
         if(parsed.schema===3&&parsed.workspaces&&typeof parsed.workspaces==='object'&&!Array.isArray(parsed.workspaces)){
           setWorkspaces(Object.fromEntries(Object.entries(parsed.workspaces as Record<string,unknown>)
             .filter(([key])=>/^(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+$/.test(key))
@@ -102,11 +128,27 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     reportWorkspaceBounds,reportRect,
     getWorkspace:(page,frameKey)=>session?.page===page&&session.frameKey===frameKey?
       session.draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
-    getTargetOverride:(page,frameKey,id)=>{
+    getTargetOverride:(page,frameKey,id,kind)=>{
       const key=scopeId(page,frameKey);
-      return (session?.page===page&&session.frameKey===frameKey?
+      const local=(session?.page===page&&session.frameKey===frameKey?
         session.draftTargets[id]:targetStyles[key]?.[id])??{};
+      if(!kind)return local;
+      const group={...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
+        ...(sharedStyles[sharedKey(page,frameKey,kind,'page')]??{}),
+        ...(sharedStyles[sharedKey(page,frameKey,kind,'frame')]??{})};
+      const active=session?.scope==='target'&&session.target?.kind===kind&&session.syncSameKind&&
+        (session.syncScope==='app'||session.page===page&&
+          (session.syncScope==='page'||session.frameKey===frameKey));
+      const changed=active?Object.fromEntries(session.sharedTouched.map(field=>[field,session.draftTargets[session.target!.id]?.[field]])):{};
+      const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
+        .filter(field=>local[field as keyof TargetOverride]!==undefined)
+        .map(field=>[field,local[field as keyof TargetOverride]]));
+      const merged={...local,...group,...isolated,...changed};
+      return active&&session.target?.id===id&&session.target?.page===page&&session.target.frameKey===frameKey?
+        {...merged,...session.draftTargets[id]}:merged;
     },
+    setSyncSameKind:enabled=>setSession(current=>current?{...current,syncSameKind:enabled}:current),
+    setSyncScope:scope=>setSession(current=>current?{...current,syncScope:scope}:current),
     begin:(page,frameKey,title,config,instanceId,displayConfig)=>{
       if(!enabled||!hydrated)return;
       setSelection(null);
@@ -118,7 +160,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftInstances:(saved[scopeId(page,frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(page,frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],
+          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],
         });
     },
     selectTarget:target=>{
@@ -144,7 +186,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftInstances:(saved[scopeId(target.page,target.frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(target.page,target.frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(target.page,target.frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...displayConfig},displayTouched:[],
+          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],
         });
     },
     patchFrame:patch=>setSession(current=>current&&current.draft.behavior!=='locked'?
@@ -161,7 +203,9 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       }:item),
     }:current),
     patchTarget:(id,patch)=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
-      {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})}}:current),
+      {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
+        sharedTouched:[...new Set([...current.sharedTouched,...Object.keys(patch).filter(
+          key=>VISUAL_TARGET_KEYS.includes(key as keyof TargetAppearance)) as (keyof TargetAppearance)[]])]}:current),
     resetTargetVisual:id=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
       {...current,draftTargets:{...current.draftTargets,[id]:resetTargetVisualOverride(current.draftTargets[id]??{})}}:current),
     patchWorkspace:patch=>setSession(current=>current?{...current,
@@ -171,10 +215,14 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       displayTouched:[...new Set([...current.displayTouched,...Object.keys(patch) as (keyof PageDisplayConfig)[]])],
     }:current),
     install:templateId=>setSession(current=>{
-      if(!current||current.scope!=='frame'||current.draftInstances.length>=30)return current;
+      if(!current||current.draftInstances.length>=30)return current;
+      const selected=current.scope==='instance'?current.draftInstances.find(item=>item.id===current.instanceId):undefined;
+      if(current.scope!=='frame'&&!(selected&&selected.templateId==='parent-frame'&&isEngineerOwnedInstance(selected)))return current;
       const id='i-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
       const instance=instantiateComponent(templateId,id);
-      return {...current,draftInstances:[...current.draftInstances,instance],focusInstanceId:id};
+      // Parent frames live at the local root; other new components can be nested inside one.
+      const located=selected&&instance.templateId!=='parent-frame'?{...instance,parentId:selected.id}:instance;
+      return {...current,draftInstances:[...current.draftInstances,located],focusInstanceId:id};
     }),
     remove:id=>setSession(current=>{
       if(!current||!['frame','instance'].includes(current.scope))return current;
@@ -192,12 +240,37 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const normalizedInstances=normalizeInstances(session.draftInstances);
       const nextSaved={...saved,[key]:normalizedInstances};
       const nextWorkspace={...workspaces,[key]:normalizeWorkspace(session.draftWorkspace)};
-      const nextTargets={...targetStyles,[key]:Object.fromEntries(
+      let nextTargets={...targetStyles,[key]:Object.fromEntries(
         Object.entries(session.draftTargets).map(([id,override])=>[id,normalizeTargetOverride(override)]))};
+      let nextShared={...sharedStyles};
+      let nextLocalOnly={...localOnlyKeys};
+      if(session.scope==='target'&&session.target&&session.sharedTouched.length){
+        const itemKey=key+':'+session.target.id;
+        const previous=nextLocalOnly[itemKey]??[];
+        nextLocalOnly[itemKey]=session.syncSameKind?
+          previous.filter(field=>!session.sharedTouched.includes(field as keyof TargetAppearance)):
+          [...new Set([...previous,...session.sharedTouched])];
+      }
+      if(session.scope==='target'&&session.target&&session.syncSameKind&&session.sharedTouched.length){
+        const kind=session.target.kind;
+        const edited=session.draftTargets[session.target.id]??{};
+        const changed=Object.fromEntries(session.sharedTouched.filter(field=>edited[field]!==undefined)
+          .map(field=>[field,edited[field]]));
+        const styleKey=sharedKey(session.page,session.frameKey,kind,session.syncScope);
+        // An explicit wider sync must not be masked by old narrower shared overrides.
+        if(session.syncScope!=='frame')for(const oldKey of Object.keys(nextShared)){
+          if(oldKey===styleKey||!oldKey.endsWith(':'+kind))continue;
+          if(session.syncScope==='page'&&!oldKey.startsWith(`frame:${session.page}:`))continue;
+          const next={...nextShared[oldKey]};for(const field of Object.keys(changed))delete next[field as keyof TargetOverride];
+          nextShared[oldKey]=next;
+        }
+        nextShared={...nextShared,[styleKey]:normalizeTargetOverride({...nextShared[styleKey],...changed})};
+      }
       try{
         // One key contains both local instance and native target overrides. No finance keys.
         await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY,JSON.stringify({
           schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace,
+          sharedStyles:nextShared,localOnlyKeys:nextLocalOnly,
         }));
         const normalized=normalizeEditorConfig(session.page,{...editor.config,[session.frameKey]:session.draft});
         editor.replacePageConfig(normalized);
@@ -205,12 +278,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           const patch=Object.fromEntries(session.displayTouched.map(field=>[field,session.draftDisplay[field]])) as Partial<PageDisplayConfig>;
           editor.updateDisplayConfig(patch);
         }
-        setSaved(nextSaved);setTargetStyles(nextTargets);setWorkspaces(nextWorkspace);
+        setSaved(nextSaved);setTargetStyles(nextTargets);setSharedStyles(nextShared);setLocalOnlyKeys(nextLocalOnly);setWorkspaces(nextWorkspace);
         setSelection(null);setSession(null);
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,workspaces,liveBounds,liveRects,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }

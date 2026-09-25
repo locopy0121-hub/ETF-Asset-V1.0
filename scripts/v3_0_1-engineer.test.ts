@@ -10,7 +10,7 @@ assert.ok(ENGINEER_SKILLS.every(s=>s.tools.length>=2&&s.tools.every(t=>Boolean(t
 for(const id of ['components','frames','dimensions','layout','typography','colors','effects','charts','interaction','responsive','versions'])assert.ok(findSkill(id),id);
 assert.equal(new Set(CENTRAL_COMPONENT_LIBRARY.map(x=>x.id)).size,CENTRAL_COMPONENT_LIBRARY.length);
 assert.equal(CENTRAL_COMPONENT_LIBRARY.length>=12,true,'one shared catalog inventories existing component types');
-assert.equal(readyComponents().length,3,'only actually installable templates may be enabled');
+assert.equal(readyComponents().length,4,'parent frame is now a real installable central template');
 assert.equal(CENTRAL_COMPONENT_LIBRARY.find(x=>x.id==='official-candle')?.installation,'adapter-required','cannot invent chart data');
 assert.throws(()=>instantiateComponent('official-candle','bad'),'not wired components must not create fake charts');
 const note=instantiateComponent('text-note','i-001');
@@ -33,7 +33,7 @@ assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'),
 assert.ok(dock.includes('取消／恢復')&&dock.includes('儲存／套用'));
 assert.ok(!app.includes('V5')&&!runtime.includes('360'));
 const pkg=JSON.parse(read('package.json')),a=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12'].includes(pkg.version));
 assert.equal(a.expo.version,pkg.version);
 assert.equal(a.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));

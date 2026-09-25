@@ -88,7 +88,7 @@ assert.ok(model.includes('effects:normalizeFrameEffects(candidate.effects,DEFAUL
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 assert.ok(runtime.includes('editor.replacePageConfig(normalized)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
