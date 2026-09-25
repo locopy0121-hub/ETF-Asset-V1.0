@@ -17,11 +17,15 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const override=engineer.getTargetOverride(target.page,target.frameKey,target.id);
   const appearance=mergeTargetAppearance(target.base,override);
   const customized=Object.keys(override).length>0;
+  const wrapperStyle=customized&&['wall','portfolio-list','control','generic'].includes(target.kind)?{
+    backgroundColor:appearance.backgroundColor,borderColor:appearance.borderColor,
+    borderWidth:appearance.borderWidth,borderRadius:appearance.borderRadius,padding:appearance.padding,
+  }:null;
   // A live quote/value can update while selected; refresh the inspector without replacing drafts.
   const fingerprint=JSON.stringify({properties:target.properties,base:target.base,label:target.label});
   useEffect(()=>{if(selected||editing)engineer.syncTarget(target);},[fingerprint,selected,editing,target.page,target.frameKey,target.id]);
   if(!engineer.enabled)return appearance.visible?<>{children(appearance,customized)}</>:null;
-  return <View style={[flex?{flex:1,minWidth:0}:null,{position:'relative',opacity:appearance.opacity},
+  return <View style={[flex?{flex:1,minWidth:0}:null,{position:'relative',opacity:appearance.opacity},wrapperStyle,
     (selected||editing)&&{borderWidth:2,borderStyle:'dashed',borderColor:theme.palette.primary,borderRadius:8}]}>
     {appearance.visible||selected||editing?children(appearance,customized):<View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {active?<Pressable style={StyleSheet.absoluteFillObject} accessibilityRole="button" accessibilityLabel={'選取元件 '+target.label} onPress={()=>engineer.selectTarget(target)} />:null}

@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView,StyleSheet,Text,useWindowDimensions, View } from 'react-native';
 import {HoldingQuoteTicker} from './HoldingQuoteTicker';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance} from '../maintenance/inspectionModel';
@@ -87,7 +87,22 @@ export function HoldingQuoteCollection({
     }
     return <View style={styles.list}>{rows.map(item=><View key={item.symbol}>{renderHolding(item)}</View>)}</View>;
   })();
+  const wallTarget:InspectedTarget|undefined=maintenance?{
+    id:'shared:holding-wall',kind:'wall',label:'本頁行情牆設定',
+    page:maintenance.page,frameKey:maintenance.frameKey,frameTitle:maintenance.frameTitle,
+    properties:[
+      {name:'目前行情模式',value:style},{name:'目前排列',value:layoutMode},
+      {name:'行情欄位數',value:String(effectiveWallConfig.fields.length)},
+      {name:'標籤種類',value:String(effectiveBadgeConfig.order.length)},
+      {name:'跑馬燈',value:effectiveWallConfig.ticker?.enabled?'已開啟':'已關閉'},
+    ],base:{...TARGET_APPEARANCE,padding:2},
+  }:undefined;
   return <View style={styles.collection}>
+    {engineer.enabled&&maintenance&&wallTarget?<InspectableTarget frame={maintenance} target={wallTarget}>
+      {()=> <View style={{paddingVertical:5,paddingHorizontal:9,borderRadius:7,backgroundColor:'#F3E8FF'}}>
+        <Text style={{fontSize:11,fontWeight:'800',color:'#6F3DB4'}}>輕點選取本頁行情牆，共用設定工具在下方技能樹</Text>
+      </View>}
+    </InspectableTarget>:null}
     {effectiveWallConfig.ticker?.enabled?<HoldingQuoteTicker rows={rows} config={effectiveWallConfig.ticker}/>:null}
     {content}
   </View>;

@@ -13,6 +13,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
@@ -33,26 +34,28 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const [selectedNews,setSelectedNews]=useState<AiNewsItem|null>(null);
   const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
-  const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
-  const sortKey=(editor.displayConfig.sortKey??'pnl') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
+  const maintenance=useMaintenance();
+  const effectiveDisplay=maintenance.session?.page==='home'?maintenance.session.draftDisplay:editor.displayConfig;
+  const quoteStyle=(effectiveDisplay.quoteStyle??'quote') as QuoteModuleStyle;
+  const sortKey=(effectiveDisplay.sortKey??'pnl') as HoldingSortKey;
+  const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
-    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,editor.displayConfig.etfBadges?.reminderEvents);
+    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
     return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
       ...item,etfType:tags.get(item.symbol)?.etfType??null,
       dividendType:tags.get(item.symbol)?.dividendType??null,
       reminderEvent:reminders.get(item.symbol)??null,
     }));
-  },[finance.holdings,finance.entries,sortKey,market.catalog,editor.displayConfig.etfBadges?.reminderEvents]);
+  },[finance.holdings,finance.entries,sortKey,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
   const totalDividend=portfolio.totalDividendsReceived;
-  const dashboardMetrics=(editor.displayConfig.dashboardMetrics??[]) as readonly DashboardMetricKey[];
-  const dashboardCharts=(editor.displayConfig.dashboardCharts??[]) as readonly DashboardChartConfig[];
+  const dashboardMetrics=(effectiveDisplay.dashboardMetrics??[]) as readonly DashboardMetricKey[];
+  const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
   const dashboardMetricInfo:Record<DashboardMetricKey,{label:string;value:number;caption:string;tone?:'gain'|'loss'}>={
     totalMarketValue:{label:'持股市值',value:portfolio.totalMarketValue,caption:'Finance Core'},
     totalPnl:{label:'含息總損益',value:portfolio.totalPnl,caption:'含息',tone:portfolio.totalPnl>=0?'gain':'loss'},
@@ -82,8 +85,8 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   };
   const moveDashboardChart=(id:string,x:number,y:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,x,y}:chart)});
   const resizeDashboardChart=(id:string,width:number,height:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,width,height}:chart)});
-  const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??5)));
-  const newsHoldingsOnly=editor.displayConfig.newsHoldingsOnly??true;
+  const newsCount=Math.max(1,Math.min(10,Number(effectiveDisplay.newsVisibleCount??5)));
+  const newsHoldingsOnly=effectiveDisplay.newsHoldingsOnly??true;
   const holdingSymbols=useMemo(()=>new Set(finance.holdings.map(x=>x.symbol.toUpperCase())),[finance.holdings]);
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
@@ -147,7 +150,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
                 </Pressable>
               )}
             </View>
-            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={editor.displayConfig.etfBadges??DEFAULT_ETF_BADGES} wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
+            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
             <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },

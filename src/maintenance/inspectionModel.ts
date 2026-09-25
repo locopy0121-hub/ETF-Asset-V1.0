@@ -59,6 +59,9 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(field==='target:captionText')return kind==='metric';
   if(field==='target:labelFontSize'||field==='target:captionFontSize')return kind==='metric';
   if(field==='target:useProfitColor')return kind==='metric'||kind==='quote-card';
+  if(kind==='wall'||kind==='portfolio-list'||kind==='control'){
+    if(field.startsWith('target:'))return ['target:visible','target:opacity','target:padding','target:backgroundColor','target:borderColor','target:borderWidth','target:borderRadius'].includes(field);
+  }
   if(field.startsWith('target:'))return kind!=='control'||['target:visible','target:opacity'].includes(field);
   if(field==='page:wall'||field==='page:badges'||field==='page:quoteStyle'||field==='page:holdingLayoutMode')
     return kind==='wall';
