@@ -1,14 +1,25 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
+import type {TargetAppearance} from '../maintenance/inspectionModel';
 
-export function MetricTile({label,value,caption,tone='default'}:{label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss'}){
+export function MetricTile({label,value,caption,tone='default',editorStyle}:{
+  label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
+  editorStyle?:TargetAppearance;
+}){
   const theme=useThemeRuntime();
   const toneColor=tone==='gain'?theme.palette.gain:tone==='loss'?theme.palette.loss:theme.palette.text;
-  return <View style={[styles.tile,{backgroundColor:theme.palette.surfaceMuted}]}>
-    <Text style={[styles.label,{color:theme.palette.textSecondary}]}>{label}</Text>
-    <Text style={[styles.value,{color:toneColor}]} numberOfLines={1}>{value}</Text>
-    {caption?<Text style={[styles.caption,{color:theme.palette.textSecondary}]}>{caption}</Text>:null}
+  const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'?toneColor:editorStyle?.textColor??theme.palette.text;
+  const displayedLabel=editorStyle?.labelText||label;
+  const displayedCaption=editorStyle?.captionText||caption;
+  return <View style={[styles.tile,{backgroundColor:editorStyle?.backgroundColor??theme.palette.surfaceMuted},
+    editorStyle&&{borderColor:editorStyle.borderColor,borderWidth:editorStyle.borderWidth,borderRadius:editorStyle.borderRadius,padding:editorStyle.padding}]}>
+    <Text style={[styles.label,{color:editorStyle?.labelColor??theme.palette.textSecondary,
+      fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left'}]}>{displayedLabel}</Text>
+    <Text style={[styles.value,{color:textColor,fontSize:editorStyle?.fontSize??17,
+      textAlign:editorStyle?.align??'left'}]} numberOfLines={1}>{value}</Text>
+    {displayedCaption?<Text style={[styles.caption,{color:theme.palette.textSecondary,fontSize:editorStyle?.captionFontSize??10,
+      textAlign:editorStyle?.align??'left'}]}>{displayedCaption}</Text>:null}
   </View>;
 }
 const styles=StyleSheet.create({

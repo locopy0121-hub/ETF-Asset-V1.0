@@ -1,29 +1,120 @@
-import { cloneElement, type ReactElement } from 'react';
-import { Pressable,Text,View } from 'react-native';
+import {Children,cloneElement,isValidElement,type ComponentProps,type ReactElement,type ReactNode} from 'react';
+import { Pressable,StyleSheet,Text,type TextStyle,View } from 'react-native';
 
 import type { FrameCardProps } from './FrameCard';
+import { MetricTile } from './MetricTile';
+import { HoldingQuoteCollection } from './HoldingQuoteCollection';
+import { SegmentedControl } from './SegmentedControl';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import {InstalledFrameComponents} from '../maintenance/MaintenanceWorkbench';
+import {InspectableTarget} from '../maintenance/InspectableTarget';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import {useThemeRuntime} from '../theme/ThemeRuntime';
+import {spacing} from '../theme/tokens';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
+function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root'):ReactNode {
+  return Children.map(node,(child,index)=>{
+    if(!isValidElement(child))return child;
+    const part=child.key!==null?String(child.key):String(index);
+    const nodeId=(path+'/'+part).slice(0,120);
+    if(child.type===MetricTile){
+      const props=child.props as ComponentProps<typeof MetricTile>;
+      const target:InspectedTarget={
+        id:'metric:'+props.label,kind:'metric',label:props.label,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        properties:[
+          {name:'欄位名稱',value:props.label,readOnly:true},{name:'即時數值（帳務唯讀）',value:props.value,readOnly:true},
+          {name:'原說明',value:props.caption??'無',readOnly:true},{name:'損益狀態',value:props.tone??'default',readOnly:true},
+          {name:'標題字號',value:'11 px'},{name:'數值字號',value:'17 px'},
+        ],
+        base:{...TARGET_APPEARANCE,fontSize:17,labelFontSize:11,captionFontSize:10,
+          backgroundColor:'#F4ECFF',textColor:props.tone==='gain'?'#EF4444':props.tone==='loss'?'#10B981':'#0F172A',
+          labelColor:'#64748B',borderWidth:0,borderRadius:12,padding:spacing.md,
+        },
+      };
+      return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
+        {(appearance,customized)=><MetricTile {...props} {...(customized?{editorStyle:appearance}:{})}/>}
+      </InspectableTarget>;
+    }
+    if(child.type===HoldingQuoteCollection){
+      const props=child.props as ComponentProps<typeof HoldingQuoteCollection>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof HoldingQuoteCollection>>,{
+        ...props,maintenance:frame,
+      });
+    }
+    if(child.type===SegmentedControl){
+      const props=child.props as ComponentProps<typeof SegmentedControl>;
+      const choices=props.items.map(item=>item.label).join('／');
+      const target:InspectedTarget={
+        id:'control:'+nodeId,kind:'control',label:'操作模式',page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        properties:[{name:'目前模式',value:String(props.value)},{name:'可選項目',value:choices,readOnly:true}],
+        base:{...TARGET_APPEARANCE,backgroundColor:'#F6EAFF',padding:0,borderWidth:0},
+      };
+      return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>{()=>child}</InspectableTarget>;
+    }
+    if(child.type===Text){
+      const props=child.props as ComponentProps<typeof Text>;
+      const content=typeof props.children==='string'||typeof props.children==='number'?String(props.children):null;
+      if(content&&content.trim().length>=2){
+        const raw=StyleSheet.flatten(props.style) as TextStyle|undefined;
+        const color=typeof raw?.color==='string'&&/^#[0-9a-f]{6}$/i.test(raw.color)?raw.color:'#0F172A';
+        const bg=typeof raw?.backgroundColor==='string'&&/^#[0-9a-f]{6}$/i.test(raw.backgroundColor)?raw.backgroundColor:'#FFFFFF';
+        const size=typeof raw?.fontSize==='number'?raw.fontSize:13;
+        const target:InspectedTarget={
+          id:'text:'+nodeId,kind:'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+          properties:[{name:'原畫面文字',value:content,readOnly:true},{name:'原字號',value:size+' px',readOnly:true},
+            {name:'原文字顏色',value:color,readOnly:true}],
+          base:{...TARGET_APPEARANCE,fontSize:size,textColor:color,backgroundColor:bg,
+            align:raw?.textAlign==='center'||raw?.textAlign==='right'?raw.textAlign:'left',
+            borderWidth:typeof raw?.borderWidth==='number'?raw.borderWidth:0,
+            padding:typeof raw?.padding==='number'?raw.padding:0,borderRadius:typeof raw?.borderRadius==='number'?raw.borderRadius:0},
+        };
+        return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>
+          {(appearance,customized)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
+            ...props,children:customized?(appearance.labelText||appearance.captionText||content):content,
+            style:customized?[props.style,{color:appearance.textColor,fontSize:appearance.fontSize,
+              textAlign:appearance.align,backgroundColor:appearance.backgroundColor,
+              borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,
+              borderRadius:appearance.borderRadius,padding:appearance.padding}]:props.style,
+          })}
+        </InspectableTarget>;
+      }
+    }
+    const props=child.props as {children?:ReactNode};
+    if(props.children!==undefined){
+      return cloneElement(child as ReactElement<{children?:ReactNode}>,{
+        children:decorateContent(props.children,frame,nodeId),
+      });
+    }
+    return child;
+  });
+}
+
 export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:readonly EditorFrameItem[]}){
-  const {config}=usePageEditor(pageKey);
+  const {config,displayConfig}=usePageEditor(pageKey);
   const engineer=useMaintenance();
+  const theme=useThemeRuntime();
   const session=engineer.session?.page===pageKey?engineer.session:null;
+  const effectiveDisplay=session?session.draftDisplay:displayConfig;
   const ordered=[...frames]
     .filter(item => config[item.key]?.visible !== false)
-    .sort((a,b)=>(session&&session.frameKey===a.key?session.draft.order:config[a.key]?.order??0)-(session&&session.frameKey===b.key?session.draft.order:config[b.key]?.order??0));
+    .sort((a,b)=>(session&&session.frameKey===a.key?session.draft.order:config[a.key]?.order??0)
+      -(session&&session.frameKey===b.key?session.draft.order:config[b.key]?.order??0));
 
   return <View style={{gap:12}}>{ordered.map(item=>{
     const active=session?.frameKey===item.key;
     const frameConfig=active&&session?session.draft:config[item.key];
     const instances=active&&session?session.draftInstances:engineer.getInstances(pageKey,item.key);
+    const frame:FrameMaintenanceContext={
+      page:pageKey,frameKey:item.key,frameTitle:item.element.props.title,
+      frameConfig:frameConfig!,displayConfig:effectiveDisplay,
+    };
     const open=(instanceId?:string)=>{
       const source=config[item.key];if(!source)return;
-      engineer.begin(pageKey,item.key,item.element.props.title,source,instanceId);
+      engineer.begin(pageKey,item.key,item.element.props.title,source,instanceId,displayConfig);
     };
     const originalAction=item.element.props.action;
     return cloneElement(item.element,{
@@ -31,21 +122,18 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
       layout:frameConfig?.layout??'standard',
       appearance:frameConfig?.appearance??'theme',
       ...(frameConfig?{editorStyle:frameConfig}:{}),
-      workActive:active&&session?.scope==='frame',
+      workActive:active,
       workHidden:active&&session?.scope==='frame'&&!session.draft.visible,
       action:<View style={{flexDirection:'row',gap:6,alignItems:'center'}}>
         {originalAction}
-        {engineer.enabled?<Pressable accessibilityRole="button" accessibilityLabel={'呼叫'+item.element.props.title+'維護工程師'} onPress={()=>open()} style={{minWidth:36,minHeight:36,justifyContent:'center',alignItems:'center',borderWidth:1,borderRadius:18,borderColor:'#6495D1'}}>
+        {engineer.enabled?<Pressable accessibilityRole="button" accessibilityLabel={'呼叫'+item.element.props.title+'維護工程師'} onPress={()=>open()} style={{minWidth:36,minHeight:36,justifyContent:'center',alignItems:'center',borderWidth:1,borderRadius:18,borderColor:theme.palette.primary}}>
           <Text style={{fontSize:17}}>🔧</Text>
         </Pressable>:null}
       </View>,
-      children:<>{item.element.props.children}
-        {instances.length?<InstalledFrameComponents
-          instances={instances}
-          enabled={engineer.enabled}
+      children:<>{decorateContent(item.element.props.children,frame)}
+        {instances.length?<InstalledFrameComponents instances={instances} enabled={engineer.enabled}
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
-          onWrench={id=>open(id)}
-        />:null}
+          onWrench={id=>open(id)}/>:null}
       </>,
     });
   })}</View>;

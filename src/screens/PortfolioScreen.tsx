@@ -15,6 +15,9 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import {InspectableTarget} from '../maintenance/InspectableTarget';
+import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
@@ -32,23 +35,25 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [calculatorOpen,setCalculatorOpen]=useState(false);
   const editor=usePageEditor('portfolio');
-  const viewMode=(editor.displayConfig.portfolioViewMode??'list') as ViewMode;
-  const quoteStyle=(editor.displayConfig.quoteStyle??'chart') as QuoteModuleStyle;
-  const sortKey=(editor.displayConfig.sortKey??'manual') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
+  const maintenance=useMaintenance();
+  const effectiveDisplay=maintenance.session?.page==='portfolio'?maintenance.session.draftDisplay:editor.displayConfig;
+  const viewMode=(effectiveDisplay.portfolioViewMode??'list') as ViewMode;
+  const quoteStyle=(effectiveDisplay.quoteStyle??'chart') as QuoteModuleStyle;
+  const sortKey=(effectiveDisplay.sortKey??'manual') as HoldingSortKey;
+  const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
-    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,editor.displayConfig.etfBadges?.reminderEvents);
+    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
     return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
       ...item,etfType:tags.get(item.symbol)?.etfType??null,
       dividendType:tags.get(item.symbol)?.dividendType??null,
       reminderEvent:reminders.get(item.symbol)??null,
     }));
-  },[finance.holdings,finance.entries,sortKey,market.catalog,editor.displayConfig.etfBadges?.reminderEvents]);
+  },[finance.holdings,finance.entries,sortKey,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
 
@@ -95,7 +100,26 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               <Pressable accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
                 <Text style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
               </Pressable>
-              <HoldingTable rows={sorted} onOpenHolding={onOpenHolding} config={editor.displayConfig.portfolioList??DEFAULT_PORTFOLIO_LIST} badges={editor.displayConfig.etfBadges??DEFAULT_ETF_BADGES} refreshToken={finance.sharedSnapshot.generatedAt}/>
+              <InspectableTarget
+                frame={{page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
+                  frameConfig:editor.config['holding-view']!,displayConfig:effectiveDisplay}}
+                target={{
+                  id:'portfolio:holding-table',kind:'portfolio-list',label:'持股清單',
+                  page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
+                  properties:[
+                    {name:'資料筆數',value:String(sorted.length),readOnly:true},
+                    {name:'固定欄寬',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).fixedWidth)+' dp'},
+                    {name:'列高',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).rowHeight)+' dp'},
+                    {name:'欄位數',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).columns.length)},
+                    {name:'標籤數',value:String((effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES).order.length)},
+                  ],
+                  base:{...TARGET_APPEARANCE,backgroundColor:'#FFFFFF',padding:0},
+                }}>
+                {()=> <HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
+                  config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                  badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
+                  refreshToken={finance.sharedSnapshot.generatedAt}/>}
+              </InspectableTarget>
             </>:<>
               <SegmentedControl
                 items={[{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const}
@@ -116,7 +140,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
                   </Pressable>
                 )}
               </View>
-              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} badgeConfig={editor.displayConfig.etfBadges??DEFAULT_ETF_BADGES} {...(editor.displayConfig.holdingWall?{wallConfig:editor.displayConfig.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding}/>
+              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} {...(effectiveDisplay.holdingWall?{wallConfig:effectiveDisplay.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding}/>
               <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
           </FrameCard>
