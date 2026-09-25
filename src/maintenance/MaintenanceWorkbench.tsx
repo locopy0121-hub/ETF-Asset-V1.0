@@ -77,6 +77,8 @@ export function MaintenanceWorkbench(){
           <Text style={[styles.small,{color:theme.palette.textSecondary,flex:1}]}>{row.name}</Text>
           <Text style={[styles.small,{color:theme.palette.text,textAlign:'right',flex:1}]} numberOfLines={2}>{row.value}{row.readOnly?' 🔒':''}</Text>
         </View>)}
+        {(()=>{const m=maintenance.getTargetMeasurement(selectedTarget.page,selectedTarget.frameKey,selectedTarget.id);const o=maintenance.getTargetOverride(selectedTarget.page,selectedTarget.frameKey,selectedTarget.id);
+          return <Text style={[styles.small,{color:theme.palette.primary,marginTop:7}]}>XY 座標：{m?`${m.x+(o.positionX??0)}, ${m.y+(o.positionY??0)} dp`:'待測量'}｜尺寸：{m?`${m.width} × ${m.height} dp`:'待測量'}｜Mobile 吸附預設關閉</Text>;})()}
         <Text style={[styles.small,{color:theme.palette.textSecondary,marginTop:7}]}>資料值唯讀；下方工具修改顯示屬性或本頁設定，不修改來源帳務。</Text>
       </View>:null}
       {displaySkills.map(skillItem=><View key={skillItem.id} style={[styles.group,{borderColor:theme.palette.border}]}>
@@ -156,7 +158,12 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
         <Text style={{color:v===pos?'#FFF':theme.palette.text}}>{{left:'靠左',center:'置中',right:'靠右'}[pos]}</Text>
       </Pressable>)}
     </View>;
-    if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v))return <ColorPalettePicker label={tool.label} value={v} onChange={change}/>;
+    if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v))return <ColorPalettePicker label={tool.label} value={v} onChange={change}
+      profitColorEnabled={key==='textColor'?current.useProfitColor:key==='labelColor'?current.labelProfitColor:key==='backgroundColor'?current.backgroundProfitColor:current.borderProfitColor}
+      onProfitColorChange={enabled=>maint.patchTarget(target.id,{[key==='textColor'?'useProfitColor':key==='labelColor'?'labelProfitColor':key==='backgroundColor'?'backgroundProfitColor':'borderProfitColor']:enabled})}/>;
+    if(key==='positionX'||key==='positionY')return <CoordinateControl key={target.id+key} axis={key==='positionX'?'x':'y'}
+      value={v as number} base={maint.getTargetMeasurement(target.page,target.frameKey,target.id)}
+      onChange={change} />;
     if(typeof v==='number'){
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
@@ -203,6 +210,25 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   return <ToolDetails tool={tool} instance={instance}/>;
 }
 
+function CoordinateControl({axis,value,base,onChange}:{axis:'x'|'y';value:number;base:{x:number;y:number;width:number;height:number}|undefined;onChange:(value:number)=>void}){
+  const theme=useThemeRuntime();
+  const origin=base?.[axis]??0;
+  const actual=origin+value;
+  const [draft,setDraft]=useState(String(actual));
+  useEffect(()=>{setDraft(String(actual));},[actual]);
+  const step=(n:number)=>onChange(Math.max(-2000,Math.min(2000,value+n)));
+  const apply=()=>{const number=Number(draft);if(draft.trim()&&Number.isFinite(number))onChange(Math.max(-2000,Math.min(2000,number-origin)));else setDraft(String(actual));};
+  return <View style={{gap:8,marginTop:8}}>
+    <Text style={{color:theme.palette.text}}>目前 {axis.toUpperCase()}：{actual} dp {base?'（真實元件相對父容器）':'（等待實際測量）'}</Text>
+    <View style={{flexDirection:'row',alignItems:'center',gap:8}}>
+      <Pressable accessibilityLabel={axis+' 減少 1 dp'} onPress={()=>step(-1)} style={styles.step}><Text>−1</Text></Pressable>
+      <TextInput accessibilityLabel={axis+' 座標手動輸入'} keyboardType="numbers-and-punctuation" value={draft} onChangeText={setDraft} onSubmitEditing={apply}
+        style={[styles.input,{flex:1,borderColor:theme.palette.border,color:theme.palette.text,marginTop:0}]}/>
+      <Pressable accessibilityLabel={axis+' 增加 1 dp'} onPress={()=>step(1)} style={styles.step}><Text>＋1</Text></Pressable>
+    </View>
+    <Pressable onPress={apply} style={[styles.choice,{alignSelf:'flex-start',borderColor:theme.palette.primary}]}><Text style={{color:theme.palette.primary}}>套用輸入座標</Text></Pressable>
+  </View>;
+}
 function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstance|undefined}){
   const maint=useMaintenance();
   const theme=useThemeRuntime();

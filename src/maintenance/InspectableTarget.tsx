@@ -30,10 +30,16 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   // Use the same grid placement in normal and engineer modes; toggling the engineer
   // must never make metric cards shrink into columns narrower than their content.
   const placement=flex?styles.metricPlacement:undefined;
+  const position={transform:[{translateX:appearance.positionX},{translateY:appearance.positionY}]};
+  const measure=(event:import('react-native').LayoutChangeEvent)=>{
+    if(!engineer.enabled)return;
+    const {x,y,width,height}=event.nativeEvent.layout;
+    engineer.setTargetMeasurement(target.page,target.frameKey,target.id,{x,y,width,height});
+  };
   if(!engineer.enabled)return appearance.visible?(flex?
-    <View style={placement}>{children(appearance,customized,override)}</View>:
-    <>{children(appearance,customized,override)}</>):null;
-  return <View style={[placement,{position:'relative',opacity:appearance.opacity},wrapperStyle]}>
+    <View style={[placement,position]}>{children(appearance,customized,override)}</View>:
+    <View style={position}>{children(appearance,customized,override)}</View>):null;
+  return <View onLayout={measure} style={[placement,{position:'relative',opacity:appearance.opacity},wrapperStyle,position]}>
     {(selected||editing)?<View pointerEvents="none" style={[StyleSheet.absoluteFill,styles.selectionOutline,{borderColor:theme.palette.primary}]}/>:null}
     {appearance.visible||selected||editing?children(appearance,customized,override):<View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {active?<Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={'選取元件 '+target.label} onPress={()=>engineer.selectTarget(target)} />:null}

@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_3 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_4 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -141,7 +141,9 @@
     "test:v3_0_2": "npm run test:v3_0_1 && npm run test:inspector-v302",
     "test:workspace-v303": "tsx scripts/v3_0_3-workspace.test.ts",
     "test:v3_0_3": "npm run test:v3_0_2 && npm run test:workspace-v303 && npm run test:layout-repair-v303",
-    "test:layout-repair-v303": "tsx scripts/v3_0_3-layout-repair.test.ts"
+    "test:layout-repair-v303": "tsx scripts/v3_0_3-layout-repair.test.ts",
+    "test:xy-v304": "tsx scripts/v3_0_4-xy.test.ts",
+    "test:v3_0_4": "npm run test:v3_0_3 && npm run test:xy-v304"
   },
   "dependencies": {
     "expo": "~57.0.21",

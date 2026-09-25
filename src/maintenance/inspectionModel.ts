@@ -9,6 +9,8 @@ export type TargetAppearance=Readonly<{
   textColor:string;labelColor:string;backgroundColor:string;borderColor:string;
   borderWidth:number;borderRadius:number;padding:number;opacity:number;
   align:'left'|'center'|'right';useProfitColor:boolean;
+  labelProfitColor:boolean;backgroundProfitColor:boolean;borderProfitColor:boolean;
+  positionX:number;positionY:number;
   labelText:string;captionText:string;
 }>;
 export type TargetOverride=Partial<TargetAppearance>;
@@ -26,18 +28,19 @@ const clamp=(n:unknown,min:number,max:number,fallback:number)=>typeof n==='numbe
 export const TARGET_APPEARANCE:TargetAppearance={
   visible:true,fontSize:17,labelFontSize:11,captionFontSize:10,textColor:'#0F172A',labelColor:'#64748B',
   backgroundColor:'#F4ECFF',borderColor:'#DDD1EF',borderWidth:0,borderRadius:12,padding:10,
-  opacity:1,align:'left',useProfitColor:true,labelText:'',captionText:'',
+  opacity:1,align:'left',useProfitColor:true,labelProfitColor:false,backgroundProfitColor:false,borderProfitColor:false,
+  positionX:0,positionY:0,labelText:'',captionText:'',
 };
 export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride):TargetAppearance=>({...base,...(custom??{})});
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1]] as const){
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['positionX',-2000,2000],['positionY',-2000,2000]] as const){
     if(typeof v[field]==='number'&&Number.isFinite(v[field]))o[field]=clamp(v[field],min,max,min);
   }
   for(const field of ['textColor','labelColor','backgroundColor','borderColor'] as const)
     if(hex(v[field]))o[field]=v[field].toUpperCase();
-  for(const field of ['visible','useProfitColor'] as const)
+  for(const field of ['visible','useProfitColor','labelProfitColor','backgroundProfitColor','borderProfitColor'] as const)
     if(typeof v[field]==='boolean')o[field]=v[field];
   if(v.align==='left'||v.align==='right'||v.align==='center')o.align=v.align;
   for(const field of ['labelText','captionText'] as const)
@@ -59,9 +62,10 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(field==='target:captionText')return kind==='metric';
   if(field==='target:labelColor')return kind==='metric'||kind==='text';
   if(field==='target:labelFontSize'||field==='target:captionFontSize')return kind==='metric';
-  if(field==='target:useProfitColor')return kind==='metric'||kind==='quote-card';
+  if(field==='target:useProfitColor'||field==='target:labelProfitColor'||field==='target:backgroundProfitColor'||field==='target:borderProfitColor')return true;
+  if(field==='target:positionX'||field==='target:positionY')return true;
   if(kind==='wall'||kind==='portfolio-list'||kind==='control'){
-    if(field.startsWith('target:'))return ['target:visible','target:opacity','target:padding','target:backgroundColor','target:borderColor','target:borderWidth','target:borderRadius'].includes(field);
+    if(field.startsWith('target:'))return ['target:visible','target:opacity','target:padding','target:backgroundColor','target:borderColor','target:borderWidth','target:borderRadius','target:textColor','target:labelColor','target:align','target:fontSize'].includes(field);
   }
   if(field.startsWith('target:'))return kind!=='control'||['target:visible','target:opacity'].includes(field);
   if(field==='page:wall'||field==='page:badges'||field==='page:quoteStyle'||field==='page:holdingLayoutMode')

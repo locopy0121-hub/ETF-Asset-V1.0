@@ -20,6 +20,8 @@ type MaintenanceContextValue=Readonly<{
   hydrated:boolean;enabled:boolean;session:MaintenanceSession|null;selection:InspectedTarget|null;
   getInstances:(page:MainPageKey,frameKey:string)=>readonly MaintenanceInstance[];
   getTargetOverride:(page:MainPageKey,frameKey:string,id:string)=>TargetOverride;
+  getTargetMeasurement:(page:MainPageKey,frameKey:string,id:string)=>Readonly<{x:number;y:number;width:number;height:number}>|undefined;
+  setTargetMeasurement:(page:MainPageKey,frameKey:string,id:string,measurement:Readonly<{x:number;y:number;width:number;height:number}>)=>void;
   begin:(page:MainPageKey,frameKey:string,title:string,config:FrameEditorConfig,instanceId?:string,displayConfig?:PageDisplayConfig)=>void;
   selectTarget:(target:InspectedTarget)=>void;syncTarget:(target:InspectedTarget)=>void;
   enterTarget:(target:InspectedTarget,frameConfig:FrameEditorConfig,displayConfig:PageDisplayConfig)=>void;
@@ -45,6 +47,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const settings=useSettingsRuntime();
   const [saved,setSaved]=useState<Record<string,MaintenanceInstance[]>>({});
   const [targetStyles,setTargetStyles]=useState<Record<string,Record<string,TargetOverride>>>({});
+  const [measurements,setMeasurements]=useState<Record<string,{x:number;y:number;width:number;height:number}>>({});
   const [hydrated,setHydrated]=useState(false);
   const [selection,setSelection]=useState<InspectedTarget|null>(null);
   const [session,setSession]=useState<MaintenanceSession|null>(null);
@@ -74,6 +77,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       return (session?.page===page&&session.frameKey===frameKey?
         session.draftTargets[id]:targetStyles[key]?.[id])??{};
     },
+    getTargetMeasurement:(page,frameKey,id)=>measurements[scopeId(page,frameKey)+':'+id],
+    setTargetMeasurement:(page,frameKey,id,measurement)=>setMeasurements(previous=>{
+      const key=scopeId(page,frameKey)+':'+id,old=previous[key];
+      if(old&&old.x===measurement.x&&old.y===measurement.y&&old.width===measurement.width&&old.height===measurement.height)return previous;
+      return {...previous,[key]:measurement};
+    }),
     begin:(page,frameKey,title,config,instanceId,displayConfig)=>{
       if(!enabled||!hydrated)return;
       setSelection(null);
@@ -157,7 +166,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,saved,targetStyles,measurements,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }

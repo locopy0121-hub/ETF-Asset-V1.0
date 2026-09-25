@@ -41,6 +41,10 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
         borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
         borderRadius:editorStyle?.borderRadius??radius.lg,
       }]}/>:null}
+      {workActive?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{zIndex:1}]}>
+        <View style={{position:'absolute',left:'50%',top:0,bottom:0,width:1,backgroundColor:theme.palette.primary,opacity:.3}}/>
+        <View style={{position:'absolute',top:'50%',left:0,right:0,height:1,backgroundColor:theme.palette.primary,opacity:.3}}/>
+      </View>:null}
       <View style={styles.header}>
         <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
         {action}

@@ -11,11 +11,15 @@ export function MetricTile({label,value,caption,tone='default',editorStyle}:{
   const theme=useThemeRuntime();
   const toneColor=tone==='gain'?theme.palette.gain:tone==='loss'?theme.palette.loss:theme.palette.text;
   const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'?toneColor:editorStyle?.textColor??theme.palette.text;
+  const semantic=tone==='gain'?theme.palette.gain:tone==='loss'?theme.palette.loss:theme.palette.flat;
+  const labelColor=editorStyle?.labelProfitColor?semantic:editorStyle?.labelColor??theme.palette.textSecondary;
+  const backgroundColor=editorStyle?.backgroundProfitColor?semantic:editorStyle?.backgroundColor??theme.palette.surfaceMuted;
+  const borderColor=editorStyle?.borderProfitColor?semantic:editorStyle?.borderColor;
   const displayedLabel=editorStyle?.labelText||label;
   const displayedCaption=editorStyle?.captionText||caption;
-  return <View style={[styles.tile,{backgroundColor:editorStyle?.backgroundColor??theme.palette.surfaceMuted},
-    editorStyle&&{borderColor:editorStyle.borderColor,borderWidth:editorStyle.borderWidth,borderRadius:editorStyle.borderRadius,padding:editorStyle.padding}]}>
-    <Text style={[styles.label,{color:editorStyle?.labelColor??theme.palette.textSecondary,
+  return <View style={[styles.tile,{backgroundColor},
+    editorStyle&&{borderColor,borderWidth:editorStyle.borderWidth??(editorStyle.borderProfitColor?1:undefined),borderRadius:editorStyle.borderRadius,padding:editorStyle.padding}]}>
+    <Text style={[styles.label,{color:labelColor,
       fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left'}]}>{displayedLabel}</Text>
     <Text style={[styles.value,{color:textColor,fontSize:editorStyle?.fontSize??17,
       textAlign:editorStyle?.align??'left'}]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
