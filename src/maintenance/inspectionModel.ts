@@ -3,7 +3,7 @@ import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
-export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic';
+export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix';
 export type TargetProperty=Readonly<{name:string;value:string;readOnly?:boolean}>;
 export type TargetAppearance=Readonly<{
   visible:boolean;fontSize:number;labelFontSize:number;captionFontSize:number;
@@ -13,6 +13,9 @@ export type TargetAppearance=Readonly<{
   backgroundProfitColor?:boolean;borderProfitColor?:boolean;
   profitToneOverride?:'auto'|FinancialTone;
   borderWidth:number;borderRadius:number;padding:number;opacity:number;
+  fontWeight:'normal'|'bold'|'100'|'200'|'300'|'400'|'500'|'600'|'700'|'800'|'900';
+  fontStyle:'normal'|'italic';textDecorationLine:'none'|'underline'|'line-through'|'underline line-through';
+  letterSpacing:number;lineHeight:number;prefixText:string;prefixGap:number;
   align:'left'|'center'|'right';useProfitColor:boolean;
   labelText:string;captionText:string;
 }> & SpatialOffset;
@@ -32,23 +35,28 @@ export const TARGET_APPEARANCE:TargetAppearance={
   visible:true,fontSize:17,labelFontSize:11,captionFontSize:10,textColor:'#0F172A',labelColor:'#64748B',captionColor:'#64748B',
   backgroundColor:'#F4ECFF',borderColor:'#DDD1EF',borderWidth:0,borderRadius:12,padding:10,
   opacity:1,align:'left',useProfitColor:true,labelText:'',captionText:'',
+  fontWeight:'normal',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
+  prefixText:'',prefixGap:8,
 };
 export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride):TargetAppearance=>({...base,...(custom??{})});
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400]] as const){
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48]] as const){
     if(typeof v[field]==='number'&&Number.isFinite(v[field]))o[field]=clamp(v[field],min,max,min);
   }
   for(const field of ['textColor','labelColor','captionColor','backgroundColor','borderColor'] as const)
     if(hex(v[field]))o[field]=v[field].toUpperCase();
   for(const field of ['visible','useProfitColor','textProfitColor','labelProfitColor','captionProfitColor','backgroundProfitColor','borderProfitColor'] as const)
     if(typeof v[field]==='boolean')o[field]=v[field];
+  if(v.fontWeight==='normal'||v.fontWeight==='bold'||['100','200','300','400','500','600','700','800','900'].includes(String(v.fontWeight)))o.fontWeight=v.fontWeight;
+  if(v.fontStyle==='normal'||v.fontStyle==='italic')o.fontStyle=v.fontStyle;
+  if(v.textDecorationLine==='none'||v.textDecorationLine==='underline'||v.textDecorationLine==='line-through'||v.textDecorationLine==='underline line-through')o.textDecorationLine=v.textDecorationLine;
   if(v.align==='left'||v.align==='right'||v.align==='center')o.align=v.align;
   if(v.anchorX==='free'||v.anchorX==='left'||v.anchorX==='center'||v.anchorX==='right')o.anchorX=v.anchorX;
   if(v.anchorY==='free'||v.anchorY==='top'||v.anchorY==='center'||v.anchorY==='bottom')o.anchorY=v.anchorY;
   if(v.profitToneOverride==='auto'||v.profitToneOverride==='gain'||v.profitToneOverride==='loss'||v.profitToneOverride==='neutral')o.profitToneOverride=v.profitToneOverride;
-  for(const field of ['labelText','captionText'] as const)
+  for(const field of ['labelText','captionText','prefixText'] as const)
     if(typeof v[field]==='string')o[field]=v[field].slice(0,120);
   return o as TargetOverride;
 }
@@ -65,6 +73,8 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
   if(field==='target:profitToneOverride')return true;
+  if(field==='target:prefixText'||field==='target:prefixGap')return kind==='prefix';
+  if(['target:fontWeight','target:fontStyle','target:textDecorationLine','target:letterSpacing','target:lineHeight'].includes(field))return ['text','value','prefix','metric'].includes(kind);
   if(field==='target:textProfitColor')return kind!=='wall'&&kind!=='portfolio-list'&&kind!=='control';
   if(field==='target:labelProfitColor'||field==='target:captionProfitColor'||field==='target:captionColor')return kind==='metric';
   if(field==='target:labelText')return kind==='metric'||kind==='text';

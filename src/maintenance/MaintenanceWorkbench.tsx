@@ -153,9 +153,23 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
     if(typeof v==='boolean')return <View style={{flexDirection:'row',alignItems:'center',gap:12,marginTop:8}}>
       <Text style={{color:theme.palette.text}}>{v?'開啟':'關閉'}</Text><Switch value={v} onValueChange={change}/>
     </View>;
-    if(key==='labelText'||key==='captionText')return <TextInput value={String(v)}
+    if(key==='labelText'||key==='captionText'||key==='prefixText')return <TextInput value={String(v)}
       onChangeText={change} maxLength={120} placeholder="留空沿用 App 原始文字"
       style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>;
+    if(fieldName==='fontWeight'||fieldName==='fontStyle'||fieldName==='textDecorationLine'){
+      const options:Record<string,readonly (readonly [string,string])[]>={
+        fontWeight:[['normal','正常'],['bold','粗體'],['300','細體'],['500','中等'],['600','半粗'],['700','700'],['800','800'],['900','最粗']],
+        fontStyle:[['normal','正常'],['italic','斜體']],
+        textDecorationLine:[['none','無'],['underline','底線'],['line-through','刪除線'],['underline line-through','底線＋刪除線']],
+      };
+      return <View style={{flexDirection:'row',gap:7,flexWrap:'wrap',marginTop:8}}>
+        {options[fieldName]!.map(([value,label])=><Pressable key={value} accessibilityRole="button" accessibilityLabel={label}
+          onPress={()=>change(value)} style={[styles.choice,{borderColor:theme.palette.primary,
+          backgroundColor:v===value?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:v===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      </View>;
+    }
     if(key==='align')return <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:8}}>
       {(['left','center','right'] as const).map(pos=><Pressable key={pos} onPress={()=>change(pos)}
         style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:v===pos?theme.palette.primary:theme.palette.surface}]}>
@@ -182,6 +196,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
         borderRadius:[0,48,2],padding:[0,32,2],opacity:[0,1,.05],
+        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],
       };
       const [min,max,step]=range[key]??[0,100,1];
       return <View style={styles.stepper}>
