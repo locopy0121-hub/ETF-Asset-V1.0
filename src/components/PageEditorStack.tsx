@@ -12,6 +12,7 @@ import {InstalledFrameComponents} from '../maintenance/MaintenanceWorkbench';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {spacing} from '../theme/tokens';
 
@@ -122,6 +123,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
     const active=session?.frameKey===item.key;
     const frameConfig=active&&session?session.draft:config[item.key];
     const instances=active&&session?session.draftInstances:engineer.getInstances(pageKey,item.key);
+    const workspace=engineer.getWorkspace(pageKey,item.key);
     const frame:FrameMaintenanceContext={
       page:pageKey,frameKey:item.key,frameTitle:item.element.props.title,
       frameConfig:frameConfig!,displayConfig:effectiveDisplay,
@@ -131,7 +133,8 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
       engineer.begin(pageKey,item.key,item.element.props.title,source,instanceId,displayConfig);
     };
     const originalAction=item.element.props.action;
-    return cloneElement(item.element,{
+    return <WorkspaceSurface key={item.key} config={workspace} active={Boolean(active&&engineer.enabled)}>
+      {cloneElement(item.element,{
       key:item.key,
       layout:frameConfig?.layout??'standard',
       appearance:frameConfig?.appearance??'theme',
@@ -149,6 +152,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
           onWrench={id=>open(id)}/>:null}
       </>,
-    });
+    })}
+    </WorkspaceSurface>;
   })}</View>;
 }

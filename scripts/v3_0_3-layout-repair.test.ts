@@ -15,6 +15,10 @@ assert.ok(inspector.includes('return <View style={[placement,'),'ON must use the
 assert.ok(inspector.includes("flexBasis:'46%'")&&inspector.includes('minWidth:136')&&inspector.includes('flexShrink:0'));
 assert.ok(!inspector.includes('flex:1,minWidth:0'),'old wrapper forced KPI tiles to shrink below their minimum');
 assert.ok(inspector.includes('StyleSheet.absoluteFill,styles.selectionOutline'),'outline must not consume layout dimensions');
+const surface=read('src/maintenance/WorkspaceSurface.tsx');
+assert.ok(surface.includes('active&&config.width>0')&&surface.includes('ScrollView horizontal'));
+assert.ok(surface.includes('config.showAxes')&&surface.includes('bounds.width/2')&&surface.includes('bounds.height/2'));
+assert.ok(stack.includes('WorkspaceSurface'),'same workspace context must wrap every existing frame');
 assert.ok(!inspector.includes("top:-13"),'negative mini-wrench offset caused adjacent-card overlap');
 assert.ok(frame.includes('StyleSheet.absoluteFill')&&frame.includes('pointerEvents="none"'),'outer frame border must be an overlay, too');
 assert.ok(!frame.includes("workActive&&{borderStyle:'dashed'"),'outer frame selection may not consume layout width');
