@@ -57,8 +57,8 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   return <View style={[
     styles.card,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
     layout==='compact'&&styles.cardCompact,layout==='dense'&&styles.cardDense,
-    appearance==='soft'&&{backgroundColor:theme.palette.surfaceMuted},
-    appearance==='outline'&&{borderWidth:2,borderColor:theme.palette.primary},
+    appearance==='soft'&&[styles.cardSoft,{backgroundColor:theme.palette.surfaceMuted}],
+    appearance==='outline'&&[styles.cardOutline,{borderWidth:2,borderColor:theme.palette.primary}],
     editorStyle&&{
       backgroundColor:gradientOn?'transparent':colorWithAlpha(bg,alpha),
       borderColor:frameBorder,borderWidth:editorStyle.borderWidth,
@@ -117,6 +117,8 @@ const styles=StyleSheet.create({
     borderColor:colors.border,padding:spacing.lg,gap:spacing.md},
   cardCompact:{padding:spacing.md,gap:spacing.sm,borderRadius:radius.md},
   cardDense:{padding:10,gap:6,borderRadius:radius.md},
+  cardSoft:{backgroundColor:colors.surfaceMuted},
+  cardOutline:{borderWidth:2,borderColor:colors.primary},
   header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
   title:{color:colors.text,fontSize:17,fontWeight:'800'},
   titleDense:{fontSize:15},
