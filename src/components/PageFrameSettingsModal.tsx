@@ -108,7 +108,7 @@ export function PageFrameSettingsModal({
     <View style={styles.root}>
       <View style={styles.top}>
         <View style={{flex:1}}>
-          <Text style={styles.kicker}>頁面設定 · 規劃管理平台／常駐維護工程師</Text>
+          <Text style={styles.kicker}>頁面設定 · 統一能力模型／常駐維護工程師</Text>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.hint}>元件決定可用工具；AB 規則只負責收合。未編輯區預設收合，切換時上一組自動收起。</Text>
         </View>
