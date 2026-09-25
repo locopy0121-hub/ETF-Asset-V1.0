@@ -65,10 +65,10 @@ export function isEngineerOwnedInstance(item:MaintenanceInstance|undefined):bool
     readyComponents().some(template=>template.id===item.templateId);
 }
 export function removeEngineerOwnedInstance(instances:readonly MaintenanceInstance[],id:string):MaintenanceInstance[]{
-  const selected=instances.find(item=>item.id===id);
-  if(!isEngineerOwnedInstance(selected))return [...instances];
+  const selected=instances.find(item=>item.id===id&&isEngineerOwnedInstance(item));
+  if(!selected)return [...instances];
   // Removing a parent never deletes its children: move them back to the local root.
-  return instances.filter(item=>item.id!==id).map(item=>{
+  return instances.filter(item=>!(item.id===id&&isEngineerOwnedInstance(item))).map(item=>{
     if(item.parentId!==id)return item;
     const {parentId,...child}=item;return child;
   });
