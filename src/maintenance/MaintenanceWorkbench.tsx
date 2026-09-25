@@ -8,7 +8,7 @@ import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
 import {ENGINEER_SKILLS,type SkillTool} from './skillTree';
-import {mergeTargetAppearance,targetToolSupported,type TargetKind,type TargetOverride} from './inspectionModel';
+import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
@@ -30,7 +30,7 @@ export function MaintenanceWorkbench(){
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
-  const [showAllSkills,setShowAllSkills]=useState(true); // all 16 B groups are always discoverable by default
+  const [showAllSkills,setShowAllSkills]=useState(true); // every registered B group remains discoverable
   const [saving,setSaving]=useState(false);
   useEffect(()=>{
     setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
@@ -185,6 +185,34 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       style={{fontSize:12,color:theme.palette.text}}>{row.name}：{row.value}{row.readOnly?'（唯讀）':''}</Text>)}</View>;
     const v=current[key];
     const change=(value:unknown)=>maint.patchTarget(target.id,{[key]:value} as TargetOverride);
+    if(fieldName==='preset')return <View style={{gap:8,marginTop:8}}>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>只更新目前元件外觀；不更動原始數值、文字、隱藏狀態或 XY。</Text>
+      {([['soft','柔和漸層'],['focus','聚焦高對比'],['minimal','極簡純色']] as const).map(([id,label])=><Pressable key={id}
+        accessibilityRole="button" accessibilityLabel={'套用'+label+'預設'}
+        onPress={()=>maint.patchTarget(target.id,TARGET_VISUAL_PRESETS[id])}
+        style={[styles.choice,{borderColor:theme.palette.primary}]}>
+        <Text style={{color:theme.palette.primary,fontWeight:'800'}}>{label}</Text>
+      </Pressable>)}
+    </View>;
+    if(fieldName==='resetVisual')return <View style={{gap:8,marginTop:8}}>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>恢復 App 原始視覺設定；保留目前元件的文字、顯示狀態及定位。按底部套用才持久化。</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="重設目前元件外觀"
+        onPress={()=>maint.resetTargetVisual(target.id)} style={[styles.choice,{borderColor:theme.palette.primary}]}>
+        <Text style={{color:theme.palette.primary,fontWeight:'800'}}>恢復原生外觀（暫存）</Text>
+      </Pressable>
+    </View>;
+    if(fieldName==='backgroundMode'||fieldName==='gradientDirection'||fieldName==='borderStyle'){
+      const options=fieldName==='backgroundMode'?[['solid','純色'],['gradient','漸層']]:
+        fieldName==='gradientDirection'?[['horizontal','水平'],['vertical','垂直']]:
+        [['solid','實線'],['dashed','虛線'],['dotted','點線']];
+      return <View style={{flexDirection:'row',flexWrap:'wrap',gap:7,marginTop:8}}>
+        {options.map(([value,label])=><Pressable key={value} accessibilityRole="button"
+          accessibilityLabel={label} onPress={()=>change(value)}
+          style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:v===value?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:v===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      </View>;
+    }
     if(typeof v==='boolean')return <View style={{flexDirection:'row',alignItems:'center',gap:12,marginTop:8}}>
       <Text style={{color:theme.palette.text}}>{v?'開啟':'關閉'}</Text><Switch value={v} onValueChange={change}/>
     </View>;
@@ -230,9 +258,11 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       </Pressable>)}
     </View>;
     if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)){
-      const toggles:Record<string,'textProfitColor'|'labelProfitColor'|'captionProfitColor'|'backgroundProfitColor'|'borderProfitColor'>={
+      const toggles:Record<string,'textProfitColor'|'labelProfitColor'|'captionProfitColor'|'backgroundProfitColor'|'borderProfitColor'|'gradientEndProfitColor'|'gradientMidProfitColor'|'shadowProfitColor'|'glowProfitColor'>={
         textColor:'textProfitColor',labelColor:'labelProfitColor',captionColor:'captionProfitColor',
         backgroundColor:'backgroundProfitColor',borderColor:'borderProfitColor',
+        gradientEndColor:'gradientEndProfitColor',gradientMidColor:'gradientMidProfitColor',
+        shadowColor:'shadowProfitColor',glowColor:'glowProfitColor',
       };
       const profitFlag=toggles[fieldName];
       return <ColorPalettePicker label={tool.label} value={v} onChange={change}
@@ -246,11 +276,14 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
         letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],prefixOffsetX:[-80,80,1],prefixOffsetY:[-80,80,1],
         labelLetterSpacing:[-4,16,.5],captionLetterSpacing:[-4,16,.5],
         labelLineHeight:[0,96,1],captionLineHeight:[0,96,1],
+        gradientMidStop:[.1,.9,.05],marginVertical:[0,32,1],marginHorizontal:[0,32,1],
+        shadowOpacity:[0,.8,.05],shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
+        glowOpacity:[0,.8,.05],glowWidth:[0,16,1],
       };
       const [min,max,step]=range[key]??[0,100,1];
       return <View style={styles.stepper}>
         <Pressable onPress={()=>change(Math.max(min,Number((v-step).toFixed(2))))} style={styles.step}><Text style={{color:theme.palette.primary,fontWeight:'900'}}>−</Text></Pressable>
-        <Text style={{color:theme.palette.text,fontWeight:'800'}}>{step<1?Math.round(v*100)+'%':String(v)}</Text>
+        <Text style={{color:theme.palette.text,fontWeight:'800'}}>{['opacity','backgroundOpacity','gradientMidStop','shadowOpacity','glowOpacity'].includes(fieldName)?Math.round(v*100)+'%':String(v)}</Text>
         <Pressable onPress={()=>change(Math.min(max,Number((v+step).toFixed(2))))} style={styles.step}><Text style={{color:theme.palette.primary,fontWeight:'900'}}>＋</Text></Pressable>
       </View>;
     }
