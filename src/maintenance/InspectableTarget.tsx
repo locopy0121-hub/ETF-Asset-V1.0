@@ -18,8 +18,11 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const appearance=mergeTargetAppearance(target.base,override);
   const customized=Object.keys(override).length>0;
   const wrapperStyle=customized&&['wall','portfolio-list','control','generic'].includes(target.kind)?{
-    backgroundColor:appearance.backgroundColor,borderColor:appearance.borderColor,
-    borderWidth:appearance.borderWidth,borderRadius:appearance.borderRadius,padding:appearance.padding,
+    ...(override.backgroundColor?{backgroundColor:appearance.backgroundColor}:{}),
+    ...(override.borderColor?{borderColor:appearance.borderColor}:{}),
+    ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
+    ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
+    ...(override.padding!==undefined?{padding:appearance.padding}:{}),
   }:null;
   // A live quote/value can update while selected; refresh the inspector without replacing drafts.
   const fingerprint=JSON.stringify({properties:target.properties,base:target.base,label:target.label});
@@ -28,7 +31,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   return <View style={[flex?{flex:1,minWidth:0}:null,{position:'relative',opacity:appearance.opacity},wrapperStyle,
     (selected||editing)&&{borderWidth:2,borderStyle:'dashed',borderColor:theme.palette.primary,borderRadius:8}]}>
     {appearance.visible||selected||editing?children(appearance,customized):<View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
-    {active?<Pressable style={StyleSheet.absoluteFillObject} accessibilityRole="button" accessibilityLabel={'選取元件 '+target.label} onPress={()=>engineer.selectTarget(target)} />:null}
+    {active?<Pressable style={StyleSheet.absoluteFill} accessibilityRole="button" accessibilityLabel={'選取元件 '+target.label} onPress={()=>engineer.selectTarget(target)} />:null}
     {(selected||editing)&&active?<Pressable accessibilityRole="button" accessibilityLabel={'編輯元件 '+target.label}
       onPress={()=>engineer.enterTarget(target,frame.frameConfig,frame.displayConfig)}
       style={[styles.wrench,{borderColor:theme.palette.primary,backgroundColor:theme.palette.surface}]}>

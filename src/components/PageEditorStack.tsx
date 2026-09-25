@@ -74,7 +74,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         };
         return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>
           {(appearance,customized)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
-            ...props,children:customized?(appearance.captionText||content):content,
+            ...props,children:customized?(appearance.labelText||appearance.captionText||content):content,
             style:customized?[props.style,{color:appearance.textColor,fontSize:appearance.fontSize,
               textAlign:appearance.align,backgroundColor:appearance.backgroundColor,
               borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,

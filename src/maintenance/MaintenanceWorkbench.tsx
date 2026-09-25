@@ -117,9 +117,10 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   if(tool.field?.startsWith('target:')){
     const target=s.target;
     if(!target)return null;
-    const key=tool.field.slice(7) as keyof TargetOverride;
+    const fieldName=tool.field.slice(7);
+    const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id));
-    if(key==='inspect')return <View style={{marginTop:8,gap:4}}>{target.properties.map(row=><Text key={row.name}
+    if(fieldName==='inspect')return <View style={{marginTop:8,gap:4}}>{target.properties.map(row=><Text key={row.name}
       style={{fontSize:12,color:theme.palette.text}}>{row.name}：{row.value}{row.readOnly?'（唯讀）':''}</Text>)}</View>;
     const v=current[key];
     const change=(value:unknown)=>maint.patchTarget(target.id,{[key]:value} as TargetOverride);
@@ -171,8 +172,8 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       ];
       return <View style={{flexDirection:'row',flexWrap:'wrap',gap:7,marginTop:8}}>
         {opts.map(([value,label])=><Pressable key={value} onPress={()=>
-          key==='quoteStyle'?maint.patchDisplay({quoteStyle:value as typeof d.quoteStyle}):
-          maint.patchDisplay({holdingLayoutMode:value as typeof d.holdingLayoutMode})}
+          key==='quoteStyle'?maint.patchDisplay({quoteStyle:value as NonNullable<typeof d.quoteStyle>}):
+          maint.patchDisplay({holdingLayoutMode:value as NonNullable<typeof d.holdingLayoutMode>})}
           style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:current===value?theme.palette.primary:theme.palette.surface}]}>
           <Text style={{color:current===value?'#FFF':theme.palette.text}}>{label}</Text>
         </Pressable>)}
