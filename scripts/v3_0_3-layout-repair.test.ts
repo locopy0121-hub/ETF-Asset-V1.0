@@ -10,10 +10,12 @@ const ai=read('src/components/AiQuestionBox.tsx');
 const frame=read('src/components/FrameCard.tsx');
 // Both engineer ON and OFF must share a single minimum-width grid layout.
 assert.ok(inspector.includes("const placement=flex?styles.metricPlacement:undefined"));
-assert.ok(inspector.includes("<View style={placement}>{children(appearance,customized,override)}</View>"),'OFF must use the exact same card grid');
-assert.ok(inspector.includes('return <View style={[placement,'),'ON must use the exact same card grid');
+assert.ok(inspector.includes('!engineer.enabled&&!customized&&!flex'),'unmodified native children must remain unchanged when engineer is OFF');
+assert.ok(inspector.includes('style={[placement,{position:\'relative\''),'OFF and ON must share the same metric placement');
+assert.ok(inspector.includes('return <View ref={node}')&&inspector.includes('style={[placement,'),'ON must use the exact same card grid');
 assert.ok(inspector.includes("flexBasis:'46%'")&&inspector.includes('minWidth:136')&&inspector.includes('flexShrink:0'));
 assert.ok(!inspector.includes('flex:1,minWidth:0'),'old wrapper forced KPI tiles to shrink below their minimum');
+assert.ok(inspector.includes('measureCurrent')&&inspector.includes('snapDraggedRect'),'real geometry and drag-only snap required');
 assert.ok(inspector.includes('StyleSheet.absoluteFill,styles.selectionOutline'),'outline must not consume layout dimensions');
 const surface=read('src/maintenance/WorkspaceSurface.tsx');
 assert.ok(surface.includes('active&&config.width>0')&&surface.includes('ScrollView horizontal'));

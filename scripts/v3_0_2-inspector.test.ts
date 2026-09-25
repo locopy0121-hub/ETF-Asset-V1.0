@@ -37,7 +37,7 @@ const home=read('src/screens/HomeScreen.tsx');
 const portfolio=read('src/screens/PortfolioScreen.tsx');
 assert.ok(stack.includes('decorateContent(item.element.props.children,frame)'),'works even after engineer OFF so saved styling persists');
 assert.ok(stack.includes('child.type===MetricTile')&&stack.includes('child.type===Text'));
-assert.ok(inspector.includes("onPress={()=>engineer.selectTarget(target)}")&&inspector.includes("onPress={()=>engineer.enterTarget(target,frame.frameConfig,frame.displayConfig)}"));
+assert.ok(inspector.includes('engineer.selectTarget(currentTarget)')&&inspector.includes('engineer.enterTarget(currentTarget,frame.frameConfig,frame.displayConfig)'));
 assert.ok(quotes.includes("id:'quote:'+item.symbol")&&quotes.includes("kind:'wall'"));
 assert.ok(metric.includes('editorStyle?.useProfitColor===false'),'profit-color state remains an explicit visual toggle');
 assert.ok(scope.includes('getTargetOverride:')&&scope.includes('draftTargets:')&&scope.includes('patchDisplay:'));
