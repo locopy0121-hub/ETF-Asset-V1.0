@@ -2,7 +2,7 @@ name: TF Asset V3.0.4 CI / QA APK
 
 on:
   push:
-    branches: [main, go-v3.0.4-20260925-workspace-polish]
+    branches: [main, go-v3.0.4-20260925-spatial-engineer]
   pull_request:
     branches: [main, go-v3.0.3-20260925-workspace-polish, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall, fix-v2.3.3-20260924-cash-audit, go-v2.3.4-20260925-item7-charts, fix-v2.3.5-20260925-alphanumeric-chart, go-v2.3.6-20260925-crosshair, go-v3.0.1-20260925-engineer-core, go-v3.0.2-20260925-inner-component-inspector]
 
@@ -79,7 +79,7 @@ jobs:
   qa-apk:
     name: V3.0.4 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'push' && github.ref_name == 'go-v3.0.4-20260925-workspace-polish'
+    if: github.event_name == 'push' && github.ref_name == 'go-v3.0.4-20260925-spatial-engineer'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
