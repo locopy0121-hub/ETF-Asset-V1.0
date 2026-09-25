@@ -22,8 +22,8 @@ assert.deepEqual(removeEngineerOwnedInstance([note,divider],'i-missing'),[note,d
 const forged={...note,id:'native:headline'};
 assert.deepEqual(removeEngineerOwnedInstance([forged,divider],forged.id),[forged,divider],
   'native App children cannot be removed by claiming createdBy');
-const v3Legacy={...note,id:'i-old-v301'} as Partial<typeof note>;
-delete v3Legacy.createdBy;
+const {createdBy:_legacyOrigin,...legacyDraft}=note;
+const v3Legacy={...legacyDraft,id:'i-old-v301'};
 assert.equal(normalizeInstances([v3Legacy])[0]?.createdBy,'maintenance-engineer',
   'legacy v3.0.1 instances that followed i- ID scheme migrate without data loss');
 assert.equal(normalizeInstances([{...note,id:'native:frame'}]).length,0);
