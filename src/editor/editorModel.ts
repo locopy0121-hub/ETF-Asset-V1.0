@@ -96,6 +96,8 @@ export type FrameEditorConfig = Readonly<{
   shadowEnabled:boolean;
   shadowOpacity:number;
   padding?:number;
+  width?:number; // Explicit parent frame width, 0/undefined follows available space.
+  height?:number; // Explicit parent frame height; nested content scrolls instead of clipping.
   minHeight?:number;
   effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
 }>;
@@ -298,6 +300,8 @@ export function normalizeEditorConfig(
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
+      ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,160,1600,320)}:{}),
+      ...(typeof candidate.height==='number'&&Number.isFinite(candidate.height)&&candidate.height>0?{height:clamp(candidate.height,80,2400,300)}:{}),
       ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
     };
   });
