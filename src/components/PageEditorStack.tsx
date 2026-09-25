@@ -107,7 +107,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
               ...(override.lineHeight!==undefined&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
               ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
-              ...(isPrefix&&override.prefixOffsetY!==undefined?{transform:[{translateY:appearance.prefixOffsetY}]}:{}),
+              ...(isPrefix&&(override.prefixOffsetX!==undefined||override.prefixOffsetY!==undefined)?{transform:[{translateX:appearance.prefixOffsetX},{translateY:appearance.prefixOffsetY}]}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
               ...(override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?{backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
               ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
