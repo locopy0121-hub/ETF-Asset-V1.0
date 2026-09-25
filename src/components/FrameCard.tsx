@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
-import {AccessibilityInfo,Animated,Image,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {AccessibilityInfo,Animated,Image,StyleSheet,Text,View} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
 import {DEFAULT_FRAME_EFFECTS,colorWithAlpha,mixFrameColors,normalizeFrameEffects,sampleFrameGradient} from '../maintenance/frameEffects';
@@ -81,7 +81,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       ...(fx.paddingBottom>=0?{paddingBottom:fx.paddingBottom}:{}),
       ...(fx.paddingLeft>=0?{paddingLeft:fx.paddingLeft}:{}),
       ...(editorStyle.width!==undefined?{width:editorStyle.width}:{}),
-      ...(editorStyle.height!==undefined?{height:editorStyle.height}:{}),
+      ...(editorStyle.height!==undefined?{height:editorStyle.height,overflow:'visible' as const}:{}),
       ...(editorStyle.minHeight!==undefined?{minHeight:editorStyle.minHeight}:{}),
       ...(fx.contentGap>=0?{gap:fx.contentGap}:{}),
       ...(fx.marginVertical>0?{marginVertical:fx.marginVertical}:{}),
@@ -123,7 +123,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
         }]}>{title}</Text>
       {action}
     </View>
-    {editorStyle?.height!==undefined?<ScrollView nestedScrollEnabled style={{flex:1}} contentContainerStyle={{gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</ScrollView>:children}
+    {editorStyle?.height!==undefined?<View style={{flexShrink:0,gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</View>:children}
   </View>;
 }
 
