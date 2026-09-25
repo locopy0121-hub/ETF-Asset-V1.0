@@ -70,6 +70,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         const color=typeof raw?.color==='string'&&/^#[0-9a-f]{6}$/i.test(raw.color)?raw.color:'#0F172A';
         const bg=typeof raw?.backgroundColor==='string'&&/^#[0-9a-f]{6}$/i.test(raw.backgroundColor)?raw.backgroundColor:'#FFFFFF';
         const size=typeof raw?.fontSize==='number'?raw.fontSize:13;
+        const isPrefix=content.trim()==='NT$'&&frame.page==='home'&&frame.frameKey==='asset-dashboard';
         const isDataValue=/NT\$\s*[-+]?\s*[\d,]+(?:\.\d+)?|^[+-]?[\d,]+(?:\.\d+)?%?$/.test(content)
           ||!!raw?.fontVariant?.includes('tabular-nums');
         const target:InspectedTarget={
@@ -79,15 +80,29 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
             ...(isDataValue?[{name:'資料保護',value:'原始數值不可由文字工具覆寫',readOnly:true}]:[])],
           base:{...TARGET_APPEARANCE,fontSize:size,textColor:color,backgroundColor:bg,
             align:raw?.textAlign==='center'||raw?.textAlign==='right'?raw.textAlign:'left',
+            fontWeight:raw?.fontWeight??'normal',fontStyle:raw?.fontStyle??'normal',
+            textDecorationLine:raw?.textDecorationLine??'none',
+            letterSpacing:raw?.letterSpacing??0,lineHeight:raw?.lineHeight??0,
             borderWidth:typeof raw?.borderWidth==='number'?raw.borderWidth:0,
             padding:typeof raw?.padding==='number'?raw.padding:0,borderRadius:typeof raw?.borderRadius==='number'?raw.borderRadius:0},
         };
-        return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>
+        const actualTarget:InspectedTarget=isPrefix?{...target,id:'prefix:'+nodeId,kind:'prefix',
+          label:'NT$ 貨幣前綴',properties:[...target.properties,{name:'元件類型',value:'獨立貨幣前綴；金額仍為帳務唯讀',readOnly:true}],
+          base:{...target.base,prefixText:content,prefixGap:8}}:target;
+        return <InspectableTarget key={child.key??nodeId} target={actualTarget} frame={frame}>
           {(appearance,customized,override)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
-            ...props,children:customized&&!isDataValue?(appearance.labelText||appearance.captionText||content):content,
+            ...props,children:customized&&!isDataValue?(isPrefix?
+              (override.prefixText!==undefined?appearance.prefixText:content):
+              (appearance.labelText||appearance.captionText||content)):content,
             style:customized?[props.style,{
               ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
+              ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
+              ...(override.fontStyle!==undefined?{fontStyle:appearance.fontStyle}:{}),
+              ...(override.textDecorationLine!==undefined?{textDecorationLine:appearance.textDecorationLine}:{}),
+              ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
+              ...(override.lineHeight!==undefined&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
+              ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
               ...(override.backgroundColor||override.backgroundProfitColor!==undefined?{backgroundColor:appearance.backgroundColor}:{}),
               ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
