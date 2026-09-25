@@ -94,8 +94,11 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     if((selected||editing)&&geometry)engineer.syncTarget({...target,geometry});
   },[fingerprint,selected,editing,target.page,target.frameKey,target.id]);
   // A parent resize or horizontal workbench scroll can alter the relative base XY.
-  useEffect(()=>{if(selected||editing)measureCurrent();},
-    [workspace?.scrollEpoch,workspace?.bounds.width,workspace?.bounds.height,selected,editing]);
+  // Re-measure every anchored component when the frame width/height changes,
+  // not just the currently selected one; otherwise sibling anchors remain stale.
+  useEffect(()=>{if(selected||editing||override.anchorX||override.anchorY)measureCurrent();},
+    [workspace?.scrollEpoch,workspace?.bounds.width,workspace?.bounds.height,selected,editing,
+      override.anchorX,override.anchorY]);
   const rect=geometry?positionedRect(geometry,override):null;
   useEffect(()=>{
     if(!workspace||!rect)return;
@@ -109,7 +112,16 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   // Unmodified native subcomponents remain byte-for-byte/layout-for-layout unchanged when OFF.
   // A hidden saved target has NO placeholder or interaction when the engineer is OFF.
   if(!engineer.enabled&&!appearance.visible)return null;
-  if(!engineer.enabled&&!customized&&!flex)return <>{children(resolvedAppearance,false,override)}</>;
+  // Saved text/color/font overrides apply to the native child directly. Never
+  // introduce a new wrapper around text merely because it was customized;
+  // this preserves the user's V3.0.3-accepted NORMAL-mode layout.
+  const hasSpatialOverride=override.offsetX!==undefined||override.offsetY!==undefined||
+    override.width!==undefined||override.height!==undefined||
+    Boolean(override.anchorX&&override.anchorX!=='free')||
+    Boolean(override.anchorY&&override.anchorY!=='free');
+  const needsContainerStyle=Boolean(wrapperStyle&&Object.keys(wrapperStyle).length>0);
+  if(!engineer.enabled&&!flex&&!hasSpatialOverride&&!needsContainerStyle)
+    return <>{children(resolvedAppearance,customized,override)}</>;
   return <View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
     style={[placement,{position:'relative',opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
