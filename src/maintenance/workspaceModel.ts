@@ -70,13 +70,15 @@ export function snapDraggedRect(rect:PositionedRect,config:WorkspaceConfig,space
   if(!config.snapEnabled)return rect;
   const c=normalizeWorkspace(config);
   const candidatesX:number[]=[],candidatesY:number[]=[];
-  if(c.snapModes.includes('grid')){candidatesX.push(Math.round(rect.x/c.gridSize)*c.gridSize);candidatesY.push(Math.round(rect.y/c.gridSize)*c.gridSize);}
-  if(c.snapModes.includes('center')){candidatesX.push((space.width-rect.width)/2);candidatesY.push((space.height-rect.height)/2);}
+  // In an exact-distance tie, favor the parent's edge before neighboring components,
+  // center guides, and grid: dragging 4dp from an edge must not jump inward to an 8dp grid.
   if(c.snapModes.includes('edges')){candidatesX.push(0,space.width-rect.width);candidatesY.push(0,space.height-rect.height);}
   if(c.snapModes.includes('siblings'))for(const s of siblings){
     candidatesX.push(s.x,s.x+s.width,s.x+s.width/2-rect.width/2);
     candidatesY.push(s.y,s.y+s.height,s.y+s.height/2-rect.height/2);
   }
+  if(c.snapModes.includes('center')){candidatesX.push((space.width-rect.width)/2);candidatesY.push((space.height-rect.height)/2);}
+  if(c.snapModes.includes('grid')){candidatesX.push(Math.round(rect.x/c.gridSize)*c.gridSize);candidatesY.push(Math.round(rect.y/c.gridSize)*c.gridSize);}
   const near=(actual:number,opts:number[])=>{
     const values=opts.map(v=>({v,d:Math.abs(v-actual)})).filter(item=>item.d<=c.snapThreshold).sort((a,b)=>a.d-b.d);
     return values[0]?.v??actual;
