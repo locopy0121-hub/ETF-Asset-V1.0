@@ -93,8 +93,10 @@ export function PageShell({title,pageKey,subtitle,actions,children}:Props){
       {gradientOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{overflow:'hidden',flexDirection:fx.gradientDirection==='vertical'?'column':'row'}]}>
         {gradient.map((c,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(c,headerConfig?.backgroundOpacity??1)}}/>)}
       </View>:null}
-      {imageOn?<Image pointerEvents="none" source={{uri:imageUri!}} resizeMode={fx.imageFit}
-        style={[StyleSheet.absoluteFill,{opacity:fx.imageOpacity}]}/>:null}
+      {imageOn?<View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Image source={{uri:imageUri!}} resizeMode={fx.imageFit}
+          style={[StyleSheet.absoluteFill,{opacity:fx.imageOpacity}]}/>
+      </View>:null}
       {(gradientOn||imageOn)&&fx.maskOpacity>0?<View pointerEvents="none"
         style={[StyleSheet.absoluteFill,{backgroundColor:colorWithAlpha(mask,fx.maskOpacity)}]}/>:null}
       {active?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
