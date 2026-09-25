@@ -37,7 +37,8 @@ export function HoldingQuoteCollection({
           backgroundColor:appearance.backgroundColor,textColor:appearance.textColor,
           borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,
           cornerRadius:appearance.borderRadius,padding:appearance.padding},
-        fields:effectiveWallConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16})),
+        fields:effectiveWallConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16,
+          useProfitColor:appearance.useProfitColor?field.useProfitColor:false})),
       }:effectiveWallConfig;
       return <HoldingQuoteModule item={item} style={style} layout={narrow?'narrow':'full'}
         wallConfig={adjusted} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken}

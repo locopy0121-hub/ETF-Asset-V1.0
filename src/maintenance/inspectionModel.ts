@@ -61,7 +61,7 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(field==='target:useProfitColor')return kind==='metric'||kind==='quote-card';
   if(field.startsWith('target:'))return kind!=='control'||['target:visible','target:opacity'].includes(field);
   if(field==='page:wall'||field==='page:badges'||field==='page:quoteStyle'||field==='page:holdingLayoutMode')
-    return kind==='wall'||kind==='quote-card';
+    return kind==='wall';
   if(field==='page:list')return kind==='portfolio-list';
   return false;
 }
