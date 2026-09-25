@@ -156,14 +156,26 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
     if(key==='labelText'||key==='captionText'||key==='prefixText')return <TextInput value={String(v)}
       onChangeText={change} maxLength={120} placeholder="留空沿用 App 原始文字"
       style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>;
-    if(fieldName==='fontWeight'||fieldName==='fontStyle'||fieldName==='textDecorationLine'){
+    if(fieldName==='fontFamily'){
+      const options=[['system','裝置預設'],['sans-serif','無襯線'],['sans-serif-condensed','窄體'],['serif','襯線'],['monospace','等寬']] as const;
+      return <View style={{flexDirection:'row',flexWrap:'wrap',gap:7,marginTop:8}}>
+        {options.map(([value,label])=><Pressable key={value} accessibilityRole="button" accessibilityLabel={'字型 '+label}
+          onPress={()=>change(value)} style={[styles.choice,{borderColor:theme.palette.primary,
+            backgroundColor:v===value?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:v===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>僅使用裝置內建字型；缺字由 Android／iOS 原生替代，不下載字型。</Text>
+      </View>;
+    }
+    if(['fontWeight','fontStyle','textDecorationLine','labelFontWeight','captionFontWeight','labelFontStyle','captionFontStyle'].includes(fieldName)){
+      const optionName=fieldName.endsWith('FontWeight')?'fontWeight':fieldName.endsWith('FontStyle')?'fontStyle':fieldName;
       const options:Record<string,readonly (readonly [string,string])[]>={
         fontWeight:[['normal','正常'],['bold','粗體'],['300','細體'],['500','中等'],['600','半粗'],['700','700'],['800','800'],['900','最粗']],
         fontStyle:[['normal','正常'],['italic','斜體']],
         textDecorationLine:[['none','無'],['underline','底線'],['line-through','刪除線'],['underline line-through','底線＋刪除線']],
       };
       return <View style={{flexDirection:'row',gap:7,flexWrap:'wrap',marginTop:8}}>
-        {options[fieldName]!.map(([value,label])=><Pressable key={value} accessibilityRole="button" accessibilityLabel={label}
+        {options[optionName]!.map(([value,label])=><Pressable key={value} accessibilityRole="button" accessibilityLabel={label}
           onPress={()=>change(value)} style={[styles.choice,{borderColor:theme.palette.primary,
           backgroundColor:v===value?theme.palette.primary:theme.palette.surface}]}>
           <Text style={{color:v===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
@@ -196,7 +208,9 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
         borderRadius:[0,48,2],padding:[0,32,2],opacity:[0,1,.05],
-        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],
+        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],prefixOffsetY:[-24,24,1],
+        labelLetterSpacing:[-4,16,.5],captionLetterSpacing:[-4,16,.5],
+        labelLineHeight:[0,96,1],captionLineHeight:[0,96,1],
       };
       const [min,max,step]=range[key]??[0,100,1];
       return <View style={styles.stepper}>
@@ -326,12 +340,17 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
         borderWidth:item.id===activeId?2:0,borderColor:theme.palette.primary}]}/>
       <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
         <View style={{flex:1}}>
-          <InspectableTarget frame={frame} target={target}>{(appearance,customized)=>
+          <InspectableTarget frame={frame} target={target}>{(appearance,customized,override)=>
             item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
               <Text style={{fontSize:customized?appearance.fontSize:item.fontSize,
                 color:customized?appearance.textColor:item.color,
                 backgroundColor:customized?appearance.backgroundColor:undefined,
-                fontWeight:item.templateId==='section-label'?'800':'400',
+                fontWeight:override.fontWeight??(item.templateId==='section-label'?'800':'400'),
+                ...(override.fontFamily&&appearance.fontFamily!=='system'?{fontFamily:appearance.fontFamily}:{}),
+                ...(override.fontStyle?{fontStyle:appearance.fontStyle}:{}),
+                ...(override.textDecorationLine?{textDecorationLine:appearance.textDecorationLine}:{}),
+                ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
+                ...(override.lineHeight&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
                 textAlign:customized?appearance.align:'left'}}>
                 {customized&&appearance.labelText?appearance.labelText:item.text}
               </Text>
