@@ -83,7 +83,7 @@ jobs:
   qa-apk:
     name: V3.0.7 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'push' && github.ref_name == 'go-v3.0.7-20260925-frame-engineer'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v3.0.7-20260925-frame-engineer'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
