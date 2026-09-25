@@ -13,11 +13,14 @@ export function FrameDimensionsToolDetails(){
   useEffect(()=>setTyped({width:width===undefined?'':String(width),height:height===undefined?'':String(height)}),[width,height,session?.page,session?.frameKey]);
   if(!session||session.scope!=='frame')return <Text>請先選取真正的父框架。</Text>;
   const setDimension=(axis:'width'|'height',value:number|undefined)=>{
-    if(value!==undefined&&(!Number.isFinite(value)||value<dimensions[axis].min||value>dimensions[axis].max)){
+    if(value===undefined){setError('');maint.clearFrameDimension(axis);return;}
+    if(!Number.isFinite(value)||value<dimensions[axis].min||value>dimensions[axis].max){
       setError((axis==='width'?'寬度':'高度')+'超出有效範圍');return;
     }
     setError('');
-    maint.patchFrame(axis==='height'?{height:value,minHeight:value===undefined?session.draft.minHeight:Math.min(session.draft.minHeight??0,value)}:{width:value});
+    maint.patchFrame(axis==='height'?
+      {height:value,...(session.draft.minHeight!==undefined&&session.draft.minHeight>value?{minHeight:value}:{})}:
+      {width:value});
   };
   const numeric=(axis:'width'|'height')=>{
     const current=session.draft[axis],limits=dimensions[axis];
