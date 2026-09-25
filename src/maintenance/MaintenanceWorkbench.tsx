@@ -15,6 +15,9 @@ import {HoldingMarketWallEditor} from '../components/HoldingMarketWallEditor';
 import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
 import {useMaintenance} from './MaintenanceRuntime';
+import {SpatialToolDetails} from './SpatialEditor';
+import {InspectableTarget} from './InspectableTarget';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
 
 // This is a dock beneath the ACTUAL page, not a simulated preview modal.
 export function MaintenanceWorkbench(){
@@ -24,13 +27,13 @@ export function MaintenanceWorkbench(){
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
-  const [showAllSkills,setShowAllSkills]=useState(false);
+  const [showAllSkills,setShowAllSkills]=useState(true); // all 16 B groups are always discoverable by default
   const [saving,setSaving]=useState(false);
   useEffect(()=>{
     setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
       session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
       session.target?.kind==='control'?'conditions':'typography':null);
-    setOpenTool(null);setShowAllSkills(false);
+    setOpenTool(null);setShowAllSkills(true);
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
@@ -113,6 +116,7 @@ const isQuoteFrame=(s:MaintenanceSession)=>s.frameKey==='holding-quotes'||s.fram
 function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(tool.status!=='ready')return false;
   const f=tool.field??'';
+  if(f.startsWith('workspace:'))return true;
   if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
@@ -129,6 +133,8 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  if(tool.field?.startsWith('workspace:')||['target:xy','target:dimensions','target:anchors'].includes(tool.field??''))
+    return <SpatialToolDetails field={tool.field!} />;
   if(!toolUsable(tool,s))return <Text style={{fontSize:12,color:theme.palette.textSecondary,marginTop:8}}>
     {tool.status!=='ready'?'完整技能已登記，但此工具尚未介接 Runtime。':
       tool.field?.startsWith('page:')&&s.target?.kind==='quote-card'?'這是本頁共用設定。請點外層行情框架大扳手後使用，避免意外改動其他卡片。':
@@ -156,7 +162,22 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
         <Text style={{color:v===pos?'#FFF':theme.palette.text}}>{{left:'靠左',center:'置中',right:'靠右'}[pos]}</Text>
       </Pressable>)}
     </View>;
-    if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v))return <ColorPalettePicker label={tool.label} value={v} onChange={change}/>;
+    if(fieldName==='profitToneOverride')return <View style={{flexDirection:'row',gap:7,flexWrap:'wrap',marginTop:8}}>
+      {(['auto','gain','loss','neutral'] as const).map(tone=><Pressable key={tone} onPress={()=>change(tone)}
+        style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:v===tone?theme.palette.primary:theme.palette.surface}]}>
+        <Text style={{color:v===tone?'#FFFFFF':theme.palette.text}}>{({auto:'真實來源',gain:'獲利預覽',loss:'虧損預覽',neutral:'中性'} as const)[tone]}</Text>
+      </Pressable>)}
+    </View>;
+    if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)){
+      const toggles:Record<string,'textProfitColor'|'labelProfitColor'|'captionProfitColor'|'backgroundProfitColor'|'borderProfitColor'>={
+        textColor:'textProfitColor',labelColor:'labelProfitColor',captionColor:'captionProfitColor',
+        backgroundColor:'backgroundProfitColor',borderColor:'borderProfitColor',
+      };
+      const profitFlag=toggles[fieldName];
+      return <ColorPalettePicker label={tool.label} value={v} onChange={change}
+        {...(profitFlag?{profitColorEnabled:Boolean(current[profitFlag]),
+          onProfitColorChange:(value:boolean)=>maint.patchTarget(target.id,{[profitFlag]:value})}:{})}/>;
+    }
     if(typeof v==='number'){
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
@@ -246,7 +267,16 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
       <Text style={{color:raw===key?'#FFFFFF':theme.palette.text,fontSize:12}}>{({standard:'標準',compact:'緊湊',dense:'密集',theme:'主題',soft:'柔和',outline:'描邊',left:'靠左',center:'置中',right:'靠右'} as Record<string,string>)[key]||key}</Text>
     </Pressable>)}
   </View>;
-  if(typeof raw==='string'&&/^#[0-9A-Fa-f]{6}$/.test(raw))return <ColorPalettePicker label={tool.label} value={raw} onChange={change}/>;
+  if(typeof raw==='string'&&/^#[0-9A-Fa-f]{6}$/.test(raw)){
+    if(s.scope==='instance')return <ColorPalettePicker label={tool.label} value={raw} onChange={change}/>;
+    const pair:Record<string,'titleProfitColor'|'backgroundProfitColor'|'borderProfitColor'>={
+      titleColor:'titleProfitColor',backgroundColor:'backgroundProfitColor',borderColor:'borderProfitColor',
+    };
+    const toggle=pair[field];
+    return <ColorPalettePicker label={tool.label} value={raw} onChange={change}
+      {...(toggle?{profitColorEnabled:Boolean(s.draft[toggle]),
+        onProfitColorChange:(value:boolean)=>maint.patchFrame({[toggle]:value})}:{})}/>;
+  }
   if(typeof raw==='number'){
     const ranges:Record<string,[number,number,number]>={
       titleFontSize:[10,32,1],borderWidth:[0,8,1],borderRadius:[0,48,2],backgroundOpacity:[0,1,.05],
@@ -262,19 +292,41 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
   return <Text style={{color:theme.palette.textSecondary,marginTop:8}}>此工具尚未連接當前元件的可寫屬性。</Text>;
 }
 
-export function InstalledFrameComponents({instances,onWrench,enabled,activeId}:{
-  instances:readonly MaintenanceInstance[];onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
+export function InstalledFrameComponents({instances,frame,onWrench,enabled,activeId}:{
+  instances:readonly MaintenanceInstance[];frame:FrameMaintenanceContext;
+  onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
 }){
   const theme=useThemeRuntime();
-  return <>{instances.filter(item=>item.visible||item.id===activeId).map(item=><View key={item.id} style={{marginTop:item.marginTop,borderWidth:item.id===activeId?2:0,borderStyle:'dashed',borderColor:theme.palette.primary,padding:item.id===activeId?4:0}}>
-    <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
-      <View style={{flex:1}}>
-        {item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
-        <Text style={{fontSize:item.fontSize,color:item.color,fontWeight:item.templateId==='section-label'?'800':'400'}}>{item.text}</Text>}
+  return <>{instances.filter(item=>item.visible||item.id===activeId).map(item=>{
+    const target:InspectedTarget={
+      id:'installed:'+item.id,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+      kind:item.templateId==='divider'?'generic':'text',label:item.text||'分隔線',
+      properties:[{name:'原始文字（新增元件）',value:item.text||'無',readOnly:false},
+        {name:'既有字號',value:item.fontSize+' dp',readOnly:true}],
+      base:{...TARGET_APPEARANCE,fontSize:item.fontSize,textColor:item.color,labelText:item.text,
+        backgroundColor:theme.palette.surface,padding:0,borderWidth:0},
+    };
+    return <View key={item.id} style={{marginTop:item.marginTop,position:'relative'}}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill,{borderStyle:'dashed',
+        borderWidth:item.id===activeId?2:0,borderColor:theme.palette.primary}]}/>
+      <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+        <View style={{flex:1}}>
+          <InspectableTarget frame={frame} target={target}>{(appearance,customized)=>
+            item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
+              <Text style={{fontSize:customized?appearance.fontSize:item.fontSize,
+                color:customized?appearance.textColor:item.color,
+                backgroundColor:customized?appearance.backgroundColor:undefined,
+                fontWeight:item.templateId==='section-label'?'800':'400',
+                textAlign:customized?appearance.align:'left'}}>
+                {customized&&appearance.labelText?appearance.labelText:item.text}
+              </Text>
+          }</InspectableTarget>
+        </View>
+        {enabled?<Pressable accessibilityLabel="編輯新增元件文字內容" accessibilityRole="button"
+          onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>✎</Text></Pressable>:null}
       </View>
-      {enabled?<Pressable accessibilityLabel="呼叫此元件維護工程師" accessibilityRole="button" onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
-    </View>
-  </View>)}</>;
+    </View>;
+  })}</>;
 }
 const styles=StyleSheet.create({
   dock:{height:'47%',minHeight:245,borderTopWidth:2,paddingHorizontal:12,paddingTop:8},

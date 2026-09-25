@@ -4,19 +4,22 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { FrameAppearance, FrameEditorConfig, FrameLayout } from '../editor/pageEditor';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
+import {linkedColor} from '../maintenance/workspaceModel';
 
 export type FrameCardProps = PropsWithChildren<{
   title: string;
   action?: ReactNode;
   layout?: FrameLayout;
   appearance?: FrameAppearance;
-  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleAlign'|'backgroundColor'|'backgroundOpacity'|'borderColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'|'padding'|'minHeight'>>;
+  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleProfitColor'|'titleAlign'|'backgroundColor'|'backgroundProfitColor'|'backgroundOpacity'|'borderColor'|'borderProfitColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'|'padding'|'minHeight'>>;
   workActive?:boolean;
   workHidden?:boolean;
 }>;
 
 export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle,workActive=false,workHidden=false }: FrameCardProps) {
   const theme=useThemeRuntime();
+  const systemColors=useSettingsRuntime().prefs.display;
   return (
     <View style={[
       styles.card,
@@ -26,9 +29,11 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
       appearance === 'soft' && {backgroundColor:theme.palette.surfaceMuted},
       appearance === 'outline' && {borderWidth:2,borderColor:theme.palette.primary},
       editorStyle&&{
-        backgroundColor:editorStyle.backgroundColor,
+        backgroundColor:linkedColor(editorStyle.backgroundColor??theme.palette.surface,
+          editorStyle.backgroundProfitColor,'neutral',systemColors),
         opacity:editorStyle.backgroundOpacity,
-        borderColor:editorStyle.borderColor,
+        borderColor:linkedColor(editorStyle.borderColor??theme.palette.border,
+          editorStyle.borderProfitColor,'neutral',systemColors),
         borderWidth:editorStyle.borderWidth,
         borderRadius:editorStyle.borderRadius,
         ...(editorStyle.padding!==undefined?{padding:editorStyle.padding}:{}),
@@ -42,7 +47,8 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
         borderRadius:editorStyle?.borderRadius??radius.lg,
       }]}/>:null}
       <View style={styles.header}>
-        <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
+        <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:linkedColor(editorStyle.titleColor??theme.palette.text,
+          editorStyle.titleProfitColor,'neutral',systemColors),textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
         {action}
       </View>
       {children}
