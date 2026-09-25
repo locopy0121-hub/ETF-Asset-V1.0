@@ -4,6 +4,7 @@ import { useThemeRuntime } from '../theme/ThemeRuntime';
 import type {TargetOverride} from '../maintenance/inspectionModel';
 import type {TargetAppearance} from '../maintenance/inspectionModel';
 import {linkedColor} from '../maintenance/workspaceModel';
+import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
 export function MetricTile({label,value,caption,tone='default',editorStyle}:{
@@ -30,7 +31,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle}:{
     editorStyle?.borderProfitColor,actualTone,colorPrefs);
   const displayedLabel=editorStyle?.labelText||label;
   const displayedCaption=editorStyle?.captionText||caption;
-  return <View style={[styles.tile,{backgroundColor:effectiveBackground},
+  return <View style={[styles.tile,{backgroundColor:colorWithAlpha(effectiveBackground,editorStyle?.backgroundOpacity??1)},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:editorStyle.borderWidth,borderRadius:editorStyle.borderRadius,padding:editorStyle.padding}]}>
     <Text style={[styles.label,{color:effectiveLabel,
       fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left',

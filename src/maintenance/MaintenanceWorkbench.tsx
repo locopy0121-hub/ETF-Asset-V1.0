@@ -2,6 +2,8 @@ import {useEffect,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
+import {colorWithAlpha} from './frameEffects';
+import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
@@ -142,6 +144,7 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(tool.status!=='ready')return false;
   const f=tool.field??'';
   if(f.startsWith('workspace:'))return true;
+  if(f==='frame:size')return s.scope==='frame';
   if(f.startsWith('framefx:'))return s.scope==='frame';
   if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&tool.id==='remove'&&
     s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
@@ -161,6 +164,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  if(tool.field==='frame:size')return <FrameDimensionsToolDetails/>;
   if(tool.field?.startsWith('framefx:'))return toolUsable(tool,s)?
     <FrameEffectsToolDetails field={tool.field.slice('framefx:'.length)}/>:
     <Text style={{color:theme.palette.textSecondary}}>框架專屬效果：請點外層框架的大扳手，再選擇專業框架工程。</Text>;
@@ -238,8 +242,8 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
     if(typeof v==='number'){
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
-        borderRadius:[0,48,2],padding:[0,32,2],opacity:[0,1,.05],
-        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],prefixOffsetY:[-24,24,1],
+        borderRadius:[0,48,2],padding:[0,32,2],opacity:[0,1,.05],backgroundOpacity:[0,1,.05],
+        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],prefixOffsetX:[-80,80,1],prefixOffsetY:[-80,80,1],
         labelLetterSpacing:[-4,16,.5],captionLetterSpacing:[-4,16,.5],
         labelLineHeight:[0,96,1],captionLineHeight:[0,96,1],
       };
@@ -391,7 +395,7 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
             item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
               <Text style={{fontSize:customized?appearance.fontSize:item.fontSize,
                 color:customized?appearance.textColor:item.color,
-                backgroundColor:customized?appearance.backgroundColor:undefined,
+                backgroundColor:customized?colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity):undefined,
                 fontWeight:override.fontWeight??(item.templateId==='section-label'?'800':'400'),
                 ...(override.fontFamily&&appearance.fontFamily!=='system'?{fontFamily:appearance.fontFamily}:{}),
                 ...(override.fontStyle?{fontStyle:appearance.fontStyle}:{}),

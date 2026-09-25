@@ -63,12 +63,13 @@ assert.ok(runtime.indexOf('await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY')<
   runtime.indexOf('editor.replacePageConfig(normalized)'));
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.9');
-assert.equal(app.expo.version,'3.0.9');
-assert.equal(app.expo.android.versionCode,30009);
-assert.equal(app.expo.ios.buildNumber,'30009');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.9-QA.apk'));
-assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.9'"));
+assert.ok(['3.0.9','3.0.10'].includes(pkg.version),'V3.0.9 regression runs unchanged on newer compatible versions');
+assert.equal(app.expo.version,pkg.version);
+const identity=pkg.version==='3.0.10'?30010:30009;
+assert.equal(app.expo.android.versionCode,identity);
+assert.equal(app.expo.ios.buildNumber,String(identity));
+assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
+assert.ok(read('src/settings/BackupService.ts').includes(`const APP_VERSION='${pkg.version}'`));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(path).length>0,'accounting core intact: '+path);
 console.log('V3.0.9 owned-only deletion, legacy migration, locked-info header, draft rollback and version: PASS');

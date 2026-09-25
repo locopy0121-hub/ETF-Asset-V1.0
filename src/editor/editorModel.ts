@@ -96,6 +96,8 @@ export type FrameEditorConfig = Readonly<{
   shadowEnabled:boolean;
   shadowOpacity:number;
   padding?:number;
+  width?:number; // Explicit parent frame width, 0/undefined follows available space.
+  height?:number; // Explicit parent frame height; nested content scrolls instead of clipping.
   minHeight?:number;
   effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
 }>;
@@ -121,7 +123,7 @@ export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
   Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => [
     frame.key,
-    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
+    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:frame.key==='page-header'?28:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:frame.key==='page-header'?0:1,borderRadius:frame.key==='page-header'?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
   ]));
 
 export function createInitialEditorState(): PageEditorState {
@@ -298,6 +300,8 @@ export function normalizeEditorConfig(
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
+      ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,160,1600,320)}:{}),
+      ...(typeof candidate.height==='number'&&Number.isFinite(candidate.height)&&candidate.height>0?{height:clamp(candidate.height,80,2400,300)}:{}),
       ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
     };
   });

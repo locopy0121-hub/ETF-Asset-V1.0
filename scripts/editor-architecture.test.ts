@@ -47,8 +47,8 @@ assert.equal(normalized[first.key]?.appearance, 'outline');
 assert.equal(normalized[second.key]?.behavior, 'auto');
 assert.deepEqual(
   Object.values(normalized).map(value => value.order).sort((a,b)=>a-b),
-  [0,1,2,3],
-  'orders must normalize to unique contiguous positions',
+  PAGE_FRAMES.home.map((_,index)=>index),
+  'orders must normalize to unique contiguous positions including the editable page header',
 );
 
 const modal = fs.readFileSync('src/components/PageFrameSettingsModal.tsx','utf8');

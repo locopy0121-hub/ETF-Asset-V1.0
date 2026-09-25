@@ -31,6 +31,7 @@ type MaintenanceContextValue=Readonly<{
   selectTarget:(target:InspectedTarget)=>void;syncTarget:(target:InspectedTarget)=>void;
   enterTarget:(target:InspectedTarget,frameConfig:FrameEditorConfig,displayConfig:PageDisplayConfig)=>void;
   patchFrame:(patch:Partial<FrameEditorConfig>)=>void;
+  clearFrameDimension:(axis:'width'|'height')=>void;
   patchInstance:(id:string,patch:Partial<MaintenanceInstance>)=>void;
   patchTarget:(id:string,patch:TargetOverride)=>void;
   patchWorkspace:(patch:Partial<WorkspaceConfig>)=>void;
@@ -147,6 +148,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     },
     patchFrame:patch=>setSession(current=>current&&current.draft.behavior!=='locked'?
       {...current,draft:{...current.draft,...patch}}:current),
+    clearFrameDimension:axis=>setSession(current=>{
+      if(!current||current.draft.behavior==='locked')return current;
+      const draft={...current.draft};
+      delete draft[axis];
+      return {...current,draft};
+    }),
     patchInstance:(id,patch)=>setSession(current=>current&&current.draftInstances.some(item=>item.id===id&&isEngineerOwnedInstance(item))?{
       ...current,draftInstances:current.draftInstances.map(item=>item.id===id?{
         ...item,...patch,id:item.id,templateId:item.templateId,createdBy:item.createdBy,
