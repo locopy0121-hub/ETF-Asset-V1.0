@@ -34,7 +34,6 @@ export function AiQuestionBox({
   const inspected=(id:string,kind:InspectedTarget['kind'],label:string,properties:InspectedTarget['properties'],base=TARGET_APPEARANCE):InspectedTarget=>({
     id,page:maintenance!.page,frameKey:maintenance!.frameKey,frameTitle:maintenance!.frameTitle,kind,label,properties,base,
   });
-  const titleElement=<Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>;
 
   const submit=async(raw?:string)=>{
     const question=(raw??input).trim();
@@ -72,37 +71,7 @@ export function AiQuestionBox({
     setMessages(current=>[...current,{id:'ok-'+Date.now(),role:'assistant',text:action.event.symbol+' '+action.event.name+' 股息紀錄已新增。'}]);
   };
 
-  return <View style={styles.root}>
-    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:prompt-title','text','AI 指令標題',[
-      {name:'現用標題',value:title,readOnly:true},{name:'原字號',value:'13 px',readOnly:true},
-    ],{...TARGET_APPEARANCE,fontSize:13,backgroundColor:theme.palette.surface,textColor:theme.palette.text,padding:0})}>
-      {(appearance,customized,override)=><Text style={[styles.title,{color:theme.palette.text},customized&&{
-        ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
-        ...(override.textColor?{color:appearance.textColor}:{}),
-        ...(override.align?{textAlign:appearance.align}:{}),
-      }]}>{customized&&appearance.labelText?appearance.labelText:title}</Text>}
-    </InspectableTarget>:titleElement}
-    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionViewport} contentContainerStyle={styles.suggestions}>{suggestions.map((item,index)=>{
-      const chip=(background=theme.palette.surfaceMuted,color=theme.palette.primary,fontSize=12)=><Pressable key={item} onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:background}]}>
-        <Text style={[styles.chipText,{color,fontSize}]}>{item}</Text>
-      </Pressable>;
-      if(!maintenance)return chip();
-      return <InspectableTarget key={item} frame={maintenance} target={inspected('ai:quick-action:'+index,'action','快捷提問 '+item,[
-        {name:'原文案',value:item,readOnly:true},{name:'動作',value:'向 AI 發送此預設問題',readOnly:true},
-      ],{...TARGET_APPEARANCE,fontSize:12,textColor:theme.palette.primary,backgroundColor:theme.palette.surfaceMuted,padding:0})}>
-        {(appearance,customized,override)=>chip(
-          customized&&override.backgroundColor?appearance.backgroundColor:theme.palette.surfaceMuted,
-          customized&&override.textColor?appearance.textColor:theme.palette.primary,
-          customized&&override.fontSize!==undefined?appearance.fontSize:12,
-        )}
-      </InspectableTarget>;
-    })}</ScrollView>:null}
-    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:conversation','generic','AI 對話工作區',[
-      {name:'已顯示訊息數',value:String(visible.length),readOnly:true},
-      {name:'視窗原始高度',value:'340 dp',readOnly:true},
-      {name:'內容來源',value:'當前 App AI 對話執行結果',readOnly:true},
-    ],{...TARGET_APPEARANCE,backgroundColor:theme.palette.surface,padding:0})}>
-      {()=> <ScrollView
+  const threadElement=(<ScrollView
       ref={scrollRef}
       style={[styles.threadViewport,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface}]}
       contentContainerStyle={styles.thread}
@@ -117,17 +86,8 @@ export function AiQuestionBox({
           {confirming===action.id?<Pressable onPress={()=>setConfirming(null)} style={styles.cancelAction}><Text style={styles.cancelActionText}>取消</Text></Pressable>:null}
         </View>)}</View>:null}
       </View>):<Text style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
-    </ScrollView>}
-    </InspectableTarget>:<ScrollView
-      ref={scrollRef}
-      style={[styles.threadViewport,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface}]}
-      contentContainerStyle={styles.thread} keyboardShouldPersistTaps="handled" nestedScrollEnabled
-      onContentSizeChange={()=>scrollRef.current?.scrollToEnd({animated:true})}>
-      {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?styles.user:styles.assistant,{backgroundColor:message.role==='user'?theme.palette.primary:theme.palette.surfaceMuted}]}>
-        <Text style={[styles.message,{color:message.role==='user'?'#FFFFFF':theme.palette.text}]}>{message.text}</Text>
-      </View>):<Text style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
-    </ScrollView>}
-    <View style={styles.inputRow}>
+    </ScrollView>);
+  const composerElement=(<View style={styles.inputRow}>
       <TextInput
         value={input}
         onChangeText={setInput}
@@ -139,7 +99,51 @@ export function AiQuestionBox({
         style={[styles.input,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface,color:theme.palette.text}]}
       />
       <Pressable disabled={asking||!input.trim()} onPress={()=>void submit()} style={[styles.send,{backgroundColor:theme.palette.primary},(asking||!input.trim())&&styles.disabled]}><Text style={styles.sendText}>{asking?'處理中':'送出'}</Text></Pressable>
-    </View>
+    </View>);
+  return <View style={styles.root}>
+    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:prompt-title','text','AI 指令標題',[
+      {name:'目前標題',value:title,readOnly:true},{name:'原字號',value:'13 px',readOnly:true},
+    ],{...TARGET_APPEARANCE,fontSize:13,textColor:theme.palette.text,backgroundColor:theme.palette.surface,padding:0})}>
+      {(appearance,customized,override)=><Text style={[styles.title,{color:theme.palette.text},customized&&{
+        ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
+        ...(override.textColor?{color:appearance.textColor}:{}),
+        ...(override.align?{textAlign:appearance.align}:{}),
+      }]}>{customized&&appearance.labelText?appearance.labelText:title}</Text>}
+    </InspectableTarget>:<Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>}
+    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false}
+      style={styles.suggestionViewport} contentContainerStyle={styles.suggestions}>
+      {suggestions.map((item,index)=>{
+        const chip=(background=theme.palette.surfaceMuted,color=theme.palette.primary,fontSize=12)=><Pressable
+          onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:background}]}>
+          <Text style={[styles.chipText,{color,fontSize}]}>{item}</Text>
+        </Pressable>;
+        if(!maintenance)return <View key={item}>{chip()}</View>;
+        return <InspectableTarget key={item} frame={maintenance} target={inspected('ai:quick-action:'+index,
+          'action','快捷提問 '+item,[
+            {name:'原文案',value:item,readOnly:true},{name:'原動作',value:'向 AI 發送這個預設問題',readOnly:true},
+          ],{...TARGET_APPEARANCE,fontSize:12,textColor:theme.palette.primary,backgroundColor:theme.palette.surfaceMuted,padding:0})}>
+          {(appearance,customized,override)=>chip(
+            customized&&override.backgroundColor?appearance.backgroundColor:theme.palette.surfaceMuted,
+            customized&&override.textColor?appearance.textColor:theme.palette.primary,
+            customized&&override.fontSize!==undefined?appearance.fontSize:12,
+          )}
+        </InspectableTarget>;
+      })}
+    </ScrollView>:null}
+    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:conversation','generic','AI 對話區域',[
+      {name:'目前訊息數',value:String(visible.length),readOnly:true},
+      {name:'對話視窗高度',value:'340 dp',readOnly:true},
+      {name:'資料來源',value:'當前 AI 回答與使用者對話',readOnly:true},
+    ],{...TARGET_APPEARANCE,backgroundColor:theme.palette.surface,padding:0})}>
+      {()=>threadElement}
+    </InspectableTarget>:threadElement}
+    {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:composer','control','AI 輸入工具',[
+      {name:'輸入提示',value:placeholder,readOnly:true},
+      {name:'送出動作',value:'送交當前 AI 助理',readOnly:true},
+      {name:'輸入框',value:'由當前裝置使用者輸入；對話內容不提供工程師讀取',readOnly:true},
+    ],{...TARGET_APPEARANCE,padding:0,backgroundColor:theme.palette.surface})}>
+      {()=>composerElement}
+    </InspectableTarget>:composerElement}
   </View>;
 }
 
