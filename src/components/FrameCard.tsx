@@ -1,11 +1,11 @@
 import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
-import {AccessibilityInfo,Animated,StyleSheet,Text,View} from 'react-native';
+import {AccessibilityInfo,Animated,Image,StyleSheet,Text,View} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,colorWithAlpha,mixFrameColors,normalizeFrameEffects} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,colorWithAlpha,mixFrameColors,normalizeFrameEffects,sampleFrameGradient} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
-import {useThemeRuntime} from '../theme/ThemeRuntime';
+import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 
 export type FrameCardProps=PropsWithChildren<{
@@ -40,6 +40,8 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const bg=linkedColor(editorStyle?.backgroundColor??theme.palette.surface,
     editorStyle?.backgroundProfitColor,'neutral',systemColors);
   const bgEnd=linkedColor(fx.gradientEndColor,fx.gradientEndProfitColor,'neutral',systemColors);
+  const bgMiddle=linkedColor(fx.gradientMidColor,fx.gradientMidProfitColor,'neutral',systemColors);
+  const imageMask=linkedColor(fx.maskColor,fx.maskProfitColor,'neutral',systemColors);
   const frameBorder=linkedColor(editorStyle?.borderColor??theme.palette.border,
     editorStyle?.borderProfitColor,'neutral',systemColors);
   const shadowColor=linkedColor(fx.shadowColor,fx.shadowProfitColor,'neutral',systemColors);
@@ -51,8 +53,13 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     borderBottomRightRadius:fx.cornerBottomRight>=0?fx.cornerBottomRight:editorStyle?.borderRadius??radius.lg,
     borderBottomLeftRadius:fx.cornerBottomLeft>=0?fx.cornerBottomLeft:editorStyle?.borderRadius??radius.lg,
   };
-  const gradient=useMemo(()=>Array.from({length:16},(_,i)=>mixFrameColors(bg,bgEnd,i/15)),[bg,bgEnd]);
+  const gradient=useMemo(()=>Array.from({length:16},(_,i)=>
+    fx.gradientMidEnabled?sampleFrameGradient(bg,bgMiddle,bgEnd,i/15,fx.gradientMidStop,true):
+      mixFrameColors(bg,bgEnd,i/15)),[bg,bgMiddle,bgEnd,fx.gradientMidEnabled,fx.gradientMidStop]);
   const gradientOn=Boolean(editorStyle&&fx.backgroundMode==='gradient');
+  const backgroundImageUri=fx.imageSource==='builtIn'?THEME_BACKGROUNDS[fx.imageIndex]:fx.imageUri;
+  const imageOn=Boolean(editorStyle&&fx.backgroundMode==='image'&&backgroundImageUri);
+  const backgroundLayer=Boolean(editorStyle&&(gradientOn||imageOn));
   const shadowOn=Boolean(editorStyle?.shadowEnabled);
   return <View style={[
     styles.card,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
@@ -89,6 +96,12 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       flexDirection:fx.gradientDirection==='vertical'?'column':'row'}]}>
       {gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
     </View>:null}
+    {imageOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,corners,{overflow:'hidden'}]}>
+      <Image source={{uri:backgroundImageUri!}} resizeMode={fx.imageFit}
+        style={[StyleSheet.absoluteFill,{opacity:fx.imageOpacity}]}/>
+    </View>:null}
+    {backgroundLayer&&fx.maskOpacity>0?<View pointerEvents="none"
+      style={[StyleSheet.absoluteFill,corners,{backgroundColor:colorWithAlpha(imageMask,fx.maskOpacity)}]}/>:null}
     {fx.glowEnabled&&editorStyle?<Animated.View pointerEvents="none"
       style={[StyleSheet.absoluteFill,corners,{borderColor:colorWithAlpha(glowColor,fx.glowOpacity),
         borderWidth:fx.glowWidth,opacity:pulse,

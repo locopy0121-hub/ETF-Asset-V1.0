@@ -1,7 +1,11 @@
 /** Frame-only display settings. No ledger, market or source-data dependencies. */
 export type FrameEffects=Readonly<{
-  backgroundMode:'solid'|'gradient';
+  backgroundMode:'solid'|'gradient'|'image';
   gradientEndColor:string;gradientDirection:'horizontal'|'vertical';gradientEndProfitColor:boolean;
+  gradientMidEnabled:boolean;gradientMidColor:string;gradientMidProfitColor:boolean;gradientMidStop:number;
+  imageSource:'builtIn'|'custom';imageIndex:number;imageUri:string|null;
+  imageFit:'cover'|'contain'|'stretch';imageOpacity:number;
+  maskColor:string;maskProfitColor:boolean;maskOpacity:number;
   borderStyle:'solid'|'dashed'|'dotted';
   borderTop:number;borderRight:number;borderBottom:number;borderLeft:number;
   cornerTopLeft:number;cornerTopRight:number;cornerBottomRight:number;cornerBottomLeft:number;
@@ -15,6 +19,9 @@ export type FrameEffects=Readonly<{
 /** -1 means inherit the outer frame's original setting, preserving old page layouts. */
 export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   backgroundMode:'solid',gradientEndColor:'#EDE9FE',gradientDirection:'vertical',gradientEndProfitColor:false,
+  gradientMidEnabled:false,gradientMidColor:'#C4B5FD',gradientMidProfitColor:false,gradientMidStop:.5,
+  imageSource:'builtIn',imageIndex:0,imageUri:null,imageFit:'cover',imageOpacity:1,
+  maskColor:'#000000',maskProfitColor:false,maskOpacity:0,
   borderStyle:'solid',borderTop:-1,borderRight:-1,borderBottom:-1,borderLeft:-1,
   cornerTopLeft:-1,cornerTopRight:-1,cornerBottomRight:-1,cornerBottomLeft:-1,
   shadowColor:'#000000',shadowProfitColor:false,shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
@@ -36,17 +43,24 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     glowOpacity:[0,.8],glowWidth:[0,16],glowPeriodMs:[800,4000],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
+    gradientMidStop:[.1,.9],imageIndex:[0,9],imageOpacity:[0,1],maskOpacity:[0,1],
   };
   const out:Record<string,unknown>={...defaults};
   for(const [key,[min,max]] of Object.entries(numberRanges)){
     const value=v[key];if(typeof value==='number'&&Number.isFinite(value))
       out[key]=finite(value,min!,max!,defaults[key as keyof FrameEffects] as number);
   }
-  for(const key of ['gradientEndColor','shadowColor','glowColor'] as const)
+  for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
-  if(v.backgroundMode==='solid'||v.backgroundMode==='gradient')out.backgroundMode=v.backgroundMode;
+  if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
+  if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
+  if(v.imageFit==='cover'||v.imageFit==='contain'||v.imageFit==='stretch')out.imageFit=v.imageFit;
+  if(v.imageUri===null)out.imageUri=null;
+  else if(typeof v.imageUri==='string'&&/^content:\/\/[^\s?#]{1,2048}$/.test(v.imageUri))
+    out.imageUri=v.imageUri;
+  out.imageIndex=Math.round(out.imageIndex as number);
   if(v.gradientDirection==='horizontal'||v.gradientDirection==='vertical')out.gradientDirection=v.gradientDirection;
   if(v.borderStyle==='solid'||v.borderStyle==='dashed'||v.borderStyle==='dotted')out.borderStyle=v.borderStyle;
   return out as FrameEffects;
@@ -60,5 +74,14 @@ export function mixFrameColors(a:string,b:string,at:number):string{
   if(!hex(a)||!hex(b))return '#FFFFFF';
   const fraction=Math.max(0,Math.min(1,at)),v=(n:number)=>Math.round(n).toString(16).padStart(2,'0');
   const color=(pos:number)=>parseInt(a.slice(pos,pos+2),16)*(1-fraction)+parseInt(b.slice(pos,pos+2),16)*fraction;
-  return '#'+v(color(1))+v(color(3))+v(color(5));
+  return ('#'+v(color(1))+v(color(3))+v(color(5))).toUpperCase();
+}
+
+/** Interpolated three-stop native View gradient (zero extra Android dependencies). */
+export function sampleFrameGradient(start:string,middle:string,end:string,position:number,pivot:number,enabled:boolean):string{
+  const at=Math.max(0,Math.min(1,position));
+  if(!enabled)return mixFrameColors(start,end,at);
+  const stop=Math.max(.1,Math.min(.9,pivot));
+  return at<=stop?mixFrameColors(start,middle,at/stop):
+    mixFrameColors(middle,end,(at-stop)/(1-stop));
 }
