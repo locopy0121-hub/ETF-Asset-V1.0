@@ -2,6 +2,7 @@ import {useMemo,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import type {DailyCandle} from '../market/twseDailyHistory';
 import {colors} from '../theme/tokens';
+import {candleIndexAtX} from '../domain/chartCrosshair';
 
 const PLOT_HEIGHT=160;
 const VOLUME_HEIGHT=50;
@@ -12,9 +13,6 @@ const STEP=CANDLE_WIDTH+GAP;
 const LEFT_PAD=3;
 const price=(n:number)=>n.toLocaleString('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2});
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
-/** A crosshair is tied to a verified candle, never an interpolated OHLC record. */
-export const candleIndexAtX=(x:number,scrollX:number,length:number)=>
-  length?clamp(Math.floor((x+scrollX-LEFT_PAD)/STEP),0,length-1):-1;
 
 /** TWSE official OHLCV renderer; inspect any candle using the optional crosshair. */
 export function OfficialCandleChart({candles,loading,error,rangeLabel}:{candles:readonly DailyCandle[];loading:boolean;error:string|null;rangeLabel:string}){
@@ -32,7 +30,7 @@ export function OfficialCandleChart({candles,loading,error,rangeLabel}:{candles:
   const y=(value:number)=>(axisHigh-value)/span*PLOT_HEIGHT;
   const fullWidth=LEFT_PAD+ordered.length*STEP+4;
   const chooseAt=(touchX:number)=>{
-    const index=candleIndexAtX(touchX,scrollX,ordered.length);
+    const index=candleIndexAtX(touchX,scrollX,ordered.length,STEP,LEFT_PAD);
     if(index>=0)setSelectedDate(ordered[index]!.date);
   };
 
