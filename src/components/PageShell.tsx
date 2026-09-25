@@ -39,7 +39,9 @@ function HeaderText({id,value,style,frame}:{id:'brand'|'title'|'subtitle';value:
       ...(override.lineHeight!==undefined&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
       ...(override.textDecorationLine!==undefined?{textDecorationLine:appearance.textDecorationLine}:{}),
       ...(override.align!==undefined?{textAlign:appearance.align}:{}),
-      ...(override.backgroundColor!==undefined||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+      ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?
+        {backgroundColor:'transparent'}:
+        override.backgroundColor!==undefined||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
         {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
     }]}>{customized&&appearance.labelText?appearance.labelText:value}</Text>
   }</InspectableTarget>;
