@@ -67,7 +67,7 @@ export function MaintenanceWorkbench(){
     </View>
   </View>;
 }
-function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstance}){
+function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstance|undefined}){
   const maint=useMaintenance();
   const theme=useThemeRuntime();
   const s=maint.session;
