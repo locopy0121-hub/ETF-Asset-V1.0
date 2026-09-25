@@ -74,7 +74,7 @@ export function mixFrameColors(a:string,b:string,at:number):string{
   if(!hex(a)||!hex(b))return '#FFFFFF';
   const fraction=Math.max(0,Math.min(1,at)),v=(n:number)=>Math.round(n).toString(16).padStart(2,'0');
   const color=(pos:number)=>parseInt(a.slice(pos,pos+2),16)*(1-fraction)+parseInt(b.slice(pos,pos+2),16)*fraction;
-  return '#'+v(color(1))+v(color(3))+v(color(5));
+  return ('#'+v(color(1))+v(color(3))+v(color(5))).toUpperCase();
 }
 
 /** Interpolated three-stop native View gradient (zero extra Android dependencies). */
