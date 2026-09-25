@@ -146,8 +146,10 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(f.startsWith('workspace:'))return true;
   if(f==='frame:size')return s.scope==='frame';
   if(f.startsWith('framefx:'))return s.scope==='frame';
-  if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&tool.id==='remove'&&
-    s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
+  if(f==='instance:parent-size')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&item.templateId==='parent-frame'&&isEngineerOwnedInstance(item));
+  if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
+    s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
+      (tool.id==='remove'||tool.id==='install'&&item.templateId==='parent-frame'));
   if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
@@ -329,9 +331,9 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
   if(tool.status!=='ready')return <Text style={{color:theme.palette.textSecondary,marginTop:8,fontSize:12}}>此技能已列入完整技能樹，尚未完成專屬 Runtime 適配，不會假裝套用。</Text>;
   if(tool.field==='session')return <Text style={{color:theme.palette.text,marginTop:8,fontSize:12}}>所有變更暫存於當前工作區；取消完全恢復，儲存套用才正式寫入。</Text>;
   if(tool.field==='instances'){
-    if(s.scope==='instance'&&tool.id==='install')return <Text style={{color:theme.palette.textSecondary}}>請從外層框架的扳手新增元件。</Text>;
+    if(s.scope==='instance'&&tool.id==='install'&&instance?.templateId!=='parent-frame')return <Text style={{color:theme.palette.textSecondary}}>請從新增父框架或目前框架的扳手新增元件。</Text>;
     if(tool.id==='install')return <View style={{gap:8,marginTop:8}}>
-      {CENTRAL_COMPONENT_LIBRARY.map(template=><Pressable key={template.id} accessibilityRole="button" disabled={template.installation!=='ready'||s.draftInstances.length>=30} onPress={()=>maint.install(template.id)} style={[styles.toolRow,{opacity:template.installation==='ready'?1:.55}]}>
+      {CENTRAL_COMPONENT_LIBRARY.map(template=><Pressable key={template.id} accessibilityRole="button" disabled={template.installation!=='ready'||s.draftInstances.length>=30||(s.scope==='instance'&&template.id==='parent-frame')} onPress={()=>maint.install(template.id)} style={[styles.toolRow,{opacity:template.installation==='ready'?1:.55}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{template.label}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{template.description}</Text></View>
         <Text style={{fontSize:12,color:theme.palette.primary}}>{template.installation==='ready'?'新增':'待介接'}</Text>
       </Pressable>)}
@@ -353,6 +355,25 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
         </Pressable>):<Text style={{color:theme.palette.textSecondary}}>目前沒有可刪除的工程師新增元件。</Text>}
       </View>;
     }
+  }
+  if(tool.field==='instance:parent-size'){
+    if(!instance||instance.templateId!=='parent-frame')return <Text>請先選取新增的父框架。</Text>;
+    const dimension=(axis:'frameWidth'|'frameHeight',label:string,min:number,max:number)=>{
+      const value=instance[axis]??(axis==='frameWidth'?320:240);
+      const change=(v:number)=>maint.patchInstance(instance.id,{[axis]:Math.max(min,Math.min(max,Math.round(v)))});
+      return <View style={{gap:7,marginTop:10}} key={axis}>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>{label}：{value} dp</Text>
+        <View style={{flexDirection:'row',gap:8,alignItems:'center'}}>
+          <Pressable accessibilityRole="button" accessibilityLabel={label+'減少 1'} onPress={()=>change(value-1)} style={styles.step}><Text style={{color:theme.palette.primary}}>−</Text></Pressable>
+          <TextInput keyboardType="number-pad" accessibilityLabel={label} value={String(value)} onChangeText={text=>{if(/^\\d{1,4}$/.test(text))change(Number(text));}} style={[styles.input,{flex:1,color:theme.palette.text,borderColor:theme.palette.border}]}/>
+          <Pressable accessibilityRole="button" accessibilityLabel={label+'增加 1'} onPress={()=>change(value+1)} style={styles.step}><Text style={{color:theme.palette.primary}}>＋</Text></Pressable>
+        </View>
+      </View>;
+    };
+    return <View style={{marginTop:8,gap:5}}>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>調整父框架尺寸不修改子元件位置或啟用捲動；子元件超出時保留原位。</Text>
+      {dimension('frameWidth','父框架寬度',160,1600)}{dimension('frameHeight','父框架高度',80,2400)}
+    </View>;
   }
   if(tool.field==='instance-text'){
     if(!instance)return <Text style={{marginTop:8,color:theme.palette.textSecondary}}>先從元件庫新增文字元件，或呼叫現有文字元件的扳手。</Text>;
@@ -410,7 +431,21 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
   onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
 }){
   const theme=useThemeRuntime();
-  return <>{instances.filter(item=>item.visible||item.id===activeId).map(item=>{
+  return <>{instances.filter(item=>!item.parentId&&(item.visible||item.id===activeId)).map(item=>{
+    if(item.templateId==='parent-frame'){
+      const children=instances.filter(child=>child.parentId===item.id).map(child=>({...child,parentId:undefined}));
+      return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,height:item.frameHeight??240,
+        maxWidth:'100%',borderWidth:1,borderRadius:14,borderColor:theme.palette.border,
+        backgroundColor:theme.palette.surface,padding:10,overflow:'visible',position:'relative'}}>
+        <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:5}}>
+          <Text style={{flex:1,fontSize:item.fontSize,color:item.color,fontWeight:'800'}}>{item.text}</Text>
+          {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
+            onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
+        </View>
+        <InstalledFrameComponents instances={children} frame={frame} onWrench={onWrench} enabled={enabled} activeId={activeId}/>
+        {children.length===0?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>空白父框架｜點選扳手可新增內部元件</Text>:null}
+      </View>;
+    }
     const target:InspectedTarget={
       id:'installed:'+item.id,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
       kind:item.templateId==='divider'?'generic':'text',label:item.text||'分隔線',
