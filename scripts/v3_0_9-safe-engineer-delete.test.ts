@@ -33,7 +33,7 @@ assert.equal(normalizeInstances([{...note,id:'native:frame'}]).length,0);
 assert.equal(normalizeInstances([{...note,createdBy:'system'}]).length,0);
 assert.equal(normalizeInstances([{...note,id:'i-good'}]).length,1);
 
-assert.equal(ENGINEER_SKILLS.length,16,'keep exactly one central skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'keep exactly one central skill tree');
 const engineer=ENGINEER_SKILLS.find(g=>g.id==='components');
 assert.ok(engineer?.tools.some(t=>t.id==='install'&&t.status==='ready'));
 assert.ok(engineer?.tools.some(t=>t.id==='remove'&&t.status==='ready'&&t.label.includes('刪除')));
