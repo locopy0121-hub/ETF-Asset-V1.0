@@ -24,6 +24,8 @@ assert.ok(rt.includes('VISUAL_TARGET_KEYS.includes'),'sync only visual style fie
 assert.ok(wb.includes('同類元件外觀同步')&&wb.includes('maintenance.setSyncSameKind'));
 assert.ok(wb.includes("item.templateId==='parent-frame'")&&wb.includes('frameHeight'));
 assert.ok(wb.includes("overflow:'visible'"),'new parent must not auto-scroll children');
+const card=read('src/components/FrameCard.tsx');
+assert.ok(!card.includes('<ScrollView nestedScrollEnabled'),'existing parent resize bug fixed');
 assert.ok(inspect.includes('target.id,target.kind'));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(path).length>0);
 const pkg=JSON.parse(read('package.json'));const app=JSON.parse(read('app.json'));
