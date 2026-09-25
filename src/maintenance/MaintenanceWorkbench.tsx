@@ -428,7 +428,8 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
             item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
               <Text style={{fontSize:customized?appearance.fontSize:item.fontSize,
                 color:customized?appearance.textColor:item.color,
-                backgroundColor:customized?colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity):undefined,
+                backgroundColor:customized?(appearance.backgroundMode==='gradient'?'transparent':
+                   colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)):undefined,
                 fontWeight:override.fontWeight??(item.templateId==='section-label'?'800':'400'),
                 ...(override.fontFamily&&appearance.fontFamily!=='system'?{fontFamily:appearance.fontFamily}:{}),
                 ...(override.fontStyle?{fontStyle:appearance.fontStyle}:{}),
