@@ -88,9 +88,9 @@ assert.ok(model.includes('effects:normalizeFrameEffects(candidate.effects,DEFAUL
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 assert.ok(runtime.includes('editor.replacePageConfig(normalized)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.7');assert.equal(app.expo.version,'3.0.7');
-assert.equal(app.expo.android.versionCode,30007);assert.equal(app.expo.ios.buildNumber,'30007');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.7-QA.apk'));
+assert.equal(pkg.version,'3.0.8');assert.equal(app.expo.version,'3.0.8');
+assert.equal(app.expo.android.versionCode,30008);assert.equal(app.expo.ios.buildNumber,'30008');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.8-QA.apk'));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(p).length>0,'untouched protected finance source: '+p);
-console.log('V3.0.7 scoped frame geometry, gradient, shadow, glow, motion accessibility, migration and identity: PASS');
+console.log('V3.0.8 scoped frame geometry, gradient, shadow, glow, motion accessibility, migration and identity: PASS');
