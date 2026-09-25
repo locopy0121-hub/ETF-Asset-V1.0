@@ -4,7 +4,7 @@ import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from '
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
-import {CENTRAL_COMPONENT_LIBRARY,type MaintenanceInstance} from './componentLibrary';
+import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
 import {ENGINEER_SKILLS,type SkillTool} from './skillTree';
 import {mergeTargetAppearance,targetToolSupported,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
@@ -41,6 +41,11 @@ export function MaintenanceWorkbench(){
   const instance=session.draftInstances.find(item=>item.id===focused);
   const selectedTarget=session.scope==='target'?session.target:undefined;
   const pendingSelection=maintenance.selection?.page===session.page&&maintenance.selection.frameKey===session.frameKey?maintenance.selection:null;
+  const canDeleteFocused=Boolean(instance&&isEngineerOwnedInstance(instance)&&session.scope==='instance');
+  const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
+  const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
+    '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
+    'App 原生功能、既有元件及來源資料禁止刪除；僅維護工程師新增的獨立實例可移除。';
   // The engineer retains every skill. Present applicable tools first for THIS selected A-layer.
   const displaySkills=ENGINEER_SKILLS.map(group=>({...group,
     tools:showAllSkills?group.tools:group.tools.filter(tool=>toolUsable(tool,session)),
@@ -73,6 +78,25 @@ export function MaintenanceWorkbench(){
           style={[styles.choice,{borderColor:theme.palette.primary}]}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>{showAllSkills?'適用技能':'全部技能'}</Text>
         </Pressable>
+      </View>
+      <View accessibilityRole="summary" style={[styles.detail,{
+        backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
+        marginTop:0,marginBottom:10,gap:6,
+      }]}>
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+          <Text style={[styles.label,{color:theme.palette.text}]}>🔒 鎖定資訊｜資料唯讀</Text>
+          <Text style={{fontSize:11,color:theme.palette.primary,fontWeight:'800'}}>資料不變・顯示可編</Text>
+        </View>
+        <Text style={{color:theme.palette.textSecondary,fontSize:12}}>{lockedDescription}</Text>
+        <Text style={{fontSize:12,color:theme.palette.text}}>目前對象：{selectedTarget?.label??instance?.text??session.title}</Text>
+        {protectedProperties.map((row,index)=><View key={row.name+'-'+index} style={{flexDirection:'row',gap:8,justifyContent:'space-between'}}>
+          <Text style={{fontSize:11,color:theme.palette.textSecondary,flex:1}}>{row.name}</Text>
+          <Text selectable style={{fontSize:11,color:theme.palette.text,fontWeight:'700',flex:1,textAlign:'right'}}>{row.value} 🔒</Text>
+        </View>)}
+        <Text style={{fontSize:11,color:theme.palette.textSecondary}}>
+          {instance?canDeleteFocused?'新增元件（可在確認後移除）':'原生／不明來源：不可移除':
+            '內建框架、原生數值、行情、股息、操作元件均保留。'}
+        </Text>
       </View>
       {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選取 {pendingSelection.label}，點上方小扳手讀取其目前設定。</Text>:null}
       {selectedTarget?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginBottom:8}]}>
@@ -119,6 +143,8 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   const f=tool.field??'';
   if(f.startsWith('workspace:'))return true;
   if(f.startsWith('framefx:'))return s.scope==='frame';
+  if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&tool.id==='remove'&&
+    s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
   if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
@@ -266,14 +292,30 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
   if(tool.status!=='ready')return <Text style={{color:theme.palette.textSecondary,marginTop:8,fontSize:12}}>此技能已列入完整技能樹，尚未完成專屬 Runtime 適配，不會假裝套用。</Text>;
   if(tool.field==='session')return <Text style={{color:theme.palette.text,marginTop:8,fontSize:12}}>所有變更暫存於當前工作區；取消完全恢復，儲存套用才正式寫入。</Text>;
   if(tool.field==='instances'){
-    if(s.scope==='instance')return <Text style={{color:theme.palette.textSecondary}}>請從外層框架的扳手新增元件。</Text>;
+    if(s.scope==='instance'&&tool.id==='install')return <Text style={{color:theme.palette.textSecondary}}>請從外層框架的扳手新增元件。</Text>;
     if(tool.id==='install')return <View style={{gap:8,marginTop:8}}>
       {CENTRAL_COMPONENT_LIBRARY.map(template=><Pressable key={template.id} accessibilityRole="button" disabled={template.installation!=='ready'||s.draftInstances.length>=30} onPress={()=>maint.install(template.id)} style={[styles.toolRow,{opacity:template.installation==='ready'?1:.55}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{template.label}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{template.description}</Text></View>
         <Text style={{fontSize:12,color:theme.palette.primary}}>{template.installation==='ready'?'新增':'待介接'}</Text>
       </Pressable>)}
     </View>;
-    if(tool.id==='remove')return <View style={{gap:8,marginTop:8}}>{s.draftInstances.map(item=><Pressable key={item.id} onPress={()=>maint.remove(item.id)} style={styles.toolRow}><Text style={{flex:1,color:theme.palette.text}}>{item.text||item.templateId}</Text><Text style={{color:'#D43D4F'}}>移除</Text></Pressable>)}</View>;
+    if(tool.id==='remove'){
+      const owned=s.draftInstances.filter(item=>isEngineerOwnedInstance(item)&&
+        (s.scope!=='instance'||item.id===s.instanceId));
+      const askRemove=(item:MaintenanceInstance)=>Alert.alert('移除維護工程師新增元件？',
+        '僅移除目前框架中這個新增實例：'+(item.text||item.templateId)+
+        '。原有 App 元件、資料與其他畫面不受影響。取消本次編輯可還原；按「儲存／套用」才正式移除。',
+        [{text:'取消',style:'cancel'},{text:'確認移除',style:'destructive',onPress:()=>maint.remove(item.id)}]);
+      return <View style={{gap:8,marginTop:8}}>
+        <Text style={{color:theme.palette.textSecondary,fontSize:12}}>僅列出目前框架內由維護工程師新增的元件。原生元件沒有刪除入口。</Text>
+        {owned.length?owned.map(item=><Pressable key={item.id} accessibilityRole="button"
+          accessibilityLabel={'刪除工程師新增元件 '+(item.text||item.templateId)}
+          onPress={()=>askRemove(item)} style={styles.toolRow}>
+          <Text style={{flex:1,color:theme.palette.text}}>{item.text||item.templateId}</Text>
+          <Text style={{color:'#D43D4F',fontWeight:'700'}}>刪除 ›</Text>
+        </Pressable>):<Text style={{color:theme.palette.textSecondary}}>目前沒有可刪除的工程師新增元件。</Text>}
+      </View>;
+    }
   }
   if(tool.field==='instance-text'){
     if(!instance)return <Text style={{marginTop:8,color:theme.palette.textSecondary}}>先從元件庫新增文字元件，或呼叫現有文字元件的扳手。</Text>;
