@@ -1,4 +1,4 @@
-import {createContext,type PropsWithChildren,useCallback,useContext,useMemo,useRef,useState} from 'react';
+import {createContext,type PropsWithChildren,useCallback,useContext,useMemo,useRef,useState,useEffect} from 'react';
 import {ScrollView,StyleSheet,View,type LayoutChangeEvent} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {DEFAULT_WORKSPACE,type PositionedRect,type WorkspaceConfig} from './workspaceModel';
@@ -12,8 +12,8 @@ type WorkspaceContextValue=Readonly<{
 }>;
 const WorkspaceContext=createContext<WorkspaceContextValue|null>(null);
 export function useWorkspace(){return useContext(WorkspaceContext);}
-export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false}:PropsWithChildren<{
-  config?:WorkspaceConfig;active?:boolean;
+export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false,onBounds}:PropsWithChildren<{
+  config?:WorkspaceConfig;active?:boolean;onBounds?:(bounds:Bounds)=>void;
 }>){
   const theme=useThemeRuntime();
   const stage=useRef<View|null>(null);
@@ -21,6 +21,7 @@ export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false
   const [bounds,setBounds]=useState<Bounds>({width:0,height:0});
   const [boxes,setBoxes]=useState<RectRegistry>({});
   const [scrollEpoch,setScrollEpoch]=useState(0);
+  useEffect(()=>{if(bounds.width>0&&bounds.height>0)onBounds?.(bounds);},[bounds.width,bounds.height]);
   const onStageLayout=(ev:LayoutChangeEvent)=>{
     const {width,height}=ev.nativeEvent.layout;
     setBounds(previous=>previous.width===width&&previous.height===height?previous:{width,height});

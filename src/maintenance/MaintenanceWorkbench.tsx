@@ -15,6 +15,7 @@ import {HoldingMarketWallEditor} from '../components/HoldingMarketWallEditor';
 import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
 import {useMaintenance} from './MaintenanceRuntime';
+import {SpatialToolDetails} from './SpatialEditor';
 
 // This is a dock beneath the ACTUAL page, not a simulated preview modal.
 export function MaintenanceWorkbench(){
@@ -24,13 +25,13 @@ export function MaintenanceWorkbench(){
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
-  const [showAllSkills,setShowAllSkills]=useState(false);
+  const [showAllSkills,setShowAllSkills]=useState(true); // all 16 B groups are always discoverable by default
   const [saving,setSaving]=useState(false);
   useEffect(()=>{
     setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
       session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
       session.target?.kind==='control'?'conditions':'typography':null);
-    setOpenTool(null);setShowAllSkills(false);
+    setOpenTool(null);setShowAllSkills(true);
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
@@ -113,6 +114,7 @@ const isQuoteFrame=(s:MaintenanceSession)=>s.frameKey==='holding-quotes'||s.fram
 function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(tool.status!=='ready')return false;
   const f=tool.field??'';
+  if(f.startsWith('workspace:'))return true;
   if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
@@ -129,6 +131,8 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  if(tool.field?.startsWith('workspace:')||['target:xy','target:dimensions','target:anchors'].includes(tool.field??''))
+    return <SpatialToolDetails field={tool.field!} />;
   if(!toolUsable(tool,s))return <Text style={{fontSize:12,color:theme.palette.textSecondary,marginTop:8}}>
     {tool.status!=='ready'?'完整技能已登記，但此工具尚未介接 Runtime。':
       tool.field?.startsWith('page:')&&s.target?.kind==='quote-card'?'這是本頁共用設定。請點外層行情框架大扳手後使用，避免意外改動其他卡片。':

@@ -5,7 +5,7 @@ import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,useP
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
 import {normalizeTargetMap,normalizeTargetOverride,type InspectedTarget,type TargetOverride} from './inspectionModel';
-import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig} from './workspaceModel';
+import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
 const scopeId=(page:MainPageKey,frameKey:string)=>page+':'+frameKey;
@@ -23,6 +23,10 @@ type MaintenanceContextValue=Readonly<{
   getInstances:(page:MainPageKey,frameKey:string)=>readonly MaintenanceInstance[];
   getTargetOverride:(page:MainPageKey,frameKey:string,id:string)=>TargetOverride;
   getWorkspace:(page:MainPageKey,frameKey:string)=>WorkspaceConfig;
+  getWorkspaceBounds:(page:MainPageKey,frameKey:string)=>{width:number;height:number};
+  getFrameRects:(page:MainPageKey,frameKey:string)=>Readonly<Record<string,PositionedRect>>;
+  reportWorkspaceBounds:(page:MainPageKey,frameKey:string,bounds:{width:number;height:number})=>void;
+  reportRect:(page:MainPageKey,frameKey:string,id:string,rect:PositionedRect|null)=>void;
   begin:(page:MainPageKey,frameKey:string,title:string,config:FrameEditorConfig,instanceId?:string,displayConfig?:PageDisplayConfig)=>void;
   selectTarget:(target:InspectedTarget)=>void;syncTarget:(target:InspectedTarget)=>void;
   enterTarget:(target:InspectedTarget,frameConfig:FrameEditorConfig,displayConfig:PageDisplayConfig)=>void;
@@ -50,6 +54,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [saved,setSaved]=useState<Record<string,MaintenanceInstance[]>>({});
   const [targetStyles,setTargetStyles]=useState<Record<string,Record<string,TargetOverride>>>({});
   const [workspaces,setWorkspaces]=useState<Record<string,WorkspaceConfig>>({});
+  const [liveBounds,setLiveBounds]=useState<Record<string,{width:number;height:number}>>({});
+  const [liveRects,setLiveRects]=useState<Record<string,Record<string,PositionedRect>>>({});
   const [hydrated,setHydrated]=useState(false);
   const [selection,setSelection]=useState<InspectedTarget|null>(null);
   const [session,setSession]=useState<MaintenanceSession|null>(null);
@@ -79,6 +85,18 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const value=useMemo<MaintenanceContextValue>(()=>({
     hydrated,enabled,session,selection,
     getInstances:(page,frameKey)=>saved[scopeId(page,frameKey)]??[],
+    getWorkspaceBounds:(page,frameKey)=>liveBounds[scopeId(page,frameKey)]??{width:0,height:0},
+    getFrameRects:(page,frameKey)=>liveRects[scopeId(page,frameKey)]??{},
+    reportWorkspaceBounds:(page,frameKey,bounds)=>setLiveBounds(previous=>{
+      const key=scopeId(page,frameKey),old=previous[key];
+      return old?.width===bounds.width&&old?.height===bounds.height?previous:{...previous,[key]:bounds};
+    }),
+    reportRect:(page,frameKey,id,rect)=>setLiveRects(previous=>{
+      const key=scopeId(page,frameKey),all=previous[key]??{},old=all[id];
+      if(rect===null){if(!old)return previous;const next={...all};delete next[id];return {...previous,[key]:next};}
+      if(old&&old.x===rect.x&&old.y===rect.y&&old.width===rect.width&&old.height===rect.height)return previous;
+      return {...previous,[key]:{...all,[id]:rect}};
+    }),
     getWorkspace:(page,frameKey)=>session?.page===page&&session.frameKey===frameKey?
       session.draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
     getTargetOverride:(page,frameKey,id)=>{
@@ -174,7 +192,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,workspaces,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,saved,targetStyles,workspaces,liveBounds,liveRects,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }

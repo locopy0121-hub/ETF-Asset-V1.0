@@ -63,7 +63,7 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
       .map(([id,override])=>[id,normalizeTargetOverride(override)]))]));
 }
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
-  if(['target:offsetX','target:offsetY','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
+  if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
   if(field==='target:profitToneOverride')return true;
   if(field==='target:textProfitColor')return kind!=='wall'&&kind!=='portfolio-list'&&kind!=='control';
   if(field==='target:labelProfitColor'||field==='target:captionProfitColor'||field==='target:captionColor')return kind==='metric';
