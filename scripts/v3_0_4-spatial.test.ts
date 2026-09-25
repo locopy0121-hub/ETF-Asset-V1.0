@@ -86,7 +86,7 @@ assert.ok(runtime.includes('schema:3,instances:nextSaved,targets:nextTargets,wor
 assert.ok(runtime.includes('parsed.schema===2||parsed.schema===3'),'old saved target styles must migrate');
 assert.ok(!model.includes('etfCalculators'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.8');assert.equal(app.expo.version,'3.0.8');
-assert.equal(app.expo.android.versionCode,30008);assert.equal(app.expo.ios.buildNumber,'30008');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.8-QA.apk'));
-console.log('V3.0.8 measured spatial math, strict ±1, optional drag-only snap, global color flags and cross-page contracts: AUTOMATED PASS');
+assert.equal(pkg.version,'3.0.9');assert.equal(app.expo.version,'3.0.9');
+assert.equal(app.expo.android.versionCode,30009);assert.equal(app.expo.ios.buildNumber,'30009');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.9-QA.apk'));
+console.log('V3.0.9 measured spatial math, strict ±1, optional drag-only snap, global color flags and cross-page contracts: AUTOMATED PASS');

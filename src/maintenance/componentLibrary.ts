@@ -6,6 +6,7 @@ export type ComponentTemplate=Readonly<{
 }>;
 export type MaintenanceInstance=Readonly<{
   id:string;templateId:string; text:string; visible:boolean;
+  createdBy:'maintenance-engineer'; // Ownership is local to the one shared central library; built-ins have no instance.
   fontSize:number;color:string; marginTop:number;
 }>;
 export const CENTRAL_COMPONENT_LIBRARY:readonly ComponentTemplate[]=[
@@ -27,15 +28,32 @@ export const readyComponents=()=>CENTRAL_COMPONENT_LIBRARY.filter(item=>item.ins
 export function instantiateComponent(templateId:string,id:string):MaintenanceInstance{
   const template=CENTRAL_COMPONENT_LIBRARY.find(item=>item.id===templateId&&item.installation==='ready');
   if(!template)throw new Error('尚未接入可實際安裝的元件：'+templateId);
-  return {id,templateId,text:template.defaultText??'',visible:true,fontSize:templateId==='section-label'?17:13,color:'#0F172A',marginTop:6};
+  return {id,templateId,createdBy:'maintenance-engineer',text:template.defaultText??'',visible:true,fontSize:templateId==='section-label'?17:13,color:'#0F172A',marginTop:6};
 }
 export function normalizeInstances(input:unknown):MaintenanceInstance[]{
   if(!Array.isArray(input))return [];
   return input.slice(0,30).flatMap((raw:unknown)=>{
     if(!raw||typeof raw!=='object')return [];
     const v=raw as Partial<MaintenanceInstance>;
-    if(typeof v.id!=='string'||!v.id||typeof v.templateId!=='string'||!readyComponents().some(t=>t.id===v.templateId))return [];
+    // Historical v3 instances only came from this engineer and always used an i- ID.
+    // Do not treat any built-in/native target or an imported arbitrary object as removable.
+    if(typeof v.id!=='string'||!/^i-[a-z0-9-]{1,92}$/.test(v.id)||typeof v.templateId!=='string'||
+      !readyComponents().some(t=>t.id===v.templateId)||
+      (v.createdBy!==undefined&&v.createdBy!=='maintenance-engineer'))return [];
     const clamp=(x:unknown,min:number,max:number,def:number)=>typeof x==='number'&&Number.isFinite(x)?Math.max(min,Math.min(max,x)):def;
-    return [{id:v.id.slice(0,96),templateId:v.templateId,text:String(v.text??'').slice(0,200),visible:v.visible!==false,fontSize:clamp(v.fontSize,10,36,13),color:typeof v.color==='string'&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color:'#0F172A',marginTop:clamp(v.marginTop,0,32,6)}];
+    return [{id:v.id.slice(0,96),templateId:v.templateId,createdBy:'maintenance-engineer' as const,
+      text:String(v.text??'').slice(0,200),visible:v.visible!==false,fontSize:clamp(v.fontSize,10,36,13),
+      color:typeof v.color==='string'&&/^#[0-9a-f]{6}$/i.test(v.color)?v.color:'#0F172A',marginTop:clamp(v.marginTop,0,32,6)}];
   });
+}
+
+/** Destructive operations may act exclusively on components minted by the engineer. */
+export function isEngineerOwnedInstance(item:MaintenanceInstance|undefined):boolean{
+  return !!item&&item.createdBy==='maintenance-engineer'&&
+    /^i-[a-z0-9-]{1,92}$/.test(item.id)&&
+    readyComponents().some(template=>template.id===item.templateId);
+}
+export function removeEngineerOwnedInstance(instances:readonly MaintenanceInstance[],id:string):MaintenanceInstance[]{
+  const selected=instances.find(item=>item.id===id);
+  return isEngineerOwnedInstance(selected)?instances.filter(item=>!(item.id===id&&isEngineerOwnedInstance(item))):[...instances];
 }

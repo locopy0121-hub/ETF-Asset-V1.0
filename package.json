@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_8 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_9 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -151,7 +151,9 @@
     "test:frame-v307": "tsx scripts/v3_0_7-frame-engineer.test.ts",
     "test:v3_0_7": "npm run test:v3_0_6 && npm run test:frame-v307",
     "test:frame-v308": "tsx scripts/v3_0_8-frame-background.test.ts",
-    "test:v3_0_8": "npm run test:v3_0_7 && npm run test:frame-v308"
+    "test:v3_0_8": "npm run test:v3_0_7 && npm run test:frame-v308",
+    "test:safe-delete-v309": "tsx scripts/v3_0_9-safe-engineer-delete.test.ts",
+    "test:v3_0_9": "npm run test:v3_0_8 && npm run test:safe-delete-v309"
   },
   "dependencies": {
     "expo": "~57.0.21",

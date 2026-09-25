@@ -3,7 +3,7 @@ import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,us
 import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
-import {instantiateComponent,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
+import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
 import {normalizeTargetMap,normalizeTargetOverride,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 
@@ -147,8 +147,10 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     },
     patchFrame:patch=>setSession(current=>current&&current.draft.behavior!=='locked'?
       {...current,draft:{...current.draft,...patch}}:current),
-    patchInstance:(id,patch)=>setSession(current=>current?{...current,
-      draftInstances:current.draftInstances.map(item=>item.id===id?{...item,...patch}:item),
+    patchInstance:(id,patch)=>setSession(current=>current&&current.draftInstances.some(item=>item.id===id&&isEngineerOwnedInstance(item))?{
+      ...current,draftInstances:current.draftInstances.map(item=>item.id===id?{
+        ...item,...patch,id:item.id,templateId:item.templateId,createdBy:item.createdBy,
+      }:item),
     }:current),
     patchTarget:(id,patch)=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
       {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})}}:current),
@@ -164,10 +166,15 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const instance=instantiateComponent(templateId,id);
       return {...current,draftInstances:[...current.draftInstances,instance],focusInstanceId:id};
     }),
-    remove:id=>setSession(current=>current?{...current,
-      draftInstances:current.draftInstances.filter(item=>item.id!==id),
-      focusInstanceId:current.focusInstanceId===id?undefined:current.focusInstanceId,
-    }:current),
+    remove:id=>setSession(current=>{
+      if(!current||!['frame','instance'].includes(current.scope))return current;
+      // A built-in UI target never appears in the minted component array. Even a
+      // forged native ID or stale selection cannot remove real App functionality.
+      const victim=current.draftInstances.find(item=>item.id===id);
+      if(!isEngineerOwnedInstance(victim)||current.scope==='instance'&&current.instanceId!==id)return current;
+      return {...current,draftInstances:removeEngineerOwnedInstance(current.draftInstances,id),
+        scope:'frame',instanceId:undefined,focusInstanceId:current.focusInstanceId===id?undefined:current.focusInstanceId};
+    }),
     cancel:()=>{setSession(null);setSelection(null);},
     apply:async()=>{
       if(!session)return false;
