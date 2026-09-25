@@ -102,7 +102,10 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <View style={styles.dashboardTop}>
               <View style={styles.dashboardSummary}>
                 <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52} accessibilityLabel="目前持股總市值">{valuationComplete?'NT$ '+money(portfolio.totalMarketValue):'估值待核對'}</Text>
+                {valuationComplete?<View style={styles.heroAmountRow} accessible accessibilityLabel={'目前持股總市值 NT$ '+money(portfolio.totalMarketValue)}>
+                  <Text style={styles.heroPrefix}>NT$</Text>
+                  <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52}>{money(portfolio.totalMarketValue)}</Text>
+                </View>:<Text style={styles.heroValue}>估值待核對</Text>}
                 <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
               </View>
             </View>
@@ -178,7 +181,9 @@ const styles=StyleSheet.create({
   refreshButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   refreshButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   heroLabel:{color:colors.textSecondary,fontSize:12,fontWeight:'700'},
-  heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums']},
+  heroAmountRow:{flexDirection:'row',alignItems:'baseline',width:'100%'},
+  heroPrefix:{color:colors.text,fontSize:34,fontWeight:'900',marginRight:8},
+  heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums'],flexShrink:1},
   heroDelta:{fontSize:13,fontWeight:'800'},
   pageLayer:{position:'relative'},
   dashboardTop:{minHeight:150,justifyContent:'flex-start'},
