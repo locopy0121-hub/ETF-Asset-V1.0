@@ -22,3 +22,5 @@
 修復方式：共用 InspectableTarget 的 MetricTile placement 同時作用於 ON/OFF，使用雙欄 46% 基準、最小卡寬 136 dp，空間不夠時由既有 flexWrap 換行；虛線框改 absolute overlay 不佔 Layout；扳手固定於當前元件角落；金額優先完整單行適寬，首頁主金額容器取消 48% 固定寬。
 
 驗證要求：TypeScript、3.0.1～3.0.3 全部歷史 Gates、額外 Layout Regression、GitHub QA APK ZIP/SHA/badging 均須重驗。**無實機截圖不能將本修復判定為 UI/RESULT PASS，V3.0.4 功能開發不得與本修護混在同次提交。**
+
+附加安全修復：外層 FrameCard 的虛線選取框也改為 absoluteFill 裝飾，不再以 borderWidth 變更容器自身寬度，避免選取外框觸發臨界寬度換行。

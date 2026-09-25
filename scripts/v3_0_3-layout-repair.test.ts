@@ -7,6 +7,7 @@ const home=read('src/screens/HomeScreen.tsx');
 const portfolio=read('src/screens/PortfolioScreen.tsx');
 const ledger=read('src/screens/LedgerScreen.tsx');
 const ai=read('src/components/AiQuestionBox.tsx');
+const frame=read('src/components/FrameCard.tsx');
 // Both engineer ON and OFF must share a single minimum-width grid layout.
 assert.ok(inspector.includes("const placement=flex?styles.metricPlacement:undefined"));
 assert.ok(inspector.includes("<View style={placement}>{children(appearance,customized,override)}</View>"),'OFF must use the exact same card grid');
@@ -15,6 +16,8 @@ assert.ok(inspector.includes("flexBasis:'46%'")&&inspector.includes('minWidth:13
 assert.ok(!inspector.includes('flex:1,minWidth:0'),'old wrapper forced KPI tiles to shrink below their minimum');
 assert.ok(inspector.includes('StyleSheet.absoluteFill,styles.selectionOutline'),'outline must not consume layout dimensions');
 assert.ok(!inspector.includes("top:-13"),'negative mini-wrench offset caused adjacent-card overlap');
+assert.ok(frame.includes('StyleSheet.absoluteFill')&&frame.includes('pointerEvents="none"'),'outer frame border must be an overlay, too');
+assert.ok(!frame.includes("workActive&&{borderStyle:'dashed'"),'outer frame selection may not consume layout width');
 assert.ok(inspector.includes("right:2,top:2")&&inspector.includes("minWidth:28"));
 // Preserve number content; no ellipsis or mutated financial source values.
 assert.ok(metric.includes('numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}'));
