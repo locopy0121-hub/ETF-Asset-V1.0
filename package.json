@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_3 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_5 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -143,7 +143,9 @@
     "test:v3_0_3": "npm run test:v3_0_2 && npm run test:workspace-v303 && npm run test:layout-repair-v303",
     "test:layout-repair-v303": "tsx scripts/v3_0_3-layout-repair.test.ts",
     "test:spatial-v304": "tsx scripts/v3_0_4-spatial.test.ts",
-    "test:v3_0_4": "npm run test:v3_0_3 && npm run test:spatial-v304"
+    "test:v3_0_4": "npm run test:v3_0_3 && npm run test:spatial-v304",
+    "test:typography-v305": "tsx scripts/v3_0_5-typography.test.ts",
+    "test:v3_0_5": "npm run test:v3_0_4 && npm run test:typography-v305"
   },
   "dependencies": {
     "expo": "~57.0.21",

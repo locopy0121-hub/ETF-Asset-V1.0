@@ -33,10 +33,10 @@ assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'),
 assert.ok(dock.includes('取消／恢復')&&dock.includes('儲存／套用'));
 assert.ok(!app.includes('V5')&&!runtime.includes('360'));
 const pkg=JSON.parse(read('package.json')),a=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.4');
-assert.equal(a.expo.version,'3.0.4');
-assert.equal(a.expo.android.versionCode,30004);
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.4-QA.apk'));
+assert.equal(pkg.version,'3.0.5');
+assert.equal(a.expo.version,'3.0.5');
+assert.equal(a.expo.android.versionCode,30005);
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.5-QA.apk'));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md']){
   const bytes=readFileSync(path);
   const sha=createHash('sha1').update('blob '+bytes.length+String.fromCharCode(0)).update(bytes).digest('hex');
