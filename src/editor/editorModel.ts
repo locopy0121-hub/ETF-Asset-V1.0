@@ -123,7 +123,7 @@ export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
   Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => [
     frame.key,
-    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
+    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:frame.key==='page-header'?28:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:frame.key==='page-header'?0:1,borderRadius:frame.key==='page-header'?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
   ]));
 
 export function createInitialEditorState(): PageEditorState {
