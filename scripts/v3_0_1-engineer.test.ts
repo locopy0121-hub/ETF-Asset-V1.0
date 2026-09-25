@@ -10,7 +10,7 @@ assert.ok(ENGINEER_SKILLS.every(s=>s.tools.length>=2&&s.tools.every(t=>Boolean(t
 for(const id of ['components','frames','dimensions','layout','typography','colors','effects','charts','interaction','responsive','versions'])assert.ok(findSkill(id),id);
 assert.equal(new Set(CENTRAL_COMPONENT_LIBRARY.map(x=>x.id)).size,CENTRAL_COMPONENT_LIBRARY.length);
 assert.equal(CENTRAL_COMPONENT_LIBRARY.length>=12,true,'one shared catalog inventories existing component types');
-assert.equal(readyComponents().length,3,'only actually installable templates may be enabled');
+assert.equal(readyComponents().length,4,'parent frame is now a real installable central template');
 assert.equal(CENTRAL_COMPONENT_LIBRARY.find(x=>x.id==='official-candle')?.installation,'adapter-required','cannot invent chart data');
 assert.throws(()=>instantiateComponent('official-candle','bad'),'not wired components must not create fake charts');
 const note=instantiateComponent('text-note','i-001');
