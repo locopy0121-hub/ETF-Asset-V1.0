@@ -14,7 +14,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
   const engineer=useMaintenance();
   const session=engineer.session?.page===pageKey?engineer.session:null;
   const ordered=[...frames]
-    .filter(item=>config[item.key]?.visible!==false)
+    .filter(item => config[item.key]?.visible !== false)
     .sort((a,b)=>(session&&session.frameKey===a.key?session.draft.order:config[a.key]?.order??0)-(session&&session.frameKey===b.key?session.draft.order:config[b.key]?.order??0));
 
   return <View style={{gap:12}}>{ordered.map(item=>{
