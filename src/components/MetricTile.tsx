@@ -33,9 +33,16 @@ export function MetricTile({label,value,caption,tone='default',editorStyle}:{
   return <View style={[styles.tile,{backgroundColor:effectiveBackground},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:editorStyle.borderWidth,borderRadius:editorStyle.borderRadius,padding:editorStyle.padding}]}>
     <Text style={[styles.label,{color:effectiveLabel,
-      fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left'}]}>{displayedLabel}</Text>
+      fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left',
+      ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
+      ...(editorStyle?.labelFontWeight?{fontWeight:editorStyle.labelFontWeight}:{}),
+      ...(editorStyle?.labelFontStyle?{fontStyle:editorStyle.labelFontStyle}:{}),
+      ...(editorStyle?.labelLetterSpacing!==undefined?{letterSpacing:editorStyle.labelLetterSpacing}:{}),
+      ...(editorStyle?.labelLineHeight&&editorStyle.labelLineHeight>0?{lineHeight:editorStyle.labelLineHeight}:{}),
+      }]}>{displayedLabel}</Text>
     <Text style={[styles.value,{color:effectiveTextColor,fontSize:editorStyle?.fontSize??17,
       textAlign:editorStyle?.align??'left',
+      ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
       ...(editorStyle?.fontWeight?{fontWeight:editorStyle.fontWeight}:{}),
       ...(editorStyle?.fontStyle?{fontStyle:editorStyle.fontStyle}:{}),
       ...(editorStyle?.textDecorationLine?{textDecorationLine:editorStyle.textDecorationLine}:{}),
@@ -43,7 +50,13 @@ export function MetricTile({label,value,caption,tone='default',editorStyle}:{
       ...(editorStyle?.lineHeight&&editorStyle.lineHeight>0?{lineHeight:editorStyle.lineHeight}:{}),
       }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
     {displayedCaption?<Text style={[styles.caption,{color:effectiveCaption,fontSize:editorStyle?.captionFontSize??10,
-      textAlign:editorStyle?.align??'left'}]}>{displayedCaption}</Text>:null}
+      textAlign:editorStyle?.align??'left',
+      ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
+      ...(editorStyle?.captionFontWeight?{fontWeight:editorStyle.captionFontWeight}:{}),
+      ...(editorStyle?.captionFontStyle?{fontStyle:editorStyle.captionFontStyle}:{}),
+      ...(editorStyle?.captionLetterSpacing!==undefined?{letterSpacing:editorStyle.captionLetterSpacing}:{}),
+      ...(editorStyle?.captionLineHeight&&editorStyle.captionLineHeight>0?{lineHeight:editorStyle.captionLineHeight}:{}),
+      }]}>{displayedCaption}</Text>:null}
   </View>;
 }
 const styles=StyleSheet.create({
