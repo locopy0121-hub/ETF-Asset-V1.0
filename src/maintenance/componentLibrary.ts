@@ -55,5 +55,5 @@ export function isEngineerOwnedInstance(item:MaintenanceInstance|undefined):bool
 }
 export function removeEngineerOwnedInstance(instances:readonly MaintenanceInstance[],id:string):MaintenanceInstance[]{
   const selected=instances.find(item=>item.id===id);
-  return isEngineerOwnedInstance(selected)?instances.filter(item=>item.id!==id):[...instances];
+  return isEngineerOwnedInstance(selected)?instances.filter(item=>!(item.id===id&&isEngineerOwnedInstance(item))):[...instances];
 }
