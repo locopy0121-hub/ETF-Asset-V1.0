@@ -14,9 +14,9 @@ assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 assert.equal(app.expo.android.package,'com.tfasset.app');
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.10'"));
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30010'"));
-assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.10'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='"+pkg.version+"'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='"+app.expo.android.versionCode+"'"));
+assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='"+pkg.version+"'"));
 assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V'+pkg.version+'-QA.apk'));
 
 // The editable top header is a real, per-page frame and cannot alter sibling pages.
