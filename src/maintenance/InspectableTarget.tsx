@@ -3,7 +3,8 @@ import {PanResponder,Pressable,StyleSheet,Text,View} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
-import {effectiveOffset,positionedRect,snapDraggedRect,type TargetGeometry} from './workspaceModel';
+import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type TargetGeometry} from './workspaceModel';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
@@ -14,6 +15,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const engineer=useMaintenance();
   const workspace=useWorkspace();
   const theme=useThemeRuntime();
+  const settings=useSettingsRuntime();
   const node=useRef<View|null>(null);
   const [geometry,setGeometry]=useState<TargetGeometry|null>(null);
   const active=engineer.enabled&&(!engineer.session||engineer.session.page===frame.page&&engineer.session.frameKey===frame.frameKey);
@@ -21,6 +23,15 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const editing=engineer.session?.scope==='target'&&engineer.session.target?.page===target.page&&engineer.session.target.frameKey===target.frameKey&&engineer.session.target.id===target.id;
   const override=engineer.getTargetOverride(target.page,target.frameKey,target.id);
   const appearance=mergeTargetAppearance(target.base,override);
+  const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?
+    override.profitToneOverride:target.profitTone??'neutral';
+  const resolvedAppearance={...appearance,
+    textColor:linkedColor(appearance.textColor,appearance.textProfitColor,actualTone,settings.prefs.display),
+    labelColor:linkedColor(appearance.labelColor,appearance.labelProfitColor,actualTone,settings.prefs.display),
+    captionColor:linkedColor(appearance.captionColor,appearance.captionProfitColor,actualTone,settings.prefs.display),
+    backgroundColor:linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,actualTone,settings.prefs.display),
+    borderColor:linkedColor(appearance.borderColor,appearance.borderProfitColor,actualTone,settings.prefs.display),
+  };
   const customized=Object.keys(override).length>0;
   const measured=geometry??{naturalX:0,naturalY:0,width:0,height:0,
     spaceWidth:workspace?.bounds.width??0,spaceHeight:workspace?.bounds.height??0};
@@ -32,8 +43,8 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const spatial={transform:[{translateX:displacement.x},{translateY:displacement.y}],
     ...(override.height!==undefined?{height:override.height}:{})};
   const wrapperStyle=customized&&['wall','portfolio-list','control','generic'].includes(target.kind)?{
-    ...(override.backgroundColor?{backgroundColor:appearance.backgroundColor}:{}),
-    ...(override.borderColor?{borderColor:appearance.borderColor}:{}),
+    ...(override.backgroundColor||override.backgroundProfitColor?{backgroundColor:resolvedAppearance.backgroundColor}:{}),
+    ...(override.borderColor||override.borderProfitColor?{borderColor:resolvedAppearance.borderColor}:{}),
     ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
     ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
     ...(override.padding!==undefined?{padding:appearance.padding}:{}),
@@ -89,17 +100,18 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   useEffect(()=>{
     if(!workspace||!rect)return;
     workspace.report(targetKey,rect);
-    return()=>workspace.report(targetKey,null);
-  },[workspace?.report,targetKey,rect?.x,rect?.y,rect?.width,rect?.height]);
+    if(engineer.enabled)engineer.reportRect(target.page,target.frameKey,targetKey,rect);
+    return()=>{workspace.report(targetKey,null);engineer.reportRect(target.page,target.frameKey,targetKey,null);};
+  },[workspace?.report,engineer.enabled,engineer.reportRect,targetKey,rect?.x,rect?.y,rect?.width,rect?.height]);
   const currentTarget=geometry?{...target,geometry}:target;
   const pick=()=>{measureCurrent();engineer.selectTarget(currentTarget);};
   const enter=()=>{measureCurrent();engineer.enterTarget(currentTarget,frame.frameConfig,frame.displayConfig);};
   // Unmodified native subcomponents remain byte-for-byte/layout-for-layout unchanged when OFF.
-  if(!engineer.enabled&&!customized&&!flex)return appearance.visible?<>{children(appearance,false,override)}</>:null;
+  if(!engineer.enabled&&!customized&&!flex)return appearance.visible?<>{children(resolvedAppearance,false,override)}</>:null;
   return <View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
     style={[placement,{position:'relative',opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
-    {appearance.visible||selected||editing?children(appearance,customized,override):
+    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override):
       <View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {(selected||editing)&&engineer.enabled?<View pointerEvents="none"
       style={[StyleSheet.absoluteFill,styles.selectionOutline,{borderColor:theme.palette.primary}]}/>:null}

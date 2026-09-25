@@ -160,7 +160,22 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
         <Text style={{color:v===pos?'#FFF':theme.palette.text}}>{{left:'靠左',center:'置中',right:'靠右'}[pos]}</Text>
       </Pressable>)}
     </View>;
-    if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v))return <ColorPalettePicker label={tool.label} value={v} onChange={change}/>;
+    if(fieldName==='profitToneOverride')return <View style={{flexDirection:'row',gap:7,flexWrap:'wrap',marginTop:8}}>
+      {(['auto','gain','loss','neutral'] as const).map(tone=><Pressable key={tone} onPress={()=>change(tone)}
+        style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:v===tone?theme.palette.primary:theme.palette.surface}]}>
+        <Text style={{color:v===tone?'#FFFFFF':theme.palette.text}}>{({auto:'真實來源',gain:'獲利預覽',loss:'虧損預覽',neutral:'中性'} as const)[tone]}</Text>
+      </Pressable>)}
+    </View>;
+    if(typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)){
+      const toggles:Record<string,'textProfitColor'|'labelProfitColor'|'captionProfitColor'|'backgroundProfitColor'|'borderProfitColor'>={
+        textColor:'textProfitColor',labelColor:'labelProfitColor',captionColor:'captionProfitColor',
+        backgroundColor:'backgroundProfitColor',borderColor:'borderProfitColor',
+      };
+      const profitFlag=toggles[fieldName];
+      return <ColorPalettePicker label={tool.label} value={v} onChange={change}
+        profitColorEnabled={profitFlag?Boolean(current[profitFlag]):undefined}
+        onProfitColorChange={profitFlag?value=>maint.patchTarget(target.id,{[profitFlag]:value}):undefined}/>;
+    }
     if(typeof v==='number'){
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
@@ -250,7 +265,16 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
       <Text style={{color:raw===key?'#FFFFFF':theme.palette.text,fontSize:12}}>{({standard:'標準',compact:'緊湊',dense:'密集',theme:'主題',soft:'柔和',outline:'描邊',left:'靠左',center:'置中',right:'靠右'} as Record<string,string>)[key]||key}</Text>
     </Pressable>)}
   </View>;
-  if(typeof raw==='string'&&/^#[0-9A-Fa-f]{6}$/.test(raw))return <ColorPalettePicker label={tool.label} value={raw} onChange={change}/>;
+  if(typeof raw==='string'&&/^#[0-9A-Fa-f]{6}$/.test(raw)){
+    if(s.scope==='instance')return <ColorPalettePicker label={tool.label} value={raw} onChange={change}/>;
+    const pair:Record<string,'titleProfitColor'|'backgroundProfitColor'|'borderProfitColor'>={
+      titleColor:'titleProfitColor',backgroundColor:'backgroundProfitColor',borderColor:'borderProfitColor',
+    };
+    const toggle=pair[field];
+    return <ColorPalettePicker label={tool.label} value={raw} onChange={change}
+      profitColorEnabled={toggle?Boolean(s.draft[toggle]):undefined}
+      onProfitColorChange={toggle?value=>maint.patchFrame({[toggle]:value}):undefined}/>;
+  }
   if(typeof raw==='number'){
     const ranges:Record<string,[number,number,number]>={
       titleFontSize:[10,32,1],borderWidth:[0,8,1],borderRadius:[0,48,2],backgroundOpacity:[0,1,.05],

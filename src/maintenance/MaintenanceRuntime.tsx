@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
+import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useState} from 'react';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
@@ -82,21 +82,22 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     if(settings.prefs.engineerEnabled!==true){setSession(null);setSelection(null);}
   },[settings.prefs.engineerEnabled]);
   const enabled=settings.prefs.engineerEnabled===true;
+  const reportWorkspaceBounds=useCallback((page:MainPageKey,frameKey:string,bounds:{width:number;height:number})=>setLiveBounds(previous=>{
+    const key=scopeId(page,frameKey),old=previous[key];
+    return old?.width===bounds.width&&old?.height===bounds.height?previous:{...previous,[key]:bounds};
+  }),[]);
+  const reportRect=useCallback((page:MainPageKey,frameKey:string,id:string,rect:PositionedRect|null)=>setLiveRects(previous=>{
+    const key=scopeId(page,frameKey),all=previous[key]??{},old=all[id];
+    if(rect===null){if(!old)return previous;const next={...all};delete next[id];return {...previous,[key]:next};}
+    if(old&&old.x===rect.x&&old.y===rect.y&&old.width===rect.width&&old.height===rect.height)return previous;
+    return {...previous,[key]:{...all,[id]:rect}};
+  }),[]);
   const value=useMemo<MaintenanceContextValue>(()=>({
     hydrated,enabled,session,selection,
     getInstances:(page,frameKey)=>saved[scopeId(page,frameKey)]??[],
     getWorkspaceBounds:(page,frameKey)=>liveBounds[scopeId(page,frameKey)]??{width:0,height:0},
     getFrameRects:(page,frameKey)=>liveRects[scopeId(page,frameKey)]??{},
-    reportWorkspaceBounds:(page,frameKey,bounds)=>setLiveBounds(previous=>{
-      const key=scopeId(page,frameKey),old=previous[key];
-      return old?.width===bounds.width&&old?.height===bounds.height?previous:{...previous,[key]:bounds};
-    }),
-    reportRect:(page,frameKey,id,rect)=>setLiveRects(previous=>{
-      const key=scopeId(page,frameKey),all=previous[key]??{},old=all[id];
-      if(rect===null){if(!old)return previous;const next={...all};delete next[id];return {...previous,[key]:next};}
-      if(old&&old.x===rect.x&&old.y===rect.y&&old.width===rect.width&&old.height===rect.height)return previous;
-      return {...previous,[key]:{...all,[id]:rect}};
-    }),
+    reportWorkspaceBounds,reportRect,
     getWorkspace:(page,frameKey)=>session?.page===page&&session.frameKey===frameKey?
       session.draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
     getTargetOverride:(page,frameKey,id)=>{
@@ -192,7 +193,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,workspaces,liveBounds,liveRects,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,saved,targetStyles,workspaces,liveBounds,liveRects,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }

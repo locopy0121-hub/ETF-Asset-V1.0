@@ -2,7 +2,8 @@ import {useEffect,useState} from 'react';
 import {Pressable,Switch,Text,TextInput,View} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
-import {displayPoint,enteredOffset,positionWarnings,positionedRect,type SnapMode,type WorkspaceConfig} from './workspaceModel';
+import type {TargetOverride} from './inspectionModel';
+import {displayPoint,enteredOffset,positionWarnings,positionedRect,type WorkspaceConfig} from './workspaceModel';
 
 const positive=(value:string,min:number,max:number)=>value.trim()===''?0:
   Number.isFinite(Number(value))&&Number(value)>=min&&Number(value)<=max?Number(value):null;
@@ -18,7 +19,7 @@ export function SpatialToolDetails({field}:{field:string}){
   const cfg=s?.draftWorkspace;
   const target=s?.scope==='target'?s.target:undefined;
   const g=target?.geometry;
-  const style=g&&target?m.getTargetOverride(target.page,target.frameKey,target.id):{};
+  const style:TargetOverride=g&&target?m.getTargetOverride(target.page,target.frameKey,target.id):{};
   const rect=g?positionedRect(g,style):null;
   const pointX=g&&rect&&cfg?displayPoint(rect.x,'x',g,cfg.origin):0;
   const pointY=g&&rect&&cfg?displayPoint(rect.y,'y',g,cfg.origin):0;
@@ -92,8 +93,6 @@ export function SpatialToolDetails({field}:{field:string}){
   </View>;
   if(field==='workspace:diagnostics'){
     const boxes=m.getFrameRects(s.page,s.frameKey);
-    const conflicts=Object.entries(boxes).filter(([id,rect])=>id!==target?.id&&target?.geometry&&
-      rect.x<(pointX+Number(g?.width??0))&&rect.x+rect.width>pointX);
     if(!target||!g||!rect)return <Text style={{color:secondary,marginTop:8}}>先選取一個真實元件，即可診斷其位置及邊界。</Text>;
     const warning=positionWarnings(rect,g,Object.entries(boxes).filter(([id])=>id!==target.id).map(([,box])=>box));
     return <View style={{gap:7,marginTop:8}}>
@@ -106,12 +105,12 @@ export function SpatialToolDetails({field}:{field:string}){
   }
   if(!target||!g||!rect)return <Text style={{color:secondary,marginTop:8}}>請先點選畫面上的真實元件，等待讀取其座標，再進入此工具。</Text>;
   const current=style;
-  const patch=(v:Record<string,unknown>)=>m.patchTarget(target.id,v);
+  const patch=(v:TargetOverride)=>m.patchTarget(target.id,v);
   const move=(axis:'x'|'y',delta:number)=>patch({[axis==='x'?'offsetX':'offsetY']:
     (axis==='x'?(current.offsetX??0):(current.offsetY??0))+delta});
   const place=(x:number|null,y:number|null)=>{
-    patch({...x!==null?{offsetX:enteredOffset(x,'x',g,current,cfg.origin)}:{},
-      ...y!==null?{offsetY:enteredOffset(y,'y',g,current,cfg.origin)}:{}});
+    patch({...(x!==null?{offsetX:enteredOffset(x,'x',g,current,cfg.origin)??undefined}:{}),
+      ...(y!==null?{offsetY:enteredOffset(y,'y',g,current,cfg.origin)??undefined}:{})});
   };
   if(field==='target:xy')return <View style={{gap:9,marginTop:8}}>
     <Text style={{color:secondary,fontSize:12}}>目前實測座標（{cfg.origin==='center'?'中心原點':'左上原點'}）：X {pointX.toFixed(1)}，Y {pointY.toFixed(1)} dp</Text>

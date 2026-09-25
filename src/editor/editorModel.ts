@@ -83,10 +83,13 @@ export type FrameEditorConfig = Readonly<{
   behavior:FrameBehavior;
   titleFontSize:number;
   titleColor:string;
+  titleProfitColor?:boolean;
   titleAlign:TextAlign;
   backgroundColor:string;
+  backgroundProfitColor?:boolean;
   backgroundOpacity:number;
   borderColor:string;
+  borderProfitColor?:boolean;
   borderWidth:number;
   borderRadius:number;
   shadowEnabled:boolean;
@@ -285,6 +288,8 @@ export function normalizeEditorConfig(
       appearance: isFrameAppearance(candidate.appearance)?candidate.appearance:fallback.appearance,
       behavior:isFrameBehavior(candidate.behavior)?candidate.behavior:fallback.behavior,
       titleFontSize:clamp(candidate.titleFontSize,10,32,fallback.titleFontSize),titleColor:wallColor(candidate.titleColor,fallback.titleColor),
+      titleProfitColor:candidate.titleProfitColor===true,backgroundProfitColor:candidate.backgroundProfitColor===true,
+      borderProfitColor:candidate.borderProfitColor===true,
       titleAlign:candidate.titleAlign==='center'||candidate.titleAlign==='right'?candidate.titleAlign:'left',
       backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),

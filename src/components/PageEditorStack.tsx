@@ -27,6 +27,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
       const props=child.props as ComponentProps<typeof MetricTile>;
       const target:InspectedTarget={
         id:'metric:'+props.label,kind:'metric',label:props.label,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        profitTone:props.tone==='gain'?'gain':props.tone==='loss'?'loss':'neutral',
         properties:[
           {name:'欄位名稱',value:props.label,readOnly:true},{name:'即時數值（帳務唯讀）',value:props.value,readOnly:true},
           {name:'原說明',value:props.caption??'無',readOnly:true},{name:'損益狀態',value:props.tone??'default',readOnly:true},
@@ -85,11 +86,11 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
           {(appearance,customized,override)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
             ...props,children:customized&&!isDataValue?(appearance.labelText||appearance.captionText||content):content,
             style:customized?[props.style,{
-              ...(override.textColor?{color:appearance.textColor}:{}),
+              ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
-              ...(override.backgroundColor?{backgroundColor:appearance.backgroundColor}:{}),
-              ...(override.borderColor?{borderColor:appearance.borderColor}:{}),
+              ...(override.backgroundColor||override.backgroundProfitColor!==undefined?{backgroundColor:appearance.backgroundColor}:{}),
+              ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
               ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
               ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
               ...(override.padding!==undefined?{padding:appearance.padding}:{}),
@@ -133,7 +134,8 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
       engineer.begin(pageKey,item.key,item.element.props.title,source,instanceId,displayConfig);
     };
     const originalAction=item.element.props.action;
-    return <WorkspaceSurface key={item.key} config={workspace} active={Boolean(active&&engineer.enabled)}>
+    return <WorkspaceSurface key={item.key} config={workspace} active={Boolean(active&&engineer.enabled)}
+      onBounds={bounds=>engineer.reportWorkspaceBounds(pageKey,item.key,bounds)}>
       {cloneElement(item.element,{
       key:item.key,
       layout:frameConfig?.layout??'standard',
