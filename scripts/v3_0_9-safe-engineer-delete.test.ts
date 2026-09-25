@@ -19,6 +19,9 @@ const removed=removeEngineerOwnedInstance([note,divider],note.id);
 assert.deepEqual(removed.map(x=>x.id),['i-new-divider']);
 assert.deepEqual(removeEngineerOwnedInstance([note,divider],'system:asset-dashboard'),[note,divider]);
 assert.deepEqual(removeEngineerOwnedInstance([note,divider],'i-missing'),[note,divider]);
+const protectedSibling={...note,id:note.id,createdBy:'built-in' as typeof note.createdBy};
+assert.deepEqual(removeEngineerOwnedInstance([note,protectedSibling,divider],note.id),
+  [protectedSibling,divider],'duplicate IDs must NEVER remove a protected sibling');
 const forged={...note,id:'native:headline'};
 assert.deepEqual(removeEngineerOwnedInstance([forged,divider],forged.id),[forged,divider],
   'native App children cannot be removed by claiming createdBy');
