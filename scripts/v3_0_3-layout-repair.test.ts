@@ -33,8 +33,8 @@ for(const [name,screen] of [['home',home],['portfolio',portfolio],['ledger',ledg
   assert.ok(screen.includes('<MetricTile'),name+' must still use the same fixed KPI component');
   assert.ok(screen.includes("flexWrap:'wrap'"),name+' must allow card wrapping');
 }
-assert.ok(inspector.includes('children(appearance,customized,override)'), 'existing live targets must remain editable');
+assert.ok(inspector.includes('children(resolvedAppearance,customized,override)'), 'existing live targets must remain editable');
 for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:composer'])
-  assert.ok(ai.includes(id),'V3.0.3 native AI target lost: '+id);
-const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'3.0.3','layout repair is a V3.0.3 QA revision, NOT a V3.0.4 feature');
-console.log('V3.0.3 layout regression gate: stable ON/OFF metric grid, overlay-only selection, no finance rewrite and AI preservation PASS');
+  assert.ok(ai.includes(id),'V3.0.4 native AI target lost: '+id);
+const pkg=JSON.parse(read('package.json'));assert.equal(pkg.version,'3.0.4','layout repair is a V3.0.4 QA revision, NOT a V3.0.4 feature');
+console.log('V3.0.4 layout regression gate: stable ON/OFF metric grid, overlay-only selection, no finance rewrite and AI preservation PASS');
