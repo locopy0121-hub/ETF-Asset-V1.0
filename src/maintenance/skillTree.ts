@@ -55,7 +55,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
     later('fx-drag-sort','⑦ 子元件拖曳排序','待接入實際 Flex 佈局與手勢'),
     later('fx-animation-advanced','⑧ 滑入／縮放／旋轉動畫','原生動畫及無障礙驗證後接入'),
     later('fx-frame-interaction','⑨ 框架點擊／長按','必須排除內部按鈕手勢衝突'),
-    later('fx-responsive','⑩ 尺寸斷點／中央模板','需安全版本化共享及局部適配')
+    later('fx-responsive','⑩ 尺寸斷點／跨頁中央模板','需安全版本化共享及局部適配')
   ]},
   {id:'dimensions',label:'空間尺寸',description:'內距、最小高度與空間分配',tools:[ready('padding','內距','padding','0–32 px'),ready('min-height','最小高度','minHeight','0–600 px'),ready('target-padding','元件內距','target:padding','0–32 px'),ready('workspace-size','工作區長寬','workspace:size','自由設計工作區，Mobile 超寬時可水平捲動'),ready('target-dimensions','原有元件長寬','target:dimensions','讀取真實 W/H，手動設定寬高'),later('resize-gesture','手勢縮放','需逐個視圖接入真實測量')]},
   {id:'layout',label:'排列定位',description:'密度、標題對齊與順序',tools:[ready('density','排列密度','layout','標準／緊湊／密集'),ready('align','標題對齊','titleAlign','靠左／置中／靠右'),ready('target-align','元件內容對齊','target:align','靠左／置中／靠右'),ready('target-xy','真實 XY 精密定位','target:xy','畫面即時座標、固定 ±1 dp、手動輸入、對齊快捷'),ready('target-anchors','自適應錨點','target:anchors','左右上下中心錨點，工作區變更時維持相對關係'),ready('workspace-guides','XY 軸與基準網格','workspace:guides','中心線與網格是視覺輔助，不強迫貼齊'),ready('workspace-snap','自選智慧吸附','workspace:snapping','Mobile 預設 OFF；只在拖曳放手時吸附，不影響 ±1 或手動輸入'),ready('workspace-diagnostics','超界與重疊診斷','workspace:diagnostics','以真實量測的元件邊界計算'),ready('page-holding-layout','頁面設定：行情排列','page:holdingLayoutMode','單欄／雙欄／三欄／橫向及雙欄滑動'),later('drag-sort','拖移排序','待接入跨元件排序手勢')]},
