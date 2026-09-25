@@ -101,6 +101,13 @@ export function MaintenanceWorkbench(){
         </Text>
       </View>
       {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選取 {pendingSelection.label}，點上方小扳手讀取其目前設定。</Text>:null}
+      {selectedTarget?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>同類元件外觀同步</Text>
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+          <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步其他同類元件的本次外觀修改；不複製文字、定位或數據。</Text>
+          <Switch value={session.syncSameKind} onValueChange={maintenance.setSyncSameKind}/>
+        </View>
+      </View>:null}
       {selectedTarget?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginBottom:8}]}>
         <Text style={[styles.label,{color:theme.palette.text}]}>App 即時元件檢視｜{selectedTarget.label}</Text>
         {selectedTarget.properties.map(row=><View key={row.name} style={{flexDirection:'row',justifyContent:'space-between',gap:8,marginTop:6}}>
@@ -182,7 +189,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
     if(!target)return null;
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
-    const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id));
+    const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
     if(fieldName==='inspect')return <View style={{marginTop:8,gap:4}}>{target.properties.map(row=><Text key={row.name}
       style={{fontSize:12,color:theme.palette.text}}>{row.name}：{row.value}{row.readOnly?'（唯讀）':''}</Text>)}</View>;
     const v=current[key];
