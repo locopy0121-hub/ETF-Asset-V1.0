@@ -107,6 +107,16 @@ export function MaintenanceWorkbench(){
           <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步其他同類元件的本次外觀修改；不複製文字、定位或數據。</Text>
           <Switch value={session.syncSameKind} onValueChange={maintenance.setSyncSameKind}/>
         </View>
+        {session.syncSameKind?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
+          {([['frame','同框架'],['page','本頁'],['app','全 App']] as const).map(([scope,label])=><Pressable key={scope}
+            accessibilityRole="button" accessibilityLabel={'同步範圍 '+label}
+            onPress={()=>maintenance.setSyncScope(scope)}
+            style={[styles.choice,{borderColor:theme.palette.primary,
+              backgroundColor:session.syncScope===scope?theme.palette.primary:theme.palette.surface}]}>
+            <Text style={{color:session.syncScope===scope?'#FFFFFF':theme.palette.text,fontSize:12}}>{label}</Text>
+          </Pressable>)}
+        </View>:null}
+        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>預設僅同步本框架同類元件；跨頁或全 App 需明確選擇。</Text>
       </View>:null}
       {selectedTarget?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginBottom:8}]}>
         <Text style={[styles.label,{color:theme.palette.text}]}>App 即時元件檢視｜{selectedTarget.label}</Text>
