@@ -7,6 +7,8 @@ import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import {resolveBackNavigation,resolvePageSwipeDirection} from './src/domain/navigationGestures';
 import type { HoldingQuote } from './src/domain/uiModels';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
+import {MaintenanceProvider,useMaintenance} from './src/maintenance/MaintenanceRuntime';
+import {MaintenanceWorkbench} from './src/maintenance/MaintenanceWorkbench';
 import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/finance/BrokerSettingsRuntime';
 import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
@@ -38,7 +40,7 @@ export default function App() {
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
-        <AppBody/>
+        <MaintenanceProvider><AppBody/></MaintenanceProvider>
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>
@@ -61,6 +63,7 @@ function AppBody(){
   const monitorSettings=useMonitorSettingsRuntime();
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
+  const maintenance=useMaintenance();
   const {width:screenWidth}=useWindowDimensions();
   const [floatingAiOpen,setFloatingAiOpen]=useState(false);
   const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
@@ -81,7 +84,7 @@ function AppBody(){
   };
   const onSwipeEnd=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
     const start=swipeStart.current;swipeStart.current=null;
-    if(!start||detail||!settings.prefs.navigation.swipeEnabled)return;
+    if(!start||detail||maintenance.session||!settings.prefs.navigation.swipeEnabled)return;
     const dx=event.nativeEvent.pageX-start.x,dy=event.nativeEvent.pageY-start.y;
     if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold)return;
     const direction=resolvePageSwipeDirection({startX:start.x,startY:start.y,endX:event.nativeEvent.pageX,endY:event.nativeEvent.pageY,screenWidth,enabled:settings.prefs.navigation.swipeEnabled,threshold:settings.prefs.navigation.swipeThreshold,edgeOnly:settings.prefs.navigation.swipeEdgeOnly,locked:detail!==null});
@@ -92,6 +95,7 @@ function AppBody(){
   useEffect(()=>{
     const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
       // Native Modal.onRequestClose handles visible native dialogs first.
+      if(maintenance.session){maintenance.cancel();return true;}
       const decision=resolveBackNavigation({active,history:pageHistory.current,hasDetail:detail!==null,floatingExpanded:aiUi.showFloatingAi&&floatingAiOpen,showAiTab:aiUi.showAiTab});
       pageHistory.current=decision.history;
       if(decision.kind==='collapse-ai'){setAiCollapseSignal(value=>value+1);return true;}
@@ -100,7 +104,10 @@ function AppBody(){
       return false; // Leave only from root with no back stack.
     });
     return()=>subscription.remove();
-  },[active,detail,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen]);
+  },[active,detail,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen,maintenance.session]);
+  useEffect(()=>{
+    if(maintenance.session&&(maintenance.session.page!==active||detail))maintenance.cancel();
+  },[active,detail,maintenance.session]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -165,7 +172,7 @@ function AppBody(){
     }
   },[active,detail]);
 
-  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!theme.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated){
+  if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!theme.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated||!maintenance.hydrated){
     return <View style={[styles.loading,{backgroundColor:theme.palette.background}]}>
       <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
       <ActivityIndicator size="large" color={theme.palette.primary}/>
@@ -177,9 +184,12 @@ function AppBody(){
   return <View style={[styles.root,{backgroundColor:theme.palette.background}]}>
     <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
     <ThemeBackgroundLayer/>
-    <View style={styles.screen} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
-    {aiUi.showFloatingAi?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
-    {!detail?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
+    <View style={styles.screen}>
+      <View style={{flex:1}} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
+      {maintenance.session?<MaintenanceWorkbench/>:null}
+    </View>
+    {aiUi.showFloatingAi&&!maintenance.session?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
+    {!detail&&!maintenance.session?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
         {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;

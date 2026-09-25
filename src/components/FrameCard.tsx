@@ -10,10 +10,12 @@ export type FrameCardProps = PropsWithChildren<{
   action?: ReactNode;
   layout?: FrameLayout;
   appearance?: FrameAppearance;
-  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleAlign'|'backgroundColor'|'backgroundOpacity'|'borderColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'>>;
+  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleAlign'|'backgroundColor'|'backgroundOpacity'|'borderColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'|'padding'|'minHeight'>>;
+  workActive?:boolean;
+  workHidden?:boolean;
 }>;
 
-export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle }: FrameCardProps) {
+export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle,workActive=false,workHidden=false }: FrameCardProps) {
   const theme=useThemeRuntime();
   return (
     <View style={[
@@ -29,8 +31,12 @@ export function FrameCard({ title, action, children, layout = 'standard', appear
         borderColor:editorStyle.borderColor,
         borderWidth:editorStyle.borderWidth,
         borderRadius:editorStyle.borderRadius,
+        ...(editorStyle.padding!==undefined?{padding:editorStyle.padding}:{}),
+        ...(editorStyle.minHeight!==undefined?{minHeight:editorStyle.minHeight}:{}),
         ...(editorStyle.shadowEnabled?{elevation:4,shadowOpacity:editorStyle.shadowOpacity,shadowRadius:8,shadowOffset:{width:0,height:2}}:{}),
       },
+      workActive&&{borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary},
+      workHidden&&{opacity:.5},
     ]}>
       <View style={styles.header}>
         <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:editorStyle.titleColor,textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>

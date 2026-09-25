@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "2.3.6",
+  "version": "3.0.1",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v2_3_6 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_1 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -134,7 +134,9 @@
     "test:chart-v234": "tsx scripts/chart-v234.test.ts",
     "test:v2_3_4": "npm run test:v2_3_3 && npm run test:chart-v234",
     "test:crosshair-v236": "tsx scripts/chart-crosshair-v236.test.ts",
-    "test:v2_3_6": "npm run test:v2_3_4 && npm run test:crosshair-v236"
+    "test:v2_3_6": "npm run test:v2_3_4 && npm run test:crosshair-v236",
+    "test:engineer-v301": "tsx scripts/v3_0_1-engineer.test.ts",
+    "test:v3_0_1": "npm run test:v2_3_6 && npm run test:engineer-v301"
   },
   "dependencies": {
     "expo": "~57.0.21",

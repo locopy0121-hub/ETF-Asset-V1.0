@@ -1,0 +1,25 @@
+// A is selected by the local wrench. B is an always-visible full skill tree;
+// C is a specific tool; D is its editable parameter/contract.
+export type SkillTool=Readonly<{id:string;label:string;field?:string;detail:string;status:'ready'|'adapter-required'}>;
+export type EngineerSkill=Readonly<{id:string;label:string;description:string;tools:readonly SkillTool[]}>;
+const ready=(id:string,label:string,field:string,detail:string):SkillTool=>({id,label,field,detail,status:'ready'});
+const later=(id:string,label:string,detail:string):SkillTool=>({id,label,detail,status:'adapter-required'});
+export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
+  {id:'components',label:'元件工程',description:'中央元件庫、插入、文字內容、移除',tools:[ready('install','中央元件庫','instances','元件類型與插入位置'),ready('edit-copy','文字內容','instance-text','新增文字內容'),ready('remove','移除新增元件','instances','只移除目前框架內的實例'),later('complex','專業元件安裝','逐類接入資料／功能 Runtime')]},
+  {id:'frames',label:'框架工程',description:'邊框、圓角與背景',tools:[ready('border-width','邊框粗細','borderWidth','0–8 px'),ready('radius','框架圓角','borderRadius','0–48 px'),ready('background-opacity','背景透明度','backgroundOpacity','0–100%'),ready('appearance','框架樣式','appearance','主題／柔和／描邊')]},
+  {id:'dimensions',label:'空間尺寸',description:'內距、最小高度與空間分配',tools:[ready('padding','內距','padding','0–32 px'),ready('min-height','最小高度','minHeight','0–600 px'),later('resize-gesture','手勢縮放','需逐個視圖接入真實測量')]},
+  {id:'layout',label:'排列定位',description:'密度、標題對齊與順序',tools:[ready('density','排列密度','layout','標準／緊湊／密集'),ready('align','標題對齊','titleAlign','靠左／置中／靠右'),later('drag-sort','拖移排序','待接入跨元件排序手勢')]},
+  {id:'typography',label:'文字編輯',description:'文字大小、顏色與內容',tools:[ready('font-size','標題字號','titleFontSize','10–32 px'),ready('title-color','標題顏色','titleColor','全系統 Color Picker'),later('font-family','字型與字距','需接入可用字型與元件文字層')]},
+  {id:'numbers',label:'數值呈現',description:'數據顯示格式，不碰帳務公式',tools:[later('units','單位與位數','僅修改格式，不可重算帳務'),later('prefix','前綴／後綴','需對應安全資料綁定')]},
+  {id:'colors',label:'色彩工程',description:'Color Picker 與損益色整合',tools:[ready('background-color','背景顏色','backgroundColor','系統色盤'),ready('border-color','邊框顏色','borderColor','系統色盤'),ready('text-color','標題顏色','titleColor','系統色盤'),later('profit-link','損益色綁定','需接入特定數值語意')]},
+  {id:'effects',label:'視覺特效',description:'陰影、透明度及擴充效果',tools:[ready('shadow-toggle','陰影開關','shadowEnabled','啟用／停用'),ready('shadow-opacity','陰影強度','shadowOpacity','0–80%'),later('blur','模糊與光暈','需檢查各裝置圖層相容性')]},
+  {id:'animations',label:'動態動畫',description:'跑馬燈、呼吸燈、提醒動畫',tools:[later('marquee','跑馬燈','需綁定動畫與生命週期'),later('blink','閃爍','需處理無障礙降低動態')]},
+  {id:'charts',label:'圖表工程',description:'K 線、十字線、成交量與指標',tools:[later('candlestick','K 線主圖','第七大項專屬圖表介接'),later('crosshair','十字線','保留 2.3.6 已 PASS 行為'),later('indicators','技術指標','資料來源及指標計算需專項驗證')]},
+  {id:'interaction',label:'互動操作',description:'觸控、滑動、長按與縮放',tools:[later('tap','點擊行為','需確認權限及動作'),later('swipe','手勢互斥','需原生／實機驗證')]},
+  {id:'data',label:'資訊呈現',description:'顯示與資料狀態',tools:[ready('visibility','框架顯示','visible','開啟／關閉'),later('source','欄位資料來源','只讀資料映射，不得建立假資料')]},
+  {id:'conditions',label:'條件顯示',description:'可見狀態與條件策略',tools:[ready('show-hide','顯示開關','visible','顯示／隱藏'),later('threshold','狀態門檻','需要有效資料與門檻驗證')]},
+  {id:'responsive',label:'裝置適配',description:'單雙三欄與內容溢出',tools:[ready('density-mode','框架密度','layout','以目前頁面環境查看'),later('breakpoint','斷點覆寫','需接入專屬元件響應式模型')]},
+  {id:'sharing',label:'元件共享',description:'中央定義、局部實例及模板',tools:[later('save-template','儲存中央模板','共享模板變更必須確認影響範圍'),later('apply-elsewhere','複用實例','不能無提示覆寫其他頁面')]},
+  {id:'versions',label:'版本維護',description:'暫存、套用、取消及回復',tools:[ready('transaction','套用／取消','session','套用持久化；取消丟棄本次全部草稿'),later('history','歷史版本比較','需持久化版本及差異紀錄')]},
+];
+export function findSkill(id:string){return ENGINEER_SKILLS.find(skill=>skill.id===id);}
