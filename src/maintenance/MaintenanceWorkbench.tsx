@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
 import type {FrameEditorConfig} from '../editor/pageEditor';
@@ -19,6 +20,7 @@ import {useMaintenance} from './MaintenanceRuntime';
 export function MaintenanceWorkbench(){
   const maintenance=useMaintenance();
   const theme=useThemeRuntime();
+  const insets=useSafeAreaInsets();
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
@@ -38,7 +40,7 @@ export function MaintenanceWorkbench(){
     if(!success)Alert.alert('儲存失敗','設定尚未套用，請檢查裝置儲存空間並重試。');
   };
   const cancel=()=>maintenance.cancel();
-  return <View style={[styles.dock,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.primary}]}>
+  return <View style={[styles.dock,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.primary,paddingBottom:Math.max(12,insets.bottom)}]}>
     <View style={styles.head}>
       <View style={{flex:1}}>
         <Text style={[styles.headline,{color:theme.palette.text}]}>🔧 駐點維護工程師 · {selectedTarget?.label??session.title}</Text>
