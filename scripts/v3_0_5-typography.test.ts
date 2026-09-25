@@ -48,7 +48,7 @@ assert.ok(stack.includes("kind:'prefix'")&&stack.includes("id:'prefix:'"));
 assert.ok(stack.includes('override.prefixText!==undefined?appearance.prefixText:content'));
 for(const key of ['override.fontWeight','override.fontStyle','override.textDecorationLine',
   'override.letterSpacing','override.lineHeight','override.prefixGap'])assert.ok(stack.includes(key),key);
-for(const key of ['options[fieldName]','key===\'prefixText\'','prefixGap:[0,48,1]'])
+for(const key of ['options[optionName]','key===\'prefixText\'','prefixGap:[0,48,1]'])
   assert.ok(dock.includes(key),key);
 assert.ok(metric.includes('editorStyle?.fontWeight')&&metric.includes('editorStyle?.fontStyle'));
 assert.ok(inspector.includes('if(!engineer.enabled&&!appearance.visible)return null'));
@@ -56,10 +56,10 @@ assert.ok(runtime.includes('normalizeTargetOverride({...current.draftTargets[id]
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 assert.ok(runtime.includes('schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.5');
-assert.equal(app.expo.version,'3.0.5');
-assert.equal(app.expo.android.versionCode,30005);
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.5-QA.apk'));
+assert.equal(pkg.version,'3.0.6');
+assert.equal(app.expo.version,'3.0.6');
+assert.equal(app.expo.android.versionCode,30006);
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.6-QA.apk'));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(path).length>0,'locked finance source exists: '+path);
-console.log('V3.0.5 typography/prefix normalization, scoped native adapters, safety and version gates: AUTOMATED PASS');
+console.log('V3.0.6 typography/prefix normalization, scoped native adapters, safety and version gates: AUTOMATED PASS');
