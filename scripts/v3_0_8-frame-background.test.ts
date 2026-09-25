@@ -84,12 +84,12 @@ assert.ok(details.includes('onProfitColorChange'));
 assert.ok(tree.includes("framefx:maskColor")&&tree.includes("framefx:gradientMidColor"));
 assert.ok(read('src/maintenance/MaintenanceRuntime.tsx').includes('editor.replacePageConfig(normalized)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.9');
-assert.equal(app.expo.version,'3.0.9');
-assert.equal(app.expo.android.versionCode,30009);
-assert.equal(app.expo.ios.buildNumber,'30009');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.9-QA.apk'));
-assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.9'"));
+assert.ok(['3.0.9','3.0.10'].includes(pkg.version));
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));
+assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
+assert.ok(read('src/settings/BackupService.ts').includes(`const APP_VERSION='${pkg.version}'`));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(file).length>0,'locked finance source exists: '+file);
 console.log('V3.0.9 frame images, SAF URI guards, masks, 3-stop gradient and scope isolation: PASS');
