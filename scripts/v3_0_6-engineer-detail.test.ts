@@ -62,13 +62,13 @@ assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'))
 assert.ok(home.includes('{money(portfolio.totalMarketValue)}'));
 assert.ok(!home.includes("valuationComplete?'NT$ '+money(portfolio.totalMarketValue)"));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.9');
-assert.equal(app.expo.version,'3.0.9');
-assert.equal(app.expo.android.versionCode,30009);
-assert.equal(app.expo.ios.buildNumber,'30009');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.9-QA.apk'));
+assert.ok(['3.0.9','3.0.10'].includes(pkg.version));
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));
+assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 assert.ok(read('.github/workflows/ci.yml').includes('go-v3.0.6-20260925-engineer-text-detail'));
-assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.9'"));
+assert.ok(read('src/settings/BackupService.ts').includes(`const APP_VERSION='${pkg.version}'`));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(file).length>0,'immutable accounting source exists: '+file);
 console.log('V3.0.9 engineer text detail: scoped model, native view wiring, locked finance and version gates PASS');
