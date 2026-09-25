@@ -182,7 +182,8 @@ const styles=StyleSheet.create({
   heroDelta:{fontSize:13,fontWeight:'800'},
   pageLayer:{position:'relative'},
   dashboardTop:{minHeight:150,justifyContent:'flex-start'},
-  dashboardSummary:{width:'48%',gap:6},
+  // A narrow fixed 48% hero column clips long NT$ balances on real devices.
+  dashboardSummary:{width:'100%',gap:6},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},

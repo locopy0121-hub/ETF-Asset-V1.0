@@ -19,7 +19,11 @@ assert.ok(stack.includes("child.type===AiQuestionBox"),'AI composite needs a nat
 const hero=read('src/screens/HomeScreen.tsx');
 assert.ok(hero.includes('adjustsFontSizeToFit')&&hero.includes('minimumFontScale={0.52}'));
 const inspect=read('src/maintenance/InspectableTarget.tsx');
-assert.ok(inspect.includes('top:-13')&&inspect.includes('minWidth:32'));
+assert.ok(inspect.includes('selectionOutline')&&inspect.includes('StyleSheet.absoluteFill'));
+assert.ok(inspect.includes('minWidth:136')&&inspect.includes("flexBasis:'46%'"),'metric grid must have an enforced minimum tile width');
+assert.ok(inspect.includes('flexShrink:0')&&inspect.includes('const placement=flex?styles.metricPlacement:undefined'));
+assert.ok(inspect.includes('if(!engineer.enabled')&&inspect.includes('<View style={placement}>'),'engineer OFF must preserve the exact same metric placement');
+assert.ok(inspect.includes('top:2')&&inspect.includes('minWidth:28'),'wrench must be anchored INSIDE the tile, not outside adjacent siblings');
 assert.ok(!inspect.includes("已選取："),'floating caption obscured financial content');
 const dock=read('src/maintenance/MaintenanceWorkbench.tsx');
 assert.ok(dock.includes('displaySkills=ENGINEER_SKILLS.map')&&dock.includes('showAllSkills'));

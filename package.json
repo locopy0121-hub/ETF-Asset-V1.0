@@ -140,7 +140,8 @@
     "test:inspector-v302": "tsx scripts/v3_0_2-inspector.test.ts",
     "test:v3_0_2": "npm run test:v3_0_1 && npm run test:inspector-v302",
     "test:workspace-v303": "tsx scripts/v3_0_3-workspace.test.ts",
-    "test:v3_0_3": "npm run test:v3_0_2 && npm run test:workspace-v303"
+    "test:v3_0_3": "npm run test:v3_0_2 && npm run test:workspace-v303 && npm run test:layout-repair-v303",
+    "test:layout-repair-v303": "tsx scripts/v3_0_3-layout-repair.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

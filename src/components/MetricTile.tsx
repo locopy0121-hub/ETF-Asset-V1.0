@@ -18,7 +18,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle}:{
     <Text style={[styles.label,{color:editorStyle?.labelColor??theme.palette.textSecondary,
       fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left'}]}>{displayedLabel}</Text>
     <Text style={[styles.value,{color:textColor,fontSize:editorStyle?.fontSize??17,
-      textAlign:editorStyle?.align??'left'}]} numberOfLines={1}>{value}</Text>
+      textAlign:editorStyle?.align??'left'}]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
     {displayedCaption?<Text style={[styles.caption,{color:theme.palette.textSecondary,fontSize:editorStyle?.captionFontSize??10,
       textAlign:editorStyle?.align??'left'}]}>{displayedCaption}</Text>:null}
   </View>;
