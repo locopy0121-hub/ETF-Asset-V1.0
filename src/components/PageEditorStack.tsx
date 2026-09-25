@@ -150,7 +150,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
         </Pressable>:null}
       </View>,
       children:<>{decorateContent(item.element.props.children,frame)}
-        {instances.length?<InstalledFrameComponents instances={instances} enabled={engineer.enabled}
+        {instances.length?<InstalledFrameComponents instances={instances} frame={frame} enabled={engineer.enabled}
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
           onWrench={id=>open(id)}/>:null}
       </>,

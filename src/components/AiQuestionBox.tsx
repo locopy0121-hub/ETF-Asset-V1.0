@@ -106,7 +106,7 @@ export function AiQuestionBox({
     ],{...TARGET_APPEARANCE,fontSize:13,textColor:theme.palette.text,backgroundColor:theme.palette.surface,padding:0})}>
       {(appearance,customized,override)=><Text style={[styles.title,{color:theme.palette.text},customized&&{
         ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
-        ...(override.textColor?{color:appearance.textColor}:{}),
+        ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
         ...(override.align?{textAlign:appearance.align}:{}),
       }]}>{customized&&appearance.labelText?appearance.labelText:title}</Text>}
     </InspectableTarget>:<Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>}
@@ -123,8 +123,8 @@ export function AiQuestionBox({
             {name:'原文案',value:item,readOnly:true},{name:'原動作',value:'向 AI 發送這個預設問題',readOnly:true},
           ],{...TARGET_APPEARANCE,fontSize:12,textColor:theme.palette.primary,backgroundColor:theme.palette.surfaceMuted,padding:0})}>
           {(appearance,customized,override)=>chip(
-            customized&&override.backgroundColor?appearance.backgroundColor:theme.palette.surfaceMuted,
-            customized&&override.textColor?appearance.textColor:theme.palette.primary,
+            customized&&(override.backgroundColor||override.backgroundProfitColor!==undefined)?appearance.backgroundColor:theme.palette.surfaceMuted,
+            customized&&(override.textColor||override.textProfitColor!==undefined)?appearance.textColor:theme.palette.primary,
             customized&&override.fontSize!==undefined?appearance.fontSize:12,
           )}
         </InspectableTarget>;

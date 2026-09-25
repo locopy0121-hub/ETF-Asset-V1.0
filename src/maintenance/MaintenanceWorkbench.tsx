@@ -16,6 +16,8 @@ import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
 import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
+import {InspectableTarget} from './InspectableTarget';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
 
 // This is a dock beneath the ACTUAL page, not a simulated preview modal.
 export function MaintenanceWorkbench(){
@@ -290,19 +292,41 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
   return <Text style={{color:theme.palette.textSecondary,marginTop:8}}>此工具尚未連接當前元件的可寫屬性。</Text>;
 }
 
-export function InstalledFrameComponents({instances,onWrench,enabled,activeId}:{
-  instances:readonly MaintenanceInstance[];onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
+export function InstalledFrameComponents({instances,frame,onWrench,enabled,activeId}:{
+  instances:readonly MaintenanceInstance[];frame:FrameMaintenanceContext;
+  onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
 }){
   const theme=useThemeRuntime();
-  return <>{instances.filter(item=>item.visible||item.id===activeId).map(item=><View key={item.id} style={{marginTop:item.marginTop,borderWidth:item.id===activeId?2:0,borderStyle:'dashed',borderColor:theme.palette.primary,padding:item.id===activeId?4:0}}>
-    <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
-      <View style={{flex:1}}>
-        {item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
-        <Text style={{fontSize:item.fontSize,color:item.color,fontWeight:item.templateId==='section-label'?'800':'400'}}>{item.text}</Text>}
+  return <>{instances.filter(item=>item.visible||item.id===activeId).map(item=>{
+    const target:InspectedTarget={
+      id:'installed:'+item.id,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+      kind:item.templateId==='divider'?'generic':'text',label:item.text||'分隔線',
+      properties:[{name:'原始文字（新增元件）',value:item.text||'無',readOnly:false},
+        {name:'既有字號',value:item.fontSize+' dp',readOnly:true}],
+      base:{...TARGET_APPEARANCE,fontSize:item.fontSize,textColor:item.color,labelText:item.text,
+        backgroundColor:theme.palette.surface,padding:0,borderWidth:0},
+    };
+    return <View key={item.id} style={{marginTop:item.marginTop,position:'relative'}}>
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill,{borderStyle:'dashed',
+        borderWidth:item.id===activeId?2:0,borderColor:theme.palette.primary}]}/>
+      <View style={{flexDirection:'row',alignItems:'center',gap:6}}>
+        <View style={{flex:1}}>
+          <InspectableTarget frame={frame} target={target}>{(appearance,customized)=>
+            item.templateId==='divider'?<View style={{height:1,backgroundColor:theme.palette.border,marginVertical:7}}/>:
+              <Text style={{fontSize:customized?appearance.fontSize:item.fontSize,
+                color:customized?appearance.textColor:item.color,
+                backgroundColor:customized?appearance.backgroundColor:undefined,
+                fontWeight:item.templateId==='section-label'?'800':'400',
+                textAlign:customized?appearance.align:'left'}}>
+                {customized&&appearance.labelText?appearance.labelText:item.text}
+              </Text>
+          }</InspectableTarget>
+        </View>
+        {enabled?<Pressable accessibilityLabel="編輯新增元件文字內容" accessibilityRole="button"
+          onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>✎</Text></Pressable>:null}
       </View>
-      {enabled?<Pressable accessibilityLabel="呼叫此元件維護工程師" accessibilityRole="button" onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
-    </View>
-  </View>)}</>;
+    </View>;
+  })}</>;
 }
 const styles=StyleSheet.create({
   dock:{height:'47%',minHeight:245,borderTopWidth:2,paddingHorizontal:12,paddingTop:8},

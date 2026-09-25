@@ -14,6 +14,8 @@ export function SpatialToolDetails({field}:{field:string}){
   const [widthInput,setWidthInput]=useState('');
   const [heightInput,setHeightInput]=useState('');
   const [xInput,setXInput]=useState('');
+  const [targetWInput,setTargetWInput]=useState('');
+  const [targetHInput,setTargetHInput]=useState('');
   const [yInput,setYInput]=useState('');
   const [error,setError]=useState('');
   const cfg=s?.draftWorkspace;
@@ -26,6 +28,8 @@ export function SpatialToolDetails({field}:{field:string}){
   const frameBounds=s?m.getWorkspaceBounds(s.page,s.frameKey):{width:0,height:0};
   useEffect(()=>{setWidthInput(cfg?.width?String(cfg.width):'');setHeightInput(cfg?.height?String(cfg.height):'');},
     [cfg?.width,cfg?.height]);
+  useEffect(()=>{setTargetWInput(String(style.width??g?.width??''));setTargetHInput(String(style.height??g?.height??''));},
+    [target?.id,style.width,style.height,g?.width,g?.height]);
   useEffect(()=>{setXInput(String(Math.round(pointX*100)/100));setYInput(String(Math.round(pointY*100)/100));},
     [target?.id,pointX,pointY,cfg?.origin]);
   if(!s||!cfg)return null;
@@ -155,6 +159,18 @@ export function SpatialToolDetails({field}:{field:string}){
         {button('恢復自適應',()=>patch({[axis]:undefined}))}
       </View>
     </View>)}
+    {lab('手動指定 W／H')}
+    <View style={{flexDirection:'row',gap:8}}>
+      {numeric(targetWInput,setTargetWInput,'元件 W')}
+      {numeric(targetHInput,setTargetHInput,'元件 H')}
+    </View>
+    {button('套用長寬',()=>{
+      const width=Number(targetWInput),height=Number(targetHInput);
+      if(!Number.isFinite(width)||!Number.isFinite(height)||width<28||height<24||width>2400||height>2400){
+        setError('W 需介於 28–2400 dp，H 需介於 24–2400 dp。');return;}
+      setError('');patch({width,height});
+    })}
+    {error?<Text style={{color:theme.palette.loss}}>{error}</Text>:null}
     <Text style={{color:secondary,fontSize:11}}>長寬只改顯示容器；不足以顯示完整金額時，會由金額元件採用適寬字體處理。</Text>
   </View>;
   if(field==='target:anchors')return <View style={{gap:8,marginTop:8}}>
