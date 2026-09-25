@@ -19,7 +19,7 @@ export type TargetAppearance=Readonly<{
   labelFontWeight:TextStyle['fontWeight'];captionFontWeight:TextStyle['fontWeight'];
   labelFontStyle:'normal'|'italic';captionFontStyle:'normal'|'italic';
   labelLetterSpacing:number;captionLetterSpacing:number;labelLineHeight:number;captionLineHeight:number;
-  letterSpacing:number;lineHeight:number;prefixText:string;prefixGap:number;prefixOffsetY:number;
+  letterSpacing:number;lineHeight:number;prefixText:string;prefixGap:number;prefixOffsetX:number;prefixOffsetY:number;
   align:'left'|'center'|'right';useProfitColor:boolean;
   labelText:string;captionText:string;
 }> & SpatialOffset;
@@ -42,13 +42,13 @@ export const TARGET_APPEARANCE:TargetAppearance={
   fontWeight:'normal',fontFamily:'system',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
   labelFontWeight:'700',captionFontWeight:'normal',labelFontStyle:'normal',captionFontStyle:'normal',
   labelLetterSpacing:0,captionLetterSpacing:0,labelLineHeight:0,captionLineHeight:0,
-  prefixText:'',prefixGap:8,prefixOffsetY:0,
+  prefixText:'',prefixGap:8,prefixOffsetX:0,prefixOffsetY:0,
 };
 export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride):TargetAppearance=>({...base,...(custom??{})});
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetY',-24,24],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96]] as const){
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-80,80],['prefixOffsetY',-80,80],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96]] as const){
     if(typeof v[field]==='number'&&Number.isFinite(v[field]))o[field]=clamp(v[field],min,max,min);
   }
   for(const field of ['textColor','labelColor','captionColor','backgroundColor','borderColor'] as const)
@@ -72,7 +72,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
 export function normalizeTargetMap(raw:unknown):Record<string,Record<string,TargetOverride>> {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   return Object.fromEntries(Object.entries(raw as Record<string,unknown>)
-    .filter(([frameId,value])=>/^(home|ledger|portfolio|dividend|ai):[a-z0-9-]+$/.test(frameId)
+    .filter(([frameId,value])=>/^(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+$/.test(frameId)
       &&value&&typeof value==='object'&&!Array.isArray(value))
     .map(([frameId,value])=>[frameId,Object.fromEntries(Object.entries(value as Record<string,unknown>)
       .filter(([id])=>id.length>0&&id.length<=150)
@@ -82,7 +82,7 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
   if(field==='target:profitToneOverride')return true;
-  if(['target:prefixText','target:prefixGap','target:prefixOffsetY'].includes(field))return kind==='prefix';
+  if(['target:prefixText','target:prefixGap','target:prefixOffsetX','target:prefixOffsetY'].includes(field))return kind==='prefix';
   if(field==='target:fontFamily')return ['text','value','prefix','metric'].includes(kind);
   if(['target:labelFontWeight','target:captionFontWeight','target:labelFontStyle','target:captionFontStyle','target:labelLetterSpacing','target:captionLetterSpacing','target:labelLineHeight','target:captionLineHeight'].includes(field))return kind==='metric';
   if(['target:fontWeight','target:fontStyle','target:textDecorationLine','target:letterSpacing','target:lineHeight'].includes(field))return ['text','value','prefix','metric'].includes(kind);
