@@ -59,7 +59,7 @@ for(const [frameKey,value] of Object.entries(isolated)){
     'local frame image must not leak to sibling '+frameKey);
 }
 const frame=ENGINEER_SKILLS.find(group=>group.id==='frames');
-assert.equal(ENGINEER_SKILLS.length,16,'keep one central skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'keep one central skill tree');
 assert.ok(frame);
 for(const field of ['gradientMidEnabled','gradientMidColor','gradientMidStop','imageSource',
   'imageIndex','imageUri','imageFit','imageOpacity','maskColor','maskOpacity'])
