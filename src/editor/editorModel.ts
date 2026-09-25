@@ -1,4 +1,5 @@
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {DEFAULT_ETF_BADGES,normalizeEtfBadges,type EtfBadgeConfig} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST,normalizePortfolioList,type PortfolioListConfig} from '../domain/portfolioList';
 import type { MainPageKey } from '../domain/pageRegistry';
@@ -96,6 +97,7 @@ export type FrameEditorConfig = Readonly<{
   shadowOpacity:number;
   padding?:number;
   minHeight?:number;
+  effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
 }>;
 
 export type PageEditorState = Readonly<Record<MainPageKey, Readonly<Record<string, FrameEditorConfig>>>>;
@@ -119,7 +121,7 @@ export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
   Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => [
     frame.key,
-    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12} satisfies FrameEditorConfig,
+    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
   ]));
 
 export function createInitialEditorState(): PageEditorState {
@@ -294,6 +296,7 @@ export function normalizeEditorConfig(
       backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
+      effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
       ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
     };
