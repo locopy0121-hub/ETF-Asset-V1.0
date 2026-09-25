@@ -36,7 +36,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         },
       };
       return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
-        {appearance=><MetricTile {...props} editorStyle={appearance}/>}
+        {(appearance,customized)=><MetricTile {...props} {...(customized?{editorStyle:appearance}:{})}/>}
       </InspectableTarget>;
     }
     if(child.type===HoldingQuoteCollection){
@@ -73,12 +73,12 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
             padding:typeof raw?.padding==='number'?raw.padding:0,borderRadius:typeof raw?.borderRadius==='number'?raw.borderRadius:0},
         };
         return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>
-          {appearance=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
-            ...props,children:appearance.captionText||content,
-            style:[props.style,{color:appearance.textColor,fontSize:appearance.fontSize,
+          {(appearance,customized)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
+            ...props,children:customized?(appearance.captionText||content):content,
+            style:customized?[props.style,{color:appearance.textColor,fontSize:appearance.fontSize,
               textAlign:appearance.align,backgroundColor:appearance.backgroundColor,
               borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,
-              borderRadius:appearance.borderRadius,padding:appearance.padding}],
+              borderRadius:appearance.borderRadius,padding:appearance.padding}]:props.style,
           })}
         </InspectableTarget>;
       }
@@ -130,7 +130,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
           <Text style={{fontSize:17}}>🔧</Text>
         </Pressable>:null}
       </View>,
-      children:<>{engineer.enabled?decorateContent(item.element.props.children,frame):item.element.props.children}
+      children:<>{decorateContent(item.element.props.children,frame)}
         {instances.length?<InstalledFrameComponents instances={instances} enabled={engineer.enabled}
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
           onWrench={id=>open(id)}/>:null}

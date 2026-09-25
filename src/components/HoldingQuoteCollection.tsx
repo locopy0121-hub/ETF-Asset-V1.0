@@ -43,7 +43,7 @@ export function HoldingQuoteCollection({
         wallConfig={adjusted} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken}
         onPress={()=>onOpenHolding(item)}/>;
     };
-    if(!maintenance||!engineer.enabled)return render();
+    if(!maintenance)return render();
     const target:InspectedTarget={
       id:'quote:'+item.symbol,kind:'quote-card',label:item.symbol+' '+item.name,
       page:maintenance.page,frameKey:maintenance.frameKey,frameTitle:maintenance.frameTitle,
@@ -58,7 +58,7 @@ export function HoldingQuoteCollection({
         textColor:card.textColor,backgroundColor:card.backgroundColor,borderColor:card.borderColor,
         borderWidth:card.borderWidth,borderRadius:card.cornerRadius,padding:card.padding},
     };
-    return <InspectableTarget key={target.id} target={target} frame={maintenance}>{appearance=>render(appearance)}</InspectableTarget>;
+    return <InspectableTarget key={target.id} target={target} frame={maintenance}>{(appearance,customized)=>render(customized?appearance:undefined)}</InspectableTarget>;
   };
   const content=(()=>{
     if(layoutMode==='horizontal'){
