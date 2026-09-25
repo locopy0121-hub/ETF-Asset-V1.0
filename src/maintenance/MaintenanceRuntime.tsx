@@ -4,7 +4,7 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
-import {normalizeTargetMap,normalizeTargetOverride,type InspectedTarget,type TargetOverride} from './inspectionModel';
+import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
@@ -34,6 +34,7 @@ type MaintenanceContextValue=Readonly<{
   clearFrameDimension:(axis:'width'|'height')=>void;
   patchInstance:(id:string,patch:Partial<MaintenanceInstance>)=>void;
   patchTarget:(id:string,patch:TargetOverride)=>void;
+  resetTargetVisual:(id:string)=>void;
   patchWorkspace:(patch:Partial<WorkspaceConfig>)=>void;
   patchDisplay:(patch:Partial<PageDisplayConfig>)=>void;
   install:(templateId:string)=>void;remove:(id:string)=>void;
@@ -161,6 +162,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     }:current),
     patchTarget:(id,patch)=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
       {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})}}:current),
+    resetTargetVisual:id=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
+      {...current,draftTargets:{...current.draftTargets,[id]:resetTargetVisualOverride(current.draftTargets[id]??{})}}:current),
     patchWorkspace:patch=>setSession(current=>current?{...current,
       draftWorkspace:normalizeWorkspace({...current.draftWorkspace,...patch})}:current),
     patchDisplay:patch=>setSession(current=>current?{
