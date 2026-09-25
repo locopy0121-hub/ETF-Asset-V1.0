@@ -113,8 +113,9 @@ export function SpatialToolDetails({field}:{field:string}){
   const move=(axis:'x'|'y',delta:number)=>patch({[axis==='x'?'offsetX':'offsetY']:
     (axis==='x'?(current.offsetX??0):(current.offsetY??0))+delta});
   const place=(x:number|null,y:number|null)=>{
-    patch({...(x!==null?{offsetX:enteredOffset(x,'x',g,current,cfg.origin)??undefined}:{}),
-      ...(y!==null?{offsetY:enteredOffset(y,'y',g,current,cfg.origin)??undefined}:{})});
+    const ox=x===null?null:enteredOffset(x,'x',g,current,cfg.origin);
+    const oy=y===null?null:enteredOffset(y,'y',g,current,cfg.origin);
+    patch({...(ox!==null?{offsetX:ox}:{}),...(oy!==null?{offsetY:oy}:{})});
   };
   if(field==='target:xy')return <View style={{gap:9,marginTop:8}}>
     <Text style={{color:secondary,fontSize:12}}>目前實測座標（{cfg.origin==='center'?'中心原點':'左上原點'}）：X {pointX.toFixed(1)}，Y {pointY.toFixed(1)} dp</Text>

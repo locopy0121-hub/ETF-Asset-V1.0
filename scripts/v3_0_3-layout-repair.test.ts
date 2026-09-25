@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=(p:string)=>readFileSync(p,'utf8');
 const inspector=read('src/maintenance/InspectableTarget.tsx');
+const stack=read('src/components/PageEditorStack.tsx');
 const metric=read('src/components/MetricTile.tsx');
 const home=read('src/screens/HomeScreen.tsx');
 const portfolio=read('src/screens/PortfolioScreen.tsx');

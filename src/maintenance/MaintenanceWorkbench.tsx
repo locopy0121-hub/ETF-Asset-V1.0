@@ -175,8 +175,8 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       };
       const profitFlag=toggles[fieldName];
       return <ColorPalettePicker label={tool.label} value={v} onChange={change}
-        profitColorEnabled={profitFlag?Boolean(current[profitFlag]):undefined}
-        onProfitColorChange={profitFlag?value=>maint.patchTarget(target.id,{[profitFlag]:value}):undefined}/>;
+        {...(profitFlag?{profitColorEnabled:Boolean(current[profitFlag]),
+          onProfitColorChange:(value:boolean)=>maint.patchTarget(target.id,{[profitFlag]:value})}:{})}/>;
     }
     if(typeof v==='number'){
       const range:Record<string,[number,number,number]>={
@@ -274,8 +274,8 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
     };
     const toggle=pair[field];
     return <ColorPalettePicker label={tool.label} value={raw} onChange={change}
-      profitColorEnabled={toggle?Boolean(s.draft[toggle]):undefined}
-      onProfitColorChange={toggle?value=>maint.patchFrame({[toggle]:value}):undefined}/>;
+      {...(toggle?{profitColorEnabled:Boolean(s.draft[toggle]),
+        onProfitColorChange:(value:boolean)=>maint.patchFrame({[toggle]:value})}:{})}/>;
   }
   if(typeof raw==='number'){
     const ranges:Record<string,[number,number,number]>={
