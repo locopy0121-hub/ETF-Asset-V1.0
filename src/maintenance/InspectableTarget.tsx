@@ -2,7 +2,7 @@ import {useEffect,type ReactNode} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
-import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance} from './inspectionModel';
+import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
 /** Light tap selects a live component; its mini wrench enters that *exact* component's engineer. */
 export function InspectableTarget({target,frame,children,flex=false}:{
