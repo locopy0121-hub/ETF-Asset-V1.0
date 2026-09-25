@@ -39,7 +39,8 @@ assert.equal(a.expo.android.versionCode,30001);
 assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.1-QA.apk'));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md']){
   const bytes=readFileSync(path);
-  const sha=createHash('sha1').update('blob '+bytes.length+'\\0').update(bytes).digest('hex');
-  assert.match(sha,/^[a-f0-9]{40}$/);
+  const sha=createHash('sha1').update('blob '+bytes.length+String.fromCharCode(0)).update(bytes).digest('hex');
+  const expected:Record<string,string>={'src/finance/canonicalLedger.ts':'84324138ec2e56a655e0ceacaed3ee541ba7f5c6','src/utils/etfCalculators.ts':'6f31ce33eaa140340c274adaa936c97641d418f2','docs/finance/CORE_LOCK.md':'7865dab714d9dbe266d98f99f116778acef9c3f4'};
+  assert.equal(sha,expected[path],'V2.3.6 protected finance blob changed: '+path);
 }
 console.log('V3.0.1 central catalog, 16 B/C/D skill domains, page wrench + live draft dock and version guards: PASS');
