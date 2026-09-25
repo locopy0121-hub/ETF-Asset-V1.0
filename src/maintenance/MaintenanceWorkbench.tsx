@@ -440,7 +440,7 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
   const theme=useThemeRuntime();
   return <>{instances.filter(item=>!item.parentId&&(item.visible||item.id===activeId)).map(item=>{
     if(item.templateId==='parent-frame'){
-      const children=instances.filter(child=>child.parentId===item.id).map(child=>({...child,parentId:undefined}));
+      const children=instances.filter(child=>child.parentId===item.id).map(({parentId,...child})=>child);
       return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,height:item.frameHeight??240,
         maxWidth:'100%',borderWidth:1,borderRadius:14,borderColor:theme.palette.border,
         backgroundColor:theme.palette.surface,padding:10,overflow:'visible',position:'relative'}}>
