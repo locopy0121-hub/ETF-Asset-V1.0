@@ -1,88 +1,125 @@
-import type { PropsWithChildren, ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
+import {AccessibilityInfo,Animated,StyleSheet,Text,View} from 'react-native';
 
-import type { FrameAppearance, FrameEditorConfig, FrameLayout } from '../editor/pageEditor';
-import { colors, radius, spacing } from '../theme/tokens';
-import { useThemeRuntime } from '../theme/ThemeRuntime';
-import {useSettingsRuntime} from '../settings/SettingsRuntime';
+import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
+import {DEFAULT_FRAME_EFFECTS,colorWithAlpha,mixFrameColors,normalizeFrameEffects} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
+import {useThemeRuntime} from '../theme/ThemeRuntime';
+import {colors,radius,spacing} from '../theme/tokens';
 
-export type FrameCardProps = PropsWithChildren<{
-  title: string;
-  action?: ReactNode;
-  layout?: FrameLayout;
-  appearance?: FrameAppearance;
-  editorStyle?:Partial<Pick<FrameEditorConfig,'titleFontSize'|'titleColor'|'titleProfitColor'|'titleAlign'|'backgroundColor'|'backgroundProfitColor'|'backgroundOpacity'|'borderColor'|'borderProfitColor'|'borderWidth'|'borderRadius'|'shadowEnabled'|'shadowOpacity'|'padding'|'minHeight'>>;
-  workActive?:boolean;
-  workHidden?:boolean;
+export type FrameCardProps=PropsWithChildren<{
+  title:string;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
+  editorStyle?:Partial<FrameEditorConfig>;
+  workActive?:boolean;workHidden?:boolean;
 }>;
 
-export function FrameCard({ title, action, children, layout = 'standard', appearance = 'theme', editorStyle,workActive=false,workHidden=false }: FrameCardProps) {
+export function FrameCard({title,action,children,layout='standard',appearance='theme',
+  editorStyle,workActive=false,workHidden=false}:FrameCardProps){
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
-  return (
-    <View style={[
-      styles.card,
-      {backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
-      layout === 'compact' && styles.cardCompact,
-      layout === 'dense' && styles.cardDense,
-      appearance === 'soft' && {backgroundColor:theme.palette.surfaceMuted},
-      appearance === 'outline' && {borderWidth:2,borderColor:theme.palette.primary},
-      editorStyle&&{
-        backgroundColor:linkedColor(editorStyle.backgroundColor??theme.palette.surface,
-          editorStyle.backgroundProfitColor,'neutral',systemColors),
-        opacity:editorStyle.backgroundOpacity,
-        borderColor:linkedColor(editorStyle.borderColor??theme.palette.border,
-          editorStyle.borderProfitColor,'neutral',systemColors),
-        borderWidth:editorStyle.borderWidth,
-        borderRadius:editorStyle.borderRadius,
-        ...(editorStyle.padding!==undefined?{padding:editorStyle.padding}:{}),
-        ...(editorStyle.minHeight!==undefined?{minHeight:editorStyle.minHeight}:{}),
-        ...(editorStyle.shadowEnabled?{elevation:4,shadowOpacity:editorStyle.shadowOpacity,shadowRadius:8,shadowOffset:{width:0,height:2}}:{}),
-      },
-      workHidden&&{opacity:.5},
-    ]}>
-      {workActive?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
-        borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
-        borderRadius:editorStyle?.borderRadius??radius.lg,
-      }]}/>:null}
-      <View style={styles.header}>
-        <Text style={[styles.title,{color:theme.palette.text}, layout === 'dense' && styles.titleDense,editorStyle&&{fontSize:editorStyle.titleFontSize,color:linkedColor(editorStyle.titleColor??theme.palette.text,
-          editorStyle.titleProfitColor,'neutral',systemColors),textAlign:editorStyle.titleAlign,flex:1}]}>{title}</Text>
-        {action}
-      </View>
-      {children}
+  const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
+  const [reduceMotion,setReduceMotion]=useState(true);
+  const pulse=useRef(new Animated.Value(1)).current;
+  useEffect(()=>{
+    let mounted=true;
+    AccessibilityInfo.isReduceMotionEnabled().then(value=>{if(mounted)setReduceMotion(value);})
+      .catch(()=>{if(mounted)setReduceMotion(true);});
+    return()=>{mounted=false;};
+  },[]);
+  useEffect(()=>{
+    pulse.stopAnimation();pulse.setValue(1);
+    if(!fx.glowEnabled||!fx.glowPulse||reduceMotion||!editorStyle)return;
+    const loop=Animated.loop(Animated.sequence([
+      Animated.timing(pulse,{toValue:.25,duration:fx.glowPeriodMs/2,useNativeDriver:true}),
+      Animated.timing(pulse,{toValue:1,duration:fx.glowPeriodMs/2,useNativeDriver:true}),
+    ]));
+    loop.start();
+    return()=>{loop.stop();pulse.stopAnimation();};
+  },[fx.glowEnabled,fx.glowPulse,fx.glowPeriodMs,reduceMotion,Boolean(editorStyle),pulse]);
+  const bg=linkedColor(editorStyle?.backgroundColor??theme.palette.surface,
+    editorStyle?.backgroundProfitColor,'neutral',systemColors);
+  const bgEnd=linkedColor(fx.gradientEndColor,fx.gradientEndProfitColor,'neutral',systemColors);
+  const frameBorder=linkedColor(editorStyle?.borderColor??theme.palette.border,
+    editorStyle?.borderProfitColor,'neutral',systemColors);
+  const shadowColor=linkedColor(fx.shadowColor,fx.shadowProfitColor,'neutral',systemColors);
+  const glowColor=linkedColor(fx.glowColor,fx.glowProfitColor,'neutral',systemColors);
+  const alpha=editorStyle?.backgroundOpacity??1;
+  const corners={
+    borderTopLeftRadius:fx.cornerTopLeft>=0?fx.cornerTopLeft:editorStyle?.borderRadius??radius.lg,
+    borderTopRightRadius:fx.cornerTopRight>=0?fx.cornerTopRight:editorStyle?.borderRadius??radius.lg,
+    borderBottomRightRadius:fx.cornerBottomRight>=0?fx.cornerBottomRight:editorStyle?.borderRadius??radius.lg,
+    borderBottomLeftRadius:fx.cornerBottomLeft>=0?fx.cornerBottomLeft:editorStyle?.borderRadius??radius.lg,
+  };
+  const gradient=useMemo(()=>Array.from({length:16},(_,i)=>mixFrameColors(bg,bgEnd,i/15)),[bg,bgEnd]);
+  const gradientOn=Boolean(editorStyle&&fx.backgroundMode==='gradient');
+  const shadowOn=Boolean(editorStyle?.shadowEnabled);
+  return <View style={[
+    styles.card,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
+    layout==='compact'&&styles.cardCompact,layout==='dense'&&styles.cardDense,
+    appearance==='soft'&&[styles.cardSoft,{backgroundColor:theme.palette.surfaceMuted}],
+    appearance==='outline'&&[styles.cardOutline,{borderWidth:2,borderColor:theme.palette.primary}],
+    editorStyle&&{
+      backgroundColor:gradientOn?'transparent':colorWithAlpha(bg,alpha),
+      borderColor:frameBorder,borderWidth:editorStyle.borderWidth,
+      borderRadius:editorStyle.borderRadius,...corners,
+      borderStyle:fx.borderStyle,
+      ...(fx.borderTop>=0?{borderTopWidth:fx.borderTop}:{}),
+      ...(fx.borderRight>=0?{borderRightWidth:fx.borderRight}:{}),
+      ...(fx.borderBottom>=0?{borderBottomWidth:fx.borderBottom}:{}),
+      ...(fx.borderLeft>=0?{borderLeftWidth:fx.borderLeft}:{}),
+      ...(editorStyle.padding!==undefined?{padding:editorStyle.padding}:{}),
+      ...(fx.paddingTop>=0?{paddingTop:fx.paddingTop}:{}),
+      ...(fx.paddingRight>=0?{paddingRight:fx.paddingRight}:{}),
+      ...(fx.paddingBottom>=0?{paddingBottom:fx.paddingBottom}:{}),
+      ...(fx.paddingLeft>=0?{paddingLeft:fx.paddingLeft}:{}),
+      ...(editorStyle.minHeight!==undefined?{minHeight:editorStyle.minHeight}:{}),
+      ...(fx.contentGap>=0?{gap:fx.contentGap}:{}),
+      ...(fx.marginVertical>0?{marginVertical:fx.marginVertical}:{}),
+      ...(fx.maxWidth>0?{maxWidth:fx.maxWidth}:{}),
+      ...(shadowOn?{
+        elevation:Math.max(1,Math.round((fx.shadowBlur+fx.shadowOffsetY)*.55)),
+        shadowColor,shadowOpacity:editorStyle.shadowOpacity??.12,
+        shadowRadius:fx.shadowBlur,shadowOffset:{width:fx.shadowOffsetX,height:fx.shadowOffsetY},
+      }:{elevation:0,shadowOpacity:0}),
+    },
+    workHidden&&{opacity:.5},
+  ]}>
+    {gradientOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,corners,{overflow:'hidden',
+      flexDirection:fx.gradientDirection==='vertical'?'column':'row'}]}>
+      {gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
+    </View>:null}
+    {fx.glowEnabled&&editorStyle?<Animated.View pointerEvents="none"
+      style={[StyleSheet.absoluteFill,corners,{borderColor:colorWithAlpha(glowColor,fx.glowOpacity),
+        borderWidth:fx.glowWidth,opacity:pulse,
+        shadowColor:glowColor,shadowOpacity:fx.glowOpacity,
+        shadowRadius:fx.glowWidth*1.5,shadowOffset:{width:0,height:0}}]}/>:null}
+    {workActive?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
+      borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
+      borderRadius:editorStyle?.borderRadius??radius.lg,
+    }]}/>:null}
+    <View style={styles.header}>
+      <Text style={[styles.title,{color:theme.palette.text},
+        layout==='dense'&&styles.titleDense,editorStyle&&{
+          fontSize:editorStyle.titleFontSize,
+          color:linkedColor(editorStyle.titleColor??theme.palette.text,
+            editorStyle.titleProfitColor,'neutral',systemColors),
+          textAlign:editorStyle.titleAlign,flex:1,
+        }]}>{title}</Text>
+      {action}
     </View>
-  );
+    {children}
+  </View>;
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  cardCompact: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderRadius: radius.md,
-  },
-  cardDense: {
-    padding: 10,
-    gap: 6,
-    borderRadius: radius.md,
-  },
-  cardSoft: {
-    backgroundColor: colors.surfaceMuted,
-  },
-  cardOutline: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: colors.text, fontSize: 17, fontWeight: '800' },
-  titleDense: { fontSize: 15 },
+const styles=StyleSheet.create({
+  card:{backgroundColor:colors.surface,borderRadius:radius.lg,borderWidth:1,
+    borderColor:colors.border,padding:spacing.lg,gap:spacing.md},
+  cardCompact:{padding:spacing.md,gap:spacing.sm,borderRadius:radius.md},
+  cardDense:{padding:10,gap:6,borderRadius:radius.md},
+  cardSoft:{backgroundColor:colors.surfaceMuted},
+  cardOutline:{borderWidth:2,borderColor:colors.primary},
+  header:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},
+  title:{color:colors.text,fontSize:17,fontWeight:'800'},
+  titleDense:{fontSize:15},
 });
