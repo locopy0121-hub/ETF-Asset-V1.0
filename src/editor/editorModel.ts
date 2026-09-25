@@ -289,8 +289,8 @@ export function normalizeEditorConfig(
       backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
-      ...(Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
-      ...(Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
+      ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
+      ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
     };
   });
 

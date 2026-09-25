@@ -127,7 +127,7 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
 }
 
 export function InstalledFrameComponents({instances,onWrench,enabled,activeId}:{
-  instances:readonly MaintenanceInstance[];onWrench:(id:string)=>void;enabled:boolean;activeId?:string;
+  instances:readonly MaintenanceInstance[];onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
 }){
   const theme=useThemeRuntime();
   return <>{instances.filter(item=>item.visible||item.id===activeId).map(item=><View key={item.id} style={{marginTop:item.marginTop,borderWidth:item.id===activeId?2:0,borderStyle:'dashed',borderColor:theme.palette.primary,padding:item.id===activeId?4:0}}>
