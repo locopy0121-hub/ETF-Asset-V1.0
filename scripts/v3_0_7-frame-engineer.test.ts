@@ -56,7 +56,7 @@ const legacy=normalizeEditorConfig('home',{...home,'asset-dashboard':legacyFrame
 assert.equal(legacy['asset-dashboard']?.effects?.backgroundMode,'solid');
 
 const skills=ENGINEER_SKILLS.find(g=>g.id==='frames');
-assert.equal(ENGINEER_SKILLS.length,16,'one and only one global engineer skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'one and only one global engineer skill tree');
 assert.ok(skills);
 assert.ok(skills!.tools.filter(t=>t.status==='ready').length>=38);
 assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=10);
