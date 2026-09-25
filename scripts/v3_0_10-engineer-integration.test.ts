@@ -33,9 +33,8 @@ assert.equal(edited['page-header']?.height,240);
 assert.equal(edited['page-header']?.backgroundOpacity,.25);
 assert.equal(edited['asset-dashboard']?.width,undefined);
 assert.equal(makePageConfig('portfolio')['page-header']?.width,undefined);
-const restored=normalizeEditorConfig('home',{...edited,'page-header':{
-  ...edited['page-header']!,width:undefined,height:undefined,
-}});
+const {width:_width,height:_height,...autoHeader}=edited['page-header']!;
+const restored=normalizeEditorConfig('home',{...edited,'page-header':autoHeader});
 assert.equal(restored['page-header']?.width,undefined,'restoring automatic width must remove override');
 assert.equal(restored['page-header']?.height,undefined,'restoring automatic height must remove override');
 
