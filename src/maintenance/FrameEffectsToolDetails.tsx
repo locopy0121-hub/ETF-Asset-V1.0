@@ -49,7 +49,7 @@ function FrameImagePicker({currentUri,onPicked}:{currentUri:string|null;onPicked
     </View>:<Text style={{fontSize:12,color:'#64748B'}}>尚未選取自訂圖片。可先使用 10 張內建背景。</Text>}
     <Pressable accessibilityRole="button" disabled={!nativeRuntimeAvailable||busy}
       accessibilityLabel="Android 選取自訂框架背景" onPress={()=>void pick()}
-      style={{padding:12,alignItems:'center',backgroundColor:'#EDE9FE',borderRadius:8,opacity:!nativeRuntimeAvailable?.45:1}}>
+      style={{padding:12,alignItems:'center',backgroundColor:'#EDE9FE',borderRadius:8,opacity:nativeRuntimeAvailable?1:0.45}}>
       <Text style={{fontWeight:'700',color:'#5B21B6'}}>{busy?'正在開啟選檔器…':'選取手機圖片'}</Text>
     </Pressable>
     {!nativeRuntimeAvailable?<Text style={{color:'#64748B',fontSize:11}}>自訂圖片選擇器需要 Android 原生環境。</Text>:null}
