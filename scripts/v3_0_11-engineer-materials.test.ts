@@ -4,7 +4,6 @@ import {TARGET_APPEARANCE,TARGET_VISUAL_PRESETS,normalizeTargetOverride,mergeTar
   resetTargetVisualOverride,targetToolSupported} from '../src/maintenance/inspectionModel';
 import {ENGINEER_SKILLS} from '../src/maintenance/skillTree';
 import {colorWithAlpha,sampleFrameGradient} from '../src/maintenance/frameEffects';
-import {targetShadowStyle} from '../src/maintenance/TargetSurfaceEffects';
 
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
@@ -38,8 +37,9 @@ assert.equal(normalized.opacity,.95);
 assert.equal(colorWithAlpha('#112233',.35),'rgba(17,34,51,0.350)');
 assert.equal(sampleFrameGradient('#000000','#888888','#FFFFFF',.5,.5,true),'#888888');
 const rendered=mergeTargetAppearance(TARGET_APPEARANCE,normalized);
-assert.equal(targetShadowStyle(rendered,'#112233').shadowColor,'#112233');
-assert.equal(targetShadowStyle({...rendered,shadowEnabled:false},'#112233').shadowColor,undefined);
+assert.equal(rendered.shadowEnabled,true);
+assert.equal(rendered.shadowOpacity,.3);
+assert.equal(rendered.shadowBlur,11);
 const restored=resetTargetVisualOverride(normalized);
 assert.equal(restored.backgroundMode,undefined);
 assert.equal(restored.shadowEnabled,undefined);
@@ -57,6 +57,8 @@ const renderer=read('src/maintenance/TargetSurfaceEffects.tsx');
 assert.ok(metric.includes('<TargetBackdrop')&&metric.includes('targetShadowStyle(surface,shadow)'));
 assert.ok(inspector.includes('<TargetBackdrop')&&inspector.includes('targetShadowStyle(appearance,resolvedAppearance.shadowColor)'));
 assert.ok(renderer.includes('appearance.backgroundOpacity')&&renderer.includes('pointerEvents="none"'));
+assert.ok(renderer.includes('if(!appearance.shadowEnabled)return {}')&&renderer.includes('shadowColor:color'));
+assert.ok(renderer.includes('shadowOpacity:appearance.shadowOpacity')&&renderer.includes('shadowRadius:appearance.shadowBlur'));
 assert.ok(stack.includes("appearance.backgroundMode==='gradient'"));
 assert.ok(workbench.includes("fieldName==='preset'")&&workbench.includes("fieldName==='resetVisual'"));
 assert.ok(runtime.includes('resetTargetVisual:id=>'));
