@@ -12,11 +12,13 @@ const release=fs.readFileSync('.github/workflows/release-v1.yml','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
 
-assert.match(home,/wallConfig=\{editor\.displayConfig\.holdingWall\?\?DEFAULT_HOLDING_WALL_CONFIG\}/,'home main market wall must consume editor config with safe default');
+assert.match(home,/wallConfig=\{effectiveDisplay\.holdingWall\?\?DEFAULT_HOLDING_WALL_CONFIG\}/,'home main market wall must consume effective runtime settings or local draft with safe default');
+assert.match(home,/effectiveDisplay=maintenance\.session\?\.page==='home'\?maintenance\.session\.draftDisplay:editor\.displayConfig/,'home must use real page editor config unless an in-situ draft is active');
 assert.ok(!/sortHoldingQuotes\(finance\.holdings[\s\S]{0,100}slice\(/.test(home),'home market wall must not cap holdings');
 assert.match(collection,/rows\.map\(/,'collection must render all holding rows');
 assert.match(collection,/const effectiveWallConfig=wallConfig\?\?DEFAULT_HOLDING_WALL_CONFIG/,'collection must resolve a non-null wall config');
-assert.match(collection,/wallConfig=\{effectiveWallConfig\}/,'collection must pass resolved wall config to every card');
+assert.match(collection,/wallConfig=\{adjusted\}/,'collection must pass the resolved wall config plus optional selected-card overrides to each card');
+assert.match(collection,/const adjusted=appearance\?/,'selected-card adapter must derive from the page wall source');
 assert.match(card,/HoldingWallConfig/,'holding cards must accept wall editor config');
 assert.match(card,/groups\.header/,'card A header runtime missing');
 assert.match(card,/groups\.quote/,'card quote field runtime missing');
