@@ -243,7 +243,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       const range:Record<string,[number,number,number]>={
         fontSize:[8,48,1],labelFontSize:[8,32,1],captionFontSize:[8,30,1],borderWidth:[0,8,1],
         borderRadius:[0,48,2],padding:[0,32,2],opacity:[0,1,.05],backgroundOpacity:[0,1,.05],
-        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],prefixOffsetY:[-24,24,1],
+        letterSpacing:[-4,16,.5],lineHeight:[0,96,1],prefixGap:[0,48,1],prefixOffsetX:[-80,80,1],prefixOffsetY:[-80,80,1],
         labelLetterSpacing:[-4,16,.5],captionLetterSpacing:[-4,16,.5],
         labelLineHeight:[0,96,1],captionLineHeight:[0,96,1],
       };
