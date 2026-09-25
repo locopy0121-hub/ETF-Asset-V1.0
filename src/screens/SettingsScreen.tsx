@@ -46,7 +46,7 @@ import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOv
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
+type SystemPanel=null|'engineer'|'market'|'permissions'|'diagnostics'|'notifications';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
@@ -163,6 +163,11 @@ export function SettingsScreen(){
 
   function systemSection(){
     return <View style={styles.children}>
+      <ChildButton label="駐點維護工程師｜全局總開關" summary={settings.prefs.engineerEnabled?'已啟用｜各區域活動扳手可呼叫':'已關閉｜日常畫面乾淨'} active={systemPanel==='engineer'} onPress={()=>setSystemPanel(systemPanel==='engineer'?null:'engineer')}/>
+      {systemPanel==='engineer'?<Panel title="全 App 工程師進駐">
+        <ToggleRow label="顯示各模塊／框架／元件活動扳手" value={settings.prefs.engineerEnabled} onChange={settings.patchEngineerEnabled}/>
+        <Text style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
+      </Panel>:null}
       <ChildButton label="行情資料中心／市場更新" summary={'v'+market.marketDataVersion+'｜'+marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
       {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>

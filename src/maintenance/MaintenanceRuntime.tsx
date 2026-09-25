@@ -8,7 +8,7 @@ import {instantiateComponent,normalizeInstances,type MaintenanceInstance} from '
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
 export type MaintenanceSession=Readonly<{
   page:MainPageKey;frameKey:string;title:string;scope:'frame'|'instance';
-  instanceId?:string; focusInstanceId?:string;
+  instanceId?:string|undefined; focusInstanceId?:string|undefined;
   draft:FrameEditorConfig; draftInstances:readonly MaintenanceInstance[];
 }>;
 type MaintenanceContextValue=Readonly<{
@@ -53,8 +53,10 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     getInstances:(page,frameKey)=>saved[storageId(page,frameKey)]??[],
     begin:(page,frameKey,title,config,instanceId)=>{
       if(!enabled||!hydrated)return;
-      setSession(previous=>previous??{
-        page,frameKey,title,scope:instanceId?'instance':'frame',instanceId,
+      setSession(previous=>previous?.page===page&&previous.frameKey===frameKey?
+        {...previous,scope:instanceId?'instance':'frame',instanceId,focusInstanceId:instanceId}:
+        previous??{
+        page,frameKey,title,scope:instanceId?'instance':'frame',...(instanceId?{instanceId}:{}),
         draft:{...config},
         draftInstances:(saved[storageId(page,frameKey)]??[]).map(item=>({...item})),
       });

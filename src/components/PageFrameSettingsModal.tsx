@@ -108,7 +108,7 @@ export function PageFrameSettingsModal({
     <View style={styles.root}>
       <View style={styles.top}>
         <View style={{flex:1}}>
-          <Text style={styles.kicker}>頁面設定 · 統一能力模型</Text>
+          <Text style={styles.kicker}>頁面設定 · 規劃管理平台／常駐維護工程師</Text>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.hint}>元件決定可用工具；AB 規則只負責收合。未編輯區預設收合，切換時上一組自動收起。</Text>
         </View>
@@ -116,6 +116,10 @@ export function PageFrameSettingsModal({
         <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.section}>
+          <View style={styles.header}><Text style={styles.sectionTitle}>駐點維護工程師｜本頁常駐</Text></View>
+          <View style={styles.body}><Text style={styles.rowHint}>在「系統設定 → 駐點維護工程師」開啟全局開關，各框架右上角活動扳手即可呼叫本頁工程師。上方直接編輯真實工作區，下方滑動使用完整 AB 技能庫；套用才寫入、取消立即還原。</Text></View>
+        </View>
         <View style={styles.section}>
           <View style={styles.header}><Text style={styles.sectionTitle}>頁面標題</Text></View>
           <View style={styles.body}><Text style={styles.rowHint}>編輯本頁上方顯示的標題，儲存後即時套用。</Text><TextInput accessibilityLabel="頁面標題" value={titleDraft} onChangeText={setTitleDraft} maxLength={48} style={styles.pageTitleInput}/></View>

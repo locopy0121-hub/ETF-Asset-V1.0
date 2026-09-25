@@ -3,8 +3,8 @@ import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from '
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
-import {CENTRAL_COMPONENT_LIBRARY,readyComponents,type MaintenanceInstance} from './componentLibrary';
-import {ENGINEER_SKILLS,findSkill,type SkillTool} from './skillTree';
+import {CENTRAL_COMPONENT_LIBRARY,type MaintenanceInstance} from './componentLibrary';
+import {ENGINEER_SKILLS,type SkillTool} from './skillTree';
 import {useMaintenance} from './MaintenanceRuntime';
 
 // This is a dock beneath the ACTUAL page, not a simulated preview modal.
@@ -17,7 +17,6 @@ export function MaintenanceWorkbench(){
   const [saving,setSaving]=useState(false);
   useEffect(()=>{setOpenSkill(null);setOpenTool(null);},[session?.page,session?.frameKey,session?.instanceId]);
   if(!session)return null;
-  const skill=findSkill(openSkill??'');
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
   const instance=session.draftInstances.find(item=>item.id===focused);
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
@@ -96,7 +95,8 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
   const instanceKey=s.scope==='instance'?instanceField[field]:undefined;
   if(s.scope==='instance'&&!instanceKey)return <Text style={{color:theme.palette.textSecondary,marginTop:8}}>此工具尚未與這一種元件建立操作介面。</Text>;
   const frame=s.draft as unknown as Record<string,unknown>;
-  const raw=instanceKey&&instance?instance[instanceKey]:frame[field];
+  const numericDefaults:Record<string,number>={padding:16,minHeight:0};
+  const raw=(instanceKey&&instance?instance[instanceKey]:frame[field])??numericDefaults[field];
   const change=(value:unknown)=>{
     if(instanceKey&&instance)maint.patchInstance(instance.id,{[instanceKey]:value} as Partial<MaintenanceInstance>);
     else maint.patchFrame({[field]:value} as Partial<FrameEditorConfig>);
