@@ -23,7 +23,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const active=engineer.enabled&&(!engineer.session||engineer.session.page===frame.page&&engineer.session.frameKey===frame.frameKey);
   const selected=engineer.selection?.page===target.page&&engineer.selection.frameKey===target.frameKey&&engineer.selection.id===target.id;
   const editing=engineer.session?.scope==='target'&&engineer.session.target?.page===target.page&&engineer.session.target.frameKey===target.frameKey&&engineer.session.target.id===target.id;
-  const override=engineer.getTargetOverride(target.page,target.frameKey,target.id);
+  const override=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);
   const appearance=mergeTargetAppearance(target.base,override);
   const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?
     override.profitToneOverride:target.profitTone??'neutral';
