@@ -50,7 +50,8 @@ assert.ok(dimensions.includes("maint.clearFrameDimension(axis)")&&dimensions.inc
 assert.ok(runtime.includes("clearFrameDimension:axis=>")&&runtime.includes('delete draft[axis]'));
 assert.ok(workbench.includes("<FrameDimensionsToolDetails/>"));
 assert.ok(frameCard.includes('editorStyle.width!==undefined')&&frameCard.includes('editorStyle.height!==undefined'));
-assert.ok(frameCard.includes('<ScrollView nestedScrollEnabled'),'explicit parent height must not clip child content');
+assert.ok(frameCard.includes("editorStyle.height!==undefined?{height:editorStyle.height,overflow:'visible'"),'resized parent must preserve child geometry');
+assert.ok(!frameCard.includes('<ScrollView nestedScrollEnabled'),'parent height must not automatically enable nested scrolling');
 
 // Native page header, including individually editable text and local background image.
 const shell=read('src/components/PageShell.tsx');
