@@ -125,6 +125,7 @@ export const TARGET_VISUAL_PRESETS={
     gradientDirection:'horizontal',backgroundOpacity:.85,borderColor:'#C4B5FD',borderWidth:1,borderRadius:16,
     shadowEnabled:true,shadowColor:'#64748B',shadowOpacity:.16,shadowBlur:8,shadowOffsetY:2},
   focus:{backgroundMode:'gradient',backgroundColor:'#172554',gradientEndColor:'#3730A3',
+    textColor:'#FFFFFF',labelColor:'#F8FAFC',captionColor:'#E2E8F0',
     gradientDirection:'vertical',backgroundOpacity:.95,borderColor:'#818CF8',borderWidth:2,borderRadius:12,
     shadowEnabled:true,shadowColor:'#4338CA',shadowOpacity:.5,shadowBlur:12,glowEnabled:true,
     glowColor:'#A5B4FC',glowOpacity:.4,glowWidth:2},
@@ -132,15 +133,17 @@ export const TARGET_VISUAL_PRESETS={
     borderWidth:0,borderRadius:8,shadowEnabled:false,glowEnabled:false},
 } as const satisfies Record<string,TargetOverride>;
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
-  if(field==='target:preset'||field==='target:resetVisual')return true;
+  const nativeMaterial=['metric','text','value','prefix','generic'].includes(kind);
+  if(field==='target:resetVisual')return true;
+  if(field==='target:preset')return nativeMaterial;
   if(['target:backgroundMode','target:gradientDirection','target:gradientEndColor',
       'target:gradientMidColor','target:gradientEndProfitColor','target:gradientMidProfitColor',
       'target:gradientMidEnabled','target:gradientMidStop','target:glowEnabled',
       'target:glowColor','target:glowProfitColor','target:glowOpacity','target:glowWidth'].includes(field))
-    return ['metric','text','value','prefix','generic'].includes(kind);
+    return nativeMaterial;
   if(['target:borderStyle','target:marginVertical','target:marginHorizontal',
       'target:shadowEnabled','target:shadowColor','target:shadowProfitColor','target:shadowOpacity',
-      'target:shadowBlur','target:shadowOffsetX','target:shadowOffsetY'].includes(field))return true;
+      'target:shadowBlur','target:shadowOffsetX','target:shadowOffsetY'].includes(field))return nativeMaterial;
   if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
   if(field==='target:profitToneOverride')return true;
   if(['target:prefixText','target:prefixGap','target:prefixOffsetX','target:prefixOffsetY'].includes(field))return kind==='prefix';
