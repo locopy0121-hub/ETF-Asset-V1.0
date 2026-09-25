@@ -30,7 +30,7 @@ export function parseTwseMonthly(payload:unknown):DailyCandle[]{
   return data.data.map(parseTwseDailyRow).filter((item):item is DailyCandle=>item!==null);
 }
 export async function fetchOfficialDailyHistory(symbol:string,months:number,now=new Date(),signal?:AbortSignal):Promise<DailyCandle[]>{
-  if(!/^\d{4,6}$/.test(symbol)||months<1||months>12)throw new Error('無效的歷史行情查詢');
+  if(!/^\d{4,5}[A-Z]?$/.test(symbol)||months<1||months>12)throw new Error('無效的歷史行情查詢');
   const all=new Map<string,DailyCandle>();
   for(let offset=0;offset<months;offset++){
     if(signal?.aborted)throw new Error('查詢已取消');
@@ -39,7 +39,8 @@ export async function fetchOfficialDailyHistory(symbol:string,months:number,now=
     const url=`https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${date}&stockNo=${symbol}`;
     const response=await fetch(url,{headers:{Accept:'application/json'},...(signal?{signal}:{})});
     if(!response.ok)throw new Error(`TWSE 歷史行情 HTTP ${response.status}`);
-    const parsed=parseTwseMonthly(await response.json());
+    const payload=await response.json();
+    const parsed=parseTwseMonthly(payload);
     for(const candle of parsed)all.set(candle.date,candle);
   }
   return [...all.values()].sort((a,b)=>a.date.localeCompare(b.date));
