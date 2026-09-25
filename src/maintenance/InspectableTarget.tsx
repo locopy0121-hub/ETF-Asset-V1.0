@@ -107,7 +107,9 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const pick=()=>{measureCurrent();engineer.selectTarget(currentTarget);};
   const enter=()=>{measureCurrent();engineer.enterTarget(currentTarget,frame.frameConfig,frame.displayConfig);};
   // Unmodified native subcomponents remain byte-for-byte/layout-for-layout unchanged when OFF.
-  if(!engineer.enabled&&!customized&&!flex)return appearance.visible?<>{children(resolvedAppearance,false,override)}</>:null;
+  // A hidden saved target has NO placeholder or interaction when the engineer is OFF.
+  if(!engineer.enabled&&!appearance.visible)return null;
+  if(!engineer.enabled&&!customized&&!flex)return <>{children(resolvedAppearance,false,override)}</>;
   return <View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
     style={[placement,{position:'relative',opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>

@@ -70,6 +70,7 @@ assert.ok(surface.includes('stage.current.measureInWindow')&&surface.includes('t
 assert.ok(surface.includes('config.showAxes')&&surface.includes('bounds.width/2')&&surface.includes('bounds.height/2'));
 assert.ok(inspect.includes('PanResponder.create')&&inspect.includes('snapDraggedRect(rect,w.config'));
 assert.ok(inspect.includes('geometry')&&inspect.includes('engineer.syncTarget'));
+assert.ok(inspect.includes('if(!engineer.enabled&&!appearance.visible)return null'),'hidden targets must render nothing in normal mode');
 assert.ok(spatial.includes("move('x',-1)")&&spatial.includes("move('x',1)")&&spatial.includes("move('y',-1)")&&spatial.includes("move('y',1)"));
 assert.ok(spatial.includes('enteredOffset')&&spatial.includes('套用工作區尺寸')&&spatial.includes('套用長寬'));
 assert.ok(dock.includes('setShowAllSkills]=useState(true)')&&dock.includes('<SpatialToolDetails'));
