@@ -16,6 +16,7 @@ import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
 import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
+import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
 import {InspectableTarget} from './InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
 
@@ -117,6 +118,7 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(tool.status!=='ready')return false;
   const f=tool.field??'';
   if(f.startsWith('workspace:'))return true;
+  if(f.startsWith('framefx:'))return s.scope==='frame';
   if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
@@ -133,6 +135,9 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  if(tool.field?.startsWith('framefx:'))return toolUsable(tool,s)?
+    <FrameEffectsToolDetails field={tool.field.slice('framefx:'.length)}/>:
+    <Text style={{color:theme.palette.textSecondary}}>框架專屬效果：請點外層框架的大扳手，再選擇專業框架工程。</Text>;
   if(tool.field?.startsWith('workspace:')||['target:xy','target:dimensions','target:anchors'].includes(tool.field??''))
     return <SpatialToolDetails field={tool.field!} />;
   if(!toolUsable(tool,s))return <Text style={{fontSize:12,color:theme.palette.textSecondary,marginTop:8}}>
