@@ -2,7 +2,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
 import type {TargetOverride} from '../maintenance/inspectionModel';
-import type {TargetAppearance} from '../maintenance/inspectionModel';
+import {TARGET_APPEARANCE,mergeTargetAppearance} from '../maintenance/inspectionModel';
+import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
@@ -29,10 +30,19 @@ export function MetricTile({label,value,caption,tone='default',editorStyle}:{
     editorStyle?.captionProfitColor,actualTone,colorPrefs);
   const effectiveBorder=linkedColor(editorStyle?.borderColor??theme.palette.border,
     editorStyle?.borderProfitColor,actualTone,colorPrefs);
+  const surface=mergeTargetAppearance(TARGET_APPEARANCE,editorStyle);
+  const gradientOn=editorStyle?.backgroundMode==='gradient';
+  const gradientEnd=linkedColor(surface.gradientEndColor,surface.gradientEndProfitColor,actualTone,colorPrefs);
+  const gradientMid=linkedColor(surface.gradientMidColor,surface.gradientMidProfitColor,actualTone,colorPrefs);
+  const shadow=linkedColor(surface.shadowColor,surface.shadowProfitColor,actualTone,colorPrefs);
+  const glow=linkedColor(surface.glowColor,surface.glowProfitColor,actualTone,colorPrefs);
   const displayedLabel=editorStyle?.labelText||label;
   const displayedCaption=editorStyle?.captionText||caption;
-  return <View style={[styles.tile,{backgroundColor:colorWithAlpha(effectiveBackground,editorStyle?.backgroundOpacity??1)},
-    editorStyle&&{borderColor:effectiveBorder,borderWidth:editorStyle.borderWidth,borderRadius:editorStyle.borderRadius,padding:editorStyle.padding}]}>
+  return <View style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
+    editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
+      borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
+      marginHorizontal:surface.marginHorizontal,...targetShadowStyle(surface,shadow)}]}>
+    {editorStyle?<TargetBackdrop appearance={surface} start={effectiveBackground} middle={gradientMid} end={gradientEnd} glow={glow}/>:null}
     <Text style={[styles.label,{color:effectiveLabel,
       fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left',
       ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
