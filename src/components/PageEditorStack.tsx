@@ -15,6 +15,7 @@ import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {spacing} from '../theme/tokens';
+import {colorWithAlpha} from '../maintenance/frameEffects';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -108,7 +109,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
               ...(isPrefix&&override.prefixOffsetY!==undefined?{transform:[{translateY:appearance.prefixOffsetY}]}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
-              ...(override.backgroundColor||override.backgroundProfitColor!==undefined?{backgroundColor:appearance.backgroundColor}:{}),
+              ...(override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?{backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
               ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
               ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
               ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
@@ -153,7 +154,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
       engineer.begin(pageKey,item.key,item.element.props.title,source,instanceId,displayConfig);
     };
     const originalAction=item.element.props.action;
-    return <WorkspaceSurface key={item.key} config={workspace} active={Boolean(active&&engineer.enabled)}
+    return <WorkspaceSurface key={item.key} config={active&&frameConfig?.width?{...workspace,width:Math.max(workspace.width,frameConfig.width)}:workspace} active={Boolean(active&&engineer.enabled)}
       onBounds={bounds=>engineer.reportWorkspaceBounds(pageKey,item.key,bounds)}>
       {cloneElement(item.element,{
       key:item.key,
