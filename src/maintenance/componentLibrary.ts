@@ -68,5 +68,8 @@ export function removeEngineerOwnedInstance(instances:readonly MaintenanceInstan
   const selected=instances.find(item=>item.id===id);
   if(!isEngineerOwnedInstance(selected))return [...instances];
   // Removing a parent never deletes its children: move them back to the local root.
-  return instances.filter(item=>item.id!==id).map(item=>item.parentId===id?{...item,parentId:undefined}:item);
+  return instances.filter(item=>item.id!==id).map(item=>{
+    if(item.parentId!==id)return item;
+    const {parentId,...child}=item;return child;
+  });
 }
