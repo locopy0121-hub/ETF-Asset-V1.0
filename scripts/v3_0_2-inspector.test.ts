@@ -41,7 +41,7 @@ assert.ok(inspector.includes("onPress={()=>engineer.selectTarget(target)}")&&ins
 assert.ok(quotes.includes("id:'quote:'+item.symbol")&&quotes.includes("kind:'wall'"));
 assert.ok(metric.includes('editorStyle?.useProfitColor===false'),'profit-color state remains an explicit visual toggle');
 assert.ok(scope.includes('getTargetOverride:')&&scope.includes('draftTargets:')&&scope.includes('patchDisplay:'));
-assert.ok(scope.includes('schema:2,instances:nextSaved,targets:nextTargets'),'instance and appearance persisted together');
+assert.ok(scope.includes('schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace'),'instance, appearance and spatial prefs persisted together');
 assert.ok(scope.includes("previous??{")&&scope.includes("scope:'target'"));
 assert.ok(scope.includes('cancel:()=>{setSession(null);setSelection(null);}'),'discard all pending work');
 assert.ok(dock.includes('<HoldingMarketWallEditor')&&dock.includes('<EtfBadgeEditor')&&dock.includes('<PortfolioListEditor'));
