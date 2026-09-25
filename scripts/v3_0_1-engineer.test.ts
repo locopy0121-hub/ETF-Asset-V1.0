@@ -4,7 +4,7 @@ import {createHash} from 'node:crypto';
 import {CENTRAL_COMPONENT_LIBRARY,instantiateComponent,normalizeInstances,readyComponents} from '../src/maintenance/componentLibrary';
 import {ENGINEER_SKILLS,findSkill} from '../src/maintenance/skillTree';
 
-assert.equal(ENGINEER_SKILLS.length,16,'one complete engineer skills tree');
+assert.ok(ENGINEER_SKILLS.length>=16,'one extensible central engineer skills tree');
 assert.equal(new Set(ENGINEER_SKILLS.map(s=>s.id)).size,ENGINEER_SKILLS.length);
 assert.ok(ENGINEER_SKILLS.every(s=>s.tools.length>=2&&s.tools.every(t=>Boolean(t.detail))),'B→C→D defined for all skills');
 for(const id of ['components','frames','dimensions','layout','typography','colors','effects','charts','interaction','responsive','versions'])assert.ok(findSkill(id),id);
@@ -33,7 +33,7 @@ assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'),
 assert.ok(dock.includes('取消／恢復')&&dock.includes('儲存／套用'));
 assert.ok(!app.includes('V5')&&!runtime.includes('360'));
 const pkg=JSON.parse(read('package.json')),a=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));
 assert.equal(a.expo.version,pkg.version);
 assert.equal(a.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
@@ -43,4 +43,4 @@ for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts
   const expected:Record<string,string>={'src/finance/canonicalLedger.ts':'84324138ec2e56a655e0ceacaed3ee541ba7f5c6','src/utils/etfCalculators.ts':'6f31ce33eaa140340c274adaa936c97641d418f2','docs/finance/CORE_LOCK.md':'7865dab714d9dbe266d98f99f116778acef9c3f4'};
   assert.equal(sha,expected[path],'V2.3.6 protected finance blob changed: '+path);
 }
-console.log('V3.0.1 central catalog, 16 B/C/D skill domains, page wrench + live draft dock and version guards: PASS');
+console.log('V3.0.1 central catalog, extensible B/C/D skill domains, page wrench + live draft dock and version guards: PASS');

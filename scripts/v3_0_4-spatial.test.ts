@@ -54,7 +54,7 @@ assert.equal(mergeTargetAppearance(TARGET_APPEARANCE,custom).backgroundProfitCol
 for(const field of ['target:xy','target:dimensions','target:anchors','target:backgroundProfitColor','target:borderProfitColor'])
   assert.equal(targetToolSupported('metric',field),true,'missing metric tool: '+field);
 assert.equal(targetToolSupported('value','target:labelText'),false,'financial value cannot be replaced');
-assert.equal(ENGINEER_SKILLS.length,16,'all existing B skill domains must remain');
+assert.ok(ENGINEER_SKILLS.length>=16,'all existing B skill domains must remain');
 for(const field of ['workspace:size','workspace:guides','workspace:snapping','workspace:diagnostics','target:xy','target:dimensions','target:anchors'])
   assert.ok(ENGINEER_SKILLS.some(group=>group.tools.some(tool=>tool.field===field&&tool.status==='ready')),field);
 
@@ -86,7 +86,7 @@ assert.ok(runtime.includes('schema:3,instances:nextSaved,targets:nextTargets,wor
 assert.ok(runtime.includes('parsed.schema===2||parsed.schema===3'),'old saved target styles must migrate');
 assert.ok(!model.includes('etfCalculators'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 console.log('V3.0.9 measured spatial math, strict ±1, optional drag-only snap, global color flags and cross-page contracts: AUTOMATED PASS');

@@ -6,6 +6,7 @@ import {useWorkspace} from './WorkspaceSurface';
 import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type TargetGeometry} from './workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colorWithAlpha} from './frameEffects';
+import {TargetBackdrop,targetShadowStyle} from './TargetSurfaceEffects';
 import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
@@ -32,6 +33,10 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     captionColor:linkedColor(appearance.captionColor,appearance.captionProfitColor,actualTone,settings.prefs.display),
     backgroundColor:linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,actualTone,settings.prefs.display),
     borderColor:linkedColor(appearance.borderColor,appearance.borderProfitColor,actualTone,settings.prefs.display),
+    gradientEndColor:linkedColor(appearance.gradientEndColor,appearance.gradientEndProfitColor,actualTone,settings.prefs.display),
+    gradientMidColor:linkedColor(appearance.gradientMidColor,appearance.gradientMidProfitColor,actualTone,settings.prefs.display),
+    shadowColor:linkedColor(appearance.shadowColor,appearance.shadowProfitColor,actualTone,settings.prefs.display),
+    glowColor:linkedColor(appearance.glowColor,appearance.glowProfitColor,actualTone,settings.prefs.display),
   };
   const customized=Object.keys(override).length>0;
   const measured=geometry??{naturalX:0,naturalY:0,width:0,height:0,
@@ -43,12 +48,28 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     {flexBasis:override.width,minWidth:override.width,maxWidth:override.width}:{width:override.width}):null;
   const spatial={transform:[{translateX:displacement.x},{translateY:displacement.y}],
     ...(override.height!==undefined?{height:override.height}:{})};
-  const wrapperStyle=customized&&['wall','portfolio-list','control','generic'].includes(target.kind)?{
-    ...(override.backgroundColor||override.backgroundProfitColor||override.backgroundOpacity!==undefined?{backgroundColor:colorWithAlpha(resolvedAppearance.backgroundColor,appearance.backgroundOpacity)}:{}),
-    ...(override.borderColor||override.borderProfitColor?{borderColor:resolvedAppearance.borderColor}:{}),
+  // Material layers for native text/value and generic surfaces are real, local instances.
+  // MetricTile owns its own backdrop so financial labels and figures are not wrapped twice.
+  const materialKeys=['backgroundMode','gradientDirection','gradientEndColor','gradientMidColor',
+    'gradientMidEnabled','gradientMidStop','glowEnabled','glowColor','glowOpacity','glowWidth',
+    'shadowEnabled','shadowColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
+    'marginVertical','marginHorizontal','borderStyle'];
+  const materialActive=customized&&['text','value','prefix','generic'].includes(target.kind)&&
+    materialKeys.some(key=>Object.hasOwn(override,key));
+  const wrapperKind=['wall','portfolio-list','control','generic'].includes(target.kind)||materialActive;
+  const wrapperStyle=customized&&wrapperKind?{
+    ...(materialActive&&appearance.backgroundMode==='gradient'?{backgroundColor:'transparent'}:
+      (override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+        {backgroundColor:colorWithAlpha(resolvedAppearance.backgroundColor,appearance.backgroundOpacity)}:{})),
+    ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:resolvedAppearance.borderColor}:{}),
     ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
     ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
     ...(override.padding!==undefined?{padding:appearance.padding}:{}),
+    ...(materialActive?{
+      borderStyle:appearance.borderStyle,marginVertical:appearance.marginVertical,
+      marginHorizontal:appearance.marginHorizontal,
+      ...targetShadowStyle(appearance,resolvedAppearance.shadowColor),
+    }:{}),
   }:null;
   const targetKey=target.id; // this provider is scoped to one real frame, not a shadow preview.
   const measureCurrent=()=>{
@@ -126,6 +147,9 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   return <View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
     style={[placement,{position:'relative',opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
+    {materialActive?<TargetBackdrop appearance={appearance} start={resolvedAppearance.backgroundColor}
+      middle={resolvedAppearance.gradientMidColor} end={resolvedAppearance.gradientEndColor}
+      glow={resolvedAppearance.glowColor}/>:null}
     {appearance.visible||selected||editing?children(resolvedAppearance,customized,override):
       <View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {(selected||editing)&&engineer.enabled?<View pointerEvents="none"

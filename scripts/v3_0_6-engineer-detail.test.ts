@@ -35,7 +35,7 @@ assert.equal(targetToolSupported('value','target:fontFamily'),true);
 assert.equal(targetToolSupported('text','target:labelFontWeight'),false);
 assert.equal(targetToolSupported('value','target:prefixOffsetY'),false);
 assert.equal(targetToolSupported('control','target:fontFamily'),false);
-assert.equal(ENGINEER_SKILLS.length,16,'do not fork the one full App skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'do not fork the one full App skill tree');
 for(const field of ['target:fontFamily','target:labelFontWeight','target:captionFontWeight',
   'target:labelFontStyle','target:captionFontStyle','target:labelLetterSpacing',
   'target:captionLetterSpacing','target:labelLineHeight','target:captionLineHeight',
@@ -62,7 +62,7 @@ assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'))
 assert.ok(home.includes('{money(portfolio.totalMarketValue)}'));
 assert.ok(!home.includes("valuationComplete?'NT$ '+money(portfolio.totalMarketValue)"));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));

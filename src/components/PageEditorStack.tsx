@@ -109,7 +109,10 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
               ...(isPrefix&&(override.prefixOffsetX!==undefined||override.prefixOffsetY!==undefined)?{transform:[{translateX:appearance.prefixOffsetX},{translateY:appearance.prefixOffsetY}]}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
-              ...(override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?{backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
+              ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?
+                {backgroundColor:'transparent'}:
+                override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+                {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
               ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
               ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
               ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),

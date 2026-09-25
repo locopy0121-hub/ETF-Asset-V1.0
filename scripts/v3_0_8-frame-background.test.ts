@@ -59,7 +59,7 @@ for(const [frameKey,value] of Object.entries(isolated)){
     'local frame image must not leak to sibling '+frameKey);
 }
 const frame=ENGINEER_SKILLS.find(group=>group.id==='frames');
-assert.equal(ENGINEER_SKILLS.length,16,'keep one central skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'keep one central skill tree');
 assert.ok(frame);
 for(const field of ['gradientMidEnabled','gradientMidColor','gradientMidStop','imageSource',
   'imageIndex','imageUri','imageFit','imageOpacity','maskColor','maskOpacity'])
@@ -84,7 +84,7 @@ assert.ok(details.includes('onProfitColorChange'));
 assert.ok(tree.includes("framefx:maskColor")&&tree.includes("framefx:gradientMidColor"));
 assert.ok(read('src/maintenance/MaintenanceRuntime.tsx').includes('editor.replacePageConfig(normalized)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));

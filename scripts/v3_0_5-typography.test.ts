@@ -27,7 +27,7 @@ assert.equal(targetToolSupported('value','target:fontWeight'),true);
 assert.equal(targetToolSupported('text','target:fontStyle'),true);
 assert.equal(targetToolSupported('metric','target:textDecorationLine'),true);
 assert.equal(targetToolSupported('control','target:fontStyle'),false);
-assert.equal(ENGINEER_SKILLS.length,16,'preserve one shared 16-domain engineer skill tree');
+assert.ok(ENGINEER_SKILLS.length>=16,'preserve one shared 16-domain engineer skill tree');
 for(const field of ['target:fontWeight','target:fontStyle','target:textDecorationLine',
   'target:letterSpacing','target:lineHeight','target:prefixText','target:prefixGap']){
   assert.ok(ENGINEER_SKILLS.some(group=>group.tools.some(tool=>tool.field===field&&tool.status==='ready')),field);
@@ -56,7 +56,7 @@ assert.ok(runtime.includes('normalizeTargetOverride({...current.draftTargets[id]
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 assert.ok(runtime.includes('schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));

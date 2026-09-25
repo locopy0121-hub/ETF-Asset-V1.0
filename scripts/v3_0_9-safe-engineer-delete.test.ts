@@ -33,7 +33,7 @@ assert.equal(normalizeInstances([{...note,id:'native:frame'}]).length,0);
 assert.equal(normalizeInstances([{...note,createdBy:'system'}]).length,0);
 assert.equal(normalizeInstances([{...note,id:'i-good'}]).length,1);
 
-assert.equal(ENGINEER_SKILLS.length,16,'keep exactly one central skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'keep exactly one central skill tree');
 const engineer=ENGINEER_SKILLS.find(g=>g.id==='components');
 assert.ok(engineer?.tools.some(t=>t.id==='install'&&t.status==='ready'));
 assert.ok(engineer?.tools.some(t=>t.id==='remove'&&t.status==='ready'&&t.label.includes('刪除')));
@@ -63,9 +63,9 @@ assert.ok(runtime.indexOf('await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY')<
   runtime.indexOf('editor.replacePageConfig(normalized)'));
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10'].includes(pkg.version),'V3.0.9 regression runs unchanged on newer compatible versions');
+assert.ok(['3.0.9','3.0.10','3.0.11'].includes(pkg.version),'V3.0.9 regression runs unchanged on newer compatible versions');
 assert.equal(app.expo.version,pkg.version);
-const identity=pkg.version==='3.0.10'?30010:30009;
+const identity=30000+Number(pkg.version.split('.')[2]);
 assert.equal(app.expo.android.versionCode,identity);
 assert.equal(app.expo.ios.buildNumber,String(identity));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));

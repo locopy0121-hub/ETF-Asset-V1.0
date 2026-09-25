@@ -21,7 +21,7 @@ assert.equal(targetToolSupported('quote-card','page:wall'),false,'shared page to
 assert.equal(targetToolSupported('wall','page:wall'),true);
 assert.equal(targetToolSupported('portfolio-list','page:list'),true);
 assert.equal(targetToolSupported('control','target:fontSize'),false);
-assert.equal(ENGINEER_SKILLS.length,16,'full skill tree remains unified');
+assert.ok(ENGINEER_SKILLS.length>=16,'full skill tree remains unified');
 for(const field of ['target:fontSize','target:padding','target:visible','page:wall','page:badges','page:list','page:quoteStyle','page:holdingLayoutMode'])
   assert.ok(ENGINEER_SKILLS.some(skill=>skill.tools.some(tool=>tool.field===field&&tool.status==='ready')),field);
 assert.ok(CENTRAL_COMPONENT_LIBRARY.length>=12,'central catalog retained');
