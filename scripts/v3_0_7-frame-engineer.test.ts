@@ -50,9 +50,9 @@ const normalized=normalizeEditorConfig('home',{...home,'asset-dashboard':{
 assert.equal(normalized['asset-dashboard']?.effects?.borderTop,3);
 assert.equal(normalized['asset-dashboard']?.effects?.glowOpacity,.58);
 assert.equal(normalized['market-news']?.effects?.glowEnabled,false,'other frames must not inherit draft effects');
-const legacy=normalizeEditorConfig('home',{...home,'asset-dashboard':{
-  ...home['asset-dashboard']!,effects:undefined,
-}});
+const legacyFrame=Object.fromEntries(Object.entries(home['asset-dashboard']!)
+  .filter(([key])=>key!=='effects')) as typeof home['asset-dashboard'];
+const legacy=normalizeEditorConfig('home',{...home,'asset-dashboard':legacyFrame});
 assert.equal(legacy['asset-dashboard']?.effects?.backgroundMode,'solid');
 
 const skills=ENGINEER_SKILLS.find(g=>g.id==='frames');
