@@ -35,7 +35,7 @@ assert.equal(targetToolSupported('value','target:fontFamily'),true);
 assert.equal(targetToolSupported('text','target:labelFontWeight'),false);
 assert.equal(targetToolSupported('value','target:prefixOffsetY'),false);
 assert.equal(targetToolSupported('control','target:fontFamily'),false);
-assert.equal(ENGINEER_SKILLS.length,16,'do not fork the one full App skill tree');
+assert.equal(ENGINEER_SKILLS.length,17,'do not fork the one full App skill tree');
 for(const field of ['target:fontFamily','target:labelFontWeight','target:captionFontWeight',
   'target:labelFontStyle','target:captionFontStyle','target:labelLetterSpacing',
   'target:captionLetterSpacing','target:labelLineHeight','target:captionLineHeight',
