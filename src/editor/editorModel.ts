@@ -97,7 +97,7 @@ export type FrameEditorConfig = Readonly<{
   shadowOpacity:number;
   padding?:number;
   width?:number; // Explicit parent frame width, 0/undefined follows available space.
-  height?:number; // Explicit parent frame height; nested content scrolls instead of clipping.
+  height?:number; // Explicit parent frame height; children retain their own geometry, no implicit scrolling.
   minHeight?:number;
   effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
 }>;
