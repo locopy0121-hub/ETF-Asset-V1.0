@@ -77,7 +77,7 @@ assert.ok(inspect.includes('override.anchorX||override.anchorY')&&inspect.includ
   'all responsive anchors must be remeasured when the workspace changes');
 assert.ok(spatial.includes("move('x',-1)")&&spatial.includes("move('x',1)")&&spatial.includes("move('y',-1)")&&spatial.includes("move('y',1)"));
 assert.ok(spatial.includes('enteredOffset')&&spatial.includes('套用工作區尺寸')&&spatial.includes('套用長寬'));
-assert.ok(dock.includes('const displaySkills=ENGINEER_SKILLS;')&&dock.includes('displaySkills.map(skillItem=>')&&dock.includes('<SpatialToolDetails'),
+assert.ok(dock.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;')&&dock.includes('displaySkills.map(skillItem=>')&&dock.includes('<SpatialToolDetails'),
   'all central skill domains must remain visible without a filtering toggle, including spatial tools');
 assert.ok(picker.includes('onProfitColorChange')&&!picker.includes('HEX 輸入'));
 for(const source of [metric,frame])assert.ok(source.includes('linkedColor'),'system profit color disconnected');
