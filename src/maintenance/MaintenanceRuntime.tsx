@@ -4,29 +4,37 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
-import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
+import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,targetToolSupported,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
+import {safeBatchPatch,type BatchField,type VisualSource} from './advancedSkillEngine';
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
 const scopeId=(page:MainPageKey,frameKey:string)=>page+':'+frameKey;
 const instanceKind=(templateId:string):TargetKind=>templateId==='parent-frame'?'frame':templateId==='divider'?'generic':'text';
 type StyleSyncScope='frame'|'page'|'app';
+export type RegisteredVisualTarget=Readonly<{id:string;kind:TargetKind;label:string;base:TargetAppearance}>;
 const sharedKey=(page:MainPageKey,frameKey:string,kind:TargetKind,scope:StyleSyncScope)=>
   scope==='frame'?`frame:${page}:${frameKey}:${kind}`:scope==='page'?`page:${page}:${kind}`:`app:${kind}`;
 
 export type MaintenanceSession=Readonly<{
   page:MainPageKey;frameKey:string;title:string;scope:'frame'|'instance'|'target';
   instanceId?:string|undefined;focusInstanceId?:string|undefined;target?:InspectedTarget|undefined;
-  draft:FrameEditorConfig;draftInstances:readonly MaintenanceInstance[];
+  draft:FrameEditorConfig;originalFrame:FrameEditorConfig;draftInstances:readonly MaintenanceInstance[];
   draftTargets:Readonly<Record<string,TargetOverride>>;
   draftWorkspace:WorkspaceConfig;
   draftDisplay:PageDisplayConfig;displayTouched:readonly (keyof PageDisplayConfig)[];
   syncSameKind:boolean;syncScope:StyleSyncScope;sharedTouched:readonly (keyof TargetAppearance)[];
+  batchLocalOverrides:Readonly<Record<string,readonly string[]>>;
 }>;
 type MaintenanceContextValue=Readonly<{
   hydrated:boolean;enabled:boolean;session:MaintenanceSession|null;selection:InspectedTarget|null;
   getInstances:(page:MainPageKey,frameKey:string)=>readonly MaintenanceInstance[];
   getTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
+  getSavedTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
+  getFrameTargets:(page:MainPageKey,frameKey:string)=>readonly RegisteredVisualTarget[];
+  registerTarget:(page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>void;
+  unregisterTarget:(page:MainPageKey,frameKey:string,id:string)=>void;
+  patchBatchVisual:(ids:readonly string[],source:VisualSource,keys:readonly BatchField[])=>void;
   setSyncSameKind:(enabled:boolean)=>void;
   setSyncScope:(scope:StyleSyncScope)=>void;
   getWorkspace:(page:MainPageKey,frameKey:string)=>WorkspaceConfig;
@@ -67,6 +75,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [workspaces,setWorkspaces]=useState<Record<string,WorkspaceConfig>>({});
   const [liveBounds,setLiveBounds]=useState<Record<string,{width:number;height:number}>>({});
   const [liveRects,setLiveRects]=useState<Record<string,Record<string,PositionedRect>>>({});
+  const [registered,setRegistered]=useState<Record<string,Record<string,RegisteredVisualTarget>>>({});
   const [hydrated,setHydrated]=useState(false);
   const [selection,setSelection]=useState<InspectedTarget|null>(null);
   const [session,setSession]=useState<MaintenanceSession|null>(null);
@@ -121,9 +130,32 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     if(old&&old.x===rect.x&&old.y===rect.y&&old.width===rect.width&&old.height===rect.height)return previous;
     return {...previous,[key]:{...all,[id]:rect}};
   }),[]);
+  const registerTarget=useCallback((page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>setRegistered(old=>{
+    const key=scopeId(page,frameKey),before=old[key]??{},previous=before[target.id];
+    if(previous&&previous.kind===target.kind&&previous.label===target.label&&JSON.stringify(previous.base)===JSON.stringify(target.base))return old;
+    return {...old,[key]:{...before,[target.id]:target}};
+  }),[]);
+  const unregisterTarget=useCallback((page:MainPageKey,frameKey:string,id:string)=>setRegistered(old=>{
+    const key=scopeId(page,frameKey),before=old[key];
+    if(!before||!before[id])return old;
+    const next={...before};delete next[id];return {...old,[key]:next};
+  }),[]);
   const value=useMemo<MaintenanceContextValue>(()=>({
     hydrated,enabled,session,selection,
     getInstances:(page,frameKey)=>saved[scopeId(page,frameKey)]??[],
+    getFrameTargets:(page,frameKey)=>Object.values(registered[scopeId(page,frameKey)]??{}),
+    registerTarget,unregisterTarget,
+    getSavedTargetOverride:(page,frameKey,id,kind)=>{
+      const key=scopeId(page,frameKey),local=targetStyles[key]?.[id]??{};
+      if(!kind)return local;
+      const group={...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
+        ...(sharedStyles[sharedKey(page,frameKey,kind,'page')]??{}),
+        ...(sharedStyles[sharedKey(page,frameKey,kind,'frame')]??{})};
+      const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
+        .filter(field=>local[field as keyof TargetOverride]!==undefined)
+        .map(field=>[field,local[field as keyof TargetOverride]]));
+      return {...local,...group,...isolated};
+    },
     getWorkspaceBounds:(page,frameKey)=>liveBounds[scopeId(page,frameKey)]??{width:0,height:0},
     getFrameRects:(page,frameKey)=>liveRects[scopeId(page,frameKey)]??{},
     reportWorkspaceBounds,reportRect,
@@ -152,9 +184,13 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
         .filter(field=>local[field as keyof TargetOverride]!==undefined)
         .map(field=>[field,local[field as keyof TargetOverride]]));
+      const batchIsolated=session?.page===page&&session.frameKey===frameKey?
+        Object.fromEntries((session.batchLocalOverrides[id]??[])
+          .filter(field=>local[field as keyof TargetOverride]!==undefined)
+          .map(field=>[field,local[field as keyof TargetOverride]])):{};
       const merged={...local,...group,...isolated,...changed};
-      return active&&sourceId===id&&session?.page===page&&session.frameKey===frameKey?
-        {...merged,...session.draftTargets[id]}:merged;
+      return {...merged,...(active&&sourceId===id&&session?.page===page&&session.frameKey===frameKey?
+        session.draftTargets[id]:{}),...batchIsolated};
     },
     setSyncSameKind:enabled=>setSession(current=>current?{...current,syncSameKind:enabled}:current),
     setSyncScope:scope=>setSession(current=>current?{...current,syncScope:scope}:current),
@@ -165,11 +201,11 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         {...previous,scope:instanceId?'instance':'frame',instanceId,focusInstanceId:instanceId,target:undefined}:
         previous??{
           page,frameKey,title,scope:instanceId?'instance':'frame',...(instanceId?{instanceId}:{}),
-          draft:{...config},
+          draft:{...config},originalFrame:{...config},
           draftInstances:(saved[scopeId(page,frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(page,frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],
+          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},
         });
     },
     selectTarget:target=>{
@@ -191,11 +227,11 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         {...previous,scope:'target',target,instanceId:undefined}:
         {
           page:target.page,frameKey:target.frameKey,title:target.frameTitle,scope:'target',target,
-          draft:{...frameConfig},
+          draft:{...frameConfig},originalFrame:{...frameConfig},
           draftInstances:(saved[scopeId(target.page,target.frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(target.page,target.frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(target.page,target.frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],
+          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},
         });
     },
     // Frame behavior is a layout preference, never a permission to lock visual editing.
@@ -234,6 +270,30 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       return {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
         sharedTouched:[...new Set([...current.sharedTouched,...Object.keys(patch).filter(
           key=>VISUAL_TARGET_KEYS.includes(key as keyof TargetAppearance)) as (keyof TargetAppearance)[]])]};
+    }),
+    patchBatchVisual:(ids,source,keys)=>setSession(current=>{
+      if(!current||!['target','instance'].includes(current.scope))return current;
+      const owned=current.scope==='instance'&&current.draftInstances.some(item=>
+        item.id===current.instanceId&&isEngineerOwnedInstance(item));
+      if(current.scope==='instance'&&!owned)return current;
+      const patch=safeBatchPatch(source,keys);
+      if(!Object.keys(patch).length)return current;
+      const candidates=new Map<string,TargetKind>(Object.values(registered[scopeId(current.page,current.frameKey)]??{})
+        .map(item=>[item.id,item.kind] as const));
+      if(current.scope==='target'&&current.target)candidates.set(current.target.id,current.target.kind);
+      for(const instance of current.draftInstances)if(isEngineerOwnedInstance(instance))
+        candidates.set('installed:'+instance.id,instanceKind(instance.templateId));
+      const draftTargets={...current.draftTargets};
+      const batchLocalOverrides={...current.batchLocalOverrides};
+      for(const id of [...new Set(ids)].slice(0,30)){
+        const kind=candidates.get(id);if(!kind)continue;
+        const allowed=Object.fromEntries(Object.entries(patch).filter(([field])=>
+          targetToolSupported(kind,'target:'+field)));
+        if(!Object.keys(allowed).length)continue;
+        draftTargets[id]=normalizeTargetOverride({...draftTargets[id],...allowed});
+        batchLocalOverrides[id]=[...new Set([...(batchLocalOverrides[id]??[]),...Object.keys(allowed)])];
+      }
+      return {...current,draftTargets,batchLocalOverrides};
     }),
     resetTargetVisual:id=>setSession(current=>current&&(
       current.scope==='target'&&current.target?.id===id||current.scope==='instance'&&id==='installed:'+current.instanceId&&
@@ -275,6 +335,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         Object.entries(session.draftTargets).map(([id,override])=>[id,normalizeTargetOverride(override)]))};
       let nextShared={...sharedStyles};
       let nextLocalOnly={...localOnlyKeys};
+      // An explicit batch is instance-local even if the source A also has wider
+      // shared-style sync enabled. Old shared defaults cannot mask draft values.
+      for(const [id,fields] of Object.entries(session.batchLocalOverrides)){
+        const keyForId=key+':'+id;
+        nextLocalOnly[keyForId]=[...new Set([...(nextLocalOnly[keyForId]??[]),...fields])];
+      }
       const syncInstance=session.scope==='instance'?
         session.draftInstances.find(item=>item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
       const syncId=session.scope==='target'?session.target?.id:
@@ -320,7 +386,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }

@@ -21,8 +21,8 @@ assert.equal(audit.existing,169,'V3.0.14 baseline must retain all 169 known tool
 assert.equal(audit.advanced,12,'all twelve newly specified capabilities need explicit backlog entries');
 assert.equal(ADVANCED_ENGINEER_CAPABILITIES.length,12);
 assert.equal(audit.unregistered,3,'no widget, AI or navigation capability is falsely marked done');
-assert.equal(audit.pending,44,'all 29 prior pending tools + 12 new abilities + 3 unregistered domains remain visible');
-assert.equal(audit.readyDeclared,140,'ready describes declarations, never Android QA PASS');
+assert.equal(audit.pending,41,'all 29 prior pending tools + 12 new abilities + 3 unregistered domains remain visible');
+assert.equal(audit.readyDeclared,143,'ready describes declarations, never Android QA PASS');
 assert.equal(grouped.length,184);
 assert.deepEqual([...legacy.map(tool=>tool.id)].sort(),
  [...grouped.filter(tool=>!tool.id.startsWith('advanced-')&&!tool.id.startsWith('domain-'))
@@ -47,7 +47,10 @@ assert.equal(resolveSkillAdapter(get('fx-img-uri'),metric).status,'pending-adapt
  'a frame image-picker cannot be passed off as an editable text background');
 assert.equal(resolveSkillAdapter(get('fx-glow-on'),widget).status,'pending-adapter',
  'the control renderer must truly implement glow before claiming availability');
-assert.equal(resolveSkillAdapter(get('advanced-batch'),metric).status,'planned');
+assert.equal(resolveSkillAdapter(get('advanced-batch'),metric).status,'active');
+assert.equal(resolveSkillAdapter(get('advanced-batch'),{scope:'frame',page:'home',frameKey:'dashboard'}).status,'pending-adapter');
+assert.equal(resolveSkillAdapter(get('advanced-local-diff'),metric).status,'active');
+assert.equal(resolveSkillAdapter(get('advanced-health'),metric).status,'active');
 assert.equal(resolveSkillAdapter(get('target-label-text'),amount).status,'pending-adapter',
  'financial amounts cannot be overwritten by a label tool');
 assert.equal(targetToolSupported('value','target:labelText'),false);
@@ -87,7 +90,7 @@ assert.ok(matrix.every(row=>row.reason.length>0&&
 assert.ok(matrix.some(row=>row.status==='pending-adapter'));
 mkdirSync('reports',{recursive:true});
 const report={
- version:'3.0.14',purpose:'declared tool coverage (NOT device validation)',
+ version:'3.0.17',purpose:'declared tool coverage (NOT device validation)',
  taxonomy:FULL_SKILL_CATEGORIES,advanced:ADVANCED_ENGINEER_CAPABILITIES,
  summary:audit,categories:COMPLETE_ENGINEER_SKILLS.map(group=>({
  id:group.id,label:group.label,tools:group.tools.map(tool=>({
@@ -97,6 +100,6 @@ const report={
  matrix,
  validation:{unitAssertions:'PASS',nativeDevice:'NOT_TESTED',accountingCore:'UNMODIFIED'},
 };
-writeFileSync('reports/V3.0.14-full-skill-matrix.json',JSON.stringify(report,null,2)+'\n');
+writeFileSync('reports/V3.0.17-full-skill-matrix.json',JSON.stringify(report,null,2)+'\n');
 console.log('V3.0.14 30 categories, 169 retained tools, 12 advanced capabilities, 3 missing domains: PASS');
 console.log('Native adapter matrix '+matrix.length+' rows written; actual Android rendering remains separate QA.');
