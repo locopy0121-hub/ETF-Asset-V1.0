@@ -39,6 +39,7 @@ type MaintenanceContextValue=Readonly<{
   patchFrame:(patch:Partial<FrameEditorConfig>)=>void;
   clearFrameDimension:(axis:'width'|'height')=>void;
   patchInstance:(id:string,patch:Partial<MaintenanceInstance>)=>void;
+  patchInstanceVisual:(id:string,patch:TargetOverride)=>void;
   patchTarget:(id:string,patch:TargetOverride)=>void;
   resetTargetVisual:(id:string)=>void;
   patchWorkspace:(patch:Partial<WorkspaceConfig>)=>void;
@@ -86,7 +87,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
               VISUAL_TARGET_KEYS.includes(field as keyof TargetAppearance))])));
         }
         if(parsed.sharedStyles&&typeof parsed.sharedStyles==='object'&&!Array.isArray(parsed.sharedStyles)){
-          const kinds:readonly TargetKind[]=['metric','text','value','action','quote-card','wall','portfolio-list','control','generic','prefix'];
+          const kinds:readonly TargetKind[]=['frame','metric','text','value','action','quote-card','wall','portfolio-list','control','generic','prefix'];
           const shared=parsed.sharedStyles as Record<string,unknown>;
           setSharedStyles(Object.fromEntries(Object.entries(shared).filter(([id])=>{
             const kind=id.split(':').at(-1) as TargetKind;
@@ -136,15 +137,22 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const group={...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
         ...(sharedStyles[sharedKey(page,frameKey,kind,'page')]??{}),
         ...(sharedStyles[sharedKey(page,frameKey,kind,'frame')]??{})};
-      const active=session?.scope==='target'&&session.target?.kind===kind&&session.syncSameKind&&
+      const selectedInstance=session?.scope==='instance'?session.draftInstances.find(item=>item.id===session.instanceId):undefined;
+      const selectedKind=selectedInstance?.templateId==='parent-frame'?'frame':selectedInstance?.templateId==='divider'?'generic':'text';
+      const active=Boolean(session?.syncSameKind&&
+        (session.scope==='target'&&session.target?.kind===kind||session.scope==='instance'&&selectedInstance&&selectedKind===kind)&&
         (session.syncScope==='app'||session.page===page&&
-          (session.syncScope==='page'||session.frameKey===frameKey));
-      const changed=active?Object.fromEntries(session.sharedTouched.map(field=>[field,session.draftTargets[session.target!.id]?.[field]])):{};
+          (session.syncScope==='page'||session.frameKey===frameKey)));
+      const sourceId=session?.scope==='target'?session.target?.id:session?.scope==='instance'?'installed:'+session.instanceId:undefined;
+      const changed=active&&sourceId?Object.fromEntries(session!.sharedTouched
+        .filter(field=>session!.draftTargets[sourceId]?.[field]!==undefined)
+        .map(field=>[field,session!.draftTargets[sourceId]?.[field]])):{};
       const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
         .filter(field=>local[field as keyof TargetOverride]!==undefined)
         .map(field=>[field,local[field as keyof TargetOverride]]));
       const merged={...local,...group,...isolated,...changed};
-      return active&&session.target?.id===id&&session.target?.page===page&&session.target.frameKey===frameKey?
+      return active&&session?.scope==='target'&&session.target?.id===id&&
+        session.target.page===page&&session.target.frameKey===frameKey?
         {...merged,...session.draftTargets[id]}:merged;
     },
     setSyncSameKind:enabled=>setSession(current=>current?{...current,syncSameKind:enabled}:current),
@@ -202,6 +210,16 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         ...item,...patch,id:item.id,templateId:item.templateId,createdBy:item.createdBy,
       }:item),
     }:current),
+    patchInstanceVisual:(id,patch)=>setSession(current=>{
+      if(!current||current.scope!=='instance'||current.instanceId!==id||
+        !current.draftInstances.some(item=>item.id===id&&isEngineerOwnedInstance(item)))return current;
+      const key='installed:'+id;
+      const visual=Object.fromEntries(Object.entries(patch).filter(([field])=>
+        VISUAL_TARGET_KEYS.includes(field as keyof TargetAppearance))) as TargetOverride;
+      return {...current,draftTargets:{...current.draftTargets,
+        [key]:normalizeTargetOverride({...current.draftTargets[key],...visual})},
+        sharedTouched:[...new Set([...current.sharedTouched,...Object.keys(visual) as (keyof TargetAppearance)[]])]};
+    }),
     patchTarget:(id,patch)=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
       {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
         sharedTouched:[...new Set([...current.sharedTouched,...Object.keys(patch).filter(
@@ -244,16 +262,19 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         Object.entries(session.draftTargets).map(([id,override])=>[id,normalizeTargetOverride(override)]))};
       let nextShared={...sharedStyles};
       let nextLocalOnly={...localOnlyKeys};
-      if(session.scope==='target'&&session.target&&session.sharedTouched.length){
-        const itemKey=key+':'+session.target.id;
+      const savedInstance=session.scope==='instance'?session.draftInstances.find(item=>item.id===session.instanceId):undefined;
+      const editedId=session.scope==='target'?session.target?.id:savedInstance?'installed:'+savedInstance.id:undefined;
+      const editedKind=session.scope==='target'?session.target?.kind:savedInstance?.templateId==='parent-frame'?'frame':savedInstance?.templateId==='divider'?'generic':savedInstance?'text':undefined;
+      if(editedId&&editedKind&&session.sharedTouched.length){
+        const itemKey=key+':'+editedId;
         const previous=nextLocalOnly[itemKey]??[];
         nextLocalOnly[itemKey]=session.syncSameKind?
           previous.filter(field=>!session.sharedTouched.includes(field as keyof TargetAppearance)):
           [...new Set([...previous,...session.sharedTouched])];
       }
-      if(session.scope==='target'&&session.target&&session.syncSameKind&&session.sharedTouched.length){
-        const kind=session.target.kind;
-        const edited=session.draftTargets[session.target.id]??{};
+      if(editedId&&editedKind&&session.syncSameKind&&session.sharedTouched.length){
+        const kind=editedKind;
+        const edited=session.draftTargets[editedId]??{};
         const changed=Object.fromEntries(session.sharedTouched.filter(field=>edited[field]!==undefined)
           .map(field=>[field,edited[field]]));
         const styleKey=sharedKey(session.page,session.frameKey,kind,session.syncScope);

@@ -5,7 +5,7 @@ export type EngineerSkill=Readonly<{id:string;label:string;description:string;to
 const ready=(id:string,label:string,field:string,detail:string):SkillTool=>({id,label,field,detail,status:'ready'});
 const later=(id:string,label:string,detail:string):SkillTool=>({id,label,detail,status:'adapter-required'});
 export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
-  {id:'components',label:'元件工程',description:'中央元件庫、插入、文字內容、移除',tools:[ready('install','中央元件庫','instances','可新增父框架，並在其內新增工程師元件'),ready('parent-size','新增父框架尺寸','instance:parent-size','獨立設定寬高；父框架不會自動啟用內部捲動'),ready('edit-copy','文字內容','instance-text','新增文字內容'),ready('remove','刪除工程師新增元件','instances','僅能刪除本工程師所建立的獨立元件實例，二次確認；取消可還原，套用才儲存；內建 App 元件永久禁止刪除'),ready('inspect-existing','讀取既有元件設定','target:inspect','顯示即時數據與真正來源設定，不更動業務數值'),later('complex','專業元件安裝','逐類接入資料／功能 Runtime')]},
+  {id:'components',label:'元件工程',description:'中央元件庫、插入、文字內容、移除',tools:[ready('install','中央元件庫','instances','可新增父框架，並在其內新增工程師元件'),ready('parent-size','新增父框架尺寸','instance:parent-size','獨立設定寬高；父框架不會自動啟用內部捲動'),ready('instance-visual','新增元件／父框架完整外觀','instance:visual','同一中央材質技能：顏色、漸層、背景透明度、邊框、圓角、光影、文字和效果同步'),ready('edit-copy','文字內容','instance-text','新增文字內容'),ready('remove','刪除工程師新增元件','instances','僅能刪除本工程師所建立的獨立元件實例，二次確認；取消可還原，套用才儲存；內建 App 元件永久禁止刪除'),ready('inspect-existing','讀取既有元件設定','target:inspect','顯示即時數據與真正來源設定，不更動業務數值'),later('complex','專業元件安裝','逐類接入資料／功能 Runtime')]},
   {id:'frames',label:'專業框架工程',description:'背景／邊框／陰影／光圈／內外距／動畫與適配；僅對目前框架生效',tools:[
     ready('border-width','邊框粗細','borderWidth','0–8 px'),
     ready('radius','框架圓角','borderRadius','0–48 px'),

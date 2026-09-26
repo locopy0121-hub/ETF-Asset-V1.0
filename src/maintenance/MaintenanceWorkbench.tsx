@@ -20,6 +20,8 @@ import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
 import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
 import {InspectableTarget} from './InspectableTarget';
+import {InstanceVisualEditor} from './InstanceVisualEditor';
+import {TargetBackdrop,targetShadowStyle} from './TargetSurfaceEffects';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
 
 // This is a dock beneath the ACTUAL page, not a simulated preview modal.
@@ -101,7 +103,7 @@ export function MaintenanceWorkbench(){
         </Text>
       </View>
       {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選取 {pendingSelection.label}，點上方小扳手讀取其目前設定。</Text>:null}
-      {selectedTarget?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
+      {(selectedTarget||session.scope==='instance'&&instance)?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
         <Text style={{color:theme.palette.text,fontWeight:'700'}}>同類元件外觀同步</Text>
         <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
           <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步其他同類元件的本次外觀修改；不複製文字、定位或數據。</Text>
@@ -163,6 +165,7 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(f.startsWith('workspace:'))return true;
   if(f==='frame:size')return s.scope==='frame';
   if(f.startsWith('framefx:'))return s.scope==='frame';
+  if(f==='instance:visual')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
   if(f==='instance:parent-size')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&item.templateId==='parent-frame'&&isEngineerOwnedInstance(item));
   if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
     s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
@@ -373,6 +376,7 @@ function ToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstan
       </View>;
     }
   }
+  if(tool.field==='instance:visual')return instance?<InstanceVisualEditor instance={instance}/>:null;
   if(tool.field==='instance:parent-size'){
     if(!instance||instance.templateId!=='parent-frame')return <Text>請先選取新增的父框架。</Text>;
     const dimension=(axis:'frameWidth'|'frameHeight',label:string,min:number,max:number)=>{
@@ -448,14 +452,26 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
   onWrench:(id:string)=>void;enabled:boolean;activeId?:string|undefined;
 }){
   const theme=useThemeRuntime();
+  const engineer=useMaintenance();
   return <>{instances.filter(item=>!item.parentId&&(item.visible||item.id===activeId)).map(item=>{
     if(item.templateId==='parent-frame'){
+      const override=engineer.getTargetOverride(frame.page,frame.frameKey,'installed:'+item.id,'frame');
+      const style=mergeTargetAppearance({...TARGET_APPEARANCE,fontSize:item.fontSize,textColor:item.color,
+        backgroundColor:theme.palette.surface,borderColor:theme.palette.border},override);
       const children=instances.filter(child=>child.parentId===item.id).map(({parentId,...child})=>child);
-      return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,height:item.frameHeight??240,
-        maxWidth:'100%',borderWidth:1,borderRadius:14,borderColor:theme.palette.border,
-        backgroundColor:theme.palette.surface,padding:10,overflow:'visible',position:'relative'}}>
+      return <View key={item.id} style={{marginTop:item.marginTop+style.marginVertical,
+        marginHorizontal:style.marginHorizontal,width:item.frameWidth??320,height:item.frameHeight??240,
+        maxWidth:'100%',borderWidth:style.borderWidth||1,borderRadius:style.borderRadius,
+        borderStyle:style.borderStyle,borderColor:style.borderColor,
+        backgroundColor:style.backgroundMode==='gradient'?'transparent':colorWithAlpha(style.backgroundColor,style.backgroundOpacity),
+        padding:style.padding,overflow:'visible',position:'relative',...targetShadowStyle(style,style.shadowColor)}}>
+        <TargetBackdrop appearance={style} start={style.backgroundColor} middle={style.gradientMidColor}
+          end={style.gradientEndColor} glow={style.glowColor}/>
         <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:5}}>
-          <Text style={{flex:1,fontSize:item.fontSize,color:item.color,fontWeight:'800'}}>{item.text}</Text>
+          <Text style={{flex:1,fontSize:style.fontSize,color:style.textColor,
+            fontStyle:style.fontStyle,fontWeight:override.fontWeight??'800',
+            letterSpacing:style.letterSpacing,...(style.lineHeight>0?{lineHeight:style.lineHeight}:{}),
+            textDecorationLine:style.textDecorationLine}}>{item.text}</Text>
           {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
             onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
         </View>

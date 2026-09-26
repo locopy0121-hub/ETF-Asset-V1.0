@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {CENTRAL_COMPONENT_LIBRARY,instantiateComponent,normalizeInstances} from '../src/maintenance/componentLibrary';
+import {normalizeTargetOverride,VISUAL_TARGET_KEYS} from '../src/maintenance/inspectionModel';
+const read=(path:string)=>readFileSync(path,'utf8');
+const library=CENTRAL_COMPONENT_LIBRARY.find(item=>item.id==='parent-frame');
+assert.equal(library?.installation,'ready');
+const parent=instantiateComponent('parent-frame','i-own-parent');
+const text=instantiateComponent('text-note','i-own-text');
+assert.equal(normalizeInstances([parent,{...text,parentId:parent.id}])[1]?.parentId,parent.id);
+const source=read('src/maintenance/InstanceVisualEditor.tsx');
+const runtime=read('src/maintenance/MaintenanceRuntime.tsx');
+const workbench=read('src/maintenance/MaintenanceWorkbench.tsx');
+assert.ok(source.includes('maint.patchInstanceVisual(instance.id'),'visual edits must use central appearance runtime');
+for(const feature of ['gradientEndColor','backgroundOpacity','borderWidth','shadowEnabled','glowEnabled','fontSize','fontWeight','textProfitColor'])
+  assert.ok(source.includes(feature),'missing visual capability '+feature);
+assert.ok(source.includes('ColorPalettePicker'),'all owned components must use the system color picker');
+assert.ok(workbench.includes('<InstanceVisualEditor instance={instance}/>'));
+assert.ok(workbench.includes("getTargetOverride(frame.page,frame.frameKey,'installed:'+item.id,'frame')"));
+assert.ok(workbench.includes('<TargetBackdrop appearance={style}'));
+assert.ok(workbench.includes('targetShadowStyle(style,style.shadowColor)'));
+assert.ok(runtime.includes("const editedId=session.scope==='target'?session.target?.id:savedInstance?'installed:'+savedInstance.id:undefined"));
+assert.ok(runtime.includes("session.scope==='instance'&&selectedInstance&&selectedKind===kind"));
+assert.ok(runtime.includes("syncScope:'frame'"),'default scope must stay local');
+assert.ok(runtime.includes('localOnlyKeys'),'local override is protected');
+assert.ok(!VISUAL_TARGET_KEYS.includes('labelText' as never)&&!VISUAL_TARGET_KEYS.includes('offsetX' as never));
+const valid=normalizeTargetOverride({fontSize:29,textColor:'#123456',backgroundOpacity:.4,
+  shadowEnabled:true,offsetX:49,labelText:'display-only'});
+assert.equal(valid.fontSize,29);assert.equal(valid.backgroundOpacity,.4);
+const visual=Object.fromEntries(Object.entries(valid).filter(([field])=>VISUAL_TARGET_KEYS.includes(field as never)));
+assert.equal(visual.offsetX,undefined);assert.equal(visual.labelText,undefined);
+const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
+assert.equal(pkg.version,'3.0.13');assert.equal(app.expo.version,'3.0.13');assert.equal(app.expo.android.versionCode,30013);
+console.log('V3.0.13 owned-parent visual skills, native renderer, same-kind sync and immutable fields: PASS');
