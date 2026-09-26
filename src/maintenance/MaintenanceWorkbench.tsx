@@ -50,7 +50,7 @@ export function MaintenanceWorkbench(){
   const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
   const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
-    'App 原生功能、既有元件及來源資料禁止刪除；僅維護工程師新增的獨立實例可移除。';
+    '僅原始數據、來源及帳務計算鎖定；其他文字、框架、外觀及排版都可編輯。內建元件保留，僅工程師新增實例可刪除。';
   // Always show ONE complete central skill tree. Unadapted tools explain their adapter state.
   const displaySkills=ENGINEER_SKILLS;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
@@ -78,7 +78,7 @@ export function MaintenanceWorkbench(){
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
     <ScrollView ref={skillScroller} style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
-      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹｜所有技能可查閱；尚未介接的項目明確標示，絕不依元件種類隱藏整類工具。</Text>
+      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>僅鎖定原始數據及帳務邏輯；其他完整技能一律顯示。已接線的工具直接修改目前對象，缺原生適配的工具明確標示而不假裝生效。</Text>
       <View accessibilityRole="summary" style={[styles.detail,{
         backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
         marginTop:0,marginBottom:10,gap:6,
@@ -162,7 +162,7 @@ export function MaintenanceWorkbench(){
           {skillItem.tools.map(tool=><View key={tool.id} style={{marginTop:8}}>
             <Pressable accessibilityRole="button" onPress={()=>setOpenTool(current=>current===tool.id?null:tool.id)} style={styles.toolRow}>
               <Text style={{flex:1,color:theme.palette.text,fontSize:13,fontWeight:'600'}}>{tool.label}</Text>
-              <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>{tool.status!=='ready'?'待接入 ›':toolUsable(tool,session)?'細節 ›':'目前對象不適用 ›'}</Text>
+              <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>{tool.status!=='ready'?'待接入 ›':toolUsable(tool,session)?'細節 ›':'尚待對象介接 ›'}</Text>
             </Pressable>
             {openTool===tool.id?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted}]}>
               <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{tool.detail}</Text>
@@ -189,6 +189,8 @@ const FRAME_TO_TARGET:Readonly<Record<string,string>>={
   borderWidth:'target:borderWidth',borderRadius:'target:borderRadius',
   backgroundOpacity:'target:backgroundOpacity',backgroundColor:'target:backgroundColor',
   borderColor:'target:borderColor',shadowEnabled:'target:shadowEnabled',
+  titleFontSize:'target:fontSize',titleColor:'target:textColor',
+  titleAlign:'target:align',padding:'target:padding',
   shadowOpacity:'target:shadowOpacity',
   'framefx:backgroundMode':'target:backgroundMode',
   'framefx:gradientEndColor':'target:gradientEndColor',
@@ -272,7 +274,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   if(!toolUsable(tool,s))return <Text style={{fontSize:12,color:theme.palette.textSecondary,marginTop:8}}>
     {tool.status!=='ready'?'完整技能已登記，但此工具尚未介接 Runtime。':
       tool.field?.startsWith('page:')&&s.target?.kind==='quote-card'?'這是本頁共用設定。請點外層行情框架大扳手後使用，避免意外改動其他卡片。':
-      tool.field?.startsWith('target:')?'請先輕點工作區的內部元件，再點小扳手進入專屬編輯。':'這是其他工作層級的工具，請使用對應扳手呼叫。'}
+      tool.field?.startsWith('target:')?'目前對象尚缺此工具的原生適配；此工具保留在完整技能樹。':'此工具尚未連接目前對象的操作介面；可先查看工具說明。'}
   </Text>;
   if(tool.field?.startsWith('target:')){
     const target=s.target??(s.scope==='instance'&&instance?{
