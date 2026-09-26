@@ -27,6 +27,16 @@ assert.ok(bench.includes('skillScroller.current?.scrollTo'),'jump must actually 
 assert.ok(bench.includes('value={skillQuery}')&&bench.includes('skillMatches(skillItem,skillQuery)'));
 assert.ok(bench.includes('displaySkills.map(skillItem=>'),'keyword search must not hide unmatched groups');
 assert.ok(bench.includes('toolUsable(tool,session)'),'adapter readiness must be checked in current session');
+for(const [frameField,targetField] of [
+ ['borderWidth','target:borderWidth'],['borderRadius','target:borderRadius'],
+ ['backgroundOpacity','target:backgroundOpacity'],
+ ['framefx:backgroundMode','target:backgroundMode'],
+ ['framefx:gradientEndColor','target:gradientEndColor'],
+ ['framefx:shadowColor','target:shadowColor'],
+ ['framefx:glowEnabled','target:glowEnabled'],
+]) assert.ok(bench.includes("'"+frameField+"':'"+targetField+"'"),'native metric adapter missing: '+frameField);
+assert.ok(bench.includes('resolvedTool(tool,s)'),'compatible skills must route to the selected inner target');
+
 assert.ok(bench.includes('lockedDescription')&&bench.includes('protectedProperties'));
 assert.ok(bench.includes('maintenance.apply()')&&bench.includes('maintenance.cancel()'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
