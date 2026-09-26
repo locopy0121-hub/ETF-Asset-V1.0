@@ -9,10 +9,10 @@ import {targetToolSupported,normalizeTargetOverride} from '../src/maintenance/in
 const legacy=ENGINEER_SKILLS.flatMap(g=>g.tools);
 const grouped=COMPLETE_ENGINEER_SKILLS.flatMap(g=>g.tools);
 const audit=completeCatalogAudit();
-assert.equal(FULL_SKILL_CATEGORIES.length,30,'thirty B-level categories required');
+assert.equal(FULL_SKILL_CATEGORIES.length,30,'30 internal skill taxonomy categories retained; B remains property-based');
 assert.equal(FULL_SKILL_SECTIONS.length,6);
 assert.deepEqual([...FULL_SKILL_SECTIONS.flatMap(section=>[...section.ids])].sort(),
- [...FULL_SKILL_CATEGORIES.map(category=>category.id)].sort(),'navigation must preserve all B classes');
+ [...FULL_SKILL_CATEGORIES.map(category=>category.id)].sort(),'historical taxonomy must retain all 30 internal classes');
 assert.equal(new Set(FULL_SKILL_CATEGORIES.map(category=>category.id)).size,30);
 assert.deepEqual(audit.emptyCategories,[],'no category may silently disappear');
 assert.deepEqual(audit.duplicateIds,[],'one tool ID must map to exactly one B class');
@@ -21,8 +21,8 @@ assert.equal(audit.existing,169,'V3.0.14 baseline must retain all 169 known tool
 assert.equal(audit.advanced,12,'all twelve newly specified capabilities need explicit backlog entries');
 assert.equal(ADVANCED_ENGINEER_CAPABILITIES.length,12);
 assert.equal(audit.unregistered,3,'no widget, AI or navigation capability is falsely marked done');
-assert.equal(audit.pending,41,'all 29 prior pending tools + 12 new abilities + 3 unregistered domains remain visible');
-assert.equal(audit.readyDeclared,143,'ready describes declarations, never Android QA PASS');
+assert.equal(audit.pending,39,'29 original pending plus 12 advanced and 3 domains, with five advanced tools now adapted');
+assert.equal(audit.readyDeclared,145,'ready describes declarations, never Android QA PASS');
 assert.equal(grouped.length,184);
 assert.deepEqual([...legacy.map(tool=>tool.id)].sort(),
  [...grouped.filter(tool=>!tool.id.startsWith('advanced-')&&!tool.id.startsWith('domain-'))
