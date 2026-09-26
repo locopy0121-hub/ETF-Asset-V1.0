@@ -36,6 +36,13 @@ for(const [frameField,targetField] of [
  ['framefx:glowEnabled','target:glowEnabled'],
 ]) assert.ok(bench.includes("'"+frameField+"':'"+targetField+"'"),'native metric adapter missing: '+frameField);
 assert.ok(bench.includes('resolvedTool(tool,s)'),'compatible skills must route to the selected inner target');
+for(const [frameField,targetField] of [
+ ['titleFontSize','target:fontSize'],['titleColor','target:textColor'],
+ ['titleAlign','target:align'],['padding','target:padding'],
+]) assert.ok(bench.includes(frameField+":'"+targetField+"'"),'editable visual tool locked: '+frameField);
+assert.ok(bench.includes('僅原始數據、來源及帳務計算鎖定'));
+assert.ok(!bench.includes('目前對象不適用 ›'),'non-data tools should not appear policy-locked');
+
 
 assert.ok(bench.includes('lockedDescription')&&bench.includes('protectedProperties'));
 assert.ok(bench.includes('maintenance.apply()')&&bench.includes('maintenance.cancel()'));
