@@ -1,8 +1,7 @@
 import {useEffect,useState} from 'react';
 import {Alert,Pressable,Switch,Text,TextInput,View} from 'react-native';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
-import {findAbProperty,AB_PROPERTY_GROUPS} from './abPropertyModel';
-import {frameTokenPatch,frameTokenSource,tokenTargetPatch,type DesignToken} from './engineerDesignAssets';
+import {frameTokenPatch,frameTokenSource,tokenTargetPatch} from './engineerDesignAssets';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance,type RegisteredVisualTarget} from './MaintenanceRuntime';
 import {TARGET_APPEARANCE,mergeTargetAppearance,type TargetKind} from './inspectionModel';
@@ -174,7 +173,7 @@ export function DesignTokenToolDetails(){
  const preview=token&&session?(session.scope==='frame'?
    frameTokenPatch(token,session.draft):kind?tokenTargetPatch(token,kind):{}):{};
  const unsupported=token&&session?.scope!=='frame'&&kind?
-   Object.keys(token.style).filter(key=>preview[key as keyof typeof preview]===undefined):[];
+   Object.keys(token.style).filter(key=>!Object.prototype.hasOwnProperty.call(preview,key)):[];
  const save=async()=>{
    if(!session||!supported||busy)return;
    setBusy(true);setNotice('');
@@ -254,7 +253,7 @@ export function DesignTokenToolDetails(){
 export function FavoriteToolDetails({onNavigate}:{onNavigate?:(id:string)=>void}){
  const maint=useMaintenance(),theme=useThemeRuntime();
  const tools=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools);
- const label=id=>tools.find(tool=>tool.id===id)?.label??id;
+ const label=(id:string)=>tools.find(tool=>tool.id===id)?.label??id;
  const open=(id:string)=>onNavigate?.(id);
  return <View style={{gap:9,marginTop:8}}>
    <Text style={{fontSize:12,color:theme.palette.textSecondary}}>
