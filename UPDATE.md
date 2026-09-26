@@ -1,3 +1,9 @@
+## V3.0.31｜2026-09-27｜真實背景圖片裁切焦點原生適配（GO）
+從 V3.0.30 PR #77 HEAD `fb3542f798165cb8765f8a2c1ad3dcd35d3d5f9b` 接續，Actions #1175（Run 36264423326）quality/backend/QA APK PASS；APK Artifact #10913711264，ZIP 完整、AAPT versionCode 30030 / versionName 3.0.30、SHA256 `53143f965029a9263d4ad2997568dd6d7493b7a095c1f9c17ad3cab6fc74efdb`。事前 immutable 備份 `backup-v3.0.30-20260927-pre-v3.0.31` 指向成功 HEAD。分支 `go-v3.0.31-20260927-image-focus`；本版 3.0.31／Android+iOS 30031。
+擴充已接線 `fx-img-fit`：當前真實 FrameCard 背景圖片 cover 模式新增水平／垂直裁切焦點 0–100%，預設各 50%；從真實來源圖片尺寸與 FrameCard 原位容器寬高計算原生 Image 的絕對位置，防止調整框架大小時裁切焦點漂移；實際尺寸不可用時自動退回原版置中 cover。A 框架→B 背景圖片→C 圖片適配／裁切焦點；草稿原地預覽、取消與正式套用沿用既有 FrameEffects/SAF。無新增外部依賴，不動任何帳務核心、資料來源或備份格式。`fx-background-image` 仍保留 pending，因跨手機 content URI 自動嵌入與持久轉移尚未完成，不能將部分裁切適配灌水成全技能完成。
+中央 184 項維持 **156 宣告已接線／28 待原生適配**（非真機已驗），本版新增裁切數學及原生圖層接線測試，完整歷版 regression、TypeScript、後端與 APK ZIP/SHA/badging/Artifact 分級。Android content URI getSize 在部分機型可能不可用，安全回退置中並列實機待驗；此記錄不代表新 APK 已成功。
+
+
 ## V3.0.30｜2026-09-27｜真實框架寬度斷點與局部緊湊／密集響應（開發 QA）
 來源 V3.0.29 PR #76 HEAD `4ccbc720b0fe586342635ff4369ce27277911e67`，Actions #1169（Run 36263663478）quality/backend/QA APK 全 PASS，Artifact `TF-Asset-V3.0.29-QA-APK` #10913286858；版本30029，SHA256 3b5b281b87c0d4fcc1d162a2c0c40bf6ef6cd465efce8393ccbd31c6a4a880db。事前備份 `backup-v3.0.29-20260927-pre-v3.0.30` 已以此成功 HEAD 建立。分支 `go-v3.0.30-20260927-adaptive-frame-density`，App/Android/iOS 3.0.30／30030。
 本版僅將中央既有 `breakpoint` 待適配工具接入真實 FrameCard，保留獨立的 `fx-responsive` 跨頁模板缺口待辦：A 真實框架→B 裝置適配→C 局部實際寬度斷點。以 Animated.View 的 onLayout 量測目前框架寬度，根據兩個可編輯斷點即時切換標準／緊湊／密集卡片內距及標題字級；緊湊閾值 360–900dp、密集閾值 240–600dp 且至少低 40dp，原有已明確選擇的 compact/dense 不自動升級成寬鬆模式。預設 OFF、僅目前框架、原位草稿預覽／取消／正式套用，沿用原 SAF 完整備份；子元件的原始數值、座標與框架實際寬高不作重算或修改。真機寬度與 Android 畫面截斷需另行驗證。

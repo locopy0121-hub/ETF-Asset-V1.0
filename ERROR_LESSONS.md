@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.31 本機背景裁切焦點與跨裝置資產移轉分離
+Native Image cover 預設置中行為不得被新增設定破壞；只有焦點偏離 50% 才量測來源/容器及定位，來源 getSize 不可用須退回舊 resizeMode=cover。不能把 content:// 授權當跨裝置可攜圖檔，也不能把部分適配標為整個 fx-background-image ready。所有焦點設置由當前 A 的既有 framefx.imageFit 控制、套用才儲存；圖層只能影響背景，金融內容及帳務 immutable。
+
 ## 2026-09-27｜V3.0.30 真實寬度斷點不得越權修改跨頁模板
 「breakpoint」本輪只在 FrameCard 原生 onLayout 量測寬度後切換其卡片密度，不得假裝已完成獨立的 `fx-responsive` 跨頁中央模板／全裝置適配技能。兩斷點保留最小 40dp 差距，只在框架當前 A draft 生效；手動緊湊／密集的原樣式只可維持或進一步密集，不可因較寬螢幕悄悄放大；不改父框架尺寸、子布局坐標、數值、帳務核心或舊 SAF 備份。新增入口須完整走既有 framefx 原位編輯及 QA APK Gate。
 
