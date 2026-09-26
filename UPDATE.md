@@ -1,3 +1,11 @@
+## V3.0.23｜2026-09-26｜真實框架獨立外側柔光暈（GO）
+
+前版 V3.0.22 PR #69、Actions #1117 品質／後端／QA APK PASS，來源 HEAD `1cad6bcf1fd0981549e6a4387eafc5e1e3eb5cac`。更新前 immutable 備份 `backup-v3.0.22-20260926-pre-outer-glow`，工作分支 `go-v3.0.23-20260926-outer-glow`，App／Android／iOS 3.0.23／30023。僅開發 QA，PR 不自動合併，不能卸載既有 App。
+
+本輪接入中央既有技能「④ 外側柔光暈」：A 真實 FrameCard → B 特效與動態 → C 外側柔光暈，啟閉、獨立系統 Color Picker、獨立損益色、透明度 0～80%、擴散 0～32dp、柔邊 0～48dp。以實際原生 View 無互動同心描邊漸弱實作，預設關閉、內容不透明化，與內緣光圈和既有陰影分離。於當前 A 原地草稿即時預覽、底部套用才持久化到原有 effects 與 SAF 備份。外緣裁切與各 Android GPU 渲染須手機實際驗證，不把 CI 成功當實機 PASS。帳務核心、actual_fee/tax、資料來源與交易數值絕不修改。
+
+184 項中央技能保持不變；本版宣告已接線 **149**、待接線 **35**；此為原生程式接線與 CI 追蹤，並非全部實機驗收。修正版本相關舊回歸及新增外側光暈正規化、圖層、AB、備份、immutable 核心測試；CI、後端、APK、下載及實機分開回報。若成功建置，立即交付完整更新與未完成清單，隨即備份開下一版。
+
 ## V3.0.22｜2026-09-26｜真實父框架任意角度漸層（GO）
 
 前版 V3.0.21 QA APK 已於 Actions #1111 成功；從 commit a7dfd464bafbaa617c481d09a16c51d7ae35b491 建立 immutable backup-v3.0.21-20260926-pre-next-skills，再於 go-v3.0.22-20260926-next-skills 開發。App/Android/iOS 3.0.22／30022。仍為 QA，不是正式發行，手機實機另行驗收。
