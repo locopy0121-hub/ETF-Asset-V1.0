@@ -101,10 +101,10 @@ export function MaintenanceWorkbench(){
         </Text>
       </View>
       {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選取 {pendingSelection.label}，點上方小扳手讀取其目前設定。</Text>:null}
-      {selectedTarget?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
+      {(selectedTarget||session.scope==='instance'&&instance)?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
         <Text style={{color:theme.palette.text,fontWeight:'700'}}>同類元件外觀同步</Text>
         <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
-          <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步其他同類元件的本次外觀修改；不複製文字、定位或數據。</Text>
+          <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步本次修改的同類外觀；新增元件的字號、文字色及父框架材質亦可同步。文字內容、尺寸、位置及資料不連動。</Text>
           <Switch value={session.syncSameKind} onValueChange={maintenance.setSyncSameKind}/>
         </View>
         {session.syncSameKind?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
@@ -451,16 +451,41 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
   return <>{instances.filter(item=>!item.parentId&&(item.visible||item.id===activeId)).map(item=>{
     if(item.templateId==='parent-frame'){
       const children=instances.filter(child=>child.parentId===item.id).map(({parentId,...child})=>child);
-      return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,height:item.frameHeight??240,
-        maxWidth:'100%',borderWidth:1,borderRadius:14,borderColor:theme.palette.border,
-        backgroundColor:theme.palette.surface,padding:10,overflow:'visible',position:'relative'}}>
-        <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:5}}>
-          <Text style={{flex:1,fontSize:item.fontSize,color:item.color,fontWeight:'800'}}>{item.text}</Text>
-          {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
-            onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
-        </View>
-        <InstalledFrameComponents instances={children} frame={frame} onWrench={onWrench} enabled={enabled} activeId={activeId}/>
-        {children.length===0?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>空白父框架｜點選扳手可新增內部元件</Text>:null}
+      const target:InspectedTarget={
+        id:'installed:'+item.id,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        kind:'frame',label:item.text||'新增父框架',
+        properties:[{name:'工程師新增父框架',value:item.text,readOnly:false},
+          {name:'寬度',value:String(item.frameWidth??320)+' dp',readOnly:false},
+          {name:'高度',value:String(item.frameHeight??240)+' dp',readOnly:false}],
+        base:{...TARGET_APPEARANCE,fontSize:item.fontSize,textColor:item.color,
+          labelText:item.text,backgroundColor:theme.palette.surface,
+          borderColor:theme.palette.border,borderWidth:1,borderRadius:14,padding:10},
+      };
+      return <View key={item.id} style={{marginTop:item.marginTop,position:'relative'}}>
+        <InspectableTarget frame={frame} target={target}>{(appearance,customized,override)=><View style={{
+          width:item.frameWidth??320,height:item.frameHeight??240,maxWidth:'100%',
+          borderWidth:customized?appearance.borderWidth:1,
+          borderStyle:customized?appearance.borderStyle:'solid',
+          borderRadius:customized?appearance.borderRadius:14,
+          borderColor:customized?appearance.borderColor:theme.palette.border,
+          backgroundColor:customized&&appearance.backgroundMode==='gradient'?'transparent':
+            customized?colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity):theme.palette.surface,
+          padding:customized?appearance.padding:10,overflow:'visible',position:'relative',
+        }}>
+          <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:5}}>
+            <Text style={{flex:1,fontSize:customized?appearance.fontSize:item.fontSize,
+              color:customized?appearance.textColor:item.color,
+              fontWeight:override.fontWeight??'800',
+              ...(override.fontFamily&&appearance.fontFamily!=='system'?{fontFamily:appearance.fontFamily}:{}),
+              ...(override.fontStyle?{fontStyle:appearance.fontStyle}:{}),
+              ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
+            }}>{item.text}</Text>
+            {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
+              onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
+          </View>
+          <InstalledFrameComponents instances={children} frame={frame} onWrench={onWrench} enabled={enabled} activeId={activeId}/>
+          {children.length===0?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>空白父框架｜點選扳手可新增內部元件</Text>:null}
+        </View>}</InspectableTarget>
       </View>;
     }
     const target:InspectedTarget={
