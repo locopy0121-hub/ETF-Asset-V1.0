@@ -26,7 +26,9 @@ assert.equal(resolveSkillAdapter(tool,{scope:'frame',page:'home',frameKey:'asset
 assert.equal(resolveSkillAdapter(tool,{scope:'target',kind:'control',page:'home',frameKey:'asset-dashboard'}).status,'pending-adapter');
 const rt=read('src/maintenance/MaintenanceRuntime.tsx'),native=read('src/maintenance/InspectableTarget.tsx');
 const ui=read('src/maintenance/DataSimulationToolDetails.tsx'),wb=read('src/maintenance/MaintenanceWorkbench.tsx');
-assert.ok(rt.includes("previewState:'actual'")&&rt.includes('setPreviewState:state=>setSession('));
+assert.equal((rt.match(/previewState:'actual'/g)??[]).length,4,
+ 'both new-session constructors and both A-switch paths must reset sandbox');
+assert.ok(rt.includes('setPreviewState:state=>setSession('));
 assert.ok(rt.includes('current.target.kind')&&rt.includes('setSession(null)'));
 const serialized=rt.slice(rt.indexOf('await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY,JSON.stringify({'));
 assert.ok(serialized.length>0&&serialized.includes('visualHistory:nextHistory')&&

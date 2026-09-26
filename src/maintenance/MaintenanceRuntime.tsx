@@ -340,7 +340,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftInstances:(saved[scopeId(page,frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(page,frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',previewState:'actual',
+          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',
         });
     },
     selectTarget:target=>{
@@ -366,7 +366,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftInstances:(saved[scopeId(target.page,target.frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(target.page,target.frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(target.page,target.frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},
+          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',
         });
     },
     // Frame behavior is a layout preference, never a permission to lock visual editing.
