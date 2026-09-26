@@ -2,6 +2,7 @@ import type {TextStyle} from 'react-native';
 import type {MainPageKey} from '../domain/pageRegistry';
 import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
+import {normalizeConditionalStyles,type ConditionalStyleMap} from './conditionalVisual';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
 export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix'|'frame';
@@ -13,6 +14,7 @@ export type TargetAppearance=Readonly<{
   textProfitColor?:boolean;labelProfitColor?:boolean;captionProfitColor?:boolean;
   backgroundProfitColor?:boolean;borderProfitColor?:boolean;
   profitToneOverride?:'auto'|FinancialTone;
+  conditionalStyles?:ConditionalStyleMap;
   borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   // V3.0.11: independent visual effects on native component instances, never ledger values.
   backgroundMode:'solid'|'gradient';gradientDirection:'horizontal'|'vertical';
@@ -88,6 +90,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(v.anchorX==='free'||v.anchorX==='left'||v.anchorX==='center'||v.anchorX==='right')o.anchorX=v.anchorX;
   if(v.anchorY==='free'||v.anchorY==='top'||v.anchorY==='center'||v.anchorY==='bottom')o.anchorY=v.anchorY;
   if(v.profitToneOverride==='auto'||v.profitToneOverride==='gain'||v.profitToneOverride==='loss'||v.profitToneOverride==='neutral')o.profitToneOverride=v.profitToneOverride;
+  if(v.conditionalStyles!==undefined)o.conditionalStyles=normalizeConditionalStyles(v.conditionalStyles);
   for(const field of ['labelText','captionText','prefixText'] as const)
     if(typeof v[field]==='string')o[field]=v[field].slice(0,120);
   return o as TargetOverride;
@@ -106,7 +109,7 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
 export const VISUAL_TARGET_KEYS:readonly (keyof TargetAppearance)[]=[
   'fontSize','labelFontSize','captionFontSize','textColor','labelColor','captionColor',
   'backgroundColor','borderColor','textProfitColor','labelProfitColor','captionProfitColor',
-  'backgroundProfitColor','borderProfitColor','profitToneOverride','borderWidth','borderRadius',
+  'backgroundProfitColor','borderProfitColor','profitToneOverride','conditionalStyles','borderWidth','borderRadius',
   'padding','opacity','backgroundOpacity','fontWeight','fontFamily','fontStyle','textDecorationLine',
   'labelFontWeight','captionFontWeight','labelFontStyle','captionFontStyle',
   'labelLetterSpacing','captionLetterSpacing','labelLineHeight','captionLineHeight',
@@ -146,6 +149,7 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
       'target:shadowBlur','target:shadowOffsetX','target:shadowOffsetY'].includes(field))return nativeMaterial;
   if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
   if(field==='target:profitToneOverride')return true;
+  if(field==='target:conditionalStyles')return ['metric','text','value','prefix','generic'].includes(kind);
   if(['target:prefixText','target:prefixGap','target:prefixOffsetX','target:prefixOffsetY'].includes(field))return kind==='prefix';
   if(field==='target:fontFamily')return ['text','value','prefix','metric','frame'].includes(kind);
   if(['target:labelFontWeight','target:captionFontWeight','target:labelFontStyle','target:captionFontStyle','target:labelLetterSpacing','target:captionLetterSpacing','target:labelLineHeight','target:captionLineHeight'].includes(field))return kind==='metric';

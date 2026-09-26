@@ -6,6 +6,7 @@ import {useWorkspace} from './WorkspaceSurface';
 import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type TargetGeometry} from './workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colorWithAlpha} from './frameEffects';
+import {applyConditionalAppearance,activeConditionalRule} from './conditionalVisual';
 import {TargetBackdrop,targetShadowStyle} from './TargetSurfaceEffects';
 import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
@@ -24,9 +25,10 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const selected=engineer.selection?.page===target.page&&engineer.selection.frameKey===target.frameKey&&engineer.selection.id===target.id;
   const editing=engineer.session?.scope==='target'&&engineer.session.target?.page===target.page&&engineer.session.target.frameKey===target.frameKey&&engineer.session.target.id===target.id;
   const override=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);
-  const appearance=mergeTargetAppearance(target.base,override);
   const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?
     override.profitToneOverride:target.profitTone??'neutral';
+  const condition=activeConditionalRule(override.conditionalStyles,actualTone);
+  const appearance=applyConditionalAppearance(mergeTargetAppearance(target.base,override),actualTone);
   const resolvedAppearance={...appearance,
     textColor:linkedColor(appearance.textColor,appearance.textProfitColor,actualTone,settings.prefs.display),
     labelColor:linkedColor(appearance.labelColor,appearance.labelProfitColor,actualTone,settings.prefs.display),
@@ -55,15 +57,17 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     'shadowEnabled','shadowColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
     'marginVertical','marginHorizontal','borderStyle'];
   const materialActive=customized&&['text','value','prefix','generic','frame'].includes(target.kind)&&
-    materialKeys.some(key=>Object.hasOwn(override,key));
+    (materialKeys.some(key=>Object.hasOwn(override,key))||Boolean(condition&&
+      (condition.backgroundColor||condition.borderColor||condition.backgroundOpacity!==undefined)));
   const wrapperKind=['wall','portfolio-list','control','generic','frame'].includes(target.kind)||materialActive;
   const wrapperStyle=customized&&wrapperKind?{
     // Parent frame paints its own border, padding and opaque face. Never double-apply.
     ...(target.kind==='frame'?{backgroundColor:'transparent'}:
       materialActive&&appearance.backgroundMode==='gradient'?{backgroundColor:'transparent'}:
-      (override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+      (override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined||
+        condition?.backgroundColor||condition?.backgroundOpacity!==undefined?
         {backgroundColor:colorWithAlpha(resolvedAppearance.backgroundColor,appearance.backgroundOpacity)}:{})),
-    ...(target.kind==='frame'?{}:(override.borderColor||override.borderProfitColor!==undefined?{borderColor:resolvedAppearance.borderColor}:{})),
+    ...(target.kind==='frame'?{}:(override.borderColor||override.borderProfitColor!==undefined||condition?.borderColor?{borderColor:resolvedAppearance.borderColor}:{})),
     ...(target.kind==='frame'?{}:(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{})),
     ...(target.kind==='frame'?{}:(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{})),
     ...(target.kind==='frame'?{}:(override.padding!==undefined?{padding:appearance.padding}:{})),

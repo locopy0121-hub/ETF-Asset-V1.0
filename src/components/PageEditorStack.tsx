@@ -16,6 +16,7 @@ import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {spacing} from '../theme/tokens';
 import {colorWithAlpha} from '../maintenance/frameEffects';
+import {applyConditionalAppearance,activeConditionalRule} from '../maintenance/conditionalVisual';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -40,7 +41,10 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         },
       };
       return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
-        {(_appearance,customized,override)=><MetricTile {...props} {...(customized?{editorStyle:override}:{})}/>}
+        {(_appearance,customized,override)=><MetricTile {...props} {...(customized?{
+          editorStyle:applyConditionalAppearance(override,
+            override.profitToneOverride&&override.profitToneOverride!=='auto'?override.profitToneOverride:
+            props.tone==='gain'?'gain':props.tone==='loss'?'loss':'neutral')}: {})}/>} 
       </InspectableTarget>;
     }
     if(child.type===AiQuestionBox){
@@ -93,12 +97,14 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
           label:'NT$ 貨幣前綴',properties:[...target.properties,{name:'元件類型',value:'獨立貨幣前綴；金額仍為帳務唯讀',readOnly:true}],
           base:{...target.base,prefixText:content,prefixGap:8}}:target;
         return <InspectableTarget key={child.key??nodeId} target={actualTarget} frame={frame}>
-          {(appearance,customized,override)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
+          {(appearance,customized,override)=>{const rule=activeConditionalRule(override.conditionalStyles,
+            override.profitToneOverride&&override.profitToneOverride!=='auto'?override.profitToneOverride:'neutral');
+            return cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
             ...props,children:customized&&!isDataValue?(isPrefix?
               (override.prefixText!==undefined?appearance.prefixText:content):
               (appearance.labelText||appearance.captionText||content)):content,
             style:customized?[props.style,{
-              ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
+              ...(override.textColor||override.textProfitColor!==undefined||rule?.textColor?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
               ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
               ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
@@ -118,7 +124,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
               ...(override.padding!==undefined?{padding:appearance.padding}:{}),
             }]:props.style,
-          })}
+          });}}
         </InspectableTarget>;
       }
     }
