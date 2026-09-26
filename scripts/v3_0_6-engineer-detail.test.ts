@@ -67,7 +67,11 @@ assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
-assert.ok(read('.github/workflows/ci.yml').includes('go-v3.0.6-20260925-engineer-text-detail'));
+// Historic branch names are not a current CI contract: verify the forward-compatible
+// V3 GO trigger and PR-only APK gate so every subsequent patch version can build.
+const workflow=read('.github/workflows/ci.yml');
+assert.ok(workflow.includes("branches: [main, 'go-v3.0.*']"),'V3 GO push and PR triggers must be version-independent');
+assert.ok(workflow.includes("startsWith(github.head_ref, 'go-v3.0.')"),'native QA gate must accept future V3 GO branches');
 assert.ok(read('src/settings/BackupService.ts').includes(`const APP_VERSION='${pkg.version}'`));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(file).length>0,'immutable accounting source exists: '+file);
