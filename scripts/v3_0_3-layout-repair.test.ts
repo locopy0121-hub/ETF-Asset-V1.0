@@ -38,5 +38,5 @@ for(const [name,screen] of [['home',home],['portfolio',portfolio],['ledger',ledg
 assert.ok(inspector.includes('children(resolvedAppearance,customized,override)'), 'existing live targets must remain editable');
 for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:composer'])
   assert.ok(ai.includes(id),'V3.0.9 native AI target lost: '+id);
-const pkg=JSON.parse(read('package.json'));assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16'].includes(pkg.version),'layout repair is a V3.0.9 QA revision, NOT a V3.0.9 feature');
+const pkg=JSON.parse(read('package.json'));assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17'].includes(pkg.version),'layout repair is a V3.0.9 QA revision, NOT a V3.0.9 feature');
 console.log('V3.0.9 layout regression gate: stable ON/OFF metric grid, overlay-only selection, no finance rewrite and AI preservation PASS');
