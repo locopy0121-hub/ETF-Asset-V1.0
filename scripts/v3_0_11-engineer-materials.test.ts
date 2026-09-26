@@ -8,14 +8,14 @@ import {colorWithAlpha,sampleFrameGradient} from '../src/maintenance/frameEffect
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.29');
-assert.equal(app.expo.version,'3.0.29');
-assert.equal(app.expo.android.versionCode,30029);
-assert.equal(app.expo.ios.buildNumber,'30029');
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.29'"));
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30029'"));
-assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.29'"));
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.29-QA.apk'));
+assert.equal(pkg.version,'3.0.30');
+assert.equal(app.expo.version,'3.0.30');
+assert.equal(app.expo.android.versionCode,30030);
+assert.equal(app.expo.ios.buildNumber,'30030');
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.30'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30030'"));
+assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='3.0.30'"));
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.30-QA.apk'));
 const material=ENGINEER_SKILLS.find(group=>group.id==='target-materials');
 assert.ok(material&&material.tools.filter(tool=>tool.status==='ready').length>=20);
 for(const tool of material!.tools.filter(tool=>tool.status==='ready'))
