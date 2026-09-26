@@ -16,8 +16,8 @@ assert.equal(COMPLETE_ENGINEER_SKILLS.length,30);
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(ids).size,184);
 assert.equal(audit.existing,169);assert.equal(audit.advanced,12);assert.equal(audit.unregistered,3);
-assert.equal(audit.readyDeclared,146,'only two additional genuinely wired skills');
-assert.equal(audit.pending,38);
+assert.equal(audit.readyDeclared,147,'visual history is the only newly wired V3.0.20 skill');
+assert.equal(audit.pending,37);
 for(const id of ['advanced-tokens','advanced-favorites']){
  const tool=all.find(t=>t.id===id)!;
  assert.equal(tool.status,'ready');
@@ -102,11 +102,11 @@ const backup=read('src/settings/BackupService.ts');
 assert.ok(backup.includes("key.startsWith(PREFIX)")&&ENGINEER_ASSETS_STORAGE_KEY.startsWith('@tf-asset/'),
  'verified external SAF backup must automatically include the new asset key');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.19');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30019);assert.equal(app.expo.ios.buildNumber,'30019');
-assert.ok(backup.includes("APP_VERSION='3.0.19'"));
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.19-QA.apk'));
+assert.equal(pkg.version,'3.0.20');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30020);assert.equal(app.expo.ios.buildNumber,'30020');
+assert.ok(backup.includes("APP_VERSION='3.0.20'"));
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.20-QA.apk'));
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(core).length>0,'locked finance source intact: '+core);
-console.log('V3.0.19: 5-slot design assets, visual-only sanitization, native target/frame preview, safe local sync PASS');
-console.log('V3.0.19: persisted favorites/recent shortcuts, no extra AB level, backup inclusion PASS');
+console.log('V3.0.20: 5-slot design assets, visual-only sanitization, native target/frame preview, safe local sync PASS');
+console.log('V3.0.20: persisted favorites/recent shortcuts, no extra AB level, backup inclusion PASS');

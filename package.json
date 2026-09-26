@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.19",
+  "version": "3.0.20",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_19 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_20 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -174,7 +174,9 @@
     "test:design-assets-v318": "tsx scripts/v3_0_18-design-assets.test.ts",
     "test:v3_0_18": "npm run test:v3_0_17 && npm run test:design-assets-v318",
     "test:conditional-v319": "tsx scripts/v3_0_19-conditional-styles.test.ts",
-    "test:v3_0_19": "npm run test:v3_0_18 && npm run test:conditional-v319"
+    "test:v3_0_19": "npm run test:v3_0_18 && npm run test:conditional-v319",
+    "test:visual-history-v320": "tsx scripts/v3_0_20-visual-history.test.ts",
+    "test:v3_0_20": "npm run test:v3_0_19 && npm run test:visual-history-v320"
   },
   "dependencies": {
     "expo": "~57.0.21",
