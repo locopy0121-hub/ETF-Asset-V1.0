@@ -16,6 +16,7 @@ import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {spacing} from '../theme/tokens';
 import {colorWithAlpha} from '../maintenance/frameEffects';
+import {applyConditionalAppearance} from '../maintenance/conditionalVisual';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -40,7 +41,10 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         },
       };
       return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
-        {(_appearance,customized,override)=><MetricTile {...props} {...(customized?{editorStyle:override}:{})}/>}
+        {(_appearance,customized,override)=><MetricTile {...props} {...(customized?{
+          editorStyle:applyConditionalAppearance(override,
+            override.profitToneOverride&&override.profitToneOverride!=='auto'?override.profitToneOverride:
+            props.tone==='gain'?'gain':props.tone==='loss'?'loss':'neutral')}: {})}/>} 
       </InspectableTarget>;
     }
     if(child.type===AiQuestionBox){
@@ -98,7 +102,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               (override.prefixText!==undefined?appearance.prefixText:content):
               (appearance.labelText||appearance.captionText||content)):content,
             style:customized?[props.style,{
-              ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
+              ...(override.textColor||override.textProfitColor!==undefined||override.conditionalStyles!==undefined?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
               ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
               ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
@@ -109,11 +113,11 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
               ...(isPrefix&&(override.prefixOffsetX!==undefined||override.prefixOffsetY!==undefined)?{transform:[{translateX:appearance.prefixOffsetX},{translateY:appearance.prefixOffsetY}]}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
-              ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?
+              ...(appearance.backgroundMode==='gradient'&&(override.backgroundMode!==undefined||override.conditionalStyles!==undefined)?
                 {backgroundColor:'transparent'}:
-                override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+                override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined||override.conditionalStyles!==undefined?
                 {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
-              ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
+              ...(override.borderColor||override.borderProfitColor!==undefined||override.conditionalStyles!==undefined?{borderColor:appearance.borderColor}:{}),
               ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
               ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
               ...(override.padding!==undefined?{padding:appearance.padding}:{}),
