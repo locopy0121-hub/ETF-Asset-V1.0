@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.21",
+  "version": "3.0.22",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_21 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_22 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -178,7 +178,9 @@
     "test:visual-history-v320": "tsx scripts/v3_0_20-visual-history.test.ts",
     "test:v3_0_20": "npm run test:v3_0_19 && npm run test:visual-history-v320",
     "test:instance-history-v321": "tsx scripts/v3_0_21-instance-history.test.ts",
-    "test:v3_0_21": "npm run test:v3_0_20 && npm run test:instance-history-v321"
+    "test:v3_0_21": "npm run test:v3_0_20 && npm run test:instance-history-v321",
+    "test:angled-gradient-v322": "tsx scripts/v3_0_22-angled-gradient.test.ts",
+    "test:v3_0_22": "npm run test:v3_0_21 && npm run test:angled-gradient-v322"
   },
   "dependencies": {
     "expo": "~57.0.21",
