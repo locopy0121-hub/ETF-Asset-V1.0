@@ -20,14 +20,16 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   cornerBottomRight:[-1,48,1],cornerBottomLeft:[-1,48,1],
   shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
   glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
+  outerGlowOpacity:[0,.8,.05],outerGlowSpread:[0,32,1],outerGlowSoftness:[0,48,1],
   paddingTop:[-1,32,1],paddingRight:[-1,32,1],paddingBottom:[-1,32,1],paddingLeft:[-1,32,1],
   contentGap:[-1,40,1],marginVertical:[0,32,1],maxWidth:[0,1600,10],
   gradientMidStop:[.1,.9,.05],imageOpacity:[0,1,.05],maskOpacity:[0,1,.05],
 };
 const colorProfitFlag:Partial<Record<keyof FrameEffects,
-  'gradientEndProfitColor'|'gradientMidProfitColor'|'maskProfitColor'|'shadowProfitColor'|'glowProfitColor'>>={
+  'gradientEndProfitColor'|'gradientMidProfitColor'|'maskProfitColor'|'shadowProfitColor'|'glowProfitColor'|'outerGlowProfitColor'>>={
   gradientEndColor:'gradientEndProfitColor',gradientMidColor:'gradientMidProfitColor',
   maskColor:'maskProfitColor',shadowColor:'shadowProfitColor',glowColor:'glowProfitColor',
+  outerGlowColor:'outerGlowProfitColor',
 };
 function FrameImagePicker({currentUri,onPicked}:{currentUri:string|null;onPicked:(uri:string)=>void}){
   const [busy,setBusy]=useState(false);
@@ -103,6 +105,25 @@ export function FrameEffectsToolDetails({field}:{field:string}){
   const current=fx[key];
   const change=(next:unknown)=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[key]:next,
     ...(key==='gradientDirection'?{gradientAngle:null}:{})})});
+  if(key==='outerGlowEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜外側柔光暈（獨立於內緣光圈）</Text>
+      <Switch accessibilityLabel="外側柔光暈開關" value={fx.outerGlowEnabled} onValueChange={change}/>
+    </View>
+    {fx.outerGlowEnabled?<>
+      <ColorPalettePicker label="外側光暈顏色" value={fx.outerGlowColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,outerGlowColor:color})})}
+        profitColorEnabled={fx.outerGlowProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,outerGlowProfitColor:enabled})})}/>
+      {([['outerGlowOpacity','透明度（獨立）',0,.8,.05],
+          ['outerGlowSpread','向外擴散',0,32,1],
+          ['outerGlowSoftness','柔邊範圍',0,48,1]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontSize:12,fontWeight:'700'}}>{label}：{name==='outerGlowOpacity'?Math.round(fx[name]*100)+'%':fx[name]+' dp'}</Text>
+        <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
+          min={min} max={max} step={step}/>
+      </View>)}
+    </>:null}
+  </View>;
   if(key==='gradientAngle')return <View style={{gap:8,marginTop:9}}>
     <Text style={{color:theme.palette.text,fontWeight:'700'}}>任意角度：{fx.gradientAngle===null?'沿用水平／垂直':fx.gradientAngle+'°'}</Text>
     <NumericDetail value={fx.gradientAngle??(fx.gradientDirection==='vertical'?90:0)}
