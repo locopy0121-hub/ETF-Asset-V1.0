@@ -57,7 +57,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
     ready('target-border-width','元件邊框粗細','target:borderWidth','0–8 px'),
     ready('target-border-radius','元件圓角','target:borderRadius','0–48 px'),
     later('fx-background-image','① 圖片裁切位置／跨手機檔案移轉','背景圖片及遮罩已接入；裁切位置與跨裝置自動嵌入仍需原生適配'),
-    later('fx-multi-gradient','① 任意角度漸層','雙色／三色水平與垂直已接入；任意角度須高性能原生漸層引擎'),
+    ready('fx-multi-gradient','① 任意角度漸層','framefx:gradientAngle','0～359° 可手動輸入或 ±1；原生 View 對角漸層；可恢復舊水平／垂直；僅當前 A 的局部外觀'),
     later('fx-border-grad','② 漸層／雙層邊框','需原生自訂繪製'),
     later('fx-shadow-spread','③ 精準陰影擴散／多層','Android 原生相容性驗證後接入'),
     later('fx-outer-glow','④ 外側柔光暈','須避免與卡片陰影裁切衝突'),
