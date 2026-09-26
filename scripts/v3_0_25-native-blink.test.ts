@@ -40,7 +40,7 @@ assert.equal(pkg.version,'3.0.27');assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30027);assert.equal(app.expo.ios.buildNumber,'30027');
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes("branches: [main, 'go-v3.0.*']")&&wf.includes("startsWith(github.head_ref, 'go-v3.0.')"));
-assert.ok(wf.includes('TF-Asset-V3.0.27-QA.apk')&&wf.includes('npm run test:v3_0_26'));
+assert.ok(wf.includes('TF-Asset-V3.0.27-QA.apk')&&wf.includes('npm run test:v3_0_27'));
 assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.27'"));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(path).length>0);
 console.log('V3.0.27 native frame blink regression PASS: A/B/C, normalized effects, reduced motion, financial isolation, APK gates');
