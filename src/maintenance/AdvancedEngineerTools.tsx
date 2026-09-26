@@ -1,8 +1,8 @@
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Alert,Pressable,Switch,Text,View} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance,type RegisteredVisualTarget} from './MaintenanceRuntime';
-import {TARGET_APPEARANCE,mergeTargetAppearance,type TargetAppearance,type TargetKind,type TargetOverride} from './inspectionModel';
+import {TARGET_APPEARANCE,mergeTargetAppearance,type TargetKind} from './inspectionModel';
 import {BATCH_VISUAL_FIELDS,batchPlan,frameHealth,visualChanges,
  type BatchCandidate,type BatchField,type VisualSource} from './advancedSkillEngine';
 import {isEngineerOwnedInstance} from './componentLibrary';
@@ -21,7 +21,10 @@ function useActualCandidates(){
  })):[] as BatchCandidate[];
  const merged=new Map<string,BatchCandidate>();
  for(const candidate of live.map(nativeCandidate))merged.set(candidate.id,candidate);
- for(const candidate of added)if(!merged.has(candidate.id))merged.set(candidate.id,candidate);
+ for(const candidate of added){
+   const mounted=merged.get(candidate.id);
+   merged.set(candidate.id,mounted?{...mounted,base:{...mounted.base,...candidate.base}}:candidate);
+ }
  if(s?.scope==='target'&&s.target&&!merged.has(s.target.id))
    merged.set(s.target.id,{id:s.target.id,label:s.target.label,kind:s.target.kind,
      base:{...s.target.base,...(s.target.geometry?{width:s.target.geometry.width,height:s.target.geometry.height}:{})}});
