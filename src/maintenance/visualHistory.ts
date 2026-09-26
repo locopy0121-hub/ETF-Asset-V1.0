@@ -58,7 +58,7 @@ export function normalizeVisualHistory(input:unknown):VisualHistoryMap{
  if(!input||typeof input!=='object'||Array.isArray(input))return {};
  return Object.fromEntries(Object.entries(input as Record<string,unknown>).filter(([key,value])=>
    validKey(key)&&Array.isArray(value)).map(([key,value])=>{
-   const kind=key.startsWith('frame:')?'frame':'target';
+   const kind:VisualHistoryKind=key.startsWith('frame:')?'frame':'target';
    const entries=(value as unknown[]).flatMap(item=>{
      if(!item||typeof item!=='object'||Array.isArray(item))return [];
      const data=item as Record<string,unknown>;
