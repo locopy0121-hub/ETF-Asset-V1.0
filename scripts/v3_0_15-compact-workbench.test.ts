@@ -16,6 +16,6 @@ assert.ok(wb.includes('setOpenC(null)'),'changing B closes its old C');
 assert.ok(wb.includes('maintenance.apply()')&&wb.includes('maintenance.cancel()'));
 assert.ok(!wb.includes('showStats'),'do not stack a technical inventory on the mobile editor');
 const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'3.0.17');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30017);
+assert.equal(pkg.version,'3.0.18');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30018);
 console.log('V3.0.15 compact-layout regression migrated to the corrected A→B property→C controls: PASS');
