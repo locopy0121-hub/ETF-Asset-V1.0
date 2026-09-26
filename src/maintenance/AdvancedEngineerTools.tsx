@@ -1,5 +1,8 @@
 import {useEffect,useState} from 'react';
-import {Alert,Pressable,Switch,Text,View} from 'react-native';
+import {Alert,Pressable,Switch,Text,TextInput,View} from 'react-native';
+import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
+import {findAbProperty,AB_PROPERTY_GROUPS} from './abPropertyModel';
+import {frameTokenPatch,frameTokenSource,tokenTargetPatch,type DesignToken} from './engineerDesignAssets';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance,type RegisteredVisualTarget} from './MaintenanceRuntime';
 import {TARGET_APPEARANCE,mergeTargetAppearance,type TargetKind} from './inspectionModel';
@@ -146,5 +149,137 @@ export function FrameHealthToolDetails(){
        <Text style={{color:theme.palette.loss,fontWeight:'700'}}>{finding.label}</Text>
        <Text style={{color:theme.palette.text,fontSize:12}}>{finding.message}</Text>
      </View>):<Text style={{color:theme.palette.gain}}>目前已量測範圍未發現越界、同類重疊或過小觸控區；其餘元件仍需實機檢查。</Text>}
+ </View>;
+}
+
+/** B 主題 -> C 共享設計變數. Token library writes are separate from App visuals:
+ * saving a token is explicit; applying it touches ONLY the selected A draft.
+ */
+export function DesignTokenToolDetails(){
+ const maint=useMaintenance(),theme=useThemeRuntime(),session=maint.session;
+ const [slot,setSlot]=useState(1),[name,setName]=useState(''),[busy,setBusy]=useState(false);
+ const [notice,setNotice]=useState('');
+ const token=maint.assets.tokens.find(item=>item.slot===slot);
+ const currentTarget=session?.scope==='target'?session.target:undefined;
+ const owner=session?.scope==='instance'?
+   session.draftInstances.find(item=>item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
+ const id=currentTarget?.id??(owner?'installed:'+owner.id:undefined);
+ const kind=currentTarget?.kind??(owner?(owner.templateId==='parent-frame'?'frame':owner.templateId==='divider'?'generic':'text') as TargetKind:undefined);
+ const base=currentTarget?.base??{...TARGET_APPEARANCE,
+   ...(owner?{fontSize:owner.fontSize,textColor:owner.color}:{})};
+ const effective=id&&kind&&session?mergeTargetAppearance(base,maint.getTargetOverride(session.page,session.frameKey,id,kind)):base;
+ const capture=session?.scope==='frame'?frameTokenSource(session.draft):
+   effective as unknown as Record<string,unknown>;
+ const supported=Boolean(session?.scope==='frame'||id&&kind);
+ const preview=token&&session?(session.scope==='frame'?
+   frameTokenPatch(token,session.draft):kind?tokenTargetPatch(token,kind):{}):{};
+ const unsupported=token&&session?.scope!=='frame'&&kind?
+   Object.keys(token.style).filter(key=>preview[key as keyof typeof preview]===undefined):[];
+ const save=async()=>{
+   if(!session||!supported||busy)return;
+   setBusy(true);setNotice('');
+   const ok=await maint.saveDesignToken(slot,name||('設計組合 '+slot),capture);
+   setBusy(false);setNotice(ok?'共享設計變數已存入 5 組資料庫，尚未更動目前 A。':'儲存失敗，未改動已存樣式。');
+ };
+ const confirmSave=()=>{
+   if(token)Alert.alert('取代共享設計組合？','槽位 '+slot+' 原有「'+token.name+'」將被當前 A 的視覺設定取代；已套用至其他畫面的樣式不會暗中變動。',[
+     {text:'取消',style:'cancel'},{text:'確認取代',onPress:()=>void save()}]);
+   else void save();
+ };
+ const remove=()=>{
+   if(!token||busy)return;
+   Alert.alert('刪除共享設計組合？','只刪除中央庫這個槽位；已套用過的元件外觀不會被刪除。',[
+     {text:'取消',style:'cancel'},{text:'刪除',style:'destructive',onPress:()=>{
+       setBusy(true);void maint.removeDesignToken(slot).then(ok=>{
+         setBusy(false);setNotice(ok?'槽位已清除，既有元件不受影響。':'刪除失敗，原有槽位仍保留。');
+       });
+     }}]);
+ };
+ if(!session)return null;
+ return <View style={{gap:9,marginTop:8}}>
+   <Text style={{fontSize:12,color:theme.palette.textSecondary}}>
+     五組全 App 共用的設計樣式。儲存組合與修改 App 分開；套用組合只改目前 A 的預覽，
+     不連動其他頁面、文字內容或帳務數據。
+   </Text>
+   <View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
+     {([1,2,3,4,5] as const).map(n=><Pressable key={n} accessibilityRole="button"
+       accessibilityLabel={'選取設計槽位 '+n} onPress={()=>{setSlot(n);setName(maint.assets.tokens.find(t=>t.slot===n)?.name??'');setNotice('');}}
+       style={{borderWidth:1,borderRadius:8,borderColor:theme.palette.primary,
+         backgroundColor:slot===n?theme.palette.primary:theme.palette.surface,padding:9,minWidth:48,alignItems:'center'}}>
+       <Text style={{color:slot===n?'#FFFFFF':theme.palette.text,fontWeight:'800'}}>{n}</Text>
+     </Pressable>)}
+   </View>
+   <Text style={{fontWeight:'700',color:theme.palette.text,fontSize:12}}>
+     {token?'目前槽位：'+token.name:'空白槽位（可保存當前 A 的視覺樣式）'}
+   </Text>
+   <TextInput accessibilityLabel="設計組合名稱" value={name} maxLength={24}
+     onChangeText={setName} placeholder={token?.name??'替設計組合命名'} placeholderTextColor={theme.palette.textSecondary}
+     style={{borderWidth:1,borderColor:theme.palette.border,borderRadius:8,minHeight:42,
+       color:theme.palette.text,paddingHorizontal:9}}/>
+   <Pressable accessibilityRole="button" accessibilityLabel="將目前 A 視覺樣式儲存至設計槽位"
+     disabled={!maint.assetsLoaded||!supported||busy} onPress={confirmSave}
+     style={{padding:11,alignItems:'center',backgroundColor:theme.palette.primary,borderRadius:9,opacity:!maint.assetsLoaded||!supported||busy?.45:1}}>
+     <Text style={{color:'#FFFFFF',fontWeight:'800'}}>{busy?'處理中…':'儲存當前 A 至槽位 '+slot}</Text>
+   </Pressable>
+   {token?<View style={{gap:7,padding:9,borderWidth:1,borderColor:theme.palette.border,borderRadius:9}}>
+     <Text style={{color:theme.palette.text,fontWeight:'800'}}>C｜預覽套用「{token.name}」</Text>
+     {Object.entries(preview).map(([field,value])=><Text key={field}
+       style={{fontSize:11,color:theme.palette.textSecondary}}>{field}：{readable(value)}</Text>)}
+     {!!unsupported.length?<Text style={{fontSize:11,color:theme.palette.textSecondary}}>
+       目前 A 未適配 {unsupported.length} 項原生屬性，將略過，不假裝寫入。
+     </Text>:null}
+     <Pressable accessibilityRole="button" accessibilityLabel="將此設計組合套用到目前 A 暫存預覽"
+       disabled={!supported||!Object.keys(preview).length||busy}
+       onPress={()=>{
+         const ok=maint.applyDesignToken(slot);
+         setNotice(ok?'已套用至目前 A 草稿；請檢查上方真實畫面，再按工作台底部「儲存／套用」。':'目前 A 沒有可介接的視覺欄位。');
+       }}
+       style={{padding:11,borderRadius:8,backgroundColor:theme.palette.primary,
+         opacity:supported&&Object.keys(preview).length&&!busy?1:.45}}>
+       <Text style={{color:'#FFFFFF',fontWeight:'800',textAlign:'center'}}>套用至目前 A（暫存）</Text>
+     </Pressable>
+     <Pressable accessibilityRole="button" accessibilityLabel="刪除目前共享設計槽位"
+       onPress={remove} disabled={busy} style={{padding:8,alignItems:'center'}}>
+       <Text style={{color:theme.palette.loss,fontWeight:'700'}}>刪除這組共享樣式</Text>
+     </Pressable>
+   </View>:null}
+   {!supported?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>
+     目前 A 尚未接入可套用的視覺渲染器；共享庫與其他 A 的組合仍可使用。
+   </Text>:null}
+   {!!notice?<Text style={{fontSize:12,color:theme.palette.text}}>{notice}</Text>:null}
+ </View>;
+}
+/** Favorite and recent shortcuts navigate back to an actual B PROPERTY -> C
+ * editor; never add a category landing screen or bypass per-target adapters. */
+export function FavoriteToolDetails({onNavigate}:{onNavigate?:(id:string)=>void}){
+ const maint=useMaintenance(),theme=useThemeRuntime();
+ const tools=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools);
+ const label=id=>tools.find(tool=>tool.id===id)?.label??id;
+ const open=(id:string)=>onNavigate?.(id);
+ return <View style={{gap:9,marginTop:8}}>
+   <Text style={{fontSize:12,color:theme.palette.textSecondary}}>
+     所有 B 屬性中的 C 工具都能點星號收藏，跨頁共用；按收藏捷徑會返回該工具原本的 B 屬性。
+   </Text>
+   <Text style={{color:theme.palette.text,fontWeight:'800'}}>C｜我的收藏（{maint.assets.favorites.length}）</Text>
+   {maint.assets.favorites.map(id=><View key={id}
+     style={{flexDirection:'row',alignItems:'center',gap:8,borderWidth:1,
+       borderColor:theme.palette.border,borderRadius:8,padding:6}}>
+     <Pressable accessibilityRole="button" accessibilityLabel={'開啟收藏工具 '+label(id)}
+       onPress={()=>open(id)} style={{flex:1,padding:5}}>
+       <Text style={{color:theme.palette.text,fontWeight:'700'}}>{label(id)} ›</Text>
+     </Pressable>
+     <Pressable accessibilityRole="button" accessibilityLabel={'取消收藏 '+label(id)}
+       onPress={()=>void maint.toggleFavoriteTool(id)} style={{padding:8}}>
+       <Text style={{color:theme.palette.primary}}>★</Text>
+     </Pressable>
+   </View>)}
+   {!maint.assets.favorites.length?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>尚無收藏；展開任一 B 的工具即可收藏。</Text>:null}
+   <Text style={{color:theme.palette.text,fontWeight:'800',marginTop:5}}>C｜最近使用</Text>
+   {maint.assets.recent.map(id=><Pressable key={id} accessibilityRole="button"
+     accessibilityLabel={'最近使用 '+label(id)} onPress={()=>open(id)}
+     style={{padding:8,borderBottomWidth:1,borderColor:theme.palette.border}}>
+     <Text style={{color:theme.palette.text,fontSize:12}}>{label(id)} ›</Text>
+   </Pressable>)}
+   {!maint.assets.recent.length?<Text style={{color:theme.palette.textSecondary,fontSize:12}}>使用 C 工具後，最近十項會出現在這裡。</Text>:null}
  </View>;
 }
