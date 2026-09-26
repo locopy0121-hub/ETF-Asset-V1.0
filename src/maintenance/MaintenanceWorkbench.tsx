@@ -30,13 +30,12 @@ export function MaintenanceWorkbench(){
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
-  const [showAllSkills,setShowAllSkills]=useState(true); // every registered B group remains discoverable
   const [saving,setSaving]=useState(false);
   useEffect(()=>{
     setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
       session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
       session.target?.kind==='control'?'conditions':'typography':null);
-    setOpenTool(null);setShowAllSkills(true);
+    setOpenTool(null);
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
@@ -48,11 +47,8 @@ export function MaintenanceWorkbench(){
   const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
     'App 原生功能、既有元件及來源資料禁止刪除；僅維護工程師新增的獨立實例可移除。';
-  // The engineer retains every skill. Present applicable tools first for THIS selected A-layer.
-  const displaySkills=ENGINEER_SKILLS.map(group=>({...group,
-    tools:showAllSkills?group.tools:group.tools.filter(tool=>toolUsable(tool,session)),
-  })).filter(group=>showAllSkills||group.tools.length>0);
-  const applicableCount=ENGINEER_SKILLS.flatMap(group=>group.tools).filter(tool=>toolUsable(tool,session)).length;
+  // Always show ONE complete central skill tree. Unadapted tools explain their adapter state.
+  const displaySkills=ENGINEER_SKILLS;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
   const apply=async()=>{
     if(saving)return;
@@ -71,16 +67,7 @@ export function MaintenanceWorkbench(){
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
     <ScrollView style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
-      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:7}}>
-        <Text style={[styles.hint,{color:theme.palette.textSecondary,flex:1,marginBottom:0}]}>
-          {showAllSkills?'全部技能樹（未適配工具清楚標示）':`目前可用 ${applicableCount} 種工具；與當前元件無關的工具先收起。`}
-        </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={showAllSkills?'只顯示適用技能':'查看全部維護技能'}
-          onPress={()=>{setShowAllSkills(value=>!value);setOpenTool(null);}}
-          style={[styles.choice,{borderColor:theme.palette.primary}]}>
-          <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>{showAllSkills?'適用技能':'全部技能'}</Text>
-        </Pressable>
-      </View>
+      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹｜所有技能可查閱；尚未介接的項目明確標示，絕不依元件種類隱藏整類工具。</Text>
       <View accessibilityRole="summary" style={[styles.detail,{
         backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
         marginTop:0,marginBottom:10,gap:6,
@@ -101,10 +88,10 @@ export function MaintenanceWorkbench(){
         </Text>
       </View>
       {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選取 {pendingSelection.label}，點上方小扳手讀取其目前設定。</Text>:null}
-      {selectedTarget?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
+      {(selectedTarget||session.scope==='instance'&&instance)?<View style={{marginBottom:8,padding:10,borderWidth:1,borderRadius:9,borderColor:theme.palette.border,gap:8}}>
         <Text style={{color:theme.palette.text,fontWeight:'700'}}>同類元件外觀同步</Text>
         <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
-          <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步其他同類元件的本次外觀修改；不複製文字、定位或數據。</Text>
+          <Text style={{flex:1,color:theme.palette.textSecondary,fontSize:12}}>套用後同步本次修改的同類外觀；新增元件的字號、文字色及父框架材質亦可同步。文字內容、尺寸、位置及資料不連動。</Text>
           <Switch value={session.syncSameKind} onValueChange={maintenance.setSyncSameKind}/>
         </View>
         {session.syncSameKind?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
@@ -163,11 +150,20 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(f.startsWith('workspace:'))return true;
   if(f==='frame:size')return s.scope==='frame';
   if(f.startsWith('framefx:'))return s.scope==='frame';
+  if(f==='instance:sync')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
   if(f==='instance:parent-size')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&item.templateId==='parent-frame'&&isEngineerOwnedInstance(item));
   if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
     s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
       (tool.id==='remove'||tool.id==='install'&&item.templateId==='parent-frame'));
-  if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
+  if(f.startsWith('target:')){
+    if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
+    const instance=s.scope==='instance'?s.draftInstances.find(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)):undefined;
+    if(!instance)return false;
+    if(['target:xy','target:dimensions','target:anchors','target:offsetX','target:offsetY',
+      'target:anchorX','target:anchorY','target:width','target:height'].includes(f))return false;
+    const kind:TargetKind=instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text';
+    return targetToolSupported(kind,f);
+  }
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
     if(s.scope!=='frame')return false;
@@ -183,6 +179,18 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  if(tool.field==='instance:sync')return <View style={{gap:8,marginTop:8}}>
+    <Text style={{fontSize:12,color:theme.palette.textSecondary}}>共用樣式只更新同類元件外觀，不連動內容、位置、尺寸或帳務資料。</Text>
+    <Switch value={s.syncSameKind} onValueChange={maint.setSyncSameKind}/>
+    {s.syncSameKind?<View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}>
+      {([['frame','同框架'],['page','本頁'],['app','全 App']] as const).map(([scope,label])=><Pressable key={scope}
+        onPress={()=>maint.setSyncScope(scope)} accessibilityRole="button" accessibilityLabel={'同類同步：'+label}
+        style={[styles.choice,{borderColor:theme.palette.primary,
+          backgroundColor:s.syncScope===scope?theme.palette.primary:theme.palette.surface}]}>
+        <Text style={{color:s.syncScope===scope?'#FFFFFF':theme.palette.text}}>{label}</Text>
+      </Pressable>)}
+    </View>:null}
+  </View>;
   if(tool.field==='frame:size')return <FrameDimensionsToolDetails/>;
   if(tool.field?.startsWith('framefx:'))return toolUsable(tool,s)?
     <FrameEffectsToolDetails field={tool.field.slice('framefx:'.length)}/>:
@@ -195,7 +203,13 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       tool.field?.startsWith('target:')?'請先輕點工作區的內部元件，再點小扳手進入專屬編輯。':'這是其他工作層級的工具，請使用對應扳手呼叫。'}
   </Text>;
   if(tool.field?.startsWith('target:')){
-    const target=s.target;
+    const target=s.target??(s.scope==='instance'&&instance?{
+      id:'installed:'+instance.id,page:s.page,frameKey:s.frameKey,frameTitle:s.title,
+      kind:(instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text') as TargetKind,
+      label:instance.text||'新增元件',properties:[{name:'文字內容',value:instance.text,readOnly:false}],
+      base:{...TARGET_APPEARANCE,fontSize:instance.fontSize,textColor:instance.color,
+        backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
+    }:null);
     if(!target)return null;
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
@@ -451,16 +465,42 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
   return <>{instances.filter(item=>!item.parentId&&(item.visible||item.id===activeId)).map(item=>{
     if(item.templateId==='parent-frame'){
       const children=instances.filter(child=>child.parentId===item.id).map(({parentId,...child})=>child);
-      return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,height:item.frameHeight??240,
-        maxWidth:'100%',borderWidth:1,borderRadius:14,borderColor:theme.palette.border,
-        backgroundColor:theme.palette.surface,padding:10,overflow:'visible',position:'relative'}}>
-        <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:5}}>
-          <Text style={{flex:1,fontSize:item.fontSize,color:item.color,fontWeight:'800'}}>{item.text}</Text>
-          {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
-            onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
-        </View>
-        <InstalledFrameComponents instances={children} frame={frame} onWrench={onWrench} enabled={enabled} activeId={activeId}/>
-        {children.length===0?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>空白父框架｜點選扳手可新增內部元件</Text>:null}
+      const target:InspectedTarget={
+        id:'installed:'+item.id,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        kind:'frame',label:item.text||'新增父框架',
+        properties:[{name:'工程師新增父框架',value:item.text,readOnly:false},
+          {name:'寬度',value:String(item.frameWidth??320)+' dp',readOnly:false},
+          {name:'高度',value:String(item.frameHeight??240)+' dp',readOnly:false}],
+        base:{...TARGET_APPEARANCE,fontSize:item.fontSize,textColor:item.color,
+          labelText:item.text,backgroundColor:theme.palette.surface,
+          borderColor:theme.palette.border,borderWidth:1,borderRadius:14,padding:10},
+      };
+      return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,
+        maxWidth:'100%',position:'relative'}}>
+        <InspectableTarget frame={frame} target={target}>{(appearance,customized,override)=><View style={{
+          width:'100%',height:item.frameHeight??240,
+          borderWidth:customized?appearance.borderWidth:1,
+          borderStyle:customized?appearance.borderStyle:'solid',
+          borderRadius:customized?appearance.borderRadius:14,
+          borderColor:customized?appearance.borderColor:theme.palette.border,
+          backgroundColor:customized&&appearance.backgroundMode==='gradient'?'transparent':
+            customized?colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity):theme.palette.surface,
+          padding:customized?appearance.padding:10,overflow:'visible',position:'relative',
+        }}>
+          <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:5}}>
+            <Text style={{flex:1,fontSize:customized?appearance.fontSize:item.fontSize,
+              color:customized?appearance.textColor:item.color,
+              fontWeight:override.fontWeight??'800',
+              ...(override.fontFamily&&appearance.fontFamily!=='system'?{fontFamily:appearance.fontFamily}:{}),
+              ...(override.fontStyle?{fontStyle:appearance.fontStyle}:{}),
+              ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
+            }}>{override.labelText!==undefined?appearance.labelText:item.text}</Text>
+            {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
+              onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
+          </View>
+          <InstalledFrameComponents instances={children} frame={frame} onWrench={onWrench} enabled={enabled} activeId={activeId}/>
+          {children.length===0?<Text style={{fontSize:12,color:theme.palette.textSecondary}}>空白父框架｜點選扳手可新增內部元件</Text>:null}
+        </View>}</InspectableTarget>
       </View>;
     }
     const target:InspectedTarget={

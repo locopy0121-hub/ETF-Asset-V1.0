@@ -54,17 +54,19 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     'gradientMidEnabled','gradientMidStop','glowEnabled','glowColor','glowOpacity','glowWidth',
     'shadowEnabled','shadowColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
     'marginVertical','marginHorizontal','borderStyle'];
-  const materialActive=customized&&['text','value','prefix','generic'].includes(target.kind)&&
+  const materialActive=customized&&['text','value','prefix','generic','frame'].includes(target.kind)&&
     materialKeys.some(key=>Object.hasOwn(override,key));
-  const wrapperKind=['wall','portfolio-list','control','generic'].includes(target.kind)||materialActive;
+  const wrapperKind=['wall','portfolio-list','control','generic','frame'].includes(target.kind)||materialActive;
   const wrapperStyle=customized&&wrapperKind?{
-    ...(materialActive&&appearance.backgroundMode==='gradient'?{backgroundColor:'transparent'}:
+    // Parent frame paints its own border, padding and opaque face. Never double-apply.
+    ...(target.kind==='frame'?{backgroundColor:'transparent'}:
+      materialActive&&appearance.backgroundMode==='gradient'?{backgroundColor:'transparent'}:
       (override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
         {backgroundColor:colorWithAlpha(resolvedAppearance.backgroundColor,appearance.backgroundOpacity)}:{})),
-    ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:resolvedAppearance.borderColor}:{}),
-    ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
-    ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
-    ...(override.padding!==undefined?{padding:appearance.padding}:{}),
+    ...(target.kind==='frame'?{}:(override.borderColor||override.borderProfitColor!==undefined?{borderColor:resolvedAppearance.borderColor}:{})),
+    ...(target.kind==='frame'?{}:(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{})),
+    ...(target.kind==='frame'?{}:(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{})),
+    ...(target.kind==='frame'?{}:(override.padding!==undefined?{padding:appearance.padding}:{})),
     ...(materialActive?{
       borderStyle:appearance.borderStyle,marginVertical:appearance.marginVertical,
       marginHorizontal:appearance.marginHorizontal,

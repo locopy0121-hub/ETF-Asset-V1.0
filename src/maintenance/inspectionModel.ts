@@ -4,7 +4,7 @@ import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
-export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix';
+export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix'|'frame';
 export type TargetProperty=Readonly<{name:string;value:string;readOnly?:boolean}>;
 export type TargetAppearance=Readonly<{
   visible:boolean;fontSize:number;labelFontSize:number;captionFontSize:number;
@@ -133,7 +133,7 @@ export const TARGET_VISUAL_PRESETS={
     borderWidth:0,borderRadius:8,shadowEnabled:false,glowEnabled:false},
 } as const satisfies Record<string,TargetOverride>;
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
-  const nativeMaterial=['metric','text','value','prefix','generic'].includes(kind);
+  const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
   if(field==='target:resetVisual')return true;
   if(field==='target:preset')return nativeMaterial;
   if(['target:backgroundMode','target:gradientDirection','target:gradientEndColor',
@@ -147,12 +147,12 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
   if(field==='target:profitToneOverride')return true;
   if(['target:prefixText','target:prefixGap','target:prefixOffsetX','target:prefixOffsetY'].includes(field))return kind==='prefix';
-  if(field==='target:fontFamily')return ['text','value','prefix','metric'].includes(kind);
+  if(field==='target:fontFamily')return ['text','value','prefix','metric','frame'].includes(kind);
   if(['target:labelFontWeight','target:captionFontWeight','target:labelFontStyle','target:captionFontStyle','target:labelLetterSpacing','target:captionLetterSpacing','target:labelLineHeight','target:captionLineHeight'].includes(field))return kind==='metric';
-  if(['target:fontWeight','target:fontStyle','target:textDecorationLine','target:letterSpacing','target:lineHeight'].includes(field))return ['text','value','prefix','metric'].includes(kind);
+  if(['target:fontWeight','target:fontStyle','target:textDecorationLine','target:letterSpacing','target:lineHeight'].includes(field))return ['text','value','prefix','metric','frame'].includes(kind);
   if(field==='target:textProfitColor')return kind!=='wall'&&kind!=='portfolio-list'&&kind!=='control';
   if(field==='target:labelProfitColor'||field==='target:captionProfitColor'||field==='target:captionColor')return kind==='metric';
-  if(field==='target:labelText')return kind==='metric'||kind==='text';
+  if(field==='target:labelText')return kind==='metric'||kind==='text'||kind==='frame';
   if(field==='target:captionText')return kind==='metric';
   if(field==='target:labelColor')return kind==='metric'||kind==='text';
   if(field==='target:labelFontSize'||field==='target:captionFontSize')return kind==='metric';

@@ -27,15 +27,15 @@ assert.ok(inspect.includes('if(!engineer.enabled&&!appearance.visible)return nul
 assert.ok(inspect.includes('top:2')&&inspect.includes('minWidth:28'),'wrench must be anchored INSIDE the tile, not outside adjacent siblings');
 assert.ok(!inspect.includes("已選取："),'floating caption obscured financial content');
 const dock=read('src/maintenance/MaintenanceWorkbench.tsx');
-assert.ok(dock.includes('displaySkills=ENGINEER_SKILLS.map')&&dock.includes('showAllSkills'));
-assert.ok(dock.includes("group.tools.filter(tool=>toolUsable(tool,session))"));
-assert.ok(dock.includes("適用技能")&&dock.includes("全部技能"));
+assert.ok(dock.includes('const displaySkills=ENGINEER_SKILLS;'),'one global skill tree remains available');
+assert.ok(!dock.includes('group.tools.filter(tool=>toolUsable(tool,session))'),'never hide tools by current target');
+assert.ok(dock.includes('中央完整技能樹'),'show all skills and report adapter status');
 const ai=read('src/components/AiQuestionBox.tsx');
 for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:composer'])
   assert.ok(ai.includes(id),'missing native AI child adapter '+id);
 assert.ok(ai.includes('onAsk(question)')&&ai.includes('runAction(action)'));
 assert.equal(ai.split('ref={scrollRef}').length,2,'AI conversation must not be duplicated');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 console.log('V3.0.9 scoped engineer skills, protected finance text, unobstructed controls and AI native adapters: PASS');
