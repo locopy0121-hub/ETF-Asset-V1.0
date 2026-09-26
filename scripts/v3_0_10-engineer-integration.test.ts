@@ -9,7 +9,7 @@ import {colorWithAlpha} from '../src/maintenance/frameEffects';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.ok(['3.0.10','3.0.11','3.0.12','3.0.13'].includes(pkg.version));
+assert.ok(['3.0.10','3.0.11','3.0.12','3.0.13','3.0.14'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
