@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.25",
+  "version": "3.0.26",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_25 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_26 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -186,7 +186,9 @@
     "test:data-simulation-v324": "tsx scripts/v3_0_24-data-simulation.test.ts",
     "test:v3_0_24": "npm run test:v3_0_23 && npm run test:data-simulation-v324",
     "test:blink-v325": "tsx scripts/v3_0_25-native-blink.test.ts",
-    "test:v3_0_25": "npm run test:v3_0_24 && npm run test:blink-v325"
+    "test:v3_0_25": "npm run test:v3_0_24 && npm run test:blink-v325",
+    "test:marquee-v326": "tsx scripts/v3_0_26-frame-marquee.test.ts",
+    "test:v3_0_26": "npm run test:v3_0_25 && npm run test:marquee-v326"
   },
   "dependencies": {
     "expo": "~57.0.21",

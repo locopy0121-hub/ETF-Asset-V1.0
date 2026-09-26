@@ -14,6 +14,7 @@ export type FrameEffects=Readonly<{
   glowEnabled:boolean;glowColor:string;glowProfitColor:boolean;glowOpacity:number;
   glowWidth:number;glowPulse:boolean;glowPeriodMs:number;
   blinkEnabled:boolean;blinkColor:string;blinkProfitColor:boolean;blinkOpacity:number;blinkPeriodMs:number;
+  titleMarqueeEnabled:boolean;titleMarqueeSpeed:number;titleMarqueeGap:number;
   outerGlowEnabled:boolean;outerGlowColor:string;outerGlowProfitColor:boolean;
   outerGlowOpacity:number;outerGlowSpread:number;outerGlowSoftness:number;
   paddingTop:number;paddingRight:number;paddingBottom:number;paddingLeft:number;
@@ -31,6 +32,7 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
   glowPulse:false,glowPeriodMs:1800,
   blinkEnabled:false,blinkColor:'#FBBF24',blinkProfitColor:false,blinkOpacity:.65,blinkPeriodMs:1500,
+  titleMarqueeEnabled:false,titleMarqueeSpeed:72,titleMarqueeGap:32,
   outerGlowEnabled:false,outerGlowColor:'#A78BFA',outerGlowProfitColor:false,
   outerGlowOpacity:.35,outerGlowSpread:4,outerGlowSoftness:12,
   paddingTop:-1,paddingRight:-1,paddingBottom:-1,paddingLeft:-1,
@@ -48,6 +50,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     shadowBlur:[0,48],shadowOffsetX:[-24,24],shadowOffsetY:[-24,24],
     glowOpacity:[0,.8],glowWidth:[0,16],glowPeriodMs:[800,4000],
     blinkOpacity:[0,.8],blinkPeriodMs:[500,5000],
+    titleMarqueeSpeed:[24,180],titleMarqueeGap:[12,80],
     outerGlowOpacity:[0,.8],outerGlowSpread:[0,32],outerGlowSoftness:[0,48],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
@@ -60,7 +63,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   }
   for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -117,4 +120,12 @@ export function outerGlowLayers(spread:number,softness:number,opacity:number){
      borderWidth:Math.max(1,Math.ceil(blur/count)),
      alpha:Number((alpha*(1-depth/(count+1))*.7).toFixed(4))};
  });
+}
+
+/** One title-copy and its gap; keeps financial data and original title immutable. */
+export function frameTitleMarqueeDuration(textWidth:number,gap:number,speed:number){
+ const w=Number.isFinite(textWidth)?Math.max(0,textWidth):0;
+ const g=Number.isFinite(gap)?Math.max(12,Math.min(80,gap)):32;
+ const v=Number.isFinite(speed)?Math.max(24,Math.min(180,speed)):72;
+ return Math.max(500,Math.round(1000*(w+g)/v));
 }

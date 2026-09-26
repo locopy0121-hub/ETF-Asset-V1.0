@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.26 跑馬燈必須獨立原生層且支援即時降低動態
+跑馬燈只可動畫實際 FrameCard 標題，不得對父框架整體 opacity 或移動內容容器造成財務數值閃爍；文字和可見空間需先量測，未溢出不啟動。系統降低動態的值除 mount 查詢，還須訂閱 reduceMotionChanged 並在卸載清理；重複循環用的第二份標題不可被讀屏重複朗讀。版本建置需對齊 APK／SHA／badging／技能覆蓋報告四組名稱。
+
 ## 2026-09-27｜連續 GO 空分支與版本鎖死的根因
 V3.0.24 #1131 QA APK PASS 後雖建立 `backup-v3.0.24-20260927-pre-v3.0.25` 與 `go-v3.0.25-20260927-native-blink`，但工作分支 HEAD 仍與 V3.0.24 相同，沒有新 commit/PR/Actions。舊 CI `push.branches` 只接受 V3.0.24、`pull_request.branches` 未包含新版基底，`qa-apk.if` 又精確限定上一版 head_ref；只排程文字 GO 或只建空分支無法產生新 APK。應把分支觸發抽象為 `go-v3.0.*`，每次必須建立可審計的新程式 commit／PR，品質＋後端 PASS 且 APK ZIP/SHA/badging/Artifact 實存才能宣告完成。每次成功後同一輪接續下個正式遞增版本；若超過當輪時限，精確交接下個每小時排程，不得冒稱排程間仍持續跑建置。
 

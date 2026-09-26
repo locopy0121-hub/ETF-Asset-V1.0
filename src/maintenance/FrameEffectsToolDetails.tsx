@@ -21,6 +21,7 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
   glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
   blinkOpacity:[0,.8,.05],blinkPeriodMs:[500,5000,100],
+  titleMarqueeSpeed:[24,180,8],titleMarqueeGap:[12,80,4],
   outerGlowOpacity:[0,.8,.05],outerGlowSpread:[0,32,1],outerGlowSoftness:[0,48,1],
   paddingTop:[-1,32,1],paddingRight:[-1,32,1],paddingBottom:[-1,32,1],paddingLeft:[-1,32,1],
   contentGap:[-1,40,1],marginVertical:[0,32,1],maxWidth:[0,1600,10],
@@ -142,6 +143,23 @@ export function FrameEffectsToolDetails({field}:{field:string}){
         <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
           min={min} max={max} step={step}/>
       </View>)}
+    </>:null}
+  </View>;
+  if(key==='titleMarqueeEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜框架標題原生跑馬燈</Text>
+      <Switch accessibilityLabel="框架標題跑馬燈開關" value={fx.titleMarqueeEnabled} onValueChange={change}/>
+    </View>
+    {fx.titleMarqueeEnabled?<>
+      {([['titleMarqueeSpeed','移動速度（dp／秒）',24,180,8],
+          ['titleMarqueeGap','標題間隔（dp）',12,80,4]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        僅當本框架標題超出可見寬度時滾動；不移動操作按鈕或金融內容。系統降低動態時改為靜態省略號。
+      </Text>
     </>:null}
   </View>;
   if(key==='gradientAngle')return <View style={{gap:8,marginTop:9}}>
