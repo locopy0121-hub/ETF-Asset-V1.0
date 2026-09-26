@@ -42,6 +42,8 @@ const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
 assert.equal(pkg.version,'3.0.23');assert.equal(app.expo.version,'3.0.23');
 assert.equal(app.expo.android.versionCode,30023);assert.equal(app.expo.ios.buildNumber,'30023');
 assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.23-QA.apk'));
+assert.ok(read('.github/workflows/ci.yml').includes("github.head_ref == 'go-v3.0.23-20260926-outer-glow'"),
+ 'PR APK job must be enabled for the actual current work branch, not a renamed historic branch');
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(p).length>0);
 console.log('V3.0.23 frame native outer glow: sanitizer/layers/AB/backup/version tests PASS');
 console.log('184 central skills / 149 wired declarations / 35 pending, phone visual testing separate');
