@@ -85,9 +85,9 @@ assert.ok(controls.includes('getSavedTargetOverride')&&controls.includes('getFra
 assert.ok(workbench.includes('searchAbProperties(query)')&&workbench.includes('visibleB.map(group=><Pressable'),
  'V3.0.16 accepted AB must NOT become a skill-category menu');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.20');assert.equal(app.expo.version,'3.0.20');
-assert.equal(app.expo.android.versionCode,30020);assert.equal(app.expo.ios.buildNumber,'30020');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.20-QA.apk'));
+assert.equal(pkg.version,'3.0.21');assert.equal(app.expo.version,'3.0.21');
+assert.equal(app.expo.android.versionCode,30021);assert.equal(app.expo.ios.buildNumber,'30021');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.21-QA.apk'));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(file).length>0,'locked accounting core missing: '+file);
 console.log('V3.0.17 advanced: real multi-target visual batch, diff, measured health / AB unchanged: PASS');

@@ -1,6 +1,7 @@
 import {normalizeFrameEffects} from './frameEffects';
 import {normalizeTargetOverride,VISUAL_TARGET_KEYS,type TargetOverride} from './inspectionModel';
 import type {FrameEditorConfig} from '../editor/editorModel';
+import type {MaintenanceInstance} from './componentLibrary';
 
 // Stored inside the existing @tf-asset/maintenance V3 transaction and SAF backup.
 // One visual snapshot of the current REAL A per successful change. No ledger,
@@ -9,15 +10,16 @@ const FRAME_FIELDS=['width','height','minHeight','padding','titleFontSize','titl
  'titleProfitColor','titleAlign','backgroundColor','backgroundProfitColor',
  'backgroundOpacity','borderColor','borderProfitColor','borderWidth','borderRadius',
  'shadowEnabled','shadowOpacity','effects'] as const satisfies readonly (keyof FrameEditorConfig)[];
-export type VisualHistoryKind='frame'|'target';
+export type VisualHistoryKind='frame'|'target'|'instance';
 export type VisualSnapshot=Readonly<Record<string,unknown>>;
 export type VisualHistoryEntry=Readonly<{id:string;at:number;kind:VisualHistoryKind;visual:VisualSnapshot}>;
 export type VisualHistoryMap=Readonly<Record<string,readonly VisualHistoryEntry[]>>;
 const validKey=(key:string)=>key.length<=260&&(
  /^frame:(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+$/.test(key)||
- /^target:(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+:.{1,150}$/.test(key));
+ /^target:(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+:.{1,150}$/.test(key)||
+ /^instance:(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+:i-[a-z0-9-]{1,92}$/.test(key));
 export function visualHistoryKey(kind:VisualHistoryKind,page:string,frameKey:string,id?:string){
- const key=kind+':'+page+':'+frameKey+(kind==='target'?':'+(id??''):'');
+ const key=kind+':'+page+':'+frameKey+(kind!=='frame'?':'+(id??''):'');
  return validKey(key)?key:null;
 }
 const targetFields=[...VISUAL_TARGET_KEYS,'width','height'] as const;
@@ -52,13 +54,39 @@ export function frameVisualSnapshot(input:unknown):VisualSnapshot{
  }
  return out;
 }
+/** Source fields of an engineer-owned A are separated from its native style overrides.
+ * The history never contains instance identity, content, visibility, parentId or layout margin. */
+export function instanceVisualSnapshot(input:unknown):VisualSnapshot{
+ if(!input||typeof input!=='object'||Array.isArray(input))return {};
+ const v=input as Record<string,unknown>,out:Record<string,unknown>={};
+ if(typeof v.fontSize==='number'&&Number.isFinite(v.fontSize))
+   out.fontSize=Math.max(10,Math.min(36,v.fontSize));
+ if(hex(v.color))out.color=(v.color as string).toUpperCase();
+ for(const [field,min,max] of [['frameWidth',160,1600],['frameHeight',80,2400]] as const){
+   if(typeof v[field]==='number'&&Number.isFinite(v[field]))
+     out[field]=Math.max(min,Math.min(max,v[field] as number));
+ }
+ const style=targetVisualSnapshot(v.style);
+ if(Object.keys(style).length)out.style=style;
+ return out;
+}
+export function restoreInstanceVisual(current:MaintenanceInstance,visual:VisualSnapshot):MaintenanceInstance{
+ const restored=instanceVisualSnapshot(visual);
+ return {...current,
+   ...(restored.fontSize!==undefined?{fontSize:restored.fontSize as number}:{}),
+   ...(restored.color!==undefined?{color:restored.color as string}:{}),
+   ...(current.templateId==='parent-frame'?
+     {...(restored.frameWidth!==undefined?{frameWidth:restored.frameWidth as number}:{}),
+       ...(restored.frameHeight!==undefined?{frameHeight:restored.frameHeight as number}:{})}:{}),
+ };
+}
 const snapshot=(kind:VisualHistoryKind,raw:unknown)=>kind==='frame'?
- frameVisualSnapshot(raw):targetVisualSnapshot(raw);
+ frameVisualSnapshot(raw):kind==='instance'?instanceVisualSnapshot(raw):targetVisualSnapshot(raw);
 export function normalizeVisualHistory(input:unknown):VisualHistoryMap{
  if(!input||typeof input!=='object'||Array.isArray(input))return {};
  return Object.fromEntries(Object.entries(input as Record<string,unknown>).filter(([key,value])=>
    validKey(key)&&Array.isArray(value)).map(([key,value])=>{
-   const kind:VisualHistoryKind=key.startsWith('frame:')?'frame':'target';
+   const kind:VisualHistoryKind=key.startsWith('frame:')?'frame':key.startsWith('instance:')?'instance':'target';
    const entries=(value as unknown[]).flatMap(item=>{
      if(!item||typeof item!=='object'||Array.isArray(item))return [];
      const data=item as Record<string,unknown>;

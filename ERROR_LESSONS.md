@@ -1,3 +1,7 @@
+## 2026-09-26｜GO 不得遺漏建置追蹤與完成清單
+
+建置已開始仍須每 15 秒追蹤 GitHub Actions job／Log；遇到 FAIL 查根因、原地修復並重新驗證。APK Artifact 上傳、版本／ZIP／SHA 驗證後，每輪必須立即回報本輪更新項目、未完成與歷史結轉項目、CI／APK／實機獨立 PASS 證據及完成／未完成統計。離開即時互動後不能冒稱仍在 15 秒輪詢；由排程每小時喚醒時重新讀取最新 GitHub run 狀態。
+
 # ERROR_LESSONS.md
 
 ## TF Asset / ETF 財務管家 — 深度遵守條例清單

@@ -1,10 +1,10 @@
-name: TF Asset V3.0.20 CI / QA APK
+name: TF Asset V3.0.21 CI / QA APK
 
 on:
   push:
-    branches: [main, go-v3.0.20-20260926-visual-history]
+    branches: [main, go-v3.0.21-20260926-instance-history]
   pull_request:
-    branches: [go-v3.0.19-20260926-conditional-styles, go-v3.0.18-20260926-design-assets, go-v3.0.17-20260926-advanced-skills, go-v3.0.16-20260926-strict-ab-workbench, go-v3.0.15-20260926-compact-engineer-workbench, go-v3.0.13-20260926-engineer-instance-sync, main, go-v3.0.12-20260926-parent-frame, go-v3.0.11-20260925-engineer-skills, go-v3.0.14-20260926-engineer-skill-navigation, go-v3.0.9-20260925-safe-engineer-delete, go-v3.0.8-20260925-frame-background-image, go-v3.0.7-20260925-frame-engineer, go-v3.0.6-20260925-engineer-text-detail, go-v3.0.5-20260925-typography-prefix, go-v3.0.10-20260925-engineer-full-spectrum, go-v3.0.14-20260926-engineer-skill-navigation, go-v3.0.4-20260925-spatial-engineer, go-v3.0.3-20260925-workspace-polish, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall, fix-v2.3.3-20260924-cash-audit, go-v2.3.4-20260925-item7-charts, fix-v2.3.5-20260925-alphanumeric-chart, go-v2.3.6-20260925-crosshair, go-v3.0.1-20260925-engineer-core, go-v3.0.2-20260925-inner-component-inspector]
+    branches: [go-v3.0.20-20260926-visual-history, go-v3.0.19-20260926-conditional-styles, go-v3.0.18-20260926-design-assets, go-v3.0.17-20260926-advanced-skills, go-v3.0.16-20260926-strict-ab-workbench, go-v3.0.15-20260926-compact-engineer-workbench, go-v3.0.13-20260926-engineer-instance-sync, main, go-v3.0.12-20260926-parent-frame, go-v3.0.11-20260925-engineer-skills, go-v3.0.14-20260926-engineer-skill-navigation, go-v3.0.9-20260925-safe-engineer-delete, go-v3.0.8-20260925-frame-background-image, go-v3.0.7-20260925-frame-engineer, go-v3.0.6-20260925-engineer-text-detail, go-v3.0.5-20260925-typography-prefix, go-v3.0.10-20260925-engineer-full-spectrum, go-v3.0.14-20260926-engineer-skill-navigation, go-v3.0.4-20260925-spatial-engineer, go-v3.0.3-20260925-workspace-polish, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall, fix-v2.3.3-20260924-cash-audit, go-v2.3.4-20260925-item7-charts, fix-v2.3.5-20260925-alphanumeric-chart, go-v2.3.6-20260925-crosshair, go-v3.0.1-20260925-engineer-core, go-v3.0.2-20260925-inner-component-inspector]
 
 concurrency:
   group: tfasset-qa-${{ github.ref }}
@@ -23,29 +23,29 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V3.0.20 aggregate gates
-        run: npm run test:v3_0_20
+      - name: V3.0.21 aggregate gates
+        run: npm run test:v3_0_21
       - name: Upload mandatory complete skill coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V3.0.20-Skill-Coverage
-          path: reports/V3.0.20-full-skill-matrix.json
+          name: TF-Asset-V3.0.21-Skill-Coverage
+          path: reports/V3.0.21-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: V3.0.20 controls source smoke
+      - name: V3.0.21 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V3.0.20 controls runtime behavior
+      - name: V3.0.21 controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V3.0.20 AI holdings behavior
+      - name: V3.0.21 AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V3.0.20 dividend calendar behavior
+      - name: V3.0.21 dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V3.0.20 system profit colors
+      - name: V3.0.21 system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V3.0.20 user-visible version and integration smoke
+      - name: V3.0.21 user-visible version and integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V3.0.20 release identity and UX controls
+      - name: V3.0.21 release identity and UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -53,7 +53,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V3.0.20 Node/Redis/PostgreSQL integration
+    name: V3.0.21 Node/Redis/PostgreSQL integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -89,10 +89,10 @@ jobs:
         run: npm run check
 
   qa-apk:
-    name: V3.0.20 QA APK / native integration
+    name: V3.0.21 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v3.0.20-20260926-visual-history'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v3.0.21-20260926-instance-history'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -115,18 +115,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V3.0.20 identity
+      - name: Freeze V3.0.21 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "3.0.20"
-          test "$(node -p "require('./app.json').expo.version")" = "3.0.20"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "30020"
+          test "$(node -p "require('./package.json').version")" = "3.0.21"
+          test "$(node -p "require('./app.json').expo.version")" = "3.0.21"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "30021"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V3.0.20 Hard Gates
-        run: npm run test:v3_0_20
+      - name: V3.0.21 Hard Gates
+        run: npm run test:v3_0_21
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -157,8 +157,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 30020');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "3.0.20"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 30021');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "3.0.21"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -167,7 +167,7 @@ jobs:
           fs.writeFileSync(strings,s);
           NODE
 
-      - name: Inject V3.0.20 Android Widget and Floating Monitor
+      - name: Inject V3.0.21 Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
           mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
@@ -194,27 +194,27 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V3.0.20-QA.apk
-          test "$(stat -c%s TF-Asset-V3.0.20-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V3.0.20-QA.apk
-          sha256sum TF-Asset-V3.0.20-QA.apk | tee TF-Asset-V3.0.20-QA.sha256
+          cp "$APK_PATH" TF-Asset-V3.0.21-QA.apk
+          test "$(stat -c%s TF-Asset-V3.0.21-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V3.0.21-QA.apk
+          sha256sum TF-Asset-V3.0.21-QA.apk | tee TF-Asset-V3.0.21-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V3.0.20-QA.apk | tee TF-Asset-V3.0.20-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V3.0.20-badging.txt
-          grep "versionCode='30020'" TF-Asset-V3.0.20-badging.txt
-          grep "versionName='3.0.20'" TF-Asset-V3.0.20-badging.txt
-          file TF-Asset-V3.0.20-QA.apk
+          "$AAPT" dump badging TF-Asset-V3.0.21-QA.apk | tee TF-Asset-V3.0.21-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V3.0.21-badging.txt
+          grep "versionCode='30021'" TF-Asset-V3.0.21-badging.txt
+          grep "versionName='3.0.21'" TF-Asset-V3.0.21-badging.txt
+          file TF-Asset-V3.0.21-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V3.0.20-QA-APK
+          name: TF-Asset-V3.0.21-QA-APK
           path: |
-            TF-Asset-V3.0.20-QA.apk
-            TF-Asset-V3.0.20-QA.sha256
-            TF-Asset-V3.0.20-badging.txt
-            reports/V3.0.20-full-skill-matrix.json
+            TF-Asset-V3.0.21-QA.apk
+            TF-Asset-V3.0.21-QA.sha256
+            TF-Asset-V3.0.21-badging.txt
+            reports/V3.0.21-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
 

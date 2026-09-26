@@ -90,7 +90,7 @@ assert.ok(matrix.every(row=>row.reason.length>0&&
 assert.ok(matrix.some(row=>row.status==='pending-adapter'));
 mkdirSync('reports',{recursive:true});
 const report={
- version:'3.0.20',purpose:'declared tool coverage (NOT device validation)',
+ version:'3.0.21',purpose:'declared tool coverage (NOT device validation)',
  taxonomy:FULL_SKILL_CATEGORIES,advanced:ADVANCED_ENGINEER_CAPABILITIES,
  summary:audit,categories:COMPLETE_ENGINEER_SKILLS.map(group=>({
  id:group.id,label:group.label,tools:group.tools.map(tool=>({
@@ -100,6 +100,6 @@ const report={
  matrix,
  validation:{unitAssertions:'PASS',nativeDevice:'NOT_TESTED',accountingCore:'UNMODIFIED'},
 };
-writeFileSync('reports/V3.0.20-full-skill-matrix.json',JSON.stringify(report,null,2)+'\n');
+writeFileSync('reports/V3.0.21-full-skill-matrix.json',JSON.stringify(report,null,2)+'\n');
 console.log('V3.0.14 30 categories, 169 retained tools, 12 advanced capabilities, 3 missing domains: PASS');
 console.log('Native adapter matrix '+matrix.length+' rows written; actual Android rendering remains separate QA.');

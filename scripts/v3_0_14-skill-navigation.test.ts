@@ -51,10 +51,10 @@ assert.ok(!bench.includes('目前對象不適用 ›'),'non-data tools should no
 assert.ok(bench.includes('lockedDescription')&&bench.includes('protectedProperties'));
 assert.ok(bench.includes('maintenance.apply()')&&bench.includes('maintenance.cancel()'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.20');
-assert.equal(app.expo.version,'3.0.20');
-assert.equal(app.expo.android.versionCode,30020);
-assert.equal(app.expo.ios.buildNumber,'30020');
+assert.equal(pkg.version,'3.0.21');
+assert.equal(app.expo.version,'3.0.21');
+assert.equal(app.expo.android.versionCode,30021);
+assert.equal(app.expo.ios.buildNumber,'30021');
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(core).length>0,'financial core remains protected: '+core);
 console.log('V3.0.14 full skill tree classification, jump navigation, readiness and immutable finance: PASS');

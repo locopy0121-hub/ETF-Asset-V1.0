@@ -2,7 +2,8 @@ import {useEffect,useState} from 'react';
 import {Alert,Pressable,Text,View} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
-import {frameVisualSnapshot,targetVisualSnapshot,type VisualHistoryEntry} from './visualHistory';
+import {frameVisualSnapshot,targetVisualSnapshot,instanceVisualSnapshot,type VisualHistoryEntry} from './visualHistory';
+import {isEngineerOwnedInstance} from './componentLibrary';
 
 const printable=(value:unknown)=>value===undefined?'原始／自適應':
  typeof value==='boolean'?(value?'開啟':'關閉'):
@@ -11,13 +12,16 @@ const printable=(value:unknown)=>value===undefined?'原始／自適應':
 export function VisualHistoryToolDetails(){
  const maintenance=useMaintenance(),theme=useThemeRuntime(),session=maintenance.session;
  const [selected,setSelected]=useState<string|null>(null);
- useEffect(()=>setSelected(null),[session?.scope,session?.page,session?.frameKey,session?.target?.id]);
- if(!session||!['frame','target'].includes(session.scope))return <Text style={{fontSize:12,color:theme.palette.textSecondary}}>
-   目前 A 尚未接入可還原的局部視覺版本。請先選取真實框架或原生元件；工程師新增實例待適配。
+ useEffect(()=>setSelected(null),[session?.scope,session?.page,session?.frameKey,session?.target?.id,session?.instanceId]);
+ const owned=session?.scope==='instance'?session.draftInstances.find(item=>
+   item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
+ if(!session||session.scope==='instance'&&!owned)return <Text style={{fontSize:12,color:theme.palette.textSecondary}}>
+   目前 A 尚未接入可還原的局部視覺版本。請選取真實框架、原生元件或本工程師建立的元件。
  </Text>;
  const history=maintenance.getVisualHistory();
- const id=session.scope==='target'?session.target?.id:undefined;
+ const id=session.scope==='target'?session.target?.id:owned?'installed:'+owned.id:undefined;
  const current=session.scope==='frame'?frameVisualSnapshot(session.draft):
+   owned?instanceVisualSnapshot({...owned,style:session.draftTargets[id!]??{}}):
    targetVisualSnapshot(id?session.draftTargets[id]??{}:{});
  const preview=history.find(item=>item.id===selected);
  const keys=preview?[...new Set([...Object.keys(preview.visual),...Object.keys(current)])].filter(key=>
