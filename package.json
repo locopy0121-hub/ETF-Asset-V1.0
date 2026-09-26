@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.23",
+  "version": "3.0.24",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_23 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_24 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -182,7 +182,9 @@
     "test:angled-gradient-v322": "tsx scripts/v3_0_22-angled-gradient.test.ts",
     "test:v3_0_22": "npm run test:v3_0_21 && npm run test:angled-gradient-v322",
     "test:outer-glow-v323": "tsx scripts/v3_0_23-outer-glow.test.ts",
-    "test:v3_0_23": "npm run test:v3_0_22 && npm run test:outer-glow-v323"
+    "test:v3_0_23": "npm run test:v3_0_22 && npm run test:outer-glow-v323",
+    "test:data-simulation-v324": "tsx scripts/v3_0_24-data-simulation.test.ts",
+    "test:v3_0_24": "npm run test:v3_0_23 && npm run test:data-simulation-v324"
   },
   "dependencies": {
     "expo": "~57.0.21",

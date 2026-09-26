@@ -1,3 +1,7 @@
+## 2026-09-26｜V3.0.24 模擬資料必須完全隔離真實帳務
+
+資料狀態情境只能存在已選 A 的維護會話內存：真正的 UI 可見、可回復、不可寫入 maintenance/SAF/ledger/cache，不得顯示捏造的價格或把「延遲／失敗」誤當真實 API 事實。來源分支名稱先精確更新，再改版本號；QA head_ref 與本次實際 branch 由新回歸強制比較，以免 workflow success 卻沒有 APK Artifact。
+
 ## 2026-09-26｜#1119 APK 虛假 success：GitHub head_ref 必須精確核對
 
 V3.0.23 推進時先將整份 workflow 版本 `3.0.22` 取代為 `3.0.23`，連帶把來源分支名稱誤改為不存在的 `go-v3.0.23-20260926-next-skills`，導致 #1119 quality/backend PASS 但 QA APK 以 `skipped` 結束。根因不是 APK 編譯，而是 GitHub job `if` 未符合實際 PR `head_ref`。修復時對 `push.branches` 與 `qa-apk.if` 實際工作分支名稱作精確核對，並納入新版本回歸 Gate；品質/後端 PASS、workflow success 均不可取代 APK 產物實際驗證。
