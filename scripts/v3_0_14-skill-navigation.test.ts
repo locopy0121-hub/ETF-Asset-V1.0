@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {ENGINEER_SKILLS,ENGINEER_SKILL_SECTIONS,skillCounts,skillMatches} from '../src/maintenance/skillTree';
+import {COMPLETE_ENGINEER_SKILLS,FULL_SKILL_SECTIONS} from '../src/maintenance/fullSkillCatalog';
+import {FRAME_TO_TARGET} from '../src/maintenance/skillAdapters';
 const read=(path:string)=>readFileSync(path,'utf8');
 
 // Classify, never duplicate or silently hide tools from the singleton catalog.
@@ -21,8 +23,8 @@ for(const skill of ENGINEER_SKILLS){
   assert.ok(skill.tools.every(tool=>tool.detail.length>0));
 }
 const bench=read('src/maintenance/MaintenanceWorkbench.tsx');
-assert.ok(bench.includes('const displaySkills=ENGINEER_SKILLS;'),'complete tree must remain mounted');
-assert.ok(bench.includes('ENGINEER_SKILL_SECTIONS.map')&&bench.includes('jumpToSkill(id)'));
+assert.ok(bench.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;'),'complete tree must remain mounted');
+assert.ok(bench.includes('FULL_SKILL_SECTIONS.map')&&bench.includes('jumpToSkill(id)'));
 assert.ok(bench.includes('skillScroller.current?.scrollTo'),'jump must actually scroll');
 assert.ok(bench.includes('value={skillQuery}')&&bench.includes('skillMatches(skillItem,skillQuery)'));
 assert.ok(bench.includes('displaySkills.map(skillItem=>'),'keyword search must not hide unmatched groups');
@@ -34,12 +36,14 @@ for(const [frameField,targetField] of [
  ['framefx:gradientEndColor','target:gradientEndColor'],
  ['framefx:shadowColor','target:shadowColor'],
  ['framefx:glowEnabled','target:glowEnabled'],
-]) assert.ok(bench.includes("'"+frameField+"':'"+targetField+"'"),'native metric adapter missing: '+frameField);
+]) assert.ok(FRAME_TO_TARGET[frameField]===targetField,'native metric adapter missing: '+frameField);
 assert.ok(bench.includes('resolvedTool(tool,s)'),'compatible skills must route to the selected inner target');
+assert.equal(COMPLETE_ENGINEER_SKILLS.length,30);
+assert.equal(FULL_SKILL_SECTIONS.flatMap(group=>group.ids).length,30);
 for(const [frameField,targetField] of [
  ['titleFontSize','target:fontSize'],['titleColor','target:textColor'],
  ['titleAlign','target:align'],['padding','target:padding'],
-]) assert.ok(bench.includes(frameField+":'"+targetField+"'"),'editable visual tool locked: '+frameField);
+]) assert.ok(FRAME_TO_TARGET[frameField]===targetField,'editable visual tool locked: '+frameField);
 assert.ok(bench.includes('僅原始數據、來源及帳務計算鎖定'));
 assert.ok(!bench.includes('目前對象不適用 ›'),'non-data tools should not appear policy-locked');
 
