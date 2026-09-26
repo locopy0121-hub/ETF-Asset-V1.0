@@ -24,6 +24,8 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
   blinkOpacity:[0,.8,.05],blinkPeriodMs:[500,5000,100],
   titleMarqueeSpeed:[24,180,8],titleMarqueeGap:[12,80,4],
+  entranceDurationMs:[200,2500,50],entranceDistance:[8,120,4],
+  entranceScale:[.65,1,.05],entranceRotationDeg:[5,90,5],
   outerGlowOpacity:[0,.8,.05],outerGlowSpread:[0,32,1],outerGlowSoftness:[0,48,1],
   paddingTop:[-1,32,1],paddingRight:[-1,32,1],paddingBottom:[-1,32,1],paddingLeft:[-1,32,1],
   contentGap:[-1,40,1],marginVertical:[0,32,1],maxWidth:[0,1600,10],
@@ -199,6 +201,44 @@ export function FrameEffectsToolDetails({field}:{field:string}){
         <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
           min={min} max={max} step={step}/>
       </View>)}
+    </>:null}
+  </View>;
+  if(key==='entranceEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜真實框架原生進場動畫</Text>
+      <Switch accessibilityLabel="框架原生進場動畫開關" value={fx.entranceEnabled} onValueChange={change}/>
+    </View>
+    {fx.entranceEnabled?<>
+      {([['slide','滑入'],['zoom','縮放'],['rotate','旋轉']] as const).map(([mode,label])=>
+        <Pressable accessibilityRole="button" accessibilityLabel={'選擇 '+label+' 進場'}
+          key={mode} onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceMode:mode})})}
+          style={{borderWidth:1,borderColor:theme.palette.primary,borderRadius:8,padding:9,
+            backgroundColor:fx.entranceMode===mode?theme.palette.primary:theme.palette.surface}}>
+          <Text style={{color:fx.entranceMode===mode?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      <View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>進場時間（毫秒）</Text>
+        <NumericDetail value={fx.entranceDurationMs} min={200} max={2500} step={50}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceDurationMs:value})})}/>
+      </View>
+      {fx.entranceMode==='slide'?<View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>滑入距離（dp）</Text>
+        <NumericDetail value={fx.entranceDistance} min={8} max={120} step={4}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceDistance:value})})}/>
+      </View>:null}
+      {fx.entranceMode==='zoom'?<View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>起始縮放比例</Text>
+        <NumericDetail value={fx.entranceScale} min={.65} max={1} step={.05}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceScale:value})})}/>
+      </View>:null}
+      {fx.entranceMode==='rotate'?<View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>起始旋轉角度（°）</Text>
+        <NumericDetail value={fx.entranceRotationDeg} min={5} max={90} step={5}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceRotationDeg:value})})}/>
+      </View>:null}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        僅變換目前框架的原生視圖，不改寫框架內交易數據；系統降低動態時停止變換，維持原始大小位置。
+      </Text>
     </>:null}
   </View>;
   if(key==='titleMarqueeEnabled')return <View style={{gap:8,marginTop:9}}>
