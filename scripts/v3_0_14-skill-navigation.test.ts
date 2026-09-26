@@ -23,11 +23,11 @@ for(const skill of ENGINEER_SKILLS){
   assert.ok(skill.tools.every(tool=>tool.detail.length>0));
 }
 const bench=read('src/maintenance/MaintenanceWorkbench.tsx');
-assert.ok(bench.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;'),'complete tree must remain mounted');
-assert.ok(bench.includes('FULL_SKILL_SECTIONS.map')&&bench.includes('jumpToSkill(id)'));
-assert.ok(bench.includes('skillScroller.current?.scrollTo'),'jump must actually scroll');
-assert.ok(bench.includes('value={skillQuery}')&&bench.includes('skillMatches(skillItem,skillQuery)'));
-assert.ok(bench.includes('displaySkills.map(skillItem=>'),'keyword search must not hide unmatched groups');
+assert.ok(bench.includes('searchAbProperties(query)'),'complete tree must remain mounted');
+assert.ok(bench.includes('searchAbProperties(query)')&&bench.includes('visibleB.map(group=><Pressable'));
+assert.ok(bench.includes('scroller.current?.scrollTo'),'jump must actually scroll');
+assert.ok(bench.includes('value={query}')&&bench.includes('searchAbProperties(query)'));
+assert.ok(bench.includes('visibleB.map(group=><Pressable'),'keyword search must not hide unmatched groups');
 assert.ok(bench.includes('toolUsable(tool,session)'),'adapter readiness must be checked in current session');
 for(const [frameField,targetField] of [
  ['borderWidth','target:borderWidth'],['borderRadius','target:borderRadius'],
@@ -51,10 +51,10 @@ assert.ok(!bench.includes('目前對象不適用 ›'),'non-data tools should no
 assert.ok(bench.includes('lockedDescription')&&bench.includes('protectedProperties'));
 assert.ok(bench.includes('maintenance.apply()')&&bench.includes('maintenance.cancel()'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.15');
-assert.equal(app.expo.version,'3.0.15');
-assert.equal(app.expo.android.versionCode,30015);
-assert.equal(app.expo.ios.buildNumber,'30015');
+assert.equal(pkg.version,'3.0.16');
+assert.equal(app.expo.version,'3.0.16');
+assert.equal(app.expo.android.versionCode,30016);
+assert.equal(app.expo.ios.buildNumber,'30016');
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(core).length>0,'financial core remains protected: '+core);
 console.log('V3.0.14 full skill tree classification, jump navigation, readiness and immutable finance: PASS');

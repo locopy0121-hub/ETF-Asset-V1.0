@@ -35,18 +35,18 @@ assert.ok(runtime.includes("syncScope:'frame'")&&runtime.includes("session.syncS
 assert.ok(runtime.includes('VISUAL_TARGET_KEYS.includes'),'nonvisual properties must not propagate');
 assert.ok(runtime.includes('localOnlyKeys:nextLocalOnly'),'isolated local choices must persist');
 const bench=read('src/maintenance/MaintenanceWorkbench.tsx');
-assert.ok(bench.includes('同類元件外觀同步')&&bench.includes('session.scope===\'instance\'&&instance'));
+assert.ok(bench.includes("if(tool.field==='instance:sync')")&&bench.includes("const parent=s?.scope==='instance'&&instance?.templateId==='parent-frame'"));
 assert.ok(bench.includes("instance.templateId==='parent-frame'?'frame'"));
 assert.ok(bench.includes('kind:\'frame\''),'parent has its own material-capable inspector');
 assert.ok(bench.includes('target:InspectedTarget')&&bench.includes('InspectableTarget frame={frame} target={target}'));
-assert.ok(bench.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;'),'no target-based group hiding');
+assert.ok(bench.includes('searchAbProperties(query)'),'no target-based group hiding');
 const renderer=read('src/maintenance/InspectableTarget.tsx');
 assert.ok(renderer.includes("'generic','frame'"),'parent surface receives material adapters');
 const card=read('src/components/FrameCard.tsx');
 assert.ok(!card.includes('<ScrollView nestedScrollEnabled'),'parent resize never forces child scrolling');
 const pkg=JSON.parse(read('package.json'));const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.15');assert.equal(app.expo.version,'3.0.15');
-assert.equal(app.expo.android.versionCode,30015);
+assert.equal(pkg.version,'3.0.16');assert.equal(app.expo.version,'3.0.16');
+assert.equal(app.expo.android.versionCode,30016);
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0);
-console.log('V3.0.15 shared instance typography/color and parent material coverage: PASS');
+console.log('V3.0.16 shared instance typography/color and parent material coverage: PASS');
