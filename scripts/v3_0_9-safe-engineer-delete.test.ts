@@ -48,9 +48,9 @@ assert.ok(runtime.includes("isEngineerOwnedInstance(victim)"),
 assert.ok(runtime.includes('removeEngineerOwnedInstance(current.draftInstances,id)'));
 assert.ok(runtime.includes("item.createdBy:item.createdBy")||runtime.includes('createdBy:item.createdBy'),
   'patchInstance cannot overwrite origin identity');
-assert.ok(toolbox.includes('🔒 鎖定資訊｜資料唯讀'),
+assert.ok(toolbox.includes('🔒 僅原始數據、來源及帳務計算鎖定'),
   'locked real data is visible before A/B/C/D controls');
-assert.ok(toolbox.indexOf('🔒 鎖定資訊｜資料唯讀')<toolbox.indexOf('pendingSelection&&'),
+assert.ok(toolbox.indexOf('🔒 僅原始數據、來源及帳務計算鎖定')<toolbox.indexOf('pendingSelection&&'),
   'protected information must be first in the workbench');
 assert.ok(toolbox.includes("style:'destructive'")&&toolbox.includes("onPress:()=>maint.remove(item.id)"));
 assert.ok(toolbox.includes('owned=s.draftInstances.filter(item=>isEngineerOwnedInstance(item)'));
