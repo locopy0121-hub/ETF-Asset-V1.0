@@ -86,7 +86,9 @@ export function hasVisualDifference(before:VisualSnapshot,after:VisualSnapshot){
 export function restoreFrameVisual(current:FrameEditorConfig,visual:VisualSnapshot):FrameEditorConfig{
  const restored=frameVisualSnapshot(visual);
  const next:Record<string,unknown>={...current};
- for(const field of FRAME_FIELDS)delete next[field];
+ // Removing an override is safe only for optional frame dimensions/material.
+ // Even a malformed old snapshot cannot delete mandatory native color/font keys.
+ for(const field of ['width','height','minHeight','padding','effects'] as const)delete next[field];
  return {...next,...restored} as FrameEditorConfig;
 }
 export function restoreTargetVisual(current:TargetOverride,visual:VisualSnapshot):TargetOverride{

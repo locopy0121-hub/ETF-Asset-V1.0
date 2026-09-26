@@ -104,7 +104,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
   {id:'conditions',label:'條件顯示',description:'可見狀態與條件策略',tools:[ready('show-hide','顯示開關','visible','顯示／隱藏'),ready('target-visibility','元件顯示開關','target:visible','只影響當前已指定的元件'),later('threshold','狀態門檻','需要有效資料與門檻驗證')]},
   {id:'responsive',label:'裝置適配',description:'單雙三欄與內容溢出',tools:[ready('density-mode','框架密度','layout','以目前頁面環境查看'),later('breakpoint','斷點覆寫','需接入專屬元件響應式模型')]},
   {id:'sharing',label:'元件共享',description:'中央定義、局部實例及模板',tools:[later('save-template','儲存中央模板','共享模板變更必須確認影響範圍'),later('apply-elsewhere','複用實例','不能無提示覆寫其他頁面')]},
-  {id:'versions',label:'版本維護',description:'暫存、套用、取消及回復',tools:[ready('transaction','套用／取消','session','套用持久化；取消丟棄本次全部草稿'),later('history','歷史版本比較','需持久化版本及差異紀錄')]},
+  {id:'versions',label:'版本維護',description:'暫存、套用、取消及回復',tools:[ready('transaction','套用／取消','session','套用持久化；取消丟棄本次全部草稿'),ready('history','歷史版本比較','maintenance:visual-history','當前 A 實際局部外觀最多十筆持久化版本；查看差異並只還原目前草稿')]},
 ];
 export function findSkill(id:string){return ENGINEER_SKILLS.find(skill=>skill.id===id);}
 
