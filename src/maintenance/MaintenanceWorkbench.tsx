@@ -21,6 +21,7 @@ import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
 import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
+import {BatchVisualToolDetails,LocalVisualDiffToolDetails,FrameHealthToolDetails} from './AdvancedEngineerTools';
 import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
 import {InspectableTarget} from './InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
@@ -281,6 +282,9 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   if(!s)return null;
   const activeTool=resolvedTool(tool,s);
   if(activeTool!==tool)return <ScopedToolDetails tool={activeTool} instance={instance}/>;
+  if(tool.field==='maintenance:batch')return <BatchVisualToolDetails/>;
+  if(tool.field==='maintenance:local-diff')return <LocalVisualDiffToolDetails/>;
+  if(tool.field==='maintenance:health')return <FrameHealthToolDetails/>;
   if(tool.field==='instance:sync')return <View style={{gap:8,marginTop:8}}>
     <Text style={{fontSize:12,color:theme.palette.textSecondary}}>共用樣式只更新同類元件外觀，不連動內容、位置、尺寸或帳務資料。</Text>
     <Switch value={s.syncSameKind} onValueChange={maint.setSyncSameKind}/>
