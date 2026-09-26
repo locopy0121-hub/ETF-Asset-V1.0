@@ -62,6 +62,10 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
    ctx.scope==='instance'&&ctx.instanceOwned&&ctx.kind&&['text','generic'].includes(ctx.kind)?
    active(tool,'按真實顯示狀態套用目前 A 的顏色／背景條件外觀，不修改資料或交易金額。'):
    pending(tool,'此 A 缺少可驗證的原生條件視覺適配；僅保留中央工具，勿假裝套用。');
+ if(original==='maintenance:data-simulation')return ctx.scope==='target'&&ctx.kind&&
+   ['metric','text','value','prefix','generic'].includes(ctx.kind)?
+   active(tool,'只在當前真實 A 的維護預覽呈現模擬狀態；不寫入資料源、已存外觀或備份。'):
+   pending(tool,'選取已掛載原生數值或文字元件才可模擬，不改寫來源。');
  if(original==='maintenance:batch')return ctx.scope==='target'||ctx.scope==='instance'&&ctx.instanceOwned?
    active(tool,'實際元件註冊、屬性白名單、多選差異預覽及草稿批次寫入。'):
    pending(tool,'請先在真實頁面選取一個原生元件或工程師新增元件作為樣式來源。');

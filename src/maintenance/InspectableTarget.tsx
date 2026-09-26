@@ -7,6 +7,7 @@ import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type TargetGe
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colorWithAlpha} from './frameEffects';
 import {applyConditionalAppearance,activeConditionalRule} from './conditionalVisual';
+import {simulatedVisualTone,SIMULATION_LABELS} from './dataSimulation';
 import {TargetBackdrop,targetShadowStyle} from './TargetSurfaceEffects';
 import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
@@ -27,18 +28,21 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const override=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);
   const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?
     override.profitToneOverride:target.profitTone??'neutral';
-  const condition=activeConditionalRule(override.conditionalStyles,actualTone);
-  const appearance=applyConditionalAppearance(mergeTargetAppearance(target.base,override),actualTone);
+  // Simulation is session-only and only paints the selected real A in maintenance mode.
+  const previewState=editing&&engineer.enabled?engineer.session?.previewState??'actual':'actual';
+  const displayTone=simulatedVisualTone(previewState,actualTone);
+  const condition=activeConditionalRule(override.conditionalStyles,displayTone);
+  const appearance=applyConditionalAppearance(mergeTargetAppearance(target.base,override),displayTone);
   const resolvedAppearance={...appearance,
-    textColor:linkedColor(appearance.textColor,appearance.textProfitColor,actualTone,settings.prefs.display),
-    labelColor:linkedColor(appearance.labelColor,appearance.labelProfitColor,actualTone,settings.prefs.display),
-    captionColor:linkedColor(appearance.captionColor,appearance.captionProfitColor,actualTone,settings.prefs.display),
-    backgroundColor:linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,actualTone,settings.prefs.display),
-    borderColor:linkedColor(appearance.borderColor,appearance.borderProfitColor,actualTone,settings.prefs.display),
-    gradientEndColor:linkedColor(appearance.gradientEndColor,appearance.gradientEndProfitColor,actualTone,settings.prefs.display),
-    gradientMidColor:linkedColor(appearance.gradientMidColor,appearance.gradientMidProfitColor,actualTone,settings.prefs.display),
-    shadowColor:linkedColor(appearance.shadowColor,appearance.shadowProfitColor,actualTone,settings.prefs.display),
-    glowColor:linkedColor(appearance.glowColor,appearance.glowProfitColor,actualTone,settings.prefs.display),
+    textColor:linkedColor(appearance.textColor,appearance.textProfitColor,displayTone,settings.prefs.display),
+    labelColor:linkedColor(appearance.labelColor,appearance.labelProfitColor,displayTone,settings.prefs.display),
+    captionColor:linkedColor(appearance.captionColor,appearance.captionProfitColor,displayTone,settings.prefs.display),
+    backgroundColor:linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,displayTone,settings.prefs.display),
+    borderColor:linkedColor(appearance.borderColor,appearance.borderProfitColor,displayTone,settings.prefs.display),
+    gradientEndColor:linkedColor(appearance.gradientEndColor,appearance.gradientEndProfitColor,displayTone,settings.prefs.display),
+    gradientMidColor:linkedColor(appearance.gradientMidColor,appearance.gradientMidProfitColor,displayTone,settings.prefs.display),
+    shadowColor:linkedColor(appearance.shadowColor,appearance.shadowProfitColor,displayTone,settings.prefs.display),
+    glowColor:linkedColor(appearance.glowColor,appearance.glowProfitColor,displayTone,settings.prefs.display),
   };
   const customized=Object.keys(override).length>0;
   const measured=geometry??{naturalX:0,naturalY:0,width:0,height:0,
@@ -166,6 +170,13 @@ export function InspectableTarget({target,frame,children,flex=false}:{
       glow={resolvedAppearance.glowColor}/>:null}
     {appearance.visible||selected||editing?children(resolvedAppearance,customized,override):
       <View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
+    {editing&&previewState!=='actual'?<View pointerEvents="none"
+      style={{position:'absolute',left:2,right:2,bottom:1,padding:4,borderRadius:5,
+        backgroundColor:theme.palette.surface,borderWidth:1,borderColor:theme.palette.primary}}>
+      <Text style={{fontSize:10,fontWeight:'800',color:theme.palette.primary}}>
+        模擬預覽｜{SIMULATION_LABELS[previewState]}｜真實資料及已儲存設定未變更
+      </Text>
+    </View>:null}
     {(selected||editing)&&engineer.enabled?<View pointerEvents="none"
       style={[StyleSheet.absoluteFill,styles.selectionOutline,{borderColor:theme.palette.primary}]}/>:null}
     {active?<Pressable style={StyleSheet.absoluteFill} accessibilityRole="button"

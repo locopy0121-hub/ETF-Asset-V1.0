@@ -23,6 +23,7 @@ import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
 import {BatchVisualToolDetails,LocalVisualDiffToolDetails,FrameHealthToolDetails,DesignTokenToolDetails,FavoriteToolDetails} from './AdvancedEngineerTools';
 import {ConditionalStyleToolDetails} from './ConditionalStyleToolDetails';
+import {DataSimulationToolDetails} from './DataSimulationToolDetails';
 import {VisualHistoryToolDetails} from './VisualHistoryToolDetails';
 import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
 import {InspectableTarget} from './InspectableTarget';
@@ -314,6 +315,7 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
   if(tool.field==='maintenance:tokens')return <DesignTokenToolDetails/>;
   if(tool.field==='maintenance:favorites')return <FavoriteToolDetails onNavigate={onOpenTool}/>;
   if(tool.field==='maintenance:conditional-style')return <ConditionalStyleToolDetails/>;
+  if(tool.field==='maintenance:data-simulation')return <DataSimulationToolDetails/>;
   if(tool.field==='maintenance:visual-history')return <VisualHistoryToolDetails/>;
   if(tool.field==='maintenance:batch')return <BatchVisualToolDetails/>;
   if(tool.field==='maintenance:local-diff')return <LocalVisualDiffToolDetails/>;
