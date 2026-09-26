@@ -140,7 +140,7 @@ export const COMPLETE_ENGINEER_SKILLS:readonly EngineerSkill[]=
    ...existing.filter(tool=>tool.category===category.id).map(({category:_category,...tool})=>tool),
    ...advanced.filter(tool=>tool.category===category.id).map(({category:_category,...tool})=>tool),
    ...(missingDomain[category.id]?[{
-     id:'domain-'+category.id,label:missingDomain[category.id],detail:'此專屬 App 介面尚未納入中央技能引擎；保留在全局整合清單，待真實 Runtime 適配。',
+     id:'domain-'+category.id,label:missingDomain[category.id]!,detail:'此專屬 App 介面尚未納入中央技能引擎；保留在全局整合清單，待真實 Runtime 適配。',
      status:'adapter-required' as const,sourceGroup:'unregistered',sourceId:category.id,
    }]:[]),
   ],
