@@ -59,9 +59,9 @@ const skills=ENGINEER_SKILLS.find(g=>g.id==='frames');
 assert.equal(ENGINEER_SKILLS.length,17,'one and only one global engineer skill tree');
 assert.ok(skills);
 assert.ok(skills!.tools.filter(t=>t.status==='ready').length>=38);
-assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=9);
+assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=8);
 assert.ok(skills!.tools.some(t=>t.field==='framefx:gradientAngle'&&t.status==='ready'),
- 'new diagonal gradient replaces one pending frame skill, not the legacy ten-item minimum');
+ 'angle and outer glow each wire an existing pending frame skill');
 for(const field of ['backgroundMode','gradientEndColor','gradientDirection','borderStyle','borderTop',
   'cornerTopLeft','shadowColor','shadowBlur','shadowOffsetX','shadowOffsetY',
   'glowColor','glowOpacity','glowPulse','paddingTop','contentGap','maxWidth']){
