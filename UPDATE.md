@@ -1,3 +1,7 @@
+## 2026-09-26｜V3.0.24 P1 原地修復：模擬顏色真正傳遞到原生數值／文字
+
+Actions #1127／commit f8928673562034aa0297fa136bb18feb3208ffd8 雖已通過品質、後端及 QA APK，但程式反查發現 PageEditorStack 的原生 MetricTile／Text 再次依真實 tone 判定條件外觀，MetricTile 的未覆寫預設獲利／虧損文字顏色亦忽略模擬 tone。版本 3.0.25 尚未開始，先以備份 backup-v3.0.24-20260926-pre-simulation-tone-fix 保障現況，在 V3.0.24 原候選 PR #71 上原地修復。InspectableTarget 僅向自身實際渲染 children 傳遞 session-only displayTone/simulated；MetricTile 原生繪製使用獨立 simulationTone 覆寫 fallback 與損益連動，但保留原始金額及既存手動設定；Text 只使用已解析的情境 tone 評估條件樣式。補足 real loss → simulated gain 行為回歸、原生接線防漏回歸；模擬狀態不進持久化、SAF、跨頁或金融核心。待完整 GitHub Gate／QA APK 再確認，手機顯示驗收另列未完成；未通過不得建立 V3.0.25 成功版本。
+
 ## V3.0.24｜2026-09-26｜真實元件沙盒資料狀態模擬預覽（GO）
 
 V3.0.23 PR #70 Actions #1121 的 quality／Node+Redis+PostgreSQL／QA APK 與 artifact 已 PASS，精確來源 `cf21b62217599c4b5230f09a0fc2310424d9fbae`。事前 immutable 備份 `backup-v3.0.23-20260926-pre-data-simulation`，工作分支 `go-v3.0.24-20260926-data-simulation`，版本正式遞增 3.0.24／Android/iOS 30024。僅 QA，不自動合併 PR 或卸載舊 App。
