@@ -57,7 +57,7 @@ export const ADVANCED_ENGINEER_CAPABILITIES:readonly Readonly<{
 }>[] = [
  {id:'batch',category:'28',label:'多選批次編輯',detail:'多選元件、批量調整及套用前差異預覽；需新增交易式 Runtime'},
  {id:'effect-stack',category:'10',label:'效果堆疊編輯器',detail:'多層背景、陰影、光效、遮罩及動畫，支援堆疊排序'},
- {id:'tokens',category:'26',label:'設計變數系統',detail:'統一管理間距、圓角、色彩、字型與動畫速度，提供局部覆寫'},
+ {id:'tokens',category:'26',label:'設計變數系統',detail:'五組跨頁共享視覺變數：色彩、字型、間距、圓角及框架動畫速度；明確儲存到共享庫，套用至當前 A 則僅暫存為局部覆寫，不會暗中全域連動'},
  {id:'conditional-style',category:'13',label:'條件樣式引擎',detail:'漲跌、股息、資料狀態等驅動的視覺規則；唯讀金融資料'},
  {id:'visual-states',category:'12',label:'視覺狀態編輯器',detail:'正常、按下、選取、停用、載入與錯誤的獨立視覺設定'},
  {id:'layer-panel',category:'05',label:'真正的圖層面板',detail:'列出所有父子元件與效果圖層，支援群組、順序與裁切'},
@@ -65,7 +65,7 @@ export const ADVANCED_ENGINEER_CAPABILITIES:readonly Readonly<{
  {id:'data-simulation',category:'20',label:'資料狀態模擬預覽',detail:'在獨立預覽沙盒模擬漲跌、延遲、失敗，絕不寫入真實帳務'},
  {id:'local-diff',category:'29',label:'局部設定差異比較',detail:'對照原始值、共用模板與當前實例的視覺參數'},
  {id:'health',category:'30',label:'畫面健康診斷',detail:'文字溢出、低對比、觸控區過小、遮擋與動畫過量'},
- {id:'favorites',category:'01',label:'技能搜尋與收藏',detail:'既有搜尋加上收藏、常用組合及最近編輯記錄'},
+ {id:'favorites',category:'01',label:'技能搜尋與收藏',detail:'技能搜尋、星號收藏及最近使用紀錄；收藏置頂，跨 B 屬性直接跳至 C 原生控制；常用樣式組合由五組共享設計變數保存'},
  {id:'adapter-lab',category:'30',label:'全局適配驗證台',detail:'逐技能跨元件、跨頁面檢查操作、預覽、儲存與還原'},
 ] as const;
 
@@ -126,8 +126,8 @@ const existing=ENGINEER_SKILLS.flatMap(group=>group.tools.map(tool=>({
 })));
 const advanced=ADVANCED_ENGINEER_CAPABILITIES.map(item=>({
  id:'advanced-'+item.id,label:item.label,detail:item.detail,
- status:(['batch','local-diff','health'].includes(item.id)?'ready':'adapter-required') as 'ready'|'adapter-required',
- ...(['batch','local-diff','health'].includes(item.id)?{field:'maintenance:'+item.id}:{}),
+ status:(['batch','local-diff','health','tokens','favorites'].includes(item.id)?'ready':'adapter-required') as 'ready'|'adapter-required',
+ ...(['batch','local-diff','health','tokens','favorites'].includes(item.id)?{field:'maintenance:'+item.id}:{}),
  sourceGroup:'advanced',sourceId:item.id,category:item.category,
 }));
 // A domain without a native adapter is an explicit item in the backlog, not an empty

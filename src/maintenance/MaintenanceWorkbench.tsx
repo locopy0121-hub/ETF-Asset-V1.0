@@ -9,7 +9,7 @@ import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
 import type {SkillTool} from './skillTree';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
-import {searchAbProperties,findAbProperty} from './abPropertyModel';
+import {searchAbProperties,findAbProperty,AB_PROPERTY_GROUPS} from './abPropertyModel';
 import {resolveSkillAdapter,type AdapterContext} from './skillAdapters';
 import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
@@ -21,7 +21,7 @@ import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
 import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
-import {BatchVisualToolDetails,LocalVisualDiffToolDetails,FrameHealthToolDetails} from './AdvancedEngineerTools';
+import {BatchVisualToolDetails,LocalVisualDiffToolDetails,FrameHealthToolDetails,DesignTokenToolDetails,FavoriteToolDetails} from './AdvancedEngineerTools';
 import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
 import {InspectableTarget} from './InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
@@ -35,17 +35,18 @@ export function MaintenanceWorkbench(){
   const [openC,setOpenC]=useState<string|null>(null);
   const [moreColor,setMoreColor]=useState(false);
   const [query,setQuery]=useState('');
+  const [favoritesOnly,setFavoritesOnly]=useState(false);
   const [saving,setSaving]=useState(false);
   const scroller=useRef<ScrollView>(null);
   useEffect(()=>{
-    setOpenB(null);setOpenC(null);setMoreColor(false);setQuery('');
+    setOpenB(null);setOpenC(null);setMoreColor(false);setQuery('');setFavoritesOnly(false);
   },[session?.page,session?.frameKey,session?.scope,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
   const instance=session.draftInstances.find(item=>item.id===focused);
   const selectedTarget=session.scope==='target'?session.target:undefined;
   const label=selectedTarget?.label??instance?.text??session.title;
-  const visibleB=searchAbProperties(query);
+  const visibleB=searchAbProperties(query).filter(group=>!favoritesOnly||group.tools.some(tool=>maintenance.assets.favorites.includes(tool.id)));
   const selectedB=openB?findAbProperty(openB):undefined;
   const canDeleteFocused=Boolean(instance&&isEngineerOwnedInstance(instance)&&session.scope==='instance');
   const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
@@ -58,6 +59,12 @@ export function MaintenanceWorkbench(){
   const toTop=()=>scroller.current?.scrollTo({y:0,animated:false});
   const chooseB=(id:string)=>{setOpenB(id);setOpenC(null);setMoreColor(false);toTop();};
   const backToB=()=>{setOpenB(null);setOpenC(null);setMoreColor(false);toTop();};
+  const navigateToFavorite=(toolId:string)=>{
+    const owner=AB_PROPERTY_GROUPS.find(group=>group.tools.some(tool=>tool.id===toolId));
+    if(!owner)return;
+    setOpenB(owner.id);setOpenC(toolId);setMoreColor(owner.id==='color');toTop();
+    maintenance.noteToolUsed(toolId);
+  };
   const apply=async()=>{
     if(saving)return;
     setSaving(true);
@@ -104,12 +111,22 @@ export function MaintenanceWorkbench(){
               <Text style={{color:theme.palette.text,flex:1}}>C｜更多顏色與背景控制</Text>
               <Text style={{color:theme.palette.primary}}>{moreColor?'收合 ⌃':'展開 ›'}</Text>
             </Pressable>
-            {moreColor?<AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} instance={instance}/>:null}
-          </View>:<AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} instance={instance}/>}
+            {moreColor?<AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} onOpenTool={navigateToFavorite} instance={instance}/>:null}
+          </View>:<AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} onOpenTool={navigateToFavorite} instance={instance}/>}
       </View>:<View>
         <TextInput accessibilityLabel="搜尋 B 屬性與 C 控制" value={query} onChangeText={setQuery}
           placeholder="搜尋屬性或功能…" placeholderTextColor={theme.palette.textSecondary}
           style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text,marginBottom:8}]}/>
+        <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:8}}>
+          <Pressable accessibilityRole="button" accessibilityState={{selected:favoritesOnly}}
+            accessibilityLabel="B 屬性只顯示收藏工具" onPress={()=>setFavoritesOnly(value=>!value)}
+            style={{borderColor:theme.palette.border,borderWidth:1,borderRadius:8,padding:6}}>
+            <Text style={{color:favoritesOnly?theme.palette.primary:theme.palette.textSecondary,fontSize:12,fontWeight:'700'}}>
+              {favoritesOnly?'★ 收藏中':'☆ 僅收藏'}
+            </Text>
+          </Pressable>
+          <Text style={{fontSize:11,color:theme.palette.textSecondary}} numberOfLines={1}>按 C 工具右側星號即可收藏</Text>
+        </View>
         <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:7}}>
           {visibleB.map(group=><Pressable key={group.id} accessibilityRole="button"
             accessibilityLabel={'B '+group.label} onPress={()=>chooseB(group.id)}
@@ -136,26 +153,36 @@ export function MaintenanceWorkbench(){
 
 // C never opens a second catalog page. The current tool's native controls appear
 // immediately below its C row; only deeper native options need their own dialog.
-function AbToolControls({tools,openC,onChangeC,instance}:{
+function AbToolControls({tools,openC,onChangeC,onOpenTool,instance}:{
   tools:readonly SkillTool[];openC:string|null;onChangeC:(id:string|null)=>void;
-  instance?:MaintenanceInstance|undefined;
+  onOpenTool:(id:string)=>void;instance?:MaintenanceInstance|undefined;
 }){
   const theme=useThemeRuntime(),maintenance=useMaintenance();
   const session=maintenance.session;
   if(!session)return null;
+  const ordered=[...tools].sort((a,b)=>Number(maintenance.assets.favorites.includes(b.id))-Number(maintenance.assets.favorites.includes(a.id)));
   return <View style={{gap:6}}>
-    {tools.map(tool=><View key={tool.id}>
-      <Pressable accessibilityRole="button" accessibilityLabel={'C '+tool.label}
-        accessibilityState={{expanded:openC===tool.id}}
-        onPress={()=>onChangeC(openC===tool.id?null:tool.id)}
-        style={[styles.compactRow,{borderColor:theme.palette.border,minHeight:44}]}>
-        <Text style={{flex:1,color:theme.palette.text,fontSize:12,fontWeight:'700'}}>{tool.label}</Text>
-        <Text style={{fontSize:11,color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary}}>
-          {tool.status!=='ready'?'待實作 ›':toolUsable(tool,session)?openC===tool.id?'收合 ⌃':'設定 ›':'待適配 ›'}
-        </Text>
-      </Pressable>
+    {ordered.map(tool=><View key={tool.id}>
+      <View style={{flexDirection:'row',alignItems:'center',gap:5}}>
+        <Pressable accessibilityRole="button" accessibilityLabel={'C '+tool.label}
+          accessibilityState={{expanded:openC===tool.id}}
+          onPress={()=>{if(openC!==tool.id)maintenance.noteToolUsed(tool.id);onChangeC(openC===tool.id?null:tool.id);}}
+          style={[styles.compactRow,{borderColor:theme.palette.border,minHeight:44,flex:1}]}>
+          <Text style={{flex:1,color:theme.palette.text,fontSize:12,fontWeight:'700'}}>{tool.label}</Text>
+          <Text style={{fontSize:11,color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary}}>
+            {tool.status!=='ready'?'待實作 ›':toolUsable(tool,session)?openC===tool.id?'收合 ⌃':'設定 ›':'待適配 ›'}
+          </Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={(maintenance.assets.favorites.includes(tool.id)?'取消收藏 ':'收藏 ')+tool.label}
+          disabled={!maintenance.assetsLoaded} onPress={()=>void maintenance.toggleFavoriteTool(tool.id)}
+          style={{padding:9,minWidth:40,alignItems:'center'}}>
+          <Text style={{fontSize:20,color:maintenance.assets.favorites.includes(tool.id)?theme.palette.primary:theme.palette.textSecondary}}>
+            {maintenance.assets.favorites.includes(tool.id)?'★':'☆'}
+          </Text>
+        </Pressable>
+      </View>
       {openC===tool.id?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginTop:2}]}>
-        <ScopedToolDetails tool={tool} instance={instance}/>
+        <ScopedToolDetails tool={tool} instance={instance} onOpenTool={onOpenTool}/>
       </View>:null}
     </View>)}
   </View>;
@@ -275,13 +302,15 @@ function adapterContext(s:MaintenanceSession):AdapterContext{
 const adapterFor=(tool:SkillTool,s:MaintenanceSession)=>resolveSkillAdapter(tool,adapterContext(s));
 const resolvedTool=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).tool;
 const toolUsable=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).status==='active';
-function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstance|undefined}){
+function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:MaintenanceInstance|undefined;onOpenTool?:((id:string)=>void)|undefined}){
   const maint=useMaintenance();
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
   const activeTool=resolvedTool(tool,s);
-  if(activeTool!==tool)return <ScopedToolDetails tool={activeTool} instance={instance}/>;
+  if(activeTool!==tool)return <ScopedToolDetails tool={activeTool} instance={instance} onOpenTool={onOpenTool}/>;
+  if(tool.field==='maintenance:tokens')return <DesignTokenToolDetails/>;
+  if(tool.field==='maintenance:favorites')return <FavoriteToolDetails onNavigate={onOpenTool}/>;
   if(tool.field==='maintenance:batch')return <BatchVisualToolDetails/>;
   if(tool.field==='maintenance:local-diff')return <LocalVisualDiffToolDetails/>;
   if(tool.field==='maintenance:health')return <FrameHealthToolDetails/>;

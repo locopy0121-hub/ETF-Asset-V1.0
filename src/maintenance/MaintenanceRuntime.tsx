@@ -1,14 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useState} from 'react';
+import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
 import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,targetToolSupported,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {safeBatchPatch,type BatchField,type VisualSource} from './advancedSkillEngine';
+import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
+import {ENGINEER_ASSETS_STORAGE_KEY,EMPTY_ENGINEER_ASSETS,normalizeEngineerAssets,makeDesignToken,replaceToken,removeToken,toggleFavorite,trackRecent,tokenTargetPatch,frameTokenPatch,type EngineerAssets} from './engineerDesignAssets';
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
+const KNOWN_ENGINEER_TOOLS=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools.map(tool=>tool.id));
 const scopeId=(page:MainPageKey,frameKey:string)=>page+':'+frameKey;
 const instanceKind=(templateId:string):TargetKind=>templateId==='parent-frame'?'frame':templateId==='divider'?'generic':'text';
 type StyleSyncScope='frame'|'page'|'app';
@@ -28,6 +31,12 @@ export type MaintenanceSession=Readonly<{
 }>;
 type MaintenanceContextValue=Readonly<{
   hydrated:boolean;enabled:boolean;session:MaintenanceSession|null;selection:InspectedTarget|null;
+  assets:EngineerAssets;assetsLoaded:boolean;
+  saveDesignToken:(slot:number,name:string,source:Readonly<Record<string,unknown>>)=>Promise<boolean>;
+  removeDesignToken:(slot:number)=>Promise<boolean>;
+  applyDesignToken:(slot:number)=>boolean;
+  toggleFavoriteTool:(id:string)=>Promise<boolean>;
+  noteToolUsed:(id:string)=>void;
   getInstances:(page:MainPageKey,frameKey:string)=>readonly MaintenanceInstance[];
   getTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
   getSavedTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
@@ -79,6 +88,10 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [hydrated,setHydrated]=useState(false);
   const [selection,setSelection]=useState<InspectedTarget|null>(null);
   const [session,setSession]=useState<MaintenanceSession|null>(null);
+  const [assets,setAssets]=useState<EngineerAssets>(EMPTY_ENGINEER_ASSETS);
+  const [assetsLoaded,setAssetsLoaded]=useState(false);
+  const assetsRef=useRef<EngineerAssets>(EMPTY_ENGINEER_ASSETS);
+  const assetWrites=useRef<Promise<void>>(Promise.resolve());
   const editor=usePageEditor(session?.page??'home');
 
   useEffect(()=>{
@@ -117,6 +130,27 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     return()=>{alive=false;};
   },[]);
   useEffect(()=>{
+    let alive=true;
+    AsyncStorage.getItem(ENGINEER_ASSETS_STORAGE_KEY).then(raw=>{
+      if(!alive)return;
+      const parsed=raw?normalizeEngineerAssets(JSON.parse(raw),KNOWN_ENGINEER_TOOLS):EMPTY_ENGINEER_ASSETS;
+      assetsRef.current=parsed;setAssets(parsed);
+    }).catch(()=>{}).finally(()=>{if(alive)setAssetsLoaded(true);});
+    return()=>{alive=false;};
+  },[]);
+  const changeAssets=useCallback((mutate:(old:EngineerAssets)=>EngineerAssets):Promise<boolean>=>{
+    if(!assetsLoaded)return Promise.resolve(false);
+    let didSave=false;
+    const next=assetWrites.current.catch(()=>{}).then(async()=>{
+      const old=assetsRef.current,updated=mutate(old);
+      if(updated===old||JSON.stringify(updated)===JSON.stringify(old)){didSave=true;return;}
+      await AsyncStorage.setItem(ENGINEER_ASSETS_STORAGE_KEY,JSON.stringify(updated));
+      assetsRef.current=updated;setAssets(updated);didSave=true;
+    }).catch(()=>{});
+    assetWrites.current=next;
+    return next.then(()=>didSave);
+  },[assetsLoaded]);
+  useEffect(()=>{
     if(settings.prefs.engineerEnabled!==true){setSession(null);setSelection(null);}
   },[settings.prefs.engineerEnabled]);
   const enabled=settings.prefs.engineerEnabled===true;
@@ -141,7 +175,40 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     const next={...before};delete next[id];return {...old,[key]:next};
   }),[]);
   const value=useMemo<MaintenanceContextValue>(()=>({
-    hydrated,enabled,session,selection,
+    hydrated,enabled,session,selection,assets,assetsLoaded,
+    saveDesignToken:(slot,name,source)=>{
+      const token=makeDesignToken(slot,name,source);
+      return token?changeAssets(old=>replaceToken(old,token)):Promise.resolve(false);
+    },
+    removeDesignToken:slot=>changeAssets(old=>removeToken(old,slot)),
+    toggleFavoriteTool:id=>KNOWN_ENGINEER_TOOLS.includes(id)?changeAssets(old=>toggleFavorite(old,id,KNOWN_ENGINEER_TOOLS)):Promise.resolve(false),
+    noteToolUsed:id=>{if(KNOWN_ENGINEER_TOOLS.includes(id))void changeAssets(old=>trackRecent(old,id,KNOWN_ENGINEER_TOOLS));},
+    applyDesignToken:slot=>{
+      const token=assets.tokens.find(item=>item.slot===slot);
+      if(!token||!session)return false;
+      if(session.scope==='frame'){
+        const patch=frameTokenPatch(token,session.draft);
+        if(!Object.keys(patch).length)return false;
+        setSession(current=>current&&current.scope==='frame'?{...current,draft:{...current.draft,...patch}}:current);
+        return true;
+      }
+      const instance=session.scope==='instance'?
+        session.draftInstances.find(item=>item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
+      const id=session.scope==='target'?session.target?.id:instance?'installed:'+instance.id:undefined;
+      const kind=session.scope==='target'?session.target?.kind:instance?instanceKind(instance.templateId):undefined;
+      if(!id||!kind)return false;
+      const patch=tokenTargetPatch(token,kind);
+      if(!Object.keys(patch).length)return false;
+      // Explicit token applications are local to THIS A. No implicit same-kind,
+      // cross-page or global writes even if the user's sync mode is enabled.
+      setSession(current=>current&&current.page===session.page&&current.frameKey===session.frameKey&&
+        (current.scope==='target'&&current.target?.id===id||current.scope==='instance'&&'installed:'+current.instanceId===id)?
+        {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
+          sharedTouched:current.sharedTouched.filter(field=>!Object.keys(patch).includes(field)),
+          batchLocalOverrides:{...current.batchLocalOverrides,[id]:[...new Set([
+            ...(current.batchLocalOverrides[id]??[]),...Object.keys(patch)])]}}:current);
+      return true;
+    },
     getInstances:(page,frameKey)=>saved[scopeId(page,frameKey)]??[],
     getFrameTargets:(page,frameKey)=>Object.values(registered[scopeId(page,frameKey)]??{}),
     registerTarget,unregisterTarget,
@@ -386,7 +453,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,assets,assetsLoaded,changeAssets,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }
