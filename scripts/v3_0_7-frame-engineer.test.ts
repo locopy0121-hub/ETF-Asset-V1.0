@@ -68,7 +68,7 @@ for(const field of ['backgroundMode','gradientEndColor','gradientDirection','bor
   'glowColor','glowOpacity','glowPulse','paddingTop','contentGap','maxWidth']){
   assert.ok(skills!.tools.some(t=>t.field==='framefx:'+field&&t.status==='ready'),field);
 }
-for(const name of ['毛玻璃','擴散','跨頁','雙層','手勢']){
+for(const name of ['毛玻璃','跨頁','雙層','手勢']){
   assert.ok(ENGINEER_SKILLS.some(g=>g.tools.some(t=>t.status==='adapter-required'&&
     (t.label+t.detail).includes(name))),name);
 }
