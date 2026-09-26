@@ -1,3 +1,15 @@
+## 2026-09-26｜V3.0.24 P1 原地修復：模擬顏色真正傳遞到原生數值／文字
+
+Actions #1127／commit f8928673562034aa0297fa136bb18feb3208ffd8 雖已通過品質、後端及 QA APK，但程式反查發現 PageEditorStack 的原生 MetricTile／Text 再次依真實 tone 判定條件外觀，MetricTile 的未覆寫預設獲利／虧損文字顏色亦忽略模擬 tone。版本 3.0.25 尚未開始，先以備份 backup-v3.0.24-20260926-pre-simulation-tone-fix 保障現況，在 V3.0.24 原候選 PR #71 上原地修復。InspectableTarget 僅向自身實際渲染 children 傳遞 session-only displayTone/simulated；MetricTile 原生繪製使用獨立 simulationTone 覆寫 fallback 與損益連動，但保留原始金額及既存手動設定；Text 只使用已解析的情境 tone 評估條件樣式。補足 real loss → simulated gain 行為回歸、原生接線防漏回歸；模擬狀態不進持久化、SAF、跨頁或金融核心。待完整 GitHub Gate／QA APK 再確認，手機顯示驗收另列未完成；未通過不得建立 V3.0.25 成功版本。
+
+## V3.0.24｜2026-09-26｜真實元件沙盒資料狀態模擬預覽（GO）
+
+V3.0.23 PR #70 Actions #1121 的 quality／Node+Redis+PostgreSQL／QA APK 與 artifact 已 PASS，精確來源 `cf21b62217599c4b5230f09a0fc2310424d9fbae`。事前 immutable 備份 `backup-v3.0.23-20260926-pre-data-simulation`，工作分支 `go-v3.0.24-20260926-data-simulation`，版本正式遞增 3.0.24／Android/iOS 30024。僅 QA，不自動合併 PR 或卸載舊 App。
+
+原地維護工程師中央既有進階技能「資料狀態模擬預覽」真正接入：A 目前已掛載原生 metric/text/value/prefix/generic 元件 → B 資訊顯示 → C 上漲、下跌、中性、讀取中、延遲、失敗、還原真實資料七種情境。上漲／下跌／中性僅對目前 A 即時測試既有條件外觀及損益色；讀取中／延遲／失敗只疊加醒目的「模擬預覽」情境說明，保留所有真實數值，不冒充來源狀態。模擬只存在 MaintenanceSession 記憶體，不進 AsyncStorage、SAF 備份、共享樣式、帳務原值、已固化 actual_fee/tax、其他元件及正式套用；切換 A、取消或關閉工程師立即恢復真實顯示。無適配原生 A 保留中央技能入口但如實顯示待接線。
+
+中央 184 項保持；已宣告源碼接線 **150**、待接線 **34**。此為實際原生 View 情境渲染與 CI 範圍，不是 150 項手機逐項 PASS。延續歷版全部回歸、新增七情境、局部預覽隔離、執行入口、備份禁止污染及 APK 版本閘門。APK Artifact 完成後立即交付新增與未完成清單並備份接下一版。
+
 ## V3.0.23｜2026-09-26｜真實框架獨立外側柔光暈（GO）
 
 前版 V3.0.22 PR #69、Actions #1117 品質／後端／QA APK PASS，來源 HEAD `1cad6bcf1fd0981549e6a4387eafc5e1e3eb5cac`。更新前 immutable 備份 `backup-v3.0.22-20260926-pre-outer-glow`，工作分支 `go-v3.0.23-20260926-outer-glow`，App／Android／iOS 3.0.23／30023。僅開發 QA，PR 不自動合併，不能卸載既有 App。

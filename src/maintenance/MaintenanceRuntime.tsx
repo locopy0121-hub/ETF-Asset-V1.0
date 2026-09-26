@@ -13,6 +13,7 @@ import {appendVisualHistory,frameVisualSnapshot,targetVisualSnapshot,hasVisualDi
  normalizeVisualHistory,visualHistoryKey,restoreFrameVisual,restoreTargetVisual,
  instanceVisualSnapshot,restoreInstanceVisual,
  type VisualHistoryEntry,type VisualHistoryMap} from './visualHistory';
+import type {SimulationState} from './dataSimulation';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
 const KNOWN_ENGINEER_TOOLS=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools.map(tool=>tool.id));
@@ -32,6 +33,7 @@ export type MaintenanceSession=Readonly<{
   draftDisplay:PageDisplayConfig;displayTouched:readonly (keyof PageDisplayConfig)[];
   syncSameKind:boolean;syncScope:StyleSyncScope;sharedTouched:readonly (keyof TargetAppearance)[];
   batchLocalOverrides:Readonly<Record<string,readonly string[]>>;
+  previewState:SimulationState; // UI-only, excluded from persistence, backups and finance.
 }>;
 type MaintenanceContextValue=Readonly<{
   hydrated:boolean;enabled:boolean;session:MaintenanceSession|null;selection:InspectedTarget|null;
@@ -50,6 +52,7 @@ type MaintenanceContextValue=Readonly<{
   registerTarget:(page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>void;
   unregisterTarget:(page:MainPageKey,frameKey:string,id:string)=>void;
   patchBatchVisual:(ids:readonly string[],source:VisualSource,keys:readonly BatchField[])=>void;
+  setPreviewState:(state:SimulationState)=>void;
   setSyncSameKind:(enabled:boolean)=>void;
   setSyncScope:(scope:StyleSyncScope)=>void;
   getWorkspace:(page:MainPageKey,frameKey:string)=>WorkspaceConfig;
@@ -321,20 +324,23 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       return {...merged,...(active&&sourceId===id&&session?.page===page&&session.frameKey===frameKey?
         session.draftTargets[id]:{}),...batchIsolated};
     },
+    setPreviewState:state=>setSession(current=>current?.scope==='target'&&current.target&&
+      ['metric','text','value','prefix','generic'].includes(current.target.kind)?
+      {...current,previewState:state}:current),
     setSyncSameKind:enabled=>setSession(current=>current?{...current,syncSameKind:enabled}:current),
     setSyncScope:scope=>setSession(current=>current?{...current,syncScope:scope}:current),
     begin:(page,frameKey,title,config,instanceId,displayConfig)=>{
       if(!enabled||!hydrated)return;
       setSelection(null);
       setSession(previous=>previous?.page===page&&previous.frameKey===frameKey?
-        {...previous,scope:instanceId?'instance':'frame',instanceId,focusInstanceId:instanceId,target:undefined}:
+        {...previous,scope:instanceId?'instance':'frame',instanceId,focusInstanceId:instanceId,target:undefined,previewState:'actual'}:
         previous??{
           page,frameKey,title,scope:instanceId?'instance':'frame',...(instanceId?{instanceId}:{}),
           draft:{...config},originalFrame:{...config},
           draftInstances:(saved[scopeId(page,frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(page,frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},
+          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',
         });
     },
     selectTarget:target=>{
@@ -353,14 +359,14 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       if(session&&(session.page!==target.page||session.frameKey!==target.frameKey))return;
       setSelection(target);
       setSession(previous=>previous&&previous.page===target.page&&previous.frameKey===target.frameKey?
-        {...previous,scope:'target',target,instanceId:undefined}:
+        {...previous,scope:'target',target,instanceId:undefined,previewState:'actual'}:
         {
           page:target.page,frameKey:target.frameKey,title:target.frameTitle,scope:'target',target,
           draft:{...frameConfig},originalFrame:{...frameConfig},
           draftInstances:(saved[scopeId(target.page,target.frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(target.page,target.frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(target.page,target.frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},
+          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',
         });
     },
     // Frame behavior is a layout preference, never a permission to lock visual editing.

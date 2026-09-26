@@ -1,3 +1,15 @@
+## 2026-09-26｜V3.0.24 #1125 舊測試文字比對需保護模擬分層
+
+在 V3.0.24 真實元件插入不持久化模擬後，V3.0.19 regression 原本要求 `InspectableTarget` 直接用 `actualTone` 的程式字串，現在 Runtime 正確先以 `simulatedVisualTone(previewState,actualTone)` 計算僅當前 A 的 `displayTone`，再用該狀態調用原始條件色。舊 test 僅更新成實際語意驗證，保留完整真實行情來源／數值不可改、取消恢復與帳務核心測試；禁止為通過舊字串而撤銷新功能。
+
+## 2026-09-26｜V3.0.24 #1123 sandbox 狀態初始化雙路徑 TypeScript FAIL
+
+同一段版本編輯腳本在第一個 begin 建構子連續插入 `previewState` 兩次，卻遺漏 enterTarget 新建構子，造成 TS1117 與 TS2345。修復後把兩種新建構子和兩種切換 A 的重置路徑列入固定測試（預期四處），版本修改仍需先通過 TypeScript 再認列 QA。模擬參數依舊只在維護會話內存，不可保存到帳務或 AsyncStorage。
+
+## 2026-09-26｜V3.0.24 模擬資料必須完全隔離真實帳務
+
+資料狀態情境只能存在已選 A 的維護會話內存：真正的 UI 可見、可回復、不可寫入 maintenance/SAF/ledger/cache，不得顯示捏造的價格或把「延遲／失敗」誤當真實 API 事實。來源分支名稱先精確更新，再改版本號；QA head_ref 與本次實際 branch 由新回歸強制比較，以免 workflow success 卻沒有 APK Artifact。
+
 ## 2026-09-26｜#1119 APK 虛假 success：GitHub head_ref 必須精確核對
 
 V3.0.23 推進時先將整份 workflow 版本 `3.0.22` 取代為 `3.0.23`，連帶把來源分支名稱誤改為不存在的 `go-v3.0.23-20260926-next-skills`，導致 #1119 quality/backend PASS 但 QA APK 以 `skipped` 結束。根因不是 APK 編譯，而是 GitHub job `if` 未符合實際 PR `head_ref`。修復時對 `push.branches` 與 `qa-apk.if` 實際工作分支名稱作精確核對，並納入新版本回歸 Gate；品質/後端 PASS、workflow success 均不可取代 APK 產物實際驗證。

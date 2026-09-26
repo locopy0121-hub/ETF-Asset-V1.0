@@ -9,7 +9,7 @@ const read=(path:string)=>readFileSync(path,'utf8');
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(AB_PROPERTY_TOOL_IDS).size,184);
-assert.equal(audit.readyDeclared,149);assert.equal(audit.pending,35);
+assert.equal(audit.readyDeclared,150);assert.equal(audit.pending,34);
 assert.equal(audit.existing,169);assert.equal(audit.advanced,12);assert.equal(audit.unregistered,3);
 assert.equal(AB_PROPERTY_GROUPS.find(x=>x.id==='effects')?.tools.some(t=>t.id==='advanced-conditional-style'),true);
 const tool=all.find(item=>item.id==='advanced-conditional-style')!;
@@ -66,8 +66,10 @@ const stack=read('src/components/PageEditorStack.tsx');
 const editor=read('src/maintenance/ConditionalStyleToolDetails.tsx');
 const wb=read('src/maintenance/MaintenanceWorkbench.tsx');
 const runtime=read('src/maintenance/MaintenanceRuntime.tsx');
-assert.ok(inspector.includes('applyConditionalAppearance(mergeTargetAppearance(target.base,override),actualTone)'));
-assert.ok(inspector.includes('activeConditionalRule(override.conditionalStyles,actualTone)'));
+assert.ok(inspector.includes('applyConditionalAppearance(mergeTargetAppearance(target.base,override),displayTone)'));
+assert.ok(inspector.includes('activeConditionalRule(override.conditionalStyles,displayTone)'));
+assert.ok(inspector.includes('simulatedVisualTone(previewState,actualTone)'),
+ 'only explicit maintenance preview may override the actual display tone');
 assert.ok(stack.includes('editorStyle:applyConditionalAppearance(override,'));
 assert.ok(stack.includes('<MetricTile {...props}'),'existing metric numeric value must be passed through verbatim');
 assert.ok(editor.includes('maintenance.patchTarget(id,{conditionalStyles:updated})'));
@@ -79,9 +81,9 @@ assert.ok(!wb.includes('FULL_SKILL_SECTIONS.map'),'do not add an AB navigation l
 assert.ok(runtime.includes('normalizeTargetOverride({...current.draftTargets[id],...patch})'));
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.23');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30023);assert.equal(app.expo.ios.buildNumber,'30023');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.23-QA.apk'));
+assert.equal(pkg.version,'3.0.24');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30024);assert.equal(app.expo.ios.buildNumber,'30024');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.24-QA.apk'));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(file).length>0);
-console.log('V3.0.23 true-tone conditional style / 184 catalog / financial isolation / native metric & text: PASS');
+console.log('V3.0.24 true-tone conditional style / 184 catalog / financial isolation / native metric & text: PASS');

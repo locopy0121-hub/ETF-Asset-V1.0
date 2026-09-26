@@ -4,21 +4,22 @@ import { useThemeRuntime } from '../theme/ThemeRuntime';
 import type {TargetOverride} from '../maintenance/inspectionModel';
 import {TARGET_APPEARANCE,mergeTargetAppearance} from '../maintenance/inspectionModel';
 import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffects';
-import {linkedColor} from '../maintenance/workspaceModel';
+import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
+import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
-export function MetricTile({label,value,caption,tone='default',editorStyle}:{
+export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone}:{
   label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
-  editorStyle?:TargetOverride;
+  editorStyle?:TargetOverride;simulationTone?:FinancialTone; // ephemeral preview only
 }){
   const theme=useThemeRuntime();
   const settings=useSettingsRuntime();
-  const actualTone=editorStyle?.profitToneOverride&&editorStyle.profitToneOverride!=='auto'?
-    editorStyle.profitToneOverride:tone==='gain'?'gain':tone==='loss'?'loss':'neutral';
+  const nativeTones=resolveNativeMetricTones(tone,editorStyle?.profitToneOverride,simulationTone);
+  const actualTone=nativeTones.linked;
   const colorPrefs=settings.prefs.display;
-  const toneColor=tone==='gain'?theme.palette.gain:tone==='loss'?theme.palette.loss:theme.palette.text;
-  const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'?toneColor:editorStyle?.textColor??theme.palette.text;
+  const toneColor=nativeTones.fallback==='gain'?theme.palette.gain:nativeTones.fallback==='loss'?theme.palette.loss:theme.palette.text;
+  const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'||simulationTone?toneColor:editorStyle?.textColor??theme.palette.text;
   const effectiveTextColor=editorStyle?.textProfitColor===true?
     linkedColor(editorStyle.textColor??theme.palette.text,true,actualTone,colorPrefs):
     editorStyle?.textProfitColor===false?editorStyle.textColor??theme.palette.text:textColor;
