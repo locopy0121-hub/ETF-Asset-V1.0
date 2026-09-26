@@ -250,7 +250,7 @@ export function DesignTokenToolDetails(){
 }
 /** Favorite and recent shortcuts navigate back to an actual B PROPERTY -> C
  * editor; never add a category landing screen or bypass per-target adapters. */
-export function FavoriteToolDetails({onNavigate}:{onNavigate?:(id:string)=>void}){
+export function FavoriteToolDetails({onNavigate}:{onNavigate?:((id:string)=>void)|undefined}){
  const maint=useMaintenance(),theme=useThemeRuntime();
  const tools=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools);
  const label=(id:string)=>tools.find(tool=>tool.id===id)?.label??id;
