@@ -25,6 +25,14 @@ jobs:
         run: npm run typecheck
       - name: V3.0.14 aggregate gates
         run: npm run test:v3_0_14
+      - name: Upload mandatory complete skill coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: TF-Asset-V3.0.14-Skill-Coverage
+          path: reports/V3.0.14-full-skill-matrix.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: V3.0.14 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
       - name: V3.0.14 controls runtime behavior
@@ -205,6 +213,7 @@ jobs:
             TF-Asset-V3.0.14-QA.apk
             TF-Asset-V3.0.14-QA.sha256
             TF-Asset-V3.0.14-badging.txt
+            reports/V3.0.14-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
 
