@@ -11,6 +11,7 @@ import {ENGINEER_ASSETS_STORAGE_KEY,EMPTY_ENGINEER_ASSETS,normalizeEngineerAsset
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
 import {appendVisualHistory,frameVisualSnapshot,targetVisualSnapshot,hasVisualDifference,
  normalizeVisualHistory,visualHistoryKey,restoreFrameVisual,restoreTargetVisual,
+ instanceVisualSnapshot,restoreInstanceVisual,
  type VisualHistoryEntry,type VisualHistoryMap} from './visualHistory';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
@@ -184,18 +185,45 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const value=useMemo<MaintenanceContextValue>(()=>({
     hydrated,enabled,session,selection,assets,assetsLoaded,
     getVisualHistory:()=>{
-      if(!session||!['frame','target'].includes(session.scope))return [];
-      const key=visualHistoryKey(session.scope as 'frame'|'target',session.page,session.frameKey,session.target?.id);
+      if(!session)return [];
+      const owned=session.scope==='instance'?session.draftInstances.find(item=>
+        item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
+      if(session.scope==='instance'&&!owned)return [];
+      const id=session.scope==='instance'?owned?.id:session.target?.id;
+      const key=visualHistoryKey(session.scope,session.page,session.frameKey,id);
       return key?visualHistory[key]??[]:[];
     },
     restoreVisualHistory:entryId=>{
-      if(!session||!['frame','target'].includes(session.scope))return false;
-      const key=visualHistoryKey(session.scope as 'frame'|'target',session.page,session.frameKey,session.target?.id);
+      if(!session)return false;
+      const owned=session.scope==='instance'?session.draftInstances.find(item=>
+        item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
+      if(session.scope==='instance'&&!owned)return false;
+      const key=visualHistoryKey(session.scope,session.page,session.frameKey,
+        session.scope==='instance'?owned?.id:session.target?.id);
       const entry=key?visualHistory[key]?.find(item=>item.id===entryId):undefined;
       if(!entry)return false;
       setSession(current=>{
         if(!current||current.page!==session.page||current.frameKey!==session.frameKey||
-          current.scope!==session.scope||current.target?.id!==session.target?.id)return current;
+          current.scope!==session.scope||current.target?.id!==session.target?.id||
+          current.instanceId!==session.instanceId)return current;
+        if(entry.kind==='instance'&&current.scope==='instance'&&current.instanceId){
+          const selected=current.draftInstances.find(item=>
+            item.id===current.instanceId&&isEngineerOwnedInstance(item));
+          if(!selected)return current;
+          const id='installed:'+selected.id;
+          const restored=instanceVisualSnapshot(entry.visual);
+          const localStyle=restored.style&&typeof restored.style==='object'?
+            restored.style as Record<string,unknown>:{};
+          return {...current,syncSameKind:false,
+            draftInstances:current.draftInstances.map(item=>item.id===selected.id?
+              restoreInstanceVisual(item,restored):item),
+            draftTargets:{...current.draftTargets,
+              [id]:restoreTargetVisual(current.draftTargets[id]??{},localStyle)},
+            batchLocalOverrides:{...current.batchLocalOverrides,[id]:[...new Set([
+              ...(current.batchLocalOverrides[id]??[]),...VISUAL_TARGET_KEYS.map(field=>String(field)),
+              'width','height'])]},
+          };
+        }
         if(entry.kind==='frame'&&current.scope==='frame')return {...current,draft:restoreFrameVisual(current.draft,entry.visual)};
         if(entry.kind==='target'&&current.scope==='target'&&current.target){
           const id=current.target.id;
@@ -470,12 +498,22 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         }
         nextShared={...nextShared,[styleKey]:normalizeTargetOverride({...nextShared[styleKey],...changed})};
       }
-      const historyScope=session.scope==='frame'?'frame':session.scope==='target'?'target':null;
-      const historyId=historyScope?visualHistoryKey(historyScope,session.page,session.frameKey,session.target?.id):null;
+      const savedInstance=session.scope==='instance'?saved[key]?.find(item=>
+        item.id===session.instanceId&&isEngineerOwnedInstance(item)):undefined;
+      const draftInstance=savedInstance?normalizedInstances.find(item=>
+        item.id===savedInstance.id&&isEngineerOwnedInstance(item)):undefined;
+      const historyScope=session.scope==='frame'?'frame':session.scope==='target'?'target':
+        savedInstance&&draftInstance?'instance':null;
+      const historyId=historyScope?visualHistoryKey(historyScope,session.page,session.frameKey,
+        historyScope==='instance'?savedInstance?.id:session.target?.id):null;
       const beforeVisual=historyScope==='frame'?frameVisualSnapshot(editor.config[session.frameKey]??session.originalFrame):
-        historyScope==='target'&&session.target?targetVisualSnapshot(targetStyles[key]?.[session.target.id]??{}):{};
+        historyScope==='target'&&session.target?targetVisualSnapshot(targetStyles[key]?.[session.target.id]??{}):
+        historyScope==='instance'&&savedInstance?instanceVisualSnapshot({...savedInstance,
+          style:targetStyles[key]?.['installed:'+savedInstance.id]??{}}):{};
       const afterVisual=historyScope==='frame'?frameVisualSnapshot(session.draft):
-        historyScope==='target'&&session.target?targetVisualSnapshot(nextTargets[key]?.[session.target.id]??{}):{};
+        historyScope==='target'&&session.target?targetVisualSnapshot(nextTargets[key]?.[session.target.id]??{}):
+        historyScope==='instance'&&draftInstance?instanceVisualSnapshot({...draftInstance,
+          style:nextTargets[key]?.['installed:'+draftInstance.id]??{}}):{};
       const nextHistory=historyId&&historyScope&&hasVisualDifference(beforeVisual,afterVisual)?
         appendVisualHistory(visualHistory,historyId,historyScope,beforeVisual):visualHistory;
       try{
