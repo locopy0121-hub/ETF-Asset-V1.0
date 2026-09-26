@@ -125,7 +125,9 @@ const existing=ENGINEER_SKILLS.flatMap(group=>group.tools.map(tool=>({
  ...tool,sourceGroup:group.id,sourceId:tool.id,category:categoryForTool(group.id,tool),
 })));
 const advanced=ADVANCED_ENGINEER_CAPABILITIES.map(item=>({
- id:'advanced-'+item.id,label:item.label,detail:item.detail,status:'adapter-required' as const,
+ id:'advanced-'+item.id,label:item.label,detail:item.detail,
+ status:(['batch','local-diff','health'].includes(item.id)?'ready':'adapter-required') as 'ready'|'adapter-required',
+ ...(['batch','local-diff','health'].includes(item.id)?{field:'maintenance:'+item.id}:{}),
  sourceGroup:'advanced',sourceId:item.id,category:item.category,
 }));
 // A domain without a native adapter is an explicit item in the backlog, not an empty
