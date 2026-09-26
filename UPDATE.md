@@ -1,3 +1,11 @@
+## V3.0.22｜2026-09-26｜真實父框架任意角度漸層（GO）
+
+前版 V3.0.21 QA APK 已於 Actions #1111 成功；從 commit a7dfd464bafbaa617c481d09a16c51d7ae35b491 建立 immutable backup-v3.0.21-20260926-pre-next-skills，再於 go-v3.0.22-20260926-next-skills 開發。App/Android/iOS 3.0.22／30022。仍為 QA，不是正式發行，手機實機另行驗收。
+
+本輪將中央既有待接線技能「① 任意角度漸層」接入真實 FrameCard 原生 View：B 顏色／特效→C 漸層角度（0～359°，±1／精確輸入），從目前 A 的 draft 即時預覽、套用才儲存。舊水平／垂直設定沿用不變，角度可清除以恢復舊模式。以實測容器尺寸計算超出對角線的旋轉漸層矩形，避免角落露底；32 色階以系統調色及既有損益色開關顯示（舊版 16 階行為保留），不影響文字、背景透明度、金融資料、事件或別的框架。新增角度正規化與 Native renderer 接線回歸測試。
+
+唯一 184 中央工具保留，宣告已接線 148、待接線 36（僅 CI/原生接線宣告，不是 148 項逐項真機 PASS）。本輪前置備份已核對；CI／Node+Redis+PostgreSQL／APK+SHA+badging／真機分開紀錄。V3.0.21 舊問題與八大項未驗均保留，建置完成後立即顯示完成與未完成清單並自動備份開始下一版。
+
 ## V3.0.21｜2026-09-26｜工程師新增元件獨立外觀歷史（GO）
 
 基底 V3.0.20 已驗證 QA APK：Actions #1109，commit `72ccb1856bf33af3503653c8af6585a86b81afdb`；開工前不可變備份 `backup-v3.0.20-20260926-pre-instance-history`。本輪分支 `go-v3.0.21-20260926-instance-history`，版本 3.0.21／Android 30021；PR／CI／QA APK 完整驗證進度以實際 GitHub Actions 為準。

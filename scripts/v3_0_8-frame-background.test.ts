@@ -65,7 +65,7 @@ for(const field of ['gradientMidEnabled','gradientMidColor','gradientMidStop','i
   'imageIndex','imageUri','imageFit','imageOpacity','maskColor','maskOpacity'])
   assert.ok(frame!.tools.some(tool=>tool.field==='framefx:'+field&&tool.status==='ready'),
     'missing native-adapted frame tool '+field);
-assert.ok(frame!.tools.some(tool=>tool.label.includes('任意角度')&&tool.status==='adapter-required'));
+assert.ok(frame!.tools.some(tool=>tool.label.includes('任意角度')&&tool.status==='ready'&&tool.field==='framefx:gradientAngle'));
 assert.ok(frame!.tools.some(tool=>tool.label.includes('圖片裁切位置')&&tool.status==='adapter-required'));
 assert.ok(frame!.tools.some(tool=>tool.label.includes('毛玻璃')&&tool.status==='adapter-required'));
 const card=read('src/components/FrameCard.tsx');
@@ -84,7 +84,7 @@ assert.ok(details.includes('onProfitColorChange'));
 assert.ok(tree.includes("framefx:maskColor")&&tree.includes("framefx:gradientMidColor"));
 assert.ok(read('src/maintenance/MaintenanceRuntime.tsx').includes('editor.replacePageConfig(normalized)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.22'].includes(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));

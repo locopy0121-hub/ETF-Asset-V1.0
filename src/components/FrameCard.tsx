@@ -1,8 +1,8 @@
 import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
-import {AccessibilityInfo,Animated,Image,StyleSheet,Text,View} from 'react-native';
+import {AccessibilityInfo,Animated,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,colorWithAlpha,mixFrameColors,normalizeFrameEffects,sampleFrameGradient} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,sampleFrameGradient} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -20,6 +20,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
   const [reduceMotion,setReduceMotion]=useState(true);
+  const [gradientBounds,setGradientBounds]=useState({width:0,height:0});
   const pulse=useRef(new Animated.Value(1)).current;
   useEffect(()=>{
     let mounted=true;
@@ -57,6 +58,13 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     fx.gradientMidEnabled?sampleFrameGradient(bg,bgMiddle,bgEnd,i/15,fx.gradientMidStop,true):
       mixFrameColors(bg,bgEnd,i/15)),[bg,bgMiddle,bgEnd,fx.gradientMidEnabled,fx.gradientMidStop]);
   const gradientOn=Boolean(editorStyle&&fx.backgroundMode==='gradient');
+  const gradientAngle=fx.gradientAngle??(fx.gradientDirection==='vertical'?90:0);
+  const angled=gradientAngle!==0&&gradientAngle!==90;
+  const diagonal=angledFrameGradientBounds(gradientBounds.width,gradientBounds.height);
+  const measureGradient=(event:LayoutChangeEvent)=>{
+    const {width,height}=event.nativeEvent.layout;
+    setGradientBounds(previous=>previous.width===width&&previous.height===height?previous:{width,height});
+  };
   const backgroundImageUri=fx.imageSource==='builtIn'?THEME_BACKGROUNDS[fx.imageIndex]:fx.imageUri;
   const imageOn=Boolean(editorStyle&&fx.backgroundMode==='image'&&backgroundImageUri);
   const backgroundLayer=Boolean(editorStyle&&(gradientOn||imageOn));
@@ -94,9 +102,13 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     },
     workHidden&&{opacity:.5},
   ]}>
-    {gradientOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,corners,{overflow:'hidden',
-      flexDirection:fx.gradientDirection==='vertical'?'column':'row'}]}>
-      {gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
+    {gradientOn?<View pointerEvents="none" onLayout={measureGradient}
+      style={[StyleSheet.absoluteFill,corners,{overflow:'hidden',
+        ...(!angled||!diagonal.side?{flexDirection:gradientAngle===90?'column':'row' as const}:{})}]}>
+      {angled&&diagonal.side?<View style={{position:'absolute',width:diagonal.side,height:diagonal.side,
+        left:diagonal.left,top:diagonal.top,flexDirection:'row',transform:[{rotate:gradientAngle+'deg'}]}}>
+        {gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
+      </View>:gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
     </View>:null}
     {imageOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,corners,{overflow:'hidden'}]}>
       <Image source={{uri:backgroundImageUri!}} resizeMode={fx.imageFit}

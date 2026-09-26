@@ -101,7 +101,15 @@ export function FrameEffectsToolDetails({field}:{field:string}){
   const key=field as keyof FrameEffects;
   const fx=normalizeFrameEffects(session.draft.effects);
   const current=fx[key];
-  const change=(next:unknown)=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[key]:next})});
+  const change=(next:unknown)=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[key]:next,
+    ...(key==='gradientDirection'?{gradientAngle:null}:{})})});
+  if(key==='gradientAngle')return <View style={{gap:8,marginTop:9}}>
+    <Text style={{color:theme.palette.text,fontWeight:'700'}}>任意角度：{fx.gradientAngle===null?'沿用水平／垂直':fx.gradientAngle+'°'}</Text>
+    <NumericDetail value={fx.gradientAngle??(fx.gradientDirection==='vertical'?90:0)}
+      onChange={change} min={0} max={359} step={1}/>
+    <Pressable accessibilityRole="button" accessibilityLabel="恢復水平或垂直漸層"
+      onPress={()=>change(null)}><Text style={{color:theme.palette.primary,fontWeight:'700'}}>恢復水平／垂直方向</Text></Pressable>
+  </View>;
   if(key==='imageIndex')return <View style={{marginTop:9,flexDirection:'row',flexWrap:'wrap',gap:8}}>
     {THEME_BACKGROUNDS.map((uri,index)=><Pressable accessibilityRole="button" key={index}
       accessibilityLabel={'選用框架內建背景 '+(index+1)}

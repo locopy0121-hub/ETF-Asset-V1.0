@@ -1,7 +1,7 @@
 /** Frame-only display settings. No ledger, market or source-data dependencies. */
 export type FrameEffects=Readonly<{
   backgroundMode:'solid'|'gradient'|'image';
-  gradientEndColor:string;gradientDirection:'horizontal'|'vertical';gradientEndProfitColor:boolean;
+  gradientEndColor:string;gradientDirection:'horizontal'|'vertical';gradientAngle:number|null;gradientEndProfitColor:boolean;
   gradientMidEnabled:boolean;gradientMidColor:string;gradientMidProfitColor:boolean;gradientMidStop:number;
   imageSource:'builtIn'|'custom';imageIndex:number;imageUri:string|null;
   imageFit:'cover'|'contain'|'stretch';imageOpacity:number;
@@ -18,7 +18,7 @@ export type FrameEffects=Readonly<{
 }>;
 /** -1 means inherit the outer frame's original setting, preserving old page layouts. */
 export const DEFAULT_FRAME_EFFECTS:FrameEffects={
-  backgroundMode:'solid',gradientEndColor:'#EDE9FE',gradientDirection:'vertical',gradientEndProfitColor:false,
+  backgroundMode:'solid',gradientEndColor:'#EDE9FE',gradientDirection:'vertical',gradientAngle:null,gradientEndProfitColor:false,
   gradientMidEnabled:false,gradientMidColor:'#C4B5FD',gradientMidProfitColor:false,gradientMidStop:.5,
   imageSource:'builtIn',imageIndex:0,imageUri:null,imageFit:'cover',imageOpacity:1,
   maskColor:'#000000',maskProfitColor:false,maskOpacity:0,
@@ -62,6 +62,9 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     out.imageUri=v.imageUri;
   out.imageIndex=Math.round(out.imageIndex as number);
   if(v.gradientDirection==='horizontal'||v.gradientDirection==='vertical')out.gradientDirection=v.gradientDirection;
+  if(v.gradientAngle===null)out.gradientAngle=null;
+  else if(typeof v.gradientAngle==='number'&&Number.isFinite(v.gradientAngle))
+    out.gradientAngle=Math.round(finite(v.gradientAngle,0,359,90));
   if(v.borderStyle==='solid'||v.borderStyle==='dashed'||v.borderStyle==='dotted')out.borderStyle=v.borderStyle;
   return out as FrameEffects;
 }
@@ -84,4 +87,11 @@ export function sampleFrameGradient(start:string,middle:string,end:string,positi
   const stop=Math.max(.1,Math.min(.9,pivot));
   return at<=stop?mixFrameColors(start,middle,at/stop):
     mixFrameColors(middle,end,(at-stop)/(1-stop));
+}
+
+/** A diagonal native View gradient needs an oversized centered square so rotation never exposes corners. */
+export function angledFrameGradientBounds(width:number,height:number){
+  const w=Math.max(0,width),h=Math.max(0,height);
+  const side=Math.ceil(2*Math.hypot(w,h));
+  return {side,left:(w-side)/2,top:(h-side)/2};
 }
