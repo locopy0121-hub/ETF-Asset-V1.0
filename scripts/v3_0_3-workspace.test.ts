@@ -27,7 +27,7 @@ assert.ok(inspect.includes('if(!engineer.enabled&&!appearance.visible)return nul
 assert.ok(inspect.includes('top:2')&&inspect.includes('minWidth:28'),'wrench must be anchored INSIDE the tile, not outside adjacent siblings');
 assert.ok(!inspect.includes("已選取："),'floating caption obscured financial content');
 const dock=read('src/maintenance/MaintenanceWorkbench.tsx');
-assert.ok(dock.includes('const displaySkills=ENGINEER_SKILLS;'),'one global skill tree remains available');
+assert.ok(dock.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;'),'one global skill tree remains available');
 assert.ok(!dock.includes('group.tools.filter(tool=>toolUsable(tool,session))'),'never hide tools by current target');
 assert.ok(dock.includes('中央完整技能樹'),'show all skills and report adapter status');
 const ai=read('src/components/AiQuestionBox.tsx');
