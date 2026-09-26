@@ -1,3 +1,9 @@
+## V3.0.28｜2026-09-27｜真實 FrameCard 雙層／厚度漸層邊框（GO）
+來源 V3.0.27 PR #74 已驗證 APK HEAD `654c8872bda4ec8f8dc7b6484c80987d82b7ed31`，Actions #1155（Run 36262053387）品質/後端/QA APK PASS，Artifact #10912224746，SHA256 68fa4f3efeb251a7c7ad1157e7e5c013d88659bf12d7b5474b1e1b19293034e6，versionCode 30027。immutable 備份 `backup-v3.0.27-20260927-pre-v3.0.28` 與成功 HEAD 相符。工作分支 `go-v3.0.28-20260927-border-gradient`，3.0.28／Android+iOS 30028。
+本版完成唯一中央既存 `fx-border-grad` 真實原生 FrameCard 適配：A 真實框架→ B 邊框→ C 獨立雙層或八階厚度方向漸層邊框。兩組獨立系統 Color Picker 與損益色、厚度 1–12 dp、透明度 0–80%；非互動原生 View 輪廓繪製在框架邊緣，不縮小內容或令財務數值褪色。兩模式清楚區分雙層顏色與厚度方向內插，並非環繞框架角度漸層；原地草稿預覽、取消與正式套用沿用安全 FrameEffects/SAF 備份。
+184 項中央追蹤維持，程式／CI 宣告 **154 已接線／30 待原生適配**，不冒稱 154 項真機 PASS。完整歷版回歸、TypeScript、Node/Redis/PostgreSQL、原生 QA APK、ZIP/SHA/badging/Artifact 分開驗證；原版金融核心/費稅/現有備份不變。此段更新紀錄不代表 APK 已產出，須以 GitHub Actions 證據確認。
+
+
 ## V3.0.27｜2026-09-27｜真實 FrameCard 多層陰影擴散（GO）
 來源 V3.0.26 PR #73 HEAD `66478dab73173033b9a6063118e9e1627a2eec9a`，Actions #1143 (36260510260) quality/backend/QA APK PASS，Artifact `TF-Asset-V3.0.26-QA-APK` #10912003948；事前 immutable 備份 `backup-v3.0.26-20260927-pre-v3.0.27` 確認同 HEAD。開發分支 `go-v3.0.27-20260927-shadow-spread`，3.0.27／Android+iOS 30027。
 本輪唯一中央既存待接線工具 `fx-shadow-spread` 接到目前真實 FrameCard：A 框架 → B 光影效果 → C 多層陰影擴散，預設關閉。原生 View 在框架外繪製 1–6 層獨立非互動輪廓，擴散半徑 0–32dp、最高透明度 65%，共享既有 Shadow Color Picker/損益色與陰影 XY 位移；不更動子內容、數值透明度、原生交易公式或原有光暈。原地草稿預覽、取消還原、正式套用及既有 SAF 備份透過已存在的 FrameEffects 流程。Android 版本原生陰影為輪廓近似，不冒稱真正高斯模糊或全裝置精準 GPU 效果，真機排版與效能待驗。
