@@ -4,7 +4,7 @@ import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
-export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix';
+export type TargetKind='frame'|'metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix';
 export type TargetProperty=Readonly<{name:string;value:string;readOnly?:boolean}>;
 export type TargetAppearance=Readonly<{
   visible:boolean;fontSize:number;labelFontSize:number;captionFontSize:number;
