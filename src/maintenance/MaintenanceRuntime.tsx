@@ -151,7 +151,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         .filter(field=>local[field as keyof TargetOverride]!==undefined)
         .map(field=>[field,local[field as keyof TargetOverride]]));
       const merged={...local,...group,...isolated,...changed};
-      return active&&session.target?.id===id&&session.target?.page===page&&session.target.frameKey===frameKey?
+      return active&&session?.scope==='target'&&session.target?.id===id&&
+        session.target.page===page&&session.target.frameKey===frameKey?
         {...merged,...session.draftTargets[id]}:merged;
     },
     setSyncSameKind:enabled=>setSession(current=>current?{...current,syncSameKind:enabled}:current),
