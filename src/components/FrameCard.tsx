@@ -23,6 +23,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const [gradientBounds,setGradientBounds]=useState({width:0,height:0});
   const pulse=useRef(new Animated.Value(1)).current;
   const blink=useRef(new Animated.Value(1)).current;
+  const entrance=useRef(new Animated.Value(1)).current;
   const marqueeShift=useRef(new Animated.Value(0)).current;
   const [titleAvailable,setTitleAvailable]=useState(0);
   const [titleIntrinsic,setTitleIntrinsic]=useState(0);
@@ -55,6 +56,23 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     loop.start();
     return()=>{loop.stop();blink.stopAnimation();};
   },[Boolean(editorStyle),fx.blinkEnabled,fx.blinkPeriodMs,reduceMotion,blink]);
+  useEffect(()=>{
+    entrance.stopAnimation();entrance.setValue(1);
+    if(!editorStyle||!fx.entranceEnabled||reduceMotion)return;
+    entrance.setValue(0);
+    const animation=Animated.timing(entrance,{
+      toValue:1,duration:fx.entranceDurationMs,easing:Easing.out(Easing.cubic),
+      useNativeDriver:true,
+    });
+    animation.start();
+    return()=>{animation.stop();entrance.stopAnimation();entrance.setValue(1);};
+  },[Boolean(editorStyle),fx.entranceEnabled,fx.entranceMode,fx.entranceDurationMs,
+     fx.entranceDistance,fx.entranceScale,fx.entranceRotationDeg,reduceMotion,entrance]);
+  const entranceTransform=fx.entranceMode==='slide'
+    ? [{translateX:entrance.interpolate({inputRange:[0,1],outputRange:[fx.entranceDistance,0]})}]
+    : fx.entranceMode==='zoom'
+      ? [{scale:entrance.interpolate({inputRange:[0,1],outputRange:[fx.entranceScale,1]})}]
+      : [{rotate:entrance.interpolate({inputRange:[0,1],outputRange:['-'+fx.entranceRotationDeg+'deg','0deg']})}];
   const bg=linkedColor(editorStyle?.backgroundColor??theme.palette.surface,
     editorStyle?.backgroundProfitColor,'neutral',systemColors);
   const bgEnd=linkedColor(fx.gradientEndColor,fx.gradientEndProfitColor,'neutral',systemColors);
@@ -116,7 +134,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const imageOn=Boolean(editorStyle&&fx.backgroundMode==='image'&&backgroundImageUri);
   const backgroundLayer=Boolean(editorStyle&&(gradientOn||imageOn));
   const shadowOn=Boolean(editorStyle?.shadowEnabled);
-  return <View style={[
+  return <Animated.View style={[
     styles.card,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
     layout==='compact'&&styles.cardCompact,layout==='dense'&&styles.cardDense,
     appearance==='soft'&&[styles.cardSoft,{backgroundColor:theme.palette.surfaceMuted}],
@@ -148,6 +166,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
         shadowRadius:fx.shadowBlur,shadowOffset:{width:fx.shadowOffsetX,height:fx.shadowOffsetY},
       }:{elevation:0,shadowOpacity:0}),
     },
+    editorStyle&&fx.entranceEnabled&&!reduceMotion&&{transform:entranceTransform},
     workHidden&&{opacity:.5},
   ]}>
     {shadowSpreadOn?frameShadowSpreadBands(fx.shadowSpreadRadius,fx.shadowSpreadOpacity,fx.shadowSpreadLayers)
@@ -222,7 +241,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       {action}
     </View>
     {editorStyle?.height!==undefined?<View style={{flexShrink:0,gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</View>:children}
-  </View>;
+  </Animated.View>;
 }
 
 const styles=StyleSheet.create({

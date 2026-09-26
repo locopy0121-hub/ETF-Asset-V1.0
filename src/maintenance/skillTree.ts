@@ -63,7 +63,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
     ready('fx-outer-glow','④ 外側柔光暈','framefx:outerGlowEnabled','獨立調色盤與損益色、透明度、擴散及柔邊；以真實 FrameCard 外側原生 View 圓環渲染，不調整內容或帳務數據'),
     later('fx-glass','⑤ 毛玻璃／磨砂與材質','需額外原生 Blur Runtime，不提供假選項'),
     later('fx-drag-sort','⑦ 子元件拖曳排序','待接入實際 Flex 佈局與手勢'),
-    later('fx-animation-advanced','⑧ 滑入／縮放／旋轉動畫','原生動畫及無障礙驗證後接入'),
+    ready('fx-animation-advanced','⑧ 原生進場：滑入／縮放／旋轉','framefx:entranceEnabled','真實 FrameCard 原生 Animated.View 進場、時長與強度可調，系統降低動態時立即恢復靜態；局部草稿可取消'),
     later('fx-frame-interaction','⑨ 框架點擊／長按','必須排除內部按鈕手勢衝突'),
     later('fx-responsive','⑩ 尺寸斷點／跨頁中央模板','需安全版本化共享及局部適配')
   ]},

@@ -9,7 +9,7 @@ const read=(path:string)=>readFileSync(path,'utf8');
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(AB_PROPERTY_TOOL_IDS).size,184);
-assert.equal(audit.readyDeclared,154);assert.equal(audit.pending,30);
+assert.equal(audit.readyDeclared,155);assert.equal(audit.pending,29);
 assert.equal(audit.existing,169);assert.equal(audit.advanced,12);assert.equal(audit.unregistered,3);
 assert.equal(AB_PROPERTY_GROUPS.find(x=>x.id==='effects')?.tools.some(t=>t.id==='advanced-conditional-style'),true);
 const tool=all.find(item=>item.id==='advanced-conditional-style')!;
@@ -81,9 +81,9 @@ assert.ok(!wb.includes('FULL_SKILL_SECTIONS.map'),'do not add an AB navigation l
 assert.ok(runtime.includes('normalizeTargetOverride({...current.draftTargets[id],...patch})'));
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.28');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30028);assert.equal(app.expo.ios.buildNumber,'30028');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.28-QA.apk'));
+assert.equal(pkg.version,'3.0.29');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30029);assert.equal(app.expo.ios.buildNumber,'30029');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.29-QA.apk'));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(file).length>0);
-console.log('V3.0.28 true-tone conditional style / 184 catalog / financial isolation / native metric & text: PASS');
+console.log('V3.0.29 true-tone conditional style / 184 catalog / financial isolation / native metric & text: PASS');

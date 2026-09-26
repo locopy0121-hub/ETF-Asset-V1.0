@@ -20,6 +20,8 @@ export type FrameEffects=Readonly<{
   glowWidth:number;glowPulse:boolean;glowPeriodMs:number;
   blinkEnabled:boolean;blinkColor:string;blinkProfitColor:boolean;blinkOpacity:number;blinkPeriodMs:number;
   titleMarqueeEnabled:boolean;titleMarqueeSpeed:number;titleMarqueeGap:number;
+  entranceEnabled:boolean;entranceMode:'slide'|'zoom'|'rotate';
+  entranceDurationMs:number;entranceDistance:number;entranceScale:number;entranceRotationDeg:number;
   outerGlowEnabled:boolean;outerGlowColor:string;outerGlowProfitColor:boolean;
   outerGlowOpacity:number;outerGlowSpread:number;outerGlowSoftness:number;
   paddingTop:number;paddingRight:number;paddingBottom:number;paddingLeft:number;
@@ -42,6 +44,8 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   glowPulse:false,glowPeriodMs:1800,
   blinkEnabled:false,blinkColor:'#FBBF24',blinkProfitColor:false,blinkOpacity:.65,blinkPeriodMs:1500,
   titleMarqueeEnabled:false,titleMarqueeSpeed:72,titleMarqueeGap:32,
+  entranceEnabled:false,entranceMode:'slide',entranceDurationMs:650,
+  entranceDistance:36,entranceScale:.86,entranceRotationDeg:12,
   outerGlowEnabled:false,outerGlowColor:'#A78BFA',outerGlowProfitColor:false,
   outerGlowOpacity:.35,outerGlowSpread:4,outerGlowSoftness:12,
   paddingTop:-1,paddingRight:-1,paddingBottom:-1,paddingLeft:-1,
@@ -62,6 +66,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     glowOpacity:[0,.8],glowWidth:[0,16],glowPeriodMs:[800,4000],
     blinkOpacity:[0,.8],blinkPeriodMs:[500,5000],
     titleMarqueeSpeed:[24,180],titleMarqueeGap:[12,80],
+    entranceDurationMs:[200,2500],entranceDistance:[8,120],entranceScale:[.65,1],entranceRotationDeg:[5,90],
     outerGlowOpacity:[0,.8],outerGlowSpread:[0,32],outerGlowSoftness:[0,48],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
@@ -74,7 +79,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   }
   for(const key of ['gradientEndColor','gradientMidColor','borderGradientStartColor','borderGradientEndColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','entranceEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -90,6 +95,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     out.gradientAngle=Math.round(finite(v.gradientAngle,0,359,90));
   if(v.borderStyle==='solid'||v.borderStyle==='dashed'||v.borderStyle==='dotted')out.borderStyle=v.borderStyle;
   if(v.borderGradientMode==='dual'||v.borderGradientMode==='gradient')out.borderGradientMode=v.borderGradientMode;
+  if(v.entranceMode==='slide'||v.entranceMode==='zoom'||v.entranceMode==='rotate')out.entranceMode=v.entranceMode;
   return out as FrameEffects;
 }
 export function colorWithAlpha(color:string,alpha:number):string{
