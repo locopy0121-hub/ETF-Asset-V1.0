@@ -66,8 +66,10 @@ const stack=read('src/components/PageEditorStack.tsx');
 const editor=read('src/maintenance/ConditionalStyleToolDetails.tsx');
 const wb=read('src/maintenance/MaintenanceWorkbench.tsx');
 const runtime=read('src/maintenance/MaintenanceRuntime.tsx');
-assert.ok(inspector.includes('applyConditionalAppearance(mergeTargetAppearance(target.base,override),actualTone)'));
-assert.ok(inspector.includes('activeConditionalRule(override.conditionalStyles,actualTone)'));
+assert.ok(inspector.includes('applyConditionalAppearance(mergeTargetAppearance(target.base,override),displayTone)'));
+assert.ok(inspector.includes('activeConditionalRule(override.conditionalStyles,displayTone)'));
+assert.ok(inspector.includes('simulatedVisualTone(previewState,actualTone)'),
+ 'only explicit maintenance preview may override the actual display tone');
 assert.ok(stack.includes('editorStyle:applyConditionalAppearance(override,'));
 assert.ok(stack.includes('<MetricTile {...props}'),'existing metric numeric value must be passed through verbatim');
 assert.ok(editor.includes('maintenance.patchTarget(id,{conditionalStyles:updated})'));

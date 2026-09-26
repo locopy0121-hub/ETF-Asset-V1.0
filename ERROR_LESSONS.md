@@ -1,3 +1,7 @@
+## 2026-09-26｜V3.0.24 #1125 舊測試文字比對需保護模擬分層
+
+在 V3.0.24 真實元件插入不持久化模擬後，V3.0.19 regression 原本要求 `InspectableTarget` 直接用 `actualTone` 的程式字串，現在 Runtime 正確先以 `simulatedVisualTone(previewState,actualTone)` 計算僅當前 A 的 `displayTone`，再用該狀態調用原始條件色。舊 test 僅更新成實際語意驗證，保留完整真實行情來源／數值不可改、取消恢復與帳務核心測試；禁止為通過舊字串而撤銷新功能。
+
 ## 2026-09-26｜V3.0.24 #1123 sandbox 狀態初始化雙路徑 TypeScript FAIL
 
 同一段版本編輯腳本在第一個 begin 建構子連續插入 `previewState` 兩次，卻遺漏 enterTarget 新建構子，造成 TS1117 與 TS2345。修復後把兩種新建構子和兩種切換 A 的重置路徑列入固定測試（預期四處），版本修改仍需先通過 TypeScript 再認列 QA。模擬參數依舊只在維護會話內存，不可保存到帳務或 AsyncStorage。
