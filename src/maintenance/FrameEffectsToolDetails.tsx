@@ -19,6 +19,7 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   cornerTopLeft:[-1,48,1],cornerTopRight:[-1,48,1],
   cornerBottomRight:[-1,48,1],cornerBottomLeft:[-1,48,1],
   shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
+  shadowSpreadRadius:[0,32,1],shadowSpreadLayers:[1,6,1],shadowSpreadOpacity:[0,.65,.05],
   glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
   blinkOpacity:[0,.8,.05],blinkPeriodMs:[500,5000,100],
   titleMarqueeSpeed:[24,180,8],titleMarqueeGap:[12,80,4],
@@ -124,6 +125,28 @@ export function FrameEffectsToolDetails({field}:{field:string}){
           min={min} max={max} step={step}/>
       </View>)}
       <Text style={{color:theme.palette.textSecondary,fontSize:11}}>遵守系統降低動態設定；啟用時顯示靜態彩色邊框，數值與文字保持可見。</Text>
+    </>:null}
+  </View>;
+  if(key==='shadowSpreadEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜框架多層陰影擴散</Text>
+      <Switch accessibilityLabel="框架多層陰影擴散開關" value={fx.shadowSpreadEnabled} onValueChange={change}/>
+    </View>
+    {fx.shadowSpreadEnabled?<>
+      <ColorPalettePicker label="陰影擴散顏色" value={fx.shadowColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,shadowColor:color})})}
+        profitColorEnabled={fx.shadowProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,shadowProfitColor:enabled})})}/>
+      {([['shadowSpreadRadius','擴散半徑（dp）',0,32,1],
+          ['shadowSpreadLayers','陰影輪廓層數',1,6,1],
+          ['shadowSpreadOpacity','輪廓強度',0,.65,.05]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        最多六層非互動陰影輪廓，獨立於內容及內外光圈；透明度不會讓財務數值褪色。
+      </Text>
     </>:null}
   </View>;
   if(key==='outerGlowEnabled')return <View style={{gap:8,marginTop:9}}>
