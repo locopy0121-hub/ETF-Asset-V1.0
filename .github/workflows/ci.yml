@@ -1,10 +1,10 @@
-name: TF Asset V3.0.13 CI / QA APK
+name: TF Asset V3.0.14 CI / QA APK
 
 on:
   push:
-    branches: [main, go-v3.0.13-20260926-engineer-instance-sync]
+    branches: [main, go-v3.0.14-20260926-engineer-instance-sync]
   pull_request:
-    branches: [main, go-v3.0.12-20260926-parent-frame, go-v3.0.11-20260925-engineer-skills, go-v3.0.13-20260926-engineer-instance-sync, go-v3.0.9-20260925-safe-engineer-delete, go-v3.0.8-20260925-frame-background-image, go-v3.0.7-20260925-frame-engineer, go-v3.0.6-20260925-engineer-text-detail, go-v3.0.5-20260925-typography-prefix, go-v3.0.10-20260925-engineer-full-spectrum, go-v3.0.13-20260926-engineer-instance-sync, go-v3.0.4-20260925-spatial-engineer, go-v3.0.3-20260925-workspace-polish, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall, fix-v2.3.3-20260924-cash-audit, go-v2.3.4-20260925-item7-charts, fix-v2.3.5-20260925-alphanumeric-chart, go-v2.3.6-20260925-crosshair, go-v3.0.1-20260925-engineer-core, go-v3.0.2-20260925-inner-component-inspector]
+    branches: [main, go-v3.0.12-20260926-parent-frame, go-v3.0.11-20260925-engineer-skills, go-v3.0.14-20260926-engineer-instance-sync, go-v3.0.9-20260925-safe-engineer-delete, go-v3.0.8-20260925-frame-background-image, go-v3.0.7-20260925-frame-engineer, go-v3.0.6-20260925-engineer-text-detail, go-v3.0.5-20260925-typography-prefix, go-v3.0.10-20260925-engineer-full-spectrum, go-v3.0.14-20260926-engineer-instance-sync, go-v3.0.4-20260925-spatial-engineer, go-v3.0.3-20260925-workspace-polish, go-v2.3.1-20260924-unified-market-center, go-v2.3.2-20260924-eight-items-market-wall, fix-v2.3.3-20260924-cash-audit, go-v2.3.4-20260925-item7-charts, fix-v2.3.5-20260925-alphanumeric-chart, go-v2.3.6-20260925-crosshair, go-v3.0.1-20260925-engineer-core, go-v3.0.2-20260925-inner-component-inspector]
 
 concurrency:
   group: tfasset-qa-${{ github.ref }}
@@ -23,21 +23,21 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V3.0.13 aggregate gates
-        run: npm run test:v3_0_13
-      - name: V3.0.13 controls source smoke
+      - name: V3.0.14 aggregate gates
+        run: npm run test:v3_0_14
+      - name: V3.0.14 controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V3.0.13 controls runtime behavior
+      - name: V3.0.14 controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V3.0.13 AI holdings behavior
+      - name: V3.0.14 AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V3.0.13 dividend calendar behavior
+      - name: V3.0.14 dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V3.0.13 system profit colors
+      - name: V3.0.14 system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V3.0.13 user-visible version and integration smoke
+      - name: V3.0.14 user-visible version and integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V3.0.13 release identity and UX controls
+      - name: V3.0.14 release identity and UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -45,7 +45,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V3.0.13 Node/Redis/PostgreSQL integration
+    name: V3.0.14 Node/Redis/PostgreSQL integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -81,9 +81,9 @@ jobs:
         run: npm run check
 
   qa-apk:
-    name: V3.0.13 QA APK / native integration
+    name: V3.0.14 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'pull_request' && github.head_ref == 'go-v3.0.13-20260926-engineer-instance-sync'
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v3.0.14-20260926-engineer-instance-sync'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -106,18 +106,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V3.0.13 identity
+      - name: Freeze V3.0.14 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "3.0.13"
-          test "$(node -p "require('./app.json').expo.version")" = "3.0.13"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "30013"
+          test "$(node -p "require('./package.json').version")" = "3.0.14"
+          test "$(node -p "require('./app.json').expo.version")" = "3.0.14"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "30014"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V3.0.13 Hard Gates
-        run: npm run test:v3_0_13
+      - name: V3.0.14 Hard Gates
+        run: npm run test:v3_0_14
 
       - name: Create pure React Native Android build workspace
         run: |
@@ -148,8 +148,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 30013');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "3.0.13"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 30014');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "3.0.14"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -158,7 +158,7 @@ jobs:
           fs.writeFileSync(strings,s);
           NODE
 
-      - name: Inject V3.0.13 Android Widget and Floating Monitor
+      - name: Inject V3.0.14 Android Widget and Floating Monitor
         run: |
           PKG_DIR="../TFAssetNative/android/app/src/main/java/com/tfasset/app"
           mkdir -p "$PKG_DIR" ../TFAssetNative/android/app/src/main/res/layout ../TFAssetNative/android/app/src/main/res/xml ../TFAssetNative/android/app/src/main/res/drawable
@@ -185,26 +185,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V3.0.13-QA.apk
-          test "$(stat -c%s TF-Asset-V3.0.13-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V3.0.13-QA.apk
-          sha256sum TF-Asset-V3.0.13-QA.apk | tee TF-Asset-V3.0.13-QA.sha256
+          cp "$APK_PATH" TF-Asset-V3.0.14-QA.apk
+          test "$(stat -c%s TF-Asset-V3.0.14-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V3.0.14-QA.apk
+          sha256sum TF-Asset-V3.0.14-QA.apk | tee TF-Asset-V3.0.14-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V3.0.13-QA.apk | tee TF-Asset-V3.0.13-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V3.0.13-badging.txt
-          grep "versionCode='30013'" TF-Asset-V3.0.13-badging.txt
-          grep "versionName='3.0.13'" TF-Asset-V3.0.13-badging.txt
-          file TF-Asset-V3.0.13-QA.apk
+          "$AAPT" dump badging TF-Asset-V3.0.14-QA.apk | tee TF-Asset-V3.0.14-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V3.0.14-badging.txt
+          grep "versionCode='30014'" TF-Asset-V3.0.14-badging.txt
+          grep "versionName='3.0.14'" TF-Asset-V3.0.14-badging.txt
+          file TF-Asset-V3.0.14-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V3.0.13-QA-APK
+          name: TF-Asset-V3.0.14-QA-APK
           path: |
-            TF-Asset-V3.0.13-QA.apk
-            TF-Asset-V3.0.13-QA.sha256
-            TF-Asset-V3.0.13-badging.txt
+            TF-Asset-V3.0.14-QA.apk
+            TF-Asset-V3.0.14-QA.sha256
+            TF-Asset-V3.0.14-badging.txt
           if-no-files-found: error
           retention-days: 30
 
