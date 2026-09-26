@@ -36,14 +36,14 @@ for(const [frameField,targetField] of [
  ['framefx:gradientEndColor','target:gradientEndColor'],
  ['framefx:shadowColor','target:shadowColor'],
  ['framefx:glowEnabled','target:glowEnabled'],
-]) assert.ok(FRAME_TO_TARGET[frameField]===targetField,'native metric adapter missing: '+frameField);
+]) assert.ok(FRAME_TO_TARGET[frameField!]===targetField,'native metric adapter missing: '+frameField);
 assert.ok(bench.includes('resolvedTool(tool,s)'),'compatible skills must route to the selected inner target');
 assert.equal(COMPLETE_ENGINEER_SKILLS.length,30);
 assert.equal(FULL_SKILL_SECTIONS.flatMap(group=>group.ids).length,30);
 for(const [frameField,targetField] of [
  ['titleFontSize','target:fontSize'],['titleColor','target:textColor'],
  ['titleAlign','target:align'],['padding','target:padding'],
-]) assert.ok(FRAME_TO_TARGET[frameField]===targetField,'editable visual tool locked: '+frameField);
+]) assert.ok(FRAME_TO_TARGET[frameField!]===targetField,'editable visual tool locked: '+frameField);
 assert.ok(bench.includes('僅原始數據、來源及帳務計算鎖定'));
 assert.ok(!bench.includes('目前對象不適用 ›'),'non-data tools should not appear policy-locked');
 
