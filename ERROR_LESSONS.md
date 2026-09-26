@@ -1,3 +1,11 @@
+## 2026-09-26｜#1119 APK 虛假 success：GitHub head_ref 必須精確核對
+
+V3.0.23 推進時先將整份 workflow 版本 `3.0.22` 取代為 `3.0.23`，連帶把來源分支名稱誤改為不存在的 `go-v3.0.23-20260926-next-skills`，導致 #1119 quality/backend PASS 但 QA APK 以 `skipped` 結束。根因不是 APK 編譯，而是 GitHub job `if` 未符合實際 PR `head_ref`。修復時對 `push.branches` 與 `qa-apk.if` 實際工作分支名稱作精確核對，並納入新版本回歸 Gate；品質/後端 PASS、workflow success 均不可取代 APK 產物實際驗證。
+
+## 2026-09-26｜V3.0.23 外側光暈不影響父框架子內容
+
+新增視覺工具要接到真實原生渲染，獨立損益色與透明度均正規化、預設關閉，不得使用根 View 整體 opacity 褪色原始數字。陰影、內緣光與外側光圈分層，手機不同容器對越界描邊的裁切需另實測；版本更新同步全部歷史 allowlist，不動 immutable 財務核心。
+
 ## 2026-09-26｜GO 不得遺漏建置追蹤與完成清單
 
 建置已開始仍須每 15 秒追蹤 GitHub Actions job／Log；遇到 FAIL 查根因、原地修復並重新驗證。APK Artifact 上傳、版本／ZIP／SHA 驗證後，每輪必須立即回報本輪更新項目、未完成與歷史結轉項目、CI／APK／實機獨立 PASS 證據及完成／未完成統計。離開即時互動後不能冒稱仍在 15 秒輪詢；由排程每小時喚醒時重新讀取最新 GitHub run 狀態。

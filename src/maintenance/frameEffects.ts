@@ -13,6 +13,8 @@ export type FrameEffects=Readonly<{
   shadowOffsetX:number;shadowOffsetY:number;
   glowEnabled:boolean;glowColor:string;glowProfitColor:boolean;glowOpacity:number;
   glowWidth:number;glowPulse:boolean;glowPeriodMs:number;
+  outerGlowEnabled:boolean;outerGlowColor:string;outerGlowProfitColor:boolean;
+  outerGlowOpacity:number;outerGlowSpread:number;outerGlowSoftness:number;
   paddingTop:number;paddingRight:number;paddingBottom:number;paddingLeft:number;
   contentGap:number;marginVertical:number;maxWidth:number;
 }>;
@@ -27,6 +29,8 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   shadowColor:'#000000',shadowProfitColor:false,shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
   glowPulse:false,glowPeriodMs:1800,
+  outerGlowEnabled:false,outerGlowColor:'#A78BFA',outerGlowProfitColor:false,
+  outerGlowOpacity:.35,outerGlowSpread:4,outerGlowSoftness:12,
   paddingTop:-1,paddingRight:-1,paddingBottom:-1,paddingLeft:-1,
   contentGap:-1,marginVertical:0,maxWidth:0,
 };
@@ -41,6 +45,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     cornerTopLeft:[-1,48],cornerTopRight:[-1,48],cornerBottomRight:[-1,48],cornerBottomLeft:[-1,48],
     shadowBlur:[0,48],shadowOffsetX:[-24,24],shadowOffsetY:[-24,24],
     glowOpacity:[0,.8],glowWidth:[0,16],glowPeriodMs:[800,4000],
+    outerGlowOpacity:[0,.8],outerGlowSpread:[0,32],outerGlowSoftness:[0,48],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
     gradientMidStop:[.1,.9],imageIndex:[0,9],imageOpacity:[0,1],maskOpacity:[0,1],
@@ -50,9 +55,9 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     const value=v[key];if(typeof value==='number'&&Number.isFinite(value))
       out[key]=finite(value,min!,max!,defaults[key as keyof FrameEffects] as number);
   }
-  for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor'] as const)
+  for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor','outerGlowColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -94,4 +99,19 @@ export function angledFrameGradientBounds(width:number,height:number){
   const w=Math.max(0,width),h=Math.max(0,height);
   const side=Math.ceil(2*Math.hypot(w,h));
   return {side,left:(w-side)/2,top:(h-side)/2};
+}
+
+/** Non-interactive external concentric native View rings; never touches frame children or financial values. */
+export function outerGlowLayers(spread:number,softness:number,opacity:number){
+ const s=Math.max(0,Math.min(32,Number.isFinite(spread)?spread:0));
+ const blur=Math.max(0,Math.min(48,Number.isFinite(softness)?softness:0));
+ const alpha=Math.max(0,Math.min(.8,Number.isFinite(opacity)?opacity:0));
+ if(!alpha)return [];
+ const count=Math.max(1,Math.min(8,Math.ceil(blur/5)));
+ return Array.from({length:count},(_,i)=>{
+   const depth=count-i;
+   return {inset:Math.max(1,Math.round(s+blur*depth/count)),
+     borderWidth:Math.max(1,Math.ceil(blur/count)),
+     alpha:Number((alpha*(1-depth/(count+1))*.7).toFixed(4))};
+ });
 }

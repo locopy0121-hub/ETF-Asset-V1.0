@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode}
 import {AccessibilityInfo,Animated,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,sampleFrameGradient} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -47,6 +47,8 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     editorStyle?.borderProfitColor,'neutral',systemColors);
   const shadowColor=linkedColor(fx.shadowColor,fx.shadowProfitColor,'neutral',systemColors);
   const glowColor=linkedColor(fx.glowColor,fx.glowProfitColor,'neutral',systemColors);
+  const outerGlowColor=linkedColor(fx.outerGlowColor,fx.outerGlowProfitColor,'neutral',systemColors);
+  const outerGlowOn=Boolean(editorStyle&&fx.outerGlowEnabled&&fx.outerGlowOpacity>0);
   const alpha=editorStyle?.backgroundOpacity??1;
   const corners={
     borderTopLeftRadius:fx.cornerTopLeft>=0?fx.cornerTopLeft:editorStyle?.borderRadius??radius.lg,
@@ -94,6 +96,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       ...(fx.contentGap>=0?{gap:fx.contentGap}:{}),
       ...(fx.marginVertical>0?{marginVertical:fx.marginVertical}:{}),
       ...(fx.maxWidth>0?{maxWidth:fx.maxWidth}:{}),
+      ...(outerGlowOn?{overflow:'visible' as const}:{}),
       ...(shadowOn?{
         elevation:Math.max(1,Math.round((fx.shadowBlur+fx.shadowOffsetY)*.55)),
         shadowColor,shadowOpacity:editorStyle.shadowOpacity??.12,
@@ -102,6 +105,11 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     },
     workHidden&&{opacity:.5},
   ]}>
+    {outerGlowOn?outerGlowLayers(fx.outerGlowSpread,fx.outerGlowSoftness,fx.outerGlowOpacity)
+      .map((band,index)=><View key={'outer-glow-'+index} pointerEvents="none"
+        style={{position:'absolute',left:-band.inset,top:-band.inset,right:-band.inset,bottom:-band.inset,
+          borderRadius:(editorStyle?.borderRadius??radius.lg)+band.inset,
+          borderWidth:band.borderWidth,borderColor:colorWithAlpha(outerGlowColor,band.alpha)}}/>):null}
     {gradientOn?<View pointerEvents="none" onLayout={measureGradient}
       style={[StyleSheet.absoluteFill,corners,{overflow:'hidden',
         ...(!angled||!diagonal.side?{flexDirection:gradientAngle===90?'column':'row' as const}:{})}]}>
