@@ -11,7 +11,7 @@ const prefs=read('src/settings/SettingsRuntime.tsx');
 const backup=read('src/settings/BackupService.ts');
 const ci=read('.github/workflows/ci.yml');
 // Supported QA identities must match all user-visible, backup and native build metadata.
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21'].includes(pkg.version),'unsupported QA version');
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.22'].includes(pkg.version),'unsupported QA version');
 const expectedCode=30000+Number(pkg.version.split('.')[2]);
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,expectedCode);

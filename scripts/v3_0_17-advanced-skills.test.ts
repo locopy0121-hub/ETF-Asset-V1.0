@@ -12,8 +12,8 @@ assert.equal(all.length,184);
 assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(all.map(t=>t.id)).size,184);
 assert.equal(audit.existing,169);assert.equal(audit.advanced,12);assert.equal(audit.unregistered,3);
-assert.equal(audit.pending,37,'legacy history now native: 37 declared pending');
-assert.equal(audit.readyDeclared,147);
+assert.equal(audit.pending,36,'legacy history now native: 37 declared pending');
+assert.equal(audit.readyDeclared,148);
 const ids=['advanced-batch','advanced-local-diff','advanced-health'];
 for(const id of ids)assert.equal(all.find(tool=>tool.id===id)?.status,'ready');
 assert.equal(all.filter(tool=>tool.id.startsWith('advanced-')&&tool.status==='ready').length,6);
@@ -85,9 +85,9 @@ assert.ok(controls.includes('getSavedTargetOverride')&&controls.includes('getFra
 assert.ok(workbench.includes('searchAbProperties(query)')&&workbench.includes('visibleB.map(group=><Pressable'),
  'V3.0.16 accepted AB must NOT become a skill-category menu');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.21');assert.equal(app.expo.version,'3.0.21');
-assert.equal(app.expo.android.versionCode,30021);assert.equal(app.expo.ios.buildNumber,'30021');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.21-QA.apk'));
+assert.equal(pkg.version,'3.0.22');assert.equal(app.expo.version,'3.0.22');
+assert.equal(app.expo.android.versionCode,30022);assert.equal(app.expo.ios.buildNumber,'30022');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.22-QA.apk'));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(file).length>0,'locked accounting core missing: '+file);
 console.log('V3.0.17 advanced: real multi-target visual batch, diff, measured health / AB unchanged: PASS');
