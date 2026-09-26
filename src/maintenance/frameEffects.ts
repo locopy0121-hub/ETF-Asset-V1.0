@@ -11,6 +11,7 @@ export type FrameEffects=Readonly<{
   cornerTopLeft:number;cornerTopRight:number;cornerBottomRight:number;cornerBottomLeft:number;
   shadowColor:string;shadowProfitColor:boolean;shadowBlur:number;
   shadowOffsetX:number;shadowOffsetY:number;
+  shadowSpreadEnabled:boolean;shadowSpreadRadius:number;shadowSpreadLayers:number;shadowSpreadOpacity:number;
   glowEnabled:boolean;glowColor:string;glowProfitColor:boolean;glowOpacity:number;
   glowWidth:number;glowPulse:boolean;glowPeriodMs:number;
   blinkEnabled:boolean;blinkColor:string;blinkProfitColor:boolean;blinkOpacity:number;blinkPeriodMs:number;
@@ -29,6 +30,7 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   borderStyle:'solid',borderTop:-1,borderRight:-1,borderBottom:-1,borderLeft:-1,
   cornerTopLeft:-1,cornerTopRight:-1,cornerBottomRight:-1,cornerBottomLeft:-1,
   shadowColor:'#000000',shadowProfitColor:false,shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
+  shadowSpreadEnabled:false,shadowSpreadRadius:12,shadowSpreadLayers:3,shadowSpreadOpacity:.25,
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
   glowPulse:false,glowPeriodMs:1800,
   blinkEnabled:false,blinkColor:'#FBBF24',blinkProfitColor:false,blinkOpacity:.65,blinkPeriodMs:1500,
@@ -48,6 +50,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     borderTop:[-1,8],borderRight:[-1,8],borderBottom:[-1,8],borderLeft:[-1,8],
     cornerTopLeft:[-1,48],cornerTopRight:[-1,48],cornerBottomRight:[-1,48],cornerBottomLeft:[-1,48],
     shadowBlur:[0,48],shadowOffsetX:[-24,24],shadowOffsetY:[-24,24],
+    shadowSpreadRadius:[0,32],shadowSpreadLayers:[1,6],shadowSpreadOpacity:[0,.65],
     glowOpacity:[0,.8],glowWidth:[0,16],glowPeriodMs:[800,4000],
     blinkOpacity:[0,.8],blinkPeriodMs:[500,5000],
     titleMarqueeSpeed:[24,180],titleMarqueeGap:[12,80],
@@ -63,7 +66,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   }
   for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -72,6 +75,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   else if(typeof v.imageUri==='string'&&/^content:\/\/[^\s?#]{1,2048}$/.test(v.imageUri))
     out.imageUri=v.imageUri;
   out.imageIndex=Math.round(out.imageIndex as number);
+  out.shadowSpreadLayers=Math.round(out.shadowSpreadLayers as number);
   if(v.gradientDirection==='horizontal'||v.gradientDirection==='vertical')out.gradientDirection=v.gradientDirection;
   if(v.gradientAngle===null)out.gradientAngle=null;
   else if(typeof v.gradientAngle==='number'&&Number.isFinite(v.gradientAngle))
@@ -128,4 +132,18 @@ export function frameTitleMarqueeDuration(textWidth:number,gap:number,speed:numb
  const g=Number.isFinite(gap)?Math.max(12,Math.min(80,gap)):32;
  const v=Number.isFinite(speed)?Math.max(24,Math.min(180,speed)):72;
  return Math.max(500,Math.round(1000*(w+g)/v));
+}
+
+/** Separate native non-touching shadow contours: each color layer lives outside content. */
+export function frameShadowSpreadBands(radius:number,opacity:number,count:number){
+ const r=Number.isFinite(radius)?Math.max(0,Math.min(32,radius)):0;
+ const a=Number.isFinite(opacity)?Math.max(0,Math.min(.65,opacity)):0;
+ const n=Number.isFinite(count)?Math.round(Math.max(1,Math.min(6,count))):3;
+ if(r===0||a===0)return [];
+ return Array.from({length:n},(_,i)=>{
+   const progress=(i+1)/n;
+   return {inset:Number((r*progress).toFixed(2)),
+     borderWidth:Math.max(1,Math.min(4,Number((1+r/n/6).toFixed(2)))),
+     alpha:Number((a*(1-progress*.7)).toFixed(4))};
+ });
 }

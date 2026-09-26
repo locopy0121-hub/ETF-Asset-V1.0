@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.27 多層陰影不可褪色財務子內容
+陰影多層擴散只能在獨立非互動 View 繪製，預設 OFF、最多 6 層、限制半徑與透明度；不能用父 View 整體 opacity，也不能宣稱原生輪廓近似等於真正 Gaussian GPU Blur。新增框架外緣視覺需要 overflow:visible，原有 outerGlow、blink、marquee 保留；版本/Build/QA Workflow/coverage 與前版全部回歸需一致。
+
 ## 2026-09-27｜V3.0.26 跑馬燈必須獨立原生層且支援即時降低動態
 跑馬燈只可動畫實際 FrameCard 標題，不得對父框架整體 opacity 或移動內容容器造成財務數值閃爍；文字和可見空間需先量測，未溢出不啟動。系統降低動態的值除 mount 查詢，還須訂閱 reduceMotionChanged 並在卸載清理；重複循環用的第二份標題不可被讀屏重複朗讀。版本建置需對齊 APK／SHA／badging／技能覆蓋報告四組名稱。
 

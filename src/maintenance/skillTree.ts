@@ -59,7 +59,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
     later('fx-background-image','① 圖片裁切位置／跨手機檔案移轉','背景圖片及遮罩已接入；裁切位置與跨裝置自動嵌入仍需原生適配'),
     ready('fx-multi-gradient','① 任意角度漸層','framefx:gradientAngle','0～359° 可手動輸入或 ±1；原生 View 對角漸層；可恢復舊水平／垂直；僅當前 A 的局部外觀'),
     later('fx-border-grad','② 漸層／雙層邊框','需原生自訂繪製'),
-    later('fx-shadow-spread','③ 精準陰影擴散／多層','Android 原生相容性驗證後接入'),
+    ready('fx-shadow-spread','③ 多層陰影擴散','framefx:shadowSpreadEnabled','原生 FrameCard 外圍最多 6 層獨立非互動輪廓；控制擴散半徑、透明度及色盤／損益色；不變動內容'),
     ready('fx-outer-glow','④ 外側柔光暈','framefx:outerGlowEnabled','獨立調色盤與損益色、透明度、擴散及柔邊；以真實 FrameCard 外側原生 View 圓環渲染，不調整內容或帳務數據'),
     later('fx-glass','⑤ 毛玻璃／磨砂與材質','需額外原生 Blur Runtime，不提供假選項'),
     later('fx-drag-sort','⑦ 子元件拖曳排序','待接入實際 Flex 佈局與手勢'),
