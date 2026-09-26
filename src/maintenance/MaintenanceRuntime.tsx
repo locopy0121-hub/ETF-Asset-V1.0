@@ -204,6 +204,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       setSession(current=>current&&current.page===session.page&&current.frameKey===session.frameKey&&
         (current.scope==='target'&&current.target?.id===id||current.scope==='instance'&&'installed:'+current.instanceId===id)?
         {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
+          sharedTouched:current.sharedTouched.filter(field=>!Object.keys(patch).includes(field)),
           batchLocalOverrides:{...current.batchLocalOverrides,[id]:[...new Set([
             ...(current.batchLocalOverrides[id]??[]),...Object.keys(patch)])]}}:current);
       return true;
