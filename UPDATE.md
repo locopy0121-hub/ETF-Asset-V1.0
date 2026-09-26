@@ -1,3 +1,9 @@
+## V3.0.27｜2026-09-27｜真實 FrameCard 多層陰影擴散（GO）
+來源 V3.0.26 PR #73 HEAD `66478dab73173033b9a6063118e9e1627a2eec9a`，Actions #1143 (36260510260) quality/backend/QA APK PASS，Artifact `TF-Asset-V3.0.26-QA-APK` #10912003948；事前 immutable 備份 `backup-v3.0.26-20260927-pre-v3.0.27` 確認同 HEAD。開發分支 `go-v3.0.27-20260927-shadow-spread`，3.0.27／Android+iOS 30027。
+本輪唯一中央既存待接線工具 `fx-shadow-spread` 接到目前真實 FrameCard：A 框架 → B 光影效果 → C 多層陰影擴散，預設關閉。原生 View 在框架外繪製 1–6 層獨立非互動輪廓，擴散半徑 0–32dp、最高透明度 65%，共享既有 Shadow Color Picker/損益色與陰影 XY 位移；不更動子內容、數值透明度、原生交易公式或原有光暈。原地草稿預覽、取消還原、正式套用及既有 SAF 備份透過已存在的 FrameEffects 流程。Android 版本原生陰影為輪廓近似，不冒稱真正高斯模糊或全裝置精準 GPU 效果，真機排版與效能待驗。
+184 中央項目保持；本版來源／CI 宣告接線 **153**，待原生適配 **31**，非逐項手機 PASS。延續歷版全套測試、不可變財務核心與備份；品質、後端、APK、SHA/badging、Artifact 及實機分級驗證。此為候選更新紀錄，APK 成功以 GitHub Actions 實際 evidence 為準。
+
+
 ## V3.0.26｜2026-09-27｜框架標題原生跑馬燈與降低動態即時同步（開發 QA）
 來源 V3.0.25 PR #72 HEAD `7dc2daea40a3e2b35f0ab5e215fae62fdc55cfa4`，Actions #1135（Run 36257979740）品質、後端、原生 QA APK 成功且 APK Artifact #10911502351 存在。已核對 immutable 備份 `backup-v3.0.25-20260927-pre-v3.0.26`；工作分支 `go-v3.0.26-20260927-frame-marquee`，版本 3.0.26／Android+iOS 30026。
 
