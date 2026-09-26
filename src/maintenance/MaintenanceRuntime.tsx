@@ -9,6 +9,9 @@ import {safeBatchPatch,type BatchField,type VisualSource} from './advancedSkillE
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
 import {ENGINEER_ASSETS_STORAGE_KEY,EMPTY_ENGINEER_ASSETS,normalizeEngineerAssets,makeDesignToken,replaceToken,removeToken,toggleFavorite,trackRecent,tokenTargetPatch,frameTokenPatch,type EngineerAssets} from './engineerDesignAssets';
 import {DEFAULT_WORKSPACE,normalizeWorkspace,type WorkspaceConfig,type PositionedRect} from './workspaceModel';
+import {appendVisualHistory,frameVisualSnapshot,targetVisualSnapshot,hasVisualDifference,
+ normalizeVisualHistory,visualHistoryKey,restoreFrameVisual,restoreTargetVisual,
+ type VisualHistoryEntry,type VisualHistoryMap} from './visualHistory';
 
 export const MAINTENANCE_STORAGE_KEY='@tf-asset/v3.0.1-frame-instances';
 const KNOWN_ENGINEER_TOOLS=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools.map(tool=>tool.id));
@@ -40,6 +43,8 @@ type MaintenanceContextValue=Readonly<{
   getInstances:(page:MainPageKey,frameKey:string)=>readonly MaintenanceInstance[];
   getTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
   getSavedTargetOverride:(page:MainPageKey,frameKey:string,id:string,kind?:TargetKind)=>TargetOverride;
+  getVisualHistory:()=>readonly VisualHistoryEntry[];
+  restoreVisualHistory:(entryId:string)=>boolean;
   getFrameTargets:(page:MainPageKey,frameKey:string)=>readonly RegisteredVisualTarget[];
   registerTarget:(page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>void;
   unregisterTarget:(page:MainPageKey,frameKey:string,id:string)=>void;
@@ -90,6 +95,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [session,setSession]=useState<MaintenanceSession|null>(null);
   const [assets,setAssets]=useState<EngineerAssets>(EMPTY_ENGINEER_ASSETS);
   const [assetsLoaded,setAssetsLoaded]=useState(false);
+  const [visualHistory,setVisualHistory]=useState<VisualHistoryMap>({});
   const assetsRef=useRef<EngineerAssets>(EMPTY_ENGINEER_ASSETS);
   const assetWrites=useRef<Promise<void>>(Promise.resolve());
   const editor=usePageEditor(session?.page??'home');
@@ -102,6 +108,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       if(parsed.schema===2||parsed.schema===3){
         setSaved(normalizeSaved(parsed.instances));
         setTargetStyles(normalizeTargetMap(parsed.targets));
+        if(parsed.schema===3)setVisualHistory(normalizeVisualHistory(parsed.visualHistory));
         if(parsed.localOnlyKeys&&typeof parsed.localOnlyKeys==='object'&&!Array.isArray(parsed.localOnlyKeys)){
           setLocalOnlyKeys(Object.fromEntries(Object.entries(parsed.localOnlyKeys as Record<string,unknown>)
             .filter(([key,value])=>key.length<260&&Array.isArray(value))
@@ -176,6 +183,33 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   }),[]);
   const value=useMemo<MaintenanceContextValue>(()=>({
     hydrated,enabled,session,selection,assets,assetsLoaded,
+    getVisualHistory:()=>{
+      if(!session||!['frame','target'].includes(session.scope))return [];
+      const key=visualHistoryKey(session.scope as 'frame'|'target',session.page,session.frameKey,session.target?.id);
+      return key?visualHistory[key]??[]:[];
+    },
+    restoreVisualHistory:entryId=>{
+      if(!session||!['frame','target'].includes(session.scope))return false;
+      const key=visualHistoryKey(session.scope as 'frame'|'target',session.page,session.frameKey,session.target?.id);
+      const entry=key?visualHistory[key]?.find(item=>item.id===entryId):undefined;
+      if(!entry)return false;
+      setSession(current=>{
+        if(!current||current.page!==session.page||current.frameKey!==session.frameKey||
+          current.scope!==session.scope||current.target?.id!==session.target?.id)return current;
+        if(entry.kind==='frame'&&current.scope==='frame')return {...current,draft:restoreFrameVisual(current.draft,entry.visual)};
+        if(entry.kind==='target'&&current.scope==='target'&&current.target){
+          const id=current.target.id;
+          return {...current,syncSameKind:false,
+            draftTargets:{...current.draftTargets,[id]:restoreTargetVisual(current.draftTargets[id]??{},entry.visual)},
+            batchLocalOverrides:{...current.batchLocalOverrides,[id]:[...new Set([
+              ...(current.batchLocalOverrides[id]??[]),...VISUAL_TARGET_KEYS.map(key=>String(key)),
+              'width','height'])]},
+          };
+        }
+        return current;
+      });
+      return true;
+    },
     saveDesignToken:(slot,name,source)=>{
       const token=makeDesignToken(slot,name,source);
       return token?changeAssets(old=>replaceToken(old,token)):Promise.resolve(false);
@@ -436,11 +470,19 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         }
         nextShared={...nextShared,[styleKey]:normalizeTargetOverride({...nextShared[styleKey],...changed})};
       }
+      const historyScope=session.scope==='frame'?'frame':session.scope==='target'?'target':null;
+      const historyId=historyScope?visualHistoryKey(historyScope,session.page,session.frameKey,session.target?.id):null;
+      const beforeVisual=historyScope==='frame'?frameVisualSnapshot(editor.config[session.frameKey]??session.originalFrame):
+        historyScope==='target'&&session.target?targetVisualSnapshot(targetStyles[key]?.[session.target.id]??{}):{};
+      const afterVisual=historyScope==='frame'?frameVisualSnapshot(session.draft):
+        historyScope==='target'&&session.target?targetVisualSnapshot(nextTargets[key]?.[session.target.id]??{}):{};
+      const nextHistory=historyId&&historyScope&&hasVisualDifference(beforeVisual,afterVisual)?
+        appendVisualHistory(visualHistory,historyId,historyScope,beforeVisual):visualHistory;
       try{
         // One key contains both local instance and native target overrides. No finance keys.
         await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY,JSON.stringify({
           schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace,
-          sharedStyles:nextShared,localOnlyKeys:nextLocalOnly,
+          sharedStyles:nextShared,localOnlyKeys:nextLocalOnly,visualHistory:nextHistory,
         }));
         const normalized=normalizeEditorConfig(session.page,{...editor.config,[session.frameKey]:session.draft});
         editor.replacePageConfig(normalized);
@@ -449,11 +491,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           editor.updateDisplayConfig(patch);
         }
         setSaved(nextSaved);setTargetStyles(nextTargets);setSharedStyles(nextShared);setLocalOnlyKeys(nextLocalOnly);setWorkspaces(nextWorkspace);
+        setVisualHistory(nextHistory);
         setSelection(null);setSession(null);
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,assets,assetsLoaded,changeAssets,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,assets,assetsLoaded,visualHistory,changeAssets,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }
