@@ -1,3 +1,6 @@
+## 2026-09-27｜連續 GO 空分支與版本鎖死的根因
+V3.0.24 #1131 QA APK PASS 後雖建立 `backup-v3.0.24-20260927-pre-v3.0.25` 與 `go-v3.0.25-20260927-native-blink`，但工作分支 HEAD 仍與 V3.0.24 相同，沒有新 commit/PR/Actions。舊 CI `push.branches` 只接受 V3.0.24、`pull_request.branches` 未包含新版基底，`qa-apk.if` 又精確限定上一版 head_ref；只排程文字 GO 或只建空分支無法產生新 APK。應把分支觸發抽象為 `go-v3.0.*`，每次必須建立可審計的新程式 commit／PR，品質＋後端 PASS 且 APK ZIP/SHA/badging/Artifact 實存才能宣告完成。每次成功後同一輪接續下個正式遞增版本；若超過當輪時限，精確交接下個每小時排程，不得冒稱排程間仍持續跑建置。
+
 ## 2026-09-26｜V3.0.24 #1125 舊測試文字比對需保護模擬分層
 
 在 V3.0.24 真實元件插入不持久化模擬後，V3.0.19 regression 原本要求 `InspectableTarget` 直接用 `actualTone` 的程式字串，現在 Runtime 正確先以 `simulatedVisualTone(previewState,actualTone)` 計算僅當前 A 的 `displayTone`，再用該狀態調用原始條件色。舊 test 僅更新成實際語意驗證，保留完整真實行情來源／數值不可改、取消恢復與帳務核心測試；禁止為通過舊字串而撤銷新功能。

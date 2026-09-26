@@ -20,16 +20,17 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   cornerBottomRight:[-1,48,1],cornerBottomLeft:[-1,48,1],
   shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
   glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
+  blinkOpacity:[0,.8,.05],blinkPeriodMs:[500,5000,100],
   outerGlowOpacity:[0,.8,.05],outerGlowSpread:[0,32,1],outerGlowSoftness:[0,48,1],
   paddingTop:[-1,32,1],paddingRight:[-1,32,1],paddingBottom:[-1,32,1],paddingLeft:[-1,32,1],
   contentGap:[-1,40,1],marginVertical:[0,32,1],maxWidth:[0,1600,10],
   gradientMidStop:[.1,.9,.05],imageOpacity:[0,1,.05],maskOpacity:[0,1,.05],
 };
 const colorProfitFlag:Partial<Record<keyof FrameEffects,
-  'gradientEndProfitColor'|'gradientMidProfitColor'|'maskProfitColor'|'shadowProfitColor'|'glowProfitColor'|'outerGlowProfitColor'>>={
+  'gradientEndProfitColor'|'gradientMidProfitColor'|'maskProfitColor'|'shadowProfitColor'|'glowProfitColor'|'outerGlowProfitColor'|'blinkProfitColor'>>={
   gradientEndColor:'gradientEndProfitColor',gradientMidColor:'gradientMidProfitColor',
   maskColor:'maskProfitColor',shadowColor:'shadowProfitColor',glowColor:'glowProfitColor',
-  outerGlowColor:'outerGlowProfitColor',
+  outerGlowColor:'outerGlowProfitColor',blinkColor:'blinkProfitColor',
 };
 function FrameImagePicker({currentUri,onPicked}:{currentUri:string|null;onPicked:(uri:string)=>void}){
   const [busy,setBusy]=useState(false);
@@ -105,6 +106,25 @@ export function FrameEffectsToolDetails({field}:{field:string}){
   const current=fx[key];
   const change=(next:unknown)=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[key]:next,
     ...(key==='gradientDirection'?{gradientAngle:null}:{})})});
+  if(key==='blinkEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜原生邊框閃爍提醒（不遮蔽帳務數字）</Text>
+      <Switch accessibilityLabel="原生閃爍提醒開關" value={fx.blinkEnabled} onValueChange={change}/>
+    </View>
+    {fx.blinkEnabled?<>
+      <ColorPalettePicker label="閃爍提醒顏色" value={fx.blinkColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,blinkColor:color})})}
+        profitColorEnabled={fx.blinkProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,blinkProfitColor:enabled})})}/>
+      {([['blinkOpacity','提醒邊框透明度',0,.8,.05],
+          ['blinkPeriodMs','閃爍週期（毫秒）',500,5000,100]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}：{name==='blinkOpacity'?Math.round(fx[name]*100)+'%':fx[name]+' ms'}</Text>
+        <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
+          min={min} max={max} step={step}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:11}}>遵守系統降低動態設定；啟用時顯示靜態彩色邊框，數值與文字保持可見。</Text>
+    </>:null}
+  </View>;
   if(key==='outerGlowEnabled')return <View style={{gap:8,marginTop:9}}>
     <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
       <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜外側柔光暈（獨立於內緣光圈）</Text>

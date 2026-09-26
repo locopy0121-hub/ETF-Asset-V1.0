@@ -1,3 +1,10 @@
+## V3.0.25｜2026-09-27｜原生邊框閃爍提醒與連續 APK 流程修復（開發 QA）
+來源 V3.0.24 PR #71 HEAD `969138f4df4d5b422a0824d688eef0974a965893`，GitHub Actions #1131（Run 36252518087）品質、Node/Redis/PostgreSQL、原生 QA APK PASS，APK Artifact 已存在。事前獨立備份 `backup-v3.0.24-20260927-pre-v3.0.25`；原已存在工作分支 `go-v3.0.25-20260927-native-blink`，不可另起重複 GO。
+
+本次真正接入既有唯一中央技能 `blink`：A 真實父框架 → B 特效與動態 → C 原生邊框閃爍提醒。原生 Animated View 僅作用於非互動邊框圖層，預設 OFF，獨立 Color Picker／損益色、透明度 0–80%、週期 500–5000 ms；尊重降低動態設定，改顯示靜態提醒，子文字與真實財務數據不閃爍。原位草稿預覽，取消恢復；正式套用才持久化至既有 FrameEffects，隨既有 `@tf-asset/` SAF 完整備份。未適配的原生子元件保留技能入口並標明待接線，不能冒稱跨全部元件實機 PASS。
+
+唯一中央總數維持 184，宣告源碼接線 151／待原生適配 33（QA 與手機實機證據分開）。不修改 immutable finance 三檔、費稅固化、交易、資料來源或原有備份。將 GitHub workflow 的 push / PR 分支條件改為通用 `go-v3.0.*`，QA APK gate 對合法 GO HEAD 使用統一前綴，避免每版更新遺漏而產生「quality success、APK skipped」。版本 3.0.25／Android/iOS 30025，新增原生閃爍、無障礙、AB、儲存與版本回歸。提交與 PR 後須以 GitHub Actions 實際 Run／Artifact 驗證；目前此段只是開發紀錄，不能預先聲稱 V3.0.25 APK PASS。
+
 ## 2026-09-26｜V3.0.24 P1 原地修復：模擬顏色真正傳遞到原生數值／文字
 
 Actions #1127／commit f8928673562034aa0297fa136bb18feb3208ffd8 雖已通過品質、後端及 QA APK，但程式反查發現 PageEditorStack 的原生 MetricTile／Text 再次依真實 tone 判定條件外觀，MetricTile 的未覆寫預設獲利／虧損文字顏色亦忽略模擬 tone。版本 3.0.25 尚未開始，先以備份 backup-v3.0.24-20260926-pre-simulation-tone-fix 保障現況，在 V3.0.24 原候選 PR #71 上原地修復。InspectableTarget 僅向自身實際渲染 children 傳遞 session-only displayTone/simulated；MetricTile 原生繪製使用獨立 simulationTone 覆寫 fallback 與損益連動，但保留原始金額及既存手動設定；Text 只使用已解析的情境 tone 評估條件樣式。補足 real loss → simulated gain 行為回歸、原生接線防漏回歸；模擬狀態不進持久化、SAF、跨頁或金融核心。待完整 GitHub Gate／QA APK 再確認，手機顯示驗收另列未完成；未通過不得建立 V3.0.25 成功版本。
