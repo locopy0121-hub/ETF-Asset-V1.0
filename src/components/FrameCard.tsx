@@ -22,6 +22,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const [reduceMotion,setReduceMotion]=useState(true);
   const [gradientBounds,setGradientBounds]=useState({width:0,height:0});
   const pulse=useRef(new Animated.Value(1)).current;
+  const blink=useRef(new Animated.Value(1)).current;
   useEffect(()=>{
     let mounted=true;
     AccessibilityInfo.isReduceMotionEnabled().then(value=>{if(mounted)setReduceMotion(value);})
@@ -38,6 +39,16 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     loop.start();
     return()=>{loop.stop();pulse.stopAnimation();};
   },[fx.glowEnabled,fx.glowPulse,fx.glowPeriodMs,reduceMotion,Boolean(editorStyle),pulse]);
+  useEffect(()=>{
+    blink.stopAnimation();blink.setValue(1);
+    if(!editorStyle||!fx.blinkEnabled||reduceMotion)return;
+    const loop=Animated.loop(Animated.sequence([
+      Animated.timing(blink,{toValue:.05,duration:fx.blinkPeriodMs/2,useNativeDriver:true}),
+      Animated.timing(blink,{toValue:1,duration:fx.blinkPeriodMs/2,useNativeDriver:true}),
+    ]));
+    loop.start();
+    return()=>{loop.stop();blink.stopAnimation();};
+  },[Boolean(editorStyle),fx.blinkEnabled,fx.blinkPeriodMs,reduceMotion,blink]);
   const bg=linkedColor(editorStyle?.backgroundColor??theme.palette.surface,
     editorStyle?.backgroundProfitColor,'neutral',systemColors);
   const bgEnd=linkedColor(fx.gradientEndColor,fx.gradientEndProfitColor,'neutral',systemColors);
@@ -48,6 +59,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const shadowColor=linkedColor(fx.shadowColor,fx.shadowProfitColor,'neutral',systemColors);
   const glowColor=linkedColor(fx.glowColor,fx.glowProfitColor,'neutral',systemColors);
   const outerGlowColor=linkedColor(fx.outerGlowColor,fx.outerGlowProfitColor,'neutral',systemColors);
+  const blinkColor=linkedColor(fx.blinkColor,fx.blinkProfitColor,'neutral',systemColors);
   const outerGlowOn=Boolean(editorStyle&&fx.outerGlowEnabled&&fx.outerGlowOpacity>0);
   const alpha=editorStyle?.backgroundOpacity??1;
   const corners={
@@ -129,6 +141,9 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
         borderWidth:fx.glowWidth,opacity:pulse,
         shadowColor:glowColor,shadowOpacity:fx.glowOpacity,
         shadowRadius:fx.glowWidth*1.5,shadowOffset:{width:0,height:0}}]}/>:null}
+    {fx.blinkEnabled&&editorStyle?<Animated.View pointerEvents="none"
+      style={[StyleSheet.absoluteFill,corners,{borderWidth:2,
+        borderColor:colorWithAlpha(blinkColor,fx.blinkOpacity),opacity:blink}]}/>:null}
     {workActive?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
       borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
       borderRadius:editorStyle?.borderRadius??radius.lg,

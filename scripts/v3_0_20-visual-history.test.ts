@@ -15,8 +15,8 @@ assert.equal(all.length,184);
 assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(all.map(tool=>tool.id)).size,184);
 assert.equal(audit.existing,169);assert.equal(audit.advanced,12);assert.equal(audit.unregistered,3);
-assert.equal(audit.readyDeclared,150);assert.equal(audit.pending,34,
-  'V3.0.24 wires exactly one existing legacy history tool, not an invented new category');
+assert.equal(audit.readyDeclared,151);assert.equal(audit.pending,33,
+  'V3.0.25 wires exactly one existing legacy history tool, not an invented new category');
 
 const historyTool=all.find(tool=>tool.id==='history')!;
 assert.equal(historyTool.status,'ready');
@@ -25,7 +25,7 @@ const context={page:'home',frameKey:'asset-dashboard'} as const;
 assert.equal(resolveSkillAdapter(historyTool,{...context,scope:'frame'}).status,'active');
 assert.equal(resolveSkillAdapter(historyTool,{...context,scope:'target',kind:'metric'}).status,'active');
 assert.equal(resolveSkillAdapter(historyTool,{...context,scope:'instance',kind:'text',instanceOwned:true}).status,
- 'active','V3.0.24 adds owned installed instance visual history without a new catalog tool');
+ 'active','V3.0.25 adds owned installed instance visual history without a new catalog tool');
 
 const frameKey=visualHistoryKey('frame','home','asset-dashboard')!;
 const targetKey=visualHistoryKey('target','home','asset-dashboard','metric:profit')!;
@@ -129,11 +129,11 @@ assert.ok(workbench.includes("if(tool.field==='maintenance:visual-history')retur
 assert.ok(!workbench.includes('FULL_SKILL_SECTIONS.map'),'strict A real object -> B property -> C action');
 assert.ok(backup.includes("key.startsWith(PREFIX)"),'existing SAF backup must include the existing maintenance key');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.24');assert.equal(app.expo.version,'3.0.24');
-assert.equal(app.expo.android.versionCode,30024);
-assert.equal(app.expo.ios.buildNumber,'30024');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.24-QA.apk'));
+assert.equal(pkg.version,'3.0.25');assert.equal(app.expo.version,'3.0.25');
+assert.equal(app.expo.android.versionCode,30025);
+assert.equal(app.expo.ios.buildNumber,'30025');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.25-QA.apk'));
 for(const locked of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(locked).length>0,'immutable core remains present: '+locked);
-console.log('V3.0.24 A-only local visual history: sanitization/restore/capping/real adapter/backup PASS');
+console.log('V3.0.25 A-only local visual history: sanitization/restore/capping/real adapter/backup PASS');
 console.log('184 catalog / 150 wired declarations / 34 pending / locked finance and AB regression PASS');

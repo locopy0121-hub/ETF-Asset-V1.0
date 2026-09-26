@@ -37,6 +37,6 @@ for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:comp
 assert.ok(ai.includes('onAsk(question)')&&ai.includes('runAction(action)'));
 assert.equal(ai.split('ref={scrollRef}').length,2,'AI conversation must not be duplicated');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.24'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.25'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 console.log('V3.0.9 scoped engineer skills, protected finance text, unobstructed controls and AI native adapters: PASS');

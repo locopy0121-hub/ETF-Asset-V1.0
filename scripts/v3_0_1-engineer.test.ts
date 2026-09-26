@@ -33,7 +33,7 @@ assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'),
 assert.ok(dock.includes('取消／恢復')&&dock.includes('儲存／套用'));
 assert.ok(!app.includes('V5')&&!runtime.includes('360'));
 const pkg=JSON.parse(read('package.json')),a=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.24'].includes(pkg.version));
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.25'].includes(pkg.version));
 assert.equal(a.expo.version,pkg.version);
 assert.equal(a.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));

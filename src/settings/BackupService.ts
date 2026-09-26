@@ -13,7 +13,7 @@ const BACKUPS_KEY=TF_BACKUPS_KEY;
 const LAST_EXTERNAL_BACKUP_KEY=TF_LAST_EXTERNAL_BACKUP_KEY;
 const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='3.0.24';
+const APP_VERSION='3.0.25';
 
 const validPayload=validBackupPayload;
 

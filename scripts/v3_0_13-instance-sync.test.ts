@@ -45,8 +45,8 @@ assert.ok(renderer.includes("'generic','frame'"),'parent surface receives materi
 const card=read('src/components/FrameCard.tsx');
 assert.ok(!card.includes('<ScrollView nestedScrollEnabled'),'parent resize never forces child scrolling');
 const pkg=JSON.parse(read('package.json'));const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.24');assert.equal(app.expo.version,'3.0.24');
-assert.equal(app.expo.android.versionCode,30024);
+assert.equal(pkg.version,'3.0.25');assert.equal(app.expo.version,'3.0.25');
+assert.equal(app.expo.android.versionCode,30025);
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0);
 console.log('V3.0.17 shared instance typography/color and parent material coverage: PASS');

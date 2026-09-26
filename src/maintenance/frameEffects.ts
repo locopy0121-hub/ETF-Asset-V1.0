@@ -13,6 +13,7 @@ export type FrameEffects=Readonly<{
   shadowOffsetX:number;shadowOffsetY:number;
   glowEnabled:boolean;glowColor:string;glowProfitColor:boolean;glowOpacity:number;
   glowWidth:number;glowPulse:boolean;glowPeriodMs:number;
+  blinkEnabled:boolean;blinkColor:string;blinkProfitColor:boolean;blinkOpacity:number;blinkPeriodMs:number;
   outerGlowEnabled:boolean;outerGlowColor:string;outerGlowProfitColor:boolean;
   outerGlowOpacity:number;outerGlowSpread:number;outerGlowSoftness:number;
   paddingTop:number;paddingRight:number;paddingBottom:number;paddingLeft:number;
@@ -29,6 +30,7 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   shadowColor:'#000000',shadowProfitColor:false,shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
   glowPulse:false,glowPeriodMs:1800,
+  blinkEnabled:false,blinkColor:'#FBBF24',blinkProfitColor:false,blinkOpacity:.65,blinkPeriodMs:1500,
   outerGlowEnabled:false,outerGlowColor:'#A78BFA',outerGlowProfitColor:false,
   outerGlowOpacity:.35,outerGlowSpread:4,outerGlowSoftness:12,
   paddingTop:-1,paddingRight:-1,paddingBottom:-1,paddingLeft:-1,
@@ -45,6 +47,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     cornerTopLeft:[-1,48],cornerTopRight:[-1,48],cornerBottomRight:[-1,48],cornerBottomLeft:[-1,48],
     shadowBlur:[0,48],shadowOffsetX:[-24,24],shadowOffsetY:[-24,24],
     glowOpacity:[0,.8],glowWidth:[0,16],glowPeriodMs:[800,4000],
+    blinkOpacity:[0,.8],blinkPeriodMs:[500,5000],
     outerGlowOpacity:[0,.8],outerGlowSpread:[0,32],outerGlowSoftness:[0,48],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
@@ -55,9 +58,9 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     const value=v[key];if(typeof value==='number'&&Number.isFinite(value))
       out[key]=finite(value,min!,max!,defaults[key as keyof FrameEffects] as number);
   }
-  for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor','outerGlowColor'] as const)
+  for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
