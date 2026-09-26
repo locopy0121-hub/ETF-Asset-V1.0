@@ -160,7 +160,7 @@ function AbToolControls({tools,openC,onChangeC,instance}:{
   </View>;
 }
 
-function AbDimensionControl({axis,instance}:{axis:'width'|'height';instance?:MaintenanceInstance}){
+function AbDimensionControl({axis,instance}:{axis:'width'|'height';instance?:MaintenanceInstance|undefined}){
   const maintenance=useMaintenance(),theme=useThemeRuntime(),s=maintenance.session;
   const selectedTarget=s?.scope==='target'?s.target:undefined;
   const parent=s?.scope==='instance'&&instance?.templateId==='parent-frame'?instance:undefined;
@@ -201,7 +201,7 @@ function AbDimensionControl({axis,instance}:{axis:'width'|'height';instance?:Mai
   </View>;
 }
 
-function AbColorControls({instance}:{instance?:MaintenanceInstance}){
+function AbColorControls({instance}:{instance?:MaintenanceInstance|undefined}){
   const maintenance=useMaintenance(),theme=useThemeRuntime(),s=maintenance.session;
   if(!s)return null;
   const frame=s.scope==='frame';
