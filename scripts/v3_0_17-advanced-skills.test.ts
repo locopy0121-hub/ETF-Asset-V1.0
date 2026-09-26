@@ -12,11 +12,11 @@ assert.equal(all.length,184);
 assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(all.map(t=>t.id)).size,184);
 assert.equal(audit.existing,169);assert.equal(audit.advanced,12);assert.equal(audit.unregistered,3);
-assert.equal(audit.pending,41,'only three real newly adapted tools leave backlog');
-assert.equal(audit.readyDeclared,143);
+assert.equal(audit.pending,39,'three prior skills plus two new V3.0.18 tools leave 39 declared pending');
+assert.equal(audit.readyDeclared,145);
 const ids=['advanced-batch','advanced-local-diff','advanced-health'];
 for(const id of ids)assert.equal(all.find(tool=>tool.id===id)?.status,'ready');
-assert.equal(all.filter(tool=>tool.id.startsWith('advanced-')&&tool.status==='ready').length,3);
+assert.equal(all.filter(tool=>tool.id.startsWith('advanced-')&&tool.status==='ready').length,5);
 const metric={scope:'target' as const,kind:'metric' as const,page:'home',frameKey:'asset-dashboard'};
 assert.equal(resolveSkillAdapter(all.find(t=>t.id==='advanced-batch')!,metric).status,'active');
 assert.equal(resolveSkillAdapter(all.find(t=>t.id==='advanced-batch')!,
@@ -85,9 +85,9 @@ assert.ok(controls.includes('getSavedTargetOverride')&&controls.includes('getFra
 assert.ok(workbench.includes('searchAbProperties(query)')&&workbench.includes('visibleB.map(group=><Pressable'),
  'V3.0.16 accepted AB must NOT become a skill-category menu');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.17');assert.equal(app.expo.version,'3.0.17');
-assert.equal(app.expo.android.versionCode,30017);assert.equal(app.expo.ios.buildNumber,'30017');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.17-QA.apk'));
+assert.equal(pkg.version,'3.0.18');assert.equal(app.expo.version,'3.0.18');
+assert.equal(app.expo.android.versionCode,30018);assert.equal(app.expo.ios.buildNumber,'30018');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.18-QA.apk'));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(file).length>0,'locked accounting core missing: '+file);
 console.log('V3.0.17 advanced: real multi-target visual batch, diff, measured health / AB unchanged: PASS');
