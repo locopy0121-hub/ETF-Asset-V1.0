@@ -302,7 +302,7 @@ function adapterContext(s:MaintenanceSession):AdapterContext{
 const adapterFor=(tool:SkillTool,s:MaintenanceSession)=>resolveSkillAdapter(tool,adapterContext(s));
 const resolvedTool=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).tool;
 const toolUsable=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).status==='active';
-function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:MaintenanceInstance|undefined;onOpenTool?:(id:string)=>void}){
+function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:MaintenanceInstance|undefined;onOpenTool?:((id:string)=>void)|undefined}){
   const maint=useMaintenance();
   const theme=useThemeRuntime();
   const s=maint.session;
