@@ -223,11 +223,19 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         }:{}),
       };
     }),
-    patchTarget:(id,patch)=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
-      {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
+    patchTarget:(id,patch)=>setSession(current=>{
+      if(!current)return current;
+      const eligible=current.scope==='target'&&current.target?.id===id||
+        current.scope==='instance'&&id==='installed:'+current.instanceId&&
+        current.draftInstances.some(item=>item.id===current.instanceId&&isEngineerOwnedInstance(item));
+      if(!eligible)return current;
+      return {...current,draftTargets:{...current.draftTargets,[id]:normalizeTargetOverride({...current.draftTargets[id],...patch})},
         sharedTouched:[...new Set([...current.sharedTouched,...Object.keys(patch).filter(
-          key=>VISUAL_TARGET_KEYS.includes(key as keyof TargetAppearance)) as (keyof TargetAppearance)[]])]}:current),
-    resetTargetVisual:id=>setSession(current=>current&&current.scope==='target'&&current.target?.id===id?
+          key=>VISUAL_TARGET_KEYS.includes(key as keyof TargetAppearance)) as (keyof TargetAppearance)[]])]};
+    }),
+    resetTargetVisual:id=>setSession(current=>current&&(
+      current.scope==='target'&&current.target?.id===id||current.scope==='instance'&&id==='installed:'+current.instanceId&&
+      current.draftInstances.some(item=>item.id===current.instanceId&&isEngineerOwnedInstance(item)))?
       {...current,draftTargets:{...current.draftTargets,[id]:resetTargetVisualOverride(current.draftTargets[id]??{})}}:current),
     patchWorkspace:patch=>setSession(current=>current?{...current,
       draftWorkspace:normalizeWorkspace({...current.draftWorkspace,...patch})}:current),
