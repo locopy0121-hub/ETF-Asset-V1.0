@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
@@ -7,7 +7,7 @@ import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
-import {ENGINEER_SKILLS,type SkillTool} from './skillTree';
+import {ENGINEER_SKILLS,ENGINEER_SKILL_SECTIONS,skillCounts,skillMatches,type SkillTool} from './skillTree';
 import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
@@ -31,11 +31,15 @@ export function MaintenanceWorkbench(){
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
   const [saving,setSaving]=useState(false);
+  const [skillQuery,setSkillQuery]=useState('');
+  const skillScroller=useRef<ScrollView>(null);
+  const skillOffsets=useRef<Record<string,number>>({});
   useEffect(()=>{
     setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
       session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
       session.target?.kind==='control'?'conditions':'typography':null);
     setOpenTool(null);
+    setSkillQuery('');
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
@@ -50,6 +54,13 @@ export function MaintenanceWorkbench(){
   // Always show ONE complete central skill tree. Unadapted tools explain their adapter state.
   const displaySkills=ENGINEER_SKILLS;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
+  const jumpToSkill=(id:string)=>{
+    setOpenSkill(id);
+    setOpenTool(null);
+    skillScroller.current?.scrollTo({y:skillOffsets.current[id]??0,animated:true});
+  };
+  const catalogCount=skillCounts();
+  const matchingSkills=displaySkills.filter(skill=>skillMatches(skill,skillQuery));
   const apply=async()=>{
     if(saving)return;
     setSaving(true);
@@ -66,7 +77,7 @@ export function MaintenanceWorkbench(){
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
-    <ScrollView style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
+    <ScrollView ref={skillScroller} style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
       <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹｜所有技能可查閱；尚未介接的項目明確標示，絕不依元件種類隱藏整類工具。</Text>
       <View accessibilityRole="summary" style={[styles.detail,{
         backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
@@ -113,9 +124,37 @@ export function MaintenanceWorkbench(){
         </View>)}
         <Text style={[styles.small,{color:theme.palette.textSecondary,marginTop:7}]}>資料值唯讀；下方工具修改顯示屬性或本頁設定，不修改來源帳務。</Text>
       </View>:null}
-      {displaySkills.map(skillItem=><View key={skillItem.id} style={[styles.group,{borderColor:theme.palette.border}]}>
+      <View style={[styles.detail,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted,marginBottom:10,gap:8}]}>
+        <Text style={[styles.label,{color:theme.palette.text}]}>技能樹總覽｜{displaySkills.length} 類 · {catalogCount.total} 項</Text>
+        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{catalogCount.ready} 項已標記接入 · {catalogCount.pending} 項待原生適配；實際能否操作仍依目前對象判斷。</Text>
+        <TextInput accessibilityLabel="搜尋維護工程師技能" value={skillQuery} onChangeText={setSkillQuery}
+          placeholder="搜尋技能、工具、效果（不隱藏其他技能）"
+          placeholderTextColor={theme.palette.textSecondary}
+          style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>
+        {skillQuery.trim()?<Text style={[styles.small,{color:theme.palette.textSecondary}]}>符合搜尋：{matchingSkills.length} 類；全部技能仍完整保留。</Text>:null}
+        {ENGINEER_SKILL_SECTIONS.map(section=><View key={section.id} style={{gap:5}}>
+          <Text style={{fontWeight:'800',fontSize:12,color:theme.palette.text}}>{section.label}</Text>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+            {section.skills.map(id=>{
+              const skill=displaySkills.find(item=>item.id===id);
+              if(!skill)return null;
+              const count=skillCounts([skill]);
+              const match=skillMatches(skill,skillQuery);
+              return <Pressable key={id} accessibilityRole="button" accessibilityLabel={'前往 '+skill.label}
+                onPress={()=>jumpToSkill(id)}
+                style={[styles.choice,{borderColor:match?theme.palette.primary:theme.palette.border,
+                  opacity:match?1:.6,backgroundColor:openSkill===id?theme.palette.primary:theme.palette.surface}]}>
+                <Text style={{fontSize:11,color:openSkill===id?'#FFFFFF':theme.palette.text}}>{skill.label} {count.ready}/{count.total}</Text>
+              </Pressable>;
+            })}
+          </View>
+        </View>)}
+      </View>
+      {displaySkills.map(skillItem=><View key={skillItem.id}
+        onLayout={event=>{skillOffsets.current[skillItem.id]=event.nativeEvent.layout.y;}}
+        style={[styles.group,{borderColor:skillQuery.trim()&&skillMatches(skillItem,skillQuery)?theme.palette.primary:theme.palette.border}]}>
         <Pressable accessibilityRole="button" onPress={()=>selectSkill(skillItem.id)} style={styles.groupTitle}>
-          <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label}</Text>
+          <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label} · {skillCounts([skillItem]).ready}/{skillItem.tools.length} 已接入</Text>
           <Text style={{color:theme.palette.primary}}>{openSkill===skillItem.id?'⌄':'›'}</Text>
         </Pressable>
         {openSkill===skillItem.id?<View style={styles.toolList}>
