@@ -25,7 +25,8 @@ assert.deepEqual(simulated,{linked:'gain',fallback:'gain'});
 assert.equal(linkedColor('#000000',true,simulated.linked,palette),palette.gainColor);
 assert.deepEqual(resolveNativeMetricTones('loss','gain',undefined),{linked:'gain',fallback:'loss'});
 assert.deepEqual(resolveNativeMetricTones('gain','auto','neutral'),{linked:'neutral',fallback:'neutral'});
-const sample=applyConditionalAppearance({conditionalStyles:{gain:{enabled:true,textColor:'#ABCDEF'}}},simulated.linked);
+const sample=applyConditionalAppearance({textColor:'#000000',textProfitColor:true,
+  conditionalStyles:{gain:{enabled:true,textColor:'#ABCDEF'}}},simulated.linked);
 assert.equal(sample.textColor,'#ABCDEF');assert.equal(sample.textProfitColor,false);
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(s=>s.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
