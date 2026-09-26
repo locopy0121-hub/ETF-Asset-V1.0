@@ -20,7 +20,7 @@ const rt=read('src/maintenance/MaintenanceRuntime.tsx');
 const wb=read('src/maintenance/MaintenanceWorkbench.tsx');
 const inspect=read('src/maintenance/InspectableTarget.tsx');
 assert.ok(rt.includes('sharedStyles:nextShared')&&rt.includes('localOnlyKeys:nextLocalOnly'));
-assert.ok(rt.includes('session.sharedTouched')&&rt.includes('session.target.kind'));
+assert.ok(rt.includes('session.sharedTouched')&&rt.includes('const editedKind='));
 assert.ok(rt.includes('VISUAL_TARGET_KEYS.includes'),'sync only visual style fields');
 assert.ok(rt.includes("syncScope:'frame'")&&rt.includes("session.syncScope==='app'"),'scope defaults to one frame; global must be explicit');
 assert.ok(rt.includes("sharedKey(page,frameKey,kind,'frame')"),'same-kind frame style should resolve on every native target');
