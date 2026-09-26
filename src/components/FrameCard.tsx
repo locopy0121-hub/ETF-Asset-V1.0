@@ -149,8 +149,9 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       ()=>{if(alive)setIntrinsicImage(null);});
     return()=>{alive=false;};
   },[imageFocusActive,backgroundImageUri]);
-  const imageCrop=imageFocusActive&&intrinsicImage?.uri===backgroundImageUri?
-    frameImageCoverCrop(imageBounds.width,imageBounds.height,intrinsicImage.width,intrinsicImage.height,
+  const imageCropSource=imageFocusActive&&intrinsicImage?.uri===backgroundImageUri?intrinsicImage:null;
+  const imageCrop=imageCropSource?
+    frameImageCoverCrop(imageBounds.width,imageBounds.height,imageCropSource.width,imageCropSource.height,
       fx.imageFocusX,fx.imageFocusY):null;
   const backgroundLayer=Boolean(editorStyle&&(gradientOn||imageOn));
   const shadowOn=Boolean(editorStyle?.shadowEnabled);
