@@ -7,6 +7,10 @@ export type FrameEffects=Readonly<{
   imageFit:'cover'|'contain'|'stretch';imageOpacity:number;
   maskColor:string;maskProfitColor:boolean;maskOpacity:number;
   borderStyle:'solid'|'dashed'|'dotted';
+  borderGradientEnabled:boolean;borderGradientMode:'dual'|'gradient';
+  borderGradientStartColor:string;borderGradientStartProfitColor:boolean;
+  borderGradientEndColor:string;borderGradientEndProfitColor:boolean;
+  borderGradientWidth:number;borderGradientOpacity:number;
   borderTop:number;borderRight:number;borderBottom:number;borderLeft:number;
   cornerTopLeft:number;cornerTopRight:number;cornerBottomRight:number;cornerBottomLeft:number;
   shadowColor:string;shadowProfitColor:boolean;shadowBlur:number;
@@ -27,7 +31,10 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   gradientMidEnabled:false,gradientMidColor:'#C4B5FD',gradientMidProfitColor:false,gradientMidStop:.5,
   imageSource:'builtIn',imageIndex:0,imageUri:null,imageFit:'cover',imageOpacity:1,
   maskColor:'#000000',maskProfitColor:false,maskOpacity:0,
-  borderStyle:'solid',borderTop:-1,borderRight:-1,borderBottom:-1,borderLeft:-1,
+  borderStyle:'solid',borderGradientEnabled:false,borderGradientMode:'dual',
+  borderGradientStartColor:'#A78BFA',borderGradientStartProfitColor:false,
+  borderGradientEndColor:'#38BDF8',borderGradientEndProfitColor:false,
+  borderGradientWidth:5,borderGradientOpacity:.8,borderTop:-1,borderRight:-1,borderBottom:-1,borderLeft:-1,
   cornerTopLeft:-1,cornerTopRight:-1,cornerBottomRight:-1,cornerBottomLeft:-1,
   shadowColor:'#000000',shadowProfitColor:false,shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
   shadowSpreadEnabled:false,shadowSpreadRadius:12,shadowSpreadLayers:3,shadowSpreadOpacity:.25,
@@ -48,6 +55,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   const v=raw as Record<string,unknown>;
   const numberRanges:Record<string,readonly [number,number]>={
     borderTop:[-1,8],borderRight:[-1,8],borderBottom:[-1,8],borderLeft:[-1,8],
+    borderGradientWidth:[1,12],borderGradientOpacity:[0,.8],
     cornerTopLeft:[-1,48],cornerTopRight:[-1,48],cornerBottomRight:[-1,48],cornerBottomLeft:[-1,48],
     shadowBlur:[0,48],shadowOffsetX:[-24,24],shadowOffsetY:[-24,24],
     shadowSpreadRadius:[0,32],shadowSpreadLayers:[1,6],shadowSpreadOpacity:[0,.65],
@@ -64,9 +72,9 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     const value=v[key];if(typeof value==='number'&&Number.isFinite(value))
       out[key]=finite(value,min!,max!,defaults[key as keyof FrameEffects] as number);
   }
-  for(const key of ['gradientEndColor','gradientMidColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
+  for(const key of ['gradientEndColor','gradientMidColor','borderGradientStartColor','borderGradientEndColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -81,6 +89,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   else if(typeof v.gradientAngle==='number'&&Number.isFinite(v.gradientAngle))
     out.gradientAngle=Math.round(finite(v.gradientAngle,0,359,90));
   if(v.borderStyle==='solid'||v.borderStyle==='dashed'||v.borderStyle==='dotted')out.borderStyle=v.borderStyle;
+  if(v.borderGradientMode==='dual'||v.borderGradientMode==='gradient')out.borderGradientMode=v.borderGradientMode;
   return out as FrameEffects;
 }
 export function colorWithAlpha(color:string,alpha:number):string{
@@ -146,4 +155,16 @@ export function frameShadowSpreadBands(radius:number,opacity:number,count:number
      borderWidth:Math.max(1,Math.min(4,Number((1+r/n/6).toFixed(2)))),
      alpha:Number((a*(1-progress*.7)).toFixed(4))};
  });
+}
+
+/** Bounded native border contours: two separate colors or eight depth-interpolated strokes. */
+export function frameBorderGradientBands(start:string,end:string,width:number,opacity:number,mode:'dual'|'gradient'){
+ const w=Number.isFinite(width)?Math.max(1,Math.min(12,width)):5;
+ const alpha=Number.isFinite(opacity)?Math.max(0,Math.min(.8,opacity)):0;
+ if(alpha===0)return [];
+ const count=mode==='dual'?2:8;
+ return Array.from({length:count},(_,i)=>({
+   inset:Number((w*i/count).toFixed(3)),stroke:Number((w/count).toFixed(3)),
+   color:mixFrameColors(start,end,i/(count-1)),alpha,
+ }));
 }

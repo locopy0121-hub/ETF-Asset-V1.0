@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode}
 import {AccessibilityInfo,Animated,Easing,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -91,6 +91,9 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   },[marqueeActive,title,titleIntrinsic,fx.titleMarqueeGap,fx.titleMarqueeSpeed,marqueeShift]);
   const outerGlowOn=Boolean(editorStyle&&fx.outerGlowEnabled&&fx.outerGlowOpacity>0);
   const shadowSpreadOn=Boolean(editorStyle&&fx.shadowSpreadEnabled&&fx.shadowSpreadRadius>0&&fx.shadowSpreadOpacity>0);
+  const borderGradientOn=Boolean(editorStyle&&fx.borderGradientEnabled&&fx.borderGradientWidth>0&&fx.borderGradientOpacity>0);
+  const borderGradientStart=linkedColor(fx.borderGradientStartColor,fx.borderGradientStartProfitColor,'neutral',systemColors);
+  const borderGradientEnd=linkedColor(fx.borderGradientEndColor,fx.borderGradientEndProfitColor,'neutral',systemColors);
   const alpha=editorStyle?.backgroundOpacity??1;
   const corners={
     borderTopLeftRadius:fx.cornerTopLeft>=0?fx.cornerTopLeft:editorStyle?.borderRadius??radius.lg,
@@ -138,7 +141,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       ...(fx.contentGap>=0?{gap:fx.contentGap}:{}),
       ...(fx.marginVertical>0?{marginVertical:fx.marginVertical}:{}),
       ...(fx.maxWidth>0?{maxWidth:fx.maxWidth}:{}),
-      ...(outerGlowOn||shadowSpreadOn?{overflow:'visible' as const}:{}),
+      ...(outerGlowOn||shadowSpreadOn||borderGradientOn?{overflow:'visible' as const}:{}),
       ...(shadowOn?{
         elevation:Math.max(1,Math.round((fx.shadowBlur+fx.shadowOffsetY)*.55)),
         shadowColor,shadowOpacity:editorStyle.shadowOpacity??.12,
@@ -175,6 +178,15 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     </View>:null}
     {backgroundLayer&&fx.maskOpacity>0?<View pointerEvents="none"
       style={[StyleSheet.absoluteFill,corners,{backgroundColor:colorWithAlpha(imageMask,fx.maskOpacity)}]}/>:null}
+    {borderGradientOn?frameBorderGradientBands(borderGradientStart,borderGradientEnd,
+      fx.borderGradientWidth,fx.borderGradientOpacity,fx.borderGradientMode)
+      .map((band,index)=><View key={'border-gradient-'+index} pointerEvents="none"
+        style={{position:'absolute',left:-band.inset,top:-band.inset,right:-band.inset,bottom:-band.inset,
+          borderTopLeftRadius:corners.borderTopLeftRadius+band.inset,
+          borderTopRightRadius:corners.borderTopRightRadius+band.inset,
+          borderBottomLeftRadius:corners.borderBottomLeftRadius+band.inset,
+          borderBottomRightRadius:corners.borderBottomRightRadius+band.inset,
+          borderWidth:band.stroke,borderColor:colorWithAlpha(band.color,band.alpha)}}/>):null}
     {fx.glowEnabled&&editorStyle?<Animated.View pointerEvents="none"
       style={[StyleSheet.absoluteFill,corners,{borderColor:colorWithAlpha(glowColor,fx.glowOpacity),
         borderWidth:fx.glowWidth,opacity:pulse,

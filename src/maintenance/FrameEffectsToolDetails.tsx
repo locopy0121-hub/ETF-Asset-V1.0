@@ -20,6 +20,7 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   cornerBottomRight:[-1,48,1],cornerBottomLeft:[-1,48,1],
   shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
   shadowSpreadRadius:[0,32,1],shadowSpreadLayers:[1,6,1],shadowSpreadOpacity:[0,.65,.05],
+  borderGradientWidth:[1,12,1],borderGradientOpacity:[0,.8,.05],
   glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
   blinkOpacity:[0,.8,.05],blinkPeriodMs:[500,5000,100],
   titleMarqueeSpeed:[24,180,8],titleMarqueeGap:[12,80,4],
@@ -125,6 +126,38 @@ export function FrameEffectsToolDetails({field}:{field:string}){
           min={min} max={max} step={step}/>
       </View>)}
       <Text style={{color:theme.palette.textSecondary,fontSize:11}}>遵守系統降低動態設定；啟用時顯示靜態彩色邊框，數值與文字保持可見。</Text>
+    </>:null}
+  </View>;
+  if(key==='borderGradientEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜獨立雙層／厚度漸層邊框</Text>
+      <Switch accessibilityLabel="雙層漸層邊框開關" value={fx.borderGradientEnabled} onValueChange={change}/>
+    </View>
+    {fx.borderGradientEnabled?<>
+      {([['dual','雙層獨立色'],['gradient','8 階厚度漸層']] as const).map(([mode,label])=>
+        <Pressable key={mode} accessibilityRole="button" accessibilityLabel={label}
+          onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientMode:mode})})}
+          style={{borderWidth:1,borderColor:theme.palette.primary,borderRadius:8,padding:9,
+            backgroundColor:fx.borderGradientMode===mode?theme.palette.primary:theme.palette.surface}}>
+          <Text style={{color:fx.borderGradientMode===mode?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      <ColorPalettePicker label="第一層／漸層起點顏色" value={fx.borderGradientStartColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientStartColor:color})})}
+        profitColorEnabled={fx.borderGradientStartProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientStartProfitColor:enabled})})}/>
+      <ColorPalettePicker label="第二層／漸層終點顏色" value={fx.borderGradientEndColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientEndColor:color})})}
+        profitColorEnabled={fx.borderGradientEndProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientEndProfitColor:enabled})})}/>
+      {([['borderGradientWidth','向外總厚度（dp）',1,12,1],
+          ['borderGradientOpacity','邊框透明度',0,.8,.05]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        只在框架邊緣繪製雙層或向外厚度漸層，不改背景透明度、操作按鈕及金額文字。
+      </Text>
     </>:null}
   </View>;
   if(key==='shadowSpreadEnabled')return <View style={{gap:8,marginTop:9}}>
