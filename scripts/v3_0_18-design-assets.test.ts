@@ -57,7 +57,7 @@ assert.equal(EMPTY_ENGINEER_ASSETS.tokens.length,0,'do not mutate the default ob
 const corrupt=normalizeEngineerAssets({tokens:[...Array.from({length:6},(_,i)=>({slot:i+1,name:'a',style:{backgroundColor:'#aabbcc',shares:1,opacity:0.1}}))],
  favorites:['unknown',ids[0],ids[0]],recent:[...ids.slice(0,12),ids[0]]},ids);
 assert.equal(corrupt.tokens.length,5);assert.equal(corrupt.tokens[0]!.style.backgroundColor,'#AABBCC');
-assert.equal(corrupt.tokens[0]!.style.opacity,undefined);
+assert.equal('opacity' in corrupt.tokens[0]!.style,false);
 assert.deepEqual(corrupt.favorites,[ids[0]]);
 assert.equal(corrupt.recent.length,10);
 const safe=normalizeEngineerAssets({schema:1,tokens:[first],favorites:[],recent:[]},ids);
