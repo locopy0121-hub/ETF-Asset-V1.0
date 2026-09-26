@@ -49,6 +49,11 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
  if(tool.status!=='ready')return {status:'planned',tool,reason:'已納入中央完整技能表，尚未實作或完成原生適配。'};
  const original=tool.field??'';
  if(!original)return pending(tool,'此工具缺少實際操作介面。');
+ if(original==='maintenance:batch')return ctx.scope==='target'||ctx.scope==='instance'&&ctx.instanceOwned?
+   active(tool,'實際元件註冊、屬性白名單、多選差異預覽及草稿批次寫入。'):
+   pending(tool,'請先在真實頁面選取一個原生元件或工程師新增元件作為樣式來源。');
+ if(original==='maintenance:local-diff')return active(tool,'只比較當前 A 的已儲存設定與暫存外觀，不涉及數據原值。');
+ if(original==='maintenance:health')return active(tool,'只依目前真實量測分析越界、疑似重疊及觸控尺寸。');
  if(original.startsWith('workspace:'))return active(tool,'使用本頁實際工作區的共用工具。');
  const field=ctx.scope!=='frame'&&ctx.kind&&FRAME_TO_TARGET[original]?
    FRAME_TO_TARGET[original]!:original;
