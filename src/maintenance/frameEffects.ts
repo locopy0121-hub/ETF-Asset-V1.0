@@ -22,6 +22,7 @@ export type FrameEffects=Readonly<{
   titleMarqueeEnabled:boolean;titleMarqueeSpeed:number;titleMarqueeGap:number;
   entranceEnabled:boolean;entranceMode:'slide'|'zoom'|'rotate';
   entranceDurationMs:number;entranceDistance:number;entranceScale:number;entranceRotationDeg:number;
+  responsiveEnabled:boolean;responsiveCompactWidth:number;responsiveDenseWidth:number;
   outerGlowEnabled:boolean;outerGlowColor:string;outerGlowProfitColor:boolean;
   outerGlowOpacity:number;outerGlowSpread:number;outerGlowSoftness:number;
   paddingTop:number;paddingRight:number;paddingBottom:number;paddingLeft:number;
@@ -46,6 +47,7 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   titleMarqueeEnabled:false,titleMarqueeSpeed:72,titleMarqueeGap:32,
   entranceEnabled:false,entranceMode:'slide',entranceDurationMs:650,
   entranceDistance:36,entranceScale:.86,entranceRotationDeg:12,
+  responsiveEnabled:false,responsiveCompactWidth:460,responsiveDenseWidth:340,
   outerGlowEnabled:false,outerGlowColor:'#A78BFA',outerGlowProfitColor:false,
   outerGlowOpacity:.35,outerGlowSpread:4,outerGlowSoftness:12,
   paddingTop:-1,paddingRight:-1,paddingBottom:-1,paddingLeft:-1,
@@ -67,6 +69,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     blinkOpacity:[0,.8],blinkPeriodMs:[500,5000],
     titleMarqueeSpeed:[24,180],titleMarqueeGap:[12,80],
     entranceDurationMs:[200,2500],entranceDistance:[8,120],entranceScale:[.65,1],entranceRotationDeg:[5,90],
+    responsiveCompactWidth:[360,900],responsiveDenseWidth:[240,600],
     outerGlowOpacity:[0,.8],outerGlowSpread:[0,32],outerGlowSoftness:[0,48],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
@@ -79,7 +82,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   }
   for(const key of ['gradientEndColor','gradientMidColor','borderGradientStartColor','borderGradientEndColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','entranceEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','entranceEnabled','responsiveEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -89,6 +92,9 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     out.imageUri=v.imageUri;
   out.imageIndex=Math.round(out.imageIndex as number);
   out.shadowSpreadLayers=Math.round(out.shadowSpreadLayers as number);
+  out.responsiveCompactWidth=Math.round(out.responsiveCompactWidth as number);
+  out.responsiveDenseWidth=Math.min(Math.round(out.responsiveDenseWidth as number),
+    (out.responsiveCompactWidth as number)-40);
   if(v.gradientDirection==='horizontal'||v.gradientDirection==='vertical')out.gradientDirection=v.gradientDirection;
   if(v.gradientAngle===null)out.gradientAngle=null;
   else if(typeof v.gradientAngle==='number'&&Number.isFinite(v.gradientAngle))
@@ -173,4 +179,15 @@ export function frameBorderGradientBands(start:string,end:string,width:number,op
    inset:Number((w*i/count).toFixed(3)),stroke:Number((w/count).toFixed(3)),
    color:mixFrameColors(start,end,i/(count-1)),alpha,
  }));
+}
+
+/** Measured current frame width: never widen an explicitly compact or dense layout. */
+export type FrameDensity='standard'|'compact'|'dense';
+export function responsiveFrameDensity(width:number,base:FrameDensity,compactAt:number,denseAt:number):FrameDensity{
+ if(!Number.isFinite(width)||width<=0)return base;
+ const compact=Math.max(360,Math.min(900,Number.isFinite(compactAt)?compactAt:460));
+ const dense=Math.min(compact-40,Math.max(240,Math.min(600,Number.isFinite(denseAt)?denseAt:340)));
+ if(base==='dense'||width<=dense)return 'dense';
+ if(base==='compact'||width<=compact)return 'compact';
+ return 'standard';
 }

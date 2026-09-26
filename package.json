@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.29",
+  "version": "3.0.30",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_29 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_30 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -194,7 +194,9 @@
     "test:border-gradient-v328": "tsx scripts/v3_0_28-border-gradient.test.ts",
     "test:v3_0_28": "npm run test:v3_0_27 && npm run test:border-gradient-v328",
     "test:entrance-v329": "tsx scripts/v3_0_29-native-entrance.test.ts",
-    "test:v3_0_29": "npm run test:v3_0_28 && npm run test:entrance-v329"
+    "test:v3_0_29": "npm run test:v3_0_28 && npm run test:entrance-v329",
+    "test:responsive-frame-v330": "tsx scripts/v3_0_30-responsive-frame.test.ts",
+    "test:v3_0_30": "npm run test:v3_0_29 && npm run test:responsive-frame-v330"
   },
   "dependencies": {
     "expo": "~57.0.21",

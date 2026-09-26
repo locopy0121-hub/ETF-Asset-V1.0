@@ -1,3 +1,9 @@
+## V3.0.30｜2026-09-27｜真實框架寬度斷點與局部緊湊／密集響應（開發 QA）
+來源 V3.0.29 PR #76 HEAD `4ccbc720b0fe586342635ff4369ce27277911e67`，Actions #1169（Run 36263663478）quality/backend/QA APK 全 PASS，Artifact `TF-Asset-V3.0.29-QA-APK` #10913286858；版本30029，SHA256 3b5b281b87c0d4fcc1d162a2c0c40bf6ef6cd465efce8393ccbd31c6a4a880db。事前備份 `backup-v3.0.29-20260927-pre-v3.0.30` 已以此成功 HEAD 建立。分支 `go-v3.0.30-20260927-adaptive-frame-density`，App/Android/iOS 3.0.30／30030。
+本版僅將中央既有 `breakpoint` 待適配工具接入真實 FrameCard，保留獨立的 `fx-responsive` 跨頁模板缺口待辦：A 真實框架→B 裝置適配→C 局部實際寬度斷點。以 Animated.View 的 onLayout 量測目前框架寬度，根據兩個可編輯斷點即時切換標準／緊湊／密集卡片內距及標題字級；緊湊閾值 360–900dp、密集閾值 240–600dp 且至少低 40dp，原有已明確選擇的 compact/dense 不自動升級成寬鬆模式。預設 OFF、僅目前框架、原位草稿預覽／取消／正式套用，沿用原 SAF 完整備份；子元件的原始數值、座標與框架實際寬高不作重算或修改。真機寬度與 Android 畫面截斷需另行驗證。
+中央 184 項維持；本版源碼宣告 **156 wired／28 pending**，非 156 項實機 PASS。歷版完整回歸+新增真實寬度、閾值與渲染接線測試；不可變金融核心、actual_fee/tax、行情來源與 SAF 現有實作均不變。quality/backend/QA APK Artifact/ZIP/SHA/badging 與手機驗收分級回報，此記錄不預先宣告 APK 成功。
+
+
 ## V3.0.29｜2026-09-27｜原生框架進場動畫：滑入／縮放／旋轉（GO）
 來源 V3.0.28 PR #75 HEAD `0fb8217144c238fb89f3bf240f89aaa124c228f3`，Actions #1163（Run 36262943633）quality/backend/QA APK PASS，Artifact #10913147873；Android versionCode 30028，APK SHA256 8ddecc3ca5ee299c6de3c9d4524a08af4705fee22ec829c13d47317bb062a298。immutable 備份 `backup-v3.0.28-20260927-pre-v3.0.29` 已對應成功 HEAD。工作分支 `go-v3.0.29-20260927-native-entrance`；3.0.29／Android+iOS 30029。
 本輪接入既存待原生適配 `fx-animation-advanced`：A 真實框架→B 特效與動態→C 原生進場（滑入／縮放／旋轉）。獨立開關，進場時間 200–2500ms、距離 8–120dp、起始縮放 0.65–1、旋轉 5–90°；使用真實原生 Animated.View、useNativeDriver、Easing，單次進場後回復原始位置尺寸。系統降低動態值與事件即時停止並還原靜態，預設 OFF；局部草稿即時預覽、取消恢復、正式套用與既有 SAF 備份沿用。動畫只改畫面 transform，不重算或保存金融數據；可能的手機實機效果需另外驗收。

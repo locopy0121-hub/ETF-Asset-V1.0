@@ -26,6 +26,7 @@ const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>
   titleMarqueeSpeed:[24,180,8],titleMarqueeGap:[12,80,4],
   entranceDurationMs:[200,2500,50],entranceDistance:[8,120,4],
   entranceScale:[.65,1,.05],entranceRotationDeg:[5,90,5],
+  responsiveCompactWidth:[360,900,20],responsiveDenseWidth:[240,600,20],
   outerGlowOpacity:[0,.8,.05],outerGlowSpread:[0,32,1],outerGlowSoftness:[0,48,1],
   paddingTop:[-1,32,1],paddingRight:[-1,32,1],paddingBottom:[-1,32,1],paddingLeft:[-1,32,1],
   contentGap:[-1,40,1],marginVertical:[0,32,1],maxWidth:[0,1600,10],
@@ -201,6 +202,24 @@ export function FrameEffectsToolDetails({field}:{field:string}){
         <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
           min={min} max={max} step={step}/>
       </View>)}
+    </>:null}
+  </View>;
+  if(key==='responsiveEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜目前框架原生尺寸斷點</Text>
+      <Switch accessibilityLabel="目前框架尺寸斷點自動切換" value={fx.responsiveEnabled} onValueChange={change}/>
+    </View>
+    {fx.responsiveEnabled?<>
+      {([['responsiveCompactWidth','切換緊湊版寬度（dp）',360,900,20],
+          ['responsiveDenseWidth','切換密集版寬度（dp）',240,600,20]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        根據真實框架量測寬度自動採用緊湊／密集內距和標題大小，密集斷點至少比緊湊小 40dp；
+        不改框架本身寬高、不重排或移動子元件、不修改跨頁共享模板。
+      </Text>
     </>:null}
   </View>;
   if(key==='entranceEnabled')return <View style={{gap:8,marginTop:9}}>
