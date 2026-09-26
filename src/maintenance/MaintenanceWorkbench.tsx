@@ -137,7 +137,7 @@ export function MaintenanceWorkbench(){
 // immediately below its C row; only deeper native options need their own dialog.
 function AbToolControls({tools,openC,onChangeC,instance}:{
   tools:readonly SkillTool[];openC:string|null;onChangeC:(id:string|null)=>void;
-  instance?:MaintenanceInstance;
+  instance?:MaintenanceInstance|undefined;
 }){
   const theme=useThemeRuntime(),maintenance=useMaintenance();
   const session=maintenance.session;
