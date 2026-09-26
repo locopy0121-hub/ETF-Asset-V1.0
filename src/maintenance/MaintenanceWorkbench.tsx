@@ -7,7 +7,9 @@ import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
-import {ENGINEER_SKILLS,ENGINEER_SKILL_SECTIONS,skillCounts,skillMatches,type SkillTool} from './skillTree';
+import {skillCounts,skillMatches,type SkillTool} from './skillTree';
+import {COMPLETE_ENGINEER_SKILLS,FULL_SKILL_SECTIONS,completeCatalogAudit} from './fullSkillCatalog';
+import {resolveSkillAdapter,type AdapterContext} from './skillAdapters';
 import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
@@ -35,9 +37,9 @@ export function MaintenanceWorkbench(){
   const skillScroller=useRef<ScrollView>(null);
   const skillOffsets=useRef<Record<string,number>>({});
   useEffect(()=>{
-    setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
-      session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
-      session.target?.kind==='control'?'conditions':'typography':null);
+    setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'07':
+      session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'22':
+      session.target?.kind==='control'?'12':'06':null);
     setOpenTool(null);
     setSkillQuery('');
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
@@ -52,14 +54,15 @@ export function MaintenanceWorkbench(){
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
     '僅原始數據、來源及帳務計算鎖定；其他文字、框架、外觀及排版都可編輯。內建元件保留，僅工程師新增實例可刪除。';
   // Always show ONE complete central skill tree. Unadapted tools explain their adapter state.
-  const displaySkills=ENGINEER_SKILLS;
+  const displaySkills=COMPLETE_ENGINEER_SKILLS;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
   const jumpToSkill=(id:string)=>{
     setOpenSkill(id);
     setOpenTool(null);
     skillScroller.current?.scrollTo({y:skillOffsets.current[id]??0,animated:true});
   };
-  const catalogCount=skillCounts();
+  const catalogCount=skillCounts(displaySkills);
+  const catalogAudit=completeCatalogAudit();
   const matchingSkills=displaySkills.filter(skill=>skillMatches(skill,skillQuery));
   const apply=async()=>{
     if(saving)return;
@@ -78,7 +81,7 @@ export function MaintenanceWorkbench(){
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
     <ScrollView ref={skillScroller} style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
-      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>僅鎖定原始數據及帳務邏輯；其他完整技能一律顯示。已接線的工具直接修改目前對象，缺原生適配的工具明確標示而不假裝生效。</Text>
+      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹（30 大類）：僅鎖定原始數據及帳務邏輯；其他完整技能一律顯示。已接線的工具直接修改目前對象，缺原生適配的工具明確標示而不假裝生效。</Text>
       <View accessibilityRole="summary" style={[styles.detail,{
         backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
         marginTop:0,marginBottom:10,gap:6,
@@ -126,16 +129,16 @@ export function MaintenanceWorkbench(){
       </View>:null}
       <View style={[styles.detail,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted,marginBottom:10,gap:8}]}>
         <Text style={[styles.label,{color:theme.palette.text}]}>技能樹總覽｜{displaySkills.length} 類 · {catalogCount.total} 項</Text>
-        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{catalogCount.ready} 項已標記接入 · {catalogCount.pending} 項待原生適配；實際能否操作仍依目前對象判斷。</Text>
+        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{catalogCount.ready} 項宣告接入（非實機 PASS） · {catalogCount.pending} 項待接線（含 12 項專業能力）；既有 {catalogAudit.existing} 項全數保留。</Text>
         <TextInput accessibilityLabel="搜尋維護工程師技能" value={skillQuery} onChangeText={setSkillQuery}
           placeholder="搜尋技能、工具、效果（不隱藏其他技能）"
           placeholderTextColor={theme.palette.textSecondary}
           style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>
         {skillQuery.trim()?<Text style={[styles.small,{color:theme.palette.textSecondary}]}>符合搜尋：{matchingSkills.length} 類；全部技能仍完整保留。</Text>:null}
-        {ENGINEER_SKILL_SECTIONS.map(section=><View key={section.id} style={{gap:5}}>
+        {FULL_SKILL_SECTIONS.map(section=><View key={section.id} style={{gap:5}}>
           <Text style={{fontWeight:'800',fontSize:12,color:theme.palette.text}}>{section.label}</Text>
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-            {section.skills.map(id=>{
+            {section.ids.map(id=>{
               const skill=displaySkills.find(item=>item.id===id);
               if(!skill)return null;
               const count=skillCounts([skill]);
@@ -162,7 +165,7 @@ export function MaintenanceWorkbench(){
           {skillItem.tools.map(tool=><View key={tool.id} style={{marginTop:8}}>
             <Pressable accessibilityRole="button" onPress={()=>setOpenTool(current=>current===tool.id?null:tool.id)} style={styles.toolRow}>
               <Text style={{flex:1,color:theme.palette.text,fontSize:13,fontWeight:'600'}}>{tool.label}</Text>
-              <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>{tool.status!=='ready'?'待接入 ›':toolUsable(tool,session)?'細節 ›':'尚待對象介接 ›'}</Text>
+              <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>{tool.status!=='ready'?'待實作 ›':toolUsable(tool,session)?'細節 ›':'原生適配待完成 ›'}</Text>
             </Pressable>
             {openTool===tool.id?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted}]}>
               <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{tool.detail}</Text>
@@ -182,70 +185,18 @@ export function MaintenanceWorkbench(){
   </View>;
 }
 
-const isQuoteFrame=(s:MaintenanceSession)=>s.frameKey==='holding-quotes'||s.frameKey==='holding-view';
-// The wrench selects the edit target, not a restricted toolbox. Reuse native material adapters
-// on inner targets where frame controls have a semantically identical target field.
-const FRAME_TO_TARGET:Readonly<Record<string,string>>={
-  borderWidth:'target:borderWidth',borderRadius:'target:borderRadius',
-  backgroundOpacity:'target:backgroundOpacity',backgroundColor:'target:backgroundColor',
-  borderColor:'target:borderColor',shadowEnabled:'target:shadowEnabled',
-  titleFontSize:'target:fontSize',titleColor:'target:textColor',
-  titleAlign:'target:align',padding:'target:padding',
-  shadowOpacity:'target:shadowOpacity',
-  'framefx:backgroundMode':'target:backgroundMode',
-  'framefx:gradientEndColor':'target:gradientEndColor',
-  'framefx:gradientDirection':'target:gradientDirection',
-  'framefx:gradientMidEnabled':'target:gradientMidEnabled',
-  'framefx:gradientMidColor':'target:gradientMidColor',
-  'framefx:gradientMidStop':'target:gradientMidStop',
-  'framefx:borderStyle':'target:borderStyle',
-  'framefx:shadowColor':'target:shadowColor',
-  'framefx:shadowBlur':'target:shadowBlur',
-  'framefx:shadowOffsetX':'target:shadowOffsetX',
-  'framefx:shadowOffsetY':'target:shadowOffsetY',
-  'framefx:glowEnabled':'target:glowEnabled',
-  'framefx:glowColor':'target:glowColor',
-  'framefx:glowOpacity':'target:glowOpacity',
-  'framefx:glowWidth':'target:glowWidth',
-  'framefx:paddingTop':'target:padding',
-  'framefx:marginVertical':'target:marginVertical',
-};
-function resolvedTool(tool:SkillTool,s:MaintenanceSession):SkillTool {
-  const mapped=FRAME_TO_TARGET[tool.field??''];
-  const kind:TargetKind|undefined=s.scope==='target'?s.target?.kind:
-    s.scope==='instance'?(s.draftInstances.find(item=>item.id===s.instanceId)?.templateId==='parent-frame'?'frame':'text'):undefined;
-  return mapped&&kind&&targetToolSupported(kind,mapped)?{...tool,field:mapped}:tool;
+// Navigation never filters tools. A single pure resolver chooses the rendering adapter.
+function adapterContext(s:MaintenanceSession):AdapterContext{
+ const instance=s.scope==='instance'?s.draftInstances.find(item=>item.id===s.instanceId):undefined;
+ return {scope:s.scope,page:s.page,frameKey:s.frameKey,
+   ...(s.scope==='target'&&s.target?{kind:s.target.kind}:{}),
+   ...(instance?{kind:(instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text') as TargetKind,
+     instanceOwned:isEngineerOwnedInstance(instance),instanceParent:instance.templateId==='parent-frame'}:{}),
+ };
 }
-function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
-  if(tool.status!=='ready')return false;
-  const f=resolvedTool(tool,s).field??'';
-  if(f.startsWith('workspace:'))return true;
-  if(f==='frame:size')return s.scope==='frame';
-  if(f.startsWith('framefx:'))return s.scope==='frame';
-  if(f==='instance:sync')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
-  if(f==='instance:parent-size')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&item.templateId==='parent-frame'&&isEngineerOwnedInstance(item));
-  if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
-    s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
-      (tool.id==='remove'||tool.id==='install'&&item.templateId==='parent-frame'));
-  if(f.startsWith('target:')){
-    if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
-    const instance=s.scope==='instance'?s.draftInstances.find(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)):undefined;
-    if(!instance)return false;
-    if(['target:xy','target:dimensions','target:anchors','target:offsetX','target:offsetY',
-      'target:anchorX','target:anchorY','target:width','target:height'].includes(f))return false;
-    const kind:TargetKind=instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text';
-    return targetToolSupported(kind,f);
-  }
-  if(f.startsWith('page:')){
-    if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
-    if(s.scope!=='frame')return false;
-    if(f==='page:list')return s.page==='portfolio'&&s.frameKey==='holding-view';
-    return isQuoteFrame(s);
-  }
-  if(s.scope==='target')return f==='session';
-  if(s.scope==='instance')return f==='session'||['instance-text','visible','titleFontSize','titleColor','padding'].includes(f);
-  return true;
-}
+const adapterFor=(tool:SkillTool,s:MaintenanceSession)=>resolveSkillAdapter(tool,adapterContext(s));
+const resolvedTool=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).tool;
+const toolUsable=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).status==='active';
 function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstance|undefined}){
   const maint=useMaintenance();
   const theme=useThemeRuntime();
@@ -272,9 +223,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   if(tool.field?.startsWith('workspace:')||['target:xy','target:dimensions','target:anchors'].includes(tool.field??''))
     return <SpatialToolDetails field={tool.field!} />;
   if(!toolUsable(tool,s))return <Text style={{fontSize:12,color:theme.palette.textSecondary,marginTop:8}}>
-    {tool.status!=='ready'?'完整技能已登記，但此工具尚未介接 Runtime。':
-      tool.field?.startsWith('page:')&&s.target?.kind==='quote-card'?'這是本頁共用設定。請點外層行情框架大扳手後使用，避免意外改動其他卡片。':
-      tool.field?.startsWith('target:')?'目前對象尚缺此工具的原生適配；此工具保留在完整技能樹。':'此工具尚未連接目前對象的操作介面；可先查看工具說明。'}
+    {adapterFor(tool,s).reason}
   </Text>;
   if(tool.field?.startsWith('target:')){
     const target=s.target??(s.scope==='instance'&&instance?{
