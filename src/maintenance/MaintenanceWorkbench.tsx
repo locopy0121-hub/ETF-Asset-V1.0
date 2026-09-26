@@ -24,31 +24,25 @@ import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
 import {InspectableTarget} from './InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
 
-// The real page above remains the live draft preview. Keep the dock short at rest:
-// six navigation entrances, then one section, then one skill and its tools.
+// Strict A -> B -> C -> D. A is the real page/frame/component selected by its
+// wrench; the toolbox NEVER introduces a grouping level between A and B.
+// Render one level at a time within the bounded dock. Real page = live draft preview.
 export function MaintenanceWorkbench(){
   const maintenance=useMaintenance();
   const theme=useThemeRuntime();
   const insets=useSafeAreaInsets();
   const session=maintenance.session;
-  const [activeSection,setActiveSection]=useState<string|null>(null);
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
-  const [showProtection,setShowProtection]=useState(false);
-  const [showInspector,setShowInspector]=useState(false);
-  const [showStats,setShowStats]=useState(false);
-  const [saving,setSaving]=useState(false);
   const [skillQuery,setSkillQuery]=useState('');
+  const [saving,setSaving]=useState(false);
   const skillScroller=useRef<ScrollView>(null);
   useEffect(()=>{
-    setActiveSection(null);
+    // Changing the actual A object must NEVER carry the prior object's B/C/D state.
     setOpenSkill(null);
     setOpenTool(null);
-    setShowProtection(false);
-    setShowInspector(false);
-    setShowStats(false);
     setSkillQuery('');
-  },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
+  },[session?.page,session?.frameKey,session?.scope,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
   const instance=session.draftInstances.find(item=>item.id===focused);
@@ -59,32 +53,23 @@ export function MaintenanceWorkbench(){
   const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
     '僅原始數據、來源及帳務計算鎖定；其他文字、框架、外觀及排版都可編輯。內建元件保留，僅工程師新增實例可刪除。';
-  // Keep ONE unchanged central catalog. Navigation affects presentation, not abilities.
   const displaySkills=COMPLETE_ENGINEER_SKILLS;
-  const catalogCount=skillCounts(displaySkills);
-  const catalogAudit=completeCatalogAudit();
-  const activeCount=displaySkills.flatMap(group=>group.tools).filter(tool=>toolUsable(tool,session)).length;
-  const matchingSkills=skillQuery.trim()?
-    displaySkills.map(skillItem=>skillMatches(skillItem,skillQuery)?skillItem:null).filter((item):item is (typeof displaySkills)[number]=>item!==null):[];
-  const currentSection=FULL_SKILL_SECTIONS.find(section=>section.id===activeSection);
-  const selectedSkill=displaySkills.find(item=>item.id===openSkill);
-  const goTop=()=>skillScroller.current?.scrollTo({y:0,animated:true});
-  const selectSection=(id:string)=>{
-    setActiveSection(id===activeSection?null:id);
-    setOpenSkill(null);
-    setOpenTool(null);
-    goTop();
-  };
-  const selectSkill=(id:string)=>{
-    setOpenSkill(id);
-    setOpenTool(null);
-    goTop();
-  };
-  const jumpToSkill=(id:string)=>{
-    setActiveSection(FULL_SKILL_SECTIONS.find(section=>section.ids.some(category=>category===id))?.id??null);
-    selectSkill(id);
-  };
-  const backToCategories=()=>{setOpenSkill(null);setOpenTool(null);goTop();};
+  const matchingSkills=displaySkills.filter(skillItem=>skillMatches(skillItem,skillQuery));
+  const selectedSkill=displaySkills.find(skill=>skill.id===openSkill);
+  const selectedTool=selectedSkill?.tools.find(tool=>tool.id===openTool);
+  const currentA=selectedTarget?.label??instance?.text??session.title;
+  const goTop=()=>skillScroller.current?.scrollTo({y:0,animated:false});
+  const jumpToSkill=(id:string)=>{setOpenSkill(id);setOpenTool(null);goTop();};
+  const selectTool=(id:string)=>{setOpenTool(id);goTop();};
+  const backToB=()=>{setOpenSkill(null);setOpenTool(null);goTop();};
+  const backToC=()=>{setOpenTool(null);goTop();};
+  const showLock=()=>Alert.alert('A｜資料保護',
+    lockedDescription+
+    (protectedProperties.length?'\n\n'+protectedProperties.map(row=>row.name+'：'+row.value+' 🔒').join('\n'):'')+
+    (instance?canDeleteFocused?'\n\n此新增元件可在技能樹中安全移除。':'\n\n內建元件不可刪除。':''));
+  const showInspector=()=>Alert.alert('A｜目前元件',
+    selectedTarget?selectedTarget.properties.map(row=>row.name+'：'+row.value+(row.readOnly?' 🔒':'')).join('\n'):
+      '目前編輯：'+currentA);
   const apply=async()=>{
     if(saving)return;
     setSaving(true);
@@ -96,132 +81,67 @@ export function MaintenanceWorkbench(){
   return <View style={[styles.dock,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.primary,paddingBottom:Math.max(12,insets.bottom)}]}>
     <View style={styles.head}>
       <View style={{flex:1}}>
-        <Text style={[styles.headline,{color:theme.palette.text}]} numberOfLines={1}>🔧 {selectedTarget?.label??session.title}</Text>
-        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>真實畫面即時預覽 · 套用後儲存</Text>
+        <Text style={[styles.headline,{color:theme.palette.text}]} numberOfLines={1}>A｜{currentA}</Text>
+        <Text style={{color:theme.palette.textSecondary,fontSize:11}} numberOfLines={1}>
+          {selectedTool?'B '+selectedSkill?.label+' › C '+selectedTool.label+' › D 編輯':
+            selectedSkill?'B '+selectedSkill.label+' › C 選工具':'B｜選擇技能（全部 30 類）'}
+        </Text>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="資料鎖定說明" onPress={showLock} style={{padding:6}}>
+        <Text style={{color:theme.palette.primary,fontSize:12,fontWeight:'800'}}>🔒</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}>
+        <Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text>
+      </Pressable>
     </View>
     <ScrollView ref={skillScroller} style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-      <Pressable accessibilityRole="button" accessibilityLabel="查看唯讀保護詳情" accessibilityState={{expanded:showProtection}}
-        onPress={()=>setShowProtection(current=>!current)}
-        style={[styles.compactRow,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted}]}>
-        <Text style={{flex:1,color:theme.palette.text,fontSize:12,fontWeight:'800'}}>🔒 僅原始數據、來源及帳務計算鎖定</Text>
-        <Text style={{color:theme.palette.primary,fontSize:12}}>{showProtection?'收合 ⌃':'說明 ›'}</Text>
-      </Pressable>
-      {showProtection?<View accessibilityRole="summary" style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginTop:0,marginBottom:8}]}>
-        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{lockedDescription}</Text>
-        <Text style={[styles.small,{color:theme.palette.text}]}>目前對象：{selectedTarget?.label??instance?.text??session.title}</Text>
-        {protectedProperties.map(row=><View key={row.name} style={{flexDirection:'row',justifyContent:'space-between',gap:8,marginTop:4}}>
-          <Text style={[styles.small,{color:theme.palette.textSecondary,flex:1}]}>{row.name}</Text>
-          <Text selectable style={[styles.small,{color:theme.palette.text,flex:1,textAlign:'right'}]}>{row.value} 🔒</Text>
-        </View>)}
-        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>
-          {instance?canDeleteFocused?'新增元件可確認後移除':'內建或不明來源元件不可刪除':'內建元件保留，工程師新增實例才可刪除。'}
-        </Text>
-      </View>:null}
-      {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>已選 {pendingSelection.label}，點上方扳手編輯。</Text>:null}
-      {(selectedTarget||session.scope==='instance'&&instance)?<View style={{marginTop:7,marginBottom:7}}>
-        <View style={[styles.compactRow,{borderColor:theme.palette.border}]}>
-          <Text style={{flex:1,color:theme.palette.text,fontWeight:'700',fontSize:12}}>同類元件外觀同步</Text>
-          <Switch accessibilityLabel="同步同類元件外觀" value={session.syncSameKind} onValueChange={maintenance.setSyncSameKind}/>
-        </View>
-        {session.syncSameKind?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap',paddingTop:6}}>
-          {([['frame','同框架'],['page','本頁'],['app','全 App']] as const).map(([scope,label])=><Pressable key={scope}
-            accessibilityRole="button" accessibilityLabel={'同步範圍 '+label}
-            onPress={()=>maintenance.setSyncScope(scope)}
-            style={[styles.choice,{borderColor:theme.palette.primary,
-              backgroundColor:session.syncScope===scope?theme.palette.primary:theme.palette.surface}]}>
-            <Text style={{color:session.syncScope===scope?'#FFFFFF':theme.palette.text,fontSize:12}}>{label}</Text>
-          </Pressable>)}
-        </View>:null}
-      </View>:null}
-      {selectedTarget?<View style={{marginBottom:5}}>
-        <Pressable accessibilityRole="button" accessibilityLabel="目前元件詳細屬性" accessibilityState={{expanded:showInspector}}
-          onPress={()=>setShowInspector(current=>!current)}
-          style={[styles.compactRow,{borderColor:theme.palette.border}]}>
-          <Text style={{color:theme.palette.text,fontSize:12,flex:1}}>目前元件：{selectedTarget.label}</Text>
-          <Text style={{color:theme.palette.primary,fontSize:12}}>{showInspector?'收合 ⌃':'檢視 ›'}</Text>
-        </Pressable>
-        {showInspector?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted,marginTop:0}]}>
-          {selectedTarget.properties.map(row=><View key={row.name} style={{flexDirection:'row',justifyContent:'space-between',gap:8,marginTop:5}}>
-            <Text style={[styles.small,{color:theme.palette.textSecondary,flex:1}]}>{row.name}</Text>
-            <Text style={[styles.small,{color:theme.palette.text,textAlign:'right',flex:1}]} numberOfLines={2}>{row.value}{row.readOnly?' 🔒':''}</Text>
-          </View>)}
-        </View>:null}
-      </View>:null}
-      <View style={{marginTop:6,marginBottom:8}}>
-        <TextInput accessibilityLabel="搜尋維護工程師技能" value={skillQuery}
-          onChangeText={value=>{setSkillQuery(value);setOpenSkill(null);setOpenTool(null);goTop();}}
-          placeholder="搜尋全部技能，例如：漸層、框架、字型…"
-          placeholderTextColor={theme.palette.textSecondary}
-          style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>
-        <Pressable accessibilityRole="button" accessibilityLabel="展開完整技能統計"
-          accessibilityState={{expanded:showStats}} onPress={()=>setShowStats(current=>!current)}
-          style={{paddingVertical:5,flexDirection:'row',justifyContent:'space-between'}}>
-          <Text style={[styles.small,{color:theme.palette.textSecondary}]}>30 類 · {catalogCount.total} 項技能 · 當前可操作 {activeCount} 項</Text>
-          <Text style={[styles.small,{color:theme.palette.primary}]}>{showStats?'收合 ⌃':'統計 ›'}</Text>
-        </Pressable>
-        {showStats?<Text style={[styles.small,{color:theme.palette.textSecondary}]}>
-          {catalogCount.ready} 項已宣告接入（非實機 PASS），{catalogCount.pending} 項待接線；既有 {catalogAudit.existing} 項全部保留。工具的適配狀態會顯示在細節。
-        </Text>:null}
-      </View>
-      {selectedSkill?<View>
-        <Pressable accessibilityRole="button" accessibilityLabel="返回技能分類" onPress={backToCategories}
+      {pendingSelection&&session.scope!=='target'?<Text style={[styles.hint,{color:theme.palette.primary}]}>
+        已選取 {pendingSelection.label}；點選原位扳手，即切換 A。
+      </Text>:null}
+      {selectedTool?<View>
+        <Pressable accessibilityRole="button" accessibilityLabel="返回 C 工具清單" onPress={backToC}
           style={[styles.compactRow,{borderColor:theme.palette.border,marginBottom:8}]}>
-          <Text style={{color:theme.palette.primary,fontSize:12}}>‹ 返回分類</Text>
-          <Text style={{flex:1,textAlign:'right',color:theme.palette.text,fontWeight:'800'}} numberOfLines={1}>{selectedSkill.label}</Text>
+          <Text style={{color:theme.palette.primary,fontSize:12}}>‹ C｜返回工具</Text>
+          <Text style={{color:theme.palette.text,flex:1,textAlign:'right',fontWeight:'800'}} numberOfLines={1}>D｜{selectedTool.label}</Text>
         </Pressable>
-        <Text style={[styles.small,{color:theme.palette.textSecondary,marginBottom:6}]}>{selectedSkill.description}</Text>
-        {selectedSkill.tools.map(tool=><View key={tool.id} style={{marginBottom:6}}>
-          <Pressable accessibilityRole="button" accessibilityState={{expanded:openTool===tool.id}}
-            onPress={()=>setOpenTool(current=>current===tool.id?null:tool.id)} style={styles.toolRow}>
-            <Text style={{flex:1,color:theme.palette.text,fontSize:13,fontWeight:'600'}}>{tool.label}</Text>
-            <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>
-              {tool.status!=='ready'?'待實作 ›':toolUsable(tool,session)?openTool===tool.id?'收合 ⌃':'編輯 ›':'待適配 ›'}
-            </Text>
-          </Pressable>
-          {openTool===tool.id?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted}]}>
-            <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{tool.detail}</Text>
-            <ScopedToolDetails tool={tool} instance={instance}/>
-          </View>:null}
-        </View>)}
-      </View>:skillQuery.trim()?<View style={{gap:6}}>
-        <Text style={[styles.label,{color:theme.palette.text}]}>搜尋結果 · {matchingSkills.length} 類</Text>
-        {matchingSkills.map(skillItem=><Pressable key={skillItem.id} accessibilityRole="button"
-          accessibilityLabel={'前往 '+skillItem.label} onPress={()=>jumpToSkill(skillItem.id)}
-          style={[styles.compactRow,{borderColor:theme.palette.border}]}>
-          <Text style={{color:theme.palette.text,flex:1,fontSize:12}}>{skillItem.label}</Text>
-          <Text style={{color:theme.palette.primary,fontSize:12}}>開啟 ›</Text>
+        <Text style={[styles.small,{color:theme.palette.textSecondary,marginBottom:7}]}>{selectedTool.detail}</Text>
+        <ScopedToolDetails tool={selectedTool} instance={instance}/>
+      </View>:selectedSkill?<View>
+        <Pressable accessibilityRole="button" accessibilityLabel="返回 B 全部技能" onPress={backToB}
+          style={[styles.compactRow,{borderColor:theme.palette.border,marginBottom:8}]}>
+          <Text style={{color:theme.palette.primary,fontSize:12}}>‹ B｜全部技能</Text>
+          <Text style={{color:theme.palette.text,flex:1,textAlign:'right',fontWeight:'800'}} numberOfLines={1}>C｜{selectedSkill.label}</Text>
+        </Pressable>
+        {selectedSkill.tools.map(tool=><Pressable key={tool.id} accessibilityRole="button"
+          accessibilityLabel={'編輯 '+tool.label} onPress={()=>selectTool(tool.id)}
+          style={[styles.compactRow,{borderColor:theme.palette.border,marginBottom:6,minHeight:46}]}>
+          <Text style={{flex:1,fontSize:13,fontWeight:'600',color:theme.palette.text}}>{tool.label}</Text>
+          <Text style={{fontSize:11,color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary}}>
+            {tool.status!=='ready'?'待實作 ›':toolUsable(tool,session)?'編輯 ›':'待適配 ›'}
+          </Text>
         </Pressable>)}
-        {!matchingSkills.length?<Text style={[styles.hint,{color:theme.palette.textSecondary}]}>沒有符合的技能，請換個關鍵字。</Text>:null}
-      </View>:currentSection?<View style={{gap:7}}>
-        <Pressable accessibilityRole="button" accessibilityLabel="返回六大工具分類"
-          onPress={()=>selectSection(activeSection!)}
-          style={[styles.compactRow,{borderColor:theme.palette.border}]}>
-          <Text style={{color:theme.palette.primary,fontSize:12}}>‹ 六大分類</Text>
-          <Text style={{color:theme.palette.text,fontWeight:'800',flex:1,textAlign:'right'}} numberOfLines={1}>{currentSection.label}</Text>
-        </Pressable>
-        {currentSection.ids.map(id=>{
-          const skill=displaySkills.find(item=>item.id===id);
-          if(!skill)return null;
-          const available=skill.tools.filter(tool=>toolUsable(tool,session)).length;
-          return <Pressable key={id} accessibilityRole="button" accessibilityLabel={'前往 '+skill.label}
-            onPress={()=>jumpToSkill(id)}
-            style={[styles.compactRow,{borderColor:theme.palette.border,paddingVertical:12}]}>
-            <Text style={{color:theme.palette.text,flex:1,fontWeight:'700'}}>{skill.label}</Text>
-            <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{available}/{skill.tools.length} ›</Text>
-          </Pressable>;
-        })}
-      </View>:<View style={{gap:7}}>
-        <Text style={[styles.label,{color:theme.palette.text,marginBottom:2}]}>選擇工具分類</Text>
-        <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:8}}>
-          {FULL_SKILL_SECTIONS.map(section=><Pressable key={section.id} accessibilityRole="button"
-            accessibilityLabel={'開啟 '+section.label} onPress={()=>selectSection(section.id)}
-            style={[styles.sectionCard,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted}]}>
-            <Text style={{fontWeight:'800',fontSize:13,color:theme.palette.text}}>{section.label}</Text>
-            <Text style={{fontSize:11,color:theme.palette.textSecondary,marginTop:5}}>{section.ids.length} 類技能 ›</Text>
+      </View>:<View>
+        <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:7}}>
+          <TextInput accessibilityLabel="搜尋 B 層全部技能" value={skillQuery} onChangeText={setSkillQuery}
+            placeholder="B｜搜尋全部技能，例如漸層、文字…"
+            placeholderTextColor={theme.palette.textSecondary}
+            style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text,flex:1}]}/>
+          <Pressable accessibilityRole="button" accessibilityLabel="檢視當前 A 元件屬性" onPress={showInspector}
+            style={{paddingHorizontal:6,paddingVertical:8}}>
+            <Text style={{color:theme.palette.primary,fontSize:12}}>屬性 ⓘ</Text>
+          </Pressable>
+        </View>
+        <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:6}}>
+          {matchingSkills.map(skillItem=><Pressable key={skillItem.id} accessibilityRole="button"
+            accessibilityLabel={'B '+skillItem.label} onPress={()=>jumpToSkill(skillItem.id)}
+            style={[styles.bSkillCard,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted}]}>
+            <Text style={{color:theme.palette.primary,fontSize:10,fontWeight:'800'}}>{skillItem.id}</Text>
+            <Text style={{color:theme.palette.text,fontSize:12,fontWeight:'700',textAlign:'center'}} numberOfLines={2}>
+              {skillItem.label.replace(/^\d+｜/,'')}
+            </Text>
           </Pressable>)}
         </View>
+        {!matchingSkills.length?<Text style={[styles.hint,{color:theme.palette.textSecondary}]}>沒有符合的技能；全部工具仍保留於中央庫。</Text>:null}
       </View>}
       <View style={{height:10}}/>
     </ScrollView>
@@ -618,7 +538,7 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
 const styles=StyleSheet.create({
   dock:{height:'47%',minHeight:245,borderTopWidth:2,paddingHorizontal:12,paddingTop:8},
   compactRow:{borderWidth:1,borderRadius:9,paddingHorizontal:10,paddingVertical:8,flexDirection:'row',alignItems:'center',gap:8},
-  sectionCard:{width:'48%',minHeight:76,borderWidth:1,borderRadius:10,padding:11,justifyContent:'center'},
+  bSkillCard:{width:'32%',minHeight:60,borderWidth:1,borderRadius:9,paddingVertical:7,paddingHorizontal:4,justifyContent:'center',alignItems:'center',gap:3},
   head:{flexDirection:'row',alignItems:'center',gap:12,paddingBottom:8},
   headline:{fontSize:14,fontWeight:'900'},hint:{fontSize:11,lineHeight:17,marginBottom:8},
   scroller:{flex:1},group:{borderWidth:1,borderRadius:9,marginBottom:6,overflow:'hidden'},
