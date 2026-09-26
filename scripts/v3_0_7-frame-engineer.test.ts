@@ -60,7 +60,8 @@ assert.equal(ENGINEER_SKILLS.length,17,'one and only one global engineer skill t
 assert.ok(skills);
 assert.ok(skills!.tools.filter(t=>t.status==='ready').length>=38);
 assert.equal(skills!.tools.find(t=>t.id==='fx-shadow-spread')?.status,'ready');
-assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=7,'remaining frame-specific adapters stay explicit');
+assert.equal(skills!.tools.find(t=>t.id==='fx-border-grad')?.status,'ready');
+assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=6,'remaining frame-specific adapters stay explicit');
 assert.ok(skills!.tools.some(t=>t.field==='framefx:gradientAngle'&&t.status==='ready'),
  'angle and outer glow each wire an existing pending frame skill');
 for(const field of ['backgroundMode','gradientEndColor','gradientDirection','borderStyle','borderTop',
@@ -68,7 +69,7 @@ for(const field of ['backgroundMode','gradientEndColor','gradientDirection','bor
   'glowColor','glowOpacity','glowPulse','paddingTop','contentGap','maxWidth']){
   assert.ok(skills!.tools.some(t=>t.field==='framefx:'+field&&t.status==='ready'),field);
 }
-for(const name of ['毛玻璃','跨頁','雙層','手勢']){
+for(const name of ['毛玻璃','跨頁','手勢']){
   assert.ok(ENGINEER_SKILLS.some(g=>g.tools.some(t=>t.status==='adapter-required'&&
     (t.label+t.detail).includes(name))),name);
 }
@@ -92,7 +93,7 @@ assert.ok(model.includes('effects:normalizeFrameEffects(candidate.effects,DEFAUL
 assert.ok(runtime.includes('cancel:()=>{setSession(null);setSelection(null);}'));
 assert.ok(runtime.includes('editor.replacePageConfig(normalized)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.27'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.28'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(30000+Number(pkg.version.split('.')[2])));
 assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
