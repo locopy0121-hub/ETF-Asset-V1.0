@@ -49,6 +49,10 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
  if(tool.status!=='ready')return {status:'planned',tool,reason:'已納入中央完整技能表，尚未實作或完成原生適配。'};
  const original=tool.field??'';
  if(!original)return pending(tool,'此工具缺少實際操作介面。');
+ if(original==='maintenance:tokens')return ctx.scope==='frame'||ctx.scope==='target'||ctx.scope==='instance'&&ctx.instanceOwned?
+   active(tool,'具名共享樣式槽、獨立持久化、經原生能力過濾的當前 A 局部預覽及明確套用。'):
+   pending(tool,'請先選取真實框架、原生元件或工程師新增元件。');
+ if(original==='maintenance:favorites')return active(tool,'每個 C 工具可收藏、最近使用及跨屬性捷徑；不寫入業務資料。');
  if(original==='maintenance:batch')return ctx.scope==='target'||ctx.scope==='instance'&&ctx.instanceOwned?
    active(tool,'實際元件註冊、屬性白名單、多選差異預覽及草稿批次寫入。'):
    pending(tool,'請先在真實頁面選取一個原生元件或工程師新增元件作為樣式來源。');
