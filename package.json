@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.12",
+  "version": "3.0.13",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_12 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_0_13 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -159,7 +159,9 @@
     "test:engineer-v311": "tsx scripts/v3_0_11-engineer-materials.test.ts",
     "test:v3_0_11": "npm run test:v3_0_10 && npm run test:engineer-v311",
     "test:parent-sync-v312": "tsx scripts/v3_0_12-parent-sync.test.ts",
-    "test:v3_0_12": "npm run test:v3_0_11 && npm run test:parent-sync-v312"
+    "test:v3_0_12": "npm run test:v3_0_11 && npm run test:parent-sync-v312",
+    "test:instance-sync-v313": "tsx scripts/v3_0_13-instance-sync.test.ts",
+    "test:v3_0_13": "npm run test:v3_0_12 && npm run test:instance-sync-v313"
   },
   "dependencies": {
     "expo": "~57.0.21",
