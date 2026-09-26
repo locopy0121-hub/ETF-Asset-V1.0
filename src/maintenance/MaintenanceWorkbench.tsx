@@ -475,9 +475,10 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
           labelText:item.text,backgroundColor:theme.palette.surface,
           borderColor:theme.palette.border,borderWidth:1,borderRadius:14,padding:10},
       };
-      return <View key={item.id} style={{marginTop:item.marginTop,position:'relative'}}>
+      return <View key={item.id} style={{marginTop:item.marginTop,width:item.frameWidth??320,
+        maxWidth:'100%',position:'relative'}}>
         <InspectableTarget frame={frame} target={target}>{(appearance,customized,override)=><View style={{
-          width:item.frameWidth??320,height:item.frameHeight??240,maxWidth:'100%',
+          width:'100%',height:item.frameHeight??240,
           borderWidth:customized?appearance.borderWidth:1,
           borderStyle:customized?appearance.borderStyle:'solid',
           borderRadius:customized?appearance.borderRadius:14,
@@ -493,7 +494,7 @@ export function InstalledFrameComponents({instances,frame,onWrench,enabled,activ
               ...(override.fontFamily&&appearance.fontFamily!=='system'?{fontFamily:appearance.fontFamily}:{}),
               ...(override.fontStyle?{fontStyle:appearance.fontStyle}:{}),
               ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
-            }}>{item.text}</Text>
+            }}>{override.labelText!==undefined?appearance.labelText:item.text}</Text>
             {enabled?<Pressable accessibilityLabel="編輯新增父框架及新增子元件" accessibilityRole="button"
               onPress={()=>onWrench(item.id)} style={styles.miniWrench}><Text style={{fontSize:15}}>🔧</Text></Pressable>:null}
           </View>
