@@ -26,8 +26,8 @@ assert.ok(rt.includes("syncScope:'frame'")&&rt.includes("session.syncScope==='ap
 assert.ok(rt.includes("sharedKey(page,frameKey,kind,'frame')"),'same-kind frame style should resolve on every native target');
 assert.ok(VISUAL_TARGET_KEYS.includes('shadowColor')&&VISUAL_TARGET_KEYS.includes('backgroundOpacity'));
 assert.ok(!VISUAL_TARGET_KEYS.includes('labelText' as never)&&!VISUAL_TARGET_KEYS.includes('offsetX' as never),'content and position must never propagate');
-assert.ok(wb.includes('同類元件外觀同步')&&wb.includes('maintenance.setSyncSameKind'));
-assert.ok(wb.includes("['frame','同框架']")&&wb.includes("['app','全 App']")&&wb.includes('maintenance.setSyncScope'));
+assert.ok(wb.includes("if(tool.field==='instance:sync')")&&wb.includes('maint.setSyncSameKind'));
+assert.ok(wb.includes("['frame','同框架']")&&wb.includes("['app','全 App']")&&wb.includes('maint.setSyncScope'));
 assert.ok(wb.includes("item.templateId==='parent-frame'")&&wb.includes('frameHeight'));
 assert.ok(wb.includes("overflow:'visible'"),'new parent must not auto-scroll children');
 const card=read('src/components/FrameCard.tsx');
@@ -35,5 +35,5 @@ assert.ok(!card.includes('<ScrollView nestedScrollEnabled'),'existing parent res
 assert.ok(inspect.includes('target.id,target.kind'));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(path).length>0);
 const pkg=JSON.parse(read('package.json'));const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.15');assert.equal(app.expo.version,'3.0.15');assert.equal(app.expo.android.versionCode,30015);
-console.log('V3.0.15 parent frame and same-kind style synchronization: PASS');
+assert.equal(pkg.version,'3.0.16');assert.equal(app.expo.version,'3.0.16');assert.equal(app.expo.android.versionCode,30016);
+console.log('V3.0.16 parent frame and same-kind style synchronization: PASS');

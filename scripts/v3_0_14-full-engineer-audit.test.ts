@@ -68,8 +68,8 @@ assert.deepEqual(unsafe,{fontSize:22,backgroundOpacity:.2},
 
 const wb=readFileSync('src/maintenance/MaintenanceWorkbench.tsx','utf8');
 const rt=readFileSync('src/maintenance/MaintenanceRuntime.tsx','utf8');
-assert.ok(wb.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;')&&
- wb.includes('displaySkills.map(skillItem=>'),'every one of 30 classes remains visible for every target');
+assert.ok(wb.includes('searchAbProperties(query)')&&
+ wb.includes('visibleB.map(group=><Pressable'),'all 184 central tools remain available through property B');
 assert.ok(wb.includes('resolveSkillAdapter(tool,adapterContext(s))'),'one adapter resolution path used in actual UI');
 assert.ok(!wb.includes('group.tools.filter(tool=>toolUsable(tool,session))'));
 assert.ok(!rt.includes("current.draft.behavior!=='locked'"),

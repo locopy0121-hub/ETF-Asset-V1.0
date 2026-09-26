@@ -48,9 +48,9 @@ assert.ok(runtime.includes("isEngineerOwnedInstance(victim)"),
 assert.ok(runtime.includes('removeEngineerOwnedInstance(current.draftInstances,id)'));
 assert.ok(runtime.includes("item.createdBy:item.createdBy")||runtime.includes('createdBy:item.createdBy'),
   'patchInstance cannot overwrite origin identity');
-assert.ok(toolbox.includes('🔒 僅原始數據、來源及帳務計算鎖定'),
+assert.ok(toolbox.includes('accessibilityLabel="查看資料保護"'),
   'locked real data is visible before A/B/C/D controls');
-assert.ok(toolbox.indexOf('🔒 僅原始數據、來源及帳務計算鎖定')<toolbox.indexOf('pendingSelection&&'),
+assert.ok(toolbox.indexOf('const showLock=()=>Alert.alert')<toolbox.indexOf('const apply=async'),
   'protected information must be first in the workbench');
 assert.ok(toolbox.includes("style:'destructive'")&&toolbox.includes("onPress:()=>maint.remove(item.id)"));
 assert.ok(toolbox.includes('owned=s.draftInstances.filter(item=>isEngineerOwnedInstance(item)'));
@@ -63,7 +63,7 @@ assert.ok(runtime.indexOf('await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY')<
   runtime.indexOf('editor.replacePageConfig(normalized)'));
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15'].includes(pkg.version),'V3.0.9 regression runs unchanged on newer compatible versions');
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16'].includes(pkg.version),'V3.0.9 regression runs unchanged on newer compatible versions');
 assert.equal(app.expo.version,pkg.version);
 const identity=30000+Number(pkg.version.split('.')[2]);
 assert.equal(app.expo.android.versionCode,identity);

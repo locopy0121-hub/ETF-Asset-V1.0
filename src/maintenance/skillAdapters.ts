@@ -65,8 +65,8 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
  if(original==='frame:size')return ctx.scope==='frame'?active(tool,'框架實際寬高。'):pending(tool,'子框架尺寸需接入原生布局量測。');
  if(original.startsWith('framefx:'))return ctx.scope==='frame'?active(tool,'目前框架特效。'):
    pending(tool,'目前元件尚缺等效材質渲染器；中央工具仍完整保留。');
- if(original==='instance:sync')return ctx.scope==='instance'&&ctx.instanceOwned?
-   active(tool,'工程師新增元件的明確同步範圍。'):pending(tool,'請先使用原生元件的同類外觀同步面板。');
+ if(original==='instance:sync')return ctx.scope==='target'||ctx.scope==='instance'&&ctx.instanceOwned?
+   active(tool,'同類外觀同步：本框架預設，跨頁與全 App 僅明確選擇。'):pending(tool,'請選取一個真實元件或工程師新增元件。');
  if(original==='instance:parent-size')return ctx.scope==='instance'&&ctx.instanceOwned&&ctx.instanceParent?
    active(tool,'新增父框架獨立寬高。'):pending(tool,'此工具須選取工程師新增父框架。');
  if(original==='instances')return ctx.scope==='frame'||ctx.scope==='instance'&&ctx.instanceOwned&&
