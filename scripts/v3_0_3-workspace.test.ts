@@ -29,7 +29,8 @@ assert.ok(!inspect.includes("已選取："),'floating caption obscured financial
 const dock=read('src/maintenance/MaintenanceWorkbench.tsx');
 assert.ok(dock.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;'),'one global skill tree remains available');
 assert.ok(!dock.includes('group.tools.filter(tool=>toolUsable(tool,session))'),'never hide tools by current target');
-assert.ok(dock.includes('中央完整技能樹'),'show all skills and report adapter status');
+assert.ok(dock.includes('FULL_SKILL_SECTIONS.map')&&dock.includes('selectedSkill.tools.map(tool=>'),
+  'all skills remain reachable through compact category navigation and show adapter status');
 const ai=read('src/components/AiQuestionBox.tsx');
 for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:composer'])
   assert.ok(ai.includes(id),'missing native AI child adapter '+id);
