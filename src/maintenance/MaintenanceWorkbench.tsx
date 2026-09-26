@@ -183,9 +183,40 @@ export function MaintenanceWorkbench(){
 }
 
 const isQuoteFrame=(s:MaintenanceSession)=>s.frameKey==='holding-quotes'||s.frameKey==='holding-view';
+// The wrench selects the edit target, not a restricted toolbox. Reuse native material adapters
+// on inner targets where frame controls have a semantically identical target field.
+const FRAME_TO_TARGET:Readonly<Record<string,string>>={
+  borderWidth:'target:borderWidth',borderRadius:'target:borderRadius',
+  backgroundOpacity:'target:backgroundOpacity',backgroundColor:'target:backgroundColor',
+  borderColor:'target:borderColor',shadowEnabled:'target:shadowEnabled',
+  shadowOpacity:'target:shadowOpacity',
+  'framefx:backgroundMode':'target:backgroundMode',
+  'framefx:gradientEndColor':'target:gradientEndColor',
+  'framefx:gradientDirection':'target:gradientDirection',
+  'framefx:gradientMidEnabled':'target:gradientMidEnabled',
+  'framefx:gradientMidColor':'target:gradientMidColor',
+  'framefx:gradientMidStop':'target:gradientMidStop',
+  'framefx:borderStyle':'target:borderStyle',
+  'framefx:shadowColor':'target:shadowColor',
+  'framefx:shadowBlur':'target:shadowBlur',
+  'framefx:shadowOffsetX':'target:shadowOffsetX',
+  'framefx:shadowOffsetY':'target:shadowOffsetY',
+  'framefx:glowEnabled':'target:glowEnabled',
+  'framefx:glowColor':'target:glowColor',
+  'framefx:glowOpacity':'target:glowOpacity',
+  'framefx:glowWidth':'target:glowWidth',
+  'framefx:paddingTop':'target:padding',
+  'framefx:marginVertical':'target:marginVertical',
+};
+function resolvedTool(tool:SkillTool,s:MaintenanceSession):SkillTool {
+  const mapped=FRAME_TO_TARGET[tool.field??''];
+  const kind:TargetKind|undefined=s.scope==='target'?s.target?.kind:
+    s.scope==='instance'?(s.draftInstances.find(item=>item.id===s.instanceId)?.templateId==='parent-frame'?'frame':'text'):undefined;
+  return mapped&&kind&&targetToolSupported(kind,mapped)?{...tool,field:mapped}:tool;
+}
 function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(tool.status!=='ready')return false;
-  const f=tool.field??'';
+  const f=resolvedTool(tool,s).field??'';
   if(f.startsWith('workspace:'))return true;
   if(f==='frame:size')return s.scope==='frame';
   if(f.startsWith('framefx:'))return s.scope==='frame';
@@ -218,6 +249,8 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  const activeTool=resolvedTool(tool,s);
+  if(activeTool!==tool)return <ScopedToolDetails tool={activeTool} instance={instance}/>;
   if(tool.field==='instance:sync')return <View style={{gap:8,marginTop:8}}>
     <Text style={{fontSize:12,color:theme.palette.textSecondary}}>共用樣式只更新同類元件外觀，不連動內容、位置、尺寸或帳務資料。</Text>
     <Switch value={s.syncSameKind} onValueChange={maint.setSyncSameKind}/>
