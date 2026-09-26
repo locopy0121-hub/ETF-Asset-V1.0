@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.29 原生框架進場動畫不得改動帳務或殘留位移
+進場動畫只用 Animated.View 的 native-driver transform，不能更改 FrameEditor 寬高或金融來源；預設關閉，降低動態啟用時停止並 setValue(1) 恢復原位。三種模式為滑入／縮放／旋轉，草稿取消與切換 A 必須觸發動畫清理，不得讓舊動畫流入別的框架。新增 ready 工具後同步更新 184 中央矩陣、歷版 pending 門檻、原生控制與真機待驗分級。
+
 ## 2026-09-27｜V3.0.28 原生雙層／漸層邊框必須確實渲染
 雙層／厚度方向八階漸層邊框必須在真實 FrameCard 實際原生 View 繪製，不得只把 ready 標籤加入中央技能或僅顯示開關。兩組 Color Picker 各自綁定獨立損益色，限制厚度/透明度，預設 OFF，保持 shadow spread/glow/blink/marquee 原功能及不可變帳務。上一版 fx-shadow-spread 由 pending 轉 ready 後，舊 frame-engineer 回歸中的 pending 名單和數量必須一起檢查，避免品質 Gate 阻斷 APK。
 

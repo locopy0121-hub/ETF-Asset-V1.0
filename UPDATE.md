@@ -1,3 +1,9 @@
+## V3.0.29｜2026-09-27｜原生框架進場動畫：滑入／縮放／旋轉（GO）
+來源 V3.0.28 PR #75 HEAD `0fb8217144c238fb89f3bf240f89aaa124c228f3`，Actions #1163（Run 36262943633）quality/backend/QA APK PASS，Artifact #10913147873；Android versionCode 30028，APK SHA256 8ddecc3ca5ee299c6de3c9d4524a08af4705fee22ec829c13d47317bb062a298。immutable 備份 `backup-v3.0.28-20260927-pre-v3.0.29` 已對應成功 HEAD。工作分支 `go-v3.0.29-20260927-native-entrance`；3.0.29／Android+iOS 30029。
+本輪接入既存待原生適配 `fx-animation-advanced`：A 真實框架→B 特效與動態→C 原生進場（滑入／縮放／旋轉）。獨立開關，進場時間 200–2500ms、距離 8–120dp、起始縮放 0.65–1、旋轉 5–90°；使用真實原生 Animated.View、useNativeDriver、Easing，單次進場後回復原始位置尺寸。系統降低動態值與事件即時停止並還原靜態，預設 OFF；局部草稿即時預覽、取消恢復、正式套用與既有 SAF 備份沿用。動畫只改畫面 transform，不重算或保存金融數據；可能的手機實機效果需另外驗收。
+唯一中央 184 項保留，宣告 **155 已接線／29 待原生適配**，不等於 155 項真機 PASS。完整歷版測試、TypeScript、後端、原生 QA ZIP/SHA/badging/Artifact 分離驗證；finance/actual_fee/tax/行情源/備份系統完全未修改。此處為更新計畫，QA APK 完成以 GitHub Actions 實際為準。
+
+
 ## V3.0.28｜2026-09-27｜真實 FrameCard 雙層／厚度漸層邊框（GO）
 來源 V3.0.27 PR #74 已驗證 APK HEAD `654c8872bda4ec8f8dc7b6484c80987d82b7ed31`，Actions #1155（Run 36262053387）品質/後端/QA APK PASS，Artifact #10912224746，SHA256 68fa4f3efeb251a7c7ad1157e7e5c013d88659bf12d7b5474b1e1b19293034e6，versionCode 30027。immutable 備份 `backup-v3.0.27-20260927-pre-v3.0.28` 與成功 HEAD 相符。工作分支 `go-v3.0.28-20260927-border-gradient`，3.0.28／Android+iOS 30028。
 本版完成唯一中央既存 `fx-border-grad` 真實原生 FrameCard 適配：A 真實框架→ B 邊框→ C 獨立雙層或八階厚度方向漸層邊框。兩組獨立系統 Color Picker 與損益色、厚度 1–12 dp、透明度 0–80%；非互動原生 View 輪廓繪製在框架邊緣，不縮小內容或令財務數值褪色。兩模式清楚區分雙層顏色與厚度方向內插，並非環繞框架角度漸層；原地草稿預覽、取消與正式套用沿用安全 FrameEffects/SAF 備份。
