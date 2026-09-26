@@ -21,7 +21,7 @@ assert.equal(frame.top,(240-frame.side)/2);
 assert.equal(sampleFrameGradient('#000000','#888888','#FFFFFF',0.5,0.5,true),'#888888');
 const catalog=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools),audit=completeCatalogAudit();
 assert.equal(catalog.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,151);assert.equal(audit.pending,33);
+assert.equal(audit.readyDeclared,152);assert.equal(audit.pending,32);
 const tool=catalog.find(item=>item.id==='fx-multi-gradient')!;
 assert.equal(tool.status,'ready');assert.equal(tool.field,'framefx:gradientAngle');
 assert.equal(resolveSkillAdapter(tool,{scope:'frame',page:'home',frameKey:'asset-dashboard'}).status,'active');
@@ -35,10 +35,10 @@ assert.ok(renderer.includes('onLayout={measureGradient}')&&renderer.includes('an
  renderer.includes("transform:[{rotate:gradientAngle+'deg'}]"));
 assert.ok(read('src/maintenance/skillTree.ts').includes("ready('fx-multi-gradient'"));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.25');assert.equal(app.expo.version,'3.0.25');
-assert.equal(app.expo.android.versionCode,30025);assert.equal(app.expo.ios.buildNumber,'30025');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.25-QA.apk'));
+assert.equal(pkg.version,'3.0.26');assert.equal(app.expo.version,'3.0.26');
+assert.equal(app.expo.android.versionCode,30026);assert.equal(app.expo.ios.buildNumber,'30026');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.26-QA.apk'));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(p).length>0,'immutable finance core kept: '+p);
-console.log('V3.0.25 arbitrary-angle frame native gradient: legacy/degree/layout/tool/AB/identity PASS');
+console.log('V3.0.26 arbitrary-angle frame native gradient: legacy/degree/layout/tool/AB/identity PASS');
 console.log('184 skills / 150 declared wired / 34 pending; actual device testing separate');
