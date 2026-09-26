@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode}
 import {AccessibilityInfo,Animated,Easing,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands,responsiveFrameDensity} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands,responsiveFrameDensity,frameImageCoverCrop} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -21,6 +21,8 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
   const [reduceMotion,setReduceMotion]=useState(true);
   const [gradientBounds,setGradientBounds]=useState({width:0,height:0});
+  const [imageBounds,setImageBounds]=useState({width:0,height:0});
+  const [intrinsicImage,setIntrinsicImage]=useState<{uri:string;width:number;height:number}|null>(null);
   const pulse=useRef(new Animated.Value(1)).current;
   const blink=useRef(new Animated.Value(1)).current;
   const entrance=useRef(new Animated.Value(1)).current;
@@ -136,6 +138,20 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   };
   const backgroundImageUri=fx.imageSource==='builtIn'?THEME_BACKGROUNDS[fx.imageIndex]:fx.imageUri;
   const imageOn=Boolean(editorStyle&&fx.backgroundMode==='image'&&backgroundImageUri);
+  const imageFocusActive=Boolean(imageOn&&fx.imageFit==='cover'&&
+    (Math.abs(fx.imageFocusX-.5)>.001||Math.abs(fx.imageFocusY-.5)>.001));
+  useEffect(()=>{
+    if(!imageFocusActive||!backgroundImageUri)return;
+    let alive=true;
+    setIntrinsicImage(null);
+    Image.getSize(backgroundImageUri,
+      (width,height)=>{if(alive&&width>0&&height>0)setIntrinsicImage({uri:backgroundImageUri,width,height});},
+      ()=>{if(alive)setIntrinsicImage(null);});
+    return()=>{alive=false;};
+  },[imageFocusActive,backgroundImageUri]);
+  const imageCrop=imageFocusActive&&intrinsicImage?.uri===backgroundImageUri?
+    frameImageCoverCrop(imageBounds.width,imageBounds.height,intrinsicImage.width,intrinsicImage.height,
+      fx.imageFocusX,fx.imageFocusY):null;
   const backgroundLayer=Boolean(editorStyle&&(gradientOn||imageOn));
   const shadowOn=Boolean(editorStyle?.shadowEnabled);
   return <Animated.View style={[
@@ -201,9 +217,20 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
         {gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
       </View>:gradient.map((color,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(color,alpha)}}/>)}
     </View>:null}
-    {imageOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,corners,{overflow:'hidden'}]}>
-      <Image source={{uri:backgroundImageUri!}} resizeMode={fx.imageFit}
-        style={[StyleSheet.absoluteFill,{opacity:fx.imageOpacity}]}/>
+    {imageOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,corners,{overflow:'hidden'}]}
+      onLayout={(event:LayoutChangeEvent)=>{
+        if(!imageFocusActive)return;
+        const {width,height}=event.nativeEvent.layout;
+        if(Number.isFinite(width)&&Number.isFinite(height)&&width>0&&height>0)
+          setImageBounds(previous=>Math.abs(previous.width-width)<1&&Math.abs(previous.height-height)<1?
+            previous:{width,height});
+      }}>
+      {imageCrop?
+        <Image source={{uri:backgroundImageUri!}} resizeMode="stretch"
+          style={{position:'absolute',left:imageCrop.left,top:imageCrop.top,
+            width:imageCrop.width,height:imageCrop.height,opacity:fx.imageOpacity}}/>:
+        <Image source={{uri:backgroundImageUri!}} resizeMode={fx.imageFit}
+          style={[StyleSheet.absoluteFill,{opacity:fx.imageOpacity}]}/>}
     </View>:null}
     {backgroundLayer&&fx.maskOpacity>0?<View pointerEvents="none"
       style={[StyleSheet.absoluteFill,corners,{backgroundColor:colorWithAlpha(imageMask,fx.maskOpacity)}]}/>:null}

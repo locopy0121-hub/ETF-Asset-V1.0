@@ -5,6 +5,7 @@ export type FrameEffects=Readonly<{
   gradientMidEnabled:boolean;gradientMidColor:string;gradientMidProfitColor:boolean;gradientMidStop:number;
   imageSource:'builtIn'|'custom';imageIndex:number;imageUri:string|null;
   imageFit:'cover'|'contain'|'stretch';imageOpacity:number;
+  imageFocusX:number;imageFocusY:number;
   maskColor:string;maskProfitColor:boolean;maskOpacity:number;
   borderStyle:'solid'|'dashed'|'dotted';
   borderGradientEnabled:boolean;borderGradientMode:'dual'|'gradient';
@@ -33,6 +34,7 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   backgroundMode:'solid',gradientEndColor:'#EDE9FE',gradientDirection:'vertical',gradientAngle:null,gradientEndProfitColor:false,
   gradientMidEnabled:false,gradientMidColor:'#C4B5FD',gradientMidProfitColor:false,gradientMidStop:.5,
   imageSource:'builtIn',imageIndex:0,imageUri:null,imageFit:'cover',imageOpacity:1,
+  imageFocusX:.5,imageFocusY:.5,
   maskColor:'#000000',maskProfitColor:false,maskOpacity:0,
   borderStyle:'solid',borderGradientEnabled:false,borderGradientMode:'dual',
   borderGradientStartColor:'#A78BFA',borderGradientStartProfitColor:false,
@@ -74,6 +76,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
     contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
     gradientMidStop:[.1,.9],imageIndex:[0,9],imageOpacity:[0,1],maskOpacity:[0,1],
+    imageFocusX:[0,1],imageFocusY:[0,1],
   };
   const out:Record<string,unknown>={...defaults};
   for(const [key,[min,max]] of Object.entries(numberRanges)){
@@ -190,4 +193,17 @@ export function responsiveFrameDensity(width:number,base:FrameDensity,compactAt:
  if(base==='dense'||width<=dense)return 'dense';
  if(base==='compact'||width<=compact)return 'compact';
  return 'standard';
+}
+
+/** Native cover crop: left/top are non-positive and bounded by real excess image size.
+ * Neutral .5/.5 is identical to React Native Image default centered resizeMode="cover". */
+export function frameImageCoverCrop(
+  viewportW:number,viewportH:number,sourceW:number,sourceH:number,focusX:number,focusY:number,
+):{width:number;height:number;left:number;top:number}|null{
+  if(![viewportW,viewportH,sourceW,sourceH].every(v=>Number.isFinite(v)&&v>0))return null;
+  const scale=Math.max(viewportW/sourceW,viewportH/sourceH);
+  const width=sourceW*scale,height=sourceH*scale;
+  const x=Number.isFinite(focusX)?Math.min(1,Math.max(0,focusX)):.5;
+  const y=Number.isFinite(focusY)?Math.min(1,Math.max(0,focusY)):.5;
+  return {width,height,left:(viewportW-width)*x,top:(viewportH-height)*y};
 }

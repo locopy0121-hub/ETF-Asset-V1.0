@@ -284,6 +284,34 @@ export function FrameEffectsToolDetails({field}:{field:string}){
     <Pressable accessibilityRole="button" accessibilityLabel="恢復水平或垂直漸層"
       onPress={()=>change(null)}><Text style={{color:theme.palette.primary,fontWeight:'700'}}>恢復水平／垂直方向</Text></Pressable>
   </View>;
+  if(key==='imageFit')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+      {options.imageFit!.map(([value,label])=><Pressable key={value} accessibilityRole="button"
+        accessibilityLabel={label} onPress={()=>change(value)} style={{borderWidth:1,borderRadius:8,
+          borderColor:theme.palette.primary,padding:9,
+          backgroundColor:fx.imageFit===value?theme.palette.primary:theme.palette.surface}}>
+        <Text style={{color:fx.imageFit===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
+      </Pressable>)}
+    </View>
+    {fx.imageFit==='cover'?<>
+      {([['imageFocusX','水平裁切焦點',0,100,5],['imageFocusY','垂直裁切焦點',0,100,5]] as const)
+        .map(([name,label,min,max,step])=><View key={name}>
+          <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>
+            {label}：{Math.round(fx[name]*100)}%
+          </Text>
+          <NumericDetail value={Math.round(fx[name]*100)} min={min} max={max} step={step}
+            onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value/100})})}/>
+        </View>)}
+      <Pressable accessibilityRole="button" accessibilityLabel="圖片裁切焦點恢復正中央"
+        onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,imageFocusX:.5,imageFocusY:.5})})}>
+        <Text style={{color:theme.palette.primary,fontWeight:'700'}}>恢復中央裁切（50%／50%）</Text>
+      </Pressable>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        僅調整當前框架背景圖片的 cover 裁切位置；使用原生 Image 實際尺寸計算。
+        無法取得來源尺寸時安全退回置中；手機跨裝置圖片嵌入仍待後續版本完成。
+      </Text>
+    </>:null}
+  </View>;
   if(key==='imageIndex')return <View style={{marginTop:9,flexDirection:'row',flexWrap:'wrap',gap:8}}>
     {THEME_BACKGROUNDS.map((uri,index)=><Pressable accessibilityRole="button" key={index}
       accessibilityLabel={'選用框架內建背景 '+(index+1)}
