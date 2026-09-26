@@ -4,7 +4,7 @@ import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
-export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix';
+export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix'|'frame';
 export type TargetProperty=Readonly<{name:string;value:string;readOnly?:boolean}>;
 export type TargetAppearance=Readonly<{
   visible:boolean;fontSize:number;labelFontSize:number;captionFontSize:number;
@@ -133,7 +133,7 @@ export const TARGET_VISUAL_PRESETS={
     borderWidth:0,borderRadius:8,shadowEnabled:false,glowEnabled:false},
 } as const satisfies Record<string,TargetOverride>;
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
-  const nativeMaterial=['metric','text','value','prefix','generic'].includes(kind);
+  const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
   if(field==='target:resetVisual')return true;
   if(field==='target:preset')return nativeMaterial;
   if(['target:backgroundMode','target:gradientDirection','target:gradientEndColor',
