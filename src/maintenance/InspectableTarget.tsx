@@ -3,7 +3,7 @@ import {PanResponder,Pressable,StyleSheet,Text,View} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
-import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type TargetGeometry} from './workspaceModel';
+import {effectiveOffset,linkedColor,positionedRect,snapDraggedRect,type FinancialTone,type TargetGeometry} from './workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colorWithAlpha} from './frameEffects';
 import {applyConditionalAppearance,activeConditionalRule} from './conditionalVisual';
@@ -14,7 +14,7 @@ import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
 export function InspectableTarget({target,frame,children,flex=false}:{
   target:InspectedTarget;frame:FrameMaintenanceContext;
-  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride)=>ReactNode;flex?:boolean;
+  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean}>)=>ReactNode;flex?:boolean;
 }){
   const engineer=useMaintenance();
   const workspace=useWorkspace();
@@ -31,6 +31,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   // Simulation is session-only and only paints the selected real A in maintenance mode.
   const previewState=editing&&engineer.enabled?engineer.session?.previewState??'actual':'actual';
   const displayTone=simulatedVisualTone(previewState,actualTone);
+  const renderContext={displayTone,simulated:previewState==='gain'||previewState==='loss'||previewState==='neutral'};
   const condition=activeConditionalRule(override.conditionalStyles,displayTone);
   const appearance=applyConditionalAppearance(mergeTargetAppearance(target.base,override),displayTone);
   const resolvedAppearance={...appearance,
@@ -161,14 +162,14 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     Boolean(override.anchorY&&override.anchorY!=='free');
   const needsContainerStyle=Boolean(wrapperStyle&&Object.keys(wrapperStyle).length>0);
   if(!engineer.enabled&&!flex&&!hasSpatialOverride&&!needsContainerStyle)
-    return <>{children(resolvedAppearance,customized,override)}</>;
+    return <>{children(resolvedAppearance,customized,override,renderContext)}</>;
   return <View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
     style={[placement,{position:'relative',opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
     {materialActive?<TargetBackdrop appearance={appearance} start={resolvedAppearance.backgroundColor}
       middle={resolvedAppearance.gradientMidColor} end={resolvedAppearance.gradientEndColor}
       glow={resolvedAppearance.glowColor}/>:null}
-    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override):
+    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override,renderContext):
       <View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {editing&&previewState!=='actual'?<View pointerEvents="none"
       style={{position:'absolute',left:2,right:2,bottom:1,padding:4,borderRadius:5,
