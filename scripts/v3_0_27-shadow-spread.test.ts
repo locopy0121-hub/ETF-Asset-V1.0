@@ -31,7 +31,7 @@ const card=read('src/components/FrameCard.tsx'),ui=read('src/maintenance/FrameEf
 assert.ok(card.includes('frameShadowSpreadBands(fx.shadowSpreadRadius,fx.shadowSpreadOpacity,fx.shadowSpreadLayers)'));
 assert.ok(card.includes('shadowSpreadOn?frameShadowSpreadBands('));
 assert.ok(card.includes('pointerEvents="none"')&&card.includes('colorWithAlpha(shadowColor,band.alpha)'));
-assert.ok(card.includes("outerGlowOn||shadowSpreadOn?{overflow:'visible' as const}"));
+assert.ok(card.includes("outerGlowOn||shadowSpreadOn||borderGradientOn?{overflow:'visible' as const}"));
 assert.ok(ui.includes("if(key==='shadowSpreadEnabled')")&&ui.includes('shadowSpreadLayers')&&ui.includes('shadowSpreadOpacity'));
 assert.ok(ui.includes('ColorPalettePicker')&&ui.includes('maintenance.patchFrame'));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));
