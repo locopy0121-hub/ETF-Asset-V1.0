@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
@@ -7,7 +7,9 @@ import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
-import {ENGINEER_SKILLS,type SkillTool} from './skillTree';
+import {skillCounts,skillMatches,type SkillTool} from './skillTree';
+import {COMPLETE_ENGINEER_SKILLS,FULL_SKILL_SECTIONS,completeCatalogAudit} from './fullSkillCatalog';
+import {resolveSkillAdapter,type AdapterContext} from './skillAdapters';
 import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
@@ -31,11 +33,15 @@ export function MaintenanceWorkbench(){
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
   const [saving,setSaving]=useState(false);
+  const [skillQuery,setSkillQuery]=useState('');
+  const skillScroller=useRef<ScrollView>(null);
+  const skillOffsets=useRef<Record<string,number>>({});
   useEffect(()=>{
-    setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
-      session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
-      session.target?.kind==='control'?'conditions':'typography':null);
+    setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'07':
+      session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'22':
+      session.target?.kind==='control'?'12':'06':null);
     setOpenTool(null);
+    setSkillQuery('');
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
@@ -46,10 +52,19 @@ export function MaintenanceWorkbench(){
   const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
   const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
-    'App 原生功能、既有元件及來源資料禁止刪除；僅維護工程師新增的獨立實例可移除。';
+    '僅原始數據、來源及帳務計算鎖定；其他文字、框架、外觀及排版都可編輯。內建元件保留，僅工程師新增實例可刪除。';
   // Always show ONE complete central skill tree. Unadapted tools explain their adapter state.
-  const displaySkills=ENGINEER_SKILLS;
+  const displaySkills=COMPLETE_ENGINEER_SKILLS;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
+  const jumpToSkill=(id:string)=>{
+    setOpenSkill(id);
+    setOpenTool(null);
+    skillScroller.current?.scrollTo({y:skillOffsets.current[id]??0,animated:true});
+  };
+  const catalogCount=skillCounts(displaySkills);
+  const catalogAudit=completeCatalogAudit();
+  const activeCount=displaySkills.flatMap(group=>group.tools).filter(tool=>toolUsable(tool,session)).length;
+  const matchingSkills=displaySkills.filter(skill=>skillMatches(skill,skillQuery));
   const apply=async()=>{
     if(saving)return;
     setSaving(true);
@@ -66,8 +81,8 @@ export function MaintenanceWorkbench(){
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
-    <ScrollView style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
-      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹｜所有技能可查閱；尚未介接的項目明確標示，絕不依元件種類隱藏整類工具。</Text>
+    <ScrollView ref={skillScroller} style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
+      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹（30 大類）：僅鎖定原始數據及帳務邏輯；其他完整技能一律顯示。已接線的工具直接修改目前對象，缺原生適配的工具明確標示而不假裝生效。</Text>
       <View accessibilityRole="summary" style={[styles.detail,{
         backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
         marginTop:0,marginBottom:10,gap:6,
@@ -113,9 +128,38 @@ export function MaintenanceWorkbench(){
         </View>)}
         <Text style={[styles.small,{color:theme.palette.textSecondary,marginTop:7}]}>資料值唯讀；下方工具修改顯示屬性或本頁設定，不修改來源帳務。</Text>
       </View>:null}
-      {displaySkills.map(skillItem=><View key={skillItem.id} style={[styles.group,{borderColor:theme.palette.border}]}>
+      <View style={[styles.detail,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted,marginBottom:10,gap:8}]}>
+        <Text style={[styles.label,{color:theme.palette.text}]}>技能樹總覽｜{displaySkills.length} 類 · {catalogCount.total} 項</Text>
+        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{catalogCount.ready} 項宣告接入（非實機 PASS） · {catalogCount.pending} 項待接線（含 12 項專業能力）；既有 {catalogAudit.existing} 項全數保留。當前對象實際有適配介面：{activeCount}/{catalogCount.total}；其餘工具仍顯示，不代表已可操作。</Text>
+        <TextInput accessibilityLabel="搜尋維護工程師技能" value={skillQuery} onChangeText={setSkillQuery}
+          placeholder="搜尋技能、工具、效果（不隱藏其他技能）"
+          placeholderTextColor={theme.palette.textSecondary}
+          style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>
+        {skillQuery.trim()?<Text style={[styles.small,{color:theme.palette.textSecondary}]}>符合搜尋：{matchingSkills.length} 類；全部技能仍完整保留。</Text>:null}
+        {FULL_SKILL_SECTIONS.map(section=><View key={section.id} style={{gap:5}}>
+          <Text style={{fontWeight:'800',fontSize:12,color:theme.palette.text}}>{section.label}</Text>
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
+            {section.ids.map(id=>{
+              const skill=displaySkills.find(item=>item.id===id);
+              if(!skill)return null;
+              const count=skillCounts([skill]);
+              const available=skill.tools.filter(tool=>toolUsable(tool,session)).length;
+              const match=skillMatches(skill,skillQuery);
+              return <Pressable key={id} accessibilityRole="button" accessibilityLabel={'前往 '+skill.label}
+                onPress={()=>jumpToSkill(id)}
+                style={[styles.choice,{borderColor:match?theme.palette.primary:theme.palette.border,
+                  opacity:match?1:.6,backgroundColor:openSkill===id?theme.palette.primary:theme.palette.surface}]}>
+                <Text style={{fontSize:11,color:openSkill===id?'#FFFFFF':theme.palette.text}}>{skill.label} {available}/{count.total}</Text>
+              </Pressable>;
+            })}
+          </View>
+        </View>)}
+      </View>
+      {displaySkills.map(skillItem=><View key={skillItem.id}
+        onLayout={event=>{skillOffsets.current[skillItem.id]=event.nativeEvent.layout.y;}}
+        style={[styles.group,{borderColor:skillQuery.trim()&&skillMatches(skillItem,skillQuery)?theme.palette.primary:theme.palette.border}]}>
         <Pressable accessibilityRole="button" onPress={()=>selectSkill(skillItem.id)} style={styles.groupTitle}>
-          <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label}</Text>
+          <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label} · {skillItem.tools.filter(tool=>toolUsable(tool,session)).length}/{skillItem.tools.length} 當前可操作</Text>
           <Text style={{color:theme.palette.primary}}>{openSkill===skillItem.id?'⌄':'›'}</Text>
         </Pressable>
         {openSkill===skillItem.id?<View style={styles.toolList}>
@@ -123,7 +167,7 @@ export function MaintenanceWorkbench(){
           {skillItem.tools.map(tool=><View key={tool.id} style={{marginTop:8}}>
             <Pressable accessibilityRole="button" onPress={()=>setOpenTool(current=>current===tool.id?null:tool.id)} style={styles.toolRow}>
               <Text style={{flex:1,color:theme.palette.text,fontSize:13,fontWeight:'600'}}>{tool.label}</Text>
-              <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>{tool.status!=='ready'?'待接入 ›':toolUsable(tool,session)?'細節 ›':'目前對象不適用 ›'}</Text>
+              <Text style={{color:toolUsable(tool,session)?theme.palette.primary:theme.palette.textSecondary,fontSize:11}}>{tool.status!=='ready'?'待實作 ›':toolUsable(tool,session)?'細節 ›':'原生適配待完成 ›'}</Text>
             </Pressable>
             {openTool===tool.id?<View style={[styles.detail,{backgroundColor:theme.palette.surfaceMuted}]}>
               <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{tool.detail}</Text>
@@ -143,42 +187,25 @@ export function MaintenanceWorkbench(){
   </View>;
 }
 
-const isQuoteFrame=(s:MaintenanceSession)=>s.frameKey==='holding-quotes'||s.frameKey==='holding-view';
-function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
-  if(tool.status!=='ready')return false;
-  const f=tool.field??'';
-  if(f.startsWith('workspace:'))return true;
-  if(f==='frame:size')return s.scope==='frame';
-  if(f.startsWith('framefx:'))return s.scope==='frame';
-  if(f==='instance:sync')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
-  if(f==='instance:parent-size')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&item.templateId==='parent-frame'&&isEngineerOwnedInstance(item));
-  if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
-    s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
-      (tool.id==='remove'||tool.id==='install'&&item.templateId==='parent-frame'));
-  if(f.startsWith('target:')){
-    if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
-    const instance=s.scope==='instance'?s.draftInstances.find(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)):undefined;
-    if(!instance)return false;
-    if(['target:xy','target:dimensions','target:anchors','target:offsetX','target:offsetY',
-      'target:anchorX','target:anchorY','target:width','target:height'].includes(f))return false;
-    const kind:TargetKind=instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text';
-    return targetToolSupported(kind,f);
-  }
-  if(f.startsWith('page:')){
-    if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
-    if(s.scope!=='frame')return false;
-    if(f==='page:list')return s.page==='portfolio'&&s.frameKey==='holding-view';
-    return isQuoteFrame(s);
-  }
-  if(s.scope==='target')return f==='session';
-  if(s.scope==='instance')return f==='session'||['instance-text','visible','titleFontSize','titleColor','padding'].includes(f);
-  return true;
+// Navigation never filters tools. A single pure resolver chooses the rendering adapter.
+function adapterContext(s:MaintenanceSession):AdapterContext{
+ const instance=s.scope==='instance'?s.draftInstances.find(item=>item.id===s.instanceId):undefined;
+ return {scope:s.scope,page:s.page,frameKey:s.frameKey,
+   ...(s.scope==='target'&&s.target?{kind:s.target.kind}:{}),
+   ...(instance?{kind:(instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text') as TargetKind,
+     instanceOwned:isEngineerOwnedInstance(instance),instanceParent:instance.templateId==='parent-frame'}:{}),
+ };
 }
+const adapterFor=(tool:SkillTool,s:MaintenanceSession)=>resolveSkillAdapter(tool,adapterContext(s));
+const resolvedTool=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).tool;
+const toolUsable=(tool:SkillTool,s:MaintenanceSession)=>adapterFor(tool,s).status==='active';
 function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:MaintenanceInstance|undefined}){
   const maint=useMaintenance();
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  const activeTool=resolvedTool(tool,s);
+  if(activeTool!==tool)return <ScopedToolDetails tool={activeTool} instance={instance}/>;
   if(tool.field==='instance:sync')return <View style={{gap:8,marginTop:8}}>
     <Text style={{fontSize:12,color:theme.palette.textSecondary}}>共用樣式只更新同類元件外觀，不連動內容、位置、尺寸或帳務資料。</Text>
     <Switch value={s.syncSameKind} onValueChange={maint.setSyncSameKind}/>
@@ -198,9 +225,7 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   if(tool.field?.startsWith('workspace:')||['target:xy','target:dimensions','target:anchors'].includes(tool.field??''))
     return <SpatialToolDetails field={tool.field!} />;
   if(!toolUsable(tool,s))return <Text style={{fontSize:12,color:theme.palette.textSecondary,marginTop:8}}>
-    {tool.status!=='ready'?'完整技能已登記，但此工具尚未介接 Runtime。':
-      tool.field?.startsWith('page:')&&s.target?.kind==='quote-card'?'這是本頁共用設定。請點外層行情框架大扳手後使用，避免意外改動其他卡片。':
-      tool.field?.startsWith('target:')?'請先輕點工作區的內部元件，再點小扳手進入專屬編輯。':'這是其他工作層級的工具，請使用對應扳手呼叫。'}
+    {adapterFor(tool,s).reason}
   </Text>;
   if(tool.field?.startsWith('target:')){
     const target=s.target??(s.scope==='instance'&&instance?{

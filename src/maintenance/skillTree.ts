@@ -107,3 +107,23 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
   {id:'versions',label:'版本維護',description:'暫存、套用、取消及回復',tools:[ready('transaction','套用／取消','session','套用持久化；取消丟棄本次全部草稿'),later('history','歷史版本比較','需持久化版本及差異紀錄')]},
 ];
 export function findSkill(id:string){return ENGINEER_SKILLS.find(skill=>skill.id===id);}
+
+// Navigation metadata changes presentation only; the singleton skill catalog remains intact.
+export const ENGINEER_SKILL_SECTIONS=[
+  {id:'structure',label:'元件與空間',skills:['components','frames','dimensions','layout','responsive']},
+  {id:'appearance',label:'文字與外觀',skills:['typography','numbers','target-materials','colors','effects','animations']},
+  {id:'experience',label:'圖表與互動',skills:['charts','interaction','data','conditions']},
+  {id:'management',label:'共享與維護',skills:['sharing','versions']},
+] as const;
+export function skillCounts(skills:readonly EngineerSkill[]=ENGINEER_SKILLS){
+  return skills.reduce((total,skill)=>({
+    total:total.total+skill.tools.length,
+    ready:total.ready+skill.tools.filter(tool=>tool.status==='ready').length,
+    pending:total.pending+skill.tools.filter(tool=>tool.status==='adapter-required').length,
+  }),{total:0,ready:0,pending:0});
+}
+export function skillMatches(skill:EngineerSkill,query:string){
+  const word=query.trim().toLocaleLowerCase();
+  return !word||[skill.label,skill.description,...skill.tools.flatMap(tool=>[tool.label,tool.detail])]
+    .some(value=>value.toLocaleLowerCase().includes(word));
+}

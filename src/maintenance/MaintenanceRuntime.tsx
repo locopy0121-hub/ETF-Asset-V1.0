@@ -198,10 +198,12 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],
         });
     },
-    patchFrame:patch=>setSession(current=>current&&current.draft.behavior!=='locked'?
+    // Frame behavior is a layout preference, never a permission to lock visual editing.
+    // Original trades, quotes, ledger formulas and source data are not exposed here.
+    patchFrame:patch=>setSession(current=>current?
       {...current,draft:{...current.draft,...patch}}:current),
     clearFrameDimension:axis=>setSession(current=>{
-      if(!current||current.draft.behavior==='locked')return current;
+      if(!current)return current;
       const draft={...current.draft};
       delete draft[axis];
       return {...current,draft};
