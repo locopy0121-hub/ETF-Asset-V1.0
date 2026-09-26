@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.28 原生雙層／漸層邊框必須確實渲染
+雙層／厚度方向八階漸層邊框必須在真實 FrameCard 實際原生 View 繪製，不得只把 ready 標籤加入中央技能或僅顯示開關。兩組 Color Picker 各自綁定獨立損益色，限制厚度/透明度，預設 OFF，保持 shadow spread/glow/blink/marquee 原功能及不可變帳務。上一版 fx-shadow-spread 由 pending 轉 ready 後，舊 frame-engineer 回歸中的 pending 名單和數量必須一起檢查，避免品質 Gate 阻斷 APK。
+
 ## 2026-09-27｜V3.0.27 多層陰影不可褪色財務子內容
 陰影多層擴散只能在獨立非互動 View 繪製，預設 OFF、最多 6 層、限制半徑與透明度；不能用父 View 整體 opacity，也不能宣稱原生輪廓近似等於真正 Gaussian GPU Blur。新增框架外緣視覺需要 overflow:visible，原有 outerGlow、blink、marquee 保留；版本/Build/QA Workflow/coverage 與前版全部回歸需一致。
 
