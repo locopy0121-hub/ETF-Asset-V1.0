@@ -91,7 +91,8 @@ jobs:
   qa-apk:
     name: V3.0.18 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/go-v3.0.18-20260926-design-assets'
+    # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
+    if: github.event_name == 'pull_request' && github.head_ref == 'go-v3.0.18-20260926-design-assets'
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
