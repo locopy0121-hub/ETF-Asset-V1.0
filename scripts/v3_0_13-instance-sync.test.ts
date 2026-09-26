@@ -39,7 +39,7 @@ assert.ok(bench.includes('同類元件外觀同步')&&bench.includes('session.sc
 assert.ok(bench.includes("instance.templateId==='parent-frame'?'frame'"));
 assert.ok(bench.includes('kind:\'frame\''),'parent has its own material-capable inspector');
 assert.ok(bench.includes('target:InspectedTarget')&&bench.includes('InspectableTarget frame={frame} target={target}'));
-assert.ok(bench.includes('const displaySkills=ENGINEER_SKILLS;'),'no target-based group hiding');
+assert.ok(bench.includes('const displaySkills=COMPLETE_ENGINEER_SKILLS;'),'no target-based group hiding');
 const renderer=read('src/maintenance/InspectableTarget.tsx');
 assert.ok(renderer.includes("'generic','frame'"),'parent surface receives material adapters');
 const card=read('src/components/FrameCard.tsx');
