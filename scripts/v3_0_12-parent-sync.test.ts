@@ -35,5 +35,5 @@ assert.ok(!card.includes('<ScrollView nestedScrollEnabled'),'existing parent res
 assert.ok(inspect.includes('target.id,target.kind'));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(path).length>0);
 const pkg=JSON.parse(read('package.json'));const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.14');assert.equal(app.expo.version,'3.0.14');assert.equal(app.expo.android.versionCode,30014);
-console.log('V3.0.14 parent frame and same-kind style synchronization: PASS');
+assert.equal(pkg.version,'3.0.15');assert.equal(app.expo.version,'3.0.15');assert.equal(app.expo.android.versionCode,30015);
+console.log('V3.0.15 parent frame and same-kind style synchronization: PASS');
