@@ -16,7 +16,7 @@ import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {spacing} from '../theme/tokens';
 import {colorWithAlpha} from '../maintenance/frameEffects';
-import {applyConditionalAppearance} from '../maintenance/conditionalVisual';
+import {applyConditionalAppearance,activeConditionalRule} from '../maintenance/conditionalVisual';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -97,12 +97,14 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
           label:'NT$ 貨幣前綴',properties:[...target.properties,{name:'元件類型',value:'獨立貨幣前綴；金額仍為帳務唯讀',readOnly:true}],
           base:{...target.base,prefixText:content,prefixGap:8}}:target;
         return <InspectableTarget key={child.key??nodeId} target={actualTarget} frame={frame}>
-          {(appearance,customized,override)=>cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
+          {(appearance,customized,override)=>{const rule=activeConditionalRule(override.conditionalStyles,
+            override.profitToneOverride&&override.profitToneOverride!=='auto'?override.profitToneOverride:'neutral');
+            return cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
             ...props,children:customized&&!isDataValue?(isPrefix?
               (override.prefixText!==undefined?appearance.prefixText:content):
               (appearance.labelText||appearance.captionText||content)):content,
             style:customized?[props.style,{
-              ...(override.textColor||override.textProfitColor!==undefined||override.conditionalStyles!==undefined?{color:appearance.textColor}:{}),
+              ...(override.textColor||override.textProfitColor!==undefined||rule?.textColor?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
               ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
               ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
@@ -113,16 +115,16 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
               ...(isPrefix&&(override.prefixOffsetX!==undefined||override.prefixOffsetY!==undefined)?{transform:[{translateX:appearance.prefixOffsetX},{translateY:appearance.prefixOffsetY}]}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
-              ...(appearance.backgroundMode==='gradient'&&(override.backgroundMode!==undefined||override.conditionalStyles!==undefined)?
+              ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?
                 {backgroundColor:'transparent'}:
-                override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined||override.conditionalStyles!==undefined?
+                override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
                 {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
-              ...(override.borderColor||override.borderProfitColor!==undefined||override.conditionalStyles!==undefined?{borderColor:appearance.borderColor}:{}),
+              ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
               ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
               ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
               ...(override.padding!==undefined?{padding:appearance.padding}:{}),
             }]:props.style,
-          })}
+          });}}
         </InspectableTarget>;
       }
     }
