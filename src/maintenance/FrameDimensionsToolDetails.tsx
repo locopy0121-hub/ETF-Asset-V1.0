@@ -5,7 +5,7 @@ import {useThemeRuntime} from '../theme/ThemeRuntime';
 
 const dimensions={width:{min:160,max:1600},height:{min:80,max:2400}} as const;
 /** Parent-frame dimensions are independent of the editing canvas and child dimensions. */
-export function FrameDimensionsToolDetails(){
+export function FrameDimensionsToolDetails({axis}:{axis?:'width'|'height'}={}){
   const maint=useMaintenance(),theme=useThemeRuntime(),session=maint.session;
   const width=session?.draft.width,height=session?.draft.height;
   const [typed,setTyped]=useState({width:'',height:''});
@@ -59,7 +59,7 @@ export function FrameDimensionsToolDetails(){
   };
   return <View style={{marginTop:8,gap:7}}>
     <Text style={{color:theme.palette.textSecondary,fontSize:12}}>此處調整真正的父框架，而不是虛線畫布。指定高度只改父框架邊界，子元件維持尺寸與原位，不會擅自啟用內部捲動。內容超界時請使用工作區診斷調整。</Text>
-    {numeric('width')}{numeric('height')}
+    {(!axis||axis==='width')&&numeric('width')}{(!axis||axis==='height')&&numeric('height')}
     {!!error&&<Text style={{color:theme.palette.loss}}>{error}</Text>}
     <Text style={{color:theme.palette.textSecondary,fontSize:11}}>畫面上的變化為暫存預覽；取消還原，按工作台「儲存／套用」才持久化。</Text>
   </View>;
