@@ -80,7 +80,8 @@ assert.ok(card.includes("fx.cornerTopLeft>=0")&&card.includes('borderTopWidth:fx
 assert.ok(card.includes('shadowRadius:fx.shadowBlur')&&card.includes('shadowOffsetX'));
 assert.ok(card.includes('fx.glowPulse')&&card.includes('isReduceMotionEnabled'));
 assert.ok(!card.includes('opacity:editorStyle.backgroundOpacity'),'background transparency must not dim text');
-assert.ok(dock.includes("f.startsWith('framefx:')")&&dock.includes('<FrameEffectsToolDetails'));
+assert.ok(read('src/maintenance/skillAdapters.ts').includes("original.startsWith('framefx:')")&&
+  dock.includes('<FrameEffectsToolDetails'),'one central resolver routes native frame effects');
 assert.ok(details.includes('maintenance.patchFrame({effects:normalizeFrameEffects'));
 assert.ok(details.includes('onProfitColorChange'));
 assert.ok(details.includes('手動輸入精確參數'));

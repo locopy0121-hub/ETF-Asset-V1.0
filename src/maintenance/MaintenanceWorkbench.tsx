@@ -63,6 +63,7 @@ export function MaintenanceWorkbench(){
   };
   const catalogCount=skillCounts(displaySkills);
   const catalogAudit=completeCatalogAudit();
+  const activeCount=displaySkills.flatMap(group=>group.tools).filter(tool=>toolUsable(tool,session)).length;
   const matchingSkills=displaySkills.filter(skill=>skillMatches(skill,skillQuery));
   const apply=async()=>{
     if(saving)return;
@@ -129,7 +130,7 @@ export function MaintenanceWorkbench(){
       </View>:null}
       <View style={[styles.detail,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted,marginBottom:10,gap:8}]}>
         <Text style={[styles.label,{color:theme.palette.text}]}>技能樹總覽｜{displaySkills.length} 類 · {catalogCount.total} 項</Text>
-        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{catalogCount.ready} 項宣告接入（非實機 PASS） · {catalogCount.pending} 項待接線（含 12 項專業能力）；既有 {catalogAudit.existing} 項全數保留。</Text>
+        <Text style={[styles.small,{color:theme.palette.textSecondary}]}>{catalogCount.ready} 項宣告接入（非實機 PASS） · {catalogCount.pending} 項待接線（含 12 項專業能力）；既有 {catalogAudit.existing} 項全數保留。當前對象實際有適配介面：{activeCount}/{catalogCount.total}；其餘工具仍顯示，不代表已可操作。</Text>
         <TextInput accessibilityLabel="搜尋維護工程師技能" value={skillQuery} onChangeText={setSkillQuery}
           placeholder="搜尋技能、工具、效果（不隱藏其他技能）"
           placeholderTextColor={theme.palette.textSecondary}
@@ -142,12 +143,13 @@ export function MaintenanceWorkbench(){
               const skill=displaySkills.find(item=>item.id===id);
               if(!skill)return null;
               const count=skillCounts([skill]);
+              const available=skill.tools.filter(tool=>toolUsable(tool,session)).length;
               const match=skillMatches(skill,skillQuery);
               return <Pressable key={id} accessibilityRole="button" accessibilityLabel={'前往 '+skill.label}
                 onPress={()=>jumpToSkill(id)}
                 style={[styles.choice,{borderColor:match?theme.palette.primary:theme.palette.border,
                   opacity:match?1:.6,backgroundColor:openSkill===id?theme.palette.primary:theme.palette.surface}]}>
-                <Text style={{fontSize:11,color:openSkill===id?'#FFFFFF':theme.palette.text}}>{skill.label} {count.ready}/{count.total}</Text>
+                <Text style={{fontSize:11,color:openSkill===id?'#FFFFFF':theme.palette.text}}>{skill.label} {available}/{count.total}</Text>
               </Pressable>;
             })}
           </View>
@@ -157,7 +159,7 @@ export function MaintenanceWorkbench(){
         onLayout={event=>{skillOffsets.current[skillItem.id]=event.nativeEvent.layout.y;}}
         style={[styles.group,{borderColor:skillQuery.trim()&&skillMatches(skillItem,skillQuery)?theme.palette.primary:theme.palette.border}]}>
         <Pressable accessibilityRole="button" onPress={()=>selectSkill(skillItem.id)} style={styles.groupTitle}>
-          <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label} · {skillCounts([skillItem]).ready}/{skillItem.tools.length} 已接入</Text>
+          <Text style={[styles.label,{color:theme.palette.text}]}>{skillItem.label} · {skillItem.tools.filter(tool=>toolUsable(tool,session)).length}/{skillItem.tools.length} 當前可操作</Text>
           <Text style={{color:theme.palette.primary}}>{openSkill===skillItem.id?'⌄':'›'}</Text>
         </Pressable>
         {openSkill===skillItem.id?<View style={styles.toolList}>
