@@ -1,8 +1,8 @@
 import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
-import {AccessibilityInfo,Animated,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
+import {AccessibilityInfo,Animated,Easing,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -23,11 +23,17 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const [gradientBounds,setGradientBounds]=useState({width:0,height:0});
   const pulse=useRef(new Animated.Value(1)).current;
   const blink=useRef(new Animated.Value(1)).current;
+  const marqueeShift=useRef(new Animated.Value(0)).current;
+  const [titleAvailable,setTitleAvailable]=useState(0);
+  const [titleIntrinsic,setTitleIntrinsic]=useState(0);
   useEffect(()=>{
     let mounted=true;
     AccessibilityInfo.isReduceMotionEnabled().then(value=>{if(mounted)setReduceMotion(value);})
       .catch(()=>{if(mounted)setReduceMotion(true);});
-    return()=>{mounted=false;};
+    const subscription=AccessibilityInfo.addEventListener('reduceMotionChanged',value=>{
+      if(mounted)setReduceMotion(Boolean(value));
+    });
+    return()=>{mounted=false;subscription.remove();};
   },[]);
   useEffect(()=>{
     pulse.stopAnimation();pulse.setValue(1);
@@ -60,6 +66,29 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const glowColor=linkedColor(fx.glowColor,fx.glowProfitColor,'neutral',systemColors);
   const outerGlowColor=linkedColor(fx.outerGlowColor,fx.outerGlowProfitColor,'neutral',systemColors);
   const blinkColor=linkedColor(fx.blinkColor,fx.blinkProfitColor,'neutral',systemColors);
+  const titleMarquee=Boolean(editorStyle&&fx.titleMarqueeEnabled);
+  const titleStyle=[
+    styles.title,{color:theme.palette.text},
+    layout==='dense'&&styles.titleDense,
+    editorStyle&&{
+      fontSize:editorStyle.titleFontSize,
+      color:linkedColor(editorStyle.titleColor??theme.palette.text,
+        editorStyle.titleProfitColor,'neutral',systemColors),
+      textAlign:editorStyle.titleAlign,
+    },
+  ];
+  const marqueeActive=titleMarquee&&!reduceMotion&&titleAvailable>0&&titleIntrinsic>titleAvailable+1;
+  useEffect(()=>{
+    marqueeShift.stopAnimation();marqueeShift.setValue(0);
+    if(!marqueeActive)return;
+    const loop=Animated.loop(Animated.timing(marqueeShift,{
+      toValue:-(titleIntrinsic+fx.titleMarqueeGap),
+      duration:frameTitleMarqueeDuration(titleIntrinsic,fx.titleMarqueeGap,fx.titleMarqueeSpeed),
+      easing:Easing.linear,useNativeDriver:true,
+    }));
+    loop.start();
+    return()=>{loop.stop();marqueeShift.stopAnimation();};
+  },[marqueeActive,title,titleIntrinsic,fx.titleMarqueeGap,fx.titleMarqueeSpeed,marqueeShift]);
   const outerGlowOn=Boolean(editorStyle&&fx.outerGlowEnabled&&fx.outerGlowOpacity>0);
   const alpha=editorStyle?.backgroundOpacity??1;
   const corners={
@@ -149,13 +178,25 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       borderRadius:editorStyle?.borderRadius??radius.lg,
     }]}/>:null}
     <View style={styles.header}>
-      <Text style={[styles.title,{color:theme.palette.text},
-        layout==='dense'&&styles.titleDense,editorStyle&&{
-          fontSize:editorStyle.titleFontSize,
-          color:linkedColor(editorStyle.titleColor??theme.palette.text,
-            editorStyle.titleProfitColor,'neutral',systemColors),
-          textAlign:editorStyle.titleAlign,flex:1,
-        }]}>{title}</Text>
+      <View style={{flex:1,overflow:'hidden',marginRight:action?8:0}}
+        onLayout={(event:LayoutChangeEvent)=>{
+          const width=event.nativeEvent.layout.width;
+          setTitleAvailable(previous=>Math.abs(previous-width)<1?previous:width);
+        }}>
+        {titleMarquee&&!reduceMotion?<>
+          <Text accessible={false} numberOfLines={1} onLayout={(event:LayoutChangeEvent)=>{
+            const width=event.nativeEvent.layout.width;
+            setTitleIntrinsic(previous=>Math.abs(previous-width)<1?previous:width);
+          }} style={[titleStyle,{position:'absolute',left:0,top:0,opacity:0,alignSelf:'flex-start'}]}>{title}</Text>
+          <Animated.View pointerEvents="none" style={{flexDirection:'row',alignItems:'center',
+            transform:[{translateX:marqueeShift}]}}>
+            <Text numberOfLines={1} style={[titleStyle,{flexShrink:0}]}>{title}</Text>
+            {marqueeActive?<Text accessible={false} importantForAccessibility="no-hide-descendants"
+              numberOfLines={1} style={[titleStyle,{flexShrink:0,marginLeft:fx.titleMarqueeGap}]}>{title}</Text>:null}
+          </Animated.View>
+        </>:<Text numberOfLines={titleMarquee?1:undefined} ellipsizeMode="tail"
+          style={[titleStyle,{flexShrink:1}]}>{title}</Text>}
+      </View>
       {action}
     </View>
     {editorStyle?.height!==undefined?<View style={{flexShrink:0,gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</View>:children}
