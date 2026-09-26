@@ -167,7 +167,15 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
     s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
       (tool.id==='remove'||tool.id==='install'&&item.templateId==='parent-frame'));
-  if(f.startsWith('target:'))return s.scope==='target'&&!!s.target&&targetToolSupported(s.target.kind,f);
+  if(f.startsWith('target:')){
+    if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
+    const instance=s.scope==='instance'?s.draftInstances.find(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)):undefined;
+    if(!instance)return false;
+    if(['target:xy','target:dimensions','target:anchors','target:offsetX','target:offsetY',
+      'target:anchorX','target:anchorY','target:width','target:height'].includes(f))return false;
+    const kind:TargetKind=instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text';
+    return targetToolSupported(kind,f);
+  }
   if(f.startsWith('page:')){
     if(s.scope==='target')return !!s.target&&targetToolSupported(s.target.kind,f);
     if(s.scope!=='frame')return false;
@@ -195,7 +203,13 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
       tool.field?.startsWith('target:')?'請先輕點工作區的內部元件，再點小扳手進入專屬編輯。':'這是其他工作層級的工具，請使用對應扳手呼叫。'}
   </Text>;
   if(tool.field?.startsWith('target:')){
-    const target=s.target;
+    const target=s.target??(s.scope==='instance'&&instance?{
+      id:'installed:'+instance.id,page:s.page,frameKey:s.frameKey,frameTitle:s.title,
+      kind:(instance.templateId==='parent-frame'?'frame':instance.templateId==='divider'?'generic':'text') as TargetKind,
+      label:instance.text||'新增元件',properties:[{name:'文字內容',value:instance.text,readOnly:false}],
+      base:{...TARGET_APPEARANCE,fontSize:instance.fontSize,textColor:instance.color,
+        backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
+    }:null);
     if(!target)return null;
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
