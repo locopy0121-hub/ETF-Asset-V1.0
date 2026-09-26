@@ -29,7 +29,7 @@ assert.equal(normalizeFrameEffects(restored.effects).outerGlowEnabled,true);
 assert.equal(restored.visible,false);
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(s=>s.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,155);assert.equal(audit.pending,29);
+assert.equal(audit.readyDeclared,156);assert.equal(audit.pending,28);
 const tool=all.find(t=>t.id==='fx-outer-glow')!;
 assert.equal(tool.status,'ready');assert.equal(tool.field,'framefx:outerGlowEnabled');
 assert.equal(resolveSkillAdapter(tool,{scope:'frame',page:'home',frameKey:'asset-dashboard'}).status,'active');
@@ -39,11 +39,11 @@ assert.ok(panel.includes("if(key==='outerGlowEnabled')")&&panel.includes('outerG
 assert.ok(native.includes('outerGlowLayers(')&&native.includes('pointerEvents="none"')&&native.includes("overflow:'visible' as const"));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.29');assert.equal(app.expo.version,'3.0.29');
-assert.equal(app.expo.android.versionCode,30029);assert.equal(app.expo.ios.buildNumber,'30029');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.29-QA.apk'));
-assert.ok(read('.github/workflows/ci.yml').includes("github.head_ref == 'go-v3.0.29-20260927-native-entrance'"),
+assert.equal(pkg.version,'3.0.30');assert.equal(app.expo.version,'3.0.30');
+assert.equal(app.expo.android.versionCode,30030);assert.equal(app.expo.ios.buildNumber,'30030');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.30-QA.apk'));
+assert.ok(read('.github/workflows/ci.yml').includes("github.head_ref == 'go-v3.0.30-20260927-adaptive-frame-density'"),
  'PR APK job must be enabled for the actual current work branch, not a renamed historic branch');
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(p).length>0);
-console.log('V3.0.29 frame native outer glow: sanitizer/layers/AB/backup/version tests PASS');
+console.log('V3.0.30 frame native outer glow: sanitizer/layers/AB/backup/version tests PASS');
 console.log('184 central skills / 150 wired declarations / 34 pending, phone visual testing separate');

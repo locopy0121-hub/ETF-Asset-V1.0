@@ -8,7 +8,7 @@ import {COMPLETE_ENGINEER_SKILLS,completeCatalogAudit} from '../src/maintenance/
 
 const read=(path:string)=>readFileSync(path,'utf8');
 const audit=completeCatalogAudit(),all=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools);
-assert.equal(all.length,184);assert.equal(audit.readyDeclared,155);assert.equal(audit.pending,29);
+assert.equal(all.length,184);assert.equal(audit.readyDeclared,156);assert.equal(audit.pending,28);
 const tool=all.find(item=>item.id==='history')!;
 const ctx={scope:'instance',page:'home',frameKey:'asset-dashboard',
  kind:'text',instanceOwned:true} as const;
@@ -79,8 +79,8 @@ assert.ok(ui.includes('instanceVisualSnapshot({...owned')&&ui.includes('restoreV
 assert.ok(adapter.includes("ctx.scope==='instance'&&ctx.instanceOwned"));
 assert.ok(backup.includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.29');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30029);assert.equal(app.expo.ios.buildNumber,'30029');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.29-QA.apk'));
-console.log('V3.0.29 owned installed A history: snapshots/strict keys/cap/restore/backup/AB PASS');
+assert.equal(pkg.version,'3.0.30');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30030);assert.equal(app.expo.ios.buildNumber,'30030');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.30-QA.apk'));
+console.log('V3.0.30 owned installed A history: snapshots/strict keys/cap/restore/backup/AB PASS');
 console.log('184 central skills, 150 declared wired / 34 pending; no finance or built-in mutations PASS');
