@@ -30,13 +30,12 @@ export function MaintenanceWorkbench(){
   const session=maintenance.session;
   const [openSkill,setOpenSkill]=useState<string|null>(null);
   const [openTool,setOpenTool]=useState<string|null>(null);
-  const [showAllSkills,setShowAllSkills]=useState(true); // every registered B group remains discoverable
   const [saving,setSaving]=useState(false);
   useEffect(()=>{
     setOpenSkill(session?.scope==='target'?session.target?.kind==='quote-card'?'colors':
       session.target?.kind==='portfolio-list'||session.target?.kind==='wall'?'data':
       session.target?.kind==='control'?'conditions':'typography':null);
-    setOpenTool(null);setShowAllSkills(true);
+    setOpenTool(null);
   },[session?.page,session?.frameKey,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
@@ -48,11 +47,8 @@ export function MaintenanceWorkbench(){
   const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
     'App 原生功能、既有元件及來源資料禁止刪除；僅維護工程師新增的獨立實例可移除。';
-  // The engineer retains every skill. Present applicable tools first for THIS selected A-layer.
-  const displaySkills=ENGINEER_SKILLS.map(group=>({...group,
-    tools:showAllSkills?group.tools:group.tools.filter(tool=>toolUsable(tool,session)),
-  })).filter(group=>showAllSkills||group.tools.length>0);
-  const applicableCount=ENGINEER_SKILLS.flatMap(group=>group.tools).filter(tool=>toolUsable(tool,session)).length;
+  // Always show ONE complete central skill tree. Unadapted tools explain their adapter state.
+  const displaySkills=ENGINEER_SKILLS;
   const selectSkill=(id:string)=>{setOpenSkill(current=>current===id?null:id);setOpenTool(null);};
   const apply=async()=>{
     if(saving)return;
@@ -71,16 +67,7 @@ export function MaintenanceWorkbench(){
       <Pressable accessibilityRole="button" accessibilityLabel="取消本次編輯" onPress={cancel}><Text style={{fontWeight:'800',color:theme.palette.textSecondary}}>關閉</Text></Pressable>
     </View>
     <ScrollView style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator>
-      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:7}}>
-        <Text style={[styles.hint,{color:theme.palette.textSecondary,flex:1,marginBottom:0}]}>
-          {showAllSkills?'全部技能樹（未適配工具清楚標示）':`目前可用 ${applicableCount} 種工具；與當前元件無關的工具先收起。`}
-        </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={showAllSkills?'只顯示適用技能':'查看全部維護技能'}
-          onPress={()=>{setShowAllSkills(value=>!value);setOpenTool(null);}}
-          style={[styles.choice,{borderColor:theme.palette.primary}]}>
-          <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>{showAllSkills?'適用技能':'全部技能'}</Text>
-        </Pressable>
-      </View>
+      <Text style={[styles.hint,{color:theme.palette.textSecondary}]}>中央完整技能樹｜所有技能可查閱；尚未介接的項目明確標示，絕不依元件種類隱藏整類工具。</Text>
       <View accessibilityRole="summary" style={[styles.detail,{
         backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border,borderWidth:1,
         marginTop:0,marginBottom:10,gap:6,
@@ -163,6 +150,7 @@ function toolUsable(tool:SkillTool,s:MaintenanceSession):boolean {
   if(f.startsWith('workspace:'))return true;
   if(f==='frame:size')return s.scope==='frame';
   if(f.startsWith('framefx:'))return s.scope==='frame';
+  if(f==='instance:sync')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item));
   if(f==='instance:parent-size')return s.scope==='instance'&&s.draftInstances.some(item=>item.id===s.instanceId&&item.templateId==='parent-frame'&&isEngineerOwnedInstance(item));
   if(f==='instances')return s.scope==='frame'||s.scope==='instance'&&
     s.draftInstances.some(item=>item.id===s.instanceId&&isEngineerOwnedInstance(item)&&
@@ -191,6 +179,18 @@ function ScopedToolDetails({tool,instance}:{tool:SkillTool;instance?:Maintenance
   const theme=useThemeRuntime();
   const s=maint.session;
   if(!s)return null;
+  if(tool.field==='instance:sync')return <View style={{gap:8,marginTop:8}}>
+    <Text style={{fontSize:12,color:theme.palette.textSecondary}}>共用樣式只更新同類元件外觀，不連動內容、位置、尺寸或帳務資料。</Text>
+    <Switch value={s.syncSameKind} onValueChange={maint.setSyncSameKind}/>
+    {s.syncSameKind?<View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}>
+      {([['frame','同框架'],['page','本頁'],['app','全 App']] as const).map(([scope,label])=><Pressable key={scope}
+        onPress={()=>maint.setSyncScope(scope)} accessibilityRole="button" accessibilityLabel={'同類同步：'+label}
+        style={[styles.choice,{borderColor:theme.palette.primary,
+          backgroundColor:s.syncScope===scope?theme.palette.primary:theme.palette.surface}]}>
+        <Text style={{color:s.syncScope===scope?'#FFFFFF':theme.palette.text}}>{label}</Text>
+      </Pressable>)}
+    </View>:null}
+  </View>;
   if(tool.field==='frame:size')return <FrameDimensionsToolDetails/>;
   if(tool.field?.startsWith('framefx:'))return toolUsable(tool,s)?
     <FrameEffectsToolDetails field={tool.field.slice('framefx:'.length)}/>:
