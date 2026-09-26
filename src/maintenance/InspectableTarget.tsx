@@ -54,9 +54,9 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     'gradientMidEnabled','gradientMidStop','glowEnabled','glowColor','glowOpacity','glowWidth',
     'shadowEnabled','shadowColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
     'marginVertical','marginHorizontal','borderStyle'];
-  const materialActive=customized&&['text','value','prefix','generic'].includes(target.kind)&&
+  const materialActive=customized&&['text','value','prefix','generic','frame'].includes(target.kind)&&
     materialKeys.some(key=>Object.hasOwn(override,key));
-  const wrapperKind=['wall','portfolio-list','control','generic'].includes(target.kind)||materialActive;
+  const wrapperKind=['wall','portfolio-list','control','generic','frame'].includes(target.kind)||materialActive;
   const wrapperStyle=customized&&wrapperKind?{
     ...(materialActive&&appearance.backgroundMode==='gradient'?{backgroundColor:'transparent'}:
       (override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
