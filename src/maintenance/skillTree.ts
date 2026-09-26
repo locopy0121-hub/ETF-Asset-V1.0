@@ -102,7 +102,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
   {id:'interaction',label:'互動操作',description:'觸控、滑動、長按與縮放',tools:[ready('quote-style','頁面設定：行情模式','page:quoteStyle','純行情／＋圖表／精簡／進階'),later('tap','點擊行為','需確認權限及動作'),later('swipe','手勢互斥','需原生／實機驗證')]},
   {id:'data',label:'資訊呈現',description:'顯示與資料狀態',tools:[ready('visibility','框架顯示','visible','開啟／關閉'),ready('wall-settings','頁面設定：行情牆完整工具','page:wall','直接複用現有行情牆欄位、跑馬燈、色彩、效果工具'),ready('badge-settings','頁面設定：標籤與提醒','page:badges','直接複用官方標籤、配息、提醒及效果編輯器'),ready('list-settings','頁面設定：庫存清單','page:list','直接複用清單欄位及 A/B 視覺設定'),later('source','欄位資料來源','只讀資料映射，不得建立假資料')]},
   {id:'conditions',label:'條件顯示',description:'可見狀態與條件策略',tools:[ready('show-hide','顯示開關','visible','顯示／隱藏'),ready('target-visibility','元件顯示開關','target:visible','只影響當前已指定的元件'),later('threshold','狀態門檻','需要有效資料與門檻驗證')]},
-  {id:'responsive',label:'裝置適配',description:'單雙三欄與內容溢出',tools:[ready('density-mode','框架密度','layout','以目前頁面環境查看'),later('breakpoint','斷點覆寫','需接入專屬元件響應式模型')]},
+  {id:'responsive',label:'裝置適配',description:'單雙三欄與內容溢出',tools:[ready('density-mode','框架密度','layout','以目前頁面環境查看'),ready('breakpoint','當前真實框架尺寸斷點','framefx:responsiveEnabled','量測本框架原生寬度後自動切換 standard／compact／dense 內距與標題大小；閾值獨立、安全局部套用，不修改父框架寬高')]},
   {id:'sharing',label:'元件共享',description:'中央定義、局部實例及模板',tools:[later('save-template','儲存中央模板','共享模板變更必須確認影響範圍'),later('apply-elsewhere','複用實例','不能無提示覆寫其他頁面')]},
   {id:'versions',label:'版本維護',description:'暫存、套用、取消及回復',tools:[ready('transaction','套用／取消','session','套用持久化；取消丟棄本次全部草稿'),ready('history','歷史版本比較','maintenance:visual-history','框架、原生元件與工程師新增實例均支援最多十筆獨立外觀歷史；先比較後只還原目前草稿')]},
 ];

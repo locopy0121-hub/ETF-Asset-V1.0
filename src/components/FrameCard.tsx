@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode}
 import {AccessibilityInfo,Animated,Easing,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands,responsiveFrameDensity} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -27,6 +27,9 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const marqueeShift=useRef(new Animated.Value(0)).current;
   const [titleAvailable,setTitleAvailable]=useState(0);
   const [titleIntrinsic,setTitleIntrinsic]=useState(0);
+  const [measuredFrameWidth,setMeasuredFrameWidth]=useState(0);
+  const responsiveDensity=Boolean(editorStyle&&fx.responsiveEnabled)?
+    responsiveFrameDensity(measuredFrameWidth,layout,fx.responsiveCompactWidth,fx.responsiveDenseWidth):layout;
   useEffect(()=>{
     let mounted=true;
     AccessibilityInfo.isReduceMotionEnabled().then(value=>{if(mounted)setReduceMotion(value);})
@@ -88,6 +91,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const titleStyle=[
     styles.title,{color:theme.palette.text},
     layout==='dense'&&styles.titleDense,
+    responsiveDensity==='dense'&&layout!=='dense'&&styles.titleDense,
     editorStyle&&{
       fontSize:editorStyle.titleFontSize,
       color:linkedColor(editorStyle.titleColor??theme.palette.text,
@@ -137,6 +141,8 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   return <Animated.View style={[
     styles.card,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
     layout==='compact'&&styles.cardCompact,layout==='dense'&&styles.cardDense,
+    responsiveDensity==='compact'&&layout==='standard'&&styles.cardCompact,
+    responsiveDensity==='dense'&&layout!=='dense'&&styles.cardDense,
     appearance==='soft'&&[styles.cardSoft,{backgroundColor:theme.palette.surfaceMuted}],
     appearance==='outline'&&[styles.cardOutline,{borderWidth:2,borderColor:theme.palette.primary}],
     editorStyle&&{
@@ -168,7 +174,11 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     },
     editorStyle&&fx.entranceEnabled&&!reduceMotion&&{transform:entranceTransform},
     workHidden&&{opacity:.5},
-  ]}>
+  ]} onLayout={(event:LayoutChangeEvent)=>{
+    const width=event.nativeEvent.layout.width;
+    if(Number.isFinite(width)&&width>0)
+      setMeasuredFrameWidth(previous=>Math.abs(previous-width)<1?previous:width);
+  }}>
     {shadowSpreadOn?frameShadowSpreadBands(fx.shadowSpreadRadius,fx.shadowSpreadOpacity,fx.shadowSpreadLayers)
       .map((band,index)=><View key={'shadow-spread-'+index} pointerEvents="none"
         style={{position:'absolute',left:-band.inset+fx.shadowOffsetX,top:-band.inset+fx.shadowOffsetY,
