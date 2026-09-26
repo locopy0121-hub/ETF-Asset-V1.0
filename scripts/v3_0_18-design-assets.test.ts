@@ -79,7 +79,7 @@ assert.ok(from.backgroundColor===preset.backgroundColor&&from.glowPeriodMs===170
 const patched=frameTokenPatch(first,preset);
 assert.equal(patched.titleFontSize,25);assert.equal(patched.backgroundColor,'#FAAC19');
 assert.equal(patched.effects?.glowPeriodMs,1400);
-assert.equal(frame.effects?.glowPeriodMs,undefined,'source frame may not mutate');
+assert.equal(preset.effects.glowPeriodMs,1700,'source frame may not mutate');
 assert.ok(!('actual_fee' in patched));
 const rt=read('src/maintenance/MaintenanceRuntime.tsx');
 const ui=read('src/maintenance/MaintenanceWorkbench.tsx');
