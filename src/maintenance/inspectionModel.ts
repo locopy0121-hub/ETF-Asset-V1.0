@@ -17,6 +17,7 @@ export type TargetAppearance=Readonly<{
   profitToneOverride?:'auto'|FinancialTone;
   conditionalStyles?:ConditionalStyleMap;
   displayUnit:DisplayUnit;displayDigits:number; // display only: original data always immutable
+  tapAction:'none'|'emphasize'; // local metric visual gesture, never a financial action
   borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   // V3.0.11: independent visual effects on native component instances, never ledger values.
   backgroundMode:'solid'|'gradient';gradientDirection:'horizontal'|'vertical';
@@ -57,7 +58,7 @@ export const TARGET_APPEARANCE:TargetAppearance={
   shadowEnabled:false,shadowColor:'#000000',shadowProfitColor:false,shadowOpacity:.28,
   shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
-  align:'left',useProfitColor:true,labelText:'',captionText:'',displayUnit:'original',displayDigits:0,
+  align:'left',useProfitColor:true,labelText:'',captionText:'',displayUnit:'original',displayDigits:0,tapAction:'none',
   fontWeight:'normal',fontFamily:'system',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
   labelFontWeight:'700',captionFontWeight:'normal',labelFontStyle:'normal',captionFontStyle:'normal',
   labelLetterSpacing:0,captionLetterSpacing:0,labelLineHeight:0,captionLineHeight:0,
@@ -93,6 +94,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(v.anchorY==='free'||v.anchorY==='top'||v.anchorY==='center'||v.anchorY==='bottom')o.anchorY=v.anchorY;
   if(v.profitToneOverride==='auto'||v.profitToneOverride==='gain'||v.profitToneOverride==='loss'||v.profitToneOverride==='neutral')o.profitToneOverride=v.profitToneOverride;
   if(v.conditionalStyles!==undefined)o.conditionalStyles=normalizeConditionalStyles(v.conditionalStyles);
+  if(v.tapAction==='none'||v.tapAction==='emphasize')o.tapAction=v.tapAction;
   if(['original','yuan','thousand','ten-thousand','million'].includes(String(v.displayUnit)))o.displayUnit=v.displayUnit;
   if(typeof v.displayDigits==='number'&&Number.isFinite(v.displayDigits))o.displayDigits=Math.round(clamp(v.displayDigits,0,4,0));
   for(const field of ['labelText','captionText','prefixText'] as const)
@@ -142,6 +144,7 @@ export const TARGET_VISUAL_PRESETS={
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
   if(field==='target:numberFormat')return kind==='metric'||kind==='value';
+  if(field==='target:tapAction')return kind==='metric';
   if(field==='target:resetVisual')return true;
   if(field==='target:preset')return nativeMaterial;
   if(['target:backgroundMode','target:gradientDirection','target:gradientEndColor',

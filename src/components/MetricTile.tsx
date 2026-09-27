@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {useEffect,useState} from 'react';
+import {Pressable,StyleSheet,Text} from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
 import type {TargetOverride} from '../maintenance/inspectionModel';
@@ -7,14 +8,18 @@ import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffe
 import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
 import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
 import {formatDisplayNumber} from '../maintenance/numberDisplay';
+import {nextMetricTapEmphasis} from '../maintenance/metricTap';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
-export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone}:{
+export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone,previewTap=false}:{
   label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
-  editorStyle?:TargetOverride;simulationTone?:FinancialTone; // ephemeral preview only
+  editorStyle?:TargetOverride;simulationTone?:FinancialTone;previewTap?:boolean; // ephemeral preview only
 }){
   const theme=useThemeRuntime();
+  const [emphasized,setEmphasized]=useState(false);
+  const tapEnabled=editorStyle?.tapAction==='emphasize';
+  useEffect(()=>setEmphasized(false),[editorStyle?.tapAction]);
   const settings=useSettingsRuntime();
   const nativeTones=resolveNativeMetricTones(tone,editorStyle?.profitToneOverride,simulationTone);
   const actualTone=nativeTones.linked;
@@ -42,10 +47,16 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   const displayedCaption=editorStyle?.captionText||caption;
   const displayedValue=editorStyle?.displayUnit&&editorStyle.displayUnit!=='original'?
     formatDisplayNumber(value,editorStyle.displayUnit,editorStyle.displayDigits??0):value;
-  return <View style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
+  return <Pressable disabled={!tapEnabled} accessibilityRole={tapEnabled?'button':undefined}
+    accessibilityLabel={tapEnabled?'切換強調顯示：'+label:undefined}
+    accessibilityState={tapEnabled?{selected:emphasized}:undefined}
+    onPress={()=>setEmphasized(previous=>nextMetricTapEmphasis(previous,editorStyle?.tapAction??'none'))}
+    style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
-      marginHorizontal:surface.marginHorizontal,...targetShadowStyle(surface,shadow)}]}>
+      marginHorizontal:surface.marginHorizontal,...targetShadowStyle(surface,shadow)},
+    tapEnabled&&(emphasized||previewTap)&&{borderWidth:Math.max(2,surface.borderWidth),borderColor:theme.palette.primary}]}>
+
     {editorStyle?<TargetBackdrop appearance={surface} start={effectiveBackground} middle={gradientMid} end={gradientEnd} glow={glow}/>:null}
     <Text style={[styles.label,{color:effectiveLabel,
       fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left',
@@ -72,7 +83,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
       ...(editorStyle?.captionLetterSpacing!==undefined?{letterSpacing:editorStyle.captionLetterSpacing}:{}),
       ...(editorStyle?.captionLineHeight&&editorStyle.captionLineHeight>0?{lineHeight:editorStyle.captionLineHeight}:{}),
       }]}>{displayedCaption}</Text>:null}
-  </View>;
+  </Pressable>;
 }
 const styles=StyleSheet.create({
   tile:{flex:1,minWidth:92,backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:spacing.md},
