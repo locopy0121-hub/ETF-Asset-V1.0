@@ -1,3 +1,11 @@
+## V3.0.37｜2026-09-27｜真實 A 欄位資料來源唯讀稽核（開發 QA，Gate 待驗）
+
+來源：V3.0.36 PR #83 HEAD `1c38e1f18699f736a8b1fc54beb19be6ca2a400a`，Actions #1246（run 36312053063）quality、Node/Redis/PostgreSQL、QA APK 全成功，Artifact #10929800374，APK SHA256 96d0e07187792bd03dce9979fc4cbbd966904cfd94e234eed661c0637da68bab；package com.tfasset.app，versionCode 30036，versionName 3.0.36。已建立來源不可變備份 `backup-v3.0.36-20260927-pre-v3.0.37`，工作分支 `go-v3.0.37-20260927-source-inspection`。App／Android／iOS 版本 3.0.37／30037。
+
+只將原中央待適配 `source` 接到目前已掛載的真實 A：AB「資訊呈現→欄位資料來源」唯讀列出原生元件所在頁面、框架、類型、真實已顯示屬性及原元件的唯讀註記；沒有可驗證來源識別時明確標示「上游來源未證實」，絕不猜測帳務欄位或行情 API、不保存快照、不呼叫外部服務、不改寫來源、交易、actual_fee/tax 或其他元件。工程師新增空白實例／外部框架不提供假的來源控制。延用現有 A 原位工作台與導覽；本項是唯讀診斷，不需要套用資料。
+
+中央唯一 184 技能，預期源碼宣告 162 已接線／22 待原生適配；這是程式接線宣告，不等於全部 Android 實機 PASS。新增實際 A 合約與 UI 接線測試，延續 V3.0.1–V3.0.36 全歷版 regression，GitHub Actions quality/backend/native QA APK、ZIP/SHA/AAPT/Artifact 在同一最新 HEAD 全 PASS 才可備份接 V3.0.38。開發 QA 不以 Codex review 阻斷、不自動合併、不解除安裝既有 App。Android 手機視覺另列待驗。
+
 ## V3.0.36｜2026-09-27｜原生 metric 數值狀態門檻（開發 QA，完整 Gate 待驗）
 
 基準：V3.0.35 PR #82 已成功 QA run #1222（36306783865），HEAD `121aca324991a929d72f3ed5b22bb68773ae56ce`，QA APK Artifact #10928305086，ZIP／SHA／AAPT 已於成功 job 實證。升版前不可變備份 `backup-v3.0.35-20260927-pre-v3.0.36` 指向該 HEAD；新分支 `go-v3.0.36-20260927-metric-threshold`。本版 3.0.36／Android+iOS 30036。

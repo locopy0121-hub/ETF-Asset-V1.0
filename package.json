@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.36",
+  "version": "3.0.37",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -208,7 +208,9 @@
     "test:metric-swipe-v335": "tsx scripts/v3_0_35-metric-swipe.test.ts",
     "test:v3_0_35": "npm run test:v3_0_34 && npm run test:metric-swipe-v335",
     "test:metric-threshold-v336": "tsx scripts/v3_0_36-metric-threshold.test.ts",
-    "test:v3_0_36": "npm run test:v3_0_35 && npm run test:metric-threshold-v336"
+    "test:v3_0_36": "npm run test:v3_0_35 && npm run test:metric-threshold-v336",
+    "test:source-inspection-v337": "tsx scripts/v3_0_37-source-inspection.test.ts",
+    "test:v3_0_37": "npm run test:v3_0_36 && npm run test:source-inspection-v337"
   },
   "dependencies": {
     "expo": "~57.0.21",
