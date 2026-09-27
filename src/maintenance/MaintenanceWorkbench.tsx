@@ -5,6 +5,7 @@ import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from '
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
 import {colorWithAlpha,normalizeFrameEffects} from './frameEffects';
 import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
+import {ChartDataToolDetails} from './ChartDataToolDetails';
 import {NativeChildSortToolDetails} from './NativeChildSortToolDetails';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
@@ -333,6 +334,7 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
   if(!s)return null;
   const activeTool=resolvedTool(tool,s);
   if(activeTool!==tool)return <ScopedToolDetails tool={activeTool} instance={instance} onOpenTool={onOpenTool}/>;
+  if(tool.field==='target:chartSeries')return <ChartDataToolDetails/>;
   if(tool.field==='maintenance:tokens')return <DesignTokenToolDetails/>;
   if(tool.field==='maintenance:favorites')return <FavoriteToolDetails onNavigate={onOpenTool}/>;
   if(tool.field==='maintenance:conditional-style')return <ConditionalStyleToolDetails/>;
