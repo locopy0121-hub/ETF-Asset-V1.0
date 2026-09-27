@@ -2,6 +2,7 @@ import {type ReactNode,useEffect,useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
@@ -100,7 +101,9 @@ export function PageFrameSettingsModal({
     const key=`${frameKey}:${group}`;
     setOpenGroup(current=>current===key?null:key);
   };
-  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||defaultPageTitle);onClose();};
+  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||defaultPageTitle);
+    recordDiagnosticEvent({level:'info',code:'PAGE_EDITOR_APPLY',screen:pageKey,message:'頁面設定已套用'});
+    onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
   const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();};
 

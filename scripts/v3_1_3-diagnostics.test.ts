@@ -34,4 +34,6 @@ assert.match(native,/pending_crash_journal/);
 assert.match(settings,/錯誤紀錄 Log/);
 assert.match(app,/DiagnosticsProvider/);
 assert.match(app,/HOLDING_TAP/);
+assert.match(readFileSync('src/components/PageFrameSettingsModal.tsx','utf8'),/PAGE_EDITOR_APPLY/);
+assert.match(readFileSync('src/maintenance/MaintenanceRuntime.tsx','utf8'),/ENGINEER_APPLY/);
 console.log('V3.1.3 bounded persisted diagnostic journal, privacy and UI/native wiring: PASS (device logcat remains separate)');
