@@ -15,6 +15,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionModel';
@@ -42,7 +43,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const sortKey=(effectiveDisplay.sortKey??'manual') as HoldingSortKey;
   const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   // Old saved three-column chart selections also render in safe chart-free mode.
-  const quoteStyle=holdingLayoutMode==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?'quote':rawQuoteStyle;
+  const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
   const setQuoteStyle=(value:QuoteModuleStyle)=>{
     if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
