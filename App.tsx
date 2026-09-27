@@ -107,7 +107,7 @@ function AppBody(){
     return()=>subscription.remove();
   },[active,detail,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen,maintenance.session]);
   useEffect(()=>{
-    if(maintenance.session&&(maintenance.session.page!==active||detail))maintenance.cancel();
+    if(maintenance.session&&(maintenance.session.page!==active))maintenance.cancel();
   },[active,detail,maintenance.session]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
@@ -161,7 +161,7 @@ function AppBody(){
 
   const openHolding=(holding:HoldingQuote)=>setDetail(holding);
   const screen=useMemo(()=>{
-    if(detail) return <HoldingDetailBoundary key={detail.symbol} symbol={detail.symbol} onBack={()=>setDetail(null)}><HoldingDetailScreen holding={detail} onBack={()=>setDetail(null)}/></HoldingDetailBoundary>;
+    if(detail) return <HoldingDetailBoundary key={detail.symbol} symbol={detail.symbol} onBack={()=>setDetail(null)}><HoldingDetailScreen holding={detail} sourcePage={active} onBack={()=>setDetail(null)}/></HoldingDetailBoundary>;
     switch(active){
       case 'ledger': return <LedgerScreen/>;
       case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding}/>;
