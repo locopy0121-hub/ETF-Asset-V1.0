@@ -32,9 +32,9 @@ assert.ok(stack.includes('previewTap={render.editing}'));assert.ok(inspect.inclu
 assert.ok(panel.includes("fieldName==='tapAction'")&&panel.includes("maint.patchTarget(target.id,{tapAction:action})"));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.39');assert.equal(app.expo.version,'3.0.39');
-assert.equal(app.expo.android.versionCode,30039);assert.equal(app.expo.ios.buildNumber,'30039');
+assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,'3.0.40');
+assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.39-QA.apk')&&wf.includes('npm run test:v3_0_39'));
+assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes('npm run test:v3_0_40'));
 for(const f of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(f).length>0);
-console.log('V3.0.39 metric native tap action + AB preview behavior + immutable boundaries: AUTOMATED PASS; device validation pending');
+console.log('V3.0.40 metric native tap action + AB preview behavior + immutable boundaries: AUTOMATED PASS; device validation pending');

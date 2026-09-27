@@ -25,7 +25,7 @@ assert.ok(card.includes('onPanResponderTerminationRequest:()=>false'));
 assert.ok(stack.includes("active&&session?.scope==='frame'")&&stack.includes('engineer.patchFrame'));
 assert.ok(panel.includes("tool.field==='frame:resize-gesture'")&&panel.includes('<FrameDimensionsToolDetails/>'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.38','3.0.39'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
+assert.ok(['3.0.38','3.0.40'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes('TF-Asset-V'+pkg.version+'-QA.apk')&&wf.includes('npm run test:v3_0_'+pkg.version.split('.')[2]));

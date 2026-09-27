@@ -39,11 +39,11 @@ assert.ok(ui.includes('entranceDistance')&&ui.includes('entranceScale')&&ui.incl
 assert.ok(ui.includes('maintenance.patchFrame'));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.39');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30039);assert.equal(app.expo.ios.buildNumber,'30039');
+assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.39-QA.apk')&&wf.includes('npm run test:v3_0_39'));
+assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes('npm run test:v3_0_40'));
 assert.ok(wf.includes("startsWith(github.head_ref, 'go-v3.0.')"));
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30039'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30040'"));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(p).length>0);
-console.log('V3.0.39 native frame entrance + Reduce Motion regression PASS; 163 wired /21 pending; device testing separate');
+console.log('V3.0.40 native frame entrance + Reduce Motion regression PASS; 163 wired /21 pending; device testing separate');

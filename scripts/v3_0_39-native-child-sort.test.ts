@@ -43,9 +43,9 @@ const native=read('src/maintenance/NativeChildSortToolDetails.tsx');
 assert.ok(native.includes('PanResponder.create')&&native.includes('onPanResponderRelease'));
 assert.ok(native.includes('maint.reorderOwnedSibling'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.39');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30039);assert.equal(app.expo.ios.buildNumber,'30039');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.39-QA.apk'));
+assert.ok(['3.0.39','3.0.40'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V'+pkg.version+'-QA.apk'));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(file).length>0);
 console.log('V3.0.39 real installed child native drag-sort: ordering, strict scope, AB draft/native handle PASS; device pending');

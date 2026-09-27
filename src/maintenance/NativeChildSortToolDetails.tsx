@@ -1,7 +1,7 @@
 import {useMemo,useRef} from 'react';
 import {Animated,PanResponder,Text,View} from 'react-native';
 import {isEngineerOwnedInstance} from './componentLibrary';
-import {childDragSteps} from './nativeChildSort';
+import {accessibleChildMove,childDragSteps} from './nativeChildSort';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 
@@ -30,7 +30,7 @@ function NativeDragRow({id,label,index,total,onMove}:{
    <Animated.View {...responder.panHandlers} accessible accessibilityRole="adjustable"
     accessibilityLabel={'拖曳排序 '+label+'，目前第 '+(index+1)+'／'+total+' 項'}
     accessibilityActions={[{name:'increment',label:'下一位'},{name:'decrement',label:'上一位'}]}
-    onAccessibilityAction={event=>latest.current(id,event.nativeEvent.actionName==='increment'?1:-1)}
+    onAccessibilityAction={event=>{const step=accessibleChildMove(event.nativeEvent.actionName,index,total);if(step)latest.current(id,step);}}
     style={{width:52,minHeight:44,alignItems:'center',justifyContent:'center',
       backgroundColor:theme.palette.surface,borderWidth:2,
       borderColor:theme.palette.primary,borderRadius:9,
