@@ -18,6 +18,7 @@ export type TargetAppearance=Readonly<{
   conditionalStyles?:ConditionalStyleMap;
   displayUnit:DisplayUnit;displayDigits:number; // display only: original data always immutable
   tapAction:'none'|'emphasize'; // local metric visual gesture, never a financial action
+  tapSwipeGuard:boolean; // native metric touch slop; default ON, scoped per real metric A
   borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   // V3.0.11: independent visual effects on native component instances, never ledger values.
   backgroundMode:'solid'|'gradient';gradientDirection:'horizontal'|'vertical';
@@ -58,7 +59,7 @@ export const TARGET_APPEARANCE:TargetAppearance={
   shadowEnabled:false,shadowColor:'#000000',shadowProfitColor:false,shadowOpacity:.28,
   shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
-  align:'left',useProfitColor:true,labelText:'',captionText:'',displayUnit:'original',displayDigits:0,tapAction:'none',
+  align:'left',useProfitColor:true,labelText:'',captionText:'',displayUnit:'original',displayDigits:0,tapAction:'none',tapSwipeGuard:true,
   fontWeight:'normal',fontFamily:'system',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
   labelFontWeight:'700',captionFontWeight:'normal',labelFontStyle:'normal',captionFontStyle:'normal',
   labelLetterSpacing:0,captionLetterSpacing:0,labelLineHeight:0,captionLineHeight:0,
@@ -78,7 +79,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
     'gradientEndColor','gradientMidColor','shadowColor','glowColor'] as const)
     if(hex(v[field]))o[field]=v[field].toUpperCase();
   for(const field of ['visible','useProfitColor','textProfitColor','labelProfitColor','captionProfitColor','backgroundProfitColor','borderProfitColor',
-    'gradientEndProfitColor','gradientMidProfitColor','gradientMidEnabled','shadowEnabled','shadowProfitColor','glowEnabled','glowProfitColor'] as const)
+    'gradientEndProfitColor','gradientMidProfitColor','gradientMidEnabled','shadowEnabled','shadowProfitColor','glowEnabled','glowProfitColor','tapSwipeGuard'] as const)
     if(typeof v[field]==='boolean')o[field]=v[field];
   for(const field of ['fontWeight','labelFontWeight','captionFontWeight'] as const)
     if(v[field]==='normal'||v[field]==='bold'||['100','200','300','400','500','600','700','800','900'].includes(String(v[field])))o[field]=v[field];
@@ -144,7 +145,7 @@ export const TARGET_VISUAL_PRESETS={
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
   if(field==='target:numberFormat')return kind==='metric'||kind==='value';
-  if(field==='target:tapAction')return kind==='metric';
+  if(field==='target:tapAction'||field==='target:tapSwipeGuard')return kind==='metric';
   if(field==='target:resetVisual')return true;
   if(field==='target:preset')return nativeMaterial;
   if(['target:backgroundMode','target:gradientDirection','target:gradientEndColor',
