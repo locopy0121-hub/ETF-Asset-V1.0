@@ -1,3 +1,7 @@
+## 2026-09-27｜V3.0.36 數值門檻必須先驗真實來源、只改局部原生顯示
+
+不得把代號或百分比與顯示單位已縮放結果當真實比較金額；原始 metric 字串不符合嚴格數值解析則不描邊。輸入不是有限數值或超過 ±1 兆則不得覆寫草稿；預設不啟用、選擇當前 A 才能編輯。thresholdReady 僅認列真實 native MetricTile 渲染、AB 控制、標準化白名單、草稿／套用／取消及完整歷版 regression，Android 手機仍待實測。當前 184 項中預期 161 宣告 ready／23 pending，不等於 161 項真機 PASS。帳務核心、actual_fee/tax、交易寫入、行情來源及 SAF 實作絕不變動。歷版 hard-coded 身份與準備度計數須全部同步升 3.0.36／30036／161/23，品質、後端、APK、ZIP/SHA/AAPT/Artifact 均實際 PASS 才可接續。
+
 ## 2026-09-27｜V3.0.35 #1215 非同步升版導致 quality Gate FAIL
 不可僅修改 app.json 將新 branch 視為版本已升級。#1215 quality 讀到 app 3.0.35、package/SettingsScreen/BackupService/workflow 3.0.34，historical v2_1_1 release assertion 失敗；同版必須以單一 release identity commit 同步更新全部版本與歷版強硬門檻。失敗後讀 job log、原 branch 修復、推新 commit 實際觸發 PR QA，絕不能只有重跑原始失敗 run 就稱為已修復。
 
