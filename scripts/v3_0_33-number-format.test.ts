@@ -12,8 +12,10 @@ assert.equal(formatDisplayNumber('-1,234,000','thousand',2),'-1,234.00千');
 assert.equal(formatDisplayNumber('5000000','million',1),'5.0百萬');
 assert.equal(formatDisplayNumber('NT$ 1,234.56','yuan',1),'NT$ 1,234.6');
 assert.equal(formatDisplayNumber('1234','original',2),'1234');
-for(const val of ['待核對','載入中','0050','2330','14.5%','12/31','NaN','1e100','42 元'])
+for(const val of ['待核對','載入中','0050','14.5%','12/31','NaN','1e100','42 元'])
  assert.equal(formatDisplayNumber(val,'ten-thousand',2),val);
+assert.equal(formatDisplayNumber('2330','thousand',2,true),'2330','plain code-like Text must remain original');
+assert.equal(formatDisplayNumber('1234','thousand',2),'1.23千','a true metric amount still formats');
 assert.equal(formatDisplayNumber('100000000000000000','million',2),'100000000000000000');
 assert.deepEqual(normalizeTargetOverride({displayUnit:'million',displayDigits:8,actual_fee:900,tax:25}),{displayUnit:'million',displayDigits:4});
 assert.deepEqual(normalizeTargetOverride({displayUnit:'invalid',displayDigits:NaN}),{});
@@ -30,7 +32,7 @@ assert.equal(resolveSkillAdapter(units,{scope:'target',kind:'control',page:'home
 const metric=read('src/components/MetricTile.tsx'),stack=read('src/components/PageEditorStack.tsx');
 const panel=read('src/maintenance/MaintenanceWorkbench.tsx'),rt=read('src/maintenance/MaintenanceRuntime.tsx');
 assert.ok(metric.includes('formatDisplayNumber(value,editorStyle.displayUnit,editorStyle.displayDigits??0)'));
-assert.ok(stack.includes('formatDisplayNumber(content,appearance.displayUnit,appearance.displayDigits)'));
+assert.ok(stack.includes('formatDisplayNumber(content,appearance.displayUnit,appearance.displayDigits,true)'));
 assert.ok(panel.includes("fieldName==='numberFormat'")&&panel.includes("maint.patchTarget(target.id,{displayUnit:item.id})")&&panel.includes("maint.patchTarget(target.id,{displayDigits:digits})"));
 assert.ok(rt.includes('normalizeTargetOverride(override)')&&rt.includes('draftTargets'));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));

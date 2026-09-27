@@ -103,7 +103,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               (override.prefixText!==undefined?appearance.prefixText:content):
               (appearance.labelText||appearance.captionText||content)):
               isDataValue&&customized&&appearance.displayUnit!=='original'?
-                formatDisplayNumber(content,appearance.displayUnit,appearance.displayDigits):content,
+                formatDisplayNumber(content,appearance.displayUnit,appearance.displayDigits,true):content,
             style:customized?[props.style,{
               ...(override.textColor||override.textProfitColor!==undefined||rule?.textColor?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
