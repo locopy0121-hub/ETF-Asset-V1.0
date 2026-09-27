@@ -8,7 +8,7 @@ export type IndividualResetMap=Readonly<Record<string,readonly string[]>>;
 export const individualScope=(page:MainPageKey,frameKey:string)=>page+':'+frameKey;
 const validScope=/^(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+$/;
 const validId=(id:string)=>id.length>0&&id.length<=150&&
-  !/[\\u0000-\\u001f]/.test(id)&&!/(^|\\/)\\.\\.(\\/|$)/.test(id)&&id!=='__proto__';
+  !/[\u0000-\u001f]/.test(id)&&!/(^|\/)\.\.(\/|$)/.test(id)&&id!=='__proto__';
 export function normalizeIndividualResets(raw:unknown):Record<string,string[]>{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   return Object.fromEntries(Object.entries(raw as Record<string,unknown>)
