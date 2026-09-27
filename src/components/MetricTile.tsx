@@ -9,6 +9,7 @@ import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
 import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
 import {formatDisplayNumber} from '../maintenance/numberDisplay';
 import {metricSwipeExceeded,nextMetricTapEmphasis,type MetricTouchPoint} from '../maintenance/metricTap';
+import {metricThresholdMatches} from '../maintenance/metricThreshold';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
@@ -22,6 +23,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   const swipeConsumed=useRef(false);
   const tapEnabled=editorStyle?.tapAction==='emphasize';
   const guardEnabled=editorStyle?.tapSwipeGuard!==false;
+  const thresholdMatched=metricThresholdMatches(value,editorStyle?.thresholdEnabled??false,editorStyle?.thresholdValue??0,editorStyle?.thresholdOperator??'gte');
   useEffect(()=>{setEmphasized(false);swipeConsumed.current=false;start.current=null;},
     [editorStyle?.tapAction,editorStyle?.tapSwipeGuard]);
   const settings=useSettingsRuntime();
@@ -64,7 +66,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
     editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
       marginHorizontal:surface.marginHorizontal,...targetShadowStyle(surface,shadow)},
-    tapEnabled&&(emphasized||previewTap)&&{borderWidth:Math.max(2,surface.borderWidth),borderColor:theme.palette.primary}]}>
+    (thresholdMatched||tapEnabled&&(emphasized||previewTap))&&{borderWidth:Math.max(2,surface.borderWidth),borderColor:theme.palette.primary}]}>
 
     {editorStyle?<TargetBackdrop appearance={surface} start={effectiveBackground} middle={gradientMid} end={gradientEnd} glow={glow}/>:null}
     <Text style={[styles.label,{color:effectiveLabel,
