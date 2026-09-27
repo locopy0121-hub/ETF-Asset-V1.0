@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.38",
+  "version": "3.0.39",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -212,7 +212,9 @@
     "test:source-inspection-v337": "tsx scripts/v3_0_37-source-inspection.test.ts",
     "test:v3_0_37": "npm run test:v3_0_36 && npm run test:source-inspection-v337",
     "test:frame-resize-v338": "tsx scripts/v3_0_38-frame-resize.test.ts",
-    "test:v3_0_38": "npm run test:v3_0_37 && npm run test:frame-resize-v338"
+    "test:v3_0_38": "npm run test:v3_0_37 && npm run test:frame-resize-v338",
+    "test:child-sort-v339": "tsx scripts/v3_0_39-native-child-sort.test.ts",
+    "test:v3_0_39": "npm run test:v3_0_38 && npm run test:child-sort-v339"
   },
   "dependencies": {
     "expo": "~57.0.21",
