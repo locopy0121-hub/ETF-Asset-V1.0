@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.31 #1181 歷版圖片裁切測試誤用不存在欄位
+V3.0.31 實際以 `framefx:imageFit` 一項 ready 工具進入原生 UI，於 cover 模式控制 `imageFocusX/Y`。舊 `v3_0_8-frame-background.test.ts` 把草稿參數 `imageFocusX` 錯當中央技能欄位 `framefx:imageFocusX`，令 #1181 aggregate gates 在品質階段 FAIL、QA APK skipped；應修測試為既有真實工具的語意斷言，並保留原生控制接線與新版裁切行為回歸，不新增假工具或放寬 immutable 財務檢查。
+
 ## 2026-09-27｜V3.0.31 本機背景裁切焦點與跨裝置資產移轉分離
 Native Image cover 預設置中行為不得被新增設定破壞；只有焦點偏離 50% 才量測來源/容器及定位，來源 getSize 不可用須退回舊 resizeMode=cover。不能把 content:// 授權當跨裝置可攜圖檔，也不能把部分適配標為整個 fx-background-image ready。所有焦點設置由當前 A 的既有 framefx.imageFit 控制、套用才儲存；圖層只能影響背景，金融內容及帳務 immutable。
 

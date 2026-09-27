@@ -66,7 +66,7 @@ for(const field of ['gradientMidEnabled','gradientMidColor','gradientMidStop','i
   assert.ok(frame!.tools.some(tool=>tool.field==='framefx:'+field&&tool.status==='ready'),
     'missing native-adapted frame tool '+field);
 assert.ok(frame!.tools.some(tool=>tool.label.includes('任意角度')&&tool.status==='ready'&&tool.field==='framefx:gradientAngle'));
-assert.ok(frame!.tools.some(tool=>tool.label.includes('圖片裁切位置')&&tool.status==='ready'&&tool.field==='framefx:imageFocusX'));
+assert.ok(frame!.tools.some(tool=>tool.label.includes('背景圖片填滿')&&tool.status==='ready'&&tool.field==='framefx:imageFit'&&tool.detail.includes('焦點')));
 assert.ok(frame!.tools.some(tool=>tool.label.includes('毛玻璃')&&tool.status==='adapter-required'));
 const card=read('src/components/FrameCard.tsx');
 const details=read('src/maintenance/FrameEffectsToolDetails.tsx');
@@ -78,6 +78,8 @@ assert.ok(card.includes('resizeMode={fx.imageFit}')&&card.includes('opacity:fx.i
 assert.ok(card.includes('backgroundColor:gradientOn?')&&!card.includes('opacity:editorStyle.backgroundOpacity'),
   'background transparency must never dim financial values');
 assert.ok(details.includes('pickNativeThemeBackground()')&&details.includes('nativeRuntimeAvailable'));
+assert.ok(details.includes("if(key==='imageFit')")&&details.includes('imageFocusX')&&details.includes('imageFocusY'),
+  'cover focus must use the existing imageFit native control, not a phantom field');
 assert.ok(details.includes("onPicked={uri=>")&&details.includes("imageSource:'custom'"));
 assert.ok(details.includes('THEME_BACKGROUNDS.map((uri,index)'));
 assert.ok(details.includes('onProfitColorChange'));
