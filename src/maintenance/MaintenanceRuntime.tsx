@@ -6,6 +6,7 @@ import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,useP
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
 import {reorderOwnedSiblings} from './nativeChildSort';
+import {clearIndividualOverride,effectiveIndividualOverride,individualNativeDisplayPatch,isIndividualReset,normalizeIndividualResets,type IndividualResetMap} from './individualResetModel';
 import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,targetToolSupported,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {safeBatchPatch,type BatchField,type VisualSource} from './advancedSkillEngine';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
@@ -35,6 +36,7 @@ export type MaintenanceSession=Readonly<{
   draftDisplay:PageDisplayConfig;displayTouched:readonly (keyof PageDisplayConfig)[];
   syncSameKind:boolean;syncScope:StyleSyncScope;sharedTouched:readonly (keyof TargetAppearance)[];
   batchLocalOverrides:Readonly<Record<string,readonly string[]>>;
+  individualResets:readonly string[]; // Saved only after Apply; isolates this exact native A from shared styles.
   previewState:SimulationState; // UI-only, excluded from persistence, backups and finance.
 }>;
 type MaintenanceContextValue=Readonly<{
@@ -71,6 +73,7 @@ type MaintenanceContextValue=Readonly<{
   reorderOwnedSibling:(id:string,steps:number)=>void;
   patchTarget:(id:string,patch:TargetOverride)=>void;
   resetTargetVisual:(id:string)=>void;
+  resetIndividual:()=>void;
   patchWorkspace:(patch:Partial<WorkspaceConfig>)=>void;
   patchDisplay:(patch:Partial<PageDisplayConfig>)=>void;
   install:(templateId:string)=>void;remove:(id:string)=>void;
@@ -93,6 +96,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [targetStyles,setTargetStyles]=useState<Record<string,Record<string,TargetOverride>>>({});
   const [sharedStyles,setSharedStyles]=useState<Record<string,TargetOverride>>({});
   const [localOnlyKeys,setLocalOnlyKeys]=useState<Record<string,string[]>>({});
+  const [individualResets,setIndividualResets]=useState<IndividualResetMap>({});
   const [workspaces,setWorkspaces]=useState<Record<string,WorkspaceConfig>>({});
   const [liveBounds,setLiveBounds]=useState<Record<string,{width:number;height:number}>>({});
   const [liveRects,setLiveRects]=useState<Record<string,Record<string,PositionedRect>>>({});
@@ -115,6 +119,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       if(parsed.schema===2||parsed.schema===3){
         setSaved(normalizeSaved(parsed.instances));
         setTargetStyles(normalizeTargetMap(parsed.targets));
+        setIndividualResets(normalizeIndividualResets(parsed.individualResets));
         if(parsed.schema===3)setVisualHistory(normalizeVisualHistory(parsed.visualHistory));
         if(parsed.localOnlyKeys&&typeof parsed.localOnlyKeys==='object'&&!Array.isArray(parsed.localOnlyKeys)){
           setLocalOnlyKeys(Object.fromEntries(Object.entries(parsed.localOnlyKeys as Record<string,unknown>)
@@ -289,7 +294,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
         .filter(field=>local[field as keyof TargetOverride]!==undefined)
         .map(field=>[field,local[field as keyof TargetOverride]]));
-      return {...local,...group,...isolated};
+      return effectiveIndividualOverride({...local,...isolated},group,
+        isIndividualReset(individualResets,page,frameKey,id));
     },
     getWorkspaceBounds:(page,frameKey)=>liveBounds[scopeId(page,frameKey)]??{width:0,height:0},
     getFrameRects:(page,frameKey)=>liveRects[scopeId(page,frameKey)]??{},
@@ -323,6 +329,9 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         Object.fromEntries((session.batchLocalOverrides[id]??[])
           .filter(field=>local[field as keyof TargetOverride]!==undefined)
           .map(field=>[field,local[field as keyof TargetOverride]])):{};
+      const resetForThis=session?.page===page&&session.frameKey===frameKey?
+        session.individualResets.includes(id):isIndividualReset(individualResets,page,frameKey,id);
+      if(resetForThis)return {...local};
       const merged={...local,...group,...isolated,...changed};
       return {...merged,...(active&&sourceId===id&&session?.page===page&&session.frameKey===frameKey?
         session.draftTargets[id]:{}),...batchIsolated};
@@ -343,7 +352,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftInstances:(saved[scopeId(page,frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(page,frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(page,frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',
+          draftDisplay:{...(displayConfig??editor.displayConfig)},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},individualResets:[...(individualResets[scopeId(page,frameKey)]??[])],previewState:'actual',
         });
     },
     selectTarget:target=>{
@@ -369,7 +378,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           draftInstances:(saved[scopeId(target.page,target.frameKey)]??[]).map(item=>({...item})),
           draftTargets:{...(targetStyles[scopeId(target.page,target.frameKey)]??{})},
           draftWorkspace:workspaces[scopeId(target.page,target.frameKey)]??DEFAULT_WORKSPACE,
-          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},previewState:'actual',
+          draftDisplay:{...displayConfig},displayTouched:[],syncSameKind:true,syncScope:'frame',sharedTouched:[],batchLocalOverrides:{},individualResets:[...(individualResets[scopeId(target.page,target.frameKey)]??[])],previewState:'actual',
         });
     },
     // Frame behavior is a layout preference, never a permission to lock visual editing.
@@ -440,6 +449,25 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       }
       return {...current,draftTargets,batchLocalOverrides};
     }),
+    resetIndividual:()=>setSession(current=>{
+      if(!current||!['target','instance'].includes(current.scope))return current;
+      const selected=current.scope==='target'?current.target:undefined;
+      const instance=current.scope==='instance'?current.draftInstances.find(item=>item.id===current.instanceId):undefined;
+      if(!selected&&!isEngineerOwnedInstance(instance))return current;
+      const id=selected?.id??'installed:'+instance!.id;
+      const patch=selected?individualNativeDisplayPatch(selected):{};
+      const defaults=instance?instantiateComponent(instance.templateId,instance.id):undefined;
+      const draftInstances=instance&&defaults?current.draftInstances.map(item=>item.id===instance.id?
+        {...defaults,...(instance.parentId?{parentId:instance.parentId}:{})}:item):current.draftInstances;
+      const batchLocalOverrides={...current.batchLocalOverrides,[id]:[]};
+      // Never mutate sharedStyles or sibling overrides. A confirmation stages only this A.
+      return {...current,draftInstances,draftTargets:clearIndividualOverride(current.draftTargets,id),
+        individualResets:[...new Set([...current.individualResets,id])],
+        syncSameKind:false,sharedTouched:[],batchLocalOverrides,
+        draftDisplay:{...current.draftDisplay,...patch},
+        displayTouched:[...new Set([...current.displayTouched,
+          ...Object.keys(patch) as (keyof PageDisplayConfig)[]])]};
+    }),
     resetTargetVisual:id=>setSession(current=>current&&(
       current.scope==='target'&&current.target?.id===id||current.scope==='instance'&&id==='installed:'+current.instanceId&&
       current.draftInstances.some(item=>item.id===current.instanceId&&isEngineerOwnedInstance(item)))?
@@ -476,6 +504,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const normalizedInstances=normalizeInstances(session.draftInstances);
       const nextSaved={...saved,[key]:normalizedInstances};
       const nextWorkspace={...workspaces,[key]:normalizeWorkspace(session.draftWorkspace)};
+      const nextIndividualResets={...individualResets,[key]:[...session.individualResets]};
       let nextTargets={...targetStyles,[key]:Object.fromEntries(
         Object.entries(session.draftTargets).map(([id,override])=>[id,normalizeTargetOverride(override)]))};
       let nextShared={...sharedStyles};
@@ -536,6 +565,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         // One key contains both local instance and native target overrides. No finance keys.
         await AsyncStorage.setItem(MAINTENANCE_STORAGE_KEY,JSON.stringify({
           schema:3,instances:nextSaved,targets:nextTargets,workspaces:nextWorkspace,
+          individualResets:nextIndividualResets,
           sharedStyles:nextShared,localOnlyKeys:nextLocalOnly,visualHistory:nextHistory,
         }));
         const normalized=normalizeEditorConfig(session.page,{...editor.config,[session.frameKey]:session.draft});
@@ -545,13 +575,14 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           editor.updateDisplayConfig(patch);
         }
         setSaved(nextSaved);setTargetStyles(nextTargets);setSharedStyles(nextShared);setLocalOnlyKeys(nextLocalOnly);setWorkspaces(nextWorkspace);
+        setIndividualResets(nextIndividualResets);
         setVisualHistory(nextHistory);
         setSelection(null);setSession(null);
         recordDiagnosticEvent({level:'info',code:'ENGINEER_APPLY',screen:session.page,message:'維護工程師設定已套用：'+session.frameKey+' / '+session.scope});
         return true;
       }catch{return false;}
     },
-  }),[hydrated,enabled,session,selection,assets,assetsLoaded,visualHistory,changeAssets,saved,targetStyles,sharedStyles,localOnlyKeys,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
+  }),[hydrated,enabled,session,selection,assets,assetsLoaded,visualHistory,changeAssets,saved,targetStyles,sharedStyles,localOnlyKeys,individualResets,workspaces,liveBounds,liveRects,registered,registerTarget,unregisterTarget,reportWorkspaceBounds,reportRect,editor.config,editor.displayConfig,editor.replacePageConfig,editor.updateDisplayConfig]);
 
   return <MaintenanceContext.Provider value={value}>{children}</MaintenanceContext.Provider>;
 }
