@@ -6,6 +6,7 @@ import {TARGET_APPEARANCE,mergeTargetAppearance} from '../maintenance/inspection
 import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffects';
 import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
 import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
+import {formatDisplayNumber} from '../maintenance/numberDisplay';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
@@ -39,6 +40,8 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   const glow=linkedColor(surface.glowColor,surface.glowProfitColor,actualTone,colorPrefs);
   const displayedLabel=editorStyle?.labelText||label;
   const displayedCaption=editorStyle?.captionText||caption;
+  const displayedValue=editorStyle?.displayUnit&&editorStyle.displayUnit!=='original'?
+    formatDisplayNumber(value,editorStyle.displayUnit,editorStyle.displayDigits??0):value;
   return <View style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
@@ -60,7 +63,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
       ...(editorStyle?.textDecorationLine?{textDecorationLine:editorStyle.textDecorationLine}:{}),
       ...(editorStyle?.letterSpacing!==undefined?{letterSpacing:editorStyle.letterSpacing}:{}),
       ...(editorStyle?.lineHeight&&editorStyle.lineHeight>0?{lineHeight:editorStyle.lineHeight}:{}),
-      }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
+      }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{displayedValue}</Text>
     {displayedCaption?<Text style={[styles.caption,{color:effectiveCaption,fontSize:editorStyle?.captionFontSize??10,
       textAlign:editorStyle?.align??'left',
       ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),

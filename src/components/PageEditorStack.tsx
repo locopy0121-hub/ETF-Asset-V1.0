@@ -17,6 +17,7 @@ import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {spacing} from '../theme/tokens';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {applyConditionalAppearance,activeConditionalRule} from '../maintenance/conditionalVisual';
+import {formatDisplayNumber} from '../maintenance/numberDisplay';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -100,7 +101,9 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
             return cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
             ...props,children:customized&&!isDataValue?(isPrefix?
               (override.prefixText!==undefined?appearance.prefixText:content):
-              (appearance.labelText||appearance.captionText||content)):content,
+              (appearance.labelText||appearance.captionText||content)):
+              isDataValue&&customized&&appearance.displayUnit!=='original'?
+                formatDisplayNumber(content,appearance.displayUnit,appearance.displayDigits):content,
             style:customized?[props.style,{
               ...(override.textColor||override.textProfitColor!==undefined||rule?.textColor?{color:appearance.textColor}:{}),
               ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
