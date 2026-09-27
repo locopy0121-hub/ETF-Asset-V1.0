@@ -1,3 +1,11 @@
+## V3.0.36｜2026-09-27｜原生 metric 數值狀態門檻（開發 QA，完整 Gate 待驗）
+
+基準：V3.0.35 PR #82 已成功 QA run #1222（36306783865），HEAD `121aca324991a929d72f3ed5b22bb68773ae56ce`，QA APK Artifact #10928305086，ZIP／SHA／AAPT 已於成功 job 實證。升版前不可變備份 `backup-v3.0.35-20260927-pre-v3.0.36` 指向該 HEAD；新分支 `go-v3.0.36-20260927-metric-threshold`。本版 3.0.36／Android+iOS 30036。
+
+只將現有中央 pending `threshold` 接入目前真實原生 metric A：在 AB 目前數值卡 → B 條件顯示 → C 狀態門檻，可明確啟用／關閉、≥／≤、數值門檻（±1 兆）。使用已顯示的未縮放原始 metric 純數字或 NT$ 字串作唯讀比較；ETF 代號如 0050／00878、百分比、載入中、無效字串、NaN 不匹配；符合才於本張原生卡增加獨立強調邊框，不修改原始數值、持股、費稅、行情來源、交易或其他元件。預設 OFF，既有維護 Session 當前 A 草稿預覽、取消、正式套用及原有 SAF 備份沿用。Android 手機原生顯示另待實測。
+
+中央唯一 184 項，源碼預期宣告 161 已接線／23 待原生適配；不得冒稱已完成 161 項手機驗收。新增純數值邊界、原生渲染、AB 操作、安全歸零及 immutable finance 合約測試，完整保留 V3.0.1–V3.0.35 歷版回歸。quality、Node/Redis/PostgreSQL、原生 QA APK、ZIP/SHA/AAPT/Artifact 必須本次 PR HEAD 實際 PASS 才能備份接續 V3.0.37；開發不以 Codex review 阻斷，不自動合併 PR，不解除安裝現存 App。
+
 ## V3.0.35｜2026-09-27｜原生 metric 點按／滑動互斥（開發 QA，CI 待驗）
 
 來源已核實 V3.0.34 PR #81 QA run #1213 成功 HEAD `8de1909cb779cabe1f14065f1289f55eb7234139` 與不可變備份 `backup-v3.0.34-20260927-pre-v3.0.35`。起初僅把 app.json 提升 3.0.35，其他 app identity 與歷版測試未更新，造成 push run #1215 quality FAIL；原版原分支修復，不用 rerun 舊 commit 假裝修好。
