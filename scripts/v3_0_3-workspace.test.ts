@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,targetToolSupported} from '../src/maintenance/inspectionModel';
+import {ENGINEER_SKILLS} from '../src/maintenance/skillTree';
+
+const read=(p:string)=>readFileSync(p,'utf8');
+const f=normalizeTargetOverride({fontSize:44,labelText:'僅允許標籤變更'});
+assert.equal(mergeTargetAppearance(TARGET_APPEARANCE,f).fontSize,44);
+assert.equal(targetToolSupported('value','target:fontSize'),true);
+assert.equal(targetToolSupported('value','target:labelText'),false,'financial number may not be replaced by a label tool');
+assert.equal(targetToolSupported('value','target:captionText'),false);
+assert.equal(targetToolSupported('metric','target:labelText'),true);
+assert.equal(targetToolSupported('action','target:labelText'),false,'action labels must not diverge from execution semantics');
+assert.ok(ENGINEER_SKILLS.length>=16);
+const stack=read('src/components/PageEditorStack.tsx');
+assert.ok(stack.includes("kind:isDataValue?'value':'text'"));
+assert.ok(stack.includes("customized&&!isDataValue?"),'old V3.0.2 saved override must never mask source amount');
+assert.ok(stack.includes("child.type===AiQuestionBox"),'AI composite needs a native adapter');
+const hero=read('src/screens/HomeScreen.tsx');
+assert.ok(hero.includes('adjustsFontSizeToFit')&&hero.includes('minimumFontScale={0.52}'));
+const inspect=read('src/maintenance/InspectableTarget.tsx');
+assert.ok(inspect.includes('selectionOutline')&&inspect.includes('StyleSheet.absoluteFill'));
+assert.ok(inspect.includes('minWidth:136')&&inspect.includes("flexBasis:'46%'"),'metric grid must have an enforced minimum tile width');
+assert.ok(inspect.includes('flexShrink:0')&&inspect.includes('const placement=flex?styles.metricPlacement:undefined'));
+assert.ok(inspect.includes("const placement=flex?styles.metricPlacement:undefined")&&inspect.includes('style={[placement,'),'engineer ON/OFF must share metric placement and preserve the approved responsive grid');
+assert.ok(inspect.includes('if(!engineer.enabled&&!appearance.visible)return null'),'hidden targets must have no placeholder in normal mode');
+assert.ok(inspect.includes('top:2')&&inspect.includes('minWidth:28'),'wrench must be anchored INSIDE the tile, not outside adjacent siblings');
+assert.ok(!inspect.includes("已選取："),'floating caption obscured financial content');
+const dock=read('src/maintenance/MaintenanceWorkbench.tsx');
+assert.ok(dock.includes('searchAbProperties(query)'),'one global skill tree remains available');
+assert.ok(!dock.includes('group.tools.filter(tool=>toolUsable(tool,session))'),'never hide tools by current target');
+assert.ok(dock.includes('visibleB.map(group=><Pressable')&&dock.includes('<AbToolControls tools={tools}'),
+  'all skills remain reachable through compact category navigation and show adapter status');
+const ai=read('src/components/AiQuestionBox.tsx');
+for(const id of ['ai:prompt-title','ai:quick-action:','ai:conversation','ai:composer'])
+  assert.ok(ai.includes(id),'missing native AI child adapter '+id);
+assert.ok(ai.includes('onAsk(question)')&&ai.includes('runAction(action)'));
+assert.equal(ai.split('ref={scrollRef}').length,2,'AI conversation must not be duplicated');
+const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
+assert.ok(['3.0.9','3.0.10','3.0.11','3.0.12','3.0.13','3.0.14','3.0.15','3.0.16','3.0.17','3.0.18','3.0.19','3.0.20','3.0.21','3.0.32'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));
+assert.ok(read('.github/workflows/ci.yml').includes(`TF-Asset-V${pkg.version}-QA.apk`));
+console.log('V3.0.9 scoped engineer skills, protected finance text, unobstructed controls and AI native adapters: PASS');

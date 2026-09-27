@@ -1,4 +1,7 @@
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
+import {DEFAULT_ETF_BADGES,normalizeEtfBadges,type EtfBadgeConfig} from '../domain/etfBadges';
+import {DEFAULT_PORTFOLIO_LIST,normalizePortfolioList,type PortfolioListConfig} from '../domain/portfolioList';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingSortKey, type HoldingWallConfig, type HoldingWallFieldConfig, type HoldingWallFieldKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { DEFAULT_ITEM_EFFECT, ITEM_EFFECT_INTENSITIES, ITEM_EFFECT_KINDS, ITEM_EFFECT_SPEEDS, ITEM_EFFECT_TRIGGERS, type ItemEffectConfig } from '../domain/displayItemContract';
@@ -81,14 +84,22 @@ export type FrameEditorConfig = Readonly<{
   behavior:FrameBehavior;
   titleFontSize:number;
   titleColor:string;
+  titleProfitColor?:boolean;
   titleAlign:TextAlign;
   backgroundColor:string;
+  backgroundProfitColor?:boolean;
   backgroundOpacity:number;
   borderColor:string;
+  borderProfitColor?:boolean;
   borderWidth:number;
   borderRadius:number;
   shadowEnabled:boolean;
   shadowOpacity:number;
+  padding?:number;
+  width?:number; // Explicit parent frame width, 0/undefined follows available space.
+  height?:number; // Explicit parent frame height; children retain their own geometry, no implicit scrolling.
+  minHeight?:number;
+  effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
 }>;
 
 export type PageEditorState = Readonly<Record<MainPageKey, Readonly<Record<string, FrameEditorConfig>>>>;
@@ -99,6 +110,8 @@ export type PageDisplayConfig = Readonly<{
   portfolioViewMode?: PortfolioViewMode;
   holdingLayoutMode?: HoldingLayoutMode;
   holdingWall?: HoldingWallConfig;
+  etfBadges?: EtfBadgeConfig;
+  portfolioList?: PortfolioListConfig;
   newsVisibleCount?: number;
   newsHoldingsOnly?: boolean;
   dashboardMetrics?: readonly DashboardMetricKey[];
@@ -110,7 +123,7 @@ export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
   Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => [
     frame.key,
-    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12} satisfies FrameEditorConfig,
+    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:frame.key==='page-header'?28:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:frame.key==='page-header'?0:1,borderRadius:frame.key==='page-header'?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
   ]));
 
 export function createInitialEditorState(): PageEditorState {
@@ -126,9 +139,9 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS },
     ledger: {},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list' },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, portfolioList:DEFAULT_PORTFOLIO_LIST },
     dividend: {},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true },
     settings: {},
@@ -139,7 +152,7 @@ const isFrameLayout=(v:unknown):v is FrameLayout=>v==='standard'||v==='compact'|
 const isFrameAppearance=(v:unknown):v is FrameAppearance=>v==='theme'||v==='soft'||v==='outline';
 const isFrameBehavior=(v:unknown):v is FrameBehavior=>v==='manual'||v==='auto'||v==='locked';
 
-const HOLDING_WALL_FIELDS:readonly HoldingWallFieldKey[]=['name','symbol','price','change','changePercent','pnl','roi','marketValue'];
+const HOLDING_WALL_FIELDS:readonly HoldingWallFieldKey[]=['name','symbol','etfType','dividendType','price','change','changePercent','pnl','roi','marketValue'];
 const clamp=(value:unknown,min:number,max:number,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
 const wallColor=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
 const wallNullableColor=(value:unknown,fallback:string|null)=>value===undefined?fallback:value===null?null:typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
@@ -175,6 +188,7 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       fontScale:clamp(candidate?.fontScale,.7,1.8,fallback.fontScale),
       align:candidate?.align==='left'||candidate?.align==='center'||candidate?.align==='right'?candidate.align:fallback.align,
       useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
+      useProfitBackground:candidate?.useProfitBackground===true,
       textColor:wallNullableColor(candidate?.textColor,fallback.textColor),
       backgroundColor:wallNullableColor(candidate?.backgroundColor,fallback.backgroundColor),
       lineGap:candidate?.lineGap==null?fallback.lineGap:clamp(candidate.lineGap,0,32,fallback.lineGap??0),
@@ -193,6 +207,16 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       effect:normalizeWallEffect(header.effect,DEFAULT_HOLDING_WALL_CONFIG.header.effect),
     },
     fields,
+    ticker:{
+      enabled:source.ticker?.enabled===true,
+      direction:source.ticker?.direction==='right'?'right':'left',
+      speed:clamp(source.ticker?.speed,15,150,DEFAULT_HOLDING_WALL_CONFIG.ticker!.speed),
+      itemGap:clamp(source.ticker?.itemGap,0,64,DEFAULT_HOLDING_WALL_CONFIG.ticker!.itemGap),
+      showPrice:source.ticker?.showPrice!==false,
+      showChange:source.ticker?.showChange!==false,
+      textColor:wallColor(source.ticker?.textColor,DEFAULT_HOLDING_WALL_CONFIG.ticker!.textColor),
+      backgroundColor:wallColor(source.ticker?.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.ticker!.backgroundColor),
+    },
     style:{
       backgroundColor:wallColor(style.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.style.backgroundColor),
       textColor:wallColor(style.textColor,DEFAULT_HOLDING_WALL_CONFIG.style.textColor),
@@ -268,10 +292,17 @@ export function normalizeEditorConfig(
       appearance: isFrameAppearance(candidate.appearance)?candidate.appearance:fallback.appearance,
       behavior:isFrameBehavior(candidate.behavior)?candidate.behavior:fallback.behavior,
       titleFontSize:clamp(candidate.titleFontSize,10,32,fallback.titleFontSize),titleColor:wallColor(candidate.titleColor,fallback.titleColor),
+      titleProfitColor:candidate.titleProfitColor===true,backgroundProfitColor:candidate.backgroundProfitColor===true,
+      borderProfitColor:candidate.borderProfitColor===true,
       titleAlign:candidate.titleAlign==='center'||candidate.titleAlign==='right'?candidate.titleAlign:'left',
       backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
+      effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
+      ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
+      ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,160,1600,320)}:{}),
+      ...(typeof candidate.height==='number'&&Number.isFinite(candidate.height)&&candidate.height>0?{height:clamp(candidate.height,80,2400,300)}:{}),
+      ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
     };
   });
 
@@ -298,6 +329,6 @@ export function mergeDisplayState(raw:unknown):PageDisplayState{
   const defaults=createInitialDisplayState();
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
   const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
-  const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts)};
-  return {home,ledger:merge('ledger'),portfolio:merge('portfolio'),dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
+  const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall),etfBadges:normalizeEtfBadges(source.home?.etfBadges),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts)};
+  return {home,ledger:merge('ledger'),portfolio:{...merge('portfolio'),holdingWall:normalizeHoldingWall(source.portfolio?.holdingWall),etfBadges:normalizeEtfBadges(source.portfolio?.etfBadges),portfolioList:normalizePortfolioList(source.portfolio?.portfolioList)},dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }

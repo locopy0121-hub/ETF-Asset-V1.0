@@ -22,8 +22,8 @@ export function NewsReaderModal({item,onClose}:{item:AiNewsItem|null;onClose:()=
         <Text style={[styles.title,{color:theme.palette.text}]}>{item.title}</Text>
         <Text style={[styles.meta,{color:theme.palette.textSecondary}]}>{item.source} · {publishedText}</Text>
         <View style={[styles.summaryCard,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
-          <Text style={[styles.summaryLabel,{color:theme.palette.primary}]}>AI 重點摘要</Text>
-          <Text style={[styles.summary,{color:theme.palette.text}]}>{item.summary}</Text>
+          <Text style={[styles.summaryLabel,{color:theme.palette.primary}]}>{item.summaryStatus==='article'?'新聞正文重點整理':'新聞正文尚未取得'}</Text>
+          <Text style={[styles.summary,{color:theme.palette.text}]}>{item.summaryStatus==='article'&&item.summary?item.summary:'目前來源未提供可可靠擷取的新聞正文，不能把標題重新排列當成 AI 摘要。可自行開啟原文查閱。'}</Text>
         </View>
         <Text style={[styles.note,{color:theme.palette.textSecondary}]}>此視窗保留在 TF Asset 內閱讀新聞重點；需要查看媒體完整原文時，再由你主動選擇外部瀏覽器。</Text>
         {item.url?<Pressable onPress={()=>void Linking.openURL(item.url)} style={[styles.external,{backgroundColor:theme.palette.surfaceMuted,borderColor:theme.palette.border}]}><Text style={[styles.externalText,{color:theme.palette.primary}]}>使用外部瀏覽器查看完整原文</Text></Pressable>:null}
