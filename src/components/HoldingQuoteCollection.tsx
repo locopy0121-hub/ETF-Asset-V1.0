@@ -8,6 +8,7 @@ import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingWallConfig, type QuoteModuleStyle } from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import { spacing } from '../theme/tokens';
+import {holdingCardLayout,holdingPageWidth,holdingPages,safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import { HoldingQuoteModule } from './HoldingQuoteModule';
 
 export type HoldingLayoutMode='list'|'grid2'|'grid3'|'horizontal'|'paged2';
@@ -28,7 +29,7 @@ export function HoldingQuoteCollection({
   const engineer=useMaintenance();
   // The real viewport, not screen width, determines each swipe page and hitbox.
   const [viewportWidth,setViewportWidth]=useState(0);
-  const pageWidth=viewportWidth>0?viewportWidth:Math.max(220,width-96);
+  const pageWidth=holdingPageWidth(viewportWidth,width);
   const effectiveWallConfig=wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
   const effectiveBadgeConfig=badgeConfig??DEFAULT_ETF_BADGES;
   const card=effectiveWallConfig.style;
@@ -43,8 +44,8 @@ export function HoldingQuoteCollection({
         fields:effectiveWallConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16,
           useProfitColor:appearance.useProfitColor?field.useProfitColor:false})),
       }:effectiveWallConfig;
-      return <HoldingQuoteModule item={item} style={micro&&(style==='chart'||style==='advanced')?'quote':style}
-        layout={micro?'micro':narrow?'narrow':'full'}
+      return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',style)}
+        layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}
         wallConfig={adjusted} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken}
         onPress={()=>onOpenHolding(item)}/>;
     };
@@ -74,8 +75,7 @@ export function HoldingQuoteCollection({
       </ScrollView>;
     }
     if(layoutMode==='paged2'){
-      const pages:Array<readonly HoldingQuote[]>=[];
-      for(let i=0;i<rows.length;i+=2)pages.push(rows.slice(i,i+2));
+      const pages=holdingPages(rows,2);
       return <View style={styles.pagedViewport} onLayout={event=>{
         const actual=Math.round(event.nativeEvent.layout.width);
         if(actual>0)setViewportWidth(old=>old===actual?old:actual);
