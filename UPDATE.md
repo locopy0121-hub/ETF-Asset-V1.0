@@ -1,3 +1,9 @@
+## V3.0.34｜2026-09-27｜原生數值卡點擊強調與 AB 原位預覽（開發 QA，待驗證）
+
+由 V3.0.33 PR #80、成功 Actions #1204（run 36294789562）HEAD `c1c68e4d2ef3af3b54c30f45675fc113fb5cb2c1` 接續，成功 APK Artifact #10923443568。成功 HEAD 已建立獨立不可變備份 `backup-v3.0.33-20260927-pre-v3.0.34`。既有唯一中央 184 技能中，將「點擊行為」接至真實 metric A 的本地 Pressable：B 互動操作→C 關閉／點擊切換強調邊框，預設 OFF，整個動作不觸及交易、金額或導覽；工程師選取時原位預覽強調、取消恢復，套用僅儲存本地 TargetOverride，接續既有 SAF 備份。其他 target kind 與跨頁點按功能仍 pending，不冒稱全 App 已驗收。中央宣告接線預期 159 ready／25 pending，真機點按與無障礙另待驗。
+
+App 3.0.34／Android build 30034／iOS build 30034，歷版 CI/回歸按當前 QA 版本遞增。quality、安全、後端、native QA APK、Artifact、ZIP/SHA/AAPT 全部核實前不宣稱 Build PASS。不自動合併 PR、不改三份 immutable finance 基準、actual_fee/tax、SAF 或行情來源。
+
 ## V3.0.33｜2026-09-27｜原生數值顯示單位與位數（開發 QA／待驗證）
 
 沿用已成功 V3.0.32 PR #79／Actions #1192／HEAD `0625e448811de603c4e54cde16a0356117ee4d57`，備份 `backup-v3.0.32-20260927-pre-v3.0.33`；使用現有 V3.0.33 分支，不重複 GO。單一中央 184 技能中原 pending「單位與位數」實際接入 A 原生 metric/value → B 數值 → C 原始／元／千／萬／百萬和 0～4 小數；來源字串的數值解析只供 UI 格式顯示，非數字、股票代號及待核對字串不變。當前 A 即時草稿、取消還原、套用後儲存 TargetOverride 和既有 SAF 備份。未碰 immutable finance、費稅固化、交易及行情。CODE 宣告預期 158 ready／26 pending，不等於手機 PASS。版本 3.0.33／build 30033，Gate 和 QA APK／Artifact 實際成功後才能回報 BUILD PASS，再備份續 V3.0.34。
