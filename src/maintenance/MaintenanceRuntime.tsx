@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
+import {isIsolatedPortfolioSwitch} from '../domain/portfolioModeSwitch';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
@@ -291,7 +292,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     getSavedTargetOverride:(page,frameKey,id,kind)=>{
       const key=scopeId(page,frameKey),local=targetStyles[key]?.[id]??{};
       if(!kind)return local;
-      const group={...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
+      const group=isIsolatedPortfolioSwitch(page,frameKey,id)?{}:{
+        ...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
         ...(sharedStyles[sharedKey(page,frameKey,kind,'page')]??{}),
         ...(sharedStyles[sharedKey(page,frameKey,kind,'frame')]??{})};
       const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
@@ -310,7 +312,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const local=(session?.page===page&&session.frameKey===frameKey?
         session.draftTargets[id]:targetStyles[key]?.[id])??{};
       if(!kind)return local;
-      const group={...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
+      const group=isIsolatedPortfolioSwitch(page,frameKey,id)?{}:{
+        ...(sharedStyles[sharedKey(page,frameKey,kind,'app')]??{}),
         ...(sharedStyles[sharedKey(page,frameKey,kind,'page')]??{}),
         ...(sharedStyles[sharedKey(page,frameKey,kind,'frame')]??{})};
       const sourceId=session?.scope==='target'?session.target?.id:

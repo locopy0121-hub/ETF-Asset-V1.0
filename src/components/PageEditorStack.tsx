@@ -5,6 +5,8 @@ import type { FrameCardProps } from './FrameCard';
 import { MetricTile } from './MetricTile';
 import { HoldingQuoteCollection } from './HoldingQuoteCollection';
 import { SegmentedControl } from './SegmentedControl';
+import {PortfolioModeSwitcher} from './PortfolioModeSwitcher';
+import {PORTFOLIO_SAFE_SWITCH_ID} from '../domain/portfolioModeSwitch';
 import {AiQuestionBox} from './AiQuestionBox';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { usePageEditor } from '../editor/pageEditor';
@@ -58,11 +60,12 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         ...props,maintenance:frame,
       });
     }
-    if(child.type===SegmentedControl){
-      const props=child.props as ComponentProps<typeof SegmentedControl>;
+    if(child.type===SegmentedControl||child.type===PortfolioModeSwitcher){
+      const props=child.props as ComponentProps<typeof PortfolioModeSwitcher>;
       const choices=props.items.map(item=>item.label).join('／');
       const target:InspectedTarget={
-        id:'control:'+nodeId,kind:'control',label:'操作模式',page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        id:child.type===PortfolioModeSwitcher?PORTFOLIO_SAFE_SWITCH_ID:'control:'+nodeId,
+        kind:'control',label:child.type===PortfolioModeSwitcher?'持股模式新切換器':'操作模式',page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
         properties:[{name:'目前模式',value:String(props.value)},{name:'可選項目',value:choices,readOnly:true}],
         base:{...TARGET_APPEARANCE,backgroundColor:'#F6EAFF',padding:0,borderWidth:0},
       };

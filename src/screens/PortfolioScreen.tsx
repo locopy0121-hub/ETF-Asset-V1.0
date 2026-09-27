@@ -12,6 +12,10 @@ import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
+import {PortfolioModeSwitcher} from '../components/PortfolioModeSwitcher';
+import {PortfolioSafeList} from '../components/PortfolioSafeList';
+import {PortfolioViewBoundary} from '../components/PortfolioViewBoundary';
+import {normalizePortfolioViewMode,normalizePortfolioLayoutMode,nextPortfolioMode,type PortfolioModeChoice} from '../domain/portfolioModeSwitch';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
@@ -27,7 +31,6 @@ import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
-type ViewMode='list'|'wall';
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const number=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFinite(n)?n:0;};
 
@@ -36,18 +39,27 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const market=useMarketRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [calculatorOpen,setCalculatorOpen]=useState(false);
+  // Emergency mode is session-only and does not erase the saved view or financial data.
+  const [safeListOpen,setSafeListOpen]=useState(false);
   const editor=usePageEditor('portfolio');
   const maintenance=useMaintenance();
   const effectiveDisplay=maintenance.session?.page==='portfolio'?maintenance.session.draftDisplay:editor.displayConfig;
-  const viewMode=(effectiveDisplay.portfolioViewMode??'list') as ViewMode;
+  const viewMode:PortfolioModeChoice=safeListOpen?'safe':normalizePortfolioViewMode(effectiveDisplay.portfolioViewMode);
   const rawQuoteStyle=(effectiveDisplay.quoteStyle??'chart') as QuoteModuleStyle;
   const sortKey=(effectiveDisplay.sortKey??'manual') as HoldingSortKey;
-  const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
+  const holdingLayoutMode=normalizePortfolioLayoutMode(effectiveDisplay.holdingLayoutMode);
   // Old saved three-column chart selections also render in safe chart-free mode.
   const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
-  const setViewMode=(value:ViewMode)=>{
-    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_VIEW',screen:'portfolio',message:value==='list'?'切換清單模式':'切換行情牆模式'});
-    editor.updateDisplayConfig({portfolioViewMode:value});
+  const setViewMode=(requested:PortfolioModeChoice)=>{
+    const value=nextPortfolioMode(viewMode,requested);
+    if(value===viewMode)return;
+    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_VIEW',screen:'portfolio',
+      message:value==='safe'?'切換獨立安全清單':value==='list'?'切換新清單模式':'切換新行情牆模式'});
+    if(value==='safe'){setSafeListOpen(true);return;}
+    setSafeListOpen(false);
+    // Workbench changes stay in its draft until the engineer presses Apply.
+    if(maintenance.session?.page==='portfolio')maintenance.patchDisplay({portfolioViewMode:value});
+    else editor.updateDisplayConfig({portfolioViewMode:value});
   };
   const setQuoteStyle=(value:QuoteModuleStyle)=>{
     if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
@@ -99,7 +111,11 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
         },
         {key:'holding-view',element:
           <FrameCard title="持股檢視">
-            <SegmentedControl items={[{key:'list',label:'清單模式'},{key:'wall',label:'行情牆模式'}] as const} value={viewMode} onChange={setViewMode}/>
+            <PortfolioModeSwitcher items={[
+              {key:'list',label:'清單模式',description:'固定代號與可橫向捲動欄位'},
+              {key:'wall',label:'行情牆模式',description:'獨立持股行情卡片'},
+              {key:'safe',label:'安全簡易清單',description:'停用舊表格、動畫及行情牆元件'},
+            ] as const} value={viewMode} onChange={setViewMode}/>
             <View style={styles.sortRow}>
               <Text style={styles.sortTitle}>排序</Text>
               {([{key:'manual',label:'手動'},{key:'pnl',label:'損益'},{key:'roi',label:'報酬率'},{key:'marketValue',label:'市值'}] as const).map(x=>
@@ -109,7 +125,10 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               )}
             </View>
 
-            {viewMode==='list'?<>
+            {viewMode==='safe'
+              ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
+              :<PortfolioViewBoundary key={viewMode} viewMode={viewMode} onUseSafe={()=>setViewMode('safe')}>
+              {viewMode==='list'?<>
               <Pressable accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
                 <Text style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
               </Pressable>
@@ -159,6 +178,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} {...(effectiveDisplay.holdingWall?{wallConfig:effectiveDisplay.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding}/>
               <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
+            </PortfolioViewBoundary>}
           </FrameCard>
         },
       ]}/>
