@@ -87,6 +87,7 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
      active(adapted,field!==original?'共用技能已連接目前元件的原生視覺適配。':'目前元件已接入此技能。'):
      pending(tool,'目前渲染器缺少此技能的原生適配；不視為權限鎖定。');
  }
+ if(original==='frame:resize-gesture')return ctx.scope==='frame'?active(tool,'真實 FrameCard 右下角 PanResponder 手柄，只修改目前框架草稿。'):pending(tool,'先選取原生父框架，其他元件不顯示假手勢控制。');
  if(original==='frame:size')return ctx.scope==='frame'?active(tool,'框架實際寬高。'):pending(tool,'子框架尺寸需接入原生布局量測。');
  if(original.startsWith('framefx:'))return ctx.scope==='frame'?active(tool,'目前框架特效。'):
    pending(tool,'目前元件尚缺等效材質渲染器；中央工具仍完整保留。');

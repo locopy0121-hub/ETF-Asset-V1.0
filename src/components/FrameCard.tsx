@@ -1,9 +1,10 @@
 import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
-import {AccessibilityInfo,Animated,Easing,Image,Pressable,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
+import {AccessibilityInfo,Animated,Easing,Image,PanResponder,Pressable,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
 import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands,responsiveFrameDensity,frameImageCoverCrop,DEFAULT_FRAME_TOUCH_STATE,applyFrameTouchAction} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
+import {frameResizeDimensions} from '../maintenance/frameResizeGesture';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
@@ -12,10 +13,11 @@ export type FrameCardProps=PropsWithChildren<{
   title:string;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
   editorStyle?:Partial<FrameEditorConfig>;
   workActive?:boolean;workHidden?:boolean;
+  onResizePreview?:(size:{width:number;height:number})=>void;
 }>;
 
 export function FrameCard({title,action,children,layout='standard',appearance='theme',
-  editorStyle,workActive=false,workHidden=false}:FrameCardProps){
+  editorStyle,workActive=false,workHidden=false,onResizePreview}:FrameCardProps){
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
@@ -30,6 +32,20 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const [titleAvailable,setTitleAvailable]=useState(0);
   const [titleIntrinsic,setTitleIntrinsic]=useState(0);
   const [measuredFrameWidth,setMeasuredFrameWidth]=useState(0);
+  const measuredSize=useRef({width:0,height:0});
+  const resizeStart=useRef({width:320,height:240});
+  const resizeCallback=useRef(onResizePreview);
+  resizeCallback.current=onResizePreview;
+  const resizePan=useMemo(()=>PanResponder.create({
+    onStartShouldSetPanResponder:()=>true,
+    onMoveShouldSetPanResponder:()=>true,
+    onPanResponderGrant:()=>{resizeStart.current={...measuredSize.current};},
+    onPanResponderMove:(_event,gesture)=>{
+      const size=frameResizeDimensions(resizeStart.current,gesture.dx,gesture.dy);
+      if(size)resizeCallback.current?.(size);
+    },
+    onPanResponderTerminationRequest:()=>false,
+  }),[]);
   const [frameTouch,setFrameTouch]=useState(DEFAULT_FRAME_TOUCH_STATE);
   const longPressConsumed=useRef(false);
   useEffect(()=>{if(!fx.frameInteractionEnabled)setFrameTouch(DEFAULT_FRAME_TOUCH_STATE);},
@@ -196,7 +212,9 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     editorStyle&&fx.entranceEnabled&&!reduceMotion&&{transform:entranceTransform},
     workHidden&&{opacity:.5},
   ]} onLayout={(event:LayoutChangeEvent)=>{
-    const width=event.nativeEvent.layout.width;
+    const {width,height}=event.nativeEvent.layout;
+    if(Number.isFinite(width)&&width>0&&Number.isFinite(height)&&height>0)
+      measuredSize.current={width,height};
     if(Number.isFinite(width)&&width>0)
       setMeasuredFrameWidth(previous=>Math.abs(previous-width)<1?previous:width);
   }}>
@@ -297,6 +315,20 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       </Pressable>
       {action}
     </View>
+    {workActive&&onResizePreview&&editorStyle?<View {...resizePan.panHandlers}
+      accessible accessibilityRole="adjustable" accessibilityLabel="拖曳調整目前父框架寬度及高度"
+      accessibilityHint="僅目前框架右下角可拖動，預覽後仍需按工作台儲存套用"
+      accessibilityActions={[{name:'increment',label:'增加父框架尺寸'},{name:'decrement',label:'減少父框架尺寸'}]}
+      onAccessibilityAction={event=>{
+        const delta=event.nativeEvent.actionName==='increment'?8:event.nativeEvent.actionName==='decrement'?-8:0;
+        if(delta){const size=frameResizeDimensions(measuredSize.current,delta,delta);if(size)onResizePreview(size);}
+      }}
+      style={{position:'absolute',right:0,bottom:0,width:44,height:44,zIndex:90,
+        borderTopLeftRadius:14,borderBottomRightRadius:editorStyle.borderRadius??12,
+        borderWidth:2,borderColor:theme.palette.primary,backgroundColor:theme.palette.surface,
+        alignItems:'center',justifyContent:'center'}}>
+      <Text accessible={false} style={{color:theme.palette.primary,fontSize:20,fontWeight:'900'}}>↘</Text>
+    </View>:null}
     {frameTouch.collapsed&&fx.frameInteractionEnabled?null:
       editorStyle?.height!==undefined?<View style={{flexShrink:0,gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</View>:children}
   </Animated.View>;
