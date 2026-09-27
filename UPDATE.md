@@ -1,3 +1,13 @@
+# V3.1.3｜本機錯誤診斷 Log 與持股點擊追蹤（2026-09-28）
+
+從已通過 GitHub CI、Backend、APK Artifact 的 V3.1.2 HEAD c20f37f0ece14d638ee647c5d3f61f37cc68f99c 接續，備份分支 backup-v3.1.2-20260928-before-v3.1.3；本版不將 CI 等同 Android 真機無閃退。
+
+- 設定 → 系統設定 → 錯誤紀錄 Log：本機 14 天／最多 80 筆，依閃退／錯誤／警告／操作篩選，展開詳情、更新、使用 Android SAF 選擇資料夾匯出 JSON、確認後清除。非 Android 平台使用系統分享。
+- 新增持續化非金融診斷事件：庫存清單與行情牆切換、卡片開啟、詳情掛載、歷史行情失敗、React 詳情渲染錯誤、RN JS 全局錯誤。
+- Kotlin 安裝非侵入原生 uncaught handler，僅儲存例外類別／首個程式碼位置／執行緒到 app-private SharedPreferences，委派原有 handler；重啟後 JS 寫入診斷日誌成功才清除原生標記。不能宣稱捕捉 Android ANR 或 NDK signal。
+- 記錄採序列化 AsyncStorage 寫入與有限保留；預設不讀取、不匯出帳務原值、個資及 API 金鑰。備份原有功能及 Immutable Finance Core 保持不變。
+- V3.1.2 已修正的透明維護選取層與雙欄滑動版面保留。本次增加受控點擊前置檢查與畫面路徑 breadcrumbs；使用者報告的編輯後閃退需以新版重現與實機 logcat 確認精確根因，不能僅靠靜態斷言結案。
+
 # V3.1.1｜全局維護工程師工具箱與圖表資料選擇（2026-09-27）
 
 本輪依使用者最新優先需求整合，不改 immutable finance／actual_fee／tax／交易原值／行情來源。

@@ -22,8 +22,31 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     private const val CREATE_BACKUP_DOCUMENT=4909
     private const val OPEN_BACKUP_DOCUMENT=4910
     private const val MAX_BACKUP_BYTES=32*1024*1024
+    @Volatile private var crashJournalInstalled=false
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
+  // Store only exception class and code location. Never store trades, balances or exception messages.
+  private fun installCrashJournal(){
+    synchronized(TfAssetNativeModule::class.java){
+      if(crashJournalInstalled)return
+      val previous=Thread.getDefaultUncaughtExceptionHandler()
+      Thread.setDefaultUncaughtExceptionHandler {thread,error->
+        try{
+          val frame=error.stackTrace.firstOrNull()
+          val summary=org.json.JSONObject()
+            .put("at",System.currentTimeMillis())
+            .put("type",error.javaClass.simpleName.take(80))
+            .put("location",frame?.let{it.className.take(100)+"."+it.methodName.take(70)+":"+it.lineNumber}?:"unavailable")
+            .put("thread",if(thread==android.os.Looper.getMainLooper().thread)"main" else "background")
+          prefs.edit().putString("pending_crash_journal",summary.toString()).commit()
+        }catch(_:Throwable){}
+        if(previous!=null)previous.uncaughtException(thread,error)
+        else android.os.Process.killProcess(android.os.Process.myPid())
+      }
+      crashJournalInstalled=true
+    }
+  }
+
   private var themePickerPromise:Promise?=null
   private var backupPickerPromise:Promise?=null
   private var backupExportText:String?=null
@@ -107,8 +130,22 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       if(index>=0&&cursor.moveToFirst())cursor.getString(index) else null
     }?:uri.lastPathSegment?:"TF-Asset-Backup.json"
   }
-  init{reactContext.addActivityEventListener(activityListener)}
+  init{reactContext.addActivityEventListener(activityListener);installCrashJournal()}
   override fun getName() = "TfAssetNative"
+
+  @ReactMethod fun readPendingCrashJournal(promise:Promise){
+    promise.resolve(prefs.getString("pending_crash_journal","")?:"")
+  }
+  @ReactMethod fun acknowledgeCrashJournal(promise:Promise){
+    promise.resolve(prefs.edit().remove("pending_crash_journal").commit())
+  }
+  @ReactMethod fun saveCriticalDiagnostic(code:String,screen:String,promise:Promise){
+    val safeCode=code.replace(Regex("[^A-Z0-9_]"),"").take(50)
+    val safeScreen=screen.replace(Regex("[^a-z0-9-]"),"").take(40)
+    val entry=org.json.JSONObject().put("at",System.currentTimeMillis()).put("type",safeCode).put("location",safeScreen).put("thread","js")
+    promise.resolve(prefs.edit().putString("pending_crash_journal",entry.toString()).commit())
+  }
+
 
   /**
    * App and Widget both use the SAME official fetcher and SQLite repository.

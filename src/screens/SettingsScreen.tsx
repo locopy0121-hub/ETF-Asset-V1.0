@@ -16,6 +16,7 @@ import {
 
 import { ColorPalettePicker } from '../components/ColorPalettePicker';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
+import {DiagnosticLogPanel} from '../components/DiagnosticLogPanel';
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
@@ -46,7 +47,7 @@ import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOv
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'engineer'|'market'|'permissions'|'diagnostics'|'notifications';
+type SystemPanel=null|'engineer'|'market'|'permissions'|'diagnostics'|'logs'|'notifications';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
@@ -55,8 +56,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.1.2';
-const BUILD='30102';
+const VERSION='3.1.3';
+const BUILD='30103';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -198,6 +199,8 @@ export function SettingsScreen(){
         <StatusRow label="持股筆數" value={String(finance.holdings.length)}/>
         <StatusRow label="ETF 基礎資料" value={String(market.catalog.length)}/>
       </Panel>:null}
+      <ChildButton label="錯誤紀錄 Log" summary="閃退、操作路徑、錯誤堆疊與匯出" active={systemPanel==='logs'} onPress={()=>setSystemPanel(systemPanel==='logs'?null:'logs')}/>
+      {systemPanel==='logs'?<Panel title="錯誤診斷中心"><DiagnosticLogPanel/></Panel>:null}
       <ChildButton label="通知與提醒" summary="除息、配息、行情、失敗、備份" active={systemPanel==='notifications'} onPress={()=>setSystemPanel(systemPanel==='notifications'?null:'notifications')}/>
       {systemPanel==='notifications'?<NotificationPanel/>:null}
     </View>;

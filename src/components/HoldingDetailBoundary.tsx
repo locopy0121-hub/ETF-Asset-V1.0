@@ -1,6 +1,7 @@
 import {Component,type ErrorInfo,type ReactNode} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {colors,radius,spacing} from '../theme/tokens';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
 /** Isolate React rendering failures in holding details; native crashes still need logcat. */
 type Props={symbol:string;onBack:()=>void;children:ReactNode};
@@ -9,6 +10,7 @@ export class HoldingDetailBoundary extends Component<Props,State>{
   state:State={failed:false};
   static getDerivedStateFromError():State{return {failed:true};}
   componentDidCatch(error:Error,info:ErrorInfo){
+    recordDiagnosticEvent({level:'error',code:'DETAIL_RENDER',screen:'holding-detail',message:'持股詳情元件渲染異常',detail:error.name+' '+(info.componentStack??'').slice(0,300)});
     console.error('TF Asset: holding detail render failure',this.props.symbol,error,info.componentStack);
   }
   render(){
