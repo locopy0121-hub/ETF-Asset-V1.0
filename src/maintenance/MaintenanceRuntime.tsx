@@ -294,7 +294,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
       const isolated=Object.fromEntries((localOnlyKeys[key+':'+id]??[])
         .filter(field=>local[field as keyof TargetOverride]!==undefined)
         .map(field=>[field,local[field as keyof TargetOverride]]));
-      return effectiveIndividualOverride({...local,...isolated},group,
+      return effectiveIndividualOverride(local,{...group,...isolated},
         isIndividualReset(individualResets,page,frameKey,id));
     },
     getWorkspaceBounds:(page,frameKey)=>liveBounds[scopeId(page,frameKey)]??{width:0,height:0},
