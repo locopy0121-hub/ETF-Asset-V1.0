@@ -93,6 +93,9 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
    pending(tool,'目前元件尚缺等效材質渲染器；中央工具仍完整保留。');
  if(original==='instance:sync')return ctx.scope==='target'||ctx.scope==='instance'&&ctx.instanceOwned?
    active(tool,'同類外觀同步：本框架預設，跨頁與全 App 僅明確選擇。'):pending(tool,'請選取一個真實元件或工程師新增元件。');
+ if(original==='instance:drag-sort')return ctx.scope==='instance'&&ctx.instanceOwned&&ctx.instanceParent?
+   active(tool,'已接入工程師新增父框架實際子元件清單的原生 PanResponder 拖曳排序；只改局部草稿。'):
+   pending(tool,'選取工程師新增父框架，內建元件或跨父框架拖曳不提供假操作。');
  if(original==='instance:parent-size')return ctx.scope==='instance'&&ctx.instanceOwned&&ctx.instanceParent?
    active(tool,'新增父框架獨立寬高。'):pending(tool,'此工具須選取工程師新增父框架。');
  if(original==='instances')return ctx.scope==='frame'||ctx.scope==='instance'&&ctx.instanceOwned&&

@@ -5,6 +5,7 @@ import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from '
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
 import {colorWithAlpha,normalizeFrameEffects} from './frameEffects';
 import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
+import {NativeChildSortToolDetails} from './NativeChildSortToolDetails';
 import type {FrameEditorConfig} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
@@ -334,6 +335,7 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
       </Pressable>)}
     </View>:null}
   </View>;
+  if(tool.field==='instance:drag-sort')return <NativeChildSortToolDetails/>;
   if(tool.field==='frame:size')return <FrameDimensionsToolDetails/>;
   if(tool.field==='frame:resize-gesture')return <View style={{marginTop:8,gap:8}}>
     <Text style={{fontSize:12,color:theme.palette.textSecondary}}>在上方真實 A 父框架右下角拖動 ↘：直接調整當前框架寬高。只在框架維護模式出現，不覆蓋子元件按鈕或整頁滑動。</Text>
