@@ -38,13 +38,21 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const maintenance=useMaintenance();
   const effectiveDisplay=maintenance.session?.page==='portfolio'?maintenance.session.draftDisplay:editor.displayConfig;
   const viewMode=(effectiveDisplay.portfolioViewMode??'list') as ViewMode;
-  const quoteStyle=(effectiveDisplay.quoteStyle??'chart') as QuoteModuleStyle;
+  const rawQuoteStyle=(effectiveDisplay.quoteStyle??'chart') as QuoteModuleStyle;
   const sortKey=(effectiveDisplay.sortKey??'manual') as HoldingSortKey;
   const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
+  // Old saved three-column chart selections also render in safe chart-free mode.
+  const quoteStyle=holdingLayoutMode==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?'quote':rawQuoteStyle;
   const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
-  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
+  const setQuoteStyle=(value:QuoteModuleStyle)=>{
+    if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
+    editor.updateDisplayConfig({quoteStyle:value});
+  };
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({
+    holdingLayoutMode:value,
+    ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{})
+  });
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
     const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
@@ -122,7 +130,9 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               </InspectableTarget>
             </>:<>
               <SegmentedControl
-                items={[{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const}
+                items={holdingLayoutMode==='grid3'
+                  ?([{key:'quote',label:'純行情'},{key:'compact',label:'精簡'}] as const)
+                  :([{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const)}
                 value={quoteStyle}
                 onChange={setQuoteStyle}
               />
@@ -140,6 +150,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
                   </Pressable>
                 )}
               </View>
+              {holdingLayoutMode==='grid3'?<Text style={styles.tableRule}>三欄無圖表：僅顯示報價、漲跌、損益，點選卡片可檢視詳情。</Text>:null}
               <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} {...(effectiveDisplay.holdingWall?{wallConfig:effectiveDisplay.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding}/>
               <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
