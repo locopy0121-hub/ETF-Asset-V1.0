@@ -66,7 +66,7 @@ for(const field of ['gradientMidEnabled','gradientMidColor','gradientMidStop','i
   assert.ok(frame!.tools.some(tool=>tool.field==='framefx:'+field&&tool.status==='ready'),
     'missing native-adapted frame tool '+field);
 assert.ok(frame!.tools.some(tool=>tool.label.includes('任意角度')&&tool.status==='ready'&&tool.field==='framefx:gradientAngle'));
-assert.ok(frame!.tools.some(tool=>tool.label.includes('圖片裁切位置')&&tool.status==='adapter-required'));
+assert.ok(frame!.tools.some(tool=>tool.label.includes('圖片裁切位置')&&tool.status==='ready'&&tool.field==='framefx:imageFocusX'));
 assert.ok(frame!.tools.some(tool=>tool.label.includes('毛玻璃')&&tool.status==='adapter-required'));
 const card=read('src/components/FrameCard.tsx');
 const details=read('src/maintenance/FrameEffectsToolDetails.tsx');
