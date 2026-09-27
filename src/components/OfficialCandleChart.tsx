@@ -1,6 +1,7 @@
 import {useMemo,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import type {DailyCandle} from '../market/twseDailyHistory';
+import type {ChartDataKey,NativeChartStyle} from '../domain/chartEditor';
 import {colors} from '../theme/tokens';
 import {candleIndexAtX} from '../domain/chartCrosshair';
 
@@ -15,11 +16,13 @@ const price=(n:number)=>n.toLocaleString('zh-TW',{minimumFractionDigits:2,maximu
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 
 /** TWSE official OHLCV renderer; inspect any candle using the optional crosshair. */
-export function OfficialCandleChart({candles,loading,error,rangeLabel}:{candles:readonly DailyCandle[];loading:boolean;error:string|null;rangeLabel:string}){
+export function OfficialCandleChart({candles,loading,error,rangeLabel,dataKeys=['open','high','low','close','volume'],chartStyle='candlestick'}:{candles:readonly DailyCandle[];loading:boolean;error:string|null;rangeLabel:string;dataKeys?:readonly ChartDataKey[];chartStyle?:NativeChartStyle}){
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
   const [crosshairEnabled,setCrosshairEnabled]=useState(false);
   const [scrollX,setScrollX]=useState(0);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
+  const showVolume=dataKeys.includes('volume');
+  const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low'),showClose=dataKeys.includes('close');
   const highest=Math.max(...ordered.map(x=>x.high),1);
   const lowest=Math.min(...ordered.map(x=>x.low),highest);
   const margin=Math.max((highest-lowest)*.08,.01);
@@ -40,14 +43,14 @@ export function OfficialCandleChart({candles,loading,error,rangeLabel}:{candles:
 
   return <View style={styles.root}>
     <View style={styles.toolbar}>
-      <Text style={styles.caption}>TWSE 官方日 K · {rangeLabel} · {ordered.length} 個交易日</Text>
+      <Text style={styles.caption}>TWSE 官方行情 · {rangeLabel} · {ordered.length} 個交易日 · {chartStyle}</Text>
       <Pressable accessibilityRole="switch" accessibilityState={{checked:crosshairEnabled}}
         onPress={()=>{setCrosshairEnabled(value=>!value);setSelectedDate(selected?.date??null);}}
         style={[styles.crosshairToggle,crosshairEnabled&&styles.crosshairActive]}>
         <Text style={[styles.toggleText,crosshairEnabled&&styles.toggleActiveText]}>{crosshairEnabled?'十字線 ON':'十字線 OFF'}</Text>
       </Pressable>
     </View>
-    {selected?<View style={styles.detail}><Text style={styles.date}>{selected.date}</Text><Text style={styles.number}>開 {price(selected.open)}　高 {price(selected.high)}　低 {price(selected.low)}　收 {price(selected.close)}</Text><Text style={styles.volumeText}>成交量 {selected.volume.toLocaleString('zh-TW')} 股</Text></View>:null}
+    {selected?<View style={styles.detail}><Text style={styles.date}>{selected.date}</Text><Text style={styles.number}>{[showOpen?'開 '+price(selected.open):'',showHigh?'高 '+price(selected.high):'',showLow?'低 '+price(selected.low):'',showClose?'收 '+price(selected.close):''].filter(Boolean).join('　')}</Text>{showVolume?<Text style={styles.volumeText}>成交量 {selected.volume.toLocaleString('zh-TW')} 股</Text>:null}</View>:null}
     <View style={styles.plotRow}>
       <View style={styles.viewport}>
         <ScrollView horizontal scrollEnabled={!crosshairEnabled} showsHorizontalScrollIndicator
@@ -61,14 +64,17 @@ export function OfficialCandleChart({candles,loading,error,rangeLabel}:{candles:
             const wickTop=y(candle.high),wickBottom=y(candle.low);
             const bodyHeight=Math.max(2,candleBottom-candleTop);
             const showTick=index===0||index===ordered.length-1||candle.date.slice(0,7)!==ordered[index-1]?.date.slice(0,7)||index%Math.max(1,Math.ceil(ordered.length/5))===0;
+            const lineMode=chartStyle==='line'||chartStyle==='area';
+            const ohlcMode=chartStyle==='ohlc';
             return <Pressable accessibilityRole="button" accessibilityLabel={candle.date+'，開'+price(candle.open)+'，高'+price(candle.high)+'，低'+price(candle.low)+'，收'+price(candle.close)}
               key={candle.date} onPress={()=>setSelectedDate(candle.date)}
               style={[styles.candleColumn,{width:STEP,backgroundColor:selected?.date===candle.date&&crosshairEnabled?'rgba(148,163,184,.12)':'transparent'}]}>
               <View style={styles.pricePlot}>
-                <View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/>
-                <View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:positive?'transparent':tone,borderColor:tone}]}/>
+                {lineMode?<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:Math.max(2,chartStyle==='area'?PLOT_HEIGHT-y(candle.close):3),backgroundColor:tone,opacity:chartStyle==='area'?.28:1}}/>:
+                ohlcMode?<><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
+                <><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:positive?'transparent':tone,borderColor:tone}]}/></>}
               </View>
-              <View style={styles.volumePlot}><View style={{height:Math.max(1,candle.volume/biggestVolume*(VOLUME_HEIGHT-6)),backgroundColor:tone,width:7}}/></View>
+              {showVolume?<View style={styles.volumePlot}><View style={{height:Math.max(1,candle.volume/biggestVolume*(VOLUME_HEIGHT-6)),backgroundColor:tone,width:7}}/></View>:<View style={{height:8}}/>}
               <Text style={styles.tick}>{showTick?candle.date.slice(5).replace('-','/'):''}</Text>
             </Pressable>;
           })}
