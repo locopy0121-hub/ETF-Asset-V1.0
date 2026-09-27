@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -218,7 +218,9 @@
     "test:child-sort-safety-v340": "tsx scripts/v3_0_40-child-sort-safety.test.ts",
     "test:v3_0_40": "npm run test:v3_0_39 && npm run test:child-sort-safety-v340",
     "test:v3_1_1-priority": "tsx scripts/v3_1_1-priority.test.ts",
-    "test:v3_1_1": "npm run test:boundary && npm run test:finance && npm run test:market && npm run test:chart-v234 && npm run test:crosshair-v236 && npm run test:v3_1_1-priority"
+    "test:v3_1_1": "npm run test:boundary && npm run test:finance && npm run test:market && npm run test:chart-v234 && npm run test:crosshair-v236 && npm run test:v3_1_1-priority",
+    "test:v3_1_2-portfolio": "tsx scripts/v3_1_2-portfolio-layout.test.ts",
+    "test:v3_1_2": "npm run test:v3_1_1 && npm run test:preview-v213 && npm run test:holding-layout-v106 && npm run test:v3_1_2-portfolio && node scripts/v2_1_1-release.test.cjs"
   },
   "dependencies": {
     "expo": "~57.0.21",
