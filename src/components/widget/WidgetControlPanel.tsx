@@ -27,6 +27,7 @@ import {
   type WidgetTemplate,
 } from '../../widget/widgetDomain';
 import { ColorPalettePicker } from '../ColorPalettePicker';
+import { wallGridRows } from '../../widget/wallGridRows';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type SymbolOption={symbol:string;name?:string};
@@ -35,6 +36,7 @@ type Props = {
   onChange: (value: WidgetConfig) => void;
   availableSymbols?: readonly SymbolOption[];
   previewSnapshot?: SharedSnapshot|null;
+  onRefresh?:()=>Promise<void>;
 };
 
 const sizes: readonly WidgetSize[] = ['2x2','small', 'medium', 'large'];
@@ -49,14 +51,23 @@ const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中
 const sortKeys:readonly WidgetSortKey[]=['manual','symbol','price','changePercent'];
 const sortLabels:Record<WidgetSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
 
-export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null }: Props) {
+export function WidgetControlPanel({ value, onChange, availableSymbols=[], previewSnapshot=null, onRefresh }: Props) {
+  const [refreshing,setRefreshing]=useState(false);
+  const [refreshError,setRefreshError]=useState('');
+  const forceRefresh=async()=>{
+    if(!onRefresh||refreshing)return;
+    setRefreshing(true);setRefreshError('');
+    try{await onRefresh();}catch(error){setRefreshError(error instanceof Error?error.message:'更新失敗');}
+    finally{setRefreshing(false);}
+  };
   const [editingField,setEditingField]=useState<WidgetField|null>(null);
   const sortedRows=sortWidgetHoldings(previewSnapshot,value);
   const previewHolding=sortedRows[0];
   const wallSupported:readonly WidgetField[]=['symbol','name','price','change','changePercent','shares','avgCost','holdingMarketValue','pnl','roi','comprehensivePnl','marketStatus','updatedAt','dailyPnl','quote'];
   const selectedWallFields=value.fields.filter(field=>wallSupported.includes(field)).slice(0,4);
   const wallPreviewFields=selectedWallFields.length?selectedWallFields:(['name','symbol','price','changePercent'] as const);
-  const wallPreviewRows=sortedRows.slice(0,Math.min(8,Math.max(1,value.wallColumns*2)));
+  const wallPreviewRows=sortedRows.slice(0,Math.min(16,Math.max(1,value.wallColumns*4)));
+  const wallPreviewGrid=wallGridRows(wallPreviewRows,value.wallColumns);
   const previewLines=value.fields.slice(0,widgetTemplateCapacity(value.template)).map(field=>{
     const config=widgetFieldStyle(value,field);
     return {field,config,numeric:widgetFieldProfitValue(previewSnapshot,previewHolding,field),...widgetFieldText(previewSnapshot,previewHolding,field,config.label)};
@@ -112,9 +123,17 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
     </View>
 
     <Section title="即時預覽">
+      <Pressable accessibilityRole="button" accessibilityLabel="點擊強制更新 Widget 行情" disabled={!onRefresh||refreshing} onPress={()=>void forceRefresh()} style={{alignSelf:'flex-end',padding:10,backgroundColor:colors.primary,borderRadius:8}}>
+        <Text style={{color:'#FFFFFF',fontWeight:'800'}}>{refreshing?'行情更新中…':'↻ 點擊更新行情'}</Text>
+      </Pressable>
+      {refreshError?<Text style={{color:'#EF4444'}}>更新失敗：{refreshError}</Text>:null}
+      <Text style={styles.note}>刷新秒數＝前景查詢間隔，不是畫面假跳秒。只有證交所回傳較新的報價時間，才更新 Widget 的行情時間；若未變更、來源缺時間或連線失敗，保留上次成功資料。Android 背景排程受系統限制，桌面可點擊實際網路刷新。</Text>
+      <Text style={styles.note}>已核實報價時間：{previewSnapshot?.holdings.map(row=>row.updatedAt).filter((time):time is string=>!!time).sort().at(-1)?.replace(/^(.+)$/,(iso)=>new Date(iso).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}))??'尚未取得'}</Text>
+      {previewSnapshot?<Text style={styles.note}>預覽持股 {sortedRows.length} 筆；目前顯示 {wallPreviewRows.length} 筆，超出預覽列數需在桌面 Widget 繼續檢查。</Text>:null}
       {value.template==='quote-wall'
         ?<View style={[styles.preview,styles.wallPreview,{backgroundColor:value.style.backgroundColor,opacity:value.style.backgroundOpacity,borderColor:value.style.borderColor,borderWidth:value.style.borderWidth,borderRadius:value.style.cornerRadius,padding:value.style.padding}]}>
-          {wallPreviewRows.map(row=><View key={row.symbol} style={[styles.wallPreviewCard,{flexBasis:value.wallColumns===1?'100%':value.wallColumns===2?'48%':value.wallColumns===3?'31%':'23%'}]}>
+          {wallPreviewGrid.map((gridRow,rowIndex)=><View key={'row-'+rowIndex} style={{flexDirection:'row',gap:6,width:'100%'}}>
+            {gridRow.map((row,columnIndex)=>row?<View key={row.symbol} style={[styles.wallPreviewCard,{flex:1,minWidth:0}]}>
             {wallPreviewFields.map((field,index)=>{
               const config=widgetFieldStyle(value,field);
               const visual=config.visual;
@@ -131,6 +150,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
                 paddingVertical:visual.paddingY,
               }}>{line.text}</Text>;
             })}
+          </View>:<View key={'empty-'+columnIndex} style={{flex:1,minWidth:0}}/>)}
           </View>)}
           {!wallPreviewRows.length?<Text style={{color:value.style.secondaryTextColor}}>尚無持股資料</Text>:null}
         </View>
@@ -296,7 +316,7 @@ const styles = StyleSheet.create({
   labelEdit:{gap:4},
   inlineValue:{fontSize:11,fontWeight:'900',color:colors.text},
   input:{minHeight:38,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface,paddingHorizontal:10,paddingVertical:7,fontSize:11,fontWeight:'800',color:colors.text},
-  wallPreview:{flexDirection:'row',flexWrap:'wrap',alignContent:'flex-start',justifyContent:'space-between',gap:6},
+  wallPreview:{gap:6,alignContent:'flex-start'},
   wallPreviewCard:{borderWidth:1,borderColor:colors.border,borderRadius:radius.sm,padding:6,minHeight:56},
 });
 

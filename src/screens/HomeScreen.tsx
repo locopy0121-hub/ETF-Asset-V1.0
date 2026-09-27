@@ -13,8 +13,11 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
+import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
+import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
@@ -31,23 +34,34 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const [selectedNews,setSelectedNews]=useState<AiNewsItem|null>(null);
   const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
-  const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
-  const sortKey=(editor.displayConfig.sortKey??'pnl') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
+  const maintenance=useMaintenance();
+  const effectiveDisplay=maintenance.session?.page==='home'?maintenance.session.draftDisplay:editor.displayConfig;
+  const quoteStyle=(effectiveDisplay.quoteStyle??'quote') as QuoteModuleStyle;
+  const sortKey=(effectiveDisplay.sortKey??'pnl') as HoldingSortKey;
+  const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
+  const sorted=useMemo(()=>{
+    const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
+    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
+    return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
+      ...item,etfType:tags.get(item.symbol)?.etfType??null,
+      dividendType:tags.get(item.symbol)?.dividendType??null,
+      reminderEvent:reminders.get(item.symbol)??null,
+    }));
+  },[finance.holdings,finance.entries,sortKey,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
+  const valuationComplete=finance.valuationComplete;
   const totalDividend=portfolio.totalDividendsReceived;
-  const dashboardMetrics=(editor.displayConfig.dashboardMetrics??[]) as readonly DashboardMetricKey[];
-  const dashboardCharts=(editor.displayConfig.dashboardCharts??[]) as readonly DashboardChartConfig[];
+  const dashboardMetrics=(effectiveDisplay.dashboardMetrics??[]) as readonly DashboardMetricKey[];
+  const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
   const dashboardMetricInfo:Record<DashboardMetricKey,{label:string;value:number;caption:string;tone?:'gain'|'loss'}>={
     totalMarketValue:{label:'持股市值',value:portfolio.totalMarketValue,caption:'Finance Core'},
     totalPnl:{label:'含息總損益',value:portfolio.totalPnl,caption:'含息',tone:portfolio.totalPnl>=0?'gain':'loss'},
     totalUnrealizedProfit:{label:'未實現損益',value:portfolio.totalUnrealizedProfit,caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain':'loss'},
     realizedNetPnL:{label:'已實現損益',value:portfolio.realizedNetPnL,caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain':'loss'},
-    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'V3.7.8'},
+    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'帳務核心'},
     cashBalance:{label:'現金',value:finance.snapshot.cashBalance,caption:'Ledger'},
     holdingCount:{label:'持股檔數',value:finance.holdings.length,caption:'檔'},
   };
@@ -71,13 +85,13 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   };
   const moveDashboardChart=(id:string,x:number,y:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,x,y}:chart)});
   const resizeDashboardChart=(id:string,width:number,height:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,width,height}:chart)});
-  const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??5)));
-  const newsHoldingsOnly=editor.displayConfig.newsHoldingsOnly??true;
+  const newsCount=Math.max(1,Math.min(10,Number(effectiveDisplay.newsVisibleCount??5)));
+  const newsHoldingsOnly=effectiveDisplay.newsHoldingsOnly??true;
   const holdingSymbols=useMemo(()=>new Set(finance.holdings.map(x=>x.symbol.toUpperCase())),[finance.holdings]);
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
   return <>
-    <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+    <PageShell pageKey="home" title="資產儀表板" subtitle="所有資產與損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <View
         style={styles.pageLayer}
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
@@ -88,12 +102,15 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
             <View style={styles.dashboardTop}>
               <View style={styles.dashboardSummary}>
                 <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
-                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
+                {valuationComplete?<View style={styles.heroAmountRow} accessible accessibilityLabel={'目前持股總市值 NT$ '+money(portfolio.totalMarketValue)}>
+                  <Text style={styles.heroPrefix}>NT$</Text>
+                  <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52}>{money(portfolio.totalMarketValue)}</Text>
+                </View>:<Text style={styles.heroValue}>估值待核對</Text>}
+                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
               </View>
             </View>
             <View style={styles.metricRow}>
-              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
+              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={!valuationComplete&&['totalMarketValue','totalPnl','totalUnrealizedProfit','totalAssets','marketValue'].includes(key)?'待核對':key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
             </View>
           </FrameCard>
         },
@@ -136,18 +153,18 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
                 </Pressable>
               )}
             </View>
-            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
+            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
             <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },
         {key:'pnl-detail',element:
           <FrameCard title="損益明細">
             <View style={styles.metricRow}>
-              <MetricTile label="純價差未實現" value={money(portfolio.totalPriceUnrealizedProfit)} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
-              <MetricTile label="淨清算未實現" value={money(portfolio.totalUnrealizedProfit)} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
+              <MetricTile label="純價差未實現" value={valuationComplete?money(portfolio.totalPriceUnrealizedProfit):"待核對"} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
+              <MetricTile label="淨清算未實現" value={valuationComplete?money(portfolio.totalUnrealizedProfit):"待核對"} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
               <MetricTile label="已實現" value={money(portfolio.realizedNetPnL)} caption="歷史賣出" tone={portfolio.realizedNetPnL>=0?'gain':'loss'}/>
             </View>
-            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>NT$ {money(portfolio.totalPnl)}</Text></View>
+            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?"NT$ "+money(portfolio.totalPnl):"待核對"}</Text></View>
           </FrameCard>
         },
       ]}/>
@@ -155,7 +172,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
       </View>
     </PageShell>
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 
@@ -164,11 +181,14 @@ const styles=StyleSheet.create({
   refreshButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   refreshButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   heroLabel:{color:colors.textSecondary,fontSize:12,fontWeight:'700'},
-  heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums']},
+  heroAmountRow:{flexDirection:'row',alignItems:'baseline',width:'100%'},
+  heroPrefix:{color:colors.text,fontSize:34,fontWeight:'900',marginRight:8},
+  heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums'],flexShrink:1},
   heroDelta:{fontSize:13,fontWeight:'800'},
   pageLayer:{position:'relative'},
   dashboardTop:{minHeight:150,justifyContent:'flex-start'},
-  dashboardSummary:{width:'48%',gap:6},
+  // A narrow fixed 48% hero column clips long NT$ balances on real devices.
+  dashboardSummary:{width:'100%',gap:6},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},

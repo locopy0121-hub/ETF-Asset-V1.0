@@ -25,7 +25,7 @@ export function AiScreen(){
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
 
-  return <><PageShell title="AI 助理" subtitle="財務資料與 App 操作型助理；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+  return <><PageShell pageKey="ai" title="AI 助理" subtitle="財務資料與 App 操作型助理；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
     <PageEditorStack pageKey="ai" frames={[{key:'ai-news',element:
       <FrameCard title="AI 財務管家">
         <AiQuestionBox

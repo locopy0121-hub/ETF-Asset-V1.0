@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
+import { buildSystemColorChoices } from '../settings/systemColorPalette';
 import { colors, radius, spacing } from '../theme/tokens';
 
 type Hsv={h:number;s:number;v:number};
@@ -71,6 +73,7 @@ export function ColorPalettePicker({
   profitColorEnabled?:boolean;
   onProfitColorChange?:(value:boolean)=>void;
 }){
+  const settings=useSettingsRuntime();
   const [expanded,setExpanded]=useState(false);
   const [mode,setMode]=useState<PickerMode>('wheel');
   const [draft,setDraft]=useState(()=>normalizeHex(value));
@@ -86,6 +89,7 @@ export function ColorPalettePicker({
     }
   },[value,expanded]);
 
+  const systemColors=useMemo(()=>buildSystemColorChoices(settings.prefs.display),[settings.prefs.display.gainColor,settings.prefs.display.lossColor,settings.prefs.display.neutralColor]);
   const hsv=useMemo(()=>hexToHsv(draft),[draft]);
   const wheelRows=useMemo(()=>Array.from({length:WHEEL_STEPS},(_,row)=>
     Array.from({length:WHEEL_STEPS},(_,col)=>{
@@ -176,6 +180,8 @@ export function ColorPalettePicker({
         </View>
 
         <View style={styles.pickerBody}>
+          <Text style={styles.sectionTitle}>系統損益色</Text>
+          <View style={styles.systemColorRow}>{systemColors.map(item=><Pressable key={item.key} onPress={()=>setDraft(item.color)} style={styles.systemColorChoice}><View style={[styles.systemColorSwatch,{backgroundColor:item.color}]}/><Text style={styles.systemColorLabel}>{item.label}</Text></Pressable>)}</View>
           {mode==='wheel'?<>
             <View
               onLayout={(event:LayoutChangeEvent)=>setWheelSize(Math.max(1,event.nativeEvent.layout.width))}
@@ -256,6 +262,10 @@ const styles=StyleSheet.create({
   wheelCell:{flex:1},
   wheelMarker:{position:'absolute',width:34,height:34,borderRadius:17,marginLeft:-17,marginTop:-17,borderWidth:3,borderColor:'#FFFFFF',backgroundColor:'transparent',shadowColor:'#000000',shadowOpacity:.25,shadowRadius:3,elevation:3},
   sectionTitle:{fontSize:12,fontWeight:'900',color:colors.text},
+  systemColorRow:{flexDirection:'row',gap:8},
+  systemColorChoice:{flex:1,alignItems:'center',gap:5,padding:8,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  systemColorSwatch:{width:30,height:20,borderRadius:7,borderWidth:1,borderColor:colors.border},
+  systemColorLabel:{fontSize:9,fontWeight:'800',color:colors.textSecondary,textAlign:'center'},
   bar:{height:34,borderRadius:radius.md,overflow:'hidden',flexDirection:'row',borderWidth:1,borderColor:colors.border,position:'relative'},
   marker:{position:'absolute',top:0,bottom:0,width:4,marginLeft:-2,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#0F172A'},
   colorGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,justifyContent:'center',paddingTop:6},

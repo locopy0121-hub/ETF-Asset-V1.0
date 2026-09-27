@@ -1,14 +1,74 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
+import type {TargetOverride} from '../maintenance/inspectionModel';
+import {TARGET_APPEARANCE,mergeTargetAppearance} from '../maintenance/inspectionModel';
+import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffects';
+import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
+import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
+import {colorWithAlpha} from '../maintenance/frameEffects';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
-export function MetricTile({label,value,caption,tone='default'}:{label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss'}){
+export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone}:{
+  label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
+  editorStyle?:TargetOverride;simulationTone?:FinancialTone; // ephemeral preview only
+}){
   const theme=useThemeRuntime();
-  const toneColor=tone==='gain'?theme.palette.gain:tone==='loss'?theme.palette.loss:theme.palette.text;
-  return <View style={[styles.tile,{backgroundColor:theme.palette.surfaceMuted}]}>
-    <Text style={[styles.label,{color:theme.palette.textSecondary}]}>{label}</Text>
-    <Text style={[styles.value,{color:toneColor}]} numberOfLines={1}>{value}</Text>
-    {caption?<Text style={[styles.caption,{color:theme.palette.textSecondary}]}>{caption}</Text>:null}
+  const settings=useSettingsRuntime();
+  const nativeTones=resolveNativeMetricTones(tone,editorStyle?.profitToneOverride,simulationTone);
+  const actualTone=nativeTones.linked;
+  const colorPrefs=settings.prefs.display;
+  const toneColor=nativeTones.fallback==='gain'?theme.palette.gain:nativeTones.fallback==='loss'?theme.palette.loss:theme.palette.text;
+  const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'||simulationTone?toneColor:editorStyle?.textColor??theme.palette.text;
+  const effectiveTextColor=editorStyle?.textProfitColor===true?
+    linkedColor(editorStyle.textColor??theme.palette.text,true,actualTone,colorPrefs):
+    editorStyle?.textProfitColor===false?editorStyle.textColor??theme.palette.text:textColor;
+  const effectiveBackground=linkedColor(editorStyle?.backgroundColor??theme.palette.surfaceMuted,
+    editorStyle?.backgroundProfitColor,actualTone,colorPrefs);
+  const effectiveLabel=linkedColor(editorStyle?.labelColor??theme.palette.textSecondary,
+    editorStyle?.labelProfitColor,actualTone,colorPrefs);
+  const effectiveCaption=linkedColor(editorStyle?.captionColor??theme.palette.textSecondary,
+    editorStyle?.captionProfitColor,actualTone,colorPrefs);
+  const effectiveBorder=linkedColor(editorStyle?.borderColor??theme.palette.border,
+    editorStyle?.borderProfitColor,actualTone,colorPrefs);
+  const surface=mergeTargetAppearance(TARGET_APPEARANCE,editorStyle);
+  const gradientOn=editorStyle?.backgroundMode==='gradient';
+  const gradientEnd=linkedColor(surface.gradientEndColor,surface.gradientEndProfitColor,actualTone,colorPrefs);
+  const gradientMid=linkedColor(surface.gradientMidColor,surface.gradientMidProfitColor,actualTone,colorPrefs);
+  const shadow=linkedColor(surface.shadowColor,surface.shadowProfitColor,actualTone,colorPrefs);
+  const glow=linkedColor(surface.glowColor,surface.glowProfitColor,actualTone,colorPrefs);
+  const displayedLabel=editorStyle?.labelText||label;
+  const displayedCaption=editorStyle?.captionText||caption;
+  return <View style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
+    editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
+      borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
+      marginHorizontal:surface.marginHorizontal,...targetShadowStyle(surface,shadow)}]}>
+    {editorStyle?<TargetBackdrop appearance={surface} start={effectiveBackground} middle={gradientMid} end={gradientEnd} glow={glow}/>:null}
+    <Text style={[styles.label,{color:effectiveLabel,
+      fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left',
+      ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
+      ...(editorStyle?.labelFontWeight?{fontWeight:editorStyle.labelFontWeight}:{}),
+      ...(editorStyle?.labelFontStyle?{fontStyle:editorStyle.labelFontStyle}:{}),
+      ...(editorStyle?.labelLetterSpacing!==undefined?{letterSpacing:editorStyle.labelLetterSpacing}:{}),
+      ...(editorStyle?.labelLineHeight&&editorStyle.labelLineHeight>0?{lineHeight:editorStyle.labelLineHeight}:{}),
+      }]}>{displayedLabel}</Text>
+    <Text style={[styles.value,{color:effectiveTextColor,fontSize:editorStyle?.fontSize??17,
+      textAlign:editorStyle?.align??'left',
+      ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
+      ...(editorStyle?.fontWeight?{fontWeight:editorStyle.fontWeight}:{}),
+      ...(editorStyle?.fontStyle?{fontStyle:editorStyle.fontStyle}:{}),
+      ...(editorStyle?.textDecorationLine?{textDecorationLine:editorStyle.textDecorationLine}:{}),
+      ...(editorStyle?.letterSpacing!==undefined?{letterSpacing:editorStyle.letterSpacing}:{}),
+      ...(editorStyle?.lineHeight&&editorStyle.lineHeight>0?{lineHeight:editorStyle.lineHeight}:{}),
+      }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{value}</Text>
+    {displayedCaption?<Text style={[styles.caption,{color:effectiveCaption,fontSize:editorStyle?.captionFontSize??10,
+      textAlign:editorStyle?.align??'left',
+      ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
+      ...(editorStyle?.captionFontWeight?{fontWeight:editorStyle.captionFontWeight}:{}),
+      ...(editorStyle?.captionFontStyle?{fontStyle:editorStyle.captionFontStyle}:{}),
+      ...(editorStyle?.captionLetterSpacing!==undefined?{letterSpacing:editorStyle.captionLetterSpacing}:{}),
+      ...(editorStyle?.captionLineHeight&&editorStyle.captionLineHeight>0?{lineHeight:editorStyle.captionLineHeight}:{}),
+      }]}>{displayedCaption}</Text>:null}
   </View>;
 }
 const styles=StyleSheet.create({

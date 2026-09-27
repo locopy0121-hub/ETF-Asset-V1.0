@@ -12,7 +12,21 @@ export type NativeMonitorStatus=Readonly<{
   displaySymbol:string;
 }>;
 
+export type UnifiedMarketRow=Readonly<{
+  symbol:string;name:string;currentPrice:number;previousClose:number|null;
+  sourceQuoteAt:number;quality:'trade'|'official_close';source:'TWSE_MIS'|'TWSE_DAILY'|'TPEX_DAILY';checkedAt:number;
+}>;
+export type UnifiedMarketSnapshot=Readonly<{
+  version:number;quotes:UnifiedMarketRow[];
+  updatedCount?:number;coveredCount?:number;requestedCount?:number;missing?:string[];
+  errors?:string[];queriedAt?:number;conflictCount?:number;
+}>;
 type TfAssetNativeModule={
+  refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
+  readUnifiedMarketData:()=>Promise<string>;
+  setMarketBackendUrl:(url:string)=>Promise<boolean>;
+  saveBackupDocument:(text:string,fileName:string)=>Promise<ExternalBackupReceipt|null>;
+  openBackupDocument:()=>Promise<OpenedBackupDocument|null>;
   syncWidget:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   syncMonitor:(configJson:string,snapshotJson:string)=>Promise<boolean>;
   requestWidgetRefresh:()=>Promise<boolean>;
@@ -48,3 +62,41 @@ export async function canDrawOverlays(){return native?native.canDrawOverlays():f
 export async function openOverlaySettings(){return native?native.openOverlaySettings():false;}
 export async function pickNativeThemeBackground(){return native?native.pickThemeBackground():null;}
 export async function setNativeAppIcon(iconKey:string){return native?native.setAppIcon(iconKey):false;}
+
+export const unifiedMarketCenterAvailable=Platform.OS==='android'
+  &&typeof native?.refreshUnifiedMarketData==='function'
+  &&typeof native?.readUnifiedMarketData==='function';
+export async function loadUnifiedMarketData():Promise<UnifiedMarketSnapshot>{
+  if(!unifiedMarketCenterAvailable||!native)throw new Error('Android 行情資料中心尚未安裝');
+  const raw=await native.readUnifiedMarketData();
+  return JSON.parse(raw) as UnifiedMarketSnapshot;
+}
+export async function refreshUnifiedMarketData(symbols:readonly string[]):Promise<UnifiedMarketSnapshot>{
+  if(!unifiedMarketCenterAvailable||!native)throw new Error('Android 行情資料中心尚未安裝');
+  const raw=await native.refreshUnifiedMarketData(JSON.stringify(symbols));
+  return JSON.parse(raw) as UnifiedMarketSnapshot;
+}
+
+export async function setNativeMarketBackendUrl(url:string){
+  if(!unifiedMarketCenterAvailable||!native)return false;
+  return native.setMarketBackendUrl(url);
+}
+
+
+export type ExternalBackupReceipt=Readonly<{
+  uri:string;fileName:string;bytes:number;verified:true;
+}>;
+export type OpenedBackupDocument=Readonly<{
+  uri:string;fileName:string;bytes:number;text:string;
+}>;
+export const backupDocumentPickerAvailable=Platform.OS==='android'
+  &&typeof native?.saveBackupDocument==='function'
+  &&typeof native?.openBackupDocument==='function';
+export async function saveExternalBackup(text:string,fileName:string):Promise<ExternalBackupReceipt|null>{
+  if(!backupDocumentPickerAvailable||!native)throw new Error('Android 外部 JSON 備份檔案選擇器無法使用');
+  return native.saveBackupDocument(text,fileName);
+}
+export async function chooseExternalBackup():Promise<OpenedBackupDocument|null>{
+  if(!backupDocumentPickerAvailable||!native)throw new Error('Android 外部 JSON 還原選擇器無法使用');
+  return native.openBackupDocument();
+}

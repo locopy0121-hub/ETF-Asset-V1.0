@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { MainPageKey } from '../domain/pageRegistry';
+import type { DividendCalendarPrefs } from '../dividend/dividendCalendar';
+import { normalizeControlPrefs, patchAiPrefs, patchPageTitle, resetLimitedPreferences } from './settingsControlBehavior';
 import {
   createContext,
   type PropsWithChildren,
@@ -31,20 +34,34 @@ export type DisplayPrefs=Readonly<{
   lossColor:string;
   neutralColor:string;
 }>;
+export type MarketCardPrefs=Readonly<{showQuoteMetadata:boolean}>;
 export type TradeDefaults=Readonly<{
   brokerProfileId:string;
   accountLabel:string;
   tradeKind:'buy'|'sell';
 }>;
+export type AiPrefs=Readonly<{enabled:boolean;floatingButton:boolean}>;
+export type NavigationPrefs=Readonly<{swipeEnabled:boolean;swipeThreshold:number;swipeEdgeOnly:boolean}>;
 export type SettingsPrefs=Readonly<{
   schema:1;
+  engineerEnabled:boolean;
+  pageTitles:Partial<Record<MainPageKey,string>>;
+  ai:AiPrefs;
+  navigation:NavigationPrefs;
+  dividendCalendar:DividendCalendarPrefs;
   notifications:NotificationPrefs;
   display:DisplayPrefs;
+  marketCard:MarketCardPrefs;
   tradeDefaults:TradeDefaults;
 }>;
 
 const DEFAULT_SETTINGS:SettingsPrefs={
   schema:1,
+  engineerEnabled:false,
+  pageTitles:{},
+  ai:{enabled:true,floatingButton:true},
+  navigation:{swipeEnabled:true,swipeThreshold:75,swipeEdgeOnly:false},
+  dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true},
   notifications:{
     exDividend:true,
     dividend:true,
@@ -66,6 +83,7 @@ const DEFAULT_SETTINGS:SettingsPrefs={
     lossColor:'#10B981',
     neutralColor:'#64748B',
   },
+  marketCard:{showQuoteMetadata:false},
   tradeDefaults:{
     brokerProfileId:'huanan-yongchang',
     accountLabel:'主要帳戶',
@@ -79,11 +97,24 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
   const n=input?.notifications;
   const d=input?.display;
   const t=input?.tradeDefaults;
+  const controls=normalizeControlPrefs(input);
+  const calendar=input?.dividendCalendar;
   const lead=Math.max(0,Math.min(30,Math.floor(Number(n?.leadDays??DEFAULT_SETTINGS.notifications.leadDays))));
   const fontScale=Math.max(0.8,Math.min(1.4,Number(d?.fontScale??DEFAULT_SETTINGS.display.fontScale)));
   const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
   return {
     schema:1,
+    engineerEnabled:input?.engineerEnabled===true,
+    pageTitles:controls.pageTitles,
+    ai:controls.ai,
+    navigation:{swipeEnabled:input?.navigation?.swipeEnabled!==false,swipeThreshold:Math.round(Math.max(50,Math.min(150,Number(input?.navigation?.swipeThreshold)||75))),swipeEdgeOnly:input?.navigation?.swipeEdgeOnly===true},
+    dividendCalendar:{
+      showLastBuyDate:calendar?.showLastBuyDate!==false,
+      showExDate:calendar?.showExDate!==false,
+      showRecordDate:calendar?.showRecordDate!==false,
+      showPaymentDate:calendar?.showPaymentDate!==false,
+      showStatus:calendar?.showStatus!==false,
+    },
     notifications:{
       exDividend:n?.exDividend??DEFAULT_SETTINGS.notifications.exDividend,
       dividend:n?.dividend??DEFAULT_SETTINGS.notifications.dividend,
@@ -105,6 +136,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
       lossColor:color(d?.lossColor,DEFAULT_SETTINGS.display.lossColor),
       neutralColor:color(d?.neutralColor,DEFAULT_SETTINGS.display.neutralColor),
     },
+    marketCard:{showQuoteMetadata:input?.marketCard?.showQuoteMetadata===true},
     tradeDefaults:{
       brokerProfileId:String(t?.brokerProfileId??DEFAULT_SETTINGS.tradeDefaults.brokerProfileId),
       accountLabel:String(t?.accountLabel??DEFAULT_SETTINGS.tradeDefaults.accountLabel),
@@ -116,9 +148,15 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
 type SettingsRuntimeValue=Readonly<{
   hydrated:boolean;
   prefs:SettingsPrefs;
+  patchEngineerEnabled:(enabled:boolean)=>void;
   patchNotifications:(patch:Partial<NotificationPrefs>)=>void;
   patchDisplay:(patch:Partial<DisplayPrefs>)=>void;
+  patchMarketCard:(patch:Partial<MarketCardPrefs>)=>void;
   patchTradeDefaults:(patch:Partial<TradeDefaults>)=>void;
+  patchPageTitle:(page:MainPageKey,title:string)=>void;
+  patchAi:(patch:Partial<AiPrefs>)=>void;
+  patchNavigation:(patch:Partial<NavigationPrefs>)=>void;
+  patchDividendCalendar:(patch:Partial<DividendCalendarPrefs>)=>void;
   resetPreferences:()=>void;
 }>;
 
@@ -149,10 +187,16 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
   const value=useMemo<SettingsRuntimeValue>(()=>({
     hydrated,
     prefs,
+    patchEngineerEnabled:enabled=>setPrefs(current=>normalize({...current,engineerEnabled:enabled})),
     patchNotifications:patch=>setPrefs(current=>normalize({...current,notifications:{...current.notifications,...patch}})),
     patchDisplay:patch=>setPrefs(current=>normalize({...current,display:{...current.display,...patch}})),
+    patchMarketCard:patch=>setPrefs(current=>normalize({...current,marketCard:{...current.marketCard,...patch}})),
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
-    resetPreferences:()=>setPrefs(DEFAULT_SETTINGS),
+    patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
+    patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),
+    patchNavigation:patch=>setPrefs(current=>normalize({...current,navigation:{...current.navigation,...patch}})),
+    patchDividendCalendar:patch=>setPrefs(current=>normalize({...current,dividendCalendar:{...current.dividendCalendar,...patch}})),
+    resetPreferences:()=>setPrefs(current=>normalize(resetLimitedPreferences(current,DEFAULT_SETTINGS))),
   }),[hydrated,prefs]);
 
   return <SettingsRuntimeContext.Provider value={value}>{children}</SettingsRuntimeContext.Provider>;

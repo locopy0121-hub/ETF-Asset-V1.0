@@ -1,0 +1,359 @@
+import {useEffect,useState} from 'react';
+import {Image,Pressable,Switch,Text,TextInput,View} from 'react-native';
+import {ColorPalettePicker} from '../components/ColorPalettePicker';
+import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
+import {nativeRuntimeAvailable,pickNativeThemeBackground} from '../native/TfAssetNativeBridge';
+import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from './frameEffects';
+import {useMaintenance} from './MaintenanceRuntime';
+import {useThemeRuntime} from '../theme/ThemeRuntime';
+
+const options:Partial<Record<keyof FrameEffects,readonly (readonly [string,string])[]>>={
+  backgroundMode:[['solid','純色'],['gradient','多段漸層'],['image','背景圖片']],
+  imageSource:[['builtIn','10 張內建圖'],['custom','自訂圖片']],
+  imageFit:[['cover','填滿裁切'],['contain','適合完整顯示'],['stretch','拉伸']],
+  gradientDirection:[['vertical','上下漸層'],['horizontal','左右漸層']],
+  borderStyle:[['solid','實線'],['dashed','虛線'],['dotted','點線']],
+};
+const limits:Partial<Record<keyof FrameEffects,readonly [number,number,number]>>={
+  borderTop:[-1,8,1],borderRight:[-1,8,1],borderBottom:[-1,8,1],borderLeft:[-1,8,1],
+  cornerTopLeft:[-1,48,1],cornerTopRight:[-1,48,1],
+  cornerBottomRight:[-1,48,1],cornerBottomLeft:[-1,48,1],
+  shadowBlur:[0,48,1],shadowOffsetX:[-24,24,1],shadowOffsetY:[-24,24,1],
+  shadowSpreadRadius:[0,32,1],shadowSpreadLayers:[1,6,1],shadowSpreadOpacity:[0,.65,.05],
+  borderGradientWidth:[1,12,1],borderGradientOpacity:[0,.8,.05],
+  glowOpacity:[0,.8,.05],glowWidth:[0,16,1],glowPeriodMs:[800,4000,100],
+  blinkOpacity:[0,.8,.05],blinkPeriodMs:[500,5000,100],
+  titleMarqueeSpeed:[24,180,8],titleMarqueeGap:[12,80,4],
+  entranceDurationMs:[200,2500,50],entranceDistance:[8,120,4],
+  entranceScale:[.65,1,.05],entranceRotationDeg:[5,90,5],
+  responsiveCompactWidth:[360,900,20],responsiveDenseWidth:[240,600,20],
+  outerGlowOpacity:[0,.8,.05],outerGlowSpread:[0,32,1],outerGlowSoftness:[0,48,1],
+  paddingTop:[-1,32,1],paddingRight:[-1,32,1],paddingBottom:[-1,32,1],paddingLeft:[-1,32,1],
+  contentGap:[-1,40,1],marginVertical:[0,32,1],maxWidth:[0,1600,10],
+  gradientMidStop:[.1,.9,.05],imageOpacity:[0,1,.05],maskOpacity:[0,1,.05],
+};
+const colorProfitFlag:Partial<Record<keyof FrameEffects,
+  'gradientEndProfitColor'|'gradientMidProfitColor'|'maskProfitColor'|'shadowProfitColor'|'glowProfitColor'|'outerGlowProfitColor'|'blinkProfitColor'>>={
+  gradientEndColor:'gradientEndProfitColor',gradientMidColor:'gradientMidProfitColor',
+  maskColor:'maskProfitColor',shadowColor:'shadowProfitColor',glowColor:'glowProfitColor',
+  outerGlowColor:'outerGlowProfitColor',blinkColor:'blinkProfitColor',
+};
+function FrameImagePicker({currentUri,onPicked}:{currentUri:string|null;onPicked:(uri:string)=>void}){
+  const [busy,setBusy]=useState(false);
+  const [message,setMessage]=useState('');
+  const pick=async()=>{
+    if(busy||!nativeRuntimeAvailable)return;
+    setBusy(true);setMessage('');
+    try{
+      const uri=await pickNativeThemeBackground();
+      if(uri)onPicked(uri);
+    }catch{setMessage('圖片選取失敗。請重試，原有設定未變更。');}
+    finally{setBusy(false);}
+  };
+  return <View style={{gap:8,marginTop:10}}>
+    {currentUri?<View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+      <Image source={{uri:currentUri}} resizeMode="cover"
+        style={{width:72,height:72,borderRadius:8,backgroundColor:'#E2E8F0'}}/>
+      <Text style={{flex:1,color:'#64748B',fontSize:12}}>已選取自訂圖片。Android 會保留相簿／檔案讀取授權；正式儲存前仍可取消。</Text>
+    </View>:<Text style={{fontSize:12,color:'#64748B'}}>尚未選取自訂圖片。可先使用 10 張內建背景。</Text>}
+    <Pressable accessibilityRole="button" disabled={!nativeRuntimeAvailable||busy}
+      accessibilityLabel="Android 選取自訂框架背景" onPress={()=>void pick()}
+      style={{padding:12,alignItems:'center',backgroundColor:'#EDE9FE',borderRadius:8,opacity:nativeRuntimeAvailable?1:0.45}}>
+      <Text style={{fontWeight:'700',color:'#5B21B6'}}>{busy?'正在開啟選檔器…':'選取手機圖片'}</Text>
+    </Pressable>
+    {!nativeRuntimeAvailable?<Text style={{color:'#64748B',fontSize:11}}>自訂圖片選擇器需要 Android 原生環境。</Text>:null}
+    {message?<Text style={{color:'#B91C1C'}}>{message}</Text>:null}
+  </View>;
+}
+function NumericDetail({value,onChange,min,max,step}:{
+  value:number;onChange:(next:number)=>void;min:number;max:number;step:number;
+}){
+  const [typed,setTyped]=useState(String(value));
+  useEffect(()=>setTyped(String(value)),[value]);
+  const commit=()=>{
+    const n=Number(typed);
+    if(typed.trim()===''||!Number.isFinite(n)){setTyped(String(value));return;}
+    onChange(Math.max(min,Math.min(max,n)));
+  };
+  const stepBy=(direction:-1|1)=>{
+    if(min===-1&&direction===1&&value===-1){onChange(0);return;}
+    if(min===-1&&direction===-1&&value===0){onChange(-1);return;}
+    onChange(Math.max(min,Math.min(max,Number((value+direction*step).toFixed(3)))));
+  };
+  return <View style={{gap:7,marginTop:9}}>
+    <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
+      <Pressable accessibilityRole="button" accessibilityLabel="減少" onPress={()=>stepBy(-1)}
+        style={{width:44,height:40,alignItems:'center',justifyContent:'center',borderRadius:8,backgroundColor:'#EDE9FE'}}>
+        <Text style={{fontSize:22,color:'#6D28D9'}}>−</Text>
+      </Pressable>
+      <TextInput accessibilityLabel="手動輸入精確參數" keyboardType="numbers-and-punctuation"
+        value={typed} selectTextOnFocus onChangeText={setTyped} onEndEditing={commit}
+        style={{borderWidth:1,borderColor:'#BAA8DA',borderRadius:8,
+          minWidth:80,padding:7,flex:1,textAlign:'center',fontSize:15,color:'#231942'}}/>
+      <Pressable accessibilityRole="button" accessibilityLabel="增加" onPress={()=>stepBy(1)}
+        style={{width:44,height:40,alignItems:'center',justifyContent:'center',borderRadius:8,backgroundColor:'#EDE9FE'}}>
+        <Text style={{fontSize:22,color:'#6D28D9'}}>＋</Text>
+      </Pressable>
+    </View>
+    <Text style={{fontSize:11,color:'#64748B'}}>範圍 {min} ～ {max}；長按數值可直接輸入，離開欄位套用至上方預覽。</Text>
+    {min===-1?<Pressable accessibilityRole="button" accessibilityLabel="沿用原有設定"
+      onPress={()=>onChange(-1)}><Text style={{color:'#6D28D9',fontWeight:'700'}}>−1：沿用外層框架設定</Text></Pressable>:null}
+  </View>;
+}
+/** D panel operates ONLY on the current frame's in-memory draft. */
+export function FrameEffectsToolDetails({field}:{field:string}){
+  const maintenance=useMaintenance();
+  const theme=useThemeRuntime();
+  const session=maintenance.session;
+  if(!session||session.scope!=='frame')return <Text style={{color:theme.palette.textSecondary}}>請從外層框架右上角的扳手開啟框架工程。</Text>;
+  if(!(field in DEFAULT_FRAME_EFFECTS))return <Text>此細節尚未接線。</Text>;
+  const key=field as keyof FrameEffects;
+  const fx=normalizeFrameEffects(session.draft.effects);
+  const current=fx[key];
+  const change=(next:unknown)=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[key]:next,
+    ...(key==='gradientDirection'?{gradientAngle:null}:{})})});
+  if(key==='blinkEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜原生邊框閃爍提醒（不遮蔽帳務數字）</Text>
+      <Switch accessibilityLabel="原生閃爍提醒開關" value={fx.blinkEnabled} onValueChange={change}/>
+    </View>
+    {fx.blinkEnabled?<>
+      <ColorPalettePicker label="閃爍提醒顏色" value={fx.blinkColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,blinkColor:color})})}
+        profitColorEnabled={fx.blinkProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,blinkProfitColor:enabled})})}/>
+      {([['blinkOpacity','提醒邊框透明度',0,.8,.05],
+          ['blinkPeriodMs','閃爍週期（毫秒）',500,5000,100]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}：{name==='blinkOpacity'?Math.round(fx[name]*100)+'%':fx[name]+' ms'}</Text>
+        <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
+          min={min} max={max} step={step}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:11}}>遵守系統降低動態設定；啟用時顯示靜態彩色邊框，數值與文字保持可見。</Text>
+    </>:null}
+  </View>;
+  if(key==='borderGradientEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜獨立雙層／厚度漸層邊框</Text>
+      <Switch accessibilityLabel="雙層漸層邊框開關" value={fx.borderGradientEnabled} onValueChange={change}/>
+    </View>
+    {fx.borderGradientEnabled?<>
+      {([['dual','雙層獨立色'],['gradient','8 階厚度漸層']] as const).map(([mode,label])=>
+        <Pressable key={mode} accessibilityRole="button" accessibilityLabel={label}
+          onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientMode:mode})})}
+          style={{borderWidth:1,borderColor:theme.palette.primary,borderRadius:8,padding:9,
+            backgroundColor:fx.borderGradientMode===mode?theme.palette.primary:theme.palette.surface}}>
+          <Text style={{color:fx.borderGradientMode===mode?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      <ColorPalettePicker label="第一層／漸層起點顏色" value={fx.borderGradientStartColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientStartColor:color})})}
+        profitColorEnabled={fx.borderGradientStartProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientStartProfitColor:enabled})})}/>
+      <ColorPalettePicker label="第二層／漸層終點顏色" value={fx.borderGradientEndColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientEndColor:color})})}
+        profitColorEnabled={fx.borderGradientEndProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,borderGradientEndProfitColor:enabled})})}/>
+      {([['borderGradientWidth','向外總厚度（dp）',1,12,1],
+          ['borderGradientOpacity','邊框透明度',0,.8,.05]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        只在框架邊緣繪製雙層或向外厚度漸層，不改背景透明度、操作按鈕及金額文字。
+      </Text>
+    </>:null}
+  </View>;
+  if(key==='shadowSpreadEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜框架多層陰影擴散</Text>
+      <Switch accessibilityLabel="框架多層陰影擴散開關" value={fx.shadowSpreadEnabled} onValueChange={change}/>
+    </View>
+    {fx.shadowSpreadEnabled?<>
+      <ColorPalettePicker label="陰影擴散顏色" value={fx.shadowColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,shadowColor:color})})}
+        profitColorEnabled={fx.shadowProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,shadowProfitColor:enabled})})}/>
+      {([['shadowSpreadRadius','擴散半徑（dp）',0,32,1],
+          ['shadowSpreadLayers','陰影輪廓層數',1,6,1],
+          ['shadowSpreadOpacity','輪廓強度',0,.65,.05]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        最多六層非互動陰影輪廓，獨立於內容及內外光圈；透明度不會讓財務數值褪色。
+      </Text>
+    </>:null}
+  </View>;
+  if(key==='outerGlowEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜外側柔光暈（獨立於內緣光圈）</Text>
+      <Switch accessibilityLabel="外側柔光暈開關" value={fx.outerGlowEnabled} onValueChange={change}/>
+    </View>
+    {fx.outerGlowEnabled?<>
+      <ColorPalettePicker label="外側光暈顏色" value={fx.outerGlowColor}
+        onChange={color=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,outerGlowColor:color})})}
+        profitColorEnabled={fx.outerGlowProfitColor}
+        onProfitColorChange={enabled=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,outerGlowProfitColor:enabled})})}/>
+      {([['outerGlowOpacity','透明度（獨立）',0,.8,.05],
+          ['outerGlowSpread','向外擴散',0,32,1],
+          ['outerGlowSoftness','柔邊範圍',0,48,1]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontSize:12,fontWeight:'700'}}>{label}：{name==='outerGlowOpacity'?Math.round(fx[name]*100)+'%':fx[name]+' dp'}</Text>
+        <NumericDetail value={fx[name]} onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
+          min={min} max={max} step={step}/>
+      </View>)}
+    </>:null}
+  </View>;
+  if(key==='responsiveEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜目前框架原生尺寸斷點</Text>
+      <Switch accessibilityLabel="目前框架尺寸斷點自動切換" value={fx.responsiveEnabled} onValueChange={change}/>
+    </View>
+    {fx.responsiveEnabled?<>
+      {([['responsiveCompactWidth','切換緊湊版寬度（dp）',360,900,20],
+          ['responsiveDenseWidth','切換密集版寬度（dp）',240,600,20]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        根據真實框架量測寬度自動採用緊湊／密集內距和標題大小，密集斷點至少比緊湊小 40dp；
+        不改框架本身寬高、不重排或移動子元件、不修改跨頁共享模板。
+      </Text>
+    </>:null}
+  </View>;
+  if(key==='entranceEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜真實框架原生進場動畫</Text>
+      <Switch accessibilityLabel="框架原生進場動畫開關" value={fx.entranceEnabled} onValueChange={change}/>
+    </View>
+    {fx.entranceEnabled?<>
+      {([['slide','滑入'],['zoom','縮放'],['rotate','旋轉']] as const).map(([mode,label])=>
+        <Pressable accessibilityRole="button" accessibilityLabel={'選擇 '+label+' 進場'}
+          key={mode} onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceMode:mode})})}
+          style={{borderWidth:1,borderColor:theme.palette.primary,borderRadius:8,padding:9,
+            backgroundColor:fx.entranceMode===mode?theme.palette.primary:theme.palette.surface}}>
+          <Text style={{color:fx.entranceMode===mode?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      <View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>進場時間（毫秒）</Text>
+        <NumericDetail value={fx.entranceDurationMs} min={200} max={2500} step={50}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceDurationMs:value})})}/>
+      </View>
+      {fx.entranceMode==='slide'?<View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>滑入距離（dp）</Text>
+        <NumericDetail value={fx.entranceDistance} min={8} max={120} step={4}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceDistance:value})})}/>
+      </View>:null}
+      {fx.entranceMode==='zoom'?<View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>起始縮放比例</Text>
+        <NumericDetail value={fx.entranceScale} min={.65} max={1} step={.05}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceScale:value})})}/>
+      </View>:null}
+      {fx.entranceMode==='rotate'?<View>
+        <Text style={{color:theme.palette.text,fontWeight:'700'}}>起始旋轉角度（°）</Text>
+        <NumericDetail value={fx.entranceRotationDeg} min={5} max={90} step={5}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,entranceRotationDeg:value})})}/>
+      </View>:null}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        僅變換目前框架的原生視圖，不改寫框架內交易數據；系統降低動態時停止變換，維持原始大小位置。
+      </Text>
+    </>:null}
+  </View>;
+  if(key==='titleMarqueeEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+      <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜框架標題原生跑馬燈</Text>
+      <Switch accessibilityLabel="框架標題跑馬燈開關" value={fx.titleMarqueeEnabled} onValueChange={change}/>
+    </View>
+    {fx.titleMarqueeEnabled?<>
+      {([['titleMarqueeSpeed','移動速度（dp／秒）',24,180,8],
+          ['titleMarqueeGap','標題間隔（dp）',12,80,4]] as const).map(([name,label,min,max,step])=><View key={name}>
+        <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>{label}</Text>
+        <NumericDetail value={fx[name]} min={min} max={max} step={step}
+          onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}/>
+      </View>)}
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        僅當本框架標題超出可見寬度時滾動；不移動操作按鈕或金融內容。系統降低動態時改為靜態省略號。
+      </Text>
+    </>:null}
+  </View>;
+  if(key==='gradientAngle')return <View style={{gap:8,marginTop:9}}>
+    <Text style={{color:theme.palette.text,fontWeight:'700'}}>任意角度：{fx.gradientAngle===null?'沿用水平／垂直':fx.gradientAngle+'°'}</Text>
+    <NumericDetail value={fx.gradientAngle??(fx.gradientDirection==='vertical'?90:0)}
+      onChange={change} min={0} max={359} step={1}/>
+    <Pressable accessibilityRole="button" accessibilityLabel="恢復水平或垂直漸層"
+      onPress={()=>change(null)}><Text style={{color:theme.palette.primary,fontWeight:'700'}}>恢復水平／垂直方向</Text></Pressable>
+  </View>;
+  if(key==='imageFit')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+      {options.imageFit!.map(([value,label])=><Pressable key={value} accessibilityRole="button"
+        accessibilityLabel={label} onPress={()=>change(value)} style={{borderWidth:1,borderRadius:8,
+          borderColor:theme.palette.primary,padding:9,
+          backgroundColor:fx.imageFit===value?theme.palette.primary:theme.palette.surface}}>
+        <Text style={{color:fx.imageFit===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
+      </Pressable>)}
+    </View>
+    {fx.imageFit==='cover'?<>
+      {([['imageFocusX','水平裁切焦點',0,100,5],['imageFocusY','垂直裁切焦點',0,100,5]] as const)
+        .map(([name,label,min,max,step])=><View key={name}>
+          <Text style={{color:theme.palette.text,fontWeight:'700',fontSize:12}}>
+            {label}：{Math.round(fx[name]*100)}%
+          </Text>
+          <NumericDetail value={Math.round(fx[name]*100)} min={min} max={max} step={step}
+            onChange={value=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value/100})})}/>
+        </View>)}
+      <Pressable accessibilityRole="button" accessibilityLabel="圖片裁切焦點恢復正中央"
+        onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,imageFocusX:.5,imageFocusY:.5})})}>
+        <Text style={{color:theme.palette.primary,fontWeight:'700'}}>恢復中央裁切（50%／50%）</Text>
+      </Pressable>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+        僅調整當前框架背景圖片的 cover 裁切位置；使用原生 Image 實際尺寸計算。
+        無法取得來源尺寸時安全退回置中；手機跨裝置圖片嵌入仍待後續版本完成。
+      </Text>
+    </>:null}
+  </View>;
+  if(key==='imageIndex')return <View style={{marginTop:9,flexDirection:'row',flexWrap:'wrap',gap:8}}>
+    {THEME_BACKGROUNDS.map((uri,index)=><Pressable accessibilityRole="button" key={index}
+      accessibilityLabel={'選用框架內建背景 '+(index+1)}
+      onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({
+        ...fx,backgroundMode:'image',imageSource:'builtIn',imageIndex:index,
+      })})}
+      style={{borderWidth:fx.imageSource==='builtIn'&&fx.imageIndex===index?3:1,
+        borderColor:fx.imageSource==='builtIn'&&fx.imageIndex===index?theme.palette.primary:theme.palette.border,
+        borderRadius:8,padding:3}}>
+      <Image source={{uri}} style={{width:54,height:54,borderRadius:5}} resizeMode="cover"/>
+      <Text style={{fontSize:11,textAlign:'center',color:theme.palette.text}}>{index+1}</Text>
+    </Pressable>)}
+  </View>;
+  if(key==='imageUri')return <FrameImagePicker currentUri={fx.imageUri} onPicked={uri=>
+    maintenance.patchFrame({effects:normalizeFrameEffects({
+      ...fx,backgroundMode:'image',imageSource:'custom',imageUri:uri,
+    })})}/>;
+
+  if(typeof current==='boolean')return <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:9}}>
+    <Text style={{color:theme.palette.text,fontWeight:'600'}}>{current?'開啟':'關閉'}</Text>
+    <Switch value={current} onValueChange={change}/>
+  </View>;
+  const variants=options[key];
+  if(variants)return <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,marginTop:9}}>
+    {variants.map(([value,label])=><Pressable key={value} accessibilityRole="button"
+      accessibilityLabel={label} onPress={()=>change(value)} style={{borderWidth:1,borderRadius:8,
+        borderColor:theme.palette.primary,padding:9,backgroundColor:current===value?theme.palette.primary:theme.palette.surface}}>
+      <Text style={{color:current===value?'#FFFFFF':theme.palette.text}}>{label}</Text>
+    </Pressable>)}
+  </View>;
+  if(typeof current==='string'){
+    const profitFlag=colorProfitFlag[key];
+    return <ColorPalettePicker label={field} value={current} onChange={change}
+      {...(profitFlag?{profitColorEnabled:Boolean(fx[profitFlag]),
+        onProfitColorChange:(checked:boolean)=>maintenance.patchFrame({effects:normalizeFrameEffects({
+          ...fx,[profitFlag]:checked,
+        })})}:{})}/>;
+  }
+  const range=limits[key];
+  if(typeof current==='number'&&range){
+    return <NumericDetail value={current} onChange={change}
+      min={range[0]} max={range[1]} step={range[2]}/>;
+  }
+  return <Text style={{color:theme.palette.textSecondary}}>此項目尚未介接。</Text>;
+}
