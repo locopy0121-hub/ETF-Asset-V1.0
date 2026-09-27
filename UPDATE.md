@@ -1,3 +1,13 @@
+# V3.1.5｜庫存模式切換器更換為獨立卡片式控制（2026-09-28）
+
+從 V3.1.4 已完成 CI／Backend／QA APK 的 HEAD `10a56f30f81bdb8d3d7ef04eab4eb80af77e9527` 接續；不可變備份 `backup-v3.1.4-20260928-before-v3.1.5`。使用者 02:21 實機仍重現 NATIVE_CRASH 與 JS 例外，連續切換 list／paged2／horizontal／grid3；V3.1.4 的恢復按鈕並非根因修復。此版改變模組，不沿用舊 SegmentedControl 或損壞的個體 ID。
+
+- 換成原生 Pressable 卡片式「清單模式／行情牆模式／安全簡易清單」，選中態清楚、按鈕 48dp 以上，不使用動畫或原舊切換器。
+- 新控制獨立 ID `control:portfolio-mode-v315`，維護工程師仍可個體選取、編輯、恢復；不繼承舊版控制的局部或共用外觀覆寫。其他元件和父框架保持不變。
+- 安全簡易清單完全不載入舊 PortfolioHoldingTable、HoldingQuoteCollection、動畫與檢查器；只顯示既有唯讀持股數據。使用安全模式不覆寫已儲存選擇，返回清單／行情牆仍可使用原設定。
+- 選擇內容加 JS 渲染 Error Boundary，遇到 React render 錯誤提供直接進入安全清單；保留診斷 Log；Android native signal 仍需 logcat 查因。舊儲存模式／排列與損壞的 columns 在載入時正規化，修正維護工程師模式切換更新草稿、直到套用才保存。
+- 完整遞增為 3.1.5／30105，QA quality/backend/native APK 與 ZIP/SHA/AAPT Gate；Immutable Core、existing SAF、報價來源及其他頁面均不變。驗證只宣告實際通過證據，不把 CI PASS 當成真機修復。
+
 # V3.1.4｜單一個體元件恢復原廠設定與免點擊故障救援（2026-09-28）
 
 從已完成 QA APK 的 V3.1.3 HEAD `3e729eb0cb94822f416868369165277f86fa5693` 接續；備份分支 `backup-v3.1.3-20260928-before-v3.1.4`。V3.1.3 用戶實機回報庫存「清單模式／行情牆模式」編輯後點擊仍有 JavaScriptException，精確根因尚未由 logcat 證實，本版先交付不必點擊故障元件的救援操作。

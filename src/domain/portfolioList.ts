@@ -25,7 +25,7 @@ const color=(v:unknown,fallback:string|null)=>v===null?null:typeof v==='string'&
 const clamp=(v:unknown,min:number,max:number,fallback:number)=>typeof v==='number'&&Number.isFinite(v)?Math.min(max,Math.max(min,v)):fallback;
 export function normalizePortfolioList(raw:unknown):PortfolioListConfig{
   const value=raw&&typeof raw==='object'?raw as Partial<PortfolioListConfig>:{};
-  const provided=Array.isArray(value.columns)?value.columns:[];
+  const provided=Array.isArray(value.columns)?value.columns.filter((item):item is PortfolioColumnConfig=>Boolean(item)&&typeof item==='object'&&typeof item.key==='string'):[];
   const map=new Map(provided.map(x=>[x.key,x]));
   const order=[...new Set([...provided.map(x=>x.key),...DEFAULT_PORTFOLIO_LIST.columns.map(x=>x.key)])];
   const columns:PortfolioColumnConfig[]=order.flatMap(key=>{
