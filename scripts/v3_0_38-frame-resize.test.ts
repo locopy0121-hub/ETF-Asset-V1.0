@@ -13,7 +13,7 @@ assert.equal(frameResizeDimensions({width:320,height:240},Number.NaN,5),null);
 assert.equal(frameResizeDimensions({width:0,height:240},5,5),null);
 const audit=completeCatalogAudit(),all=COMPLETE_ENGINEER_SKILLS.flatMap(g=>g.tools);
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,163);assert.equal(audit.pending,21);
+assert.equal(audit.readyDeclared,164);assert.equal(audit.pending,20);
 const tool=all.find(x=>x.id==='resize-gesture')!;
 assert.equal(tool.status,'ready');assert.equal(tool.field,'frame:resize-gesture');
 assert.equal(resolveSkillAdapter(tool,{scope:'frame',page:'home',frameKey:'asset-dashboard'}).status,'active');
@@ -26,7 +26,7 @@ assert.ok(stack.includes("active&&session?.scope==='frame'")&&stack.includes('en
 assert.ok(panel.includes("tool.field==='frame:resize-gesture'")&&panel.includes('<FrameDimensionsToolDetails/>'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
 assert.ok(['3.0.38','3.0.39'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30038);assert.equal(app.expo.ios.buildNumber,'30038');
+assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes('TF-Asset-V'+pkg.version+'-QA.apk')&&wf.includes('npm run test:v3_0_'+pkg.version.split('.')[2]));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(file).length>0);

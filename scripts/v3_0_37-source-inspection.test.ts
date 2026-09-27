@@ -19,7 +19,7 @@ assert.equal(snapshot.fields[2]?.originReadOnly,false);
 assert.equal((target.properties as readonly unknown[]).length,3,'source inspector does not mutate mounted properties');
 const tools=COMPLETE_ENGINEER_SKILLS.flatMap(g=>g.tools),audit=completeCatalogAudit();
 assert.equal(tools.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,163);assert.equal(audit.pending,21);
+assert.equal(audit.readyDeclared,164);assert.equal(audit.pending,20);
 const source=tools.find(t=>t.id==='source')!;
 assert.equal(source.status,'ready');assert.equal(source.field,'target:source');
 assert.equal(targetToolSupported('metric','target:source'),true);
@@ -32,7 +32,7 @@ assert.ok(panel.includes("fieldName==='source'")&&panel.includes('inspectLiveTar
 assert.ok(panel.includes('snapshot.fields.map')&&panel.includes('上游官方 API／帳務欄位來源：未提供'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
 assert.ok(['3.0.38','3.0.39'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30038);assert.equal(app.expo.ios.buildNumber,'30038');
+assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes('TF-Asset-V'+pkg.version+'-QA.apk')&&wf.includes('npm run test:v3_0_'+pkg.version.split('.')[2]));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(file).length>0);
