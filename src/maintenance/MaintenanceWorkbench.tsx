@@ -354,6 +354,30 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
+    if(fieldName==='threshold')return <View style={{marginTop:8,gap:9}}>
+      <Text style={{fontSize:12,color:theme.palette.textSecondary}}>僅本張真實數值卡 A 的顯示門檻；使用未縮放的原始數值，排除 ETF 代號、百分比、載入與無效資料。符合條件才顯示強調描邊，不改金額或交易。</Text>
+      <Switch accessibilityLabel="數值卡門檻視覺開關" value={current.thresholdEnabled}
+        onValueChange={value=>maint.patchTarget(target.id,{thresholdEnabled:value})}/>
+      <View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}>
+        {([['gte','大於或等於'],['lte','小於或等於']] as const).map(([operator,label])=><Pressable key={operator}
+          accessibilityRole="button" accessibilityLabel={'門檻條件 '+label}
+          onPress={()=>maint.patchTarget(target.id,{thresholdOperator:operator})}
+          style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:current.thresholdOperator===operator?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:current.thresholdOperator===operator?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      </View>
+      <TextInput key={target.id} defaultValue={String(current.thresholdValue)}
+        accessibilityLabel="數值卡比較門檻" keyboardType="decimal-pad" selectTextOnFocus
+        onEndEditing={event=>{
+          const raw=event.nativeEvent.text.trim();
+          if(!/^[+-]?\d+(?:\.\d+)?$/.test(raw))return;
+          const number=Number(raw);
+          if(Number.isFinite(number)&&Math.abs(number)<=1000000000000)
+            maint.patchTarget(target.id,{thresholdValue:number});
+        }}
+        style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text}]}/>
+      <Text style={{fontSize:11,color:theme.palette.textSecondary}}>有效範圍 −1 兆～1 兆；輸入完成更新草稿，套用才保存。無效輸入不會覆寫設定。</Text>
+    </View>;
     if(fieldName==='tapSwipeGuard')return <View style={{marginTop:8,gap:8}}>
       <Text style={{fontSize:12,color:theme.palette.textSecondary}}>只保護目前已掛載的數值卡 A：觸控移動超過 12dp 或取消觸控，不觸發點擊強調。預設開啟；原位草稿與取消沿用既有維護會話。</Text>
       <Switch accessibilityLabel="數值卡滑動與點按互斥" value={current.tapSwipeGuard}
