@@ -11,7 +11,7 @@ import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
 import type {SkillTool} from './skillTree';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
-import {searchAbProperties,findAbProperty,AB_PROPERTY_GROUPS} from './abPropertyModel';
+import {searchAbProperties,findAbProperty,AB_PROPERTY_GROUPS,TOOLBOX_MAIN_CATEGORIES,type ToolboxMainCategoryId} from './abPropertyModel';
 import {resolveSkillAdapter,type AdapterContext} from './skillAdapters';
 import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
@@ -37,6 +37,7 @@ import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} fro
 export function MaintenanceWorkbench(){
   const maintenance=useMaintenance(),theme=useThemeRuntime(),insets=useSafeAreaInsets();
   const session=maintenance.session;
+  const [openMain,setOpenMain]=useState<ToolboxMainCategoryId>('appearance');
   const [openB,setOpenB]=useState<string|null>(null);
   const [openC,setOpenC]=useState<string|null>(null);
   const [moreColor,setMoreColor]=useState(false);
@@ -45,14 +46,14 @@ export function MaintenanceWorkbench(){
   const [saving,setSaving]=useState(false);
   const scroller=useRef<ScrollView>(null);
   useEffect(()=>{
-    setOpenB(null);setOpenC(null);setMoreColor(false);setQuery('');setFavoritesOnly(false);
+    setOpenMain('appearance');setOpenB(null);setOpenC(null);setMoreColor(false);setQuery('');setFavoritesOnly(false);
   },[session?.page,session?.frameKey,session?.scope,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
   const instance=session.draftInstances.find(item=>item.id===focused);
   const selectedTarget=session.scope==='target'?session.target:undefined;
   const label=selectedTarget?.label??instance?.text??session.title;
-  const visibleB=searchAbProperties(query).filter(group=>!favoritesOnly||group.tools.some(tool=>maintenance.assets.favorites.includes(tool.id)));
+  const visibleB=searchAbProperties(query,openMain).filter(group=>!favoritesOnly||group.tools.some(tool=>maintenance.assets.favorites.includes(tool.id)));
   const selectedB=openB?findAbProperty(openB):undefined;
   const canDeleteFocused=Boolean(instance&&isEngineerOwnedInstance(instance)&&session.scope==='instance');
   const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
@@ -88,7 +89,7 @@ export function MaintenanceWorkbench(){
       <View style={{flex:1}}>
         <Text style={[styles.headline,{color:theme.palette.text}]} numberOfLines={1}>A｜{label}</Text>
         <Text style={[styles.small,{color:theme.palette.textSecondary}]} numberOfLines={1}>
-          {selectedB?'B｜'+selectedB.label+' → C｜直接編輯':'B｜選擇要修改的屬性'}
+          {selectedB?'C｜'+selectedB.label+' → D｜直接編輯':'B｜'+(TOOLBOX_MAIN_CATEGORIES.find(item=>item.id===openMain)?.label??'工具箱')+' → C｜功能群組'}
         </Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="查看資料保護" onPress={showLock} style={{padding:8}}>
@@ -105,10 +106,10 @@ export function MaintenanceWorkbench(){
           <Text style={{color:theme.palette.primary,fontSize:13}}>‹ B｜返回屬性</Text>
           <Text style={{flex:1,color:theme.palette.text,fontWeight:'800',textAlign:'right'}}>{selectedB.label}</Text>
         </Pressable>
-        {selectedB.id==='length'||selectedB.id==='width'?
+        {selectedB.id==='size'?
           <View style={{paddingTop:3}}>
             <Text style={[styles.label,{color:theme.palette.text}]}>C｜大小</Text>
-            <AbDimensionControl axis={selectedB.id==='length'?'height':'width'} instance={instance}/>
+            <AbDimensionControl axis={'width'} instance={instance}/>
           </View>:selectedB.id==='color'?<View>
             <AbColorControls instance={instance}/>
             <Pressable accessibilityRole="button" accessibilityLabel="更多顏色與背景控制"
@@ -120,7 +121,16 @@ export function MaintenanceWorkbench(){
             {moreColor?<AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} onOpenTool={navigateToFavorite} instance={instance}/>:null}
           </View>:<AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} onOpenTool={navigateToFavorite} instance={instance}/>}
       </View>:<View>
-        <TextInput accessibilityLabel="搜尋 B 屬性與 C 控制" value={query} onChangeText={setQuery}
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:8}}>
+          {TOOLBOX_MAIN_CATEGORIES.map(main=><Pressable key={main.id} accessibilityRole="button"
+            accessibilityState={{selected:openMain===main.id}}
+            onPress={()=>{setOpenMain(main.id);setOpenB(null);setOpenC(null);setMoreColor(false);}}
+            style={[styles.compactRow,{borderColor:openMain===main.id?theme.palette.primary:theme.palette.border,
+              backgroundColor:openMain===main.id?theme.palette.surfaceMuted:theme.palette.surface,flexGrow:1,minWidth:'47%'}]}>
+            <Text style={{color:openMain===main.id?theme.palette.primary:theme.palette.text,fontWeight:'900',textAlign:'center',flex:1}}>{main.label}</Text>
+          </Pressable>)}
+        </View>
+        <TextInput accessibilityLabel="搜尋功能群組與工具" value={query} onChangeText={setQuery}
           placeholder="搜尋屬性或功能…" placeholderTextColor={theme.palette.textSecondary}
           style={[styles.input,{borderColor:theme.palette.border,color:theme.palette.text,marginBottom:8}]}/>
         <View style={{flexDirection:'row',alignItems:'center',gap:8,marginBottom:8}}>
