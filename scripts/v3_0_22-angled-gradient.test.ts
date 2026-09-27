@@ -35,10 +35,10 @@ assert.ok(renderer.includes('onLayout={measureGradient}')&&renderer.includes('an
  renderer.includes("transform:[{rotate:gradientAngle+'deg'}]"));
 assert.ok(read('src/maintenance/skillTree.ts').includes("ready('fx-multi-gradient'"));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.39');assert.equal(app.expo.version,'3.0.39');
-assert.equal(app.expo.android.versionCode,30039);assert.equal(app.expo.ios.buildNumber,'30039');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.39-QA.apk'));
+assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,'3.0.40');
+assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.40-QA.apk'));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
  assert.ok(read(p).length>0,'immutable finance core kept: '+p);
-console.log('V3.0.39 arbitrary-angle frame native gradient: legacy/degree/layout/tool/AB/identity PASS');
+console.log('V3.0.40 arbitrary-angle frame native gradient: legacy/degree/layout/tool/AB/identity PASS');
 console.log('184 skills / 150 declared wired / 34 pending; actual device testing separate');

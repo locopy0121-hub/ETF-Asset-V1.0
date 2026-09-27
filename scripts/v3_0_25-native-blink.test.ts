@@ -36,12 +36,12 @@ assert.ok(ui.includes('ColorPalettePicker')&&ui.includes('maintenance.patchFrame
 const backup=read('src/settings/BackupService.ts');
 assert.ok(backup.includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.39');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30039);assert.equal(app.expo.ios.buildNumber,'30039');
+assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes("branches: [main, 'go-v3.0.*']")&&wf.includes("startsWith(github.head_ref, 'go-v3.0.')"));
-assert.ok(wf.includes('TF-Asset-V3.0.39-QA.apk')&&wf.includes('npm run test:v3_0_39'));
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.39'"));
+assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes('npm run test:v3_0_39'));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.40'"));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(path).length>0);
-console.log('V3.0.39 native frame blink regression PASS: A/B/C, normalized effects, reduced motion, financial isolation, APK gates');
+console.log('V3.0.40 native frame blink regression PASS: A/B/C, normalized effects, reduced motion, financial isolation, APK gates');
 console.log('184 central skills / 157 declared wired / 27 pending / Android device validation separate');

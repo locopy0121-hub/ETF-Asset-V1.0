@@ -21,3 +21,11 @@ export function reorderOwnedSiblings(
  positions.forEach((position,index)=>{next[position]=siblings[index]!;});
  return next;
 }
+
+/** Screen-reader reorder is allowed only for a real sibling and a known action. */
+export function accessibleChildMove(action:string,index:number,total:number):-1|0|1{
+ if(!Number.isInteger(index)||!Number.isInteger(total)||total<2||index<0||index>=total)return 0;
+ if(action==='increment')return index<total-1?1:0;
+ if(action==='decrement')return index>0?-1:0;
+ return 0;
+}

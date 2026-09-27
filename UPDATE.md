@@ -1,3 +1,11 @@
+## V3.0.40｜2026-09-27｜原生子元件排序無障礙操作安全加固（開發 QA，驗證中）
+
+接續 V3.0.39 PR #86 HEAD `aef61e8e820930b6ae46583a92355dfe057e8dcf`；Actions #1278（run 36318771862）quality/backend/QA APK 全成功、Artifact #10931359407、SHA256 `6527bb191737c4a9d22d8d9be64f0bb21915081f2e7d1cb9c7466858fea29c53`、AAPT com.tfasset.app／3.0.39／30039、ZIP 完整。事前不可變備份 `backup-v3.0.39-20260927-pre-v3.0.40`，工作分支 `go-v3.0.40-20260927-next-native`。
+
+本版針對 V3.0.39 真實 NativeChildSort 原生拖曳手柄的無障礙輸入增加白名單及首尾邊界防護：僅 increment/decrement 且該行具有合法位置時才派發 1 步，其他 action 或越界一律 NOOP，絕不把未知事件誤當「上一位」。保留已驗證的父框架白名單、草稿／取消／套用及原生 PanResponder，不擴大到尚待適配的中央 `drag-sort` 跨元件工具；帳務核心、actual_fee/tax、交易、行情源和 SAF 備份不動。184 項宣告 **164 ready／20 pending**，本版新增行為測試，真機／讀屏實際操作仍待驗。
+
+App／Android／iOS／Settings／備份／GitHub CI 升級至 3.0.40／30040，V3.0.1–V3.0.39 歷版回歸保留，新版 QA APK、ZIP/SHA/AAPT/Artifact 全部以本版 HEAD 實際結果為準，不把 CODE/BUILD 等同手機驗收或最終 Release。
+
 ## V3.0.39｜2026-09-27｜真實新增父框架的原生子元件拖曳排序（開發 QA，Gate 待驗）
 
 來源：V3.0.38 PR #85 HEAD `11cb91b5167372762445e1c217ff2c16c85303c1`，GitHub Actions #1267（run 36316587781）quality/backend/原生 QA APK 成功，APK Artifact #10930458716，SHA256 59a7de414993fd2f1e53f76a35a61b9837fddad254d9b64f697de25210ce9066，ZIP 完整、AAPT com.tfasset.app，3.0.38／30038。建立不可變備份 `backup-v3.0.38-20260927-pre-v3.0.39`、工作分支 `go-v3.0.39-20260927-native-child-sort`。

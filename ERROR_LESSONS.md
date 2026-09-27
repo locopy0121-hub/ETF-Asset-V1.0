@@ -1,3 +1,7 @@
+## 2026-09-27｜V3.0.40 無障礙未知事件不得當作反向排序
+
+V3.0.39 的無障礙 handler 原先以 `increment ? +1 : -1` 判斷，未知事件會誤觸發上一位，且對首尾行仍派發無效果命令。新版本引入 `accessibleChildMove` 白名單，只接受 increment/decrement、合法 index/total、未越界時才派發；保留原生拖曳手柄、真實父層白名單及草稿／套用／取消，並用行為回歸測試未知事件、首尾邊界及排序結果。184 中央技能 164/20 維持，避免以安全加固假報新技能完成。
+
 ## 2026-09-27｜V3.0.39 native 新增元件排序必須遵守父層實際邊界
 
 原始完整中央技能樹包含尚未接線的 `fx-drag-sort` 與 `drag-sort` 兩個不同 ID，不能把單一父框架子元件已實作誇大成全 App 所有元件可拖移排序。只有工程師新增的合法 parent-frame 被選取時，才從 session.draftInstances 唯讀列出同 parentId 的直接工程師子元件；原生 PanResponder 只能經白名單 helper reorderOwnedSiblings 於相同父層置換既有陣列中的合法槽位，其他 ID、業務欄位、兄弟父框架不改。手勢位移以有限數值正規化，草稿預覽／取消／套用沿用 V3 維護 Runtime；真機觸控與父容器溢出另待驗。版本每次增加需要所有歷版 3.0.38→3.0.39 及 source-ready 163→164／pending 21→20 同步，勿將 push quality 成功且 APK skipped 誤判 native APK PASS。

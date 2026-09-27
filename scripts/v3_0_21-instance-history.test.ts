@@ -79,8 +79,8 @@ assert.ok(ui.includes('instanceVisualSnapshot({...owned')&&ui.includes('restoreV
 assert.ok(adapter.includes("ctx.scope==='instance'&&ctx.instanceOwned"));
 assert.ok(backup.includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.39');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30039);assert.equal(app.expo.ios.buildNumber,'30039');
-assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.39-QA.apk'));
-console.log('V3.0.39 owned installed A history: snapshots/strict keys/cap/restore/backup/AB PASS');
+assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
+assert.ok(read('.github/workflows/ci.yml').includes('TF-Asset-V3.0.40-QA.apk'));
+console.log('V3.0.40 owned installed A history: snapshots/strict keys/cap/restore/backup/AB PASS');
 console.log('184 central skills, 150 declared wired / 34 pending; no finance or built-in mutations PASS');

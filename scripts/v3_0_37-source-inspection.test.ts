@@ -31,7 +31,7 @@ const panel=read('src/maintenance/MaintenanceWorkbench.tsx');
 assert.ok(panel.includes("fieldName==='source'")&&panel.includes('inspectLiveTargetSource(target)'));
 assert.ok(panel.includes('snapshot.fields.map')&&panel.includes('上游官方 API／帳務欄位來源：未提供'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.ok(['3.0.38','3.0.39'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
+assert.ok(['3.0.38','3.0.40'].includes(pkg.version));assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30000+Number(pkg.version.split('.')[2]));assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes('TF-Asset-V'+pkg.version+'-QA.apk')&&wf.includes('npm run test:v3_0_'+pkg.version.split('.')[2]));
