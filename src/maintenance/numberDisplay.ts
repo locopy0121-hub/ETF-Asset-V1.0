@@ -19,6 +19,7 @@ export function formatDisplayNumber(raw:string,unit:DisplayUnit,digits:number):s
  // A stock code, %, loading text, dates and compound numbers stay unchanged.
  const match=/^(\s*)(NT\$\s*)?([+\-−]?)(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d+))?(\s*)$/.exec(raw);
  if(!match)return raw;
+ if(!match[2]&&/^0\d{3,}$/.test(match[4]))return raw; // ETF codes are not amounts
  const [,leading,currency='',sign='',integer,decimal='',trailing]=match;
  const n=Number(integer.replace(/,/g,'')+(decimal?'.'+decimal:''));
  if(!Number.isFinite(n)||!Number.isSafeInteger(Number(integer.replace(/,/g,''))))return raw;
