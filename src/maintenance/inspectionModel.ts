@@ -19,6 +19,7 @@ export type TargetAppearance=Readonly<{
   displayUnit:DisplayUnit;displayDigits:number; // display only: original data always immutable
   tapAction:'none'|'emphasize'; // local metric visual gesture, never a financial action
   tapSwipeGuard:boolean; // native metric touch slop; default ON, scoped per real metric A
+  thresholdEnabled:boolean;thresholdValue:number;thresholdOperator:'gte'|'lte'; // presentation only
   borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   // V3.0.11: independent visual effects on native component instances, never ledger values.
   backgroundMode:'solid'|'gradient';gradientDirection:'horizontal'|'vertical';
@@ -59,7 +60,7 @@ export const TARGET_APPEARANCE:TargetAppearance={
   shadowEnabled:false,shadowColor:'#000000',shadowProfitColor:false,shadowOpacity:.28,
   shadowBlur:8,shadowOffsetX:0,shadowOffsetY:2,
   glowEnabled:false,glowColor:'#A78BFA',glowProfitColor:false,glowOpacity:.35,glowWidth:3,
-  align:'left',useProfitColor:true,labelText:'',captionText:'',displayUnit:'original',displayDigits:0,tapAction:'none',tapSwipeGuard:true,
+  align:'left',useProfitColor:true,labelText:'',captionText:'',displayUnit:'original',displayDigits:0,tapAction:'none',tapSwipeGuard:true,thresholdEnabled:false,thresholdValue:0,thresholdOperator:'gte',
   fontWeight:'normal',fontFamily:'system',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
   labelFontWeight:'700',captionFontWeight:'normal',labelFontStyle:'normal',captionFontStyle:'normal',
   labelLetterSpacing:0,captionLetterSpacing:0,labelLineHeight:0,captionLineHeight:0,
@@ -72,14 +73,14 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-80,80],['prefixOffsetY',-80,80],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
     ['gradientMidStop',.1,.9],['marginVertical',0,32],['marginHorizontal',0,32],
     ['shadowOpacity',0,.8],['shadowBlur',0,48],['shadowOffsetX',-24,24],['shadowOffsetY',-24,24],
-    ['glowOpacity',0,.8],['glowWidth',0,16]] as const){
+    ['glowOpacity',0,.8],['glowWidth',0,16],['thresholdValue',-1000000000000,1000000000000]] as const){
     if(typeof v[field]==='number'&&Number.isFinite(v[field]))o[field]=clamp(v[field],min,max,min);
   }
   for(const field of ['textColor','labelColor','captionColor','backgroundColor','borderColor',
     'gradientEndColor','gradientMidColor','shadowColor','glowColor'] as const)
     if(hex(v[field]))o[field]=v[field].toUpperCase();
   for(const field of ['visible','useProfitColor','textProfitColor','labelProfitColor','captionProfitColor','backgroundProfitColor','borderProfitColor',
-    'gradientEndProfitColor','gradientMidProfitColor','gradientMidEnabled','shadowEnabled','shadowProfitColor','glowEnabled','glowProfitColor','tapSwipeGuard'] as const)
+    'gradientEndProfitColor','gradientMidProfitColor','gradientMidEnabled','shadowEnabled','shadowProfitColor','glowEnabled','glowProfitColor','tapSwipeGuard','thresholdEnabled'] as const)
     if(typeof v[field]==='boolean')o[field]=v[field];
   for(const field of ['fontWeight','labelFontWeight','captionFontWeight'] as const)
     if(v[field]==='normal'||v[field]==='bold'||['100','200','300','400','500','600','700','800','900'].includes(String(v[field])))o[field]=v[field];
@@ -96,6 +97,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(v.profitToneOverride==='auto'||v.profitToneOverride==='gain'||v.profitToneOverride==='loss'||v.profitToneOverride==='neutral')o.profitToneOverride=v.profitToneOverride;
   if(v.conditionalStyles!==undefined)o.conditionalStyles=normalizeConditionalStyles(v.conditionalStyles);
   if(v.tapAction==='none'||v.tapAction==='emphasize')o.tapAction=v.tapAction;
+  if(v.thresholdOperator==='gte'||v.thresholdOperator==='lte')o.thresholdOperator=v.thresholdOperator;
   if(['original','yuan','thousand','ten-thousand','million'].includes(String(v.displayUnit)))o.displayUnit=v.displayUnit;
   if(typeof v.displayDigits==='number'&&Number.isFinite(v.displayDigits))o.displayDigits=Math.round(clamp(v.displayDigits,0,4,0));
   for(const field of ['labelText','captionText','prefixText'] as const)
@@ -116,7 +118,7 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
 export const VISUAL_TARGET_KEYS:readonly (keyof TargetAppearance)[]=[
   'fontSize','labelFontSize','captionFontSize','textColor','labelColor','captionColor',
   'backgroundColor','borderColor','displayUnit','displayDigits','textProfitColor','labelProfitColor','captionProfitColor',
-  'backgroundProfitColor','borderProfitColor','profitToneOverride','conditionalStyles','borderWidth','borderRadius',
+  'backgroundProfitColor','borderProfitColor','profitToneOverride','conditionalStyles','thresholdEnabled','thresholdValue','thresholdOperator','borderWidth','borderRadius',
   'padding','opacity','backgroundOpacity','fontWeight','fontFamily','fontStyle','textDecorationLine',
   'labelFontWeight','captionFontWeight','labelFontStyle','captionFontStyle',
   'labelLetterSpacing','captionLetterSpacing','labelLineHeight','captionLineHeight',
@@ -145,7 +147,7 @@ export const TARGET_VISUAL_PRESETS={
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
   if(field==='target:numberFormat')return kind==='metric'||kind==='value';
-  if(field==='target:tapAction'||field==='target:tapSwipeGuard')return kind==='metric';
+  if(field==='target:tapAction'||field==='target:tapSwipeGuard'||field==='target:threshold')return kind==='metric';
   if(field==='target:resetVisual')return true;
   if(field==='target:preset')return nativeMaterial;
   if(['target:backgroundMode','target:gradientDirection','target:gradientEndColor',

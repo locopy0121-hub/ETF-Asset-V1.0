@@ -19,7 +19,7 @@ for(const kind of ['value','frame','text','prefix','control','wall'] as const)
  assert.equal(targetToolSupported(kind,'target:tapAction'),false);
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(g=>g.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,160);assert.equal(audit.pending,24);
+assert.equal(audit.readyDeclared,161);assert.equal(audit.pending,23);
 const tap=all.find(t=>t.id==='tap')!;
 assert.equal(tap.status,'ready');assert.equal(tap.field,'target:tapAction');
 assert.equal(resolveSkillAdapter(tap,{scope:'target',kind:'metric',page:'home',frameKey:'asset-dashboard'}).status,'active');
@@ -32,9 +32,9 @@ assert.ok(stack.includes('previewTap={render.editing}'));assert.ok(inspect.inclu
 assert.ok(panel.includes("fieldName==='tapAction'")&&panel.includes("maint.patchTarget(target.id,{tapAction:action})"));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.35');assert.equal(app.expo.version,'3.0.35');
-assert.equal(app.expo.android.versionCode,30035);assert.equal(app.expo.ios.buildNumber,'30035');
+assert.equal(pkg.version,'3.0.36');assert.equal(app.expo.version,'3.0.36');
+assert.equal(app.expo.android.versionCode,30036);assert.equal(app.expo.ios.buildNumber,'30036');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.35-QA.apk')&&wf.includes('npm run test:v3_0_35'));
+assert.ok(wf.includes('TF-Asset-V3.0.36-QA.apk')&&wf.includes('npm run test:v3_0_36'));
 for(const f of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(f).length>0);
-console.log('V3.0.35 metric native tap action + AB preview behavior + immutable boundaries: AUTOMATED PASS; device validation pending');
+console.log('V3.0.36 metric native tap action + AB preview behavior + immutable boundaries: AUTOMATED PASS; device validation pending');
