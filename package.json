@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.37",
+  "version": "3.0.38",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -210,7 +210,9 @@
     "test:metric-threshold-v336": "tsx scripts/v3_0_36-metric-threshold.test.ts",
     "test:v3_0_36": "npm run test:v3_0_35 && npm run test:metric-threshold-v336",
     "test:source-inspection-v337": "tsx scripts/v3_0_37-source-inspection.test.ts",
-    "test:v3_0_37": "npm run test:v3_0_36 && npm run test:source-inspection-v337"
+    "test:v3_0_37": "npm run test:v3_0_36 && npm run test:source-inspection-v337",
+    "test:frame-resize-v338": "tsx scripts/v3_0_38-frame-resize.test.ts",
+    "test:v3_0_38": "npm run test:v3_0_37 && npm run test:frame-resize-v338"
   },
   "dependencies": {
     "expo": "~57.0.21",
