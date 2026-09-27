@@ -30,23 +30,30 @@ export function HoldingQuoteCollection({
   // The real viewport, not screen width, determines each swipe page and hitbox.
   const [viewportWidth,setViewportWidth]=useState(0);
   const pageWidth=holdingPageWidth(viewportWidth,width);
-  const effectiveWallConfig=wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
-  const effectiveBadgeConfig=badgeConfig??DEFAULT_ETF_BADGES;
-  const card=effectiveWallConfig.style;
+  const wallReset=Boolean(maintenance&&engineer.hasIndividualReset(maintenance.page,
+    maintenance.frameKey,'shared:holding-wall'));
+  const effectiveWallConfig=wallReset?DEFAULT_HOLDING_WALL_CONFIG:wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
+  const effectiveBadgeConfig=wallReset?DEFAULT_ETF_BADGES:badgeConfig??DEFAULT_ETF_BADGES;
   const renderHolding=(item:HoldingQuote,narrow=false,micro=false)=>{
+    // A single restored ETF card can use native defaults without rewriting the page-wide wall.
+    const cardReset=Boolean(maintenance&&engineer.hasIndividualReset(maintenance.page,
+      maintenance.frameKey,'quote:'+item.symbol));
+    const cardConfig=cardReset?DEFAULT_HOLDING_WALL_CONFIG:effectiveWallConfig;
+    const cardBadges=cardReset?DEFAULT_ETF_BADGES:effectiveBadgeConfig;
+    const card=cardConfig.style;
     const render=(appearance?:TargetAppearance)=>{
       const adjusted=appearance?{
-        ...effectiveWallConfig,
+        ...cardConfig,
         style:{...card,
           backgroundColor:appearance.backgroundColor,textColor:appearance.textColor,
           borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,
           cornerRadius:appearance.borderRadius,padding:appearance.padding},
-        fields:effectiveWallConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16,
+        fields:cardConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16,
           useProfitColor:appearance.useProfitColor?field.useProfitColor:false})),
-      }:effectiveWallConfig;
-      return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',style)}
+      }:cardConfig;
+      return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',cardReset?'quote':style)}
         layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}
-        wallConfig={adjusted} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken}
+        wallConfig={adjusted} badgeConfig={cardBadges} refreshToken={refreshToken}
         onPress={()=>onOpenHolding(item)}/>;
     };
     if(!maintenance)return render();
