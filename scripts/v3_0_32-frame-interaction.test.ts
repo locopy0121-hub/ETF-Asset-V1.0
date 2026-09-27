@@ -45,8 +45,8 @@ const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
 assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes('npm run test:v3_0_39'));
-assert.ok(wf.includes("github.head_ref == 'go-v3.0.40-20260927-native-child-sort'"));
+assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes('npm run test:v3_0_40'));
+assert.ok(wf.includes("github.head_ref == 'go-v3.0.40-20260927-next-native'"));
 for(const file of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(file).length>0,'immutable finance boundary: '+file);
 console.log('V3.0.40 frame header native gestures, isolated tap/long-press, draft/restore wiring, 184/163/21: AUTOMATED PASS; device validation pending');
