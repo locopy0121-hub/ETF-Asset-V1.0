@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tfasset_market
+      POSTGRES_USER: tfasset
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?Set PG_PASSWORD in your local .env}
+    volumes:
+      - tfasset_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tfasset -d tfasset_market"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server","--appendonly","yes","--maxmemory","128mb","--maxmemory-policy","allkeys-lru"]
+    volumes:
+      - tfasset_redis:/data
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+  market-center:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      DATABASE_URL: postgres://tfasset:${PG_PASSWORD}@postgres:5432/tfasset_market
+      REDIS_URL: redis://redis:6379
+      MARKET_TRACKED_SYMBOLS: ${MARKET_TRACKED_SYMBOLS:-0050,0056,00878,00919,00929,00713}
+      MARKET_WATCH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  tfasset_pg:
+  tfasset_redis:

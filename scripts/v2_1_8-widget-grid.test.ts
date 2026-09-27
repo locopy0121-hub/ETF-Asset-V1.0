@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {wallGridRows} from '../src/widget/wallGridRows';
+const seven=Array.from({length:7},(_,i)=>i+1);
+assert.deepEqual(wallGridRows(seven,4),[[1,2,3,4],[5,6,7,null]],'7 holdings should retain a fourth empty width');
+assert.deepEqual(wallGridRows(seven,3),[[1,2,3],[4,5,6],[7,null,null]]);
+assert.deepEqual(wallGridRows(seven,2),[[1,2],[3,4],[5,6],[7,null]]);
+assert.deepEqual(wallGridRows(seven,1).flat(),[1,2,3,4],'1 column is capped by 4 available native rows');
+assert.equal(wallGridRows([],4).length,0);
+assert.deepEqual(wallGridRows(Array.from({length:30},(_,i)=>i),4).flat(),Array.from({length:16},(_,i)=>i));
+console.log('V2.1.8 Widget grid 1–4 columns, last-row padding, 16-card limit: PASS');

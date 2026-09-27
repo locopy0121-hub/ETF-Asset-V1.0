@@ -44,6 +44,8 @@ export function HoldingMarketWallEditor({
   const patchHeader=(patch:Partial<HoldingWallConfig['header']>)=>onChange({...value,header:{...value.header,...patch}});
   const patchHeaderEffect=(patch:Partial<ItemEffectConfig>)=>patchHeader({effect:{...value.header.effect,...patch}});
   const patchStyle=(patch:Partial<HoldingWallConfig['style']>)=>onChange({...value,style:{...value.style,...patch}});
+  const ticker=value.ticker??DEFAULT_HOLDING_WALL_CONFIG.ticker!;
+  const patchTicker=(patch:Partial<typeof ticker>)=>onChange({...value,ticker:{...ticker,...patch}});
   const patchField=(field:HoldingWallFieldKey,patch:Partial<HoldingWallFieldConfig>)=>onChange({...value,fields:value.fields.map(item=>item.field===field?{...item,...patch}:item)});
   const patchFieldEffect=(field:HoldingWallFieldKey,patch:Partial<ItemEffectConfig>)=>{
     const current=value.fields.find(item=>item.field===field);
@@ -68,6 +70,7 @@ export function HoldingMarketWallEditor({
     header:{...DEFAULT_HOLDING_WALL_CONFIG.header,effect:{...DEFAULT_HOLDING_WALL_CONFIG.header.effect}},
     fields:DEFAULT_HOLDING_WALL_CONFIG.fields.map(field=>({...field,effect:{...field.effect}})),
     style:{...DEFAULT_HOLDING_WALL_CONFIG.style},
+    ticker:{...DEFAULT_HOLDING_WALL_CONFIG.ticker!},
   });
 
   return <View style={styles.root}>
@@ -90,7 +93,7 @@ export function HoldingMarketWallEditor({
 
     <View style={styles.block}>
       <Text style={styles.blockTitle}>A 項目 → B 欄位（子）單項細部</Text>
-      <Text style={styles.note}>每張持股卡共用同一份欄位配置；一次只展開一個 B，避免設定全部攤平。</Text>
+      <Text style={styles.note}>每張持股卡共用同一份欄位配置；一次只展開一個 B。ETF 類別／配息／提醒標籤改由下方「智慧標籤 A/B 編輯」獨立設定，避免重複控制。</Text>
       {FIELD_GROUPS.map(group=><View key={group.title} style={styles.group}>
         <Text style={styles.groupTitle}>{group.title}</Text>
         {value.fields.filter(field=>group.fields.includes(field.field)).map((field,index)=>{
@@ -111,6 +114,8 @@ export function HoldingMarketWallEditor({
               <Step label="字體" value={Math.round(field.fontScale*100)} min={70} max={200} step={5} suffix="%" onChange={fontScale=>patchField(field.field,{fontScale:fontScale/100})}/>
               <Choice value={field.align} onChange={align=>patchField(field.field,{align})}/>
               <Toggle label="套用損益色" value={field.useProfitColor} onChange={useProfitColor=>patchField(field.field,{useProfitColor})}/>
+              <Toggle label="背景隨損益自動變色" value={field.useProfitBackground===true} onChange={useProfitBackground=>patchField(field.field,{useProfitBackground})}/>
+              <Text style={styles.note}>開啟後背景按目前欄位損益狀態，沿用系統獲利／虧損／持平配色；關閉則恢復固定調色盤設定。</Text>
               <Toggle label="自訂文字顏色" value={field.textColor!=null} onChange={enabled=>patchField(field.field,{textColor:enabled?value.style.textColor:null})}/>
               {field.textColor?<ColorPalettePicker label="單項文字顏色" value={field.textColor} onChange={textColor=>patchField(field.field,{textColor})}/>:null}
               <Toggle label="自訂單項背景" value={field.backgroundColor!=null} onChange={enabled=>patchField(field.field,{backgroundColor:enabled?value.style.backgroundColor:null})}/>
@@ -123,6 +128,21 @@ export function HoldingMarketWallEditor({
           </View>;
         })}
       </View>)}
+    </View>
+
+    <View style={styles.block}>
+      <Text style={styles.blockTitle}>A 跑馬行情（整體）</Text>
+      <Text style={styles.note}>行情牆上方共用跑馬燈；滾動只是展示特效，不代表有新交易所報價。無資料時明示待取得。</Text>
+      <Toggle label="啟用跑馬燈" value={ticker.enabled} onChange={enabled=>patchTicker({enabled})}/>
+      {ticker.enabled?<>
+        <StringChoice choices={['left','right'] as const} value={ticker.direction} label={x=>x==='left'?'向左':'向右'} onChange={direction=>patchTicker({direction})}/>
+        <Step label="移動速度" value={ticker.speed} min={15} max={150} step={5} suffix=" px/秒" onChange={speed=>patchTicker({speed})}/>
+        <Step label="項目間距" value={ticker.itemGap} min={0} max={64} step={4} suffix=" px" onChange={itemGap=>patchTicker({itemGap})}/>
+        <Toggle label="顯示價格" value={ticker.showPrice} onChange={showPrice=>patchTicker({showPrice})}/>
+        <Toggle label="顯示漲跌幅" value={ticker.showChange} onChange={showChange=>patchTicker({showChange})}/>
+        <ColorPalettePicker label="跑馬燈文字" value={ticker.textColor} onChange={textColor=>patchTicker({textColor})}/>
+        <ColorPalettePicker label="跑馬燈背景" value={ticker.backgroundColor} onChange={backgroundColor=>patchTicker({backgroundColor})}/>
+      </>:null}
     </View>
 
     <View style={styles.block}>

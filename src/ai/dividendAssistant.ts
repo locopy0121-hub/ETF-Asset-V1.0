@@ -186,7 +186,7 @@ export function dividendEventToLedger(event:HoldingDividendEvent):DividendLedger
     name:event.name,
     perShareAmount:event.perShareAmount,
     sharesHeld:event.eligibleShares,
-    note:`TWSE 配息事件；除息日 ${event.exDate}；最後購買日 ${event.lastPurchaseDate}`,
+    note:[`TWSE 配息事件`,`除息日 ${event.exDate}`,event.recordDate?`股權登記日 ${event.recordDate}`:'',event.paymentDate?`配發日 ${event.paymentDate}`:'',`最後購買日 ${event.lastPurchaseDate}`].filter(Boolean).join('；'),
   };
 }
 
