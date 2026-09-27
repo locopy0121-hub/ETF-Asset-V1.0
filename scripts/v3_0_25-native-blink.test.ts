@@ -20,7 +20,7 @@ assert.equal(colorWithAlpha(fx.blinkColor,fx.blinkOpacity),'rgba(171,193,35,0.40
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(section=>section.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(new Set(all.map(t=>t.id)).size,184);
 assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,157);assert.equal(audit.pending,27);
+assert.equal(audit.readyDeclared,158);assert.equal(audit.pending,26);
 const blink=all.find(x=>x.id==='blink')!;
 assert.equal(blink.field,'framefx:blinkEnabled');assert.equal(blink.status,'ready');
 assert.equal(resolveSkillAdapter(blink,{scope:'frame',page:'home',frameKey:'asset-dashboard'}).status,'active');
@@ -36,12 +36,12 @@ assert.ok(ui.includes('ColorPalettePicker')&&ui.includes('maintenance.patchFrame
 const backup=read('src/settings/BackupService.ts');
 assert.ok(backup.includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.32');assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,30032);assert.equal(app.expo.ios.buildNumber,'30032');
+assert.equal(pkg.version,'3.0.33');assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30033);assert.equal(app.expo.ios.buildNumber,'30033');
 const wf=read('.github/workflows/ci.yml');
 assert.ok(wf.includes("branches: [main, 'go-v3.0.*']")&&wf.includes("startsWith(github.head_ref, 'go-v3.0.')"));
-assert.ok(wf.includes('TF-Asset-V3.0.32-QA.apk')&&wf.includes('npm run test:v3_0_32'));
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.32'"));
+assert.ok(wf.includes('TF-Asset-V3.0.33-QA.apk')&&wf.includes('npm run test:v3_0_33'));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='3.0.33'"));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(path).length>0);
-console.log('V3.0.32 native frame blink regression PASS: A/B/C, normalized effects, reduced motion, financial isolation, APK gates');
+console.log('V3.0.33 native frame blink regression PASS: A/B/C, normalized effects, reduced motion, financial isolation, APK gates');
 console.log('184 central skills / 157 declared wired / 27 pending / Android device validation separate');
