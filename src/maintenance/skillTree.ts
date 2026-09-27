@@ -62,7 +62,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
     ready('fx-shadow-spread','③ 多層陰影擴散','framefx:shadowSpreadEnabled','原生 FrameCard 外圍最多 6 層獨立非互動輪廓；控制擴散半徑、透明度及色盤／損益色；不變動內容'),
     ready('fx-outer-glow','④ 外側柔光暈','framefx:outerGlowEnabled','獨立調色盤與損益色、透明度、擴散及柔邊；以真實 FrameCard 外側原生 View 圓環渲染，不調整內容或帳務數據'),
     later('fx-glass','⑤ 毛玻璃／磨砂與材質','需額外原生 Blur Runtime，不提供假選項'),
-    later('fx-drag-sort','⑦ 子元件拖曳排序','待接入實際 Flex 佈局與手勢'),
+    ready('fx-drag-sort','⑦ 新增父框架子元件原生拖曳排序','instance:drag-sort','目前 A 選取工程師新增父框架後，只調整同一父框架的工程師新增子元件；44dp 原生拖曳手柄、安全排序草稿／取消／套用；內建元件及其他框架不可移動'),
     ready('fx-animation-advanced','⑧ 原生進場：滑入／縮放／旋轉','framefx:entranceEnabled','真實 FrameCard 原生 Animated.View 進場、時長與強度可調，系統降低動態時立即恢復靜態；局部草稿可取消'),
     ready('fx-frame-interaction','⑨ 框架標題點擊／長按','framefx:frameInteractionEnabled','真實 FrameCard 標題區原生點擊及長按：強調框線或收合內容；獨立事件且長按不重複觸發點擊，右側按鈕、子元件與金融資料不受影響'),
     later('fx-responsive','⑩ 尺寸斷點／跨頁中央模板','需安全版本化共享及局部適配')

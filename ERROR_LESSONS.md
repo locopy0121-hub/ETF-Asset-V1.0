@@ -1,3 +1,7 @@
+## 2026-09-27｜V3.0.39 native 新增元件排序必須遵守父層實際邊界
+
+原始完整中央技能樹包含尚未接線的 `fx-drag-sort` 與 `drag-sort` 兩個不同 ID，不能把單一父框架子元件已實作誇大成全 App 所有元件可拖移排序。只有工程師新增的合法 parent-frame 被選取時，才從 session.draftInstances 唯讀列出同 parentId 的直接工程師子元件；原生 PanResponder 只能經白名單 helper reorderOwnedSiblings 於相同父層置換既有陣列中的合法槽位，其他 ID、業務欄位、兄弟父框架不改。手勢位移以有限數值正規化，草稿預覽／取消／套用沿用 V3 維護 Runtime；真機觸控與父容器溢出另待驗。版本每次增加需要所有歷版 3.0.38→3.0.39 及 source-ready 163→164／pending 21→20 同步，勿將 push quality 成功且 APK skipped 誤判 native APK PASS。
+
 ## 2026-09-27｜V3.0.38 #1261／#1264 exactOptionalPropertyTypes 與原生尺寸手勢
 
 FrameCard 新增 `onResizePreview` 可選 callback 後，PageEditorStack 不可在 cloneElement props 明確賦予 `undefined`：TypeScript `exactOptionalPropertyTypes` 在 #1261 與 #1264 的 quality TypeScript Gate 報 TS2769。真正修正是只在當前框架編輯 scope 使用條件 spread 傳入 callback，其他情況完全省略此 prop；相同分支新 commit `ae4b882b4954c681732a572277ed33b56e24af67` 的 #1265 已重新通過 quality 和 backend。建置門檻分層：push quality PASS 卻 APK skipped 不得作 APK 成功；必須有真正版本升級、PR 事件及實存原生 QA APK。尺寸手勢只掛載真實目前 A 的右下角 44dp 手柄，量測手勢初始原生尺寸，限定安全範圍並沿用草稿／取消／套用，不動金融資料與其他頁。每次升版要同步全部 V3.0.x 歷版 identity 和 184 ready／pending 計數，真機驗收仍獨立於 CODE／Build。

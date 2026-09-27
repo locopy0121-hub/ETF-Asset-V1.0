@@ -1,3 +1,11 @@
+## V3.0.39｜2026-09-27｜真實新增父框架的原生子元件拖曳排序（開發 QA，Gate 待驗）
+
+來源：V3.0.38 PR #85 HEAD `11cb91b5167372762445e1c217ff2c16c85303c1`，GitHub Actions #1267（run 36316587781）quality/backend/原生 QA APK 成功，APK Artifact #10930458716，SHA256 59a7de414993fd2f1e53f76a35a61b9837fddad254d9b64f697de25210ce9066，ZIP 完整、AAPT com.tfasset.app，3.0.38／30038。建立不可變備份 `backup-v3.0.38-20260927-pre-v3.0.39`、工作分支 `go-v3.0.39-20260927-native-child-sort`。
+
+本版只接線原有待原生適配 `fx-drag-sort`：選中由工程師新增的父框架 A 時，AB 編輯區會列出其親子關係已驗證的直屬工程師新增子元件，獨立 44dp 原生 PanResponder 拖曳手柄，原生手勢放手以安全位移計算兄弟排序，立即在同一 A 的真實 Flex 結構預覽，底部套用才持久化，取消恢復原先順序。拒絕跨父框架、內建不可刪／不可移元件、非法目標和惡意位移；不更動原內容、尺寸、金融數據或其他框架。獨立無障礙上一位／下一位排序。仍不表示任意內建原生元件可跨欄拖動；另有中央 `drag-sort` 待全元件原生適配。
+
+唯一中央 184 項源碼預期 164 ready／20 pending，不等於手機全部實測。Android／iOS、設定顯示、備份識別、GitHub QA 版本升為 3.0.39／30039。完整 V3.0.1–V3.0.38 歷版回歸加本版排序隔離與 native UI 契約；只有同一最新 HEAD quality/backend/native QA APK/ZIP/SHA/AAPT/Artifact 全 PASS 才接下一版。鎖定的金融核心、actual_fee/tax、原交易記錄、行情來源、SAF 備份皆不更動，開發 QA 不以 Codex review 阻斷，不自動合併。
+
 ## V3.0.38｜2026-09-27｜真實父框架右下角原生雙軸拖曳尺寸（開發 QA，APK 待驗）
 
 基底：V3.0.37 PR #84 HEAD `69315072de592b0406757fb337b9ffb5d5353a02`，Actions #1256（run `36314573206`）quality／Node-Redis-PostgreSQL／原生 QA APK 全成功；Artifact `TF-Asset-V3.0.37-QA-APK` #10930225724，SHA256 `fa191cfc268c0b5348a852da6d3732bb28e96e4ef39e7dc898a37b998b0dbffb`，com.tfasset.app，3.0.37／30037。不可變備份 `backup-v3.0.37-20260927-pre-v3.0.38`；工作分支 `go-v3.0.38-20260927-native-adapter`。

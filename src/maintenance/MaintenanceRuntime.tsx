@@ -4,6 +4,7 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
+import {reorderOwnedSiblings} from './nativeChildSort';
 import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,targetToolSupported,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {safeBatchPatch,type BatchField,type VisualSource} from './advancedSkillEngine';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
@@ -66,6 +67,7 @@ type MaintenanceContextValue=Readonly<{
   patchFrame:(patch:Partial<FrameEditorConfig>)=>void;
   clearFrameDimension:(axis:'width'|'height')=>void;
   patchInstance:(id:string,patch:Partial<MaintenanceInstance>)=>void;
+  reorderOwnedSibling:(id:string,steps:number)=>void;
   patchTarget:(id:string,patch:TargetOverride)=>void;
   resetTargetVisual:(id:string)=>void;
   patchWorkspace:(patch:Partial<WorkspaceConfig>)=>void;
@@ -395,6 +397,13 @@ export function MaintenanceProvider({children}:PropsWithChildren){
           sharedTouched:[...new Set([...current.sharedTouched,...Object.keys(style) as (keyof TargetAppearance)[]])],
         }:{}),
       };
+    }),
+    reorderOwnedSibling:(id,steps)=>setSession(current=>{
+      if(!current||current.scope!=='instance'||!Number.isInteger(steps)||steps===0)return current;
+      const parent=current.draftInstances.find(item=>item.id===current.instanceId);
+      if(!parent||parent.templateId!=='parent-frame'||!isEngineerOwnedInstance(parent))return current;
+      const next=reorderOwnedSiblings(current.draftInstances,parent.id,id,steps);
+      return next===current.draftInstances?current:{...current,draftInstances:next};
     }),
     patchTarget:(id,patch)=>setSession(current=>{
       if(!current)return current;
