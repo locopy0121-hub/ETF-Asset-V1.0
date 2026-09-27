@@ -18,6 +18,7 @@ import { GlobalFloatingAi } from './src/components/GlobalFloatingAi';
 import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
+import { HoldingDetailBoundary } from './src/components/HoldingDetailBoundary';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
@@ -160,7 +161,7 @@ function AppBody(){
 
   const openHolding=(holding:HoldingQuote)=>setDetail(holding);
   const screen=useMemo(()=>{
-    if(detail) return <HoldingDetailScreen holding={detail} onBack={()=>setDetail(null)}/>;
+    if(detail) return <HoldingDetailBoundary key={detail.symbol} symbol={detail.symbol} onBack={()=>setDetail(null)}><HoldingDetailScreen holding={detail} onBack={()=>setDetail(null)}/></HoldingDetailBoundary>;
     switch(active){
       case 'ledger': return <LedgerScreen/>;
       case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding}/>;
