@@ -26,6 +26,7 @@ import {ConditionalStyleToolDetails} from './ConditionalStyleToolDetails';
 import {DataSimulationToolDetails} from './DataSimulationToolDetails';
 import {VisualHistoryToolDetails} from './VisualHistoryToolDetails';
 import {FrameEffectsToolDetails} from './FrameEffectsToolDetails';
+import {DISPLAY_UNITS} from './numberDisplay';
 import {InspectableTarget} from './InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from './inspectionModel';
 
@@ -353,6 +354,27 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
+    if(fieldName==='numberFormat')return <View style={{marginTop:8,gap:10}}>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>只格式化目前 A 的顯示字串。原始數據、費稅、持股和其他頁面不變；非純數值保留原狀。</Text>
+      <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>
+        {DISPLAY_UNITS.map(item=><Pressable key={item.id} accessibilityRole="button"
+          accessibilityLabel={'顯示單位 '+item.label}
+          onPress={()=>maint.patchTarget(target.id,{displayUnit:item.id})}
+          style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:current.displayUnit===item.id?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:current.displayUnit===item.id?'#FFFFFF':theme.palette.text}}>{item.label}</Text>
+        </Pressable>)}
+      </View>
+      {current.displayUnit!=='original'?<View style={{flexDirection:'row',alignItems:'center',flexWrap:'wrap',gap:7}}>
+        <Text style={{fontSize:12,color:theme.palette.text}}>小數位數：</Text>
+        {([0,1,2,3,4] as const).map(digits=><Pressable key={digits} accessibilityRole="button"
+          accessibilityLabel={'顯示小數 '+digits+' 位'}
+          onPress={()=>maint.patchTarget(target.id,{displayDigits:digits})}
+          style={[styles.choice,{borderColor:theme.palette.primary,backgroundColor:current.displayDigits===digits?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:current.displayDigits===digits?'#FFFFFF':theme.palette.text}}>{digits}</Text>
+        </Pressable>)}
+      </View>:null}
+      <Text style={{fontSize:11,color:theme.palette.textSecondary}}>上方原位即時預覽，按底部套用才儲存；取消還原。</Text>
+    </View>;
     if(fieldName==='inspect')return <View style={{marginTop:8,gap:4}}>{target.properties.map(row=><Text key={row.name}
       style={{fontSize:12,color:theme.palette.text}}>{row.name}：{row.value}{row.readOnly?'（唯讀）':''}</Text>)}</View>;
     const v=current[key];

@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.33 顯示單位不得污染真實帳務
+只允許格式化已掛載 metric/value 的畫面字串，ETF 代號、資料缺失及非數字原封不動；僅在原生 Runtime 接入與 AB C 控制及回歸存在後將 units 升 ready。更新歷版版本身份與宣告接線計數，不得以 CI 字串門檻假裝真機通過。
+
 ## 2026-09-27｜V3.0.32 真實框架標題手勢與內部按鈕隔離
 不能直接在整張 FrameCard 父容器加 onPress 或全畫面透明 Pressable，否則攔截或重複觸發持股卡、圖表及右上角操作按鈕。只在獨立標題區放原生 Pressable，右側 action 與財務 children 繼續為兄弟，frameInteractionEnabled 預設 OFF，長按消耗本次 onPress；只允許本地畫面強調框線與收合／展開，不執行外部 URL、帳務操作或隱藏真實資料來源。新欄位必須走 normalizeFrameEffects 和 A 草稿正式套用，舊 SAF/財務核心不動。歷版測試要同步 3.0.32/30032、實際 QA 分支與 184/157/27 宣告統計；Build/實機分開驗證。
 

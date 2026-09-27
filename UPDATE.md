@@ -1,3 +1,7 @@
+## V3.0.33｜2026-09-27｜原生數值顯示單位與位數（開發 QA／待驗證）
+
+沿用已成功 V3.0.32 PR #79／Actions #1192／HEAD `0625e448811de603c4e54cde16a0356117ee4d57`，備份 `backup-v3.0.32-20260927-pre-v3.0.33`；使用現有 V3.0.33 分支，不重複 GO。單一中央 184 技能中原 pending「單位與位數」實際接入 A 原生 metric/value → B 數值 → C 原始／元／千／萬／百萬和 0～4 小數；來源字串的數值解析只供 UI 格式顯示，非數字、股票代號及待核對字串不變。當前 A 即時草稿、取消還原、套用後儲存 TargetOverride 和既有 SAF 備份。未碰 immutable finance、費稅固化、交易及行情。CODE 宣告預期 158 ready／26 pending，不等於手機 PASS。版本 3.0.33／build 30033，Gate 和 QA APK／Artifact 實際成功後才能回報 BUILD PASS，再備份續 V3.0.34。
+
 ## V3.0.32｜2026-09-27｜真實框架標題原生點擊／長按（開發 QA）
 來源 V3.0.31 PR #78 已驗證 HEAD `ce6bcc7d704161fd882e1593f0f92ccc58be6d96`、Actions #1189（run 36287523097）quality/backend/QA APK 全 PASS、APK Artifact #10921240837；APK versionCode 30031/versionName 3.0.31、SHA256 `010a9ed939a32014934ddd877bef26b24d0777d8c9542221c0dcaf4c0845a5bb`。事前不可變備份 `backup-v3.0.31-20260927-pre-v3.0.32` 指向上述成功 HEAD。本次從成功 HEAD 延伸 `go-v3.0.32-20260927-native-frame-interaction`，版本 3.0.32／Android+iOS 30032。
 
