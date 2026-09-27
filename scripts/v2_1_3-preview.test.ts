@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {holdingPreviewLayout,previewLimit,clampPreviewPosition} from '../src/editor/holdingPreviewModel';
 
-for(const mode of ['grid2','grid3','paged2'])assert.equal(holdingPreviewLayout(mode),'narrow',mode);
+for(const mode of ['grid2','paged2'])assert.equal(holdingPreviewLayout(mode),'narrow',mode);
+assert.equal(holdingPreviewLayout('grid3'),'micro','three columns use chart-free micro card');
 for(const mode of ['list','horizontal',undefined])assert.equal(holdingPreviewLayout(mode),'full',String(mode));
 assert.equal(previewLimit(360,260),92);
 assert.equal(previewLimit(200,260),0);
