@@ -28,10 +28,23 @@ const GROUPS=[
  {id:'maintenance',label:'版本與診斷',categories:['29','30']},
 ] as const;
 export type AbPropertyId=typeof GROUPS[number]['id'];
-export type AbProperty=Readonly<{id:AbPropertyId;label:string;tools:readonly SkillTool[]}>;
+export type EngineerSectionId='layout'|'appearance'|'insert'|'system';
+export const ENGINEER_SECTIONS:readonly {id:EngineerSectionId;label:string;description:string}[]=[
+ {id:'layout',label:'版面設置',description:'位置、對齊、排序、間距、容器與操作'},
+ {id:'appearance',label:'外觀設置',description:'大小、文字、顏色、漸層、陰影與動畫'},
+ {id:'insert',label:'插入',description:'中央元件、圖表、圖片、ETF、股息、Widget、AI'},
+ {id:'system',label:'系統設置',description:'真實數值、主題、連動、批次、版本與診斷'},
+];
+export const PROPERTY_SECTIONS:Readonly<Record<AbPropertyId,EngineerSectionId>>={
+ length:'appearance',width:'appearance',color:'appearance',text:'appearance',layout:'layout',
+ border:'appearance',effects:'appearance',charts:'insert',lists:'layout',images:'insert',
+ data:'system',navigation:'layout',quotes:'insert',dividend:'insert',widget:'insert',
+ ai:'insert',theme:'system',sync:'system',batch:'system',components:'insert',maintenance:'system',
+};
+export type AbProperty=Readonly<{id:AbPropertyId;label:string;section:EngineerSectionId;tools:readonly SkillTool[]}>;
 const lookup=new Map(COMPLETE_ENGINEER_SKILLS.map(category=>[category.id,category]));
 export const AB_PROPERTY_GROUPS:readonly AbProperty[]=GROUPS.map(group=>({
- id:group.id,label:group.label,
+ id:group.id,label:group.label,section:PROPERTY_SECTIONS[group.id],
  tools:group.categories.flatMap(id=>lookup.get(id)?.tools??[]),
 }));
 export const AB_PROPERTY_TOOL_IDS=AB_PROPERTY_GROUPS.flatMap(group=>group.tools.map(tool=>tool.id));
