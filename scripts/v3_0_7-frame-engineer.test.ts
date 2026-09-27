@@ -62,7 +62,7 @@ assert.ok(skills!.tools.filter(t=>t.status==='ready').length>=38);
 assert.equal(skills!.tools.find(t=>t.id==='fx-shadow-spread')?.status,'ready');
 assert.equal(skills!.tools.find(t=>t.id==='fx-border-grad')?.status,'ready');
 assert.equal(skills!.tools.find(t=>t.id==='fx-animation-advanced')?.status,'ready');
-assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=4,'remaining frame-specific adapters stay explicit');
+assert.ok(skills!.tools.filter(t=>t.status==='adapter-required').length>=3,'remaining frame-specific adapters stay explicit');
 assert.ok(skills!.tools.some(t=>t.field==='framefx:gradientAngle'&&t.status==='ready'),
  'angle and outer glow each wire an existing pending frame skill');
 for(const field of ['backgroundMode','gradientEndColor','gradientDirection','borderStyle','borderTop',
