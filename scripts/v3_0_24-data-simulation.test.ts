@@ -62,7 +62,7 @@ const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
 assert.equal(pkg.version,'3.0.40');assert.equal(app.expo.version,'3.0.40');
 assert.equal(app.expo.android.versionCode,30040);assert.equal(app.expo.ios.buildNumber,'30040');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes("github.head_ref == 'go-v3.0.40-20260927-native-child-sort'"));
+assert.ok(wf.includes('TF-Asset-V3.0.40-QA.apk')&&wf.includes("github.head_ref == 'go-v3.0.40-20260927-next-native'"));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(p).length>0);
 console.log('V3.0.40 native A simulation: seven sandbox states, readonly source, no persistence, AB and finance PASS');
 console.log('184 central skills / 150 declared wired / 34 pending / actual device separate');
