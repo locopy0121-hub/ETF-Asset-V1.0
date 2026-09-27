@@ -25,6 +25,7 @@ import { calculateBuyScenario } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
 type ViewMode='list'|'wall';
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
@@ -44,16 +45,19 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   // Old saved three-column chart selections also render in safe chart-free mode.
   const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
-  const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
+  const setViewMode=(value:ViewMode)=>{
+    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_VIEW',screen:'portfolio',message:value==='list'?'切換清單模式':'切換行情牆模式'});
+    editor.updateDisplayConfig({portfolioViewMode:value});
+  };
   const setQuoteStyle=(value:QuoteModuleStyle)=>{
     if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
     editor.updateDisplayConfig({quoteStyle:value});
   };
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>{recordDiagnosticEvent({level:'info',code:'PORTFOLIO_LAYOUT',screen:'portfolio',message:'切換排列 '+value});editor.updateDisplayConfig({
     holdingLayoutMode:value,
     ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{})
-  });
+  });};
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
     const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);

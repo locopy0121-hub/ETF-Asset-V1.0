@@ -19,6 +19,7 @@ import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
 import {HoldingDetailBoundary} from './src/components/HoldingDetailBoundary';
+import {DiagnosticsProvider,recordDiagnosticEvent} from './src/diagnostics/DiagnosticRuntime';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
@@ -41,7 +42,7 @@ export default function App() {
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
-        <MaintenanceProvider><AppBody/></MaintenanceProvider>
+        <DiagnosticsProvider><MaintenanceProvider><AppBody/></MaintenanceProvider></DiagnosticsProvider>
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>
@@ -159,7 +160,14 @@ function AppBody(){
     void syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot);
   },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config]);
 
-  const openHolding=(holding:HoldingQuote)=>setDetail(holding);
+  const openHolding=(holding:HoldingQuote)=>{
+    recordDiagnosticEvent({level:'info',code:'HOLDING_TAP',screen:active,message:'點擊 ETF 卡片，準備開啟詳情'});
+    if(!holding||typeof holding.symbol!=='string'||!holding.symbol.trim()){
+      recordDiagnosticEvent({level:'error',code:'HOLDING_INVALID',screen:active,message:'持股卡片缺少有效代號，已阻止不安全的詳情切換'});
+      return;
+    }
+    setDetail(holding);
+  };
   const screen=useMemo(()=>{
     if(detail) return <HoldingDetailBoundary key={detail.symbol} symbol={detail.symbol} onBack={()=>setDetail(null)}>
       <HoldingDetailScreen holding={detail} onBack={()=>setDetail(null)}/>

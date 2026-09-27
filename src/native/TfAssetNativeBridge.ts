@@ -39,6 +39,9 @@ type TfAssetNativeModule={
   openOverlaySettings:()=>Promise<boolean>;
   pickThemeBackground:()=>Promise<string|null>;
   setAppIcon:(iconKey:string)=>Promise<boolean>;
+  readPendingCrashJournal:()=>Promise<string>;
+  acknowledgeCrashJournal:()=>Promise<boolean>;
+  saveCriticalDiagnostic:(code:string,screen:string)=>Promise<boolean>;
 };
 
 const native=NativeModules.TfAssetNative as TfAssetNativeModule|undefined;
@@ -99,4 +102,15 @@ export async function saveExternalBackup(text:string,fileName:string):Promise<Ex
 export async function chooseExternalBackup():Promise<OpenedBackupDocument|null>{
   if(!backupDocumentPickerAvailable||!native)throw new Error('Android 外部 JSON 還原選擇器無法使用');
   return native.openBackupDocument();
+}
+
+/** Native Java/Kotlin uncaught exception metadata persists across a process restart. */
+export async function readPendingNativeCrashJournal():Promise<string>{
+  return native&&typeof native.readPendingCrashJournal==='function'?native.readPendingCrashJournal():'';
+}
+export async function acknowledgeNativeCrashJournal():Promise<boolean>{
+  return native&&typeof native.acknowledgeCrashJournal==='function'?native.acknowledgeCrashJournal():false;
+}
+export function saveCriticalNativeDiagnostic(code:string,screen:string):void{
+  if(native&&typeof native.saveCriticalDiagnostic==='function')void native.saveCriticalDiagnostic(code,screen).catch(()=>{});
 }

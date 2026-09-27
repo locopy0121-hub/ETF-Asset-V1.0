@@ -10,6 +10,7 @@ import type { HoldingQuote } from '../domain/uiModels';
 import {CHART_DATA_OPTIONS,NATIVE_CHART_STYLES,type ChartDataKey,type NativeChartStyle} from '../domain/chartEditor';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const ranges=['1月','3月','1年'] as const;
@@ -24,6 +25,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
   const [historyError,setHistoryError]=useState<string|null>(null);
   const [chartStyle,setChartStyle]=useState<NativeChartStyle>('candlestick');
   const [chartData,setChartData]=useState<ChartDataKey[]>(['open','high','low','close','volume']);
+  useEffect(()=>{recordDiagnosticEvent({level:'info',code:'DETAIL_MOUNT',screen:'holding-detail',message:'持股詳情已掛載'});},[holding.symbol]);
   useEffect(()=>{
     let active=true;
     const abort=new AbortController();
@@ -32,7 +34,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
     setCandles([]);
     fetchOfficialDailyHistory(holding.symbol,range==='1月'?1:range==='3月'?3:12,new Date(),abort.signal)
       .then(rows=>{if(active)setCandles(rows);})
-      .catch(error=>{if(active)setHistoryError(error instanceof Error?error.message:'官方歷史行情不可用');})
+      .catch(error=>{if(active){setHistoryError(error instanceof Error?error.message:'官方歷史行情不可用');recordDiagnosticEvent({level:'warning',code:'DAILY_HISTORY',screen:'holding-detail',message:'官方歷史行情取得失敗'});}})
       .finally(()=>{if(active)setHistoryLoading(false);});
     return()=>{active=false;abort.abort();};
   },[holding.symbol,range]);

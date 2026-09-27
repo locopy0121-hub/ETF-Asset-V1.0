@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import type {MainPageKey} from '../domain/pageRegistry';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 import {normalizeEditorConfig,type FrameEditorConfig,type PageDisplayConfig,usePageEditor} from '../editor/pageEditor';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
@@ -546,6 +547,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
         setSaved(nextSaved);setTargetStyles(nextTargets);setSharedStyles(nextShared);setLocalOnlyKeys(nextLocalOnly);setWorkspaces(nextWorkspace);
         setVisualHistory(nextHistory);
         setSelection(null);setSession(null);
+        recordDiagnosticEvent({level:'info',code:'ENGINEER_APPLY',screen:session.page,message:'維護工程師設定已套用：'+session.frameKey+' / '+session.scope});
         return true;
       }catch{return false;}
     },
