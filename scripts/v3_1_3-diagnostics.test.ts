@@ -17,7 +17,7 @@ assert.equal(appendDiagnosticEntries(bounded,[make(0)],now).length,DIAGNOSTIC_LI
 assert.equal(appendDiagnosticEntries(bounded,[make(99,now-DIAGNOSTIC_MAX_AGE_MS-1)],now).length,DIAGNOSTIC_LIMIT);
 assert.equal(readDiagnosticEntries([{id:'oops',at:'not-number',level:'error'}]).length,0);
 assert.equal(readDiagnosticEntries(JSON.parse(JSON.stringify(bounded))).length,DIAGNOSTIC_LIMIT);
-assert.equal(JSON.parse(exportDiagnosticEntries(bounded)).version,'3.1.3');
+assert.equal(JSON.parse(exportDiagnosticEntries(bounded)).version,'3.1.4');
 for(const path of ['src/diagnostics/DiagnosticRuntime.tsx','src/components/DiagnosticLogPanel.tsx',
   'native/android/TfAssetNativeModule.kt','App.tsx','src/screens/PortfolioScreen.tsx',
   'src/screens/SettingsScreen.tsx','src/components/HoldingDetailBoundary.tsx']){

@@ -56,6 +56,8 @@ export function MaintenanceWorkbench(){
   const visibleB=searchAbProperties(query,openMain).filter(group=>!favoritesOnly||group.tools.some(tool=>maintenance.assets.favorites.includes(tool.id)));
   const selectedB=openB?findAbProperty(openB):undefined;
   const canDeleteFocused=Boolean(instance&&isEngineerOwnedInstance(instance)&&session.scope==='instance');
+  const frameTargets=maintenance.getFrameTargets(session.page,session.frameKey)
+    .filter(target=>target.kind!=='frame').sort((a,b)=>(a.kind==='control'?0:1)-(b.kind==='control'?0:1));
   const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
   const lockedDescription=selectedTarget?.kind==='value'||selectedTarget?.kind==='metric'||selectedTarget?.kind==='prefix'?
     '原始交易、金額、公式及資料來源鎖定；文字、框架及顯示特效不會改寫數值。':
@@ -100,6 +102,34 @@ export function MaintenanceWorkbench(){
       </Pressable>
     </View>
     <ScrollView ref={scroller} style={styles.scroller} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {session.scope==='frame'?<View style={{gap:7,marginBottom:10,padding:9,borderWidth:1,
+        borderColor:theme.palette.border,borderRadius:10}}>
+        <Text style={{fontSize:13,fontWeight:'900',color:theme.palette.text}}>個體元件故障救援</Text>
+        <Text style={{fontSize:11,color:theme.palette.textSecondary}}>不必點擊可能閃退的元件。從本框架已掛載的真實 A 清單選取，只有該個體會恢復。</Text>
+        {frameTargets.length===0?<Text style={{fontSize:11,color:theme.palette.textSecondary}}>此框架暫無可選元件；請確認維護工程師已啟用及框架正在顯示。</Text>:null}
+        {frameTargets.map(target=><Pressable key={target.id} accessibilityRole="button"
+          accessibilityLabel={'故障救援選取 '+target.label}
+          onPress={()=>maintenance.enterTarget({...target,page:session.page,frameKey:session.frameKey,
+            frameTitle:session.title},session.draft,session.draftDisplay)}
+          style={{padding:8,borderWidth:1,borderRadius:8,borderColor:theme.palette.border,
+            backgroundColor:theme.palette.surfaceMuted}}>
+          <Text style={{fontSize:12,fontWeight:'800',color:theme.palette.text}}>{target.label}</Text>
+          <Text style={{fontSize:10,color:theme.palette.textSecondary}}>{target.kind} · {target.id}</Text>
+        </Pressable>)}
+      </View>:null}
+      {selectedTarget||session.scope==='instance'&&canDeleteFocused?<View style={{gap:7,
+        borderWidth:1,borderColor:theme.palette.primary,borderRadius:10,padding:10,marginBottom:10}}>
+        <Text style={{fontSize:13,fontWeight:'900',color:theme.palette.text}}>恢復目前單一個體原廠設定</Text>
+        <Text style={{fontSize:11,color:theme.palette.textSecondary}}>只清除目前 A 的尺寸、XY、外觀、特效與個體顯示覆寫；不刪除內建元件、不更動原始帳務，不影響同類其他個體。先預覽，底部儲存／套用才生效。</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="恢復目前個體原廠設定預覽"
+          onPress={()=>Alert.alert('只恢復此個體？',
+            '僅還原「'+label+'」的個體設定。此個體將隔離原先的同類共用外觀，其他元件與帳務不受影響。先暫存預覽，仍需點擊儲存／套用。',
+            [{text:'取消',style:'cancel'},{text:'預覽恢復',onPress:()=>maintenance.resetIndividual()}])}
+          style={{padding:10,backgroundColor:theme.palette.surfaceMuted,borderRadius:8,borderWidth:1,
+            borderColor:theme.palette.primary}}>
+          <Text style={{color:theme.palette.primary,fontWeight:'900',textAlign:'center'}}>恢復此個體原廠設定（預覽）</Text>
+        </Pressable>
+      </View>:null}
       {selectedB?<View style={{gap:7}}>
         <Pressable accessibilityRole="button" accessibilityLabel="返回 B 屬性" onPress={backToB}
           style={[styles.compactRow,{borderColor:theme.palette.border}]}>
