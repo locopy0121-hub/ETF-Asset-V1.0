@@ -7,7 +7,7 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {instantiateComponent,isEngineerOwnedInstance,removeEngineerOwnedInstance,normalizeInstances,type MaintenanceInstance} from './componentLibrary';
 import {reorderOwnedSiblings} from './nativeChildSort';
 import {clearIndividualOverride,effectiveIndividualOverride,individualNativeDisplayPatch,isIndividualReset,normalizeIndividualResets,type IndividualResetMap} from './individualResetModel';
-import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,targetToolSupported,type TargetKind,type TargetAppearance,type InspectedTarget,type TargetOverride} from './inspectionModel';
+import {normalizeTargetMap,normalizeTargetOverride,resetTargetVisualOverride,VISUAL_TARGET_KEYS,targetToolSupported,type TargetKind,type TargetAppearance,type TargetProperty,type InspectedTarget,type TargetOverride} from './inspectionModel';
 import {safeBatchPatch,type BatchField,type VisualSource} from './advancedSkillEngine';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
 import {ENGINEER_ASSETS_STORAGE_KEY,EMPTY_ENGINEER_ASSETS,normalizeEngineerAssets,makeDesignToken,replaceToken,removeToken,toggleFavorite,trackRecent,tokenTargetPatch,frameTokenPatch,type EngineerAssets} from './engineerDesignAssets';
@@ -23,7 +23,7 @@ const KNOWN_ENGINEER_TOOLS=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools.m
 const scopeId=(page:MainPageKey,frameKey:string)=>page+':'+frameKey;
 const instanceKind=(templateId:string):TargetKind=>templateId==='parent-frame'?'frame':templateId==='divider'?'generic':'text';
 type StyleSyncScope='frame'|'page'|'app';
-export type RegisteredVisualTarget=Readonly<{id:string;kind:TargetKind;label:string;base:TargetAppearance}>;
+export type RegisteredVisualTarget=Readonly<{id:string;kind:TargetKind;label:string;base:TargetAppearance;properties:readonly TargetProperty[]}>;
 const sharedKey=(page:MainPageKey,frameKey:string,kind:TargetKind,scope:StyleSyncScope)=>
   scope==='frame'?`frame:${page}:${frameKey}:${kind}`:scope==='page'?`page:${page}:${kind}`:`app:${kind}`;
 
@@ -185,7 +185,7 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   }),[]);
   const registerTarget=useCallback((page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>setRegistered(old=>{
     const key=scopeId(page,frameKey),before=old[key]??{},previous=before[target.id];
-    if(previous&&previous.kind===target.kind&&previous.label===target.label&&JSON.stringify(previous.base)===JSON.stringify(target.base))return old;
+    if(previous&&previous.kind===target.kind&&previous.label===target.label&&JSON.stringify(previous.base)===JSON.stringify(target.base)&&JSON.stringify(previous.properties)===JSON.stringify(target.properties))return old;
     return {...old,[key]:{...before,[target.id]:target}};
   }),[]);
   const unregisterTarget=useCallback((page:MainPageKey,frameKey:string,id:string)=>setRegistered(old=>{
