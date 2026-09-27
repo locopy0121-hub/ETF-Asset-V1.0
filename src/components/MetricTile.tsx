@@ -8,6 +8,7 @@ import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffe
 import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
 import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
 import {formatDisplayNumber} from '../maintenance/numberDisplay';
+import {nextMetricTapEmphasis} from '../maintenance/metricTap';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
@@ -49,7 +50,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   return <Pressable disabled={!tapEnabled} accessibilityRole={tapEnabled?'button':undefined}
     accessibilityLabel={tapEnabled?'切換強調顯示：'+label:undefined}
     accessibilityState={tapEnabled?{selected:emphasized}:undefined}
-    onPress={()=>{if(tapEnabled)setEmphasized(previous=>!previous);}}
+    onPress={()=>setEmphasized(previous=>nextMetricTapEmphasis(previous,editorStyle?.tapAction??'none'))}
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
