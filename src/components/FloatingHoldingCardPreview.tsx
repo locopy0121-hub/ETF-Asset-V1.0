@@ -6,7 +6,7 @@ import {HoldingQuoteModule} from './HoldingQuoteModule';
 import {clampPreviewPosition,previewLimit} from '../editor/holdingPreviewModel';
 
 /** Uses the EXISTING whole ETF card; edits are driven by the parent draft config. */
-export function FloatingHoldingCardPreview({item,config,badgeConfig=DEFAULT_ETF_BADGES,style='quote',layout='narrow',onDismiss}:{item:HoldingQuote;config:HoldingWallConfig;badgeConfig?:EtfBadgeConfig;style?:QuoteModuleStyle;layout?:'full'|'narrow';onDismiss:()=>void}){
+export function FloatingHoldingCardPreview({item,config,badgeConfig=DEFAULT_ETF_BADGES,style='quote',layout='narrow',onDismiss}:{item:HoldingQuote;config:HoldingWallConfig;badgeConfig?:EtfBadgeConfig;style?:QuoteModuleStyle;layout?:'full'|'narrow'|'micro';onDismiss:()=>void}){
   const {width:screenWidth,height:screenHeight}=useWindowDimensions();
   const [width,setWidth]=useState(250);
   const [collapsed,setCollapsed]=useState(false);

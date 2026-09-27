@@ -22,7 +22,10 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const settings=useSettingsRuntime();
   const node=useRef<View|null>(null);
   const [geometry,setGeometry]=useState<TargetGeometry|null>(null);
-  const active=engineer.enabled&&(!engineer.session||engineer.session.page===frame.page&&engineer.session.frameKey===frame.frameKey);
+  // A global enabled flag must NOT put an invisible Pressable over live cards.
+  // Capture taps only while an explicit workbench session edits this frame.
+  const active=engineer.enabled&&engineer.session!==null&&
+    engineer.session.page===frame.page&&engineer.session.frameKey===frame.frameKey;
   const selected=engineer.selection?.page===target.page&&engineer.selection.frameKey===target.frameKey&&engineer.selection.id===target.id;
   const editing=engineer.session?.scope==='target'&&engineer.session.target?.page===target.page&&engineer.session.target.frameKey===target.frameKey&&engineer.session.target.id===target.id;
   const override=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);

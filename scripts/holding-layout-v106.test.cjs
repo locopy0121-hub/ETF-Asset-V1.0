@@ -15,7 +15,7 @@ for(const mode of ['grid2','grid3','horizontal','paged2']){
 }
 assert.ok(collection.includes('pagingEnabled'),'paged layout must support swipe paging');
 assert.ok(collection.includes('snapToInterval'),'horizontal layout must support snap');
-assert.ok(collection.includes("layout={narrow?'narrow':'full'}")&&collection.includes('renderHolding(item,true)'),'multi-column and paged layouts must use narrow card');
+assert.ok(collection.includes("layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}")&&collection.includes("renderHolding(item,true,layoutMode==='grid3')"),'three-column uses micro card while two-column and paged layouts use narrow card');
 assert.ok(card.includes("narrowCard"),'quote card must support narrow layout');
 assert.ok(editor.includes('holdingLayoutMode'),'layout selection must persist in page editor display config');
 assert.match(editor,/home:\s*\{\s*quoteStyle:'quote',\s*sortKey:'pnl',\s*holdingLayoutMode:'grid2'/,'home layout must preserve the restored two-column default');

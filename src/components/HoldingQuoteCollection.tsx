@@ -1,4 +1,5 @@
 import { ScrollView,StyleSheet,Text,useWindowDimensions, View } from 'react-native';
+import {useState} from 'react';
 import {HoldingQuoteTicker} from './HoldingQuoteTicker';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance} from '../maintenance/inspectionModel';
@@ -7,6 +8,7 @@ import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingWallConfig, type QuoteModuleStyle } from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import { spacing } from '../theme/tokens';
+import {holdingCardLayout,holdingPageWidth,holdingPages,safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import { HoldingQuoteModule } from './HoldingQuoteModule';
 
 export type HoldingLayoutMode='list'|'grid2'|'grid3'|'horizontal'|'paged2';
@@ -25,11 +27,13 @@ export function HoldingQuoteCollection({
 }){
   const {width}=useWindowDimensions();
   const engineer=useMaintenance();
-  const pageWidth=Math.max(280,width-64);
+  // The real viewport, not screen width, determines each swipe page and hitbox.
+  const [viewportWidth,setViewportWidth]=useState(0);
+  const pageWidth=holdingPageWidth(viewportWidth,width);
   const effectiveWallConfig=wallConfig??DEFAULT_HOLDING_WALL_CONFIG;
   const effectiveBadgeConfig=badgeConfig??DEFAULT_ETF_BADGES;
   const card=effectiveWallConfig.style;
-  const renderHolding=(item:HoldingQuote,narrow=false)=>{
+  const renderHolding=(item:HoldingQuote,narrow=false,micro=false)=>{
     const render=(appearance?:TargetAppearance)=>{
       const adjusted=appearance?{
         ...effectiveWallConfig,
@@ -40,7 +44,8 @@ export function HoldingQuoteCollection({
         fields:effectiveWallConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16,
           useProfitColor:appearance.useProfitColor?field.useProfitColor:false})),
       }:effectiveWallConfig;
-      return <HoldingQuoteModule item={item} style={style} layout={narrow?'narrow':'full'}
+      return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',style)}
+        layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}
         wallConfig={adjusted} badgeConfig={effectiveBadgeConfig} refreshToken={refreshToken}
         onPress={()=>onOpenHolding(item)}/>;
     };
@@ -70,19 +75,23 @@ export function HoldingQuoteCollection({
       </ScrollView>;
     }
     if(layoutMode==='paged2'){
-      const pages:Array<readonly HoldingQuote[]>=[];
-      for(let i=0;i<rows.length;i+=2)pages.push(rows.slice(i,i+2));
-      return <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}
-        decelerationRate="fast" snapToInterval={pageWidth} contentContainerStyle={styles.horizontal}>
-        {pages.map((page,index)=><View key={index} style={[styles.page,{width:pageWidth}]}>
-          {page.map(item=><View key={item.symbol} style={styles.half}>{renderHolding(item,true)}</View>)}
-        </View>)}
-      </ScrollView>;
+      const pages=holdingPages(rows,2);
+      return <View style={styles.pagedViewport} onLayout={event=>{
+        const actual=Math.round(event.nativeEvent.layout.width);
+        if(actual>0)setViewportWidth(old=>old===actual?old:actual);
+      }}>
+        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+          decelerationRate="fast" snapToInterval={pageWidth} contentContainerStyle={styles.pagedContent}>
+          {pages.map((page,index)=><View key={index} style={[styles.page,{width:pageWidth}]}>
+            {page.map(item=><View key={item.symbol} style={styles.pagedHalf}>{renderHolding(item,true)}</View>)}
+          </View>)}
+        </ScrollView>
+      </View>;
     }
     if(layoutMode==='grid2'||layoutMode==='grid3'){
       const widthStyle=layoutMode==='grid3'?styles.third:styles.half;
       return <View style={styles.grid}>
-        {rows.map(item=><View key={item.symbol} style={widthStyle}>{renderHolding(item,true)}</View>)}
+        {rows.map(item=><View key={item.symbol} style={widthStyle}>{renderHolding(item,true,layoutMode==='grid3')}</View>)}
       </View>;
     }
     return <View style={styles.list}>{rows.map(item=><View key={item.symbol}>{renderHolding(item)}</View>)}</View>;
@@ -113,5 +122,9 @@ const styles=StyleSheet.create({
   grid:{flexDirection:'row',flexWrap:'wrap',gap:spacing.sm,alignItems:'stretch'},
   half:{width:'48.5%'},third:{width:'31.2%'},
   horizontal:{gap:spacing.sm,paddingRight:spacing.md},
-  page:{flexDirection:'row',gap:spacing.sm,paddingRight:spacing.sm},
+  pagedViewport:{width:'100%',overflow:'hidden'},
+  // No outer gap: snap distance and page width must match exactly.
+  pagedContent:{gap:0},
+  page:{flexDirection:'row',gap:spacing.sm,alignItems:'stretch'},
+  pagedHalf:{flex:1,minWidth:0},
 });
