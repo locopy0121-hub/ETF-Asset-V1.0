@@ -53,6 +53,7 @@ type MaintenanceContextValue=Readonly<{
   getVisualHistory:()=>readonly VisualHistoryEntry[];
   restoreVisualHistory:(entryId:string)=>boolean;
   getFrameTargets:(page:MainPageKey,frameKey:string)=>readonly RegisteredVisualTarget[];
+  hasIndividualReset:(page:MainPageKey,frameKey:string,id:string)=>boolean;
   registerTarget:(page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>void;
   unregisterTarget:(page:MainPageKey,frameKey:string,id:string)=>void;
   patchBatchVisual:(ids:readonly string[],source:VisualSource,keys:readonly BatchField[])=>void;
@@ -284,6 +285,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     },
     getInstances:(page,frameKey)=>saved[scopeId(page,frameKey)]??[],
     getFrameTargets:(page,frameKey)=>Object.values(registered[scopeId(page,frameKey)]??{}),
+    hasIndividualReset:(page,frameKey,id)=>session?.page===page&&session.frameKey===frameKey?
+      session.individualResets.includes(id):isIndividualReset(individualResets,page,frameKey,id),
     registerTarget,unregisterTarget,
     getSavedTargetOverride:(page,frameKey,id,kind)=>{
       const key=scopeId(page,frameKey),local=targetStyles[key]?.[id]??{};
