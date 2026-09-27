@@ -92,7 +92,7 @@ jobs:
     name: V3.0.40 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
-    if: github.event_name == 'pull_request' && (github.head_ref == 'go-v3.0.40-20260927-native-child-sort' || startsWith(github.head_ref, 'go-v3.0.'))
+    if: github.event_name == 'pull_request' && (github.head_ref == 'go-v3.0.40-20260927-next-native' || startsWith(github.head_ref, 'go-v3.0.'))
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
