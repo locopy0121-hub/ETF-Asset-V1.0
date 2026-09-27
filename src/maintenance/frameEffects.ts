@@ -205,5 +205,5 @@ export function frameImageCoverCrop(
   const width=sourceW*scale,height=sourceH*scale;
   const x=Number.isFinite(focusX)?Math.min(1,Math.max(0,focusX)):.5;
   const y=Number.isFinite(focusY)?Math.min(1,Math.max(0,focusY)):.5;
-  return {width,height,left:(viewportW-width)*x,top:(viewportH-height)*y};
+  return {width,height,left:x===0?0:(viewportW-width)*x,top:y===0?0:(viewportH-height)*y};
 }

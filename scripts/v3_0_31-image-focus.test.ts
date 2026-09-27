@@ -23,6 +23,9 @@ assert.deepEqual(frameImageCoverCrop(100,100,100,300,.5,.25),
   {width:100,height:300,left:0,top:-50});
 assert.deepEqual(frameImageCoverCrop(120,80,240,160,.2,.9),
   {width:120,height:80,left:0,top:0});
+const zeroFocus=frameImageCoverCrop(100,100,100,300,0,0)!;
+assert.equal(Object.is(zeroFocus.left,-0),false);
+assert.equal(Object.is(zeroFocus.top,-0),false);
 assert.equal(frameImageCoverCrop(0,100,100,100,.5,.5),null);
 assert.equal(frameImageCoverCrop(100,100,NaN,100,.5,.5),null);
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(s=>s.tools),audit=completeCatalogAudit();
