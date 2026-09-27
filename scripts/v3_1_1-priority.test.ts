@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {TOOLBOX_MAIN_CATEGORIES,AB_PROPERTY_GROUPS,AB_PROPERTY_TOOL_IDS,AB_PROPERTY_BASE_COUNT} from '../src/maintenance/abPropertyModel';
 import {CHART_DATA_OPTIONS,CHART_LIBRARY,NATIVE_CHART_STYLES} from '../src/domain/chartEditor';
 
@@ -23,4 +23,12 @@ assert.ok(wb.includes('<AbDimensionControl axis="width"')&&wb.includes('<AbDimen
 const chart=readFileSync('src/components/OfficialCandleChart.tsx','utf8');
 assert.ok(chart.includes("chartStyle='candlestick'")&&chart.includes("dataKeys=['open','high','low','close','volume']"));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(readFileSync(path,'utf8').length>0);
+mkdirSync('reports',{recursive:true});
+writeFileSync('reports/V3.1.1-full-skill-matrix.json',JSON.stringify({
+ version:'3.1.1',generatedAt:new Date().toISOString(),
+ toolbox:TOOLBOX_MAIN_CATEGORIES.map(main=>({id:main.id,label:main.label,
+  groups:AB_PROPERTY_GROUPS.filter(group=>group.mainCategory===main.id).map(group=>({id:group.id,label:group.label,tools:group.tools.length}))})),
+ centralToolCount:AB_PROPERTY_BASE_COUNT,indexedUniqueTools:new Set(AB_PROPERTY_TOOL_IDS).size,
+ chartLibrary:{total:CHART_LIBRARY.length,native:CHART_LIBRARY.filter(x=>x.status==='native').length,pendingAdapter:CHART_LIBRARY.filter(x=>x.status==='pending-adapter').length},
+},null,2)+'\n');
 console.log('V3.1.1 priority maintenance toolbox + chart data + holding detail safety: PASS');
