@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.0.40",
+  "version": "3.1.1",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_0_36 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_1_1 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -216,7 +216,9 @@
     "test:child-sort-v339": "tsx scripts/v3_0_39-native-child-sort.test.ts",
     "test:v3_0_39": "npm run test:v3_0_38 && npm run test:child-sort-v339",
     "test:child-sort-safety-v340": "tsx scripts/v3_0_40-child-sort-safety.test.ts",
-    "test:v3_0_40": "npm run test:v3_0_39 && npm run test:child-sort-safety-v340"
+    "test:v3_0_40": "npm run test:v3_0_39 && npm run test:child-sort-safety-v340",
+    "test:v3_1_1-priority": "tsx scripts/v3_1_1-priority.test.ts",
+    "test:v3_1_1": "npm run test:boundary && npm run test:finance && npm run test:market && npm run test:chart-v234 && npm run test:crosshair-v236 && npm run test:v3_1_1-priority"
   },
   "dependencies": {
     "expo": "~57.0.21",
