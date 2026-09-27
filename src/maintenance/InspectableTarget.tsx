@@ -144,10 +144,10 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   },[workspace?.report,engineer.enabled,engineer.reportRect,targetKey,rect?.x,rect?.y,rect?.width,rect?.height]);
   // Only truly mounted native A targets are eligible for batch preview/edit.
   // This registry is ephemeral, scoped to the real page/frame and never stores data sources.
-  const visualFingerprint=JSON.stringify({label:target.label,kind:target.kind,base:target.base});
+  const visualFingerprint=JSON.stringify({label:target.label,kind:target.kind,base:target.base,properties:target.properties});
   useEffect(()=>{
     if(!engineer.enabled)return;
-    engineer.registerTarget(target.page,target.frameKey,{id:target.id,kind:target.kind,label:target.label,base:target.base});
+    engineer.registerTarget(target.page,target.frameKey,{id:target.id,kind:target.kind,label:target.label,base:target.base,properties:target.properties});
     return()=>engineer.unregisterTarget(target.page,target.frameKey,target.id);
   },[engineer.enabled,engineer.registerTarget,engineer.unregisterTarget,target.page,target.frameKey,target.id,visualFingerprint]);
   const currentTarget=geometry?{...target,geometry}:target;
