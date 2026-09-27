@@ -354,6 +354,18 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
+    if(fieldName==='tapAction')return <View style={{marginTop:8,gap:8}}>
+      <Text style={{fontSize:12,color:theme.palette.textSecondary}}>只對目前真實數值卡 A 生效。啟用後點擊卡片切換強調邊框；不導覽、不呼叫交易或修改數值。上方選中卡會預覽強調外框；取消還原設定。</Text>
+      <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>
+        {([['none','關閉'],['emphasize','點擊切換強調']] as const).map(([action,label])=><Pressable key={action} accessibilityRole="button"
+          accessibilityLabel={'點擊行為 '+label} onPress={()=>maint.patchTarget(target.id,{tapAction:action})}
+          style={[styles.choice,{borderColor:theme.palette.primary,
+            backgroundColor:current.tapAction===action?theme.palette.primary:theme.palette.surface}]}>
+          <Text style={{color:current.tapAction===action?'#FFFFFF':theme.palette.text}}>{label}</Text>
+        </Pressable>)}
+      </View>
+      <Text style={{fontSize:11,color:theme.palette.textSecondary}}>維護模式保留選取／扳手操作；退出後點按真實卡片測試。</Text>
+    </View>;
     if(fieldName==='numberFormat')return <View style={{marginTop:8,gap:10}}>
       <Text style={{color:theme.palette.textSecondary,fontSize:12}}>只格式化目前 A 的顯示字串。原始數據、費稅、持股和其他頁面不變；非純數值保留原狀。</Text>
       <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>

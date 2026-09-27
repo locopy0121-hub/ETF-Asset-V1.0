@@ -43,6 +43,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
       };
       return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
         {(_appearance,customized,override,render)=><MetricTile {...props}
+          previewTap={render.editing}
           {...(render.simulated?{simulationTone:render.displayTone}:{})}
           {...(customized?{editorStyle:applyConditionalAppearance(override,render.displayTone)}:{})}/>} 
       </InspectableTarget>;

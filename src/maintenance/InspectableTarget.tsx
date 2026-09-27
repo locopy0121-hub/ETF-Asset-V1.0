@@ -14,7 +14,7 @@ import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
 export function InspectableTarget({target,frame,children,flex=false}:{
   target:InspectedTarget;frame:FrameMaintenanceContext;
-  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean}>)=>ReactNode;flex?:boolean;
+  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean;editing:boolean}>)=>ReactNode;flex?:boolean;
 }){
   const engineer=useMaintenance();
   const workspace=useWorkspace();
@@ -31,7 +31,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   // Simulation is session-only and only paints the selected real A in maintenance mode.
   const previewState=editing&&engineer.enabled?engineer.session?.previewState??'actual':'actual';
   const displayTone=simulatedVisualTone(previewState,actualTone);
-  const renderContext={displayTone,simulated:previewState==='gain'||previewState==='loss'||previewState==='neutral'};
+  const renderContext={displayTone,simulated:previewState==='gain'||previewState==='loss'||previewState==='neutral',editing};
   const condition=activeConditionalRule(override.conditionalStyles,displayTone);
   const appearance=applyConditionalAppearance(mergeTargetAppearance(target.base,override),displayTone);
   const resolvedAppearance={...appearance,
