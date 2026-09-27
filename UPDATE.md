@@ -1,3 +1,11 @@
+## V3.0.38｜2026-09-27｜真實父框架右下角原生雙軸拖曳尺寸（開發 QA，APK 待驗）
+
+基底：V3.0.37 PR #84 HEAD `69315072de592b0406757fb337b9ffb5d5353a02`，Actions #1256（run `36314573206`）quality／Node-Redis-PostgreSQL／原生 QA APK 全成功；Artifact `TF-Asset-V3.0.37-QA-APK` #10930225724，SHA256 `fa191cfc268c0b5348a852da6d3732bb28e96e4ef39e7dc898a37b998b0dbffb`，com.tfasset.app，3.0.37／30037。不可變備份 `backup-v3.0.37-20260927-pre-v3.0.38`；工作分支 `go-v3.0.38-20260927-native-adapter`。
+
+本版只將中央待適配 `resize-gesture` 接入已掛載的真實 FrameCard：A 框架右下角有獨立 44dp 原生 PanResponder 手柄，手勢開始量測框架實際寬高，拖曳雙軸限制寬 160–1600、高 80–2400 dp；動作直接連接當前 A 的 `MaintenanceRuntime.patchFrame` 草稿，原位預覽、取消恢復、底部「儲存／套用」才持久化。支援無障礙增減尺寸，不攔截子元件按鈕；僅選擇框架維護時顯示，未選取或一般 App 畫面不顯示。父框架變動不直接重寫子元件尺寸、座標，也不強制開啟內容捲動。其他父框架實際溢出風險仍由現有工作區診斷及真機驗收處理。
+
+184 項中央技能，源碼宣告預期 163 ready／21 pending；這不是 Android 實機通過數。本版新增尺寸邊界、手勢原生接線、AB 草稿及資料鎖定回歸；保留全部舊版測試。App／Android／iOS 身份 3.0.38／30038，Settings、BackupService、CI、完整技能報告名稱同步。首次 push TS `exactOptionalPropertyTypes` Gate FAIL 已在相同分支修正；Actions #1265（run `36316434119`）最新 HEAD `ae4b882b4954c681732a572277ed33b56e24af67` quality／backend PASS，但 push 的原生 APK skipped，不能算已建置。需開 PR 觸發 QA APK，核對同 HEAD ZIP、SHA、AAPT、artifact 後才可建立 V3.0.39 備份。財務核心三檔、actual_fee/tax、行情來源、原交易資料及 SAF 備份沒有修改；開發 QA 不以 Codex review 阻斷，不自動合併。
+
 ## V3.0.37｜2026-09-27｜真實 A 欄位資料來源唯讀稽核（開發 QA，Gate 待驗）
 
 來源：V3.0.36 PR #83 HEAD `1c38e1f18699f736a8b1fc54beb19be6ca2a400a`，Actions #1246（run 36312053063）quality、Node/Redis/PostgreSQL、QA APK 全成功，Artifact #10929800374，APK SHA256 96d0e07187792bd03dce9979fc4cbbd966904cfd94e234eed661c0637da68bab；package com.tfasset.app，versionCode 30036，versionName 3.0.36。已建立來源不可變備份 `backup-v3.0.36-20260927-pre-v3.0.37`，工作分支 `go-v3.0.37-20260927-source-inspection`。App／Android／iOS 版本 3.0.37／30037。
