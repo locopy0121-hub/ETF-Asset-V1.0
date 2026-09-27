@@ -4,6 +4,7 @@ import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
 import {normalizeConditionalStyles,type ConditionalStyleMap} from './conditionalVisual';
 import type {DisplayUnit} from './numberDisplay';
+import {validChartFields,type ChartDataField,type ChartRender} from '../components/HoldingChartPanel';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
 export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix'|'frame';
@@ -37,6 +38,7 @@ export type TargetAppearance=Readonly<{
   letterSpacing:number;lineHeight:number;prefixText:string;prefixGap:number;prefixOffsetX:number;prefixOffsetY:number;
   align:'left'|'center'|'right';useProfitColor:boolean;
   labelText:string;captionText:string;
+  chartSeries:readonly ChartDataField[];chartRender:ChartRender; // display-only chart data binding
 }> & SpatialOffset;
 export type TargetOverride=Partial<TargetAppearance>;
 export type InspectedTarget=Readonly<{
@@ -64,7 +66,7 @@ export const TARGET_APPEARANCE:TargetAppearance={
   fontWeight:'normal',fontFamily:'system',fontStyle:'normal',textDecorationLine:'none',letterSpacing:0,lineHeight:0,
   labelFontWeight:'700',captionFontWeight:'normal',labelFontStyle:'normal',captionFontStyle:'normal',
   labelLetterSpacing:0,captionLetterSpacing:0,labelLineHeight:0,captionLineHeight:0,
-  prefixText:'',prefixGap:8,prefixOffsetX:0,prefixOffsetY:0,
+  prefixText:'',prefixGap:8,prefixOffsetX:0,prefixOffsetY:0,chartSeries:['ohlc'],chartRender:'candles',
 };
 export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride):TargetAppearance=>({...base,...(custom??{})});
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
@@ -97,6 +99,8 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(v.profitToneOverride==='auto'||v.profitToneOverride==='gain'||v.profitToneOverride==='loss'||v.profitToneOverride==='neutral')o.profitToneOverride=v.profitToneOverride;
   if(v.conditionalStyles!==undefined)o.conditionalStyles=normalizeConditionalStyles(v.conditionalStyles);
   if(v.tapAction==='none'||v.tapAction==='emphasize')o.tapAction=v.tapAction;
+  if(v.chartSeries!==undefined&&Array.isArray(v.chartSeries))o.chartSeries=validChartFields(v.chartSeries);
+  if(v.chartRender==='candles'||v.chartRender==='line'||v.chartRender==='bars')o.chartRender=v.chartRender;
   if(v.thresholdOperator==='gte'||v.thresholdOperator==='lte')o.thresholdOperator=v.thresholdOperator;
   if(['original','yuan','thousand','ten-thousand','million'].includes(String(v.displayUnit)))o.displayUnit=v.displayUnit;
   if(typeof v.displayDigits==='number'&&Number.isFinite(v.displayDigits))o.displayDigits=Math.round(clamp(v.displayDigits,0,4,0));
@@ -126,7 +130,7 @@ export const VISUAL_TARGET_KEYS:readonly (keyof TargetAppearance)[]=[
   'gradientEndColor','gradientMidColor','gradientEndProfitColor','gradientMidProfitColor',
   'gradientMidEnabled','gradientMidStop','borderStyle','marginVertical','marginHorizontal',
   'shadowEnabled','shadowColor','shadowProfitColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
-  'glowEnabled','glowColor','glowProfitColor','glowOpacity','glowWidth',
+  'glowEnabled','glowColor','glowProfitColor','glowOpacity','glowWidth','chartSeries','chartRender',
 ];
 export function resetTargetVisualOverride(override:TargetOverride):TargetOverride {
   const next={...override};for(const field of VISUAL_TARGET_KEYS)delete next[field];return normalizeTargetOverride(next);
@@ -147,6 +151,7 @@ export const TARGET_VISUAL_PRESETS={
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
   if(field==='target:source')return true; // actual mounted-target scope is enforced by skillAdapters
+ if(field==='target:chartSeries')return kind==='generic';
  if(field==='target:numberFormat')return kind==='metric'||kind==='value';
   if(field==='target:tapAction'||field==='target:tapSwipeGuard'||field==='target:threshold')return kind==='metric';
   if(field==='target:resetVisual')return true;
