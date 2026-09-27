@@ -7,6 +7,7 @@ import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
 import { PageShell } from '../components/PageShell';
 import type { HoldingQuote } from '../domain/uiModels';
+import {CHART_DATA_OPTIONS,NATIVE_CHART_STYLES,type ChartDataKey,type NativeChartStyle} from '../domain/chartEditor';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
@@ -21,6 +22,8 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
   const [candles,setCandles]=useState<DailyCandle[]>([]);
   const [historyLoading,setHistoryLoading]=useState(false);
   const [historyError,setHistoryError]=useState<string|null>(null);
+  const [chartStyle,setChartStyle]=useState<NativeChartStyle>('candlestick');
+  const [chartData,setChartData]=useState<ChartDataKey[]>(['open','high','low','close','volume']);
   useEffect(()=>{
     let active=true;
     const abort=new AbortController();
@@ -33,11 +36,18 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
       .finally(()=>{if(active)setHistoryLoading(false);});
     return()=>{active=false;abort.abort();};
   },[holding.symbol,range]);
-  const change=holding.price-holding.previousClose;
-  const changePct=holding.previousClose>0?change/holding.previousClose*100:0;
-  const history=[...finance.entries].filter(entry=>'symbol' in entry&&entry.symbol===holding.symbol).sort((a,b)=>b.date.localeCompare(a.date));
+  const finite=(value:number)=>Number.isFinite(value)?value:0;
+  const currentPrice=finite(holding.price),previousClose=finite(holding.previousClose);
+  const change=currentPrice-previousClose;
+  const changePct=previousClose>0?change/previousClose*100:0;
+  const history=[...finance.entries].filter(entry=>'symbol' in entry&&entry.symbol===holding.symbol&&typeof entry.date==='string').sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const quoteLabel=holding.quoteVerified===false?'行情待取得':holding.quoteQuality==='official_close'?'官方收盤參考':'實際成交';
-  const sourceTime=holding.quoteSourceAt?new Date(holding.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚無';
+  const quoteTime=typeof holding.quoteSourceAt==='number'&&Number.isFinite(holding.quoteSourceAt)&&holding.quoteSourceAt>0?holding.quoteSourceAt:null;
+  const sourceTime=quoteTime?new Date(quoteTime).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚無';
+  const toggleChartData=(key:ChartDataKey)=>setChartData(current=>{
+    if(current.includes(key))return current.length===1?current:current.filter(item=>item!==key);
+    return [...current,key];
+  });
 
   return <PageShell
     title={holding.name}
@@ -48,8 +58,17 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
       <Text style={[styles.price,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'行情待取得':holding.price.toFixed(2)}</Text>
       <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'估值待核對':holding.previousCloseKnown===false?'前收待取得':(change>0?'▲':change<0?'▼':'●')+' '+(change>=0?'+':'')+change.toFixed(2)+'　'+(changePct>=0?'+':'')+changePct.toFixed(2)+'%'}</Text>
       <View style={styles.marketMeta}><Text style={styles.meta}>前收 {holding.previousCloseKnown===false?'待取得':holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>{quoteLabel}｜來源 {sourceTime}｜v{holding.marketDataVersion??0}</Text></View>
+      <View style={styles.chartToolbox}>
+        <Text style={styles.chartToolTitle}>圖表樣式</Text>
+        <View style={styles.rangeRow}>{NATIVE_CHART_STYLES.map(item=><Pressable key={item.id} onPress={()=>setChartStyle(item.id)}
+          style={[styles.rangeChip,chartStyle===item.id&&styles.rangeActive]}><Text style={[styles.rangeText,chartStyle===item.id&&styles.rangeTextActive]}>{item.label}</Text></Pressable>)}</View>
+        <Text style={styles.chartToolTitle}>資料數據（可複選）</Text>
+        <View style={styles.rangeRow}>{CHART_DATA_OPTIONS.filter(item=>['open','high','low','close','volume'].includes(item.key)).map(item=><Pressable key={item.key}
+          onPress={()=>toggleChartData(item.key)} style={[styles.rangeChip,chartData.includes(item.key)&&styles.rangeActive]}>
+          <Text style={[styles.rangeText,chartData.includes(item.key)&&styles.rangeTextActive]}>{item.label}</Text></Pressable>)}</View>
+      </View>
       <View style={styles.rangeRow}>{ranges.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
-      <OfficialCandleChart candles={candles} loading={historyLoading} error={historyError} rangeLabel={range}/>
+      <OfficialCandleChart candles={candles} loading={historyLoading} error={historyError} rangeLabel={range} dataKeys={chartData} chartStyle={chartStyle}/>
       <Text style={styles.rangeHint}>目前支援臺灣證交所官方日 K。週線／分時線與上櫃 ETF 在有可信來源前不顯示示意圖。</Text>
     </FrameCard>
 
@@ -96,6 +115,8 @@ const styles=StyleSheet.create({
   change:{fontSize:14,fontWeight:'800'},
   marketMeta:{flexDirection:'row',justifyContent:'space-between'},
   meta:{fontSize:10,color:colors.textSecondary},
+  chartToolbox:{gap:7,padding:9,borderRadius:10,backgroundColor:colors.surfaceMuted},
+  chartToolTitle:{fontSize:10,fontWeight:'900',color:colors.textSecondary},
   rangeRow:{flexDirection:'row',gap:5,flexWrap:'wrap'},
   rangeChip:{paddingHorizontal:9,paddingVertical:6,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   rangeActive:{backgroundColor:colors.primary},
