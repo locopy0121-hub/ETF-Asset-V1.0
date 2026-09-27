@@ -11,7 +11,7 @@ import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {CENTRAL_COMPONENT_LIBRARY,isEngineerOwnedInstance,type MaintenanceInstance} from './componentLibrary';
 import type {SkillTool} from './skillTree';
 import {COMPLETE_ENGINEER_SKILLS} from './fullSkillCatalog';
-import {searchAbProperties,findAbProperty,AB_PROPERTY_GROUPS} from './abPropertyModel';
+import {searchAbProperties,findAbProperty,AB_PROPERTY_GROUPS,ENGINEER_SECTIONS,type EngineerSectionId} from './abPropertyModel';
 import {resolveSkillAdapter,type AdapterContext} from './skillAdapters';
 import {mergeTargetAppearance,targetToolSupported,TARGET_VISUAL_PRESETS,type TargetKind,type TargetOverride} from './inspectionModel';
 import type {MaintenanceSession} from './MaintenanceRuntime';
@@ -37,6 +37,7 @@ import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} fro
 export function MaintenanceWorkbench(){
   const maintenance=useMaintenance(),theme=useThemeRuntime(),insets=useSafeAreaInsets();
   const session=maintenance.session;
+  const [openSection,setOpenSection]=useState<EngineerSectionId|null>(null);
   const [openB,setOpenB]=useState<string|null>(null);
   const [openC,setOpenC]=useState<string|null>(null);
   const [moreColor,setMoreColor]=useState(false);
@@ -45,14 +46,14 @@ export function MaintenanceWorkbench(){
   const [saving,setSaving]=useState(false);
   const scroller=useRef<ScrollView>(null);
   useEffect(()=>{
-    setOpenB(null);setOpenC(null);setMoreColor(false);setQuery('');setFavoritesOnly(false);
+    setOpenSection(null);setOpenB(null);setOpenC(null);setMoreColor(false);setQuery('');setFavoritesOnly(false);
   },[session?.page,session?.frameKey,session?.scope,session?.instanceId,session?.target?.id]);
   if(!session)return null;
   const focused=session.scope==='instance'?session.instanceId:session.focusInstanceId;
   const instance=session.draftInstances.find(item=>item.id===focused);
   const selectedTarget=session.scope==='target'?session.target:undefined;
   const label=selectedTarget?.label??instance?.text??session.title;
-  const visibleB=searchAbProperties(query).filter(group=>!favoritesOnly||group.tools.some(tool=>maintenance.assets.favorites.includes(tool.id)));
+  const visibleB=searchAbProperties(query).filter(group=>(!openSection||query.trim()||group.section===openSection)&&(!favoritesOnly||group.tools.some(tool=>maintenance.assets.favorites.includes(tool.id))));
   const selectedB=openB?findAbProperty(openB):undefined;
   const canDeleteFocused=Boolean(instance&&isEngineerOwnedInstance(instance)&&session.scope==='instance');
   const protectedProperties=selectedTarget?.properties.filter(row=>row.readOnly)??[];
@@ -65,10 +66,11 @@ export function MaintenanceWorkbench(){
   const toTop=()=>scroller.current?.scrollTo({y:0,animated:false});
   const chooseB=(id:string)=>{setOpenB(id);setOpenC(null);setMoreColor(false);toTop();};
   const backToB=()=>{setOpenB(null);setOpenC(null);setMoreColor(false);toTop();};
+  const backToSections=()=>{setOpenSection(null);setOpenB(null);setOpenC(null);setQuery('');toTop();};
   const navigateToFavorite=(toolId:string)=>{
     const owner=AB_PROPERTY_GROUPS.find(group=>group.tools.some(tool=>tool.id===toolId));
     if(!owner)return;
-    setOpenB(owner.id);setOpenC(toolId);setMoreColor(owner.id==='color');toTop();
+    setOpenSection(owner.section);setOpenB(owner.id);setOpenC(toolId);setMoreColor(owner.id==='color');toTop();
     maintenance.noteToolUsed(toolId);
   };
   const apply=async()=>{
@@ -88,7 +90,7 @@ export function MaintenanceWorkbench(){
       <View style={{flex:1}}>
         <Text style={[styles.headline,{color:theme.palette.text}]} numberOfLines={1}>A｜{label}</Text>
         <Text style={[styles.small,{color:theme.palette.textSecondary}]} numberOfLines={1}>
-          {selectedB?'B｜'+selectedB.label+' → C｜直接編輯':'B｜選擇要修改的屬性'}
+          {selectedB?'功能群組｜'+selectedB.label+' → 工具參數':openSection?ENGINEER_SECTIONS.find(item=>item.id===openSection)?.label+' → 功能群組':'四大工具箱 → 功能群組 → 工具 → 參數'}
         </Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="查看資料保護" onPress={showLock} style={{padding:8}}>
@@ -133,13 +135,29 @@ export function MaintenanceWorkbench(){
           </Pressable>
           <Text style={{fontSize:11,color:theme.palette.textSecondary}} numberOfLines={1}>按 C 工具右側星號即可收藏</Text>
         </View>
-        <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:7}}>
+        {!query.trim()&&!openSection?<View style={{gap:8,marginBottom:12}}>
+          {ENGINEER_SECTIONS.map(section=><Pressable key={section.id} accessibilityRole="button"
+            accessibilityLabel={'主分類 '+section.label} onPress={()=>{setOpenSection(section.id);toTop();}}
+            style={[styles.compactRow,{borderColor:theme.palette.border,paddingVertical:14}]}>
+            <View style={{flex:1,gap:3}}>
+              <Text style={{color:theme.palette.text,fontSize:16,fontWeight:'900'}}>{section.label}</Text>
+              <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{section.description}</Text>
+              <Text style={{color:theme.palette.primary,fontSize:10}}>{AB_PROPERTY_GROUPS.filter(group=>group.section===section.id).reduce((total,group)=>total+group.tools.length,0)} 項中央工具</Text>
+            </View>
+            <Text style={{color:theme.palette.primary,fontSize:20}}>›</Text>
+          </Pressable>)}
+        </View>:null}
+        {openSection&&!query.trim()?<Pressable accessibilityRole="button" onPress={backToSections}
+          style={[styles.compactRow,{borderColor:theme.palette.border,marginBottom:10}]}>
+          <Text style={{color:theme.palette.primary,fontWeight:'800'}}>‹ 返回四大分類</Text>
+        </Pressable>:null}
+        {(openSection||query.trim())?<View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',rowGap:7}}>
           {visibleB.map(group=><Pressable key={group.id} accessibilityRole="button"
             accessibilityLabel={'B '+group.label} onPress={()=>chooseB(group.id)}
             style={[styles.bSkillCard,{borderColor:theme.palette.border,backgroundColor:theme.palette.surfaceMuted}]}>
             <Text style={{color:theme.palette.text,fontSize:13,fontWeight:'800',textAlign:'center'}}>{group.label}</Text>
           </Pressable>)}
-        </View>
+        </View>:null}
         {!visibleB.length?<Text style={[styles.hint,{color:theme.palette.textSecondary}]}>沒有符合的屬性，請調整搜尋內容。</Text>:null}
       </View>}
       <View style={{height:8}}/>
