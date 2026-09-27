@@ -20,7 +20,7 @@ export function isIndividualReset(map:IndividualResetMap,page:MainPageKey,frameK
   return (map[individualScope(page,frameKey)]??[]).includes(id);
 }
 export function withIndividualReset(map:IndividualResetMap,page:MainPageKey,frameKey:string,id:string):Record<string,string[]>{
-  if(!validId.test(id))return normalizeIndividualResets(map);
+  if(!validId(id))return normalizeIndividualResets(map);
   const key=individualScope(page,frameKey);
   return {...normalizeIndividualResets(map),[key]:[...new Set([...(map[key]??[]),id])].slice(0,120)};
 }
