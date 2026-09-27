@@ -354,6 +354,11 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
+    if(fieldName==='tapSwipeGuard')return <View style={{marginTop:8,gap:8}}>
+      <Text style={{fontSize:12,color:theme.palette.textSecondary}}>只保護目前已掛載的數值卡 A：觸控移動超過 12dp 或取消觸控，不觸發點擊強調。預設開啟；原位草稿與取消沿用既有維護會話。</Text>
+      <Switch accessibilityLabel="數值卡滑動與點按互斥" value={current.tapSwipeGuard}
+        onValueChange={value=>maint.patchTarget(target.id,{tapSwipeGuard:value})}/>
+    </View>;
     if(fieldName==='tapAction')return <View style={{marginTop:8,gap:8}}>
       <Text style={{fontSize:12,color:theme.palette.textSecondary}}>只對目前真實數值卡 A 生效。啟用後點擊卡片切換強調邊框；不導覽、不呼叫交易或修改數值。上方選中卡會預覽強調外框；取消還原設定。</Text>
       <View style={{flexDirection:'row',flexWrap:'wrap',gap:7}}>

@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {Pressable,StyleSheet,Text} from 'react-native';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
@@ -8,7 +8,7 @@ import {TargetBackdrop,targetShadowStyle} from '../maintenance/TargetSurfaceEffe
 import {linkedColor,type FinancialTone} from '../maintenance/workspaceModel';
 import {resolveNativeMetricTones} from '../maintenance/dataSimulation';
 import {formatDisplayNumber} from '../maintenance/numberDisplay';
-import {nextMetricTapEmphasis} from '../maintenance/metricTap';
+import {metricSwipeExceeded,nextMetricTapEmphasis,type MetricTouchPoint} from '../maintenance/metricTap';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 
@@ -18,8 +18,12 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
 }){
   const theme=useThemeRuntime();
   const [emphasized,setEmphasized]=useState(false);
+  const start=useRef<MetricTouchPoint|null>(null);
+  const swipeConsumed=useRef(false);
   const tapEnabled=editorStyle?.tapAction==='emphasize';
-  useEffect(()=>setEmphasized(false),[editorStyle?.tapAction]);
+  const guardEnabled=editorStyle?.tapSwipeGuard!==false;
+  useEffect(()=>{setEmphasized(false);swipeConsumed.current=false;start.current=null;},
+    [editorStyle?.tapAction,editorStyle?.tapSwipeGuard]);
   const settings=useSettingsRuntime();
   const nativeTones=resolveNativeMetricTones(tone,editorStyle?.profitToneOverride,simulationTone);
   const actualTone=nativeTones.linked;
@@ -50,7 +54,12 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   return <Pressable disabled={!tapEnabled} accessibilityRole={tapEnabled?'button':undefined}
     accessibilityLabel={tapEnabled?'切換強調顯示：'+label:undefined}
     accessibilityState={tapEnabled?{selected:emphasized}:undefined}
-    onPress={()=>setEmphasized(previous=>nextMetricTapEmphasis(previous,editorStyle?.tapAction??'none'))}
+    onTouchStart={event=>{start.current={x:event.nativeEvent.pageX,y:event.nativeEvent.pageY};swipeConsumed.current=false;}}
+    onTouchMove={event=>{if(guardEnabled&&metricSwipeExceeded(start.current,{x:event.nativeEvent.pageX,y:event.nativeEvent.pageY}))swipeConsumed.current=true;}}
+    onTouchCancel={()=>{swipeConsumed.current=true;start.current=null;}}
+    onPress={()=>{if(!tapEnabled||guardEnabled&&swipeConsumed.current)return;
+      setEmphasized(previous=>nextMetricTapEmphasis(previous,editorStyle?.tapAction??'none'));}}
+
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
