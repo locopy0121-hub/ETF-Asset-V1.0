@@ -29,7 +29,7 @@ export function HoldingQuoteModule({
 }:{
   item:HoldingQuote;
   style?:QuoteModuleStyle;
-  layout?:'full'|'narrow';
+  layout?:'full'|'narrow'|'micro';
   wallConfig?:HoldingWallConfig;
   badgeConfig?:EtfBadgeConfig;
   refreshToken?:string|number|null|undefined;
@@ -39,8 +39,10 @@ export function HoldingQuoteModule({
   const change=item.price-item.previousClose;
   const changePct=item.previousClose>0?(change/item.previousClose)*100:0;
   const compact=style==='compact';
-  const narrow=layout==='narrow';
-  const showChart=style==='chart'||style==='advanced';
+  const micro=layout==='micro';
+  const narrow=layout!=='full';
+  // Three-column cards always show a readable quote, never a crushed graph.
+  const showChart=!micro&&(style==='chart'||style==='advanced');
   const cfg=wallConfig;
   const cardStyle=cfg.style;
   const groups={
@@ -49,22 +51,25 @@ export function HoldingQuoteModule({
     footer:cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue')),
   };
 
-  return <Pressable onPress={onPress} style={[
+  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={'查看持股 '+item.symbol} style={[
     styles.card,
-    compact&&styles.compact,
+    compact&&!micro&&styles.compact,
     narrow&&styles.narrowCard,
+    micro&&styles.microCard,
     {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
-    {showChart&&item.quoteVerified!==false?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
-    <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
+    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
+    <View style={[styles.body,{padding:micro?Math.min(8,cardStyle.padding):cardStyle.padding,
+      gap:micro?Math.min(5,cardStyle.rowGap):cardStyle.rowGap}]}>
       {cfg.header.visible&&(groups.header.length>0||badgeConfig.order.some(key=>badgeConfig.badges[key].enabled))?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
         <View style={[
           styles.head,
+          micro&&styles.microHead,
           {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
         ]}>
           <View style={styles.headerMain}>
-            <View style={styles.headerTop}>
-              <View style={styles.headerSymbol}>
+            <View style={[styles.headerTop,micro&&styles.microHeaderTop]}>
+              <View style={[styles.headerSymbol,micro&&styles.microSymbol]}>
                 {groups.header.filter(field=>field.field==='symbol').map(field=><WallText
                   key={field.field} field={field} item={item} change={change} changePct={changePct}
                   wall={cfg} refreshToken={refreshToken} header narrow={narrow} primary
@@ -83,22 +88,28 @@ export function HoldingQuoteModule({
         </View>
       </EffectView>:null}
 
-      {(showQuoteMetadata||item.quoteVerified===false)?<Text style={{fontSize:10,color:item.quoteVerified===false?'#F59E0B':'#94A3B8'}}>
+      {(!micro&&showQuoteMetadata||item.quoteVerified===false)?<Text style={{fontSize:10,color:item.quoteVerified===false?'#F59E0B':'#94A3B8'}}>
         {item.quoteVerified===false?'行情待取得｜估值待核對':
           (item.quoteQuality==='official_close'?'官方收盤參考':'實際成交')+'｜'+
           (item.quoteSourceAt?new Date(item.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'來源待核對')+
           '｜資料版本 '+(item.marketDataVersion??0)}
       </Text>:null}
-      {groups.quote.length?<View style={styles.quoteRow}>
-        <View style={{flex:1,minWidth:0}}>
-          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
+      {groups.quote.length?<View style={[styles.quoteRow,micro&&styles.microQuoteRow]}>
+        <View style={micro?{minWidth:0}:{flex:1,minWidth:0}}>
+          <WallText field={groups.quote[0]! item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
         </View>
-        {groups.quote.length>1?<View style={styles.changeWrap}>
+        {groups.quote.length>1?<View style={[styles.changeWrap,micro&&styles.microChangeWrap]}>
           {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}/>)}
         </View>:null}
       </View>:null}
 
-      {!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardStyle.borderColor}]}>
+      {micro?<View style={[styles.footer,styles.microFooter,{borderTopColor:cardStyle.borderColor}]}>
+        <Text style={styles.microPnlLabel}>損益</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}
+          style={[styles.microPnlValue,{color:item.pnl>=0?cardStyle.gainColor:cardStyle.lossColor}]}>
+          {item.quoteVerified===false?'待取得':'NT$ '+money(item.pnl)}
+        </Text>
+      </View>:!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardStyle.borderColor}]}>
         <View style={{flex:1}}>
           <WallMetric field={groups.footer[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken}/>
         </View>
@@ -313,4 +324,13 @@ const styles=StyleSheet.create({
   rightMetric:{alignItems:'flex-end'},
   narrowCard:{flexDirection:'column',minHeight:168},
   narrowSpark:{width:'100%',height:54,paddingHorizontal:10,paddingVertical:8},
+  microCard:{minHeight:155,minWidth:0,width:'100%'},
+  microHead:{paddingBottom:3},
+  microHeaderTop:{flexDirection:'column',alignItems:'flex-start',gap:2},
+  microSymbol:{maxWidth:'100%'},
+  microQuoteRow:{flexDirection:'column',alignItems:'stretch',gap:2,paddingTop:3},
+  microChangeWrap:{alignItems:'flex-start'},
+  microFooter:{paddingTop:4,flexDirection:'column',alignItems:'flex-start',gap:2},
+  microPnlLabel:{fontSize:9,color:'#91A0B5'},
+  microPnlValue:{fontSize:12,fontWeight:'900',maxWidth:'100%'},
 });
