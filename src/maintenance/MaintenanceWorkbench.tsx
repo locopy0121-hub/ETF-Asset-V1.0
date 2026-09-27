@@ -335,6 +335,11 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     </View>:null}
   </View>;
   if(tool.field==='frame:size')return <FrameDimensionsToolDetails/>;
+  if(tool.field==='frame:resize-gesture')return <View style={{marginTop:8,gap:8}}>
+    <Text style={{fontSize:12,color:theme.palette.textSecondary}}>在上方真實 A 父框架右下角拖動 ↘：直接調整當前框架寬高。只在框架維護模式出現，不覆蓋子元件按鈕或整頁滑動。</Text>
+    <FrameDimensionsToolDetails/>
+    <Text style={{fontSize:11,color:theme.palette.textSecondary}}>拖曳僅更新目前 A 草稿；取消恢復，按底部套用才正式儲存。</Text>
+  </View>;
   if(tool.field?.startsWith('framefx:'))return toolUsable(tool,s)?
     <FrameEffectsToolDetails field={tool.field.slice('framefx:'.length)}/>:
     <Text style={{color:theme.palette.textSecondary}}>框架專屬效果：請點外層框架的大扳手，再選擇專業框架工程。</Text>;

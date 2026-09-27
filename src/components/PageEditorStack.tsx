@@ -173,6 +173,10 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
       appearance:frameConfig?.appearance??'theme',
       ...(frameConfig?{editorStyle:frameConfig}:{}),
       workActive:active,
+      ...(active&&session?.scope==='frame'?{onResizePreview:(size:{width:number;height:number})=>engineer.patchFrame({
+        width:size.width,height:size.height,
+        ...(session.draft.minHeight!==undefined&&session.draft.minHeight>size.height?{minHeight:size.height}:{})
+      })}:{}),
       workHidden:active&&session?.scope==='frame'&&!session.draft.visible,
       action:<View style={{flexDirection:'row',gap:6,alignItems:'center'}}>
         {originalAction}

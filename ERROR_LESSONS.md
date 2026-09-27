@@ -1,3 +1,7 @@
+## 2026-09-27｜V3.0.38 #1261／#1264 exactOptionalPropertyTypes 與原生尺寸手勢
+
+FrameCard 新增 `onResizePreview` 可選 callback 後，PageEditorStack 不可在 cloneElement props 明確賦予 `undefined`：TypeScript `exactOptionalPropertyTypes` 在 #1261 與 #1264 的 quality TypeScript Gate 報 TS2769。真正修正是只在當前框架編輯 scope 使用條件 spread 傳入 callback，其他情況完全省略此 prop；相同分支新 commit `ae4b882b4954c681732a572277ed33b56e24af67` 的 #1265 已重新通過 quality 和 backend。建置門檻分層：push quality PASS 卻 APK skipped 不得作 APK 成功；必須有真正版本升級、PR 事件及實存原生 QA APK。尺寸手勢只掛載真實目前 A 的右下角 44dp 手柄，量測手勢初始原生尺寸，限定安全範圍並沿用草稿／取消／套用，不動金融資料與其他頁。每次升版要同步全部 V3.0.x 歷版 identity 和 184 ready／pending 計數，真機驗收仍獨立於 CODE／Build。
+
 ## 2026-09-27｜V3.0.36 數值門檻必須先驗真實來源、只改局部原生顯示
 
 不得把代號或百分比與顯示單位已縮放結果當真實比較金額；原始 metric 字串不符合嚴格數值解析則不描邊。輸入不是有限數值或超過 ±1 兆則不得覆寫草稿；預設不啟用、選擇當前 A 才能編輯。thresholdReady 僅認列真實 native MetricTile 渲染、AB 控制、標準化白名單、草稿／套用／取消及完整歷版 regression，Android 手機仍待實測。當前 184 項中預期 161 宣告 ready／23 pending，不等於 161 項真機 PASS。帳務核心、actual_fee/tax、交易寫入、行情來源及 SAF 實作絕不變動。歷版 hard-coded 身份與準備度計數須全部同步升 3.0.36／30036／161/23，品質、後端、APK、ZIP/SHA/AAPT/Artifact 均實際 PASS 才可接續。
