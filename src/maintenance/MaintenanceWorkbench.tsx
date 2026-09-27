@@ -81,7 +81,7 @@ export function MaintenanceWorkbench(){
   };
   const cancel=()=>maintenance.cancel();
   const tools=selectedB?.tools.filter(tool=>
-    !(selectedB.id==='layout'&&
+    !(selectedB.id==='size'&&
       (session.scope==='frame'&&tool.id==='frame-size'||
        session.scope==='instance'&&instance?.templateId==='parent-frame'&&tool.id==='parent-size')))??[];
   return <View style={[styles.dock,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.primary,paddingBottom:Math.max(12,insets.bottom)}]}>
@@ -103,13 +103,16 @@ export function MaintenanceWorkbench(){
       {selectedB?<View style={{gap:7}}>
         <Pressable accessibilityRole="button" accessibilityLabel="返回 B 屬性" onPress={backToB}
           style={[styles.compactRow,{borderColor:theme.palette.border}]}>
-          <Text style={{color:theme.palette.primary,fontSize:13}}>‹ B｜返回屬性</Text>
+          <Text style={{color:theme.palette.primary,fontSize:13}}>‹ B｜返回工具箱</Text>
           <Text style={{flex:1,color:theme.palette.text,fontWeight:'800',textAlign:'right'}}>{selectedB.label}</Text>
         </Pressable>
         {selectedB.id==='size'?
-          <View style={{paddingTop:3}}>
-            <Text style={[styles.label,{color:theme.palette.text}]}>C｜大小</Text>
-            <AbDimensionControl axis={'width'} instance={instance}/>
+          <View style={{paddingTop:3,gap:10}}>
+            <Text style={[styles.label,{color:theme.palette.text}]}>D｜實際尺寸</Text>
+            <Text style={[styles.small,{color:theme.palette.textSecondary}]}>目前 A 的實際量測值直接帶入；不以「自適應」代替。</Text>
+            <AbDimensionControl axis="width" instance={instance}/>
+            <AbDimensionControl axis="height" instance={instance}/>
+            <AbToolControls tools={tools} openC={openC} onChangeC={setOpenC} onOpenTool={navigateToFavorite} instance={instance}/>
           </View>:selectedB.id==='color'?<View>
             <AbColorControls instance={instance}/>
             <Pressable accessibilityRole="button" accessibilityLabel="更多顏色與背景控制"
