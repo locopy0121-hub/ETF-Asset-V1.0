@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { OfficialCandleChart } from '../components/OfficialCandleChart';
+import { HoldingChartPanel } from '../components/HoldingChartPanel';
+import {DEFAULT_CHART_DATA,validChartFields,type ChartDataField,type ChartRender} from '../domain/chartDataSelection';
+import {InspectableTarget} from '../maintenance/InspectableTarget';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
+import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import {usePageEditor} from '../editor/pageEditor';
+import type {MainPageKey} from '../domain/pageRegistry';
 import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -13,7 +20,19 @@ import { colors, radius, spacing } from '../theme/tokens';
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const ranges=['1月','3月','1年'] as const;
 
-export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
+export function HoldingDetailScreen({holding:initialHolding,onBack,sourcePage='home'}:{holding:HoldingQuote;onBack:()=>void;sourcePage?:MainPageKey}){
+  const engineer=useMaintenance();
+  const editor=usePageEditor(sourcePage);
+  const chartFrameKey=sourcePage==='portfolio'?'holding-view':'holding-quotes';
+  const frame:FrameMaintenanceContext={page:sourcePage,frameKey:chartFrameKey,frameTitle:'持股詳情圖表',
+    frameConfig:editor.config[chartFrameKey]!,displayConfig:editor.displayConfig};
+  const chartTarget:InspectedTarget={id:'holding-chart:'+initialHolding.symbol,kind:'generic',label:'持股詳情圖表',
+    page:sourcePage,frameKey:chartFrameKey,frameTitle:'持股詳情圖表',
+    properties:[{name:'ETF 代號',value:initialHolding.symbol,readOnly:true},{name:'歷史行情來源',value:'TWSE 官方日資料',readOnly:true},
+      {name:'資料選擇',value:'OHLC／收盤價／成交量／持股成本／市值／損益／股息',readOnly:true}],
+    base:{...TARGET_APPEARANCE,padding:0,backgroundOpacity:0,backgroundColor:'#FFFFFF',chartSeries:DEFAULT_CHART_DATA,chartRender:'candles'}};
+  const [localSeries,setLocalSeries]=useState<ChartDataField[]>([...DEFAULT_CHART_DATA]);
+  const [localRender,setLocalRender]=useState<ChartRender>('candles');
   const finance=useFinance();
   // Detail must subscribe to the current canonical projection, not a stale tapped row.
   const holding=finance.holdings.find(row=>row.symbol===initialHolding.symbol)??initialHolding;
@@ -40,6 +59,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
   const sourceTime=holding.quoteSourceAt?new Date(holding.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'尚無';
 
   return <PageShell
+    pageKey={sourcePage}
     title={holding.name}
     subtitle={holding.symbol}
     actions={<Pressable style={styles.backButton} onPress={onBack}><Text style={styles.backText}>返回</Text></Pressable>}
@@ -49,7 +69,17 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
       <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'估值待核對':holding.previousCloseKnown===false?'前收待取得':(change>0?'▲':change<0?'▼':'●')+' '+(change>=0?'+':'')+change.toFixed(2)+'　'+(changePct>=0?'+':'')+changePct.toFixed(2)+'%'}</Text>
       <View style={styles.marketMeta}><Text style={styles.meta}>前收 {holding.previousCloseKnown===false?'待取得':holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>{quoteLabel}｜來源 {sourceTime}｜v{holding.marketDataVersion??0}</Text></View>
       <View style={styles.rangeRow}>{ranges.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
-      <OfficialCandleChart candles={candles} loading={historyLoading} error={historyError} rangeLabel={range}/>
+      <WorkspaceSurface config={engineer.getWorkspace(sourcePage,chartFrameKey)} active={engineer.enabled}
+        onBounds={bounds=>engineer.reportWorkspaceBounds(sourcePage,chartFrameKey,bounds)}>
+        <InspectableTarget target={chartTarget} frame={frame}>{(appearance,customized,override)=>
+          <View style={customized?{padding:appearance.padding,borderColor:appearance.borderColor,
+            borderWidth:appearance.borderWidth,borderRadius:appearance.borderRadius}:undefined}>
+            <HoldingChartPanel holding={holding} candles={candles} loading={historyLoading} error={historyError}
+              rangeLabel={range} selected={override.chartSeries?validChartFields(override.chartSeries):localSeries}
+              onSelected={setLocalSeries} renderMode={override.chartRender??localRender} onRenderMode={setLocalRender}/>
+          </View>}
+        </InspectableTarget>
+      </WorkspaceSurface>
       <Text style={styles.rangeHint}>目前支援臺灣證交所官方日 K。週線／分時線與上櫃 ETF 在有可信來源前不顯示示意圖。</Text>
     </FrameCard>
 
