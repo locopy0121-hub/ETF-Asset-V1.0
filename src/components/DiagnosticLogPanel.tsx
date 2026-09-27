@@ -37,7 +37,7 @@ export function DiagnosticLogPanel(){
       const content=exportDiagnosticEntries(entries);
       if(backupDocumentPickerAvailable){
         const day=new Date().toISOString().slice(0,10).replace(/-/g,'');
-        const receipt=await saveExternalBackup(content,'TF-Asset-V3.1.3-Diagnostics-'+day+'.json');
+        const receipt=await saveExternalBackup(content,'TF-Asset-V3.1.4-Diagnostics-'+day+'.json');
         if(receipt)Alert.alert('匯出成功','診斷紀錄已寫入選定的手機資料夾。');
       }else await Share.share({message:content,title:'TF Asset 診斷紀錄'});
     }catch{Alert.alert('匯出失敗','無法匯出診斷紀錄；原始紀錄仍保留在 App 內。');}
