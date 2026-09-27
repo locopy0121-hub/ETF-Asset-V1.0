@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.31 #1183 歷版 16 支回歸硬編碼舊版造成 CI 連鎖失敗
+#1183 已通過 V3.0.8 的原生圖片控制合約，接續在 `v3_0_14-skill-navigation.test.ts` 固定要求 3.0.30/30030 而 FAIL。經掃描其後 V3.0.15–V3.0.29 共 16 支歷史測試均殘留 3.0.30、APK 路徑或舊 PR head_ref；本輪一次性更新 16 支為當前 3.0.31／30031／實際 PR 分支，同時保留各種功能與財務隔離斷言，不使用 skip 或刪除測試。升版 Gate 後續必須全檔掃描 scripts 中舊版本 identity/hard-coded head_ref，避免前項修復後才逐支暴露錯誤。
+
 ## 2026-09-27｜V3.0.31 #1181 歷版圖片裁切測試誤用不存在欄位
 V3.0.31 實際以 `framefx:imageFit` 一項 ready 工具進入原生 UI，於 cover 模式控制 `imageFocusX/Y`。舊 `v3_0_8-frame-background.test.ts` 把草稿參數 `imageFocusX` 錯當中央技能欄位 `framefx:imageFocusX`，令 #1181 aggregate gates 在品質階段 FAIL、QA APK skipped；應修測試為既有真實工具的語意斷言，並保留原生控制接線與新版裁切行為回歸，不新增假工具或放寬 immutable 財務檢查。
 
