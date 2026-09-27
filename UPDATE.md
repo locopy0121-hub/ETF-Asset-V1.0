@@ -1,3 +1,11 @@
+## V3.0.35｜2026-09-27｜原生 metric 點按／滑動互斥（開發 QA，CI 待驗）
+
+來源已核實 V3.0.34 PR #81 QA run #1213 成功 HEAD `8de1909cb779cabe1f14065f1289f55eb7234139` 與不可變備份 `backup-v3.0.34-20260927-pre-v3.0.35`。起初僅把 app.json 提升 3.0.35，其他 app identity 與歷版測試未更新，造成 push run #1215 quality FAIL；原版原分支修復，不用 rerun 舊 commit 假裝修好。
+
+中央技能 swipe 僅於目前實際 metric A 的 native Pressable 提供 12dp touch slop 防誤觸：原生 onTouchStart/onTouchMove/onTouchCancel 加上純狀態函式，滑動不觸發點按強調；既有 frame 與手機導覽的完整跨元件手勢仍須實機另驗。當前 A 的 AB 直接開關預設 ON，草稿原位生效、取消還原、正式套用才儲存；中央 184 技能預期 160 宣告接線／24 待 adapter，與 Android 手機驗收分別統計。
+
+App／Android／iOS version 3.0.35／30035；CI 與歷版測試、SettingsScreen、BackupService、UPDATE／ERROR 一致。immutable finance 三檔、actual_fee/tax、行情來源、原交易資料及 SAF 備份全部未更動。quality + Node/Redis/PostgreSQL + QA APK + Artifact/ZIP/SHA/AAPT 必須實際 PASS 才能建立 V3.0.36 的不可變備份與工作分支。
+
 ## V3.0.34｜2026-09-27｜原生數值卡點擊強調與 AB 原位預覽（開發 QA，待驗證）
 
 由 V3.0.33 PR #80、成功 Actions #1204（run 36294789562）HEAD `c1c68e4d2ef3af3b54c30f45675fc113fb5cb2c1` 接續，成功 APK Artifact #10923443568。成功 HEAD 已建立獨立不可變備份 `backup-v3.0.33-20260927-pre-v3.0.34`。既有唯一中央 184 技能中，將「點擊行為」接至真實 metric A 的本地 Pressable：B 互動操作→C 關閉／點擊切換強調邊框，預設 OFF，整個動作不觸及交易、金額或導覽；工程師選取時原位預覽強調、取消恢復，套用僅儲存本地 TargetOverride，接續既有 SAF 備份。其他 target kind 與跨頁點按功能仍 pending，不冒稱全 App 已驗收。中央宣告接線預期 159 ready／25 pending，真機點按與無障礙另待驗。

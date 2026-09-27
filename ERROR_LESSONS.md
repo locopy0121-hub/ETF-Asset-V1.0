@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.35 #1215 非同步升版導致 quality Gate FAIL
+不可僅修改 app.json 將新 branch 視為版本已升級。#1215 quality 讀到 app 3.0.35、package/SettingsScreen/BackupService/workflow 3.0.34，historical v2_1_1 release assertion 失敗；同版必須以單一 release identity commit 同步更新全部版本與歷版強硬門檻。失敗後讀 job log、原 branch 修復、推新 commit 實際觸發 PR QA，絕不能只有重跑原始失敗 run 就稱為已修復。
+
 ## 2026-09-27｜V3.0.34 原生點按功能與工程師選取手勢不可混淆
 目前僅 metric 原生卡具備安全的本地點按強調，不得把 frame 的點按與全部子元件手勢宣告為已接線。Engineer ON 時 InspectableTarget 的選取疊層優先；以選中狀態的原位展示預覽強調邊框，退出後才能測試真正點按。預設 OFF、不開啟交易／導覽、不改金融資料，取消草稿不持久化。舊版回歸繼續完整執行，CODE、BUILD、手機實機分開驗證。
 
