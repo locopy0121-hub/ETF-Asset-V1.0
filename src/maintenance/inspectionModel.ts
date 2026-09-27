@@ -146,7 +146,8 @@ export const TARGET_VISUAL_PRESETS={
 } as const satisfies Record<string,TargetOverride>;
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
-  if(field==='target:numberFormat')return kind==='metric'||kind==='value';
+  if(field==='target:source')return true; // actual mounted-target scope is enforced by skillAdapters
+ if(field==='target:numberFormat')return kind==='metric'||kind==='value';
   if(field==='target:tapAction'||field==='target:tapSwipeGuard'||field==='target:threshold')return kind==='metric';
   if(field==='target:resetVisual')return true;
   if(field==='target:preset')return nativeMaterial;

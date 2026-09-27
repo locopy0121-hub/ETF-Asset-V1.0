@@ -71,6 +71,9 @@ export function resolveSkillAdapter(tool:SkillTool,ctx:AdapterContext):AdapterRe
    pending(tool,'請先在真實頁面選取一個原生元件或工程師新增元件作為樣式來源。');
  if(original==='maintenance:local-diff')return active(tool,'只比較當前 A 的已儲存設定與暫存外觀，不涉及數據原值。');
  if(original==='maintenance:health')return active(tool,'只依目前真實量測分析越界、疑似重疊及觸控尺寸。');
+ if(original==='target:source')return ctx.scope==='target'&&ctx.kind?
+   active(tool,'目前已掛載的原生 A：唯讀查閱實際畫面屬性與接線位置，沒有來源證據時標明未知。'):
+   pending(tool,'請先選取已掛載的真實元件；新增的空白元件不可假裝擁有資料來源。');
  if(original.startsWith('workspace:'))return active(tool,'使用本頁實際工作區的共用工具。');
  const field=ctx.scope!=='frame'&&ctx.kind&&FRAME_TO_TARGET[original]?
    FRAME_TO_TARGET[original]!:original;

@@ -1,3 +1,4 @@
+import {inspectLiveTargetSource} from './sourceInspection';
 import {useEffect,useRef,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
@@ -354,6 +355,20 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
+    if(fieldName==='source'){
+      const snapshot=inspectLiveTargetSource(target);
+      return <View style={{marginTop:8,gap:7}}>
+        <Text style={{fontSize:12,color:theme.palette.textSecondary}}>只讀取當前原生 A 已掛載畫面的即時屬性快照，不新增資料映射、不呼叫 API、不修改帳務、交易或原始值。</Text>
+        <Text style={{fontSize:12,color:theme.palette.text}}>頁面：{snapshot.page}｜框架：{snapshot.frameKey}</Text>
+        <Text style={{fontSize:12,color:theme.palette.text}}>元件：{snapshot.targetId}｜類型：{snapshot.kind}</Text>
+        <Text style={{fontSize:12,color:theme.palette.text}}>上游官方 API／帳務欄位來源：未提供可驗證來源識別，暫列未證實。</Text>
+        {snapshot.fields.map((row,index)=><View key={String(index)+'-'+row.name} style={{gap:2}}>
+          <Text style={{fontSize:12,color:theme.palette.text,fontWeight:'700'}}>{row.name}</Text>
+          <Text selectable style={{fontSize:12,color:theme.palette.text}}>{row.value}</Text>
+          <Text style={{fontSize:10,color:theme.palette.textSecondary}}>{row.originReadOnly?'原元件標示唯讀':'原元件未宣告唯讀；本面板仍禁止修改'}</Text>
+        </View>)}
+      </View>;
+    }
     if(fieldName==='threshold')return <View style={{marginTop:8,gap:9}}>
       <Text style={{fontSize:12,color:theme.palette.textSecondary}}>僅本張真實數值卡 A 的顯示門檻；使用未縮放的原始數值，排除 ETF 代號、百分比、載入與無效資料。符合條件才顯示強調描邊，不改金額或交易。</Text>
       <Switch accessibilityLabel="數值卡門檻視覺開關" value={current.thresholdEnabled}
