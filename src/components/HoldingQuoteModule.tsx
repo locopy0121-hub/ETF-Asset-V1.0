@@ -96,7 +96,7 @@ export function HoldingQuoteModule({
       </Text>:null}
       {groups.quote.length?<View style={[styles.quoteRow,micro&&styles.microQuoteRow]}>
         <View style={micro?{minWidth:0}:{flex:1,minWidth:0}}>
-          <WallText field={groups.quote[0]! item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
+          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
         </View>
         {groups.quote.length>1?<View style={[styles.changeWrap,micro&&styles.microChangeWrap]}>
           {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}/>)}
