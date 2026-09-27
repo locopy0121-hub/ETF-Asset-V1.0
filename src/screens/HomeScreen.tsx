@@ -13,6 +13,7 @@ import { SegmentedControl } from '../components/SegmentedControl';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
 import { sortHoldingQuotes } from '../domain/holdingSort';
@@ -40,7 +41,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const sortKey=(effectiveDisplay.sortKey??'pnl') as HoldingSortKey;
   const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   // Legacy saved combinations remain safe: no graph is rendered in three columns.
-  const quoteStyle=holdingLayoutMode==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?'quote':rawQuoteStyle;
+  const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const setQuoteStyle=(value:QuoteModuleStyle)=>{
     if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
     editor.updateDisplayConfig({quoteStyle:value});
