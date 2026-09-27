@@ -1,8 +1,8 @@
 import {useEffect,useMemo,useRef,useState,type PropsWithChildren,type ReactNode} from 'react';
-import {AccessibilityInfo,Animated,Easing,Image,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
+import {AccessibilityInfo,Animated,Easing,Image,Pressable,StyleSheet,Text,View,type LayoutChangeEvent} from 'react-native';
 
 import type {FrameAppearance,FrameEditorConfig,FrameLayout} from '../editor/pageEditor';
-import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands,responsiveFrameDensity,frameImageCoverCrop} from '../maintenance/frameEffects';
+import {DEFAULT_FRAME_EFFECTS,angledFrameGradientBounds,colorWithAlpha,mixFrameColors,normalizeFrameEffects,outerGlowLayers,sampleFrameGradient,frameTitleMarqueeDuration,frameShadowSpreadBands,frameBorderGradientBands,responsiveFrameDensity,frameImageCoverCrop,DEFAULT_FRAME_TOUCH_STATE,applyFrameTouchAction} from '../maintenance/frameEffects';
 import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
@@ -30,6 +30,10 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const [titleAvailable,setTitleAvailable]=useState(0);
   const [titleIntrinsic,setTitleIntrinsic]=useState(0);
   const [measuredFrameWidth,setMeasuredFrameWidth]=useState(0);
+  const [frameTouch,setFrameTouch]=useState(DEFAULT_FRAME_TOUCH_STATE);
+  const longPressConsumed=useRef(false);
+  useEffect(()=>{if(!fx.frameInteractionEnabled)setFrameTouch(DEFAULT_FRAME_TOUCH_STATE);},
+    [fx.frameInteractionEnabled]);
   const responsiveDensity=Boolean(editorStyle&&fx.responsiveEnabled)?
     responsiveFrameDensity(measuredFrameWidth,layout,fx.responsiveCompactWidth,fx.responsiveDenseWidth):layout;
   useEffect(()=>{
@@ -252,12 +256,27 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     {fx.blinkEnabled&&editorStyle?<Animated.View pointerEvents="none"
       style={[StyleSheet.absoluteFill,corners,{borderWidth:2,
         borderColor:colorWithAlpha(blinkColor,fx.blinkOpacity),opacity:blink}]}/>:null}
+    {editorStyle&&fx.frameInteractionEnabled&&frameTouch.emphasized?<View pointerEvents="none"
+      style={[StyleSheet.absoluteFill,corners,{borderColor:theme.palette.primary,borderWidth:3}]}/>:null}
     {workActive?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
       borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
       borderRadius:editorStyle?.borderRadius??radius.lg,
     }]}/>:null}
     <View style={styles.header}>
-      <View style={{flex:1,overflow:'hidden',marginRight:action?8:0}}
+      <Pressable disabled={!editorStyle||!fx.frameInteractionEnabled}
+        accessibilityRole={fx.frameInteractionEnabled?'button':undefined}
+        accessibilityLabel={'框架標題：'+title}
+        accessibilityHint="僅標題區域回應點擊或長按；右側功能按鈕及內容不受影響"
+        onPressIn={()=>{longPressConsumed.current=false;}}
+        onLongPress={()=>{
+          longPressConsumed.current=true;
+          setFrameTouch(previous=>applyFrameTouchAction(previous,fx.frameLongAction));
+        }}
+        onPress={()=>{
+          if(longPressConsumed.current){longPressConsumed.current=false;return;}
+          setFrameTouch(previous=>applyFrameTouchAction(previous,fx.frameTapAction));
+        }}
+        style={{flex:1,overflow:'hidden',marginRight:action?8:0}}
         onLayout={(event:LayoutChangeEvent)=>{
           const width=event.nativeEvent.layout.width;
           setTitleAvailable(previous=>Math.abs(previous-width)<1?previous:width);
@@ -275,10 +294,11 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
           </Animated.View>
         </>:<Text numberOfLines={titleMarquee?1:undefined} ellipsizeMode="tail"
           style={[titleStyle,{flexShrink:1}]}>{title}</Text>}
-      </View>
+      </Pressable>
       {action}
     </View>
-    {editorStyle?.height!==undefined?<View style={{flexShrink:0,gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</View>:children}
+    {frameTouch.collapsed&&fx.frameInteractionEnabled?null:
+      editorStyle?.height!==undefined?<View style={{flexShrink:0,gap:fx.contentGap>=0?fx.contentGap:spacing.md}}>{children}</View>:children}
   </Animated.View>;
 }
 

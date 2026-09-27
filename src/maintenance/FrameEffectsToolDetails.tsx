@@ -112,6 +112,32 @@ export function FrameEffectsToolDetails({field}:{field:string}){
   const current=fx[key];
   const change=(next:unknown)=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[key]:next,
     ...(key==='gradientDirection'?{gradientAngle:null}:{})})});
+  if(key==='frameInteractionEnabled')return <View style={{gap:8,marginTop:9}}>
+    <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+      <Text style={{fontWeight:'700',color:theme.palette.text}}>C｜框架標題原生點擊／長按</Text>
+      <Switch accessibilityLabel="框架標題互動總開關" value={fx.frameInteractionEnabled} onValueChange={change}/>
+    </View>
+    {fx.frameInteractionEnabled?<>
+      {([['frameTapAction','點擊標題'],['frameLongAction','長按標題']] as const).map(([name,label])=><View key={name} style={{gap:6}}>
+        <Text style={{fontWeight:'700',color:theme.palette.text}}>{label}</Text>
+        <View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>
+          {([['none','不操作'],['emphasize','強調框線'],['collapse','收合／展開內容']] as const)
+            .map(([value,option])=><Pressable key={value} accessibilityRole="button"
+              accessibilityLabel={label+'：'+option}
+              onPress={()=>maintenance.patchFrame({effects:normalizeFrameEffects({...fx,[name]:value})})}
+              style={{padding:9,borderWidth:1,borderColor:theme.palette.primary,borderRadius:8,
+                backgroundColor:fx[name]===value?theme.palette.primary:theme.palette.surface}}>
+              <Text style={{color:fx[name]===value?'#FFFFFF':theme.palette.text}}>{option}</Text>
+            </Pressable>)}
+        </View>
+      </View>)}
+      <Text style={{fontSize:12,color:theme.palette.textSecondary}}>
+        互動只作用於本框架標題，不攔截右側操作按鈕、元件與圖表手勢；
+        長按後不會再觸發點擊。強調為獨立描邊，收合僅隱藏畫面內容，
+        固定高度框架不會更動既有尺寸。草稿取消及正式套用沿用既有工作台。
+      </Text>
+    </>:null}
+  </View>;
   if(key==='blinkEnabled')return <View style={{gap:8,marginTop:9}}>
     <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
       <Text style={{color:theme.palette.text,fontWeight:'700'}}>C｜原生邊框閃爍提醒（不遮蔽帳務數字）</Text>

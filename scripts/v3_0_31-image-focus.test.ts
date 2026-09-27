@@ -31,7 +31,7 @@ assert.equal(frameImageCoverCrop(100,100,NaN,100,.5,.5),null);
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(s=>s.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
 assert.equal(new Set(all.map(t=>t.id)).size,184);
-assert.equal(audit.readyDeclared,156);assert.equal(audit.pending,28);
+assert.equal(audit.readyDeclared,157);assert.equal(audit.pending,27);
 const fit=all.find(t=>t.id==='fx-img-fit')!;
 assert.equal(fit.field,'framefx:imageFit');assert.equal(fit.status,'ready');
 assert.equal(resolveSkillAdapter(fit,{scope:'frame',page:'home',frameKey:'asset-dashboard'}).status,'active');
@@ -46,11 +46,11 @@ assert.ok(ui.includes("if(key==='imageFit')")&&ui.includes('imageFocusX')&&ui.in
 assert.ok(ui.includes('maintenance.patchFrame')&&ui.includes('imageFocusX:.5,imageFocusY:.5'));
 assert.ok(read('src/settings/BackupService.ts').includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.31');assert.equal(app.expo.version,'3.0.31');
-assert.equal(app.expo.android.versionCode,30031);assert.equal(app.expo.ios.buildNumber,'30031');
+assert.equal(pkg.version,'3.0.32');assert.equal(app.expo.version,'3.0.32');
+assert.equal(app.expo.android.versionCode,30032);assert.equal(app.expo.ios.buildNumber,'30032');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.31-QA.apk')&&wf.includes('npm run test:v3_0_31'));
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30031'"));
+assert.ok(wf.includes('TF-Asset-V3.0.32-QA.apk')&&wf.includes('npm run test:v3_0_32'));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='30032'"));
 for(const path of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(path).length>0);
-console.log('V3.0.31 image cover crop PASS; 184 / 156 wired / 28 pending; device validation separate');
+console.log('V3.0.32 image cover crop PASS; 184 / 157 wired / 27 pending; device validation separate');

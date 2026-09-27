@@ -64,7 +64,7 @@ export const ENGINEER_SKILLS:readonly EngineerSkill[]=[
     later('fx-glass','⑤ 毛玻璃／磨砂與材質','需額外原生 Blur Runtime，不提供假選項'),
     later('fx-drag-sort','⑦ 子元件拖曳排序','待接入實際 Flex 佈局與手勢'),
     ready('fx-animation-advanced','⑧ 原生進場：滑入／縮放／旋轉','framefx:entranceEnabled','真實 FrameCard 原生 Animated.View 進場、時長與強度可調，系統降低動態時立即恢復靜態；局部草稿可取消'),
-    later('fx-frame-interaction','⑨ 框架點擊／長按','必須排除內部按鈕手勢衝突'),
+    ready('fx-frame-interaction','⑨ 框架標題點擊／長按','framefx:frameInteractionEnabled','真實 FrameCard 標題區原生點擊及長按：強調框線或收合內容；獨立事件且長按不重複觸發點擊，右側按鈕、子元件與金融資料不受影響'),
     later('fx-responsive','⑩ 尺寸斷點／跨頁中央模板','需安全版本化共享及局部適配')
   ]},
   {id:'dimensions',label:'空間尺寸',description:'內距、最小高度與空間分配',tools:[ready('frame-size','父框架實際長寬','frame:size','真正改變父框架 W/H；±1 dp、精確輸入、恢復自適應；與編輯畫布及子元件尺寸分離'),ready('padding','內距','padding','0–32 px'),ready('min-height','最小高度','minHeight','0–600 px'),ready('target-padding','元件內距','target:padding','0–32 px'),ready('workspace-size','工作區長寬','workspace:size','自由設計工作區，Mobile 超寬時可水平捲動'),ready('target-dimensions','原有元件長寬','target:dimensions','讀取真實 W/H，手動設定寬高'),later('resize-gesture','手勢縮放','需逐個視圖接入真實測量')]},

@@ -1,3 +1,10 @@
+## V3.0.32｜2026-09-27｜真實框架標題原生點擊／長按（開發 QA）
+來源 V3.0.31 PR #78 已驗證 HEAD `ce6bcc7d704161fd882e1593f0f92ccc58be6d96`、Actions #1189（run 36287523097）quality/backend/QA APK 全 PASS、APK Artifact #10921240837；APK versionCode 30031/versionName 3.0.31、SHA256 `010a9ed939a32014934ddd877bef26b24d0777d8c9542221c0dcaf4c0845a5bb`。事前不可變備份 `backup-v3.0.31-20260927-pre-v3.0.32` 指向上述成功 HEAD。本次從成功 HEAD 延伸 `go-v3.0.32-20260927-native-frame-interaction`，版本 3.0.32／Android+iOS 30032。
+
+只接入既存中央待適配的 `fx-frame-interaction`：真實 FrameCard 標題採原生 Pressable（右側 action 仍是獨立元件），提供原生點擊與長按的白名單視覺動作：不操作／強調框線／收合與展開內容。手勢總開關預設 OFF，長按消耗同一次觸控以避免後續 click 重複，框架強調邊框為 pointerEvents=none 獨立圖層，不改業務文字、行情、子圖表或按鈕手勢。固定高度框架的收合只隱藏內容，不改父框架寬高和定位。所有新效果經 FrameEffects 白名單正規化，從目前 A 的原位草稿預覽、取消與正式套用，沿用既有 SAF 備份與視覺歷史。
+
+唯一中央 184 項維持；本版程式宣告預期 **157 已接線／27 待原生適配**（不代表 157 項實機通過）。新增 `scripts/v3_0_32-frame-interaction.test.ts` 測試未啟用相容、惡意動作拒絕、點按／長按獨立狀態、原生入口／分支／版本，並完整保留 V3.0.1–V3.0.31 回歸。Immutable finance、actual_fee/tax、行情來源、原有備份均不變。品質、後端、原生 GitHub QA APK、ZIP/SHA/badging/Artifact 與手機驗收逐項分級，尚未經實際驗證前不可宣告 PASS；開發 QA 不等 review 也不自動合併 PR。下一版以本版真實成功 QA APK HEAD 為準，V3.0.40 成功後停止遞增，未完成項保留追蹤。
+
 ## V3.0.31｜2026-09-27｜真實背景圖片裁切焦點原生適配（GO）
 從 V3.0.30 PR #77 HEAD `fb3542f798165cb8765f8a2c1ad3dcd35d3d5f9b` 接續，Actions #1175（Run 36264423326）quality/backend/QA APK PASS；APK Artifact #10913711264，ZIP 完整、AAPT versionCode 30030 / versionName 3.0.30、SHA256 `53143f965029a9263d4ad2997568dd6d7493b7a095c1f9c17ad3cab6fc74efdb`。事前 immutable 備份 `backup-v3.0.30-20260927-pre-v3.0.31` 指向成功 HEAD。分支 `go-v3.0.31-20260927-image-focus`；本版 3.0.31／Android+iOS 30031。
 擴充已接線 `fx-img-fit`：當前真實 FrameCard 背景圖片 cover 模式新增水平／垂直裁切焦點 0–100%，預設各 50%；從真實來源圖片尺寸與 FrameCard 原位容器寬高計算原生 Image 的絕對位置，防止調整框架大小時裁切焦點漂移；實際尺寸不可用時自動退回原版置中 cover。A 框架→B 背景圖片→C 圖片適配／裁切焦點；草稿原地預覽、取消與正式套用沿用既有 FrameEffects/SAF。無新增外部依賴，不動任何帳務核心、資料來源或備份格式。`fx-background-image` 仍保留 pending，因跨手機 content URI 自動嵌入與持久轉移尚未完成，不能將部分裁切適配灌水成全技能完成。

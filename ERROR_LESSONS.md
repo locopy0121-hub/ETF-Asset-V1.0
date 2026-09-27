@@ -1,3 +1,6 @@
+## 2026-09-27｜V3.0.32 真實框架標題手勢與內部按鈕隔離
+不能直接在整張 FrameCard 父容器加 onPress 或全畫面透明 Pressable，否則攔截或重複觸發持股卡、圖表及右上角操作按鈕。只在獨立標題區放原生 Pressable，右側 action 與財務 children 繼續為兄弟，frameInteractionEnabled 預設 OFF，長按消耗本次 onPress；只允許本地畫面強調框線與收合／展開，不執行外部 URL、帳務操作或隱藏真實資料來源。新欄位必須走 normalizeFrameEffects 和 A 草稿正式套用，舊 SAF/財務核心不動。歷版測試要同步 3.0.32/30032、實際 QA 分支與 184/157/27 宣告統計；Build/實機分開驗證。
+
 ## 2026-09-27｜V3.0.31 #1187 native cover crop 負零與驗證門檻
 全部 V3.0.1–V3.0.30 歷版測試通過後，V3.0.31 新增 `frameImageCoverCrop` 回歸在水平焦點 0 時 `deepStrictEqual` 觀察到 `-0`（JS 負零）而 FAIL；原生視覺坐標數值等效但資料契約應明確回傳正零。只在焦點 x/y 為 0 時返回 0，不更動裁切尺度、非零焦點、金融資料或影像模式，並新增兩軸負零回歸，以同一 PR 重新執行完整 Gate 及 APK。
 

@@ -30,7 +30,7 @@ const sample=applyConditionalAppearance({textColor:'#000000',textProfitColor:tru
 assert.equal(sample.textColor,'#ABCDEF');assert.equal(sample.textProfitColor,false);
 const all=COMPLETE_ENGINEER_SKILLS.flatMap(s=>s.tools),audit=completeCatalogAudit();
 assert.equal(all.length,184);assert.equal(AB_PROPERTY_TOOL_IDS.length,184);
-assert.equal(audit.readyDeclared,156);assert.equal(audit.pending,28);
+assert.equal(audit.readyDeclared,157);assert.equal(audit.pending,27);
 const tool=all.find(t=>t.id==='advanced-data-simulation')!;
 assert.equal(tool.status,'ready');assert.equal(tool.field,'maintenance:data-simulation');
 for(const kind of ['metric','text','value','prefix','generic'] as const)
@@ -59,10 +59,10 @@ assert.ok(ui.includes('m.setPreviewState(state)')&&ui.includes('SIMULATION_STATE
 assert.ok(wb.includes("if(tool.field==='maintenance:data-simulation')return <DataSimulationToolDetails/>"));
 const backup=read('src/settings/BackupService.ts');assert.ok(backup.includes('key.startsWith(PREFIX)'));
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.0.31');assert.equal(app.expo.version,'3.0.31');
-assert.equal(app.expo.android.versionCode,30031);assert.equal(app.expo.ios.buildNumber,'30031');
+assert.equal(pkg.version,'3.0.32');assert.equal(app.expo.version,'3.0.32');
+assert.equal(app.expo.android.versionCode,30032);assert.equal(app.expo.ios.buildNumber,'30032');
 const wf=read('.github/workflows/ci.yml');
-assert.ok(wf.includes('TF-Asset-V3.0.31-QA.apk')&&wf.includes("github.head_ref == 'go-v3.0.31-20260927-image-focus'"));
+assert.ok(wf.includes('TF-Asset-V3.0.32-QA.apk')&&wf.includes("github.head_ref == 'go-v3.0.32-20260927-native-frame-interaction'"));
 for(const p of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])assert.ok(read(p).length>0);
-console.log('V3.0.31 native A simulation: seven sandbox states, readonly source, no persistence, AB and finance PASS');
+console.log('V3.0.32 native A simulation: seven sandbox states, readonly source, no persistence, AB and finance PASS');
 console.log('184 central skills / 150 declared wired / 34 pending / actual device separate');

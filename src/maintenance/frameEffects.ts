@@ -6,6 +6,8 @@ export type FrameEffects=Readonly<{
   imageSource:'builtIn'|'custom';imageIndex:number;imageUri:string|null;
   imageFit:'cover'|'contain'|'stretch';imageOpacity:number;
   imageFocusX:number;imageFocusY:number;
+  frameInteractionEnabled:boolean;frameTapAction:'none'|'emphasize'|'collapse';
+  frameLongAction:'none'|'emphasize'|'collapse';
   maskColor:string;maskProfitColor:boolean;maskOpacity:number;
   borderStyle:'solid'|'dashed'|'dotted';
   borderGradientEnabled:boolean;borderGradientMode:'dual'|'gradient';
@@ -35,6 +37,7 @@ export const DEFAULT_FRAME_EFFECTS:FrameEffects={
   gradientMidEnabled:false,gradientMidColor:'#C4B5FD',gradientMidProfitColor:false,gradientMidStop:.5,
   imageSource:'builtIn',imageIndex:0,imageUri:null,imageFit:'cover',imageOpacity:1,
   imageFocusX:.5,imageFocusY:.5,
+  frameInteractionEnabled:false,frameTapAction:'emphasize',frameLongAction:'collapse',
   maskColor:'#000000',maskProfitColor:false,maskOpacity:0,
   borderStyle:'solid',borderGradientEnabled:false,borderGradientMode:'dual',
   borderGradientStartColor:'#A78BFA',borderGradientStartProfitColor:false,
@@ -85,7 +88,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   }
   for(const key of ['gradientEndColor','gradientMidColor','borderGradientStartColor','borderGradientEndColor','maskColor','shadowColor','glowColor','outerGlowColor','blinkColor'] as const)
     if(hex(v[key]))out[key]=v[key].toUpperCase();
-  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','entranceEnabled','responsiveEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
+  for(const key of ['gradientEndProfitColor','gradientMidEnabled','borderGradientEnabled','borderGradientStartProfitColor','borderGradientEndProfitColor','gradientMidProfitColor','maskProfitColor','shadowProfitColor','shadowSpreadEnabled','glowEnabled','glowProfitColor','glowPulse','blinkEnabled','blinkProfitColor','titleMarqueeEnabled','entranceEnabled','responsiveEnabled','frameInteractionEnabled','outerGlowEnabled','outerGlowProfitColor'] as const)
     if(typeof v[key]==='boolean')out[key]=v[key];
   if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')out.backgroundMode=v.backgroundMode;
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
@@ -105,7 +108,18 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   if(v.borderStyle==='solid'||v.borderStyle==='dashed'||v.borderStyle==='dotted')out.borderStyle=v.borderStyle;
   if(v.borderGradientMode==='dual'||v.borderGradientMode==='gradient')out.borderGradientMode=v.borderGradientMode;
   if(v.entranceMode==='slide'||v.entranceMode==='zoom'||v.entranceMode==='rotate')out.entranceMode=v.entranceMode;
+  for(const key of ['frameTapAction','frameLongAction'] as const)
+    if(v[key]==='none'||v[key]==='emphasize'||v[key]==='collapse')out[key]=v[key];
   return out as FrameEffects;
+}
+/** Header-only gestures: never alter frames, children, market data or stored finance. */
+export type FrameTouchAction=FrameEffects['frameTapAction'];
+export type FrameTouchState=Readonly<{emphasized:boolean;collapsed:boolean}>;
+export const DEFAULT_FRAME_TOUCH_STATE:FrameTouchState={emphasized:false,collapsed:false};
+export function applyFrameTouchAction(state:FrameTouchState,action:FrameTouchAction,suppressTap=false):FrameTouchState{
+  if(suppressTap||action==='none')return state;
+  return action==='emphasize'?{...state,emphasized:!state.emphasized}:
+    {...state,collapsed:!state.collapsed};
 }
 export function colorWithAlpha(color:string,alpha:number):string{
   if(!hex(color))return 'rgba(255,255,255,1)';
