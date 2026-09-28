@@ -111,7 +111,9 @@ function AppBody(){
     return()=>subscription.remove();
   },[active,detail,chartHolding,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen,maintenance.session]);
   useEffect(()=>{
-    if(maintenance.session&&(maintenance.session.page!==active||detail||chartHolding))maintenance.cancel();
+    if(!maintenance.session)return;
+    const expectedPage=detail?'portfolio':active;
+    if(maintenance.session.page!==expectedPage||chartHolding)maintenance.cancel();
   },[active,detail,chartHolding,maintenance.session]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
