@@ -39,7 +39,7 @@ assert.match(screen,/<PortfolioSafeList rows=\{sorted\} onOpenHolding=\{onOpenHo
 assert.match(screen,/setListFallback\(true\)/);
 assert.doesNotMatch(screen,/<PortfolioModeSwitcher/);
 assert.match(editor,/portfolioListStyle:'table'/);
-assert.match(settings,/<PortfolioListEditor value=/);
+assert.match(settings,/<PageLayoutToolWorkbench/,'page settings now enter the unified real-layout workbench');
 assert.doesNotMatch(settings,/key:'simple',label:'簡易清單'/);
 assert.doesNotMatch(fallback,/PortfolioHoldingTable|HoldingQuoteCollection|InspectableTarget|Animated/);
 const app=JSON.parse(readFileSync('app.json','utf8'));

@@ -36,11 +36,13 @@ for(const component of ['DashboardAssetOverview','DashboardProfitAnalysis','Dash
   assert.match(stack,new RegExp(`child\\.type===${component}`),component+' must bridge the real rendered child into maintenance');
 }
 const settings=fs.readFileSync('src/components/PageFrameSettingsModal.tsx','utf8');
+const layoutTool=fs.readFileSync('src/components/PageLayoutToolWorkbench.tsx','utf8');
+assert.match(settings,/PageLayoutToolWorkbench/);
 for(const frame of ['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions']){
-  assert.ok(settings.includes(`'${frame}'`),frame+' must expose a page-setting content editor');
+  assert.ok(layoutTool.includes(`'${frame}'`),frame+' must expose a real page-layout adapter');
 }
-for(const tool of ['內容排序','KPI 排序','明細排序','按鈕排序','文字顏色','卡片內距']){
-  assert.ok(settings.includes(tool),'missing dashboard content setting: '+tool);
+for(const tool of ['內容佈局','KPI 佈局','明細佈局','快捷按鈕佈局','卡片內距']){
+  assert.ok(layoutTool.includes(tool),'missing dashboard layout tool: '+tool);
 }
 const editable=fs.readFileSync('src/components/dashboard/DashboardEditableContent.tsx','utf8');
 assert.ok(editable.includes('InspectableTarget'),'dashboard content must use real resident maintenance targets');

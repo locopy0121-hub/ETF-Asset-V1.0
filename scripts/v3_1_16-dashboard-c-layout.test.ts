@@ -42,10 +42,12 @@ assert.match(profit,/flexBasis:'46%'/);
 assert.match(profit,/ordered\.slice\(0,4\)/);
 
 const modal=read('src/components/PageFrameSettingsModal.tsx');
-assert.match(modal,/方案 C｜儀表板佈局/);
-assert.match(modal,/DashboardLayoutPreview/);
-assert.match(modal,/行情牆設定完全沿用原有獨立設定/);
-assert.match(modal,/固定 2×2 四宮格，不使用自由 XY/);
+const layoutTool=read('src/components/PageLayoutToolWorkbench.tsx');
+assert.match(modal,/PageLayoutToolWorkbench/,'page settings must use the unified layout workbench');
+assert.doesNotMatch(modal,/方案 C｜儀表板佈局/,'legacy duplicate dashboard settings block must stay removed');
+for(const token of ['DashboardAssetOverview','DashboardProfitAnalysis','DashboardProfitDetail','DashboardQuickActions','DashboardLayoutTools'])
+  assert.ok(layoutTool.includes(token),'real layout workbench missing dashboard module '+token);
+assert.match(layoutTool,/wallConfig=\{wall\}/,'holding wall keeps its independent live draft config');
 
 // Frozen-scope gate: these are the exact V3.1.15 Git blobs and must remain byte-for-byte unchanged.
 assert.equal(gitBlob('src/components/HoldingMarketWallEditor.tsx'),'e8f4d4ba19bec21e79d6b8e0ca8e3ca0241a8466');
