@@ -140,7 +140,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
         },
         {key:'holding-quotes',element:
           <FrameCard title="持股行情模塊">
-            <PortfolioQuickBar firstMode={homeFirstMode} activeMode={quoteStyle}
+            <PortfolioQuickBar firstMode={homeFirstMode} activeMode={quoteStyle} firstHint="切換純行情與精簡"
               sortLabel={currentSort.label} onCycleFirst={cycleHomeFirst}
               onSelect={setQuoteStyle} onCycleSort={cycleHomeSort}/>
             <View style={styles.sortRow}>
