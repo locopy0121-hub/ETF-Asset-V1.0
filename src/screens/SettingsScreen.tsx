@@ -24,8 +24,7 @@ import { MAIN_PAGES } from '../domain/pageRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
-import { auditCashSources, LEGACY_DEFAULT_CASH, LEGACY_REVERSAL_LABEL } from '../finance/cashAudit';
-import { TF_LEDGER_KEY } from '../settings/backupDocumentFormat';
+import { auditCashSources } from '../finance/cashAudit';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
 import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import {
@@ -84,7 +83,6 @@ export function SettingsScreen(){
   const [backups,setBackups]=useState<BackupRecord[]>([]);
   const [backupStatus,setBackupStatus]=useState('');
   const [backupBusy,setBackupBusy]=useState(false);
-  const [cashCorrectionBusy,setCashCorrectionBusy]=useState(false);
   const [verifiedExternal,setVerifiedExternal]=useState<VerifiedExternalBackup|null>(null);
   const [chosenDocument,setChosenDocument]=useState<null|{
     name:string;text:string;entries:number;keys:number;exportedAt:string;
@@ -207,37 +205,6 @@ export function SettingsScreen(){
   }
 
 
-  function confirmLegacyCashCorrection(){
-    const audit=auditCashSources(finance.initialCash,finance.entries);
-    if(!finance.hydrated||cashCorrectionBusy||!audit.possibleLegacyDefault)return;
-    Alert.alert('確認舊版初始現金','目前存在 NT$ 750,000 期初現金。若並非本人資金，可新增一筆 -750,000 的可追查沖回紀錄。現金可能轉為負數，不會刪除買賣或股息紀錄。請先至備份與還原建立外部檔案。',[
-      {text:'取消',style:'cancel'},
-      {text:'先備份並建立沖回',style:'destructive',onPress:()=>void(async()=>{
-        setCashCorrectionBusy(true);
-        try{
-          if(!auditCashSources(finance.initialCash,finance.entries).possibleLegacyDefault)
-            throw new Error('初始現金狀態已有變化，請重新核對');
-          const backup=await createLocalBackup();
-          const raw=backup.payload[TF_LEDGER_KEY];
-          if(!raw)throw new Error('本機備份缺少 Ledger，沖回已取消');
-          const saved=JSON.parse(raw) as {initialCash?:number;entries?:unknown[]};
-          if(saved.initialCash!==finance.initialCash||
-            JSON.stringify(saved.entries)!==JSON.stringify(finance.entries))
-            throw new Error('本機備份與目前紀錄不一致，尚未執行沖回；請先確認帳務已儲存');
-          const now=new Date();
-          const day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),
-            String(now.getDate()).padStart(2,'0')].join('-');
-          finance.addOther({id:'legacy-opening-cash-reversal-'+now.getTime(),date:day,
-            kind:'other',label:LEGACY_REVERSAL_LABEL,amount:-LEGACY_DEFAULT_CASH});
-          await reloadBackupMeta();
-          Alert.alert('已送入沖回紀錄','已先建立 App 內備份。請開啟帳務中心核對沖回交易與現金餘額，並另存外部備份。不要解除安裝。');
-        }catch(error){
-          Alert.alert('沖回中止',error instanceof Error?error.message:String(error));
-        }finally{setCashCorrectionBusy(false);}
-      })()},
-    ]);
-  }
-
   function accountingSection(){
     const p=broker.activeProfile;
     return <View style={styles.children}>
@@ -270,13 +237,7 @@ export function SettingsScreen(){
             <StatusRow label="交易／股息／調整淨流量" value={fmt(audit.netMovement)}/>
             <StatusRow label="現金餘額" value={finance.cashConfigured?fmt(audit.cashBalance):'未設定'}/>
             {!finance.cashConfigured?<Text style={styles.dangerText}>目前沒有明確的現金來源。交易淨流量只用於對帳，不代表可用現金；不再把從 0 起算的買進支出顯示成負的現金餘額。</Text>:null}
-            <Text style={styles.note}>期初現金獨立儲存，不屬於歷史交易。V3.1.13 起會同時清理舊版 750,000 期初值與一筆孤立的系統 -750,000 沖回；買賣、股息與其他真實紀錄保持不變。</Text>
-            {audit.possibleLegacyDefault?<View>
-              <Text style={styles.dangerText}>偵測到尚未完成遷移的舊版 750,000 元期初值。正常情況會在帳務載入時自動歸零；此處保留人工沖回作為異常備援。</Text>
-              <ActionButton label="先建立外部備份" onPress={()=>{setTop('backup');setBackupPanel('export');setAccountingPanel(null);}}/>
-              <ActionButton label={cashCorrectionBusy?'正在備份與核對…':'確認非本人資金，沖回 750,000 元'} disabled={cashCorrectionBusy||backupBusy} danger onPress={confirmLegacyCashCorrection}/>
-            </View>:null}
-            {audit.hasLegacyReversal?<Text style={styles.note}>已有舊版期初現金沖回紀錄，請至帳務中心核對。</Text>:null}
+            <Text style={styles.note}>未建立明確現金來源時，期初現金固定為 NT$ 0。買進、賣出、股息與其他調整仍保留逐筆對帳，但不會自動建立任何期初資金或系統沖回。</Text>
           </>;
         })()}
       </Panel>:null}
