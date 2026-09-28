@@ -69,6 +69,6 @@ assert.doesNotMatch(bar,/Animated|PanResponder|三模式/);
 assert.match(stack,/id:PORTFOLIO_QUICK_SWITCH_ID/);
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.2.2');
-assert.equal(app.expo.android.versionCode,30202);
+assert.equal(pkg.version,'3.2.3');
+assert.equal(app.expo.android.versionCode,30203);
 console.log('V3.1.18 four-key icon/title cycle, immediate sorting, emergency safe-list: PASS; device test pending');
