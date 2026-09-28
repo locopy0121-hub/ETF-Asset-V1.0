@@ -7,14 +7,16 @@ import type {HoldingQuote} from '../domain/uiModels';
 import {colors,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {PortfolioHoldingTable} from './PortfolioHoldingTable';
+import {PortfolioSafeList} from './PortfolioSafeList';
 
 const EFFECTS:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'呼吸燈','flash-on-change':'變動閃爍',bounce:'跳動'};
 const TRIGGERS:Record<'always'|'change'|'refresh'|'gain'|'loss',string>={always:'持續',change:'數值變動',refresh:'資料刷新',gain:'正值',loss:'負值'};
 const SPEEDS:Record<ItemEffectSpeed,string>={slow:'慢',normal:'一般',fast:'快'};
 const INTENSITIES:Record<ItemEffectIntensity,string>={soft:'柔和',medium:'中',strong:'強'};
 
-export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_ETF_BADGES}:{
+export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_ETF_BADGES,previewStyle='table'}:{
   value:PortfolioListConfig;onChange:(next:PortfolioListConfig)=>void;previewQuote?:HoldingQuote|undefined;badges?:EtfBadgeConfig;
+  previewStyle?:'simple'|'table';
 }){
   const [editing,setEditing]=useState<PortfolioColumnKey|null>('shares');
   const patch=(key:PortfolioColumnKey,change:Partial<PortfolioColumnConfig>)=>
@@ -70,8 +72,10 @@ export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_
       </View>)}
     </View>
     {previewQuote?<View style={styles.card}>
-      <Text style={styles.title}>即時清單預覽（僅本列，完整欄位可水平滑動）</Text>
-      <PortfolioHoldingTable rows={[previewQuote]} config={value} badges={badges}/>
+      <Text style={styles.title}>即時清單預覽（{previewStyle==='simple'?'簡易清單':'詳細表格'}）</Text>
+      {previewStyle==='simple'
+        ?<PortfolioSafeList rows={[previewQuote]} onOpenHolding={()=>{}}/>
+        :<PortfolioHoldingTable rows={[previewQuote]} config={value} badges={badges}/>
       <Text style={styles.hint}>修改後先預覽整列，再按頁面設定的「套用」儲存。</Text>
     </View>:null}
     <Pressable style={styles.reset} onPress={()=>onChange(DEFAULT_PORTFOLIO_LIST)}><Text style={styles.resetText}>恢復清單預設配置</Text></Pressable>

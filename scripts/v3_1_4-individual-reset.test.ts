@@ -40,7 +40,7 @@ assert.deepEqual(individualNativeDisplayPatch(control('清單模式／行情牆�
 assert.deepEqual(individualNativeDisplayPatch(control('純行情／＋圖表／精簡／進階')),{quoteStyle:'chart'});
 assert.deepEqual(individualNativeDisplayPatch(control('其他選擇')),{});
 assert.deepEqual(individualNativeDisplayPatch({page,frameKey:frame,kind:'portfolio-list',properties:[]}),
-  {portfolioList:DEFAULT_PORTFOLIO_LIST});
+  {portfolioList:DEFAULT_PORTFOLIO_LIST,portfolioListStyle:'simple'});
 assert.deepEqual(individualNativeDisplayPatch({page,frameKey:frame,kind:'quote-card',properties:[]}),{});
 assert.deepEqual(individualNativeDisplayPatch({page:'home',frameKey:'holding-view',
   kind:'portfolio-list',properties:[]}),{});
@@ -65,7 +65,7 @@ assert.match(collection,/wallReset\?DEFAULT_HOLDING_WALL_CONFIG:wallConfig/);
 assert.equal(DEFAULT_HOLDING_WALL_CONFIG.style.cornerRadius>0,true);
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.1.6');
-assert.equal(app.expo.android.versionCode,30106);
-assert.equal(app.expo.ios.buildNumber,'30106');
-console.log('V3.1.6 individual factory reset, inherited-style isolation, emergency selector, version and data safety: PASS (Android device remains separate)');
+assert.equal(pkg.version,'3.1.7');
+assert.equal(app.expo.android.versionCode,30107);
+assert.equal(app.expo.ios.buildNumber,'30107');
+console.log('V3.1.7 individual factory reset, inherited-style isolation, emergency selector, version and data safety: PASS (Android device remains separate)');

@@ -2,12 +2,11 @@ import {Pressable,StyleSheet,Text,View} from 'react-native';
 import type {HoldingQuote} from '../domain/uiModels';
 import {colors,radius} from '../theme/tokens';
 
-/** Read-only emergency path: no old table, collection, animations, chart or maintenance wrapper. */
+/** Independent simple-list renderer, shared by the first shortcut and automatic table fallback. */
 export function PortfolioSafeList({rows,onOpenHolding}:{
   rows:readonly HoldingQuote[];onOpenHolding:(row:HoldingQuote)=>void;
 }){
   return <View style={styles.root}>
-    <Text style={styles.hint}>安全簡易清單：暫時不載入原始清單／行情牆樣式；帳務與行情來源保持不變。</Text>
     {rows.length===0?<Text style={styles.empty}>目前沒有持股</Text>:rows.map(row=>{
       const hasQuote=row.quoteVerified!==false&&Number.isFinite(row.price);
       const pnl=hasQuote&&Number.isFinite(row.pnl)?row.pnl:null;
