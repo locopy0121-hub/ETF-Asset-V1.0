@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.1.7",
+  "version": "3.1.8",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_1_7 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_1_8 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -225,7 +225,8 @@
     "test:v3_1_4": "npm run test:v3_1_3 && tsx scripts/v3_1_4-individual-reset.test.ts",
     "test:v3_1_5": "npm run test:v3_1_4 && tsx scripts/v3_1_5-mode-switch.test.ts",
     "test:v3_1_6": "npm run test:v3_1_5 && tsx scripts/v3_1_6-quickbar.test.ts",
-    "test:v3_1_7": "npm run test:v3_1_6 && tsx scripts/v3_1_7-inline-list.test.ts"
+    "test:v3_1_7": "npm run test:v3_1_6 && tsx scripts/v3_1_7-inline-list.test.ts",
+    "test:v3_1_8": "npm run test:v3_1_7 && tsx scripts/v3_1_8-legacy-table.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
