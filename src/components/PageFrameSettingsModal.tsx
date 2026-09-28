@@ -206,6 +206,9 @@ export function PageFrameSettingsModal({
                     onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}
                     catalogRefreshing={market.catalogRefreshing} onRefreshCatalog={()=>void market.refreshCatalog()}/>:null}
                 </View>:null}
+                {pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key)?
+                  <DashboardModuleContentEditor frameKey={frame.key} value={displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT}
+                    onChange={dashboardLayout=>setDisplayDraft(current=>({...current,dashboardLayout}))}/>:null}
                 {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
               </AccordionGroup>:null}
             </View>:null}
@@ -215,6 +218,92 @@ export function PageFrameSettingsModal({
       {previewQuote&&contentTab==='wall'&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
+}
+
+function DashboardModuleContentEditor({frameKey,value,onChange}:{frameKey:string;value:DashboardLayoutConfig;onChange:(value:DashboardLayoutConfig)=>void}){
+  const patchOverview=(next:Partial<DashboardLayoutConfig['overview']>)=>onChange({...value,overview:{...value.overview,...next}});
+  const patchProfit=(next:Partial<DashboardLayoutConfig['profitAnalysis']>)=>onChange({...value,profitAnalysis:{...value.profitAnalysis,...next}});
+  const patchDetail=(next:Partial<DashboardLayoutConfig['profitDetail']>)=>onChange({...value,profitDetail:{...value.profitDetail,...next}});
+  const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>onChange({...value,quickActions:{...value.quickActions,...next}});
+  if(frameKey==='asset-dashboard')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>編輯資產總覽內部真實內容；框架外觀仍由上層框架工具控制。文字、數值與 NT$ 在維護工程師中亦可個別選取。</Text>
+    <OrderEditor title="內容排序" order={value.overview.order}
+      items={[{key:'label',label:'標題'},{key:'amount',label:'金額'},{key:'caption',label:'說明'}]}
+      onChange={order=>patchOverview({order})}/>
+    <EditorRow title="內容間距" subtitle={value.overview.contentGap+' dp'}><NumberStep label="dp" value={value.overview.contentGap} min={0} max={24} step={1} onChange={contentGap=>patchOverview({contentGap})}/></EditorRow>
+    <EditorRow title="卡片內距" subtitle={value.overview.padding+' dp'}><NumberStep label="dp" value={value.overview.padding} min={8} max={28} step={1} onChange={padding=>patchOverview({padding})}/></EditorRow>
+    <EditorRow title="內容對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.overview.align} onChange={align=>patchOverview({align})}/></EditorRow>
+    <EditorRow title="標題字體大小" subtitle={value.overview.labelFontSize+' px'}><NumberStep label="px" value={value.overview.labelFontSize} min={8} max={28} step={1} onChange={labelFontSize=>patchOverview({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="標題文字顏色" value={value.overview.labelColor} onChange={labelColor=>patchOverview({labelColor})}/>
+    <EditorRow title="主數值字體大小" subtitle={value.overview.valueFontSize+' px'}><NumberStep label="px" value={value.overview.valueFontSize} min={18} max={64} step={1} onChange={valueFontSize=>patchOverview({valueFontSize})}/></EditorRow>
+    <ColorPalettePicker label="主數值文字顏色" value={value.overview.valueColor} onChange={valueColor=>patchOverview({valueColor})}/>
+    <EditorRow title="NT$ 字體大小" subtitle={value.overview.prefixFontSize+' px'}><NumberStep label="px" value={value.overview.prefixFontSize} min={10} max={32} step={1} onChange={prefixFontSize=>patchOverview({prefixFontSize})}/></EditorRow>
+    <ColorPalettePicker label="NT$ 文字顏色" value={value.overview.prefixColor} onChange={prefixColor=>patchOverview({prefixColor})}/>
+    <EditorRow title="說明字體大小" subtitle={value.overview.captionFontSize+' px'}><NumberStep label="px" value={value.overview.captionFontSize} min={8} max={24} step={1} onChange={captionFontSize=>patchOverview({captionFontSize})}/></EditorRow>
+    <ColorPalettePicker label="說明文字顏色" value={value.overview.captionColor} onChange={captionColor=>patchOverview({captionColor})}/>
+  </View>;
+  if(frameKey==='profit-analysis')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>四張 KPI 卡可調整排序、卡片內距、文字大小、文字色與對齊；損益數值仍可跟隨系統損益色。</Text>
+    <OrderEditor title="KPI 排序" order={value.profitAnalysis.order}
+      items={[{key:'realizedNetPnL',label:'已實現損益'},{key:'totalPnl',label:'含息總損益'},{key:'totalUnrealizedProfit',label:'未實現損益'},{key:'totalMarketValue',label:'持股市值'}]}
+      onChange={order=>patchProfit({order})}/>
+    <EditorRow title="卡片內距" subtitle={value.profitAnalysis.cardPadding+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardPadding} min={0} max={28} step={1} onChange={cardPadding=>patchProfit({cardPadding})}/></EditorRow>
+    <EditorRow title="卡片間距" subtitle={value.profitAnalysis.cardGap+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} onChange={cardGap=>patchProfit({cardGap})}/></EditorRow>
+    <EditorRow title="文字對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.profitAnalysis.align} onChange={align=>patchProfit({align})}/></EditorRow>
+    <EditorRow title="標題大小" subtitle={value.profitAnalysis.labelFontSize+' px'}><NumberStep label="px" value={value.profitAnalysis.labelFontSize} min={8} max={28} step={1} onChange={labelFontSize=>patchProfit({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="標題顏色" value={value.profitAnalysis.labelColor} onChange={labelColor=>patchProfit({labelColor})}/>
+    <EditorRow title="數值大小" subtitle={value.profitAnalysis.valueFontSize+' px'}><NumberStep label="px" value={value.profitAnalysis.valueFontSize} min={10} max={40} step={1} onChange={valueFontSize=>patchProfit({valueFontSize})}/></EditorRow>
+    <ColorPalettePicker label="一般數值顏色" value={value.profitAnalysis.valueColor} onChange={valueColor=>patchProfit({valueColor})}/>
+    <EditorRow title="副文字大小" subtitle={value.profitAnalysis.captionFontSize+' px'}><NumberStep label="px" value={value.profitAnalysis.captionFontSize} min={8} max={24} step={1} onChange={captionFontSize=>patchProfit({captionFontSize})}/></EditorRow>
+    <ColorPalettePicker label="副文字顏色" value={value.profitAnalysis.captionColor} onChange={captionColor=>patchProfit({captionColor})}/>
+  </View>;
+  if(frameKey==='pnl-detail')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>明細列可調整顯示順序、左右內距、欄位間距、字體大小與顏色；財務數值來源保持唯讀。</Text>
+    <OrderEditor title="明細排序" order={value.profitDetail.order}
+      items={[{key:'price',label:'純價差未實現'},{key:'net',label:'淨清算未實現'},{key:'realized',label:'已實現損益'},{key:'total',label:'含息總損益'}]}
+      onChange={order=>patchDetail({order})}/>
+    <EditorRow title="左右內距" subtitle={value.profitDetail.rowPaddingHorizontal+' dp'}><NumberStep label="dp" value={value.profitDetail.rowPaddingHorizontal} min={0} max={32} step={1} onChange={rowPaddingHorizontal=>patchDetail({rowPaddingHorizontal})}/></EditorRow>
+    <EditorRow title="欄位間距" subtitle={value.profitDetail.rowGap+' dp'}><NumberStep label="dp" value={value.profitDetail.rowGap} min={0} max={28} step={1} onChange={rowGap=>patchDetail({rowGap})}/></EditorRow>
+    <EditorRow title="文字對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.profitDetail.align} onChange={align=>patchDetail({align})}/></EditorRow>
+    <EditorRow title="標題大小" subtitle={value.profitDetail.labelFontSize+' px'}><NumberStep label="px" value={value.profitDetail.labelFontSize} min={8} max={28} step={1} onChange={labelFontSize=>patchDetail({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="標題顏色" value={value.profitDetail.labelColor} onChange={labelColor=>patchDetail({labelColor})}/>
+    <EditorRow title="數值大小" subtitle={value.profitDetail.valueFontSize+' px'}><NumberStep label="px" value={value.profitDetail.valueFontSize} min={9} max={32} step={1} onChange={valueFontSize=>patchDetail({valueFontSize})}/></EditorRow>
+    <ColorPalettePicker label="一般數值顏色" value={value.profitDetail.valueColor} onChange={valueColor=>patchDetail({valueColor})}/>
+  </View>;
+  if(frameKey==='dashboard-quick-actions')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>快捷功能可調整按鈕排序、內距、圖示／文字間距、圖示與文字大小／顏色及對齊。</Text>
+    <OrderEditor title="按鈕排序" order={value.quickActions.order}
+      items={[{key:'stock-query',label:'持股查詢'},{key:'ledger',label:'交易紀錄'},{key:'allocation',label:'資產配置'},{key:'dividend',label:'股息資訊'}]}
+      onChange={order=>patchQuick({order})}/>
+    <EditorRow title="按鈕內距" subtitle={value.quickActions.itemPadding+' dp'}><NumberStep label="dp" value={value.quickActions.itemPadding} min={0} max={28} step={1} onChange={itemPadding=>patchQuick({itemPadding})}/></EditorRow>
+    <EditorRow title="圖示／文字間距" subtitle={value.quickActions.itemGap+' dp'}><NumberStep label="dp" value={value.quickActions.itemGap} min={0} max={24} step={1} onChange={itemGap=>patchQuick({itemGap})}/></EditorRow>
+    <EditorRow title="內容對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.quickActions.align} onChange={align=>patchQuick({align})}/></EditorRow>
+    <EditorRow title="圖示大小" subtitle={value.quickActions.iconSize+' px'}><NumberStep label="px" value={value.quickActions.iconSize} min={18} max={36} step={1} onChange={iconSize=>patchQuick({iconSize})}/></EditorRow>
+    <ColorPalettePicker label="圖示顏色" value={value.quickActions.iconColor} onChange={iconColor=>patchQuick({iconColor})}/>
+    <EditorRow title="文字大小" subtitle={value.quickActions.labelFontSize+' px'}><NumberStep label="px" value={value.quickActions.labelFontSize} min={8} max={24} step={1} onChange={labelFontSize=>patchQuick({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="文字顏色" value={value.quickActions.labelColor} onChange={labelColor=>patchQuick({labelColor})}/>
+  </View>;
+  return null;
+}
+
+function OrderEditor<T extends string>({title,order,items,onChange}:{title:string;order:readonly T[];items:readonly {key:T;label:string}[];onChange:(order:readonly T[])=>void}){
+  const labels=new Map(items.map(item=>[item.key,item.label]));
+  const move=(key:T,delta:-1|1)=>{
+    const next=[...order],index=next.indexOf(key),target=index+delta;
+    if(index<0||target<0||target>=next.length)return;
+    [next[index],next[target]]=[next[target]!,next[index]!];
+    onChange(next);
+  };
+  return <View style={styles.orderEditor}>
+    <Text style={styles.rowLabel}>{title}</Text>
+    {order.map((key,index)=><View key={key} style={styles.orderEditorRow}>
+      <Text style={styles.orderEditorLabel}>{index+1}. {labels.get(key)??key}</Text>
+      <View style={styles.orderEditorActions}>
+        <Pressable disabled={index===0} onPress={()=>move(key,-1)} style={[styles.orderMini,index===0&&styles.disabled]}><Text style={styles.orderMiniText}>↑</Text></Pressable>
+        <Pressable disabled={index===order.length-1} onPress={()=>move(key,1)} style={[styles.orderMini,index===order.length-1&&styles.disabled]}><Text style={styles.orderMiniText}>↓</Text></Pressable>
+      </View>
+    </View>)}
+  </View>;
 }
 
 function DashboardLayoutSettings({value,onChange}:{value:DashboardLayoutConfig;onChange:(value:DashboardLayoutConfig)=>void}){
@@ -373,7 +462,7 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
 }
 
 function hasContentTools(pageKey:MainPageKey,frameKey:string){
-  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='portfolio'&&frameKey==='holding-view')||(pageKey==='ai'&&frameKey==='ai-news');
+  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frameKey))||(pageKey==='portfolio'&&frameKey==='holding-view')||(pageKey==='ai'&&frameKey==='ai-news');
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);
@@ -407,6 +496,7 @@ const styles=StyleSheet.create({
   choiceGroup:{flexDirection:'row',flexWrap:'wrap',gap:6},choice:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},
   orderRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:12},orderButton:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},orderText:{fontSize:11,fontWeight:'900',color:colors.primary},orderIndex:{fontSize:11,fontWeight:'800',color:colors.textSecondary},disabled:{opacity:.35},
   newsEditor:{gap:4},rule:{fontSize:11,lineHeight:17,color:colors.primary,marginTop:4,fontWeight:'700'},capabilityHint:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:8},
+  dashboardContentEditor:{gap:8,paddingTop:8},orderEditor:{gap:5,paddingVertical:6},orderEditorRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,paddingVertical:5},orderEditorLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.text},orderEditorActions:{flexDirection:'row',gap:5},orderMini:{width:34,height:30,borderRadius:radius.sm,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},orderMiniText:{fontSize:13,fontWeight:'900',color:colors.primary},
   dashboardTools:{gap:10},dashboardTitle:{fontSize:13,fontWeight:'900',color:colors.text},dashboardHint:{fontSize:10,lineHeight:16,color:colors.textSecondary},chartHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},addChart:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.primary},addChartText:{fontSize:10,fontWeight:'900',color:'#FFFFFF'},
   chartEditor:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden'},chartBody:{padding:10,gap:6},chartName:{fontSize:11,fontWeight:'900',color:colors.text,padding:10},deleteChart:{fontSize:10,fontWeight:'900',color:colors.loss,paddingVertical:8},layerActions:{flexDirection:'row',flexWrap:'wrap',gap:6},layerButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},layerButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   stepGrid:{gap:6},numberStep:{flexDirection:'row',alignItems:'center',gap:6},numberLabel:{width:24,fontSize:10,fontWeight:'800',color:colors.textSecondary},numberButton:{width:32,height:30,alignItems:'center',justifyContent:'center',borderRadius:radius.sm,backgroundColor:colors.surfaceMuted},numberButtonText:{fontSize:14,fontWeight:'900',color:colors.primary},numberValue:{minWidth:48,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
