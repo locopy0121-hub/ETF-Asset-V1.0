@@ -9,14 +9,14 @@ import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
-import { SegmentedControl } from '../components/SegmentedControl';
+import {PortfolioQuickBar} from '../components/PortfolioQuickBar';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
-import { sortHoldingQuotes } from '../domain/holdingSort';
+import {nextSortPreset,sortHoldingQuotes,sortPreset} from '../domain/holdingSort';
 import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
 import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
@@ -42,11 +42,16 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
   // Legacy saved combinations remain safe: no graph is rendered in three columns.
   const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
+  const currentSort=sortPreset(sortKey);
+  const [homeFirstMode,setHomeFirstMode]=useState<'quote'|'compact'>(()=>quoteStyle==='compact'?'compact':'quote');
   const setQuoteStyle=(value:QuoteModuleStyle)=>{
     if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
+    if(value==='quote'||value==='compact')setHomeFirstMode(value);
     editor.updateDisplayConfig({quoteStyle:value});
   };
   const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
+  const cycleHomeFirst=()=>setQuoteStyle(homeFirstMode==='quote'?'compact':'quote');
+  const cycleHomeSort=()=>setSortKey(nextSortPreset(sortKey).key);
   const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({
     holdingLayoutMode:value,
     ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{}),
@@ -54,12 +59,12 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
     const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
-    return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
+    return sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
       ...item,etfType:tags.get(item.symbol)?.etfType??null,
       dividendType:tags.get(item.symbol)?.dividendType??null,
       reminderEvent:reminders.get(item.symbol)??null,
     }));
-  },[finance.holdings,finance.entries,sortKey,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
+  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
   const totalDividend=portfolio.totalDividendsReceived;
@@ -135,13 +140,9 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
         },
         {key:'holding-quotes',element:
           <FrameCard title="持股行情模塊">
-            <SegmentedControl
-              items={holdingLayoutMode==='grid3'
-                  ?([{key:'quote',label:'純行情'},{key:'compact',label:'精簡'}] as const)
-                  :([{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const)}
-              value={quoteStyle}
-              onChange={setQuoteStyle}
-            />
+            <PortfolioQuickBar firstMode={homeFirstMode} activeMode={quoteStyle}
+              sortLabel={currentSort.label} onCycleFirst={cycleHomeFirst}
+              onSelect={setQuoteStyle} onCycleSort={cycleHomeSort}/>
             <View style={styles.sortRow}>
               <Text style={styles.sortLabel}>條件排序</Text>
               {([{key:'pnl',label:'損益'},{key:'changePct',label:'漲跌'},{key:'marketValue',label:'市值'}] as const).map(x=>
