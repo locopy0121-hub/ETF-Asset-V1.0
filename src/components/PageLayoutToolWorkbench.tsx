@@ -6,14 +6,13 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey} from '../domain/uiModels';
 import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
-import {colors,radius,spacing} from '../theme/tokens';
+import {colors,radius} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteModule} from './HoldingQuoteModule';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey};
 
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
-const textFields:readonly HoldingWallFieldKey[]=['name','symbol','etfType','dividendType'];
 
 export function PageLayoutToolWorkbench({
   pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,
@@ -144,10 +143,13 @@ export function PageLayoutToolWorkbench({
 
 function GenericPreview({selection,onSelect,kinds}:{selection:Selection;onSelect:(kind:LayoutToolTargetKind)=>void;kinds:readonly LayoutToolTargetKind[]}){
   const hasChart=kinds.includes('chart');
+  const containerKind:LayoutToolTargetKind=kinds.includes('card')?'card':
+    (kinds.find(kind=>['table','calendar','form','list','button','layout'].includes(kind))??'data');
   return <View style={styles.generic}>
-    <Pressable onPress={e=>{e.stopPropagation();onSelect('card');}} style={[styles.genericCard,selection.kind==='card'&&styles.selected]}>
-      <Pressable onPress={e=>{e.stopPropagation();onSelect('text');}} style={selection.kind==='text'&&styles.selected}><Text style={styles.genericLabel}>標題／說明文字</Text></Pressable>
-      <Pressable onPress={e=>{e.stopPropagation();onSelect('value');}} style={selection.kind==='value'&&styles.selected}><Text style={styles.genericValue}>NT$ 123,456</Text></Pressable>
+    <Pressable onPress={e=>{e.stopPropagation();onSelect(containerKind);}} style={[styles.genericCard,selection.kind===containerKind&&styles.selected]}>
+      <Text style={styles.genericType}>{layoutKindLabel(containerKind)}區</Text>
+      {kinds.includes('text')?<Pressable onPress={e=>{e.stopPropagation();onSelect('text');}} style={selection.kind==='text'&&styles.selected}><Text style={styles.genericLabel}>標題／說明文字</Text></Pressable>:null}
+      {kinds.includes('value')?<Pressable onPress={e=>{e.stopPropagation();onSelect('value');}} style={selection.kind==='value'&&styles.selected}><Text style={styles.genericValue}>NT$ 123,456</Text></Pressable>:null}
       {hasChart?<Pressable onPress={e=>{e.stopPropagation();onSelect('chart');}} style={[styles.genericChart,selection.kind==='chart'&&styles.selected]}><Text style={styles.genericChartText}>圖表區</Text></Pressable>:null}
     </Pressable>
   </View>;
@@ -177,6 +179,6 @@ const styles=StyleSheet.create({
   row:{minHeight:40,flexDirection:'row',alignItems:'center',gap:8},rowLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.textSecondary},step:{width:34,height:34,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},stepText:{fontSize:17,fontWeight:'900',color:colors.primary},num:{minWidth:72,textAlign:'center',fontSize:11,fontWeight:'900',color:colors.text},
   modeBlock:{gap:2},autoChip:{paddingHorizontal:10,paddingVertical:6,borderRadius:999,backgroundColor:colors.surfaceMuted},autoChipActive:{backgroundColor:colors.primary},autoText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},autoTextActive:{color:'#FFFFFF'},
   align:{flexDirection:'row',backgroundColor:colors.surfaceMuted,borderRadius:10,padding:2},alignChip:{paddingHorizontal:9,paddingVertical:6,borderRadius:8},alignActive:{backgroundColor:'#FFFFFF'},alignText:{fontSize:9,fontWeight:'800',color:colors.textSecondary},alignTextActive:{color:colors.primary},
-  generic:{padding:4},genericCard:{padding:12,borderWidth:1,borderColor:colors.border,borderRadius:14,backgroundColor:'#F8FAFC',gap:8},genericLabel:{fontSize:12,fontWeight:'800',color:colors.textSecondary},genericValue:{fontSize:24,fontWeight:'900',color:colors.text},genericChart:{height:56,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},genericChartText:{fontSize:10,fontWeight:'900',color:colors.primary},
+  generic:{padding:4},genericCard:{padding:12,borderWidth:1,borderColor:colors.border,borderRadius:14,backgroundColor:'#F8FAFC',gap:8},genericType:{fontSize:9,fontWeight:'900',color:colors.primary},genericLabel:{fontSize:12,fontWeight:'800',color:colors.textSecondary},genericValue:{fontSize:24,fontWeight:'900',color:colors.text},genericChart:{height:56,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},genericChartText:{fontSize:10,fontWeight:'900',color:colors.primary},
   note:{fontSize:10,lineHeight:16,color:colors.textSecondary},
 });
