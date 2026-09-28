@@ -30,8 +30,7 @@ includes(app,"maintenance.session.page!==expectedPage||chartHolding","chart page
 const config=JSON.parse(read('app.json'));
 assert.equal(config.expo.version,'3.1.18');
 assert.equal(config.expo.android.versionCode,30118);
-assert.equal(config.expo.androidNavigationBar?.barStyle,'dark-content');
-assert.equal(config.expo.androidNavigationBar?.backgroundColor,'#FFFFFF');
+assert.equal(config.expo.androidNavigationBar,undefined,'SDK 57 app schema must not use removed androidNavigationBar config');
 
 const workflow=read('.github/workflows/ci.yml');
 includes(workflow,'android:windowLightNavigationBar','QA native theme must render dark system navigation icons');
