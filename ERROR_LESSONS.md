@@ -448,3 +448,15 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 3. 遷移只處理 provenance/storage，不碰 Canonical Finance Core 算式與歷史交易固化值。
 4. 若先前版本已建立專用 -750,000 系統沖回，必須與 opening cash 同步正規化，否則會 double subtract。
 5. migration 必須 idempotent，並以 regression test 驗證「舊值移除、真實 entries 不變、既有沖回前後 balance 不變」。
+
+
+## 2026-09-28｜V3.1.12 只處理 opening sentinel，漏掉 opening=0 + orphan -750,000 reversal
+
+實機證據出現「期初現金 0、目前現金 -773,871」，而真實淨額約為 -23,871；兩者差額精確為 -750,000。V3.1.12 migration 只有在 `initialCash===750000` 時才處理 reversal，因此只要先前某路徑已把 opening 歸零、但 generated reversal 仍存在，migration 就會直接 return，造成幽靈 -750,000 永久參與現金。
+
+修復準則：
+1. persisted migration 必須覆蓋「值已部分遷移」的中間狀態，不只 happy path。
+2. 刪除舊資料必須依不可由一般 UI 偽造的 provenance（專用 generated ID），不能只用 label+amount。
+3. 一次 migration 至多移除一筆舊系統沖回，避免重複紀錄或相同文字的使用者資料被全部刪除。
+4. schema 升級時同步更新 backup parser；否則 App 能寫 schema 3、備份卻拒收。
+5. regression test 必須重現真機數字：opening=0 + genuine -23,871 + generated -750,000 = -773,871，修復後回到 -23,871。
