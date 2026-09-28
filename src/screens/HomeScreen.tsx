@@ -14,6 +14,7 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import {PortfolioQuickBar} from '../components/PortfolioQuickBar';
 import { PageShell } from '../components/PageShell';
+import {LayoutTargetProvider} from '../editor/LayoutSelectionContext';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
@@ -117,6 +118,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
         style={styles.pageLayer}
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
       >
+      <LayoutTargetProvider targets={effectiveDisplay.layoutTargets??{}}>
       <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={[
         {key:'asset-dashboard',element:
           <FrameCard title="資產總覽">
@@ -199,6 +201,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
           </FrameCard>
         },
       ]}/>
+      </LayoutTargetProvider>
       {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)} onResize={(width,height)=>resizeDashboardChart(chart.id,width,height)}/>;})}
       </View>
     </PageShell>
