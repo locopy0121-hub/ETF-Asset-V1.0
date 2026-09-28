@@ -8,6 +8,8 @@ export type PortfolioColumnConfig=Readonly<{
   textColor:string|null;backgroundColor:string|null;align:'left'|'center'|'right';effect:ItemEffectConfig;
 }>;
 export type PortfolioListConfig=Readonly<{fixedWidth:number;rowHeight:number;showName:boolean;columns:readonly PortfolioColumnConfig[]}>;
+export const PORTFOLIO_FIXED_WIDTH_MIN=72;
+export const PORTFOLIO_FIXED_WIDTH_MAX=240;
 const field=(key:PortfolioColumnKey,label:string,width:number,enabled:boolean):PortfolioColumnConfig=>({
   key,label,width,enabled,fontScale:1,textColor:null,backgroundColor:null,align:'right',effect:{...DEFAULT_ITEM_EFFECT},
 });
@@ -46,7 +48,7 @@ export function normalizePortfolioList(raw:unknown):PortfolioListConfig{
     }];
   });
   return {
-    fixedWidth:clamp(value.fixedWidth,160,270,DEFAULT_PORTFOLIO_LIST.fixedWidth),
+    fixedWidth:clamp(value.fixedWidth,PORTFOLIO_FIXED_WIDTH_MIN,PORTFOLIO_FIXED_WIDTH_MAX,DEFAULT_PORTFOLIO_LIST.fixedWidth),
     rowHeight:clamp(value.rowHeight,52,96,DEFAULT_PORTFOLIO_LIST.rowHeight),
     showName:value.showName!==false,
     columns,
