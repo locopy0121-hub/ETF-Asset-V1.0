@@ -91,7 +91,7 @@ export function OfficialCandleChart({
   const selectedChangePct=selectedPrior>0?selectedChange/selectedPrior*100:0;
   const estimatedPnl=selected&&holding?(selected.close-holding.costAvg)*holding.shares:0;
   const estimatedComprehensive=holding?estimatedPnl+holding.cumulativeDividend:0;
-  const estimatedRoi=holding&&holding.costAvg>0?(selected!.close-holding.costAvg)/holding.costAvg*100:0;
+  const estimatedRoi=selected&&holding&&holding.costAvg>0?(selected.close-holding.costAvg)/holding.costAvg*100:0;
   const estimatedMarketValue=selected&&holding?selected.close*holding.shares:0;
 
   if(loading)return <Text style={styles.notice}>正在讀取歷史行情資料…</Text>;
