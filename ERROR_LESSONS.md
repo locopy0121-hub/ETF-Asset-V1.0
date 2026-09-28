@@ -435,3 +435,16 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 ## 2026-09-28｜V3.1.11 Mini 圖表改造的兩個 CI 失敗點
 
 首次 PR run 在 TypeScript Gate 因 `HoldingQuoteModule.tsx` 重構移除舊 Sparkline 時誤刪仍被版面樣式使用的 `spacing` token import，產生 TS2304；元件替換不能只檢查被刪函式附近，必須掃描整檔所有共用 token 的剩餘引用再清 import。第二次 run 已通過 TypeScript，但舊 `v2_1_1-release.test.cjs` 的 QA 版本 allowlist 只接受到 V3.1.10，令 aggregate gate 報 `unsupported QA version`；每次正式遞增版本時，版本 identity、workflow、歷史 regression 與 release allowlist 必須同步更新。修復後 run 36390921666 的 quality、backend-quality、QA APK 全部 PASS，APK badging 為 versionName 3.1.11 / versionCode 30111。
+
+## V3.1.12｜只修 default 不等於修掉 persisted legacy state
+
+**症狀**：程式碼已將 `INITIAL_CASH` 改為 0，但升級後帳務中心仍顯示「期初現金 NT$ 750,000」，且仍參與目前現金計算。
+
+**根因**：舊值已寫入 AsyncStorage。初始化 default 只影響「沒有舊資料的新安裝」，hydrate 流程仍把已儲存的 750,000 原封不動還原，因此 UI 修正與資料修正脫節。
+
+**修護原則**：
+1. 對 persisted schema 做明確資料遷移，不用 UI 警告取代 migration。
+2. 只辨識產品曾硬編碼的精確 sentinel `750_000`，避免誤傷其他期初現金。
+3. 遷移只處理 provenance/storage，不碰 Canonical Finance Core 算式與歷史交易固化值。
+4. 若先前版本已建立專用 -750,000 系統沖回，必須與 opening cash 同步正規化，否則會 double subtract。
+5. migration 必須 idempotent，並以 regression test 驗證「舊值移除、真實 entries 不變、既有沖回前後 balance 不變」。

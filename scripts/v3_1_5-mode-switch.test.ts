@@ -49,6 +49,6 @@ assert.doesNotMatch(safe,/PortfolioHoldingTable|HoldingQuoteCollection|Inspectab
 assert.match(boundary,/PORTFOLIO_VIEW_RENDER/);
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.1.11');
-assert.equal(app.expo.android.versionCode,30111);
-console.log('V3.1.11 alternate mode selector, safe-list bypass, legacy isolation, normalized persistence: PASS; Android device verification pending');
+assert.equal(pkg.version,'3.1.12');
+assert.equal(app.expo.android.versionCode,30112);
+console.log('V3.1.12 alternate mode selector, safe-list bypass, legacy isolation, normalized persistence: PASS; Android device verification pending');

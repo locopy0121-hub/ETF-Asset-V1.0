@@ -13,7 +13,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   pinned?: boolean;
 }>;
 
-// New accounts start without fictitious money. Persisted older balances are never reset.
+// New accounts start without fictitious money. V3.1.12 also migrates the exact legacy 750,000 sentinel to zero.
 export const INITIAL_CASH=0;
 
 /** Emergency/cache bootstrap only. Never treat these values as live market truth. */

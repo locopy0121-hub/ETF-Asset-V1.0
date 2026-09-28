@@ -21,11 +21,12 @@ import {
   type OtherCashLedgerEntry,
 } from './canonicalLedger';
 import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
+import { migrateLegacyOpeningCash } from './cashAudit';
 import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
-const SCHEMA=1;
+const SCHEMA=2;
 
 type PersistedFinanceState = {
   schema: number;
@@ -65,11 +66,16 @@ export function FinanceProvider({children}:PropsWithChildren){
         if(!alive)return;
         if(raw){
           const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
-          if(parsed.schema===SCHEMA&&Array.isArray(parsed.entries)){
+          if((parsed.schema===1||parsed.schema===SCHEMA)&&Array.isArray(parsed.entries)){
             const restored=parsed.entries as CanonicalLedgerEntry[];
-            if(validateLedgerSequence(restored).length===0){
-              setEntries(restored);
-              if(Number.isFinite(Number(parsed.initialCash)))setInitialCash(Number(parsed.initialCash));
+            const parsedInitialCash=Number(parsed.initialCash);
+            const normalized=migrateLegacyOpeningCash(
+              Number.isFinite(parsedInitialCash)?parsedInitialCash:INITIAL_CASH,
+              restored,
+            );
+            if(validateLedgerSequence(normalized.entries).length===0){
+              setEntries(normalized.entries);
+              setInitialCash(normalized.initialCash);
             }
           }
         }
