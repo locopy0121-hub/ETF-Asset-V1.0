@@ -154,8 +154,12 @@ export function PageLayoutToolWorkbench({
     if(kind==='chart')return holding&&Boolean(previewQuote&&(displayDraft.quoteStyle==='chart'||displayDraft.quoteStyle==='advanced')&&previewQuote.sparkline?.length);
     if(kind==='data')return holding;
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
-    if(kind==='card'||kind==='text'||kind==='value')return holding||pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
-    return true;
+    if(holding)return ['frame','card','text','value','chart','data'].includes(kind);
+    if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','layout'].includes(kind);
+    if(pageKey==='home'&&frame.key==='profit-analysis')return ['frame','card','layout'].includes(kind);
+    if(pageKey==='home'&&frame.key==='pnl-detail')return ['frame','text','value','layout'].includes(kind);
+    if(pageKey==='home'&&frame.key==='dashboard-quick-actions')return ['frame','text','layout'].includes(kind);
+    return kind==='frame';
   });
 
   return <View style={styles.root}>
