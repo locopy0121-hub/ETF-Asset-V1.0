@@ -27,6 +27,13 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'holding-dashboard', title:'持股分析儀表板', description:'市值、成本、損益、含息報酬' },
     { key:'allocation', title:'資產配置', description:'持股與資產分類占比' },
     { key:'holding-view', title:'持股檢視', description:'清單模式與行情牆模式共用框架' },
+    { key:'holding-detail-header', title:'個股資訊表頭', description:'個股名稱、代號、返回與編輯入口；與庫存主頁表頭獨立保存' },
+    { key:'holding-detail-quote', title:'個股即時行情', description:'即時價格、漲跌、來源、圖表樣式、資料來源與歷史圖表' },
+    { key:'holding-detail-info', title:'個股持股資訊', description:'持有股數、純成交均價、含費成本均價與目前市值' },
+    { key:'holding-detail-pnl', title:'個股損益拆解', description:'純價差、淨清算、已實現與含息總損益' },
+    { key:'holding-detail-dividend', title:'個股股息資訊', description:'累積淨股息與持股占比' },
+    { key:'holding-detail-history', title:'個股交易與股息紀錄', description:'此標的歷史買賣與股息摘要' },
+    { key:'holding-detail-calculator', title:'個股試算入口', description:'導向既有正式試算核心的說明區' },
   ],
   dividend: [
     { key:'page-header', title:'頁面頂部表頭', description:'TF Asset 品牌、標題、副標及右側按鈕區' },
