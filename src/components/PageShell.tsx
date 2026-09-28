@@ -21,7 +21,7 @@ type Props=PropsWithChildren<{title:string;pageKey?:MainPageKey;subtitle?:string
 function HeaderText({id,value,style,frame}:{id:'brand'|'title'|'subtitle';value:string;style:TextStyle;frame:FrameMaintenanceContext}){
   const target:InspectedTarget={
     id:'header:'+id,kind:'text',label:id==='brand'?'品牌名稱':id==='title'?'頁面主標題':'頁面副標題',
-    page:frame.page,frameKey:'page-header',frameTitle:frame.frameTitle,
+    page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
     properties:[{name:'原始文字',value,readOnly:true},{name:'作用範圍',value:'本頁表頭外觀'}],
     base:{...TARGET_APPEARANCE,fontSize:style.fontSize??13,fontWeight:style.fontWeight??'normal',
       textColor:typeof style.color==='string'?style.color:'#0F172A',
