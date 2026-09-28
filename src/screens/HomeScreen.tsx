@@ -76,7 +76,7 @@ export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:H
     totalUnrealizedProfit:{label:'未實現損益',value:portfolio.totalUnrealizedProfit,caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain':'loss'},
     realizedNetPnL:{label:'已實現損益',value:portfolio.realizedNetPnL,caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain':'loss'},
     totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'帳務核心'},
-    cashBalance:{label:'現金',value:finance.snapshot.cashBalance,caption:'Ledger'},
+    cashBalance:{label:'現金',value:finance.cashConfigured?finance.snapshot.cashBalance:0,caption:finance.cashConfigured?'Ledger':'未設定'},
     holdingCount:{label:'持股檔數',value:finance.holdings.length,caption:'檔'},
   };
   const chartSeries=(chart:DashboardChartConfig)=>{
@@ -124,7 +124,7 @@ export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:H
               </View>
             </View>
             <View style={styles.metricRow}>
-              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={!valuationComplete&&['totalMarketValue','totalPnl','totalUnrealizedProfit','totalAssets','marketValue'].includes(key)?'待核對':key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
+              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='cashBalance'&&!finance.cashConfigured?'未設定':!valuationComplete&&['totalMarketValue','totalPnl','totalUnrealizedProfit','totalAssets','marketValue'].includes(key)?'待核對':key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
             </View>
           </FrameCard>
         },
