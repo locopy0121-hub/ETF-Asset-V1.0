@@ -42,7 +42,7 @@ assert.equal(nextSortPreset('invalid').key,'manual');
 assert.equal(sortPreset('symbol').descending,false);
 const rows=[
   {symbol:'00878',name:'C',price:19,previousClose:18,marketValue:100,pnl:-20,roi:-1,weight:10,pinned:false},
-  {symbol:'0050',name:'A',price:150,previousClose:149,marketValue:200,pnl:80,roi:4,weight:20,pinned:false},
+  {symbol:'0050',name:'A',price:151,previousClose:149,marketValue:200,pnl:80,roi:4,weight:20,pinned:false},
   {symbol:'0056',name:'B',price:35,previousClose:36,marketValue:150,pnl:12,roi:2,weight:15,pinned:false},
 ] as HoldingQuote[];
 assert.deepEqual(sortHoldingQuotes(rows,'changePct',true).map(x=>x.symbol),['00878','0050','0056']);
