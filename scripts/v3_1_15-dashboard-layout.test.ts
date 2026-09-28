@@ -5,10 +5,10 @@ const read=(path:string)=>readFileSync(path,'utf8');
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
 
-assert.equal(pkg.version,'3.1.16');
-assert.equal(app.expo.version,'3.1.16');
-assert.equal(app.expo.android.versionCode,30116);
-assert.equal(app.expo.ios.buildNumber,'30116');
+assert.equal(pkg.version,'3.1.17');
+assert.equal(app.expo.version,'3.1.17');
+assert.equal(app.expo.android.versionCode,30117);
+assert.equal(app.expo.ios.buildNumber,'30117');
 
 const home=read('src/screens/HomeScreen.tsx');
 assert.match(home,/heroAmountShell:\{width:'100%',minWidth:0,overflow:'hidden'\}/);
@@ -40,4 +40,4 @@ assert.match(target,/target\.kind==='prefix'\?withoutAbsolutePrefixGeometry\(sto
 const workbench=read('src/maintenance/MaintenanceWorkbench.tsx');
 assert.match(workbench,/prefixOffsetX:\[-24,24,1\],prefixOffsetY:\[-8,8,1\]/);
 
-console.log('V3.1.16 dashboard responsive money composite PASS — currency/value stay together, long values shrink, unsafe absolute prefix geometry is blocked');
+console.log('V3.1.17 dashboard responsive money composite PASS — currency/value stay together, long values shrink, unsafe absolute prefix geometry is blocked');
