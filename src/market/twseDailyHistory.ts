@@ -1,9 +1,13 @@
 /**
- * TWSE monthly official daily OHLCV endpoint. Never synthesize candles from
- * single quotes, a display sparkline or local ledger transactions.
- * An unavailable response is an explicit missing-history state.
+ * Official TWSE historical daily OHLCV source used by holding charts.
+ * History is fetched month-by-month; one empty or temporarily failing month
+ * must not erase already verified historical rows from other months.
  */
 export type DailyCandle=Readonly<{date:string;open:number;high:number;low:number;close:number;volume:number;source:'TWSE'}>;
+
+export const normalizeHistorySymbol=(raw:string)=>String(raw??'').trim().toUpperCase();
+export const isValidHistorySymbol=(raw:string)=>/^[0-9A-Z]{4,8}$/.test(normalizeHistorySymbol(raw));
+
 const positive=(raw:unknown):number|null=>{
   const n=Number(String(raw??'').replace(/,/g,'').trim());
   return Number.isFinite(n)&&n>0?n:null;
@@ -29,19 +33,50 @@ export function parseTwseMonthly(payload:unknown):DailyCandle[]{
   if(data.stat!=='OK'||!Array.isArray(data.data))return [];
   return data.data.map(parseTwseDailyRow).filter((item):item is DailyCandle=>item!==null);
 }
+
+const endpoints=(date:string,symbol:string)=>[
+  `https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${date}&stockNo=${encodeURIComponent(symbol)}`,
+  `https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date=${date}&stockNo=${encodeURIComponent(symbol)}`,
+] as const;
+
+async function fetchMonth(date:string,symbol:string,signal?:AbortSignal):Promise<{rows:DailyCandle[];hadResponse:boolean;errors:string[]}>{
+  const errors:string[]=[];
+  let hadResponse=false;
+  for(const url of endpoints(date,symbol)){
+    if(signal?.aborted)throw new Error('查詢已取消');
+    try{
+      const response=await fetch(url,{headers:{Accept:'application/json','Cache-Control':'no-cache'},...(signal?{signal}:{})});
+      if(!response.ok){errors.push('HTTP '+response.status);continue;}
+      hadResponse=true;
+      const payload=await response.json();
+      const rows=parseTwseMonthly(payload);
+      if(rows.length)return {rows,hadResponse:true,errors};
+      // A valid empty month is common before listing; try the alternate official route once.
+    }catch(error){
+      if(signal?.aborted)throw new Error('查詢已取消');
+      errors.push(error instanceof Error?error.message:String(error));
+    }
+  }
+  return {rows:[],hadResponse,errors};
+}
+
 export async function fetchOfficialDailyHistory(symbol:string,months:number,now=new Date(),signal?:AbortSignal):Promise<DailyCandle[]>{
-  if(!/^\d{4,5}[A-Z]?$/.test(symbol)||months<1||months>12)throw new Error('無效的歷史行情查詢');
+  const code=normalizeHistorySymbol(symbol);
+  if(!isValidHistorySymbol(code)||!Number.isInteger(months)||months<1||months>12)throw new Error('無效的歷史行情查詢');
   const all=new Map<string,DailyCandle>();
+  const failures:string[]=[];
+  let successfulResponses=0;
   for(let offset=0;offset<months;offset++){
     if(signal?.aborted)throw new Error('查詢已取消');
     const day=new Date(Date.UTC(now.getFullYear(),now.getMonth()-offset,1));
     const date=`${day.getUTCFullYear()}${String(day.getUTCMonth()+1).padStart(2,'0')}01`;
-    const url=`https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${date}&stockNo=${symbol}`;
-    const response=await fetch(url,{headers:{Accept:'application/json'},...(signal?{signal}:{})});
-    if(!response.ok)throw new Error(`TWSE 歷史行情 HTTP ${response.status}`);
-    const payload=await response.json();
-    const parsed=parseTwseMonthly(payload);
-    for(const candle of parsed)all.set(candle.date,candle);
+    const month=await fetchMonth(date,code,signal);
+    if(month.hadResponse)successfulResponses+=1;
+    if(month.errors.length&&!month.hadResponse)failures.push(...month.errors);
+    for(const candle of month.rows)all.set(candle.date,candle);
   }
-  return [...all.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  const rows=[...all.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  if(rows.length)return rows;
+  if(successfulResponses>0)return [];
+  throw new Error(failures[0]?'歷史資料來源暫時無法連線：'+failures[0]:'歷史資料來源暫時無法連線');
 }
