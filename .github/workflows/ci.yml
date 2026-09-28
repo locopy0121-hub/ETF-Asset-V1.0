@@ -25,6 +25,8 @@ jobs:
         run: npm run typecheck
       - name: V3.1.17 ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
+      - name: V3.1.17 dashboard content editing regression
+        run: npx tsx scripts/v3_1_17-dashboard-content.test.ts
       - name: V3.1.16 aggregate gates
         run: npm run test:v3_1_13
       - name: Upload mandatory complete skill coverage report
