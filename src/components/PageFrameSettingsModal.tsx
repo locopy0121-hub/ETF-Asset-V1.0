@@ -125,7 +125,8 @@ export function PageFrameSettingsModal({
         <View style={styles.section}>
           <View style={styles.bodyNoTop}>
             <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
-              onPatchFrame={patch} onChangeDisplay={setDisplayDraft} previewQuote={previewQuote}/>
+              onPatchFrame={patch} onChangeDisplay={setDisplayDraft} previewQuote={previewQuote}
+              pageTitle={titleDraft} onChangePageTitle={setTitleDraft}/>
           </View>
         </View>
         <View style={styles.resetOnly}>
