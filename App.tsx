@@ -18,6 +18,7 @@ import { GlobalFloatingAi } from './src/components/GlobalFloatingAi';
 import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
 import { HoldingDetailScreen } from './src/screens/HoldingDetailScreen';
+import { StockChartScreen } from './src/screens/StockChartScreen';
 import {HoldingDetailBoundary} from './src/components/HoldingDetailBoundary';
 import {DiagnosticsProvider,recordDiagnosticEvent} from './src/diagnostics/DiagnosticRuntime';
 import { HomeScreen } from './src/screens/HomeScreen';
@@ -71,6 +72,7 @@ function AppBody(){
   const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
   const [active,setActive]=useState<MainPageKey>('home');
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
+  const [chartHolding,setChartHolding]=useState<HoldingQuote|null>(null);
   const pageHistory=useRef<MainPageKey[]>([]);
   const swipeStart=useRef<{x:number;y:number}|null>(null);
   const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
@@ -86,7 +88,7 @@ function AppBody(){
   };
   const onSwipeEnd=(event:{nativeEvent:{pageX:number;pageY:number}})=>{
     const start=swipeStart.current;swipeStart.current=null;
-    if(!start||detail||maintenance.session||!settings.prefs.navigation.swipeEnabled)return;
+    if(!start||detail||chartHolding||maintenance.session||!settings.prefs.navigation.swipeEnabled)return;
     const dx=event.nativeEvent.pageX-start.x,dy=event.nativeEvent.pageY-start.y;
     if(Math.abs(dx)<settings.prefs.navigation.swipeThreshold)return;
     const direction=resolvePageSwipeDirection({startX:start.x,startY:start.y,endX:event.nativeEvent.pageX,endY:event.nativeEvent.pageY,screenWidth,enabled:settings.prefs.navigation.swipeEnabled,threshold:settings.prefs.navigation.swipeThreshold,edgeOnly:settings.prefs.navigation.swipeEdgeOnly,locked:detail!==null});
@@ -98,6 +100,7 @@ function AppBody(){
     const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
       // Native Modal.onRequestClose handles visible native dialogs first.
       if(maintenance.session){maintenance.cancel();return true;}
+      if(chartHolding){setChartHolding(null);return true;}
       const decision=resolveBackNavigation({active,history:pageHistory.current,hasDetail:detail!==null,floatingExpanded:aiUi.showFloatingAi&&floatingAiOpen,showAiTab:aiUi.showAiTab});
       pageHistory.current=decision.history;
       if(decision.kind==='collapse-ai'){setAiCollapseSignal(value=>value+1);return true;}
@@ -106,10 +109,10 @@ function AppBody(){
       return false; // Leave only from root with no back stack.
     });
     return()=>subscription.remove();
-  },[active,detail,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen,maintenance.session]);
+  },[active,detail,chartHolding,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen,maintenance.session]);
   useEffect(()=>{
-    if(maintenance.session&&(maintenance.session.page!==active||detail))maintenance.cancel();
-  },[active,detail,maintenance.session]);
+    if(maintenance.session&&(maintenance.session.page!==active||detail||chartHolding))maintenance.cancel();
+  },[active,detail,chartHolding,maintenance.session]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
   useEffect(()=>{
@@ -168,20 +171,26 @@ function AppBody(){
     }
     setDetail(holding);
   };
+  const openChart=(holding:HoldingQuote)=>{
+    recordDiagnosticEvent({level:'info',code:'HOLDING_CHART_TAP',screen:active,message:'點擊 Mini 圖表，準備開啟完整圖表頁'});
+    if(!holding||typeof holding.symbol!=='string'||!holding.symbol.trim())return;
+    setChartHolding(holding);
+  };
   const screen=useMemo(()=>{
+    if(chartHolding)return <StockChartScreen holding={chartHolding} onBack={()=>setChartHolding(null)}/>;
     if(detail) return <HoldingDetailBoundary key={detail.symbol} symbol={detail.symbol} onBack={()=>setDetail(null)}>
       <HoldingDetailScreen holding={detail} onBack={()=>setDetail(null)}/>
     </HoldingDetailBoundary>;
     switch(active){
       case 'ledger': return <LedgerScreen/>;
-      case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding}/>;
+      case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding} onOpenChart={openChart}/>;
       case 'dividend': return <DividendScreen/>;
       case 'ai': return <AiScreen/>;
       case 'settings': return <SettingsScreen/>;
       case 'home':
-      default: return <HomeScreen onOpenHolding={openHolding}/>;
+      default: return <HomeScreen onOpenHolding={openHolding} onOpenChart={openChart}/>;
     }
-  },[active,detail]);
+  },[active,detail,chartHolding]);
 
   if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!theme.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated||!maintenance.hydrated){
     return <View style={[styles.loading,{backgroundColor:theme.palette.background}]}>
@@ -199,8 +208,8 @@ function AppBody(){
       <View style={{flex:1}} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
       {maintenance.session?<MaintenanceWorkbench/>:null}
     </View>
-    {aiUi.showFloatingAi&&!maintenance.session?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
-    {!detail&&!maintenance.session?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
+    {aiUi.showFloatingAi&&!maintenance.session&&!chartHolding?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
+    {!detail&&!chartHolding&&!maintenance.session?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <View style={styles.nav}>
         {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;

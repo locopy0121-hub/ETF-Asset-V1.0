@@ -14,12 +14,13 @@ import { HoldingQuoteModule } from './HoldingQuoteModule';
 export type HoldingLayoutMode='list'|'grid2'|'grid3'|'horizontal'|'paged2';
 
 export function HoldingQuoteCollection({
-  rows,style,layoutMode='list',onOpenHolding,wallConfig,badgeConfig,refreshToken,maintenance,
+  rows,style,layoutMode='list',onOpenHolding,onOpenChart,wallConfig,badgeConfig,refreshToken,maintenance,
 }:{
   rows:readonly HoldingQuote[];
   style:QuoteModuleStyle;
   layoutMode?:HoldingLayoutMode;
   onOpenHolding:(row:HoldingQuote)=>void;
+  onOpenChart?:(row:HoldingQuote)=>void;
   wallConfig?:HoldingWallConfig;
   badgeConfig?:EtfBadgeConfig;
   refreshToken?:string|number|null|undefined;
@@ -54,7 +55,7 @@ export function HoldingQuoteCollection({
       return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',cardReset?'quote':style)}
         layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}
         wallConfig={adjusted} badgeConfig={cardBadges} refreshToken={refreshToken}
-        onPress={()=>onOpenHolding(item)}/>;
+        onPress={()=>onOpenHolding(item)} {...(onOpenChart?{onOpenChart:()=>onOpenChart(item)}:{})}/>;
     };
     if(!maintenance)return render();
     const target:InspectedTarget={

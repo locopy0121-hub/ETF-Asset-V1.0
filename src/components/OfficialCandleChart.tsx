@@ -49,11 +49,11 @@ export function OfficialCandleChart({
   const [crosshairEnabled,setCrosshairEnabled]=useState(crosshairDefault);
   const [scrollX,setScrollX]=useState(0);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
-  const showVolume=dataKeys.includes('volume');
+  const showVolume=dataKeys.includes('volume')||chartStyle==='price-volume';
   const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low');
   const showClose=dataKeys.includes('close')||dataKeys.includes('price');
-  const showCost=Boolean(holding&&holding.costAvg>0&&(costLineEnabled||dataKeys.includes('cost')));
-  const secondaryKey=(['change','changePct','pnl','comprehensivePnl','roi','marketValue'] as const).find(key=>dataKeys.includes(key));
+  const showCost=Boolean(holding&&holding.costAvg>0&&(costLineEnabled||dataKeys.includes('cost')||chartStyle==='cost-price'));
+  const secondaryKey=chartStyle==='pnl'?'pnl':chartStyle==='roi'?'roi':(['change','changePct','pnl','comprehensivePnl','roi','marketValue'] as const).find(key=>dataKeys.includes(key));
   const secondaryValue=(candle:DailyCandle,index:number,key:typeof secondaryKey):number=>{
     if(!key)return 0;
     const prior=index>0?ordered[index-1]!.close:candle.open;
@@ -101,10 +101,10 @@ export function OfficialCandleChart({
   const selectedMetrics:Array<string>=[];
   if(dataKeys.includes('change'))selectedMetrics.push('漲跌額 '+(selectedChange>=0?'+':'')+price(selectedChange));
   if(dataKeys.includes('changePct'))selectedMetrics.push('漲跌幅 '+(selectedChangePct>=0?'+':'')+selectedChangePct.toFixed(2)+'%');
-  if(dataKeys.includes('cost')&&holding)selectedMetrics.push('含費成本 '+price(holding.costAvg));
-  if(dataKeys.includes('pnl')&&holding)selectedMetrics.push('持股損益估值 NT$ '+Math.round(estimatedPnl).toLocaleString('zh-TW'));
+  if((dataKeys.includes('cost')||chartStyle==='cost-price')&&holding)selectedMetrics.push('含費成本 '+price(holding.costAvg));
+  if((dataKeys.includes('pnl')||chartStyle==='pnl')&&holding)selectedMetrics.push('持股損益估值 NT$ '+Math.round(estimatedPnl).toLocaleString('zh-TW'));
   if(dataKeys.includes('comprehensivePnl')&&holding)selectedMetrics.push('含息損益估值 NT$ '+Math.round(estimatedComprehensive).toLocaleString('zh-TW'));
-  if(dataKeys.includes('roi')&&holding)selectedMetrics.push('報酬率估值 '+estimatedRoi.toFixed(2)+'%');
+  if((dataKeys.includes('roi')||chartStyle==='roi')&&holding)selectedMetrics.push('報酬率估值 '+estimatedRoi.toFixed(2)+'%');
   if(dataKeys.includes('marketValue')&&holding)selectedMetrics.push('市值 NT$ '+Math.round(estimatedMarketValue).toLocaleString('zh-TW'));
   if(dataKeys.includes('dividend')&&holding)selectedMetrics.push('累積股息 NT$ '+Math.round(holding.cumulativeDividend).toLocaleString('zh-TW'));
 
@@ -139,7 +139,8 @@ export function OfficialCandleChart({
             const wickTop=y(candle.high),wickBottom=y(candle.low);
             const bodyHeight=Math.max(2,candleBottom-candleTop);
             const showTick=index===0||index===ordered.length-1||candle.date.slice(0,7)!==ordered[index-1]?.date.slice(0,7)||index%Math.max(1,Math.ceil(ordered.length/5))===0;
-            const lineMode=chartStyle==='line'||chartStyle==='area'||(!showOpen&&!showHigh&&!showLow&&showClose);
+            const lineMode=chartStyle==='line'||chartStyle==='area'||chartStyle==='cost-price'||chartStyle==='pnl'||chartStyle==='roi'||(!showOpen&&!showHigh&&!showLow&&showClose);
+            const columnMode=chartStyle==='column';
             const ohlcMode=chartStyle==='ohlc';
             const sec=secondaryKey?secondaryValues[index]??0:0;
             const zeroY=secondaryKey?secY(0):0;
@@ -148,7 +149,8 @@ export function OfficialCandleChart({
               key={candle.date} onPress={()=>setSelectedDate(candle.date)}
               style={[styles.candleColumn,{width:STEP,backgroundColor:selected?.date===candle.date&&crosshairEnabled?'rgba(148,163,184,.12)':'transparent'}]}>
               <View style={styles.pricePlot}>
-                {lineMode?<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:Math.max(2,chartStyle==='area'?PLOT_HEIGHT-y(candle.close):3),backgroundColor:tone,opacity:chartStyle==='area'?.28:1}}/>:
+                {columnMode?<View style={{position:'absolute',left:2,right:2,top:y(candle.close),height:Math.max(2,PLOT_HEIGHT-y(candle.close)),backgroundColor:tone,opacity:.78}}/>:
+                lineMode?<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:Math.max(2,chartStyle==='area'?PLOT_HEIGHT-y(candle.close):3),backgroundColor:tone,opacity:chartStyle==='area'?.28:1}}/>:
                 ohlcMode?<><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
                 <><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:positive?'transparent':tone,borderColor:tone}]}/></>}
               </View>
@@ -180,7 +182,7 @@ export function OfficialCandleChart({
       </View>
     </View>
     {secondaryKey?<Text style={styles.caption}>副圖：{secondaryLabel[secondaryKey]} · {number(secMin)} ～ {number(secMax)}</Text>:null}
-    {holding&&dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
+    {holding&&(dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))||chartStyle==='pnl'||chartStyle==='roi'||chartStyle==='cost-price')?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
     <Text style={styles.caption}>{crosshairEnabled?'左右拖動十字線檢視歷史資料；關閉後可橫向捲動':'點選交易日查看完整資料；開啟十字線後可拖動'}</Text>
   </View>;
 }
