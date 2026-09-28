@@ -37,7 +37,7 @@ assert.equal(linkedColor('#123456',false,'gain',palette),'#123456');
 
 assert.match(holding,/cardStyle\.backgroundProfitColor/);
 assert.match(holding,/cardStyle\.borderProfitColor/);
-assert.match(holding,/cardStyle\.textProfitColor/);
+assert.match(holding,/wall\.style\.textProfitColor/);
 assert.match(holding,/cardStyle\.secondaryTextProfitColor/);
 assert.match(editable,/appearance\.textProfitColor/);
 assert.match(editable,/appearance\.backgroundProfitColor/);
