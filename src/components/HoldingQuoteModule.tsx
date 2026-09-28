@@ -12,6 +12,7 @@ import {
 import type { ItemEffectConfig } from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {EtfBadgeRow} from './EtfBadgeRow';
+import {MiniHoldingChart} from './MiniHoldingChart';
 import { radius, spacing } from '../theme/tokens';
 import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 
@@ -26,6 +27,7 @@ export function HoldingQuoteModule({
   badgeConfig=DEFAULT_ETF_BADGES,
   refreshToken,
   onPress,
+  onOpenChart,
 }:{
   item:HoldingQuote;
   style?:QuoteModuleStyle;
@@ -34,6 +36,7 @@ export function HoldingQuoteModule({
   badgeConfig?:EtfBadgeConfig;
   refreshToken?:string|number|null|undefined;
   onPress?:()=>void;
+  onOpenChart?:()=>void;
 }){
   const showQuoteMetadata=useSettingsRuntime().prefs.marketCard.showQuoteMetadata;
   const change=item.price-item.previousClose;
@@ -51,14 +54,15 @@ export function HoldingQuoteModule({
     footer:cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue')),
   };
 
-  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={'查看持股 '+item.symbol} style={[
+  return <View style={[
     styles.card,
     compact&&!micro&&styles.compact,
     narrow&&styles.narrowCard,
     micro&&styles.microCard,
     {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
-    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
+    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?<MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} onOpen={onOpenChart??onPress}/>:null}
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={'查看持股 '+item.symbol} style={styles.bodyPress}>
     <View style={[styles.body,{padding:micro?Math.min(8,cardStyle.padding):cardStyle.padding,
       gap:micro?Math.min(5,cardStyle.rowGap):cardStyle.rowGap}]}>
       {cfg.header.visible&&(groups.header.length>0||badgeConfig.order.some(key=>badgeConfig.badges[key].enabled))?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
@@ -118,7 +122,8 @@ export function HoldingQuoteModule({
         </View>:null}
       </View>:null}
     </View>
-  </Pressable>;
+    </Pressable>
+  </View>;
 }
 
 function WallText({
@@ -295,21 +300,10 @@ function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,ch
   return `NT$ ${money(item.marketValue)}`;
 }
 
-function Sparkline({values,positive,narrow=false,gainColor,lossColor}:{values:number[];positive:boolean;narrow?:boolean;gainColor:string;lossColor:string}){
-  const max=Math.max(...values),min=Math.min(...values),range=Math.max(0.001,max-min);
-  return <View style={[styles.spark,narrow&&styles.narrowSpark]}>
-    {values.map((value,index)=>{
-      const height=12+((value-min)/range)*44;
-      return <View key={index} style={[styles.sparkBar,{height,backgroundColor:positive?gainColor:lossColor}]} />;
-    })}
-  </View>;
-}
-
 const styles=StyleSheet.create({
   card:{flexDirection:'row',backgroundColor:'#0C121B',borderRadius:radius.lg,overflow:'hidden',minHeight:132,borderWidth:1,borderColor:'#263343'},
   compact:{minHeight:86},
-  spark:{width:104,padding:spacing.md,flexDirection:'row',alignItems:'flex-end',gap:3,backgroundColor:'#090E15'},
-  sparkBar:{flex:1,borderRadius:3,opacity:0.9},
+  bodyPress:{flex:1},
   body:{flex:1,padding:spacing.md,gap:8},
   head:{flexDirection:'row',alignItems:'flex-start',paddingBottom:5},
   headerMain:{flex:1,minWidth:0,gap:3},
@@ -323,7 +317,6 @@ const styles=StyleSheet.create({
   footerLabel:{fontSize:10,color:'#91A0B5'},
   rightMetric:{alignItems:'flex-end'},
   narrowCard:{flexDirection:'column',minHeight:168},
-  narrowSpark:{width:'100%',height:54,paddingHorizontal:10,paddingVertical:8},
   microCard:{minHeight:155,minWidth:0,width:'100%'},
   microHead:{paddingBottom:3},
   microHeaderTop:{flexDirection:'column',alignItems:'flex-start',gap:2},
