@@ -21,7 +21,7 @@ import {
   type OtherCashLedgerEntry,
 } from './canonicalLedger';
 import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
-import { migrateLegacyOpeningCash } from './cashAudit';
+import { isGeneratedLegacyReversal, migrateLegacyOpeningCash } from './cashAudit';
 import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
@@ -32,11 +32,13 @@ type PersistedFinanceState = {
   schema: number;
   initialCash: number;
   entries: CanonicalLedgerEntry[];
+  cashConfigured?: boolean;
 };
 
 type FinanceContextValue = {
   hydrated: boolean;
   initialCash: number;
+  cashConfigured: boolean;
   entries: readonly CanonicalLedgerEntry[];
   quotes: readonly RuntimeQuote[];
   snapshot: ReturnType<typeof calculateCanonicalLedgerSnapshot>;
@@ -57,6 +59,7 @@ export function FinanceProvider({children}:PropsWithChildren){
   const market=useMarketRuntime();
   const [initialCash,setInitialCash]=useState(INITIAL_CASH);
   const [entries,setEntries]=useState<CanonicalLedgerEntry[]>(()=>[...SEED_LEDGER]);
+  const [cashConfigured,setCashConfigured]=useState(false);
   const [hydrated,setHydrated]=useState(false);
 
   useEffect(()=>{
@@ -76,8 +79,15 @@ export function FinanceProvider({children}:PropsWithChildren){
               {removeOrphanGeneratedReversal:sourceSchema<SCHEMA},
             );
             if(validateLedgerSequence(normalized.entries).length===0){
+              const explicitCashAdjustment=normalized.entries.some(entry=>
+                entry.kind==='other'&&!isGeneratedLegacyReversal(entry)
+              );
+              const restoredCashConfigured=typeof parsed.cashConfigured==='boolean'
+                ? parsed.cashConfigured
+                : ((normalized.initialCash!==0&&normalized.initialCash!==750_000)||explicitCashAdjustment);
               setEntries(normalized.entries);
               setInitialCash(normalized.initialCash);
+              setCashConfigured(restoredCashConfigured);
             }
           }
         }
@@ -89,9 +99,9 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedFinanceState={schema:SCHEMA,initialCash,entries};
+    const payload:PersistedFinanceState={schema:SCHEMA,initialCash,entries,cashConfigured};
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,initialCash,entries]);
+  },[hydrated,initialCash,entries,cashConfigured]);
 
   useEffect(()=>{
     market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
@@ -104,6 +114,7 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({
     initialCash,
+    cashConfigured,
     entries,
     quotes:canonicalQuotes,
   }),[initialCash,entries,canonicalQuotes]);
@@ -158,20 +169,22 @@ export function FinanceProvider({children}:PropsWithChildren){
       return validateLedgerSequence(candidate).length===0?candidate:current;
     }),
     addDividend:entry=>setEntries(current=>[...current,entry]),
-    addOther:entry=>setEntries(current=>[...current,entry]),
+    addOther:entry=>{setCashConfigured(true);setEntries(current=>[...current,entry]);},
     deleteEntry:id=>setEntries(current=>{
       const candidate=current.filter(entry=>entry.id!==id);
       return validateLedgerSequence(candidate).length===0?candidate:current;
     }),
     resetFinance:()=>{
+      setCashConfigured(false);
       setInitialCash(INITIAL_CASH);
       setEntries([...SEED_LEDGER]);
     },
     clearFinance:()=>{
+      setCashConfigured(false);
       setInitialCash(0);
       setEntries([]);
     },
-  }),[hydrated,initialCash,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes]);
+  }),[hydrated,initialCash,cashConfigured,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }
