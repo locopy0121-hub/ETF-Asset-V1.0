@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.1.13",
+  "version": "3.1.14",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_1_13 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_1_14 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -231,7 +231,8 @@
     "test:v3_1_10": "npm run test:v3_1_9 && tsx scripts/v3_1_10-history-chart.test.ts",
     "test:v3_1_11": "npm run test:v3_1_10 && tsx scripts/v3_1_11-mini-stock-chart.test.ts",
     "test:v3_1_12": "npm run test:v3_1_11 && tsx scripts/v3_1_12-legacy-cash-migration.test.ts",
-    "test:v3_1_13": "npm run test:v3_1_12 && tsx scripts/v3_1_13-orphan-legacy-cash.test.ts"
+    "test:v3_1_13": "npm run test:v3_1_12 && tsx scripts/v3_1_13-orphan-legacy-cash.test.ts",
+    "test:v3_1_14": "npm run test:v3_1_11 && tsx scripts/v3_1_14-zero-legacy-cash.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
