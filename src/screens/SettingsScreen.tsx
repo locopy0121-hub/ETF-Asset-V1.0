@@ -267,7 +267,9 @@ export function SettingsScreen(){
             <StatusRow label="賣出淨流入" value={fmt(audit.sellInflow)}/>
             <StatusRow label="已入帳股息" value={fmt(audit.dividendInflow)}/>
             <StatusRow label="其他現金調整淨額" value={fmt(audit.otherNet)}/>
-            <StatusRow label="現金餘額" value={fmt(audit.cashBalance)}/>
+            <StatusRow label="交易／股息／調整淨流量" value={fmt(audit.netMovement)}/>
+            <StatusRow label="現金餘額" value={finance.cashConfigured?fmt(audit.cashBalance):'未設定'}/>
+            {!finance.cashConfigured?<Text style={styles.dangerText}>目前沒有明確的現金來源。交易淨流量只用於對帳，不代表可用現金；不再把從 0 起算的買進支出顯示成負的現金餘額。</Text>:null}
             <Text style={styles.note}>期初現金獨立儲存，不屬於歷史交易。V3.1.13 起會同時清理舊版 750,000 期初值與一筆孤立的系統 -750,000 沖回；買賣、股息與其他真實紀錄保持不變。</Text>
             {audit.possibleLegacyDefault?<View>
               <Text style={styles.dangerText}>偵測到尚未完成遷移的舊版 750,000 元期初值。正常情況會在帳務載入時自動歸零；此處保留人工沖回作為異常備援。</Text>
