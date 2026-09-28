@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.1.10",
+  "version": "3.1.11",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -228,7 +228,8 @@
     "test:v3_1_7": "npm run test:v3_1_6 && tsx scripts/v3_1_7-inline-list.test.ts",
     "test:v3_1_8": "npm run test:v3_1_7 && tsx scripts/v3_1_8-legacy-table.test.ts",
     "test:v3_1_9": "npm run test:v3_1_8 && tsx scripts/v3_1_9-flexible-list-width.test.ts",
-    "test:v3_1_10": "npm run test:v3_1_9 && tsx scripts/v3_1_10-history-chart.test.ts"
+    "test:v3_1_10": "npm run test:v3_1_9 && tsx scripts/v3_1_10-history-chart.test.ts",
+    "test:v3_1_11": "npm run test:v3_1_10 && tsx scripts/v3_1_11-mini-stock-chart.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
