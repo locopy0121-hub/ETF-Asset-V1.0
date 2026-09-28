@@ -13,7 +13,7 @@ import type { ItemEffectConfig } from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {EtfBadgeRow} from './EtfBadgeRow';
 import {MiniHoldingChart} from './MiniHoldingChart';
-import { radius, spacing } from '../theme/tokens';
+import { radius } from '../theme/tokens';
 import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
@@ -46,6 +46,7 @@ export function HoldingQuoteModule({
   const narrow=layout!=='full';
   // Three-column cards always show a readable quote, never a crushed graph.
   const showChart=!micro&&(style==='chart'||style==='advanced');
+  const miniOpen=onOpenChart??onPress;
   const cfg=wallConfig;
   const cardStyle=cfg.style;
   const groups={
@@ -61,7 +62,7 @@ export function HoldingQuoteModule({
     micro&&styles.microCard,
     {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
-    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?<MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} onOpen={onOpenChart??onPress}/>:null}
+    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?<MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>:null}
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={'查看持股 '+item.symbol} style={styles.bodyPress}>
     <View style={[styles.body,{padding:micro?Math.min(8,cardStyle.padding):cardStyle.padding,
       gap:micro?Math.min(5,cardStyle.rowGap):cardStyle.rowGap}]}>
