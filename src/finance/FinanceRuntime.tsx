@@ -26,7 +26,7 @@ import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
-const SCHEMA=2;
+const SCHEMA=3;
 
 type PersistedFinanceState = {
   schema: number;
@@ -66,12 +66,14 @@ export function FinanceProvider({children}:PropsWithChildren){
         if(!alive)return;
         if(raw){
           const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
-          if((parsed.schema===1||parsed.schema===SCHEMA)&&Array.isArray(parsed.entries)){
+          const sourceSchema=Number(parsed.schema);
+          if((sourceSchema===1||sourceSchema===2||sourceSchema===SCHEMA)&&Array.isArray(parsed.entries)){
             const restored=parsed.entries as CanonicalLedgerEntry[];
             const parsedInitialCash=Number(parsed.initialCash);
             const normalized=migrateLegacyOpeningCash(
               Number.isFinite(parsedInitialCash)?parsedInitialCash:INITIAL_CASH,
               restored,
+              {removeOrphanGeneratedReversal:sourceSchema<SCHEMA},
             );
             if(validateLedgerSequence(normalized.entries).length===0){
               setEntries(normalized.entries);
