@@ -75,7 +75,7 @@ export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_
       <Text style={styles.title}>即時清單預覽（{previewStyle==='simple'?'簡易清單':'詳細表格'}）</Text>
       {previewStyle==='simple'
         ?<PortfolioSafeList rows={[previewQuote]} onOpenHolding={()=>{}}/>
-        :<PortfolioHoldingTable rows={[previewQuote]} config={value} badges={badges}/>
+        :<PortfolioHoldingTable rows={[previewQuote]} config={value} badges={badges}/>}
       <Text style={styles.hint}>修改後先預覽整列，再按頁面設定的「套用」儲存。</Text>
     </View>:null}
     <Pressable style={styles.reset} onPress={()=>onChange(DEFAULT_PORTFOLIO_LIST)}><Text style={styles.resetText}>恢復清單預設配置</Text></Pressable>
