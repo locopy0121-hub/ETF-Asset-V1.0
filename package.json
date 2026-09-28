@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.1.9",
+  "version": "3.1.10",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_1_9 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_1_10 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -227,7 +227,8 @@
     "test:v3_1_6": "npm run test:v3_1_5 && tsx scripts/v3_1_6-quickbar.test.ts",
     "test:v3_1_7": "npm run test:v3_1_6 && tsx scripts/v3_1_7-inline-list.test.ts",
     "test:v3_1_8": "npm run test:v3_1_7 && tsx scripts/v3_1_8-legacy-table.test.ts",
-    "test:v3_1_9": "npm run test:v3_1_8 && tsx scripts/v3_1_9-flexible-list-width.test.ts"
+    "test:v3_1_9": "npm run test:v3_1_8 && tsx scripts/v3_1_9-flexible-list-width.test.ts",
+    "test:v3_1_10": "npm run test:v3_1_9 && tsx scripts/v3_1_10-history-chart.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
