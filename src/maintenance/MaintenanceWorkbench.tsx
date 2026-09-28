@@ -21,6 +21,8 @@ import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
 import {HoldingMarketWallEditor} from '../components/HoldingMarketWallEditor';
 import {EtfBadgeEditor} from '../components/EtfBadgeEditor';
 import {PortfolioListEditor} from '../components/PortfolioListEditor';
+import {HoldingChartEditor} from '../components/HoldingChartEditor';
+import {DEFAULT_HOLDING_CHART,normalizeHoldingChart} from '../domain/chartEditor';
 import {useMaintenance} from './MaintenanceRuntime';
 import {SpatialToolDetails} from './SpatialEditor';
 import {BatchVisualToolDetails,LocalVisualDiffToolDetails,FrameHealthToolDetails,DesignTokenToolDetails,FavoriteToolDetails} from './AdvancedEngineerTools';
@@ -601,6 +603,8 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
       onChange={etfBadges=>maint.patchDisplay({etfBadges})}/>;
     if(key==='list')return <PortfolioListEditor value={d.portfolioList??DEFAULT_PORTFOLIO_LIST}
       badges={d.etfBadges??DEFAULT_ETF_BADGES} onChange={portfolioList=>maint.patchDisplay({portfolioList})}/>;
+    if(key==='holdingChart')return <HoldingChartEditor value={normalizeHoldingChart(d.holdingChart??DEFAULT_HOLDING_CHART)}
+      onChange={holdingChart=>maint.patchDisplay({holdingChart})}/>;
     if(key==='quoteStyle'||key==='holdingLayoutMode'){
       const current=key==='quoteStyle'?d.quoteStyle??'quote':d.holdingLayoutMode??'list';
       const opts=key==='quoteStyle'?[
