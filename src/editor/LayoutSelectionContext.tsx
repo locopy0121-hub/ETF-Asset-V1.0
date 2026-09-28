@@ -1,20 +1,29 @@
 import {createContext,useContext,type PropsWithChildren} from 'react';
+import type {TargetOverride} from '../maintenance/inspectionModel';
 
 export type LayoutSelectionKind='frame'|'card'|'text'|'value'|'prefix'|'chart'|'data'|'button'|'badge'|'table'|'calendar'|'form'|'list'|'layout';
 export type LayoutSelectionTarget=Readonly<{id:string;kind:LayoutSelectionKind;label:string}>;
 
-type LayoutSelectionContextValue=Readonly<{
+type LayoutRuntimeContextValue=Readonly<{
   active:boolean;
   selectedId:string|null;
+  targets:Readonly<Record<string,TargetOverride>>;
   onSelect?:(target:LayoutSelectionTarget)=>void;
 }>;
 
-const LayoutSelectionContext=createContext<LayoutSelectionContextValue>({active:false,selectedId:null});
+const LayoutRuntimeContext=createContext<LayoutRuntimeContextValue>({active:false,selectedId:null,targets:{}});
 
-export function LayoutSelectionProvider({selectedId,onSelect,children}:PropsWithChildren<{
+export function LayoutTargetProvider({targets,children}:PropsWithChildren<{
+  targets:Readonly<Record<string,TargetOverride>>;
+}>){
+  return <LayoutRuntimeContext.Provider value={{active:false,selectedId:null,targets}}>{children}</LayoutRuntimeContext.Provider>;
+}
+
+export function LayoutSelectionProvider({targets,selectedId,onSelect,children}:PropsWithChildren<{
+  targets:Readonly<Record<string,TargetOverride>>;
   selectedId:string|null;
   onSelect:(target:LayoutSelectionTarget)=>void;
 }>){
-  return <LayoutSelectionContext.Provider value={{active:true,selectedId,onSelect}}>{children}</LayoutSelectionContext.Provider>;
+  return <LayoutRuntimeContext.Provider value={{active:true,selectedId,targets,onSelect}}>{children}</LayoutRuntimeContext.Provider>;
 }
-export const useLayoutSelection=()=>useContext(LayoutSelectionContext);
+export const useLayoutRuntime=()=>useContext(LayoutRuntimeContext);
