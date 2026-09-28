@@ -11,10 +11,10 @@ import type {CanonicalLedgerEntry} from '../src/finance/canonicalLedger';
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.1.12');
-assert.equal(app.expo.version,'3.1.12');
-assert.equal(app.expo.android.versionCode,30112);
-assert.equal(app.expo.ios.buildNumber,'30112');
+assert.equal(pkg.version,'3.1.13');
+assert.equal(app.expo.version,'3.1.13');
+assert.equal(app.expo.android.versionCode,30113);
+assert.equal(app.expo.ios.buildNumber,'30113');
 
 const genuine:CanonicalLedgerEntry[]=[
   {id:'real-adjustment',date:'2026-09-28',kind:'other',label:'本人現金調整',amount:-23_871},
@@ -55,4 +55,4 @@ const seed=readFileSync('src/finance/financeSeed.ts','utf8');
 assert.match(seed,/INITIAL_CASH=0/);
 assert.match(seed,/SEED_LEDGER:readonly CanonicalLedgerEntry\[\]=\[\]/);
 
-console.log('V3.1.12 legacy opening cash migration PASS — phantom 750,000 removed without touching real ledger data');
+console.log('V3.1.13 legacy opening cash migration PASS — phantom 750,000 removed without touching real ledger data');
