@@ -1,3 +1,12 @@
+# V3.1.15｜2026-09-28｜資產儀表板自適應金額列與防錯位保護
+
+- 主資產金額改成單一 responsive composite：NT$ 與金額共用同一個 Row，採底部對齊，不再依賴 Android baseline；長金額會在可用寬度內自動縮小。
+- NT$ 預設改為較小前綴字級，金額保留主視覺層級；金額列加入 minWidth / overflow 保護，避免父框架縮放後互相覆蓋。
+- 維護工程師的貨幣前綴不再接受泛用 absolute XY／寬高／Anchor；舊有危險幾何覆寫在 Runtime 直接忽略，仍保留前綴文字、字體、顏色、損益色、間距及安全相對位移。
+- 前綴水平位移改成會占用版面空間的 margin；安全範圍 X ±24dp、Y ±8dp，防止 NT$ 穿入主金額。
+- 儀表板上方固定保留高度由 150dp 降為 128dp，減少截圖中主金額與資料卡之間的大塊空白；資料卡仍使用既有自適應換行。
+- App 3.1.15／30115；新增 `v3_1_15-dashboard-layout` 回歸 Gate。Canonical Finance Core、actual_fee／actual_tax、行情來源與備份資料不修改。
+
 # V3.1.14｜2026-09-28｜徹底移除 750,000 執行常數並將未配置期初現金歸零
 
 - `cashAudit.ts` 不再定義任何 750,000 現金 magic number；generated reversal 僅以 TF Asset 專用 ID + label 辨識。
