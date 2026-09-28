@@ -1,17 +1,40 @@
-export type ChartDataKey='open'|'high'|'low'|'close'|'volume'|'price'|'pnl'|'roi'|'marketValue'|'dividend';
+export type ChartDataKey='open'|'high'|'low'|'close'|'volume'|'price'|'change'|'changePct'|'cost'|'pnl'|'comprehensivePnl'|'roi'|'marketValue'|'dividend';
 export type NativeChartStyle='candlestick'|'ohlc'|'line'|'area';
+export type HoldingChartRange='1月'|'3月'|'6月'|'1年';
+export type HoldingChartConfig=Readonly<{
+  style:NativeChartStyle;
+  dataKeys:readonly ChartDataKey[];
+  range:HoldingChartRange;
+  crosshairEnabled:boolean;
+  costLineEnabled:boolean;
+}>;
 export type ChartLibraryStatus='native'|'pending-adapter';
 export type ChartLibraryItem=Readonly<{id:string;label:string;family:string;status:ChartLibraryStatus}>;
 
 export const CHART_DATA_OPTIONS:readonly Readonly<{key:ChartDataKey;label:string}>[]=[
  {key:'open',label:'開盤價'},{key:'high',label:'最高價'},{key:'low',label:'最低價'},{key:'close',label:'收盤價'},
- {key:'volume',label:'成交量'},{key:'price',label:'即時價格'},{key:'pnl',label:'持股損益'},
- {key:'roi',label:'報酬率'},{key:'marketValue',label:'市值'},{key:'dividend',label:'股息'},
+ {key:'volume',label:'成交量'},{key:'price',label:'行情走勢'},{key:'change',label:'漲跌額'},{key:'changePct',label:'漲跌幅'},
+ {key:'cost',label:'持股成本線'},{key:'pnl',label:'持股損益'},{key:'comprehensivePnl',label:'含息總損益'},
+ {key:'roi',label:'報酬率'},{key:'marketValue',label:'市值'},{key:'dividend',label:'累積股息'},
 ];
 
 export const NATIVE_CHART_STYLES:readonly Readonly<{id:NativeChartStyle;label:string}>[]=[
  {id:'candlestick',label:'K 線'},{id:'ohlc',label:'OHLC'},{id:'line',label:'折線'},{id:'area',label:'面積'},
 ];
+export const HOLDING_CHART_RANGES:readonly HoldingChartRange[]=['1月','3月','6月','1年'];
+export const DEFAULT_HOLDING_CHART:HoldingChartConfig={
+  style:'candlestick',dataKeys:['open','high','low','close','volume'],range:'1月',
+  crosshairEnabled:true,costLineEnabled:true,
+};
+export function normalizeHoldingChart(raw:unknown):HoldingChartConfig{
+  const source=(raw&&typeof raw==='object'?raw:{}) as Partial<HoldingChartConfig>;
+  const style=NATIVE_CHART_STYLES.some(item=>item.id===source.style)?source.style as NativeChartStyle:DEFAULT_HOLDING_CHART.style;
+  const allowed=new Set(CHART_DATA_OPTIONS.map(item=>item.key));
+  const selected=Array.isArray(source.dataKeys)?source.dataKeys.filter((key):key is ChartDataKey=>allowed.has(key as ChartDataKey)):[];
+  const dataKeys=selected.length?Array.from(new Set(selected)):DEFAULT_HOLDING_CHART.dataKeys;
+  const range=HOLDING_CHART_RANGES.includes(source.range as HoldingChartRange)?source.range as HoldingChartRange:DEFAULT_HOLDING_CHART.range;
+  return {style,dataKeys,range,crosshairEnabled:source.crosshairEnabled!==false,costLineEnabled:source.costLineEnabled!==false};
+}
 
 export const CHART_LIBRARY:readonly ChartLibraryItem[]=[
  {id:'line',label:'標準折線',family:'價格與趨勢',status:'native'},
