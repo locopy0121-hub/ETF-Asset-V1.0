@@ -241,6 +241,7 @@ function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfi
     <Accordion title="框架標題" subtitle="標題字體、顏色、對齊與跑馬燈" open={open==='title'} onPress={()=>toggle('title')}>
       <NumberStep label="字體大小" value={frame.titleFontSize} min={10} max={32} step={1} suffix=" px" onChange={titleFontSize=>patch({titleFontSize})}/>
       <ColorPalettePicker label="標題顏色" value={frame.titleColor} onChange={titleColor=>patch({titleColor})}/>
+      <SwitchRow label="標題損益色" value={frame.titleProfitColor===true} onChange={titleProfitColor=>patch({titleProfitColor})}/>
       <AlignRow value={frame.titleAlign} onChange={titleAlign=>patch({titleAlign})}/>
       <SwitchRow label="跑馬燈" value={fx.titleMarqueeEnabled} onChange={titleMarqueeEnabled=>patchFx({titleMarqueeEnabled})}/>
       {fx.titleMarqueeEnabled?<><NumberStep label="速度" value={fx.titleMarqueeSpeed} min={24} max={180} step={8} suffix="" onChange={titleMarqueeSpeed=>patchFx({titleMarqueeSpeed})}/>
@@ -249,17 +250,21 @@ function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfi
     <Accordion title="背景" subtitle="純色／漸層與透明度" open={open==='background'} onPress={()=>toggle('background')}>
       <ChoiceRow label="背景模式" value={fx.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={v=>patchFx({backgroundMode:v as FrameEffects['backgroundMode']})}/>
       <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <SwitchRow label="背景損益色" value={frame.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
       <NumberStep label="背景透明度" value={Math.round(frame.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
       {fx.backgroundMode==='gradient'?<>
         <ColorPalettePicker label="結束顏色" value={fx.gradientEndColor} onChange={gradientEndColor=>patchFx({gradientEndColor})}/>
+        <SwitchRow label="漸層結束損益色" value={fx.gradientEndProfitColor} onChange={gradientEndProfitColor=>patchFx({gradientEndProfitColor})}/>
         <ChoiceRow label="方向" value={fx.gradientDirection} items={[['horizontal','水平'],['vertical','垂直']]} onChange={v=>patchFx({gradientDirection:v as FrameEffects['gradientDirection']})}/>
         <SwitchRow label="第三色" value={fx.gradientMidEnabled} onChange={gradientMidEnabled=>patchFx({gradientMidEnabled})}/>
         {fx.gradientMidEnabled?<><ColorPalettePicker label="中間顏色" value={fx.gradientMidColor} onChange={gradientMidColor=>patchFx({gradientMidColor})}/>
+          <SwitchRow label="漸層中間損益色" value={fx.gradientMidProfitColor} onChange={gradientMidProfitColor=>patchFx({gradientMidProfitColor})}/>
           <NumberStep label="中間位置" value={Math.round(fx.gradientMidStop*100)} min={10} max={90} step={5} suffix="%" onChange={v=>patchFx({gradientMidStop:v/100})}/></>:null}
       </>:null}
     </Accordion>
     <Accordion title="邊框／圓角" subtitle="邊框樣式、四邊與四角" open={open==='border'} onPress={()=>toggle('border')}>
       <ColorPalettePicker label="邊框顏色" value={frame.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <SwitchRow label="邊框損益色" value={frame.borderProfitColor===true} onChange={borderProfitColor=>patch({borderProfitColor})}/>
       <NumberStep label="邊框粗細" value={frame.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
       <ChoiceRow label="邊框樣式" value={fx.borderStyle} items={[['solid','實線'],['dashed','虛線'],['dotted','點線']]} onChange={v=>patchFx({borderStyle:v as FrameEffects['borderStyle']})}/>
       <NumberStep label="整體圓角" value={frame.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
@@ -269,17 +274,23 @@ function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfi
     <Accordion title="陰影／光效" subtitle="原生陰影、Glow、外光暈" open={open==='effects'} onPress={()=>toggle('effects')}>
       <SwitchRow label="陰影" value={frame.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
       {frame.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={fx.shadowColor} onChange={shadowColor=>patchFx({shadowColor})}/>
+        <SwitchRow label="陰影損益色" value={fx.shadowProfitColor} onChange={shadowProfitColor=>patchFx({shadowProfitColor})}/>
         <NumberStep label="陰影強度" value={Math.round(frame.shadowOpacity*100)} min={0} max={80} step={5} suffix="%" onChange={v=>patch({shadowOpacity:v/100})}/>
         <NumberStep label="陰影模糊" value={fx.shadowBlur} min={0} max={48} step={2} suffix="" onChange={shadowBlur=>patchFx({shadowBlur})}/></>:null}
       <SwitchRow label="Glow" value={fx.glowEnabled} onChange={glowEnabled=>patchFx({glowEnabled})}/>
       {fx.glowEnabled?<><ColorPalettePicker label="Glow 顏色" value={fx.glowColor} onChange={glowColor=>patchFx({glowColor})}/>
+        <SwitchRow label="Glow 損益色" value={fx.glowProfitColor} onChange={glowProfitColor=>patchFx({glowProfitColor})}/>
         <NumberStep label="Glow 強度" value={Math.round(fx.glowOpacity*100)} min={0} max={80} step={5} suffix="%" onChange={v=>patchFx({glowOpacity:v/100})}/>
         <NumberStep label="Glow 寬度" value={fx.glowWidth} min={0} max={16} step={1} suffix=" px" onChange={glowWidth=>patchFx({glowWidth})}/>
         <SwitchRow label="呼吸光效" value={fx.glowPulse} onChange={glowPulse=>patchFx({glowPulse})}/></>:null}
       <SwitchRow label="外光暈" value={fx.outerGlowEnabled} onChange={outerGlowEnabled=>patchFx({outerGlowEnabled})}/>
+      {fx.outerGlowEnabled?<><ColorPalettePicker label="外光暈顏色" value={fx.outerGlowColor} onChange={outerGlowColor=>patchFx({outerGlowColor})}/>
+        <SwitchRow label="外光暈損益色" value={fx.outerGlowProfitColor} onChange={outerGlowProfitColor=>patchFx({outerGlowProfitColor})}/></>:null}
     </Accordion>
     <Accordion title="動畫／響應式" subtitle="閃爍、進場與尺寸響應" open={open==='responsive'} onPress={()=>toggle('responsive')}>
       <SwitchRow label="閃爍" value={fx.blinkEnabled} onChange={blinkEnabled=>patchFx({blinkEnabled})}/>
+      {fx.blinkEnabled?<><ColorPalettePicker label="閃爍顏色" value={fx.blinkColor} onChange={blinkColor=>patchFx({blinkColor})}/>
+        <SwitchRow label="閃爍損益色" value={fx.blinkProfitColor} onChange={blinkProfitColor=>patchFx({blinkProfitColor})}/></>:null}
       <SwitchRow label="進場動畫" value={fx.entranceEnabled} onChange={entranceEnabled=>patchFx({entranceEnabled})}/>
       {fx.entranceEnabled?<><ChoiceRow label="進場方式" value={fx.entranceMode} items={[['slide','滑入'],['zoom','縮放'],['rotate','旋轉']]} onChange={v=>patchFx({entranceMode:v as FrameEffects['entranceMode']})}/>
         <NumberStep label="時間" value={fx.entranceDurationMs} min={200} max={2500} step={50} suffix=" ms" onChange={entranceDurationMs=>patchFx({entranceDurationMs})}/></>:null}
@@ -299,11 +310,15 @@ function HoldingCardTools({wall,open,toggle,patch}:{wall:HoldingWallConfig;open:
     </Accordion>
     <Accordion title="背景／邊框" subtitle="行情卡片實際使用色彩" open={open==='card-color'} onPress={()=>toggle('card-color')}>
       <ColorPalettePicker label="背景" value={wall.style.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <SwitchRow label="背景損益色" value={wall.style.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
       <ColorPalettePicker label="主要文字" value={wall.style.textColor} onChange={textColor=>patch({textColor})}/>
+      <SwitchRow label="主要文字損益色" value={wall.style.textProfitColor===true} onChange={textProfitColor=>patch({textProfitColor})}/>
       <ColorPalettePicker label="次要文字" value={wall.style.secondaryTextColor} onChange={secondaryTextColor=>patch({secondaryTextColor})}/>
+      <SwitchRow label="次要文字損益色" value={wall.style.secondaryTextProfitColor===true} onChange={secondaryTextProfitColor=>patch({secondaryTextProfitColor})}/>
       <ColorPalettePicker label="上漲色" value={wall.style.gainColor} onChange={gainColor=>patch({gainColor})}/>
       <ColorPalettePicker label="下跌色" value={wall.style.lossColor} onChange={lossColor=>patch({lossColor})}/>
       <ColorPalettePicker label="邊框" value={wall.style.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <SwitchRow label="邊框損益色" value={wall.style.borderProfitColor===true} onChange={borderProfitColor=>patch({borderProfitColor})}/>
       <NumberStep label="邊框粗細" value={wall.style.borderWidth} min={0} max={6} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
     </Accordion>
   </View>;
@@ -321,9 +336,9 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
       </View></View>
     </Accordion>
     <Accordion title="顏色" subtitle="固定色與損益色分開控制" open={open==='color'} onPress={()=>toggle('color')}>
-      <SwitchRow label="套用損益色" value={field.useProfitColor} onChange={useProfitColor=>patch({useProfitColor})}/>
       <ColorPalettePicker label="自訂文字色" value={field.textColor??'#FFFFFF'} onChange={textColor=>patch({textColor})}/>
-      <SwitchRow label="背景跟隨損益色" value={field.useProfitBackground??false} onChange={useProfitBackground=>patch({useProfitBackground})}/>
+      <SwitchRow label="文字損益色" value={field.useProfitColor} onChange={useProfitColor=>patch({useProfitColor})}/>
+      <SwitchRow label="背景損益色" value={field.useProfitBackground??false} onChange={useProfitBackground=>patch({useProfitBackground})}/>
       <ColorPalettePicker label="固定背景色" value={field.backgroundColor??'#0C121B'} onChange={backgroundColor=>patch({backgroundColor})}/>
     </Accordion>
     <Accordion title="間距" subtitle="上下內距與欄位行距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
@@ -366,31 +381,40 @@ function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onCon
       <NumberStep label="小數位" value={current.displayDigits} min={0} max={4} step={1} suffix=" 位" onChange={displayDigits=>patch({displayDigits})}/>
     </Accordion>:null}
     <Accordion title="顏色／背景" subtitle={card?'卡片材質、邊框、陰影與光效':'文字色、背景、邊框與透明度'} open={open==='color'} onPress={()=>toggle('color')}>
-      {!card?<ColorPalettePicker label="文字顏色" value={current.textColor} onChange={textColor=>patch({textColor})}/>:null}
+      {!card?<><ColorPalettePicker label="文字顏色" value={current.textColor} onChange={textColor=>patch({textColor})}/>
+        <SwitchRow label="文字損益色" value={current.textProfitColor===true} onChange={textProfitColor=>patch({textProfitColor})}/></>:null}
       <ColorPalettePicker label="背景顏色" value={current.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <SwitchRow label="背景損益色" value={current.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
       <NumberStep label="背景透明度" value={Math.round(current.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
       <ColorPalettePicker label="邊框顏色" value={current.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <SwitchRow label="邊框損益色" value={current.borderProfitColor===true} onChange={borderProfitColor=>patch({borderProfitColor})}/>
       <NumberStep label="邊框粗細" value={current.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
       <NumberStep label="圓角" value={current.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
       {!card?<><NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
         <NumberStep label="透明度" value={Math.round(current.opacity*100)} min={5} max={100} step={5} suffix="%" onChange={v=>patch({opacity:v/100})}/></>:null}
       {card?<><ChoiceRow label="背景模式" value={current.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={backgroundMode=>patch({backgroundMode:backgroundMode as TargetAppearance['backgroundMode']})}/>
         {current.backgroundMode==='gradient'?<><ColorPalettePicker label="漸層結束色" value={current.gradientEndColor} onChange={gradientEndColor=>patch({gradientEndColor})}/>
+          <SwitchRow label="漸層結束損益色" value={current.gradientEndProfitColor} onChange={gradientEndProfitColor=>patch({gradientEndProfitColor})}/>
           <ChoiceRow label="漸層方向" value={current.gradientDirection} items={[['horizontal','水平'],['vertical','垂直']]} onChange={gradientDirection=>patch({gradientDirection:gradientDirection as TargetAppearance['gradientDirection']})}/></>:null}
         <SwitchRow label="陰影" value={current.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
         {current.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={current.shadowColor} onChange={shadowColor=>patch({shadowColor})}/>
+          <SwitchRow label="陰影損益色" value={current.shadowProfitColor} onChange={shadowProfitColor=>patch({shadowProfitColor})}/>
           <NumberStep label="陰影強度" value={Math.round(current.shadowOpacity*100)} min={0} max={80} step={5} suffix="%" onChange={v=>patch({shadowOpacity:v/100})}/></>:null}
         <SwitchRow label="Glow" value={current.glowEnabled} onChange={glowEnabled=>patch({glowEnabled})}/>
-        {current.glowEnabled?<ColorPalettePicker label="Glow 顏色" value={current.glowColor} onChange={glowColor=>patch({glowColor})}/>:null}
+        {current.glowEnabled?<><ColorPalettePicker label="Glow 顏色" value={current.glowColor} onChange={glowColor=>patch({glowColor})}/>
+          <SwitchRow label="Glow 損益色" value={current.glowProfitColor} onChange={glowProfitColor=>patch({glowProfitColor})}/></>:null}
       </>:null}
     </Accordion>
     {card&&id.startsWith('dashboard:kpi-')?<Accordion title="卡片文字" subtitle="標題、主數值、說明各自可調" open={open==='card-type'} onPress={()=>toggle('card-type')}>
       <NumberStep label="標題大小" value={current.labelFontSize} min={8} max={32} step={1} suffix=" px" onChange={labelFontSize=>patch({labelFontSize})}/>
       <ColorPalettePicker label="標題顏色" value={current.labelColor} onChange={labelColor=>patch({labelColor})}/>
+      <SwitchRow label="標題損益色" value={current.labelProfitColor===true} onChange={labelProfitColor=>patch({labelProfitColor})}/>
       <NumberStep label="數值大小" value={current.fontSize} min={10} max={48} step={1} suffix=" px" onChange={fontSize=>patch({fontSize})}/>
       <ColorPalettePicker label="數值顏色" value={current.textColor} onChange={textColor=>patch({textColor})}/>
+      <SwitchRow label="數值損益色" value={current.textProfitColor===true} onChange={textProfitColor=>patch({textProfitColor})}/>
       <NumberStep label="說明大小" value={current.captionFontSize} min={8} max={30} step={1} suffix=" px" onChange={captionFontSize=>patch({captionFontSize})}/>
       <ColorPalettePicker label="說明顏色" value={current.captionColor} onChange={captionColor=>patch({captionColor})}/>
+      <SwitchRow label="說明損益色" value={current.captionProfitColor===true} onChange={captionProfitColor=>patch({captionProfitColor})}/>
       <AlignRow value={current.align} onChange={align=>patch({align})}/>
     </Accordion>:null}
     <Pressable onPress={reset} style={styles.reset}><Text style={styles.resetText}>恢復目前物件排版</Text></Pressable>
