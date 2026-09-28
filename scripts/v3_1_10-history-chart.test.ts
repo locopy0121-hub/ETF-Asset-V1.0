@@ -41,8 +41,9 @@ assert.match(home,/<PortfolioQuickBar firstMode=\{homeFirstMode\}/);
 assert.doesNotMatch(home,/<SegmentedControl/);
 assert.match(home,/HoldingQuoteCollection rows=\{sorted\}/,'Home holding content renderer must remain unchanged');
 assert.match(maintenance,/HoldingChartEditor/);
-assert.match(maintenance,/key==='holdingChart'/);
-assert.match(skills,/ready\('holding-chart'.*page:holdingChart/);
+assert.match(maintenance,/持股歷史圖表/);
+assert.match(maintenance,/if\(key==='list'\).*PortfolioListEditor/s);
+assert.match(skills,/list-settings','頁面設定：庫存清單／持股圖表','page:list'/);
 
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
