@@ -581,7 +581,7 @@ class TfAssetOverlayService:Service(){
             "realizedPnl"->signedInteger(asset,"realizedPnl")
             "totalAssets"->integer(asset,"totalAssets")
             "marketValue"->integer(asset,"marketValue")
-            "cash"->integer(asset,"cash")
+            "cash"->if(asset.optBoolean("cashConfigured",true)) integer(asset,"cash") else "未設定"
             "dividendIncome"->integer(asset,"dividendIncome")
             else->"--"
           }
