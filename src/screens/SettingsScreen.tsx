@@ -56,8 +56,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.1.11';
-const BUILD='30111';
+const VERSION='3.1.12';
+const BUILD='30112';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -268,9 +268,9 @@ export function SettingsScreen(){
             <StatusRow label="已入帳股息" value={fmt(audit.dividendInflow)}/>
             <StatusRow label="其他現金調整淨額" value={fmt(audit.otherNet)}/>
             <StatusRow label="現金餘額" value={fmt(audit.cashBalance)}/>
-            <Text style={styles.note}>期初現金獨立儲存，不屬於歷史交易。已儲存的舊金額不會因 App 更新而自動歸零。</Text>
+            <Text style={styles.note}>期初現金獨立儲存，不屬於歷史交易。V3.1.12 起會把舊版內建的 750,000 元自動遷移為 0；買賣、股息與其他真實紀錄保持不變。</Text>
             {audit.possibleLegacyDefault?<View>
-              <Text style={styles.dangerText}>偵測到舊版內建的 750,000 元期初值，仍需你確認是否為真實資金。沖回前請先建立外部備份。</Text>
+              <Text style={styles.dangerText}>偵測到尚未完成遷移的舊版 750,000 元期初值。正常情況會在帳務載入時自動歸零；此處保留人工沖回作為異常備援。</Text>
               <ActionButton label="先建立外部備份" onPress={()=>{setTop('backup');setBackupPanel('export');setAccountingPanel(null);}}/>
               <ActionButton label={cashCorrectionBusy?'正在備份與核對…':'確認非本人資金，沖回 750,000 元'} disabled={cashCorrectionBusy||backupBusy} danger onPress={confirmLegacyCashCorrection}/>
             </View>:null}
