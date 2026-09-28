@@ -132,7 +132,7 @@ jobs:
         run: npm run typecheck
 
       - name: V3.2.3 Hard Gates
-        run: npm run test:v3_2_1
+        run: npm run test:v3_2_3
 
       - name: Create pure React Native Android build workspace
         run: |
