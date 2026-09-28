@@ -19,9 +19,9 @@ export class PortfolioViewBoundary extends Component<{
     if(!this.state.failed)return this.props.children;
     return <View style={styles.box}>
       <Text style={styles.title}>此顯示模組暫時無法載入</Text>
-      <Text style={styles.hint}>錯誤已記錄，可改用獨立安全簡易清單；不會刪除持股與設定。</Text>
+      <Text style={styles.hint}>錯誤已記錄，可返回「清單」內建簡易樣式；不會刪除持股與設定。</Text>
       <Pressable accessibilityRole="button" onPress={this.props.onUseSafe} style={styles.button}>
-        <Text style={styles.buttonText}>改用安全簡易清單</Text>
+        <Text style={styles.buttonText}>返回清單（簡易樣式）</Text>
       </Pressable>
     </View>;
   }

@@ -35,7 +35,7 @@ export function clearIndividualOverride(all:Readonly<Record<string,TargetOverrid
 /** Only fields owned by a particular native A may be returned to defaults. */
 export function individualNativeDisplayPatch(target:Pick<InspectedTarget,'page'|'frameKey'|'kind'|'properties'>):Partial<PageDisplayConfig>{
   if(target.page!=='portfolio'||target.frameKey!=='holding-view')return {};
-  if(target.kind==='portfolio-list')return {portfolioList:DEFAULT_PORTFOLIO_LIST};
+  if(target.kind==='portfolio-list')return {portfolioList:DEFAULT_PORTFOLIO_LIST,portfolioListStyle:'simple'};
   if(target.kind!=='control')return {};
   const choices=target.properties.find(item=>item.name==='可選項目')?.value??'';
   if(choices.includes('清單')&&choices.includes('行情牆')&&choices.includes('排序'))return {portfolioViewMode:'list',quoteStyle:'quote',holdingLayoutMode:'list',sortKey:'manual'};

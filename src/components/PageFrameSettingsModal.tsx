@@ -182,11 +182,17 @@ export function PageFrameSettingsModal({
                   <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
                     {(pageKey==='portfolio'?([{key:'list',label:'清單欄位'},{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const):([{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const)).map(tab=><Pressable key={tab.key} accessibilityRole="button" onPress={()=>setContentTab(tab.key)} style={{backgroundColor:contentTab===tab.key?colors.primary:colors.surfaceMuted,paddingVertical:9,paddingHorizontal:12,borderRadius:18}}><Text style={{fontSize:11,fontWeight:'900',color:contentTab===tab.key?'#FFFFFF':colors.textSecondary}}>{tab.label}</Text></Pressable>)}
                   </View>
-                  {pageKey==='portfolio'&&contentTab==='list'?<View>
-                    <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
-                      badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} previewQuote={previewQuote}
-                      onChange={portfolioList=>setDisplayDraft(current=>({...current,portfolioList}))}/>
-                  </View>:null}
+                  {pageKey==='portfolio'&&contentTab==='list'?<View style={{gap:10}}>
+                     <EditorRow title="清單版型" subtitle="簡易清單已整合至第一鍵；詳細表格可在此啟用">
+                       <ChoiceGroup items={[{key:'simple',label:'簡易清單'},{key:'table',label:'詳細表格'}] as const}
+                         value={displayDraft.portfolioListStyle??'simple'}
+                         onChange={portfolioListStyle=>setDisplayDraft(current=>({...current,portfolioListStyle}))}/>
+                     </EditorRow>
+                     <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                       previewStyle={displayDraft.portfolioListStyle??'simple'}
+                       badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} previewQuote={previewQuote}
+                       onChange={portfolioList=>setDisplayDraft(current=>({...current,portfolioList}))}/>
+                   </View>:null}
                   {contentTab==='wall'?<View>
                     <Text style={{fontSize:14,fontWeight:'900',color:colors.text,marginBottom:8}}>行情牆卡片 A/B 編輯</Text>
                     <Pressable accessibilityLabel="切換單張小卡預覽" onPress={()=>setShowWallPreview(v=>!v)}>
