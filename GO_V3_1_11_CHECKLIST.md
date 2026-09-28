@@ -23,10 +23,16 @@
 - [x] 新增 V3.1.11 regression gate
 
 ## 待驗證
-- [ ] TypeScript
-- [ ] V3.1.11 aggregate tests
-- [ ] Expo dependency / doctor
-- [ ] backend-quality
-- [ ] QA APK
-- [ ] APK Artifact / 版本 / SHA / badging
+- [x] TypeScript
+- [x] V3.1.11 aggregate tests
+- [x] Expo dependency / doctor
+- [x] backend-quality
+- [x] QA APK
+- [x] APK Artifact / 版本 / SHA / badging
 - [ ] Android 真機：Mini 單點、連點、卡片點擊、完整圖表查詢與返回
+
+## 實際驗證證據
+- GitHub Actions run 36390921666：quality / backend-quality / QA APK 全部 PASS。
+- QA APK：TF-Asset-V3.1.11-QA.apk，package com.tfasset.app，versionCode 30111，versionName 3.1.11。
+- SHA256：1f09eb24253e116394dc05713810036b3a68779dd9d22c74d4755fda73046a6c。
+- Artifact：TF-Asset-V3.1.11-QA-APK，Artifact ID 10956363514；真機互動仍待使用者實測。
