@@ -128,97 +128,10 @@ export function PageFrameSettingsModal({
               onPatchFrame={patch} onChangeDisplay={setDisplayDraft} previewQuote={previewQuote}/>
           </View>
         </View>
-        <View style={styles.section}>
-          <View style={styles.header}><Text style={styles.sectionTitle}>頁面標題</Text></View>
-          <View style={styles.body}><Text style={styles.rowHint}>編輯本頁上方顯示的標題，儲存後即時套用。</Text><TextInput accessibilityLabel="頁面標題" value={titleDraft} onChangeText={setTitleDraft} maxLength={48} style={styles.pageTitleInput}/></View>
+        <View style={styles.resetOnly}>
+          <Pressable onPress={reset} style={styles.resetPageButton}><Text style={styles.resetText}>恢復本頁預設排版</Text></Pressable>
         </View>
-        <View style={styles.toolbar}>
-          <Text style={styles.toolbarText}>排版工具：預覽直選 ✓ · 虛線範圍 ✓ · 同層手風琴單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
-          <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
-        </View>
-        {pageKey==='home'?<View style={styles.section}>
-          <View style={styles.header}><View style={{flex:1}}><Text style={styles.sectionTitle}>方案 C｜儀表板佈局</Text><Text style={styles.description}>只控制首頁資產總覽、損益分析、損益明細與快捷功能；行情牆設定完全沿用原有獨立設定。</Text></View></View>
-          <View style={styles.body}><DashboardLayoutSettings value={displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT}
-            onChange={dashboardLayout=>setDisplayDraft(current=>({...current,dashboardLayout}))}/></View>
-        </View>:null}
-        {orderedFrames.map((frame,index)=>{
-          const expanded=openFrame===frame.key,value=draft[frame.key];if(!value)return null;
-          const locked=value.behavior==='locked';
-          return <View key={frame.key} style={styles.section}>
-            <Pressable style={styles.header} onPress={()=>toggleFrame(frame.key)}>
-              <View style={{flex:1}}><Text style={styles.sectionTitle}>{frame.title}</Text><Text style={styles.description}>{frame.description}</Text></View>
-              <Switch value={value.visible} disabled={locked} onValueChange={visibleValue=>patch(frame.key,{visible:visibleValue})} trackColor={{true:colors.primary}}/>
-              <Text style={styles.toggle}>{expanded?'−':'+'}</Text>
-            </Pressable>
-            {expanded?<View style={styles.body}>
-              <AccordionGroup title="顯示／版面" subtitle="顯示、密度、框架行為" expanded={openGroup===`${frame.key}:layout`} onPress={()=>toggleGroup(frame.key,'layout')}>
-                <EditorRow title="顯示內容" subtitle={value.visible?'此框架顯示':'此框架隱藏'}><Switch value={value.visible} disabled={locked} onValueChange={visibleValue=>patch(frame.key,{visible:visibleValue})} trackColor={{true:colors.primary}}/></EditorRow>
-                <EditorRow title="版面" subtitle="同類框架使用同一套版面工具"><ChoiceGroup disabled={locked} items={layouts} value={value.layout} onChange={layout=>patch(frame.key,{layout})}/></EditorRow>
-                <EditorRow title="外觀模式" subtitle="快速套用基本框架風格"><ChoiceGroup disabled={locked} items={appearances} value={value.appearance} onChange={appearance=>patch(frame.key,{appearance})}/></EditorRow>
-                <EditorRow title="排序 / 行為" subtitle="鎖定時禁止框架修改"><ChoiceGroup items={behaviors} value={value.behavior} onChange={behavior=>setBehavior(frame.key,behavior)}/></EditorRow>
-                <View style={styles.orderRow}>
-                  <Pressable disabled={value.behavior !== 'manual'||index===0} onPress={()=>move(frame.key,-1)} style={[styles.orderButton,(value.behavior !== 'manual'||index===0)&&styles.disabled]}><Text style={styles.orderText}>↑ 上移</Text></Pressable>
-                  <Text style={styles.orderIndex}>順位 {index+1}</Text>
-                  <Pressable disabled={value.behavior !== 'manual'||index===orderedFrames.length-1} onPress={()=>move(frame.key,1)} style={[styles.orderButton,(value.behavior !== 'manual'||index===orderedFrames.length-1)&&styles.disabled]}><Text style={styles.orderText}>↓ 下移</Text></Pressable>
-                </View>
-              </AccordionGroup>
-
-              <AccordionGroup title="標題" subtitle="所有頁面的標題都使用同一套工具" expanded={openGroup===`${frame.key}:title`} onPress={()=>toggleGroup(frame.key,'title')}>
-                <EditorRow title="字體大小" subtitle={`${Math.round(value.titleFontSize)} px`}><NumberStep label="px" value={value.titleFontSize} min={10} max={32} step={1} onChange={titleFontSize=>patch(frame.key,{titleFontSize})}/></EditorRow>
-                <ColorPalettePicker label="標題文字顏色" value={value.titleColor} onChange={titleColor=>patch(frame.key,{titleColor})}/>
-                <EditorRow title="標題對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.titleAlign} onChange={titleAlign=>patch(frame.key,{titleAlign})}/></EditorRow>
-                <CapabilityHint type="title"/>
-              </AccordionGroup>
-
-              <AccordionGroup title="背景" subtitle="顏色、透明度、陰影" expanded={openGroup===`${frame.key}:background`} onPress={()=>toggleGroup(frame.key,'background')}>
-                <ColorPalettePicker label="框架背景" value={value.backgroundColor} onChange={backgroundColor=>patch(frame.key,{backgroundColor})}/>
-                <EditorRow title="背景透明度" subtitle={`${Math.round(value.backgroundOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.backgroundOpacity*100)} min={10} max={100} step={5} onChange={v=>patch(frame.key,{backgroundOpacity:v/100})}/></EditorRow>
-                <EditorRow title="陰影" subtitle={value.shadowEnabled?'開啟':'關閉'}><Switch value={value.shadowEnabled} onValueChange={shadowEnabled=>patch(frame.key,{shadowEnabled})} trackColor={{true:colors.primary}}/></EditorRow>
-                {value.shadowEnabled?<EditorRow title="陰影強度" subtitle={`${Math.round(value.shadowOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.shadowOpacity*100)} min={0} max={80} step={5} onChange={v=>patch(frame.key,{shadowOpacity:v/100})}/></EditorRow>:null}
-              </AccordionGroup>
-
-              <AccordionGroup title="邊框" subtitle="邊框顏色、粗細、圓角" expanded={openGroup===`${frame.key}:border`} onPress={()=>toggleGroup(frame.key,'border')}>
-                <ColorPalettePicker label="邊框顏色" value={value.borderColor} onChange={borderColor=>patch(frame.key,{borderColor})}/>
-                <EditorRow title="邊框粗細" subtitle={`${Math.round(value.borderWidth)} px`}><NumberStep label="px" value={value.borderWidth} min={0} max={8} step={1} onChange={borderWidth=>patch(frame.key,{borderWidth})}/></EditorRow>
-                <EditorRow title="圓角" subtitle={`${Math.round(value.borderRadius)} px`}><NumberStep label="px" value={value.borderRadius} min={0} max={48} step={2} onChange={borderRadius=>patch(frame.key,{borderRadius})}/></EditorRow>
-              </AccordionGroup>
-
-              {hasContentTools(pageKey,frame.key)?<AccordionGroup title="資料／內容" subtitle="只顯示目前框架真正可用的內容工具" expanded={openGroup===`${frame.key}:content`} onPress={()=>toggleGroup(frame.key,'content')}>
-                {((pageKey==='home'&&frame.key==='market-news')||(pageKey==='ai'&&frame.key==='ai-news'))?<View style={styles.newsEditor}>
-                  <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
-                  <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
-                </View>:null}
-                {((pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view'))?<View style={{gap:16}}>
-                  <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>
-                    {(pageKey==='portfolio'?([{key:'list',label:'清單欄位'},{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const):([{key:'wall',label:'行情卡片'},{key:'badges',label:'ETF 標籤／提醒'}] as const)).map(tab=><Pressable key={tab.key} accessibilityRole="button" onPress={()=>setContentTab(tab.key)} style={{backgroundColor:contentTab===tab.key?colors.primary:colors.surfaceMuted,paddingVertical:9,paddingHorizontal:12,borderRadius:18}}><Text style={{fontSize:11,fontWeight:'900',color:contentTab===tab.key?'#FFFFFF':colors.textSecondary}}>{tab.label}</Text></Pressable>)}
-                  </View>
-                  {pageKey==='portfolio'&&contentTab==='list'?<View>
-                     <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
-                       badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} previewQuote={previewQuote}
-                       onChange={portfolioList=>setDisplayDraft(current=>({...current,portfolioList}))}/>
-                   </View>:null}
-                  {contentTab==='wall'?<View>
-                    <Text style={{fontSize:14,fontWeight:'900',color:colors.text,marginBottom:8}}>行情牆卡片 A/B 編輯</Text>
-                    <Pressable accessibilityLabel="切換單張小卡預覽" onPress={()=>setShowWallPreview(v=>!v)}>
-                      <Text style={{color:colors.primary,fontWeight:'900',marginBottom:8}}>{showWallPreview?'隱藏':'顯示'}單張小卡即時預覽</Text>
-                    </Pressable>
-                    <HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG}
-                      onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>
-                  </View>:null}
-                  {contentTab==='badges'?<EtfBadgeEditor value={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
-                    onChange={etfBadges=>setDisplayDraft(current=>({...current,etfBadges}))}
-                    catalogRefreshing={market.catalogRefreshing} onRefreshCatalog={()=>void market.refreshCatalog()}/>:null}
-                </View>:null}
-                {pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key)?
-                  <DashboardModuleContentEditor frameKey={frame.key} value={displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT}
-                    onChange={dashboardLayout=>setDisplayDraft(current=>({...current,dashboardLayout}))}/>:null}
-                {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
-              </AccordionGroup>:null}
-            </View>:null}
-          </View>;
-        })}
       </ScrollView>
-      {previewQuote&&contentTab==='wall'&&showWallPreview&&openGroup===`${openFrame}:content`&&((pageKey==='home'&&openFrame==='holding-quotes')||(pageKey==='portfolio'&&openFrame==='holding-view'))?<FloatingHoldingCardPreview item={previewQuote} config={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={(displayDraft.quoteStyle??'quote') as QuoteModuleStyle} layout={holdingPreviewLayout(displayDraft.holdingLayoutMode)} onDismiss={()=>setShowWallPreview(false)}/>:null}
     </View>
   </Modal>;
 }
@@ -495,6 +408,8 @@ const styles=StyleSheet.create({
   section:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,overflow:'hidden'},header:{padding:spacing.lg,flexDirection:'row',alignItems:'center',gap:spacing.md},sectionTitle:{fontSize:17,fontWeight:'900',color:colors.text},description:{fontSize:12,color:colors.textSecondary,marginTop:4},toggle:{fontSize:25,color:colors.primary,fontWeight:'600'},
   body:{paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border,gap:8},
   bodyNoTop:{padding:spacing.lg,gap:8},
+  resetOnly:{paddingHorizontal:spacing.lg,paddingBottom:spacing.xl},
+  resetPageButton:{minHeight:44,borderRadius:14,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},
   accordion:{borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},accordionHeader:{paddingVertical:13,flexDirection:'row',alignItems:'center',gap:8},accordionTitle:{fontSize:13,fontWeight:'900',color:colors.text},accordionToggle:{fontSize:20,fontWeight:'900',color:colors.primary},accordionBody:{paddingBottom:10},
   editorRow:{paddingVertical:10,gap:8},rowLabel:{fontWeight:'800',color:colors.text},rowHint:{fontSize:10,color:colors.textSecondary,marginTop:3,lineHeight:15},editorControl:{marginTop:5},
   choiceGroup:{flexDirection:'row',flexWrap:'wrap',gap:6},choice:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},
