@@ -160,7 +160,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
   });
 }
 
-export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:readonly EditorFrameItem[]}){
+export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;frames:readonly EditorFrameItem[];gap?:number}){
   const {config,displayConfig}=usePageEditor(pageKey);
   const engineer=useMaintenance();
   const theme=useThemeRuntime();
@@ -171,7 +171,7 @@ export function PageEditorStack({pageKey,frames}:{pageKey:MainPageKey;frames:rea
     .sort((a,b)=>(session&&session.frameKey===a.key?session.draft.order:config[a.key]?.order??0)
       -(session&&session.frameKey===b.key?session.draft.order:config[b.key]?.order??0));
 
-  return <View style={{gap:12}}>{ordered.map(item=>{
+  return <View style={{gap:Math.max(6,Math.min(32,gap))}}>{ordered.map(item=>{
     const active=session?.frameKey===item.key;
     const frameConfig=active&&session?session.draft:config[item.key];
     const instances=active&&session?session.draftInstances:engineer.getInstances(pageKey,item.key);
