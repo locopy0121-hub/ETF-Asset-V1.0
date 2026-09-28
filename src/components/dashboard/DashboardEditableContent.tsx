@@ -9,6 +9,7 @@ import {
   type InspectedTarget,
   type TargetKind,
   type TargetOverride,
+  type TargetAppearance,
 } from '../../maintenance/inspectionModel';
 import {activeConditionalRule,applyConditionalAppearance} from '../../maintenance/conditionalVisual';
 import {formatDisplayNumber} from '../../maintenance/numberDisplay';
@@ -34,7 +35,7 @@ export function DashboardEditableText({
   const size=typeof raw.fontSize==='number'?raw.fontSize:13;
   const color=hex(raw.color,'#0F172A');
   const background=hex(raw.backgroundColor,'#FFFFFF');
-  const directBase={
+  const directBase:TargetAppearance={
     ...TARGET_APPEARANCE,fontSize:size,textColor:color,backgroundColor:background,
     align:raw.textAlign==='center'||raw.textAlign==='right'?raw.textAlign:'left',
     fontWeight:raw.fontWeight??'normal',fontStyle:raw.fontStyle??'normal',
@@ -45,7 +46,8 @@ export function DashboardEditableText({
     borderWidth:typeof raw.borderWidth==='number'?raw.borderWidth:0,
     padding:typeof raw.padding==='number'?raw.padding:0,
     borderRadius:typeof raw.borderRadius==='number'?raw.borderRadius:0,
-    ...(kind==='prefix'?{prefixText:original,prefixGap:8}:{}),
+    prefixText:kind==='prefix'?original:TARGET_APPEARANCE.prefixText,
+    prefixGap:kind==='prefix'?8:TARGET_APPEARANCE.prefixGap,
   };
   const renderDirect=(override:TargetOverride|undefined)=>{
     const appearance=mergeTargetAppearance(directBase,override);
