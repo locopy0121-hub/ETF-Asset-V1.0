@@ -82,7 +82,7 @@ export function StockChartScreen({holding:initialHolding,onBack}:{holding:Holdin
 
       <View style={styles.chartCard}>
         <OfficialCandleChart candles={candles} loading={loading} error={error} rangeLabel={range}
-          dataKeys={dataKeys} chartStyle={style} holding={holdingContext} crosshairDefault costLineEnabled/>
+          dataKeys={dataKeys} chartStyle={style} {...(holdingContext?{holding:holdingContext}:{})} crosshairDefault costLineEnabled/>
       </View>
 
       <View style={styles.section}>
