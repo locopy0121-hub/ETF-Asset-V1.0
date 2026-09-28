@@ -16,8 +16,8 @@ type HeaderId='brand'|'title'|'subtitle';
 function HeaderVisualText({id,value,style,frame,layoutTargets,selectedId,onSelect}:{
   id:HeaderId;value:string;style:TextStyle;frame:FrameMaintenanceContext;
   layoutTargets:Readonly<Record<string,TargetOverride>>;
-  selectedId?:string|null;
-  onSelect?:(target:LayoutSelectionTarget)=>void;
+  selectedId?:string|null|undefined;
+  onSelect?:((target:LayoutSelectionTarget)=>void)|undefined;
 }){
   const targetId='header:'+id;
   const base=mergeTargetAppearance({
@@ -67,7 +67,7 @@ export function PageHeaderVisual({title,subtitle,frameConfig,frame,layoutTargets
   active=false,showEdit=false,onEdit}:{
   title:string;subtitle?:string;frameConfig:FrameEditorConfig;frame:FrameMaintenanceContext;
   layoutTargets?:Readonly<Record<string,TargetOverride>>;actions?:ReactNode;
-  selectedId?:string|null;onSelect?:(target:LayoutSelectionTarget)=>void;
+  selectedId?:string|null|undefined;onSelect?:((target:LayoutSelectionTarget)=>void)|undefined;
   active?:boolean;showEdit?:boolean;onEdit?:()=>void;
 }){
   const theme=useThemeRuntime();
