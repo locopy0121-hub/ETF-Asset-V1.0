@@ -26,7 +26,7 @@ import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
-const SCHEMA=3;
+const SCHEMA=4;
 
 type PersistedFinanceState = {
   schema: number;
@@ -70,21 +70,23 @@ export function FinanceProvider({children}:PropsWithChildren){
         if(raw){
           const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
           const sourceSchema=Number(parsed.schema);
-          if((sourceSchema===1||sourceSchema===2||sourceSchema===SCHEMA)&&Array.isArray(parsed.entries)){
+          if(([1,2,3,SCHEMA].includes(sourceSchema))&&Array.isArray(parsed.entries)){
             const restored=parsed.entries as CanonicalLedgerEntry[];
             const parsedInitialCash=Number(parsed.initialCash);
+            const parsedCashConfigured=parsed.cashConfigured===true;
             const normalized=migrateLegacyOpeningCash(
               Number.isFinite(parsedInitialCash)?parsedInitialCash:INITIAL_CASH,
               restored,
-              {removeOrphanGeneratedReversal:sourceSchema<SCHEMA},
+              {
+                forceOpeningCashZero:!parsedCashConfigured,
+                removeGeneratedLegacyReversals:true,
+              },
             );
             if(validateLedgerSequence(normalized.entries).length===0){
               const explicitCashAdjustment=normalized.entries.some(entry=>
                 entry.kind==='other'&&!isGeneratedLegacyReversal(entry)
               );
-              const restoredCashConfigured=typeof parsed.cashConfigured==='boolean'
-                ? parsed.cashConfigured
-                : ((normalized.initialCash!==0&&normalized.initialCash!==750_000)||explicitCashAdjustment);
+              const restoredCashConfigured=parsedCashConfigured||explicitCashAdjustment;
               setEntries(normalized.entries);
               setInitialCash(normalized.initialCash);
               setCashConfigured(restoredCashConfigured);
