@@ -14,6 +14,7 @@ import {linkedColor} from '../maintenance/workspaceModel';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {resolvePageTitle} from '../settings/settingsControlBehavior';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
+import {PageHeaderVisual} from './PageHeaderVisual';
 
 type Props=PropsWithChildren<{title:string;pageKey?:MainPageKey;subtitle?:string;actions?:ReactNode;headerFrameKey?:string;includeBottomInset?:boolean}>;
 
@@ -79,47 +80,11 @@ export function PageShell({title,pageKey,subtitle,actions,children,headerFrameKe
     }
     engineer.begin(pageKey,headerFrameKey,headerFrameKey==='page-header'?'頁面頂部表頭':'個股資訊表頭',saved,undefined,editor.displayConfig);
   };
-  const titleStyle:TextStyle={...styles.title,color:headerConfig?.titleColor??theme.palette.text,
-    fontSize:headerConfig?.titleFontSize??28,textAlign:headerConfig?.titleAlign??'left'};
-  const header=(headerConfig?.visible===false&&!active)?null:
-    <View style={[styles.header,{
-      backgroundColor:gradientOn?'transparent':colorWithAlpha(background,headerConfig?.backgroundOpacity??1),
-      borderBottomColor:headerConfig?.borderColor??theme.palette.border,
-      ...(headerConfig?{borderWidth:headerConfig.borderWidth,borderRadius:headerConfig.borderRadius}:{}),
-      ...(headerConfig?.width!==undefined?{width:headerConfig.width}:{}),
-      ...(headerConfig?.height!==undefined?{height:headerConfig.height}:{}),
-      ...(headerConfig?.minHeight!==undefined?{minHeight:headerConfig.minHeight}:{}),
-      ...(headerConfig?.padding!==undefined?{padding:headerConfig.padding}:{}),
-      ...(fx.contentGap>=0?{gap:fx.contentGap}:{}),
-    },active&&headerConfig?.visible===false?{opacity:.5}:{}]}>
-      {gradientOn?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{overflow:'hidden',flexDirection:fx.gradientDirection==='vertical'?'column':'row'}]}>
-        {gradient.map((c,i)=><View key={i} style={{flex:1,backgroundColor:colorWithAlpha(c,headerConfig?.backgroundOpacity??1)}}/>)}
-      </View>:null}
-      {imageOn?<View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <Image source={{uri:imageUri!}} resizeMode={fx.imageFit}
-          style={[StyleSheet.absoluteFill,{opacity:fx.imageOpacity}]}/>
-      </View>:null}
-      {(gradientOn||imageOn)&&fx.maskOpacity>0?<View pointerEvents="none"
-        style={[StyleSheet.absoluteFill,{backgroundColor:colorWithAlpha(mask,fx.maskOpacity)}]}/>:null}
-      {active?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
-        borderWidth:2,borderStyle:'dashed',borderColor:theme.palette.primary,
-        borderRadius:headerConfig?.borderRadius??0,
-      }]}/>:null}
-      <View style={styles.titleWrap}>
-        {pageKey?<HeaderText id="brand" value="TF Asset" style={{...styles.brand,color:theme.palette.primary}} frame={headerFrame}/>:
-          <Text style={[styles.brand,{color:theme.palette.primary}]}>TF Asset</Text>}
-        {pageKey?<HeaderText id="title" value={displayedTitle} style={titleStyle} frame={headerFrame}/>:
-          <Text style={titleStyle}>{displayedTitle}</Text>}
-        {subtitle?(pageKey?<HeaderText id="subtitle" value={subtitle}
-          style={{...styles.subtitle,color:theme.palette.textSecondary}} frame={headerFrame}/>:
-          <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>{subtitle}</Text>):null}
-      </View>
-      {actions?<View style={styles.actions}>{actions}</View>:null}
-      {pageKey&&engineer.enabled?<Pressable accessibilityRole="button" accessibilityLabel="編輯頁面最上方表頭"
-        onPress={editHeader} style={[styles.wrench,{borderColor:theme.palette.primary}]}>
-        <Text style={{fontSize:16}}>🔧</Text>
-      </Pressable>:null}
-    </View>;
+  const header=<PageHeaderVisual title={displayedTitle} {...(subtitle?{subtitle}:{})}
+    frameConfig={headerConfig??headerFrame.frameConfig} frame={headerFrame}
+    layoutTargets={editor.displayConfig.layoutTargets??{}}
+    {...(actions?{actions}:{})} active={active}
+    showEdit={Boolean(pageKey&&engineer.enabled)} onEdit={editHeader}/>;
   return <SafeAreaView style={[styles.safe,{backgroundColor:'transparent'}]} edges={includeBottomInset?['top','bottom']:['top']}>
     {pageKey?<WorkspaceSurface config={engineer.getWorkspace(pageKey,headerFrameKey)}
       active={Boolean(active&&engineer.enabled)}
