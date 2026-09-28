@@ -29,6 +29,7 @@ export type AssetSnapshot = Readonly<{
   totalAssets: number;
   marketValue: number;
   cash: number;
+  cashConfigured?: boolean;
   unrealizedPnl: number;
   realizedPnl: number;
   dividendIncome: number;
