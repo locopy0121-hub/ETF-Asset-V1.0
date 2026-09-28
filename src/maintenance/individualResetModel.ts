@@ -38,7 +38,7 @@ export function individualNativeDisplayPatch(target:Pick<InspectedTarget,'page'|
   if(target.kind==='portfolio-list')return {portfolioList:DEFAULT_PORTFOLIO_LIST};
   if(target.kind!=='control')return {};
   const choices=target.properties.find(item=>item.name==='可選項目')?.value??'';
-  if(target.label==='持股四鍵快捷列')return {portfolioViewMode:'list',quoteStyle:'quote',holdingLayoutMode:'list',sortKey:'manual'};
+  if(choices.includes('清單')&&choices.includes('行情牆')&&choices.includes('排序'))return {portfolioViewMode:'list',quoteStyle:'quote',holdingLayoutMode:'list',sortKey:'manual'};
   if(choices.includes('清單模式')&&choices.includes('行情牆模式'))return {portfolioViewMode:'list'};
   if(choices.includes('純行情')&&choices.includes('精簡'))return {quoteStyle:'chart'};
   return {};
