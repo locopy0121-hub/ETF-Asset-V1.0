@@ -7,24 +7,27 @@ import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
 import { PageShell } from '../components/PageShell';
 import type { HoldingQuote } from '../domain/uiModels';
-import {CHART_DATA_OPTIONS,NATIVE_CHART_STYLES,type ChartDataKey,type NativeChartStyle} from '../domain/chartEditor';
+import {CHART_DATA_OPTIONS,HOLDING_CHART_RANGES,NATIVE_CHART_STYLES,normalizeHoldingChart,type ChartDataKey,type HoldingChartRange,type NativeChartStyle} from '../domain/chartEditor';
+import {usePageEditor} from '../editor/pageEditor';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
-const ranges=['1月','3月','1年'] as const;
+const monthsByRange:Record<HoldingChartRange,number>={'1月':1,'3月':3,'6月':6,'1年':12};
 
 export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
   const finance=useFinance();
+  const chartEditor=usePageEditor('portfolio');
+  const savedChart=normalizeHoldingChart(chartEditor.displayConfig.holdingChart);
   // Detail must subscribe to the current canonical projection, not a stale tapped row.
   const holding=finance.holdings.find(row=>row.symbol===initialHolding.symbol)??initialHolding;
-  const [range,setRange]=useState<(typeof ranges)[number]>('1月');
+  const [range,setRange]=useState<HoldingChartRange>(savedChart.range);
   const [candles,setCandles]=useState<DailyCandle[]>([]);
   const [historyLoading,setHistoryLoading]=useState(false);
   const [historyError,setHistoryError]=useState<string|null>(null);
-  const [chartStyle,setChartStyle]=useState<NativeChartStyle>('candlestick');
-  const [chartData,setChartData]=useState<ChartDataKey[]>(['open','high','low','close','volume']);
+  const [chartStyle,setChartStyle]=useState<NativeChartStyle>(savedChart.style);
+  const [chartData,setChartData]=useState<ChartDataKey[]>([...savedChart.dataKeys]);
   useEffect(()=>{recordDiagnosticEvent({level:'info',code:'DETAIL_MOUNT',screen:'holding-detail',message:'持股詳情已掛載'});},[holding.symbol]);
   useEffect(()=>{
     let active=true;
@@ -32,7 +35,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
     setHistoryLoading(true);
     setHistoryError(null);
     setCandles([]);
-    fetchOfficialDailyHistory(holding.symbol,range==='1月'?1:range==='3月'?3:12,new Date(),abort.signal)
+    fetchOfficialDailyHistory(holding.symbol,monthsByRange[range],new Date(),abort.signal)
       .then(rows=>{if(active)setCandles(rows);})
       .catch(error=>{if(active){setHistoryError(error instanceof Error?error.message:'官方歷史行情不可用');recordDiagnosticEvent({level:'warning',code:'DAILY_HISTORY',screen:'holding-detail',message:'官方歷史行情取得失敗'});}})
       .finally(()=>{if(active)setHistoryLoading(false);});
@@ -65,13 +68,15 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
         <View style={styles.rangeRow}>{NATIVE_CHART_STYLES.map(item=><Pressable key={item.id} onPress={()=>setChartStyle(item.id)}
           style={[styles.rangeChip,chartStyle===item.id&&styles.rangeActive]}><Text style={[styles.rangeText,chartStyle===item.id&&styles.rangeTextActive]}>{item.label}</Text></Pressable>)}</View>
         <Text style={styles.chartToolTitle}>資料數據（可複選）</Text>
-        <View style={styles.rangeRow}>{CHART_DATA_OPTIONS.filter(item=>['open','high','low','close','volume'].includes(item.key)).map(item=><Pressable key={item.key}
+        <View style={styles.rangeRow}>{CHART_DATA_OPTIONS.map(item=><Pressable key={item.key}
           onPress={()=>toggleChartData(item.key)} style={[styles.rangeChip,chartData.includes(item.key)&&styles.rangeActive]}>
           <Text style={[styles.rangeText,chartData.includes(item.key)&&styles.rangeTextActive]}>{item.label}</Text></Pressable>)}</View>
       </View>
-      <View style={styles.rangeRow}>{ranges.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
-      <OfficialCandleChart candles={candles} loading={historyLoading} error={historyError} rangeLabel={range} dataKeys={chartData} chartStyle={chartStyle}/>
-      <Text style={styles.rangeHint}>目前支援臺灣證交所官方日 K。週線／分時線與上櫃 ETF 在有可信來源前不顯示示意圖。</Text>
+      <View style={styles.rangeRow}>{HOLDING_CHART_RANGES.map(item=><Pressable key={item} onPress={()=>setRange(item)} style={[styles.rangeChip,range===item&&styles.rangeActive]}><Text style={[styles.rangeText,range===item&&styles.rangeTextActive]}>{item}</Text></Pressable>)}</View>
+      <OfficialCandleChart candles={candles} loading={historyLoading} error={historyError} rangeLabel={range} dataKeys={chartData} chartStyle={chartStyle}
+        crosshairDefault={savedChart.crosshairEnabled} costLineEnabled={savedChart.costLineEnabled}
+        holding={{shares:holding.shares,costAvg:holding.costAvg,cumulativeDividend:holding.cumulativeDividend,canonicalPnl:holding.pnl,canonicalComprehensivePnl:holding.comprehensivePnl,canonicalRoi:holding.roi}}/>
+      <Text style={styles.rangeHint}>資料固定取歷史行情來源；單一月份無資料或暫時失敗不會清空其他月份已取得的歷史交易日。持股圖表預設值可由維護工程師的「圖表工程」編輯清單調整。</Text>
     </FrameCard>
 
     <FrameCard title="持股資訊">
