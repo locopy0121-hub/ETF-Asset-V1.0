@@ -34,5 +34,5 @@ assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,30203);
 assert.equal(app.expo.ios.buildNumber,'30203');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.2'/);
+assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.3'/);
 console.log('V3.2.1+ layout tool foundation: real preview selection, dashed scope, contextual frame/card/text/value tools PASS');
