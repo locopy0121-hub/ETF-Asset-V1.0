@@ -7,15 +7,24 @@ import {useLayoutRuntime} from '../../editor/LayoutSelectionContext';
 import {TARGET_APPEARANCE,mergeTargetAppearance} from '../../maintenance/inspectionModel';
 import {TargetBackdrop,targetShadowStyle} from '../../maintenance/TargetSurfaceEffects';
 import {colorWithAlpha} from '../../maintenance/frameEffects';
+import {linkedColor} from '../../maintenance/workspaceModel';
+import {useSettingsRuntime} from '../../settings/SettingsRuntime';
 
 export function DashboardAssetOverview({amount,caption,complete=true,layout,maintenance}:{
   amount:string;caption:string;complete?:boolean;layout:DashboardLayoutConfig['overview'];maintenance?:FrameMaintenanceContext;
 }){
   const runtime=useLayoutRuntime();
+  const colorPrefs=useSettingsRuntime().prefs.display;
   const cardId='dashboard:overview-card';
   const cardOverride=runtime.targets[cardId];
   const card=mergeTargetAppearance({...TARGET_APPEARANCE,backgroundColor:colors.surfaceMuted,borderColor:colors.border,
     borderRadius:radius.lg,padding:layout.padding},cardOverride);
+  const cardBackground=linkedColor(card.backgroundColor,card.backgroundProfitColor,'neutral',colorPrefs);
+  const cardBorder=linkedColor(card.borderColor,card.borderProfitColor,'neutral',colorPrefs);
+  const cardGradientMid=linkedColor(card.gradientMidColor,card.gradientMidProfitColor,'neutral',colorPrefs);
+  const cardGradientEnd=linkedColor(card.gradientEndColor,card.gradientEndProfitColor,'neutral',colorPrefs);
+  const cardShadow=linkedColor(card.shadowColor,card.shadowProfitColor,'neutral',colorPrefs);
+  const cardGlow=linkedColor(card.glowColor,card.glowProfitColor,'neutral',colorPrefs);
   const renderItem=(item:DashboardLayoutConfig['overview']['order'][number])=>{
     if(item==='label')return <DashboardEditableText key="label" id="overview-label" label="資產總覽標題" frame={maintenance}
       style={[styles.label,{fontSize:layout.labelFontSize,color:layout.labelColor,textAlign:layout.align}]}>總資產（持股市值）</DashboardEditableText>;
@@ -37,16 +46,16 @@ export function DashboardAssetOverview({amount,caption,complete=true,layout,main
   return <Pressable disabled={!runtime.active}
     onPress={runtime.active?(event=>{event.stopPropagation();runtime.onSelect?.({id:cardId,kind:'card',label:'資產總覽卡片'});}):undefined}
     style={[styles.root,{minHeight:layout.minHeight,padding:card.padding,
-      backgroundColor:card.backgroundMode==='gradient'?'transparent':colorWithAlpha(card.backgroundColor,card.backgroundOpacity),
-      borderColor:card.borderColor,borderWidth:card.borderWidth,borderRadius:card.borderRadius,opacity:card.opacity,
+      backgroundColor:card.backgroundMode==='gradient'?'transparent':colorWithAlpha(cardBackground,card.backgroundOpacity),
+      borderColor:cardBorder,borderWidth:card.borderWidth,borderRadius:card.borderRadius,opacity:card.opacity,
       marginVertical:card.marginVertical,marginHorizontal:card.marginHorizontal,
       ...(cardOverride?.width!==undefined?{width:cardOverride.width}:{}),
       ...(cardOverride?.height!==undefined?{height:cardOverride.height}:{}),
       ...(cardOverride?.offsetX!==undefined||cardOverride?.offsetY!==undefined?{transform:[{translateX:cardOverride.offsetX??0},{translateY:cardOverride.offsetY??0}]}:{}),
-      ...targetShadowStyle(card,card.shadowColor)},
+      ...targetShadowStyle(card,cardShadow)},
       runtime.active&&runtime.selectedId===cardId?styles.layoutSelected:undefined]}>
-    {cardOverride?<TargetBackdrop appearance={card} start={card.backgroundColor} middle={card.gradientMidColor}
-      end={card.gradientEndColor} glow={card.glowColor}/>:null}
+    {cardOverride?<TargetBackdrop appearance={card} start={cardBackground} middle={cardGradientMid}
+      end={cardGradientEnd} glow={cardGlow}/>:null}
     <View style={[styles.content,{gap:layout.contentGap}]}>{layout.order.map(renderItem)}</View>
     {layout.decorationVisible?<View pointerEvents="none" style={styles.decoration}>
       <View style={[styles.bar,{height:22}]}/><View style={[styles.bar,{height:35}]}/><View style={[styles.bar,{height:50}]}/><View style={[styles.bar,{height:64}]}/>
