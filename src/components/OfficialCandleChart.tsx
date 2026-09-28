@@ -161,6 +161,7 @@ export function OfficialCandleChart({
           {crosshairEnabled&&selected?<View pointerEvents="none" style={[styles.crosshairLayer,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)+20}]}>
             <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*STEP+STEP/2}]}/>
             <View style={[styles.horizontalCrosshair,{top:y(selected.close)}]}/>
+            {showVolume?<View style={[styles.volumeCrosshair,{top:PLOT_HEIGHT+Math.max(0,VOLUME_HEIGHT-selected.volume/biggestVolume*(VOLUME_HEIGHT-6))}]}/>:null}
             <View style={[styles.crosshairDateTag,{left:clamp(LEFT_PAD+selectedIndex*STEP-19,0,Math.max(0,fullWidth-50))}]}><Text style={styles.crosshairTagText}>{selected.date.slice(5)}</Text></View>
           </View>:null}
         </ScrollView>
@@ -206,6 +207,7 @@ const styles=StyleSheet.create({
   crosshairLayer:{position:'absolute',top:0,left:0,width:'100%'},
   verticalCrosshair:{position:'absolute',top:0,height:PLOT_HEIGHT,borderLeftWidth:1,borderStyle:'dashed',borderColor:colors.primary},
   horizontalCrosshair:{position:'absolute',left:0,right:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary},
+  volumeCrosshair:{position:'absolute',left:0,right:0,borderTopWidth:1,borderStyle:'dotted',borderColor:colors.textSecondary},
   crosshairPrice:{position:'absolute',right:0,color:'#FFFFFF',backgroundColor:colors.primary,fontSize:9,fontWeight:'800',paddingHorizontal:3,paddingVertical:2,zIndex:2},
   crosshairDateTag:{position:'absolute',bottom:0,backgroundColor:colors.primary,paddingHorizontal:2,minWidth:45,alignItems:'center'},
   crosshairTagText:{color:'#FFFFFF',fontSize:8,fontWeight:'800'},
