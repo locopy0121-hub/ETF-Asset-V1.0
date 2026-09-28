@@ -75,5 +75,21 @@ const runtime=readFileSync('src/finance/FinanceRuntime.tsx','utf8');
 assert.match(runtime,/const SCHEMA=3/);
 assert.match(runtime,/sourceSchema===1\|\|sourceSchema===2\|\|sourceSchema===SCHEMA/);
 assert.match(runtime,/removeOrphanGeneratedReversal:sourceSchema<SCHEMA/);
+assert.match(runtime,/cashConfigured/);
+assert.match(runtime,/explicitCashAdjustment/);
 
-console.log('V3.1.13 orphan legacy cash PASS — opening 0 + hidden generated -750,000 is repaired once, user entries preserved');
+const ledgerScreen=readFileSync('src/screens/LedgerScreen.tsx','utf8');
+assert.match(ledgerScreen,/交易／股息／調整淨流量（非現金餘額）/);
+assert.match(ledgerScreen,/finance\.cashConfigured\?'NT\$ '/);
+assert.match(ledgerScreen,/不得把交易淨流量當成可用現金/);
+
+const sharedAdapter=readFileSync('src/finance/sharedSnapshotAdapter.ts','utf8');
+assert.match(sharedAdapter,/cash:input\.cashConfigured===false\?0:input\.canonical\.cashBalance/);
+assert.match(sharedAdapter,/cashConfigured:input\.cashConfigured!==false/);
+
+const widget=readFileSync('native/android/TfAssetWidgetProvider.kt','utf8');
+const monitor=readFileSync('native/android/TfAssetOverlayService.kt','utf8');
+assert.match(widget,/cashConfigured/);
+assert.match(monitor,/cashConfigured/);
+
+console.log('V3.1.13 cash provenance PASS — no explicit cash source shows 未設定; ledger net flow remains auditable and core formulas remain untouched');
