@@ -15,13 +15,13 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {resolvePageTitle} from '../settings/settingsControlBehavior';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 
-type Props=PropsWithChildren<{title:string;pageKey?:MainPageKey;subtitle?:string;actions?:ReactNode}>;
+type Props=PropsWithChildren<{title:string;pageKey?:MainPageKey;subtitle?:string;actions?:ReactNode;headerFrameKey?:string;includeBottomInset?:boolean}>;
 
 /** Real page-header child, not an extra simulated card. Its text override is local to this page. */
 function HeaderText({id,value,style,frame}:{id:'brand'|'title'|'subtitle';value:string;style:TextStyle;frame:FrameMaintenanceContext}){
   const target:InspectedTarget={
     id:'header:'+id,kind:'text',label:id==='brand'?'品牌名稱':id==='title'?'頁面主標題':'頁面副標題',
-    page:frame.page,frameKey:'page-header',frameTitle:frame.frameTitle,
+    page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
     properties:[{name:'原始文字',value,readOnly:true},{name:'作用範圍',value:'本頁表頭外觀'}],
     base:{...TARGET_APPEARANCE,fontSize:style.fontSize??13,fontWeight:style.fontWeight??'normal',
       textColor:typeof style.color==='string'?style.color:'#0F172A',
@@ -47,14 +47,14 @@ function HeaderText({id,value,style,frame}:{id:'brand'|'title'|'subtitle';value:
   }</InspectableTarget>;
 }
 
-export function PageShell({title,pageKey,subtitle,actions,children}:Props){
+export function PageShell({title,pageKey,subtitle,actions,children,headerFrameKey='page-header',includeBottomInset=false}:Props){
   const theme=useThemeRuntime();
   const settings=useSettingsRuntime();
   const editor=usePageEditor(pageKey??'home');
   const engineer=useMaintenance();
-  const displayedTitle=pageKey?resolvePageTitle(pageKey,title,settings.prefs.pageTitles):title;
-  const saved=pageKey?editor.config['page-header']:undefined;
-  const active=Boolean(pageKey&&engineer.session?.page===pageKey&&engineer.session.frameKey==='page-header');
+  const displayedTitle=pageKey&&headerFrameKey==='page-header'?resolvePageTitle(pageKey,title,settings.prefs.pageTitles):title;
+  const saved=pageKey?editor.config[headerFrameKey]:undefined;
+  const active=Boolean(pageKey&&engineer.session?.page===pageKey&&engineer.session.frameKey===headerFrameKey);
   const headerConfig=active?engineer.session!.draft:saved;
   const fx=normalizeFrameEffects(headerConfig?.effects);
   const background=linkedColor(headerConfig?.backgroundColor??theme.palette.surface,
@@ -68,16 +68,16 @@ export function PageShell({title,pageKey,subtitle,actions,children}:Props){
   const gradient=Array.from({length:16},(_,i)=>fx.gradientMidEnabled?
     sampleFrameGradient(background,middle,end,i/15,fx.gradientMidStop,true):mixFrameColors(background,end,i/15));
   const headerFrame:FrameMaintenanceContext={
-    page:pageKey??'home',frameKey:'page-header',frameTitle:'頁面頂部表頭',
-    frameConfig:headerConfig??editor.config['page-header']!,displayConfig:editor.displayConfig,
+    page:pageKey??'home',frameKey:headerFrameKey,frameTitle:headerFrameKey==='page-header'?'頁面頂部表頭':'個股資訊表頭',
+    frameConfig:headerConfig??editor.config[headerFrameKey]??editor.config['page-header']!,displayConfig:editor.displayConfig,
   };
   const editHeader=()=>{
     if(!pageKey||!saved)return;
-    if(engineer.session&&(engineer.session.page!==pageKey||engineer.session.frameKey!=='page-header')){
+    if(engineer.session&&(engineer.session.page!==pageKey||engineer.session.frameKey!==headerFrameKey)){
       // Never silently discard another frame's pending changes.
       return;
     }
-    engineer.begin(pageKey,'page-header','頁面頂部表頭',saved,undefined,editor.displayConfig);
+    engineer.begin(pageKey,headerFrameKey,headerFrameKey==='page-header'?'頁面頂部表頭':'個股資訊表頭',saved,undefined,editor.displayConfig);
   };
   const titleStyle:TextStyle={...styles.title,color:headerConfig?.titleColor??theme.palette.text,
     fontSize:headerConfig?.titleFontSize??28,textAlign:headerConfig?.titleAlign??'left'};
@@ -120,10 +120,10 @@ export function PageShell({title,pageKey,subtitle,actions,children}:Props){
         <Text style={{fontSize:16}}>🔧</Text>
       </Pressable>:null}
     </View>;
-  return <SafeAreaView style={[styles.safe,{backgroundColor:'transparent'}]} edges={['top']}>
-    {pageKey?<WorkspaceSurface config={engineer.getWorkspace(pageKey,'page-header')}
+  return <SafeAreaView style={[styles.safe,{backgroundColor:'transparent'}]} edges={includeBottomInset?['top','bottom']:['top']}>
+    {pageKey?<WorkspaceSurface config={engineer.getWorkspace(pageKey,headerFrameKey)}
       active={Boolean(active&&engineer.enabled)}
-      onBounds={bounds=>engineer.reportWorkspaceBounds(pageKey,'page-header',bounds)}>
+      onBounds={bounds=>engineer.reportWorkspaceBounds(pageKey,headerFrameKey,bounds)}>
       {header}
     </WorkspaceSurface>:header}
     <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS==='ios'?'padding':undefined}>

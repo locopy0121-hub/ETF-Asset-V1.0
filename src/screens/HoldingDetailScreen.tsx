@@ -5,6 +5,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
+import { PageEditorStack } from '../components/PageEditorStack';
+import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
+import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import type { HoldingQuote } from '../domain/uiModels';
 import {CHART_DATA_OPTIONS,HOLDING_CHART_RANGES,NATIVE_CHART_STYLES,normalizeHoldingChart,type ChartDataKey,type HoldingChartRange,type NativeChartStyle} from '../domain/chartEditor';
@@ -12,12 +15,15 @@ import {usePageEditor} from '../editor/pageEditor';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
+import {PAGE_FRAMES} from '../domain/frameRegistry';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const monthsByRange:Record<HoldingChartRange,number>={'1月':1,'3月':3,'6月':6,'1年':12};
+const HOLDING_DETAIL_FRAMES=PAGE_FRAMES.portfolio.filter(frame=>frame.key.startsWith('holding-detail-'));
 
 export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
   const finance=useFinance();
+  const [settingsOpen,setSettingsOpen]=useState(false);
   const chartEditor=usePageEditor('portfolio');
   const savedChart=normalizeHoldingChart(chartEditor.displayConfig.holdingChart);
   // Detail must subscribe to the current canonical projection, not a stale tapped row.
@@ -54,12 +60,17 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
     return [...current,key];
   });
 
-  return <PageShell
+  return <>
+  <PageShell
+    pageKey="portfolio"
+    headerFrameKey="holding-detail-header"
+    includeBottomInset
     title={holding.name}
     subtitle={holding.symbol}
-    actions={<Pressable style={styles.backButton} onPress={onBack}><Text style={styles.backText}>返回</Text></Pressable>}
+    actions={<><PageGearButton onPress={()=>setSettingsOpen(true)}/><Pressable style={styles.backButton} onPress={onBack}><Text style={styles.backText}>返回</Text></Pressable></>}
   >
-    <FrameCard title="即時行情">
+    <PageEditorStack pageKey="portfolio" frames={[
+      {key:'holding-detail-quote',element:<FrameCard title="即時行情">
       <Text style={[styles.price,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'行情待取得':holding.price.toFixed(2)}</Text>
       <Text style={[styles.change,{color:change>0?colors.gain:change<0?colors.loss:colors.flat}]}>{holding.quoteVerified===false?'估值待核對':holding.previousCloseKnown===false?'前收待取得':(change>0?'▲':change<0?'▼':'●')+' '+(change>=0?'+':'')+change.toFixed(2)+'　'+(changePct>=0?'+':'')+changePct.toFixed(2)+'%'}</Text>
       <View style={styles.marketMeta}><Text style={styles.meta}>前收 {holding.previousCloseKnown===false?'待取得':holding.previousClose.toFixed(2)}</Text><Text style={styles.meta}>{quoteLabel}｜來源 {sourceTime}｜v{holding.marketDataVersion??0}</Text></View>
@@ -77,42 +88,41 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
         crosshairDefault={savedChart.crosshairEnabled} costLineEnabled={savedChart.costLineEnabled}
         holding={{shares:holding.shares,costAvg:holding.costAvg,cumulativeDividend:holding.cumulativeDividend,canonicalPnl:holding.pnl,canonicalComprehensivePnl:holding.comprehensivePnl,canonicalRoi:holding.roi}}/>
       <Text style={styles.rangeHint}>資料固定取歷史行情來源；單一月份無資料或暫時失敗不會清空其他月份已取得的歷史交易日。持股圖表預設值可由維護工程師的「圖表工程」編輯清單調整。</Text>
-    </FrameCard>
-
-    <FrameCard title="持股資訊">
+    </FrameCard>},
+      {key:'holding-detail-info',element:<FrameCard title="持股資訊">
       <View style={styles.metrics}>
         <MetricTile label="持有股數" value={money(holding.shares)} caption="股"/>
         <MetricTile label="純成交均價" value={holding.tradeAvg.toFixed(2)} caption="不含費"/>
         <MetricTile label="含費成本均價" value={holding.costAvg.toFixed(2)} caption="帳務核心"/>
         <MetricTile label="目前市值" value={holding.quoteVerified===false?'待核對':money(holding.marketValue)} caption="NT$"/>
       </View>
-    </FrameCard>
-
-    <FrameCard title="損益拆解">
+    </FrameCard>},
+      {key:'holding-detail-pnl',element:<FrameCard title="損益拆解">
       <View style={styles.metrics}>
         <MetricTile label="純價差損益" value={holding.quoteVerified===false?'待核對':money(holding.pricePnl)} caption="毛市值－純成交成本" tone={holding.pricePnl>=0?'gain':'loss'}/>
         <MetricTile label="淨清算未實現" value={holding.quoteVerified===false?'待核對':money(holding.pnl)} caption={(holding.roi>=0?'+':'')+holding.roi.toFixed(2)+'%'} tone={holding.pnl>=0?'gain':'loss'}/>
         <MetricTile label="已實現" value={money(holding.realizedPnl)} caption="歷史賣出" tone={holding.realizedPnl>=0?'gain':'loss'}/>
         <MetricTile label="含息總損益" value={holding.quoteVerified===false?'待核對':money(holding.comprehensivePnl)} caption="Canonical" tone={holding.comprehensivePnl>=0?'gain':'loss'}/>
       </View>
-    </FrameCard>
-
-    <FrameCard title="股息">
+    </FrameCard>},
+      {key:'holding-detail-dividend',element:<FrameCard title="股息">
       <View style={styles.metrics}><MetricTile label="累積淨股息" value={money(holding.cumulativeDividend)} caption="NT$" tone="gain"/><MetricTile label="持股占比" value={finance.valuationComplete?holding.weight.toFixed(1)+'%':'待核對'} caption="目前組合"/></View>
-    </FrameCard>
-
-    <FrameCard title="交易與股息紀錄">
+    </FrameCard>},
+      {key:'holding-detail-history',element:<FrameCard title="交易與股息紀錄">
       {history.length?history.slice(0,12).map(entry=><View key={entry.id} style={styles.historyRow}>
         <Text style={styles.historyDate}>{entry.date.slice(5)}</Text>
         <Text style={styles.historyKind}>{entry.kind==='buy'?'買進':entry.kind==='sell'?'賣出':entry.kind==='dividend'?'股息':'其他'}</Text>
         <Text style={styles.historyAmount}>NT$ {money(ledgerDisplayAmount(entry))}</Text>
       </View>):<Text style={styles.muted}>尚無紀錄</Text>}
-    </FrameCard>
-
-    <FrameCard title="試算入口">
+    </FrameCard>},
+      {key:'holding-detail-calculator',element:<FrameCard title="試算入口">
       <Text style={styles.muted}>庫存頁右上角「🧮」已接入正式試算核心；試算資料不回寫正式 Ledger。</Text>
-    </FrameCard>
-  </PageShell>;
+    </FrameCard>},
+    ]}/>
+  </PageShell>
+  <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title={'個股資訊 · '+holding.symbol}
+    frames={HOLDING_DETAIL_FRAMES} previewQuote={holding} onClose={()=>setSettingsOpen(false)}/>
+  </>;
 }
 
 const styles=StyleSheet.create({
