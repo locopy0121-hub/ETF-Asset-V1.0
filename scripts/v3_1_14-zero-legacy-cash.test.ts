@@ -13,10 +13,10 @@ import {parseBackupDocument,TF_LEDGER_KEY} from '../src/settings/backupDocumentF
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.1.16');
-assert.equal(app.expo.version,'3.1.16');
-assert.equal(app.expo.android.versionCode,30116);
-assert.equal(app.expo.ios.buildNumber,'30116');
+assert.equal(pkg.version,'3.1.17');
+assert.equal(app.expo.version,'3.1.17');
+assert.equal(app.expo.android.versionCode,30117);
+assert.equal(app.expo.ios.buildNumber,'30117');
 
 const runtimeSource=readFileSync('src/finance/FinanceRuntime.tsx','utf8');
 const auditSource=readFileSync('src/finance/cashAudit.ts','utf8');
@@ -74,7 +74,7 @@ const lookalike:CanonicalLedgerEntry={
 assert.equal(isGeneratedLegacyReversal(lookalike),false,'label alone must never authorize deletion');
 
 const backupText=JSON.stringify({
-  product:'TF Asset',version:2,appVersion:'3.1.16',exportedAt:'2026-09-28T09:00:00.000Z',
+  product:'TF Asset',version:2,appVersion:'3.1.17',exportedAt:'2026-09-28T09:00:00.000Z',
   payload:{[TF_LEDGER_KEY]:JSON.stringify({schema:4,initialCash:0,cashConfigured:false,entries:genuine})},
   backupHistory:[],
 });
@@ -84,4 +84,4 @@ assert.equal(parsedBackup.inspection.ledgerEntries,1,'schema 4 ledger must remai
 assert.doesNotMatch(settingsSource,/沖回 750|LEGACY_DEFAULT_CASH|confirmLegacyCashCorrection/);
 assert.doesNotMatch(ledgerSource,/possibleLegacyDefault|hasLegacyReversal/);
 
-console.log('V3.1.16 zero-cash normalization PASS — no hard-coded legacy amount, no generated reversal action, schema 4 compatible');
+console.log('V3.1.17 zero-cash normalization PASS — no hard-coded legacy amount, no generated reversal action, schema 4 compatible');

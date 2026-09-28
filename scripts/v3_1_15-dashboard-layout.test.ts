@@ -5,19 +5,20 @@ const read=(path:string)=>readFileSync(path,'utf8');
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
 
-assert.equal(pkg.version,'3.1.16');
-assert.equal(app.expo.version,'3.1.16');
-assert.equal(app.expo.android.versionCode,30116);
-assert.equal(app.expo.ios.buildNumber,'30116');
+assert.equal(pkg.version,'3.1.17');
+assert.equal(app.expo.version,'3.1.17');
+assert.equal(app.expo.android.versionCode,30117);
+assert.equal(app.expo.ios.buildNumber,'30117');
 
 const home=read('src/screens/HomeScreen.tsx');
-assert.match(home,/heroAmountShell:\{width:'100%',minWidth:0,overflow:'hidden'\}/);
-assert.match(home,/heroAmountRow:\{flexDirection:'row',alignItems:'flex-end'/);
-assert.match(home,/heroPrefix:\{[^\n]*fontSize:18,lineHeight:42/);
-assert.match(home,/heroValue:\{[^\n]*fontSize:42,lineHeight:46/);
-assert.match(home,/minimumFontScale=\{0\.42\}/);
+const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
+assert.match(overview,/moneyShell:\{width:'100%',minWidth:0,overflow:'hidden'\}/);
+assert.match(overview,/moneyRow:\{flexDirection:'row',alignItems:'flex-end'/);
+assert.match(overview,/prefix:\{[^\n]*fontSize:18,lineHeight:42/);
+assert.match(overview,/value:\{[^\n]*fontSize:42,lineHeight:46/);
+assert.match(overview,/minimumFontScale=\{0\.42\}/);
 assert.match(home,/dashboardTop:\{minHeight:128/);
-assert.doesNotMatch(home,/alignItems:'baseline',width:'100%'/,
+assert.doesNotMatch(overview,/alignItems:'baseline',width:'100%'/,
   'hero money row must not rely on Android baseline alignment');
 
 const stack=read('src/components/PageEditorStack.tsx');
@@ -40,4 +41,4 @@ assert.match(target,/target\.kind==='prefix'\?withoutAbsolutePrefixGeometry\(sto
 const workbench=read('src/maintenance/MaintenanceWorkbench.tsx');
 assert.match(workbench,/prefixOffsetX:\[-24,24,1\],prefixOffsetY:\[-8,8,1\]/);
 
-console.log('V3.1.16 dashboard responsive money composite PASS — currency/value stay together, long values shrink, unsafe absolute prefix geometry is blocked');
+console.log('V3.1.17 dashboard responsive money composite PASS — currency/value stay together, long values shrink, unsafe absolute prefix geometry is blocked');

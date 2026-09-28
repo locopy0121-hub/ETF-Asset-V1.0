@@ -10,10 +10,10 @@ const gitBlob=(path:string)=>{
 
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'3.1.16');
-assert.equal(app.expo.version,'3.1.16');
-assert.equal(app.expo.android.versionCode,30116);
-assert.equal(app.expo.ios.buildNumber,'30116');
+assert.equal(pkg.version,'3.1.17');
+assert.equal(app.expo.version,'3.1.17');
+assert.equal(app.expo.android.versionCode,30117);
+assert.equal(app.expo.ios.buildNumber,'30117');
 
 const layout=read('src/domain/dashboardLayout.ts');
 assert.match(layout,/export type DashboardLayoutConfig/);
@@ -39,7 +39,7 @@ assert.doesNotMatch(overview,/position:'absolute'.*prefix/);
 const profit=read('src/components/dashboard/DashboardProfitAnalysis.tsx');
 assert.match(profit,/flexWrap:'wrap'/);
 assert.match(profit,/flexBasis:'46%'/);
-assert.match(profit,/items\.slice\(0,4\)/);
+assert.match(profit,/ordered\.slice\(0,4\)/);
 
 const modal=read('src/components/PageFrameSettingsModal.tsx');
 assert.match(modal,/方案 C｜儀表板佈局/);
@@ -57,4 +57,4 @@ assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceac
 assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'3bb641bfb2dc64b944ef34c856a5e3ca04417c14');
 assert.equal(gitBlob('src/finance/cashAudit.ts'),'a691f54b89c421df64b4fe0d5e5ecd74d530c2d5');
 
-console.log('V3.1.16 dashboard C PASS — modular layout/settings present; holding-wall source frozen byte-for-byte');
+console.log('V3.1.17 dashboard C carry-forward PASS — modular layout/settings present; holding-wall source frozen byte-for-byte');

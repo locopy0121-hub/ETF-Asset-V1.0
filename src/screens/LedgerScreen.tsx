@@ -13,6 +13,7 @@ import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, t
 import { useBrokerSettingsRuntime } from '../finance/BrokerSettingsRuntime';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { auditCashSources } from '../finance/cashAudit';
+import { clampLedgerPage, ledgerPageCount, ledgerPageSlice, LEDGER_PAGE_SIZES, type LedgerPageSize } from '../finance/ledgerPagination';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
@@ -42,6 +43,8 @@ export function LedgerScreen() {
   const [confirmOpen,setConfirmOpen]=useState(false);
   const [dateOpen,setDateOpen]=useState(false);
   const [selectedEntry,setSelectedEntry]=useState<CanonicalLedgerEntry|null>(null);
+  const [ledgerPageSize,setLedgerPageSize]=useState<LedgerPageSize>(20);
+  const [ledgerPage,setLedgerPage]=useState(1);
 
   const tradeMode=tradePlan==='ROUND_LOT'?'ROUND_LOT':'ODD_LOT';
   const selectedBrokerProfile=tradePlan==='RECURRING'?brokerSettings.recurringProfile:brokerSettings.activeProfile;
@@ -132,6 +135,10 @@ export function LedgerScreen() {
 
   const ordered=[...finance.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
   const cashSources=auditCashSources(finance.initialCash,finance.entries);
+  const ledgerTotalPages=ledgerPageCount(ordered.length,ledgerPageSize);
+  const ledgerCurrentPage=clampLedgerPage(ledgerPage,ordered.length,ledgerPageSize);
+  const ledgerRows=ledgerPageSlice(ordered,ledgerCurrentPage,ledgerPageSize);
+  useEffect(()=>{setLedgerPage(current=>clampLedgerPage(current,ordered.length,ledgerPageSize));},[ordered.length,ledgerPageSize]);
 
   return <>
     <PageShell pageKey="ledger" title="帳務中心" subtitle="Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
@@ -225,7 +232,18 @@ export function LedgerScreen() {
               <PreviewRow label="目前現金" value={finance.cashConfigured?'NT$ '+money(cashSources.cashBalance):'未設定'} strong/>
               {!finance.cashConfigured?<Text style={styles.validationError}>尚未建立明確的現金來源；買進、賣出與股息仍可逐筆對帳，但不得把交易淨流量當成可用現金。</Text>:null}
             </View>
-            {ordered.slice(0,20).map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
+            <View style={styles.paginationTop}>
+              <View style={styles.pageSizeGroup}>
+                <Text style={styles.paginationLabel}>每頁</Text>
+                {LEDGER_PAGE_SIZES.map(size=><Pressable key={size} accessibilityRole="button" accessibilityLabel={`每頁顯示 ${size} 筆`}
+                  onPress={()=>{setLedgerPageSize(size);setLedgerPage(1);}}
+                  style={[styles.pageSizeButton,ledgerPageSize===size&&styles.pageSizeButtonActive]}>
+                  <Text style={[styles.pageSizeText,ledgerPageSize===size&&styles.pageSizeTextActive]}>{size}</Text>
+                </Pressable>)}
+              </View>
+              <Text style={styles.pageCount}>共 {ordered.length} 筆 · 第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
+            </View>
+            {ledgerRows.map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
               <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
               <View style={{flex:1}}>
@@ -235,6 +253,19 @@ export function LedgerScreen() {
               </View>
               <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Text style={styles.detailsHint}>點擊查看 ›</Text></View>
             </Pressable>)}
+            <View style={styles.paginationBottom}>
+              <Pressable disabled={ledgerCurrentPage<=1} accessibilityRole="button" accessibilityLabel="交易紀錄上一頁"
+                onPress={()=>setLedgerPage(page=>Math.max(1,page-1))}
+                style={[styles.pageNavButton,ledgerCurrentPage<=1&&styles.pageNavDisabled]}>
+                <Text style={styles.pageNavText}>‹ 上一頁</Text>
+              </Pressable>
+              <Text style={styles.pageCount}>第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
+              <Pressable disabled={ledgerCurrentPage>=ledgerTotalPages} accessibilityRole="button" accessibilityLabel="交易紀錄下一頁"
+                onPress={()=>setLedgerPage(page=>Math.min(ledgerTotalPages,page+1))}
+                style={[styles.pageNavButton,ledgerCurrentPage>=ledgerTotalPages&&styles.pageNavDisabled]}>
+                <Text style={styles.pageNavText}>下一頁 ›</Text>
+              </Pressable>
+            </View>
           </FrameCard>
         },
         {key:'monthly-summary',element:
@@ -447,6 +478,18 @@ const styles=StyleSheet.create({
   previewLabel:{fontSize:10,color:colors.textSecondary},
   previewValue:{fontSize:11,fontWeight:'800',color:colors.text},
   previewStrong:{color:colors.primary,fontWeight:'900'},
+  paginationTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap',paddingTop:4,paddingBottom:6},
+  pageSizeGroup:{flexDirection:'row',alignItems:'center',gap:6},
+  paginationLabel:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  pageSizeButton:{minWidth:34,paddingHorizontal:9,paddingVertical:6,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border,alignItems:'center'},
+  pageSizeButtonActive:{backgroundColor:colors.primary,borderColor:colors.primary},
+  pageSizeText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},
+  pageSizeTextActive:{color:'#FFF'},
+  pageCount:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  paginationBottom:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,paddingTop:12},
+  pageNavButton:{minWidth:92,paddingHorizontal:12,paddingVertical:9,borderRadius:radius.md,backgroundColor:colors.surfaceMuted,alignItems:'center'},
+  pageNavDisabled:{opacity:.35},
+  pageNavText:{fontSize:10,fontWeight:'900',color:colors.primary},
   tableRow:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:11,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   cell:{fontSize:11,color:colors.text},
   kindCell:{width:38,fontSize:11,fontWeight:'900'},

@@ -3,6 +3,10 @@ import { Pressable,StyleSheet,Text,type TextStyle,View } from 'react-native';
 
 import type { FrameCardProps } from './FrameCard';
 import { MetricTile } from './MetricTile';
+import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
+import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
+import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
+import {DashboardQuickActions} from './dashboard/DashboardQuickActions';
 import { HoldingQuoteCollection } from './HoldingQuoteCollection';
 import { SegmentedControl } from './SegmentedControl';
 import {PortfolioModeSwitcher} from './PortfolioModeSwitcher';
@@ -29,6 +33,22 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
     if(!isValidElement(child))return child;
     const part=child.key!==null?String(child.key):String(index);
     const nodeId=(path+'/'+part).slice(0,120);
+    if(child.type===DashboardAssetOverview){
+      const props=child.props as ComponentProps<typeof DashboardAssetOverview>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardAssetOverview>>,{...props,maintenance:frame});
+    }
+    if(child.type===DashboardProfitAnalysis){
+      const props=child.props as ComponentProps<typeof DashboardProfitAnalysis>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardProfitAnalysis>>,{...props,maintenance:frame});
+    }
+    if(child.type===DashboardProfitDetail){
+      const props=child.props as ComponentProps<typeof DashboardProfitDetail>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardProfitDetail>>,{...props,maintenance:frame});
+    }
+    if(child.type===DashboardQuickActions){
+      const props=child.props as ComponentProps<typeof DashboardQuickActions>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardQuickActions>>,{...props,maintenance:frame});
+    }
     if(child.type===MetricTile){
       const props=child.props as ComponentProps<typeof MetricTile>;
       const target:InspectedTarget={
