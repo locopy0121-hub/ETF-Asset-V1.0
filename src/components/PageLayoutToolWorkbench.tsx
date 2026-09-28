@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useState} from 'react';
-import {Pressable,ScrollView,StyleSheet,Switch,Text,View} from 'react-native';
+import {Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
@@ -9,6 +9,7 @@ import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../ed
 import {colors,radius} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteModule} from './HoldingQuoteModule';
+import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard} from './FrameCard';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
@@ -17,7 +18,7 @@ import {DashboardQuickActions} from './dashboard/DashboardQuickActions';
 import {DEFAULT_DASHBOARD_LAYOUT,type DashboardLayoutConfig} from '../domain/dashboardLayout';
 import {useFinance} from '../finance/FinanceRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
-import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
+import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
 
@@ -28,10 +29,10 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
 const hasRealPreview=(page:MainPageKey,key:string)=>
-  page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false;
+  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,pageTitle,onChangePageTitle,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
@@ -40,6 +41,8 @@ export function PageLayoutToolWorkbench({
   onPatchFrame:(key:string,next:Partial<FrameEditorConfig>)=>void;
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
+  pageTitle:string;
+  onChangePageTitle:(value:string)=>void;
 }){
   const finance=useFinance();
   const previewFrames=useMemo(()=>frames.filter(frame=>hasRealPreview(pageKey,frame.key)),[frames,pageKey]);
@@ -89,11 +92,13 @@ export function PageLayoutToolWorkbench({
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
     else if(holding&&kind==='chart')setSelection({id:'chart',kind,label:'Mini 圖表'});
+    else if(frame.key==='page-header'&&kind==='text')setSelection({id:'header:title',kind:'text',label:'頁面主標題'});
     else if(kind==='card')setSelection(defaultDashboardSelection(frame.key,'card'));
     else if(kind==='text')setSelection(defaultDashboardSelection(frame.key,'text'));
     else if(kind==='value')setSelection(defaultDashboardSelection(frame.key,'value'));
     else setSelection({id:kind,kind,label:layoutKindLabel(kind)});
-    setOpenGroup(kind==='frame'?'size':kind==='card'?'surface':kind==='text'||kind==='value'?'type':'layout');
+    setOpenGroup(kind==='frame'?'size':kind==='card'?'surface':
+      frame.key==='page-header'&&kind==='text'?'content':kind==='text'||kind==='value'?'type':'layout');
   };
   const selectHolding=(id:string,label:string)=>{
     if(id==='card'){setSelection({id,kind:'card',label});setOpenGroup('card-style');return;}
@@ -109,7 +114,7 @@ export function PageLayoutToolWorkbench({
       target.kind==='card'||target.kind==='text'||target.kind==='value'||target.kind==='chart'||target.kind==='button'?
         target.kind:'text';
     setSelection({id:target.id,kind,label:target.label});
-    setOpenGroup(kind==='card'?'surface':kind==='text'||kind==='value'?'type':'layout');
+    setOpenGroup(target.id==='header:title'?'content':kind==='card'?'surface':kind==='text'||kind==='value'?'type':'layout');
   };
   const toggle=(key:string)=>setOpenGroup(current=>current===key?null:key);
 
@@ -128,7 +133,10 @@ export function PageLayoutToolWorkbench({
     {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
   ];
 
-  const realPreview=hasRealPreview(pageKey,frame.key);
+  const headerFrame:FrameMaintenanceContext={
+    page:pageKey,frameKey:frame.key,frameTitle:frame.title,frameConfig,displayConfig:displayDraft,
+  };
+    const realPreview=hasRealPreview(pageKey,frame.key);
   const previewContent=holding&&previewQuote?
     <HoldingQuoteModule item={previewQuote} wallConfig={wall} style={(displayDraft.quoteStyle??'quote') as any}
       layout="narrow" layoutEditMode layoutSelectionId={selection.id} onLayoutSelect={selectHolding}/>:
@@ -147,12 +155,13 @@ export function PageLayoutToolWorkbench({
         {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
       ]}/>:null;
 
-  const base=dashboardTargetBase(selection.id,dashboard);
+  const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
 
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding&&Boolean(previewQuote&&(displayDraft.quoteStyle==='chart'||displayDraft.quoteStyle==='advanced')&&previewQuote.sparkline?.length);
     if(kind==='data')return holding;
+    if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(holding)return ['frame','card','text','value','chart','data'].includes(kind);
     if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','layout'].includes(kind);
@@ -176,9 +185,14 @@ export function PageLayoutToolWorkbench({
     {realPreview?<View style={styles.previewShell}>
       <View style={styles.previewTop}><Text style={styles.previewTitle}>{profile.label}｜真實元件預覽</Text><Text style={styles.path}>{frame.title} › {selection.label}</Text></View>
       <LayoutSelectionProvider targets={targets} selectedId={selection.id} onSelect={selectTarget}>
-        <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
-          <FrameCard title={frame.title} editorStyle={frameConfig}>{previewContent}</FrameCard>
-        </Pressable>
+        {frame.key==='page-header'?
+          <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
+            <PageHeaderVisual title={pageTitle} frameConfig={frameConfig} frame={headerFrame}
+              layoutTargets={targets} selectedId={selection.id} onSelect={selectTarget}/>
+          </Pressable>:
+          <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
+            <FrameCard title={frame.title} editorStyle={frameConfig}>{previewContent}</FrameCard>
+          </Pressable>}
       </LayoutSelectionProvider>
     </View>:null}
 
@@ -199,9 +213,10 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&selection.id.startsWith('dashboard:')&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} open={openGroup} toggle={toggle}
-        patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}/>:null}
+        patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
+        {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
 
     {!holding&&selection.kind==='layout'&&pageKey==='home'?
       <DashboardLayoutTools frameKey={frame.key} value={dashboard} open={openGroup} toggle={toggle} onChange={patchDashboard}/>:null}
@@ -324,9 +339,13 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
   </View>;
 }
 
-function TargetTools({kind,id,current,open,toggle,patch,reset}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void}){
+function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
   const card=kind==='card';
   return <View>
+    {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="直接修改本頁實際標題；套用後寫入既有 pageTitles" open={open==='content'} onPress={()=>toggle('content')}>
+      <TextInput accessibilityLabel="頁面標題" value={contentValue} onChangeText={onContentChange}
+        maxLength={48} style={styles.textInput}/>
+    </Accordion>:null}
     {card?<Accordion title="尺寸／空間" subtitle="卡片實際尺寸、內距與外距" open={open==='surface'} onPress={()=>toggle('surface')}>
       <NumberStep label="寬度" value={Math.round(current.width??0)} min={0} max={900} step={10} suffix={(current.width??0)===0?'（自動）':' px'} onChange={width=>patch({width:width||undefined} as any)}/>
       <NumberStep label="高度" value={Math.round(current.height??0)} min={0} max={700} step={10} suffix={(current.height??0)===0?'（自動）':' px'} onChange={height=>patch({height:height||undefined} as any)}/>
@@ -415,6 +434,14 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
   return null;
 }
 
+function headerTargetBase(id:string,frame:FrameEditorConfig):TargetAppearance{
+  if(id==='header:title')return {...TARGET_APPEARANCE,fontSize:frame.titleFontSize,textColor:frame.titleColor,
+    align:frame.titleAlign,fontWeight:'800',backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+  if(id==='header:brand')return {...TARGET_APPEARANCE,fontSize:13,textColor:colors.primary,fontWeight:'800',
+    letterSpacing:.4,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+  return {...TARGET_APPEARANCE,fontSize:13,textColor:colors.textSecondary,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+}
+
 function dashboardTargetBase(id:string,layout:DashboardLayoutConfig):TargetAppearance{
   if(id==='dashboard:overview-card')return {...TARGET_APPEARANCE,backgroundColor:colors.surfaceMuted,borderColor:colors.border,borderRadius:radius.lg,padding:layout.overview.padding};
   if(id==='dashboard:overview-label')return {...TARGET_APPEARANCE,fontSize:layout.overview.labelFontSize,textColor:layout.overview.labelColor,align:layout.overview.align,fontWeight:'900'};
@@ -481,5 +508,6 @@ const styles=StyleSheet.create({
   row:{minHeight:40,flexDirection:'row',alignItems:'center',gap:8},rowLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.textSecondary},rowButtons:{flexDirection:'row',gap:6},step:{width:34,height:34,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},stepText:{fontSize:17,fontWeight:'900',color:colors.primary},num:{minWidth:76,textAlign:'center',fontSize:11,fontWeight:'900',color:colors.text},
   modeBlock:{gap:2},autoChip:{paddingHorizontal:10,paddingVertical:6,borderRadius:999,backgroundColor:colors.surfaceMuted},autoChipActive:{backgroundColor:colors.primary},autoText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},autoTextActive:{color:'#FFFFFF'},
   choices:{flexDirection:'row',flexWrap:'wrap',gap:5,justifyContent:'flex-end',maxWidth:'68%'},choice:{paddingHorizontal:9,paddingVertical:7,borderRadius:10,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:9,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},
+  textInput:{minHeight:44,borderWidth:1,borderColor:colors.border,borderRadius:12,paddingHorizontal:12,color:colors.text,backgroundColor:'#FFFFFF'},
   reset:{marginTop:10,minHeight:42,borderRadius:12,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},resetText:{fontSize:11,fontWeight:'900',color:colors.primary},
 });
