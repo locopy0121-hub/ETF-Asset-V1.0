@@ -10,10 +10,10 @@ const gitBlob=(path:string)=>{
 
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'3.2.1');
-assert.equal(app.expo.version,'3.2.1');
-assert.equal(app.expo.android.versionCode,30201);
-assert.equal(app.expo.ios.buildNumber,'30201');
+assert.equal(pkg.version,'3.2.2');
+assert.equal(app.expo.version,'3.2.2');
+assert.equal(app.expo.android.versionCode,30202);
+assert.equal(app.expo.ios.buildNumber,'30202');
 
 const layout=read('src/domain/dashboardLayout.ts');
 assert.match(layout,/export type DashboardLayoutConfig/);
