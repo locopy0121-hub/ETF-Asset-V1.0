@@ -460,3 +460,14 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 3. 一次 migration 至多移除一筆舊系統沖回，避免重複紀錄或相同文字的使用者資料被全部刪除。
 4. schema 升級時同步更新 backup parser；否則 App 能寫 schema 3、備份卻拒收。
 5. regression test 必須重現真機數字：opening=0 + genuine -23,871 + generated -750,000 = -773,871，修復後回到 -23,871。
+
+
+## 2026-09-28｜不要把「交易淨流量」當成「目前現金」
+
+實機畫面可同時出現 `initialCash=0` 與大量負的 ledger net movement。若使用者沒有建立明確現金來源，從 0 開始扣買進成交款只代表「交易現金流方向」，並不能證明使用者實際持有負現金。
+
+修護原則：
+1. `auditCashSources.netMovement` 是對帳資訊，不等於已設定的 cash balance。
+2. 現金需有 provenance；無明確來源顯示「未設定」，禁止用 0 起算交易流量冒充可用現金。
+3. Canonical Finance Core 的交易 settlement 公式保持不動；在 Runtime/Shared Snapshot/UI 層區分「計算流量」與「可顯示現金」。
+4. App、Widget、Monitor 必須共用同一 cashConfigured 狀態，不能其中一處仍顯示負現金。
