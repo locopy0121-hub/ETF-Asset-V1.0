@@ -114,7 +114,6 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({
     initialCash,
-    cashConfigured,
     entries,
     quotes:canonicalQuotes,
   }),[initialCash,entries,canonicalQuotes]);
@@ -158,6 +157,7 @@ export function FinanceProvider({children}:PropsWithChildren){
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,
     initialCash,
+    cashConfigured,
     entries,
     quotes:market.quotes,
     snapshot,
