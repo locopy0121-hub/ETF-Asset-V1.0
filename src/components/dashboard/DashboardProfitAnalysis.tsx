@@ -1,20 +1,31 @@
 import {StyleSheet,View} from 'react-native';
 import type {DashboardLayoutConfig} from '../../domain/dashboardLayout';
-import {MetricTile} from '../MetricTile';
+import type {FrameMaintenanceContext,TargetOverride} from '../../maintenance/inspectionModel';
+import {DashboardEditableMetric} from './DashboardEditableContent';
 
 export type DashboardKpi=Readonly<{
   key:string;label:string;value:string;caption:string;tone?:'gain'|'loss';
   glyph:string;
 }>;
 
-export function DashboardProfitAnalysis({items,layout}:{items:readonly DashboardKpi[];layout:DashboardLayoutConfig['profitAnalysis']}){
+export function DashboardProfitAnalysis({items,layout,maintenance}:{
+  items:readonly DashboardKpi[];layout:DashboardLayoutConfig['profitAnalysis'];maintenance?:FrameMaintenanceContext;
+}){
+  const byKey=new Map(items.map(item=>[item.key,item]));
+  const ordered=layout.order.map(key=>byKey.get(key)).filter((item):item is DashboardKpi=>Boolean(item));
+  const pageStyle:TargetOverride={
+    padding:layout.cardPadding,align:layout.align,
+    labelFontSize:layout.labelFontSize,fontSize:layout.valueFontSize,captionFontSize:layout.captionFontSize,
+    labelColor:layout.labelColor,textColor:layout.valueColor,captionColor:layout.captionColor,
+  };
   return <View style={[styles.grid,{gap:layout.cardGap}]}>
-    {items.slice(0,4).map(item=><View key={item.key} style={[styles.cell,{minHeight:layout.cardHeight}]}>
-      <MetricTile
+    {ordered.slice(0,4).map(item=><View key={item.key} style={[styles.cell,{minHeight:layout.cardHeight}]}>
+      <DashboardEditableMetric id={'kpi-'+item.key} frame={maintenance}
         label={(layout.iconVisible?item.glyph+' ':'')+item.label}
         value={item.value}
         {...(layout.captionVisible?{caption:item.caption}:{})}
         {...(item.tone?{tone:item.tone}:{})}
+        pageStyle={pageStyle}
       />
     </View>)}
   </View>;
