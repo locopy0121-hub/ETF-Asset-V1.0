@@ -15,6 +15,7 @@ import {EtfBadgeRow} from './EtfBadgeRow';
 import {MiniHoldingChart} from './MiniHoldingChart';
 import { radius, spacing } from '../theme/tokens';
 import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
+import {linkedColor} from '../maintenance/workspaceModel';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const pct=(value:number)=>`${value>=0?'+':''}${value.toFixed(2)}%`;
@@ -44,7 +45,9 @@ export function HoldingQuoteModule({
   layoutSelectionId?:string|null;
   onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
-  const showQuoteMetadata=useSettingsRuntime().prefs.marketCard.showQuoteMetadata;
+  const settings=useSettingsRuntime();
+  const showQuoteMetadata=settings.prefs.marketCard.showQuoteMetadata;
+  const systemColors=settings.prefs.display;
   const change=item.price-item.previousClose;
   const changePct=item.previousClose>0?(change/item.previousClose)*100:0;
   const compact=style==='compact';
@@ -55,6 +58,10 @@ export function HoldingQuoteModule({
   const miniOpen=onOpenChart??onPress;
   const cfg=wallConfig;
   const cardStyle=cfg.style;
+  const cardTone=item.previousClose>0?(change>0?'gain':change<0?'loss':'neutral'):'neutral';
+  const cardBackground=linkedColor(cardStyle.backgroundColor,cardStyle.backgroundProfitColor,cardTone,systemColors);
+  const cardBorder=linkedColor(cardStyle.borderColor,cardStyle.borderProfitColor,cardTone,systemColors);
+  const cardSecondary=linkedColor(cardStyle.secondaryTextColor,cardStyle.secondaryTextProfitColor,cardTone,systemColors);
   const groups={
     header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol')),
     quote:cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent')),
@@ -66,7 +73,7 @@ export function HoldingQuoteModule({
     compact&&!micro&&styles.compact,
     narrow&&styles.narrowCard,
     micro&&styles.microCard,
-    {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
+    {backgroundColor:cardBackground,borderColor:cardBorder,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
     {layoutEditMode&&layoutSelectionId==='card'?<View pointerEvents="none" style={[StyleSheet.absoluteFill,styles.layoutSelected]}/>:null}
     {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?(layoutEditMode?
@@ -102,7 +109,7 @@ export function HoldingQuoteModule({
               layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}
             />)}
           </View>
-          {!narrow?<Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>:null}
+          {!narrow?<Text style={[styles.chevron,{color:cardSecondary}]}>›</Text>:null}
         </View>
       </EffectView>:null}
 
@@ -123,13 +130,13 @@ export function HoldingQuoteModule({
         </View>:null}
       </View>:null}
 
-      {micro?<View style={[styles.footer,styles.microFooter,{borderTopColor:cardStyle.borderColor}]}>
+      {micro?<View style={[styles.footer,styles.microFooter,{borderTopColor:cardBorder}]}>
         <Text style={styles.microPnlLabel}>損益</Text>
         <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}
-          style={[styles.microPnlValue,{color:item.pnl>=0?cardStyle.gainColor:cardStyle.lossColor}]}>
+          style={[styles.microPnlValue,{color:linkedColor(cardStyle.textColor,true,item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors)}]}>
           {item.quoteVerified===false?'待取得':'NT$ '+money(item.pnl)}
         </Text>
-      </View>:!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardStyle.borderColor}]}>
+      </View>:!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardBorder}]}>
         <View style={{flex:1}}>
           <WallMetric field={groups.footer[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken}
             layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}/>
@@ -165,7 +172,7 @@ function WallText({
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
   const liveBackground=resolveWallBackground(field,item,change,systemColors);
-  const tone=fieldColor(field,item,change,wall);
+  const tone=fieldColor(field,item,change,wall,systemColors);
   const value=fieldValue(field.field,item,change,changePct);
   const fontSize=header
     ?(primary?(narrow?12:15):11)*field.fontScale*wall.header.fontScale
@@ -211,14 +218,16 @@ function WallMetric({
   const systemColors=useSettingsRuntime().prefs.display;
   const liveBackground=resolveWallBackground(field,item,change,systemColors);
   const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
-    <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':(field.textColor??wall.style.secondaryTextColor),textAlign:field.align}]}>{field.label}</Text>
+    <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':
+      linkedColor(field.textColor??wall.style.secondaryTextColor,wall.style.secondaryTextProfitColor,
+        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
       numeric={numeric}
       refreshToken={refreshToken}
       style={{
-        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':fieldColor(field,item,change,wall),
+        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':fieldColor(field,item,change,wall,systemColors),
         fontSize:12*field.fontScale,
         fontWeight:'900',
         marginTop:2,
@@ -302,10 +311,13 @@ function effectActive(effect:ItemEffectConfig,numeric:number|null){
   return true;
 }
 
-function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig){
-  if(!field.useProfitColor)return field.textColor??(field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor);
+function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig,system:DisplayPrefs){
   const value=field.field==='pnl'||field.field==='roi'?item.pnl:field.field==='marketValue'?item.marketValue:change;
-  return value>0?wall.style.gainColor:value<0?wall.style.lossColor:(field.textColor??wall.style.secondaryTextColor);
+  const tone=value>0?'gain':value<0?'loss':'neutral';
+  const base=field.textColor??(field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor);
+  if(field.useProfitColor)return linkedColor(base,true,tone,system);
+  const linked=field.field==='symbol'?wall.style.secondaryTextProfitColor:wall.style.textProfitColor;
+  return linkedColor(base,linked,tone,system);
 }
 function resolveWallBackground(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,system:DisplayPrefs):string|null{
   if(!field.useProfitBackground)return field.backgroundColor;

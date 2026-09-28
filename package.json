@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -240,7 +240,8 @@
     "test:v3_1_17": "npm run test:v3_1_16 && npm run test:v3_1_17-ledger && npm run test:v3_1_17-dashboard-content",
     "test:v3_1_18": "npm run test:v3_1_17 && tsx scripts/v3_1_18-holding-detail-safearea.test.ts",
     "test:v3_2_1": "npm run test:v3_1_18 && tsx scripts/v3_2_1-layout-tool.test.ts",
-    "test:v3_2_2": "npm run test:v3_2_1 && tsx scripts/v3_2_2-real-layout-preview.test.ts"
+    "test:v3_2_2": "npm run test:v3_2_1 && tsx scripts/v3_2_2-real-layout-preview.test.ts",
+    "test:v3_2_3": "npm run test:v3_2_2 && tsx scripts/v3_2_3-profit-colors.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

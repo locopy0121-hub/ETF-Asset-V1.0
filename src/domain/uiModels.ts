@@ -31,11 +31,15 @@ export type HoldingWallHeaderConfig = Readonly<{
 }>;
 export type HoldingWallStyleConfig = Readonly<{
   backgroundColor: string;
+  backgroundProfitColor?: boolean;
   textColor: string;
+  textProfitColor?: boolean;
   secondaryTextColor: string;
+  secondaryTextProfitColor?: boolean;
   gainColor: string;
   lossColor: string;
   borderColor: string;
+  borderProfitColor?: boolean;
   borderWidth: number;
   cornerRadius: number;
   padding: number;
@@ -73,7 +77,7 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
     {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
   ],
   ticker:{enabled:false,direction:'left',speed:55,itemGap:24,showPrice:true,showChange:true,textColor:'#DCEAFE',backgroundColor:'#101B2B'},
-  style:{backgroundColor:'#0C121B',textColor:'#FFFFFF',secondaryTextColor:'#91A0B5',gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
+  style:{backgroundColor:'#0C121B',backgroundProfitColor:false,textColor:'#FFFFFF',textProfitColor:false,secondaryTextColor:'#91A0B5',secondaryTextProfitColor:false,gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderProfitColor:false,borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
 };
 
 export type HoldingQuote = {

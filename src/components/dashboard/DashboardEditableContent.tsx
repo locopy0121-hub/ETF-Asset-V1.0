@@ -13,7 +13,8 @@ import {
 } from '../../maintenance/inspectionModel';
 import {activeConditionalRule,applyConditionalAppearance} from '../../maintenance/conditionalVisual';
 import {formatDisplayNumber} from '../../maintenance/numberDisplay';
-import type {FinancialTone} from '../../maintenance/workspaceModel';
+import {linkedColor,type FinancialTone} from '../../maintenance/workspaceModel';
+import {useSettingsRuntime} from '../../settings/SettingsRuntime';
 import {MetricTile} from '../MetricTile';
 import {useLayoutRuntime} from '../../editor/LayoutSelectionContext';
 
@@ -29,6 +30,7 @@ export function DashboardEditableText({
 }){
   const original=String(children);
   const layoutRuntime=useLayoutRuntime();
+  const colorPrefs=useSettingsRuntime().prefs.display;
   const targetId=`dashboard:${id}`;
   const layoutOverride=layoutRuntime.targets[targetId];
   const raw=StyleSheet.flatten(style) as TextStyle;
@@ -51,11 +53,14 @@ export function DashboardEditableText({
   };
   const renderDirect=(override:TargetOverride|undefined)=>{
     const appearance=mergeTargetAppearance(directBase,override);
+    const effectiveTextColor=linkedColor(appearance.textColor,appearance.textProfitColor,tone,colorPrefs);
+    const effectiveBackground=linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,tone,colorPrefs);
+    const effectiveBorder=linkedColor(appearance.borderColor,appearance.borderProfitColor,tone,colorPrefs);
     const text=kind==='value'&&override?.displayUnit&&appearance.displayUnit!=='original'?
       formatDisplayNumber(original,appearance.displayUnit,appearance.displayDigits,true):
       kind==='prefix'&&override?.prefixText!==undefined?appearance.prefixText:original;
     const custom:TextStyle|undefined=override?{
-      ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
+      ...(override.textColor||override.textProfitColor!==undefined?{color:effectiveTextColor}:{}),
       ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
       ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
       ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
@@ -65,9 +70,9 @@ export function DashboardEditableText({
       ...(override.lineHeight!==undefined&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
       ...(override.align!==undefined?{textAlign:appearance.align}:{}),
       ...(override.padding!==undefined?{padding:appearance.padding}:{}),
-      ...(override.backgroundColor||override.backgroundOpacity!==undefined?
-        {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
-      ...(override.borderColor?{borderColor:appearance.borderColor}:{}),
+      ...(override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+        {backgroundColor:colorWithAlpha(effectiveBackground,appearance.backgroundOpacity)}:{}),
+      ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:effectiveBorder}:{}),
       ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
       ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
       ...(kind==='prefix'&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),

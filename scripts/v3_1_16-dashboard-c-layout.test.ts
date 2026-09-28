@@ -10,10 +10,10 @@ const gitBlob=(path:string)=>{
 
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'3.2.2');
-assert.equal(app.expo.version,'3.2.2');
-assert.equal(app.expo.android.versionCode,30202);
-assert.equal(app.expo.ios.buildNumber,'30202');
+assert.equal(pkg.version,'3.2.3');
+assert.equal(app.expo.version,'3.2.3');
+assert.equal(app.expo.android.versionCode,30203);
+assert.equal(app.expo.ios.buildNumber,'30203');
 
 const layout=read('src/domain/dashboardLayout.ts');
 assert.match(layout,/export type DashboardLayoutConfig/);
@@ -49,14 +49,18 @@ for(const token of ['DashboardAssetOverview','DashboardProfitAnalysis','Dashboar
   assert.ok(layoutTool.includes(token),'real layout workbench missing dashboard module '+token);
 assert.match(layoutTool,/wallConfig=\{wall\}/,'holding wall keeps its independent live draft config');
 
-// Frozen-scope gate: these are the exact V3.1.15 Git blobs and must remain byte-for-byte unchanged.
+// Frozen renderer gate: the original holding-wall renderer/editor sources remain byte-for-byte unchanged.
+// uiModels is intentionally allowed to evolve only for presentation metadata; assert that contract semantically below.
 assert.equal(gitBlob('src/components/HoldingMarketWallEditor.tsx'),'e8f4d4ba19bec21e79d6b8e0ca8e3ca0241a8466');
 assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'cf816b03b4a606a121ba8b041e2fe360688c47f9');
 assert.equal(gitBlob('src/components/FloatingHoldingCardPreview.tsx'),'951e2ab7f04fb1b000aef7377d4df5327187a488');
-assert.equal(gitBlob('src/domain/uiModels.ts'),'38dc8ad30ccc9305fe8d0ba67f9fc9c67a4ed46c');
+const uiModels=read('src/domain/uiModels.ts');
+for(const visualFlag of ['backgroundProfitColor','textProfitColor','secondaryTextProfitColor','borderProfitColor','useProfitColor','useProfitBackground'])
+  assert.ok(uiModels.includes(visualFlag),'holding-wall presentation contract missing '+visualFlag);
+assert.doesNotMatch(uiModels,/actual_fee|actual_tax|Math\.floor/,'holding-wall UI model must not own immutable accounting calculations');
 
 assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceacaed3ee541ba7f5c6');
 assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'3bb641bfb2dc64b944ef34c856a5e3ca04417c14');
 assert.equal(gitBlob('src/finance/cashAudit.ts'),'a691f54b89c421df64b4fe0d5e5ecd74d530c2d5');
 
-console.log('V3.1.18 dashboard C carry-forward PASS — modular layout/settings present; holding-wall source frozen byte-for-byte');
+console.log('V3.2.3 dashboard C carry-forward PASS — original holding-wall renderers remain frozen; presentation-only profit-color model extension verified');

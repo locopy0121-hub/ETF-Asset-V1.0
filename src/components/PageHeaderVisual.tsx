@@ -75,6 +75,8 @@ export function PageHeaderVisual({title,subtitle,frameConfig,frame,layoutTargets
   const targets=layoutTargets??{};
   const fx=normalizeFrameEffects(frameConfig.effects);
   const background=linkedColor(frameConfig.backgroundColor,frameConfig.backgroundProfitColor,'neutral',settings.prefs.display);
+  const border=linkedColor(frameConfig.borderColor,frameConfig.borderProfitColor,'neutral',settings.prefs.display);
+  const titleColor=linkedColor(frameConfig.titleColor,frameConfig.titleProfitColor,'neutral',settings.prefs.display);
   const end=linkedColor(fx.gradientEndColor,fx.gradientEndProfitColor,'neutral',settings.prefs.display);
   const middle=linkedColor(fx.gradientMidColor,fx.gradientMidProfitColor,'neutral',settings.prefs.display);
   const gradientOn=fx.backgroundMode==='gradient';
@@ -83,12 +85,12 @@ export function PageHeaderVisual({title,subtitle,frameConfig,frame,layoutTargets
   const mask=linkedColor(fx.maskColor,fx.maskProfitColor,'neutral',settings.prefs.display);
   const gradient=Array.from({length:16},(_,i)=>fx.gradientMidEnabled?
     sampleFrameGradient(background,middle,end,i/15,fx.gradientMidStop,true):mixFrameColors(background,end,i/15));
-  const titleStyle:TextStyle={...styles.title,color:frameConfig.titleColor||theme.palette.text,
+  const titleStyle:TextStyle={...styles.title,color:titleColor||theme.palette.text,
     fontSize:frameConfig.titleFontSize||28,textAlign:frameConfig.titleAlign};
   if(frameConfig.visible===false&&!active)return null;
   return <View style={[styles.header,{
     backgroundColor:gradientOn?'transparent':colorWithAlpha(background,frameConfig.backgroundOpacity),
-    borderColor:frameConfig.borderColor,borderWidth:frameConfig.borderWidth,borderRadius:frameConfig.borderRadius,
+    borderColor:border,borderWidth:frameConfig.borderWidth,borderRadius:frameConfig.borderRadius,
     ...(frameConfig.width!==undefined?{width:frameConfig.width}:{}),
     ...(frameConfig.height!==undefined?{height:frameConfig.height}:{}),
     ...(frameConfig.minHeight!==undefined?{minHeight:frameConfig.minHeight}:{}),
