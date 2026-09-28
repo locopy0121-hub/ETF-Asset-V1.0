@@ -134,7 +134,8 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
               ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
               ...(override.lineHeight!==undefined&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
               ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
-              ...(isPrefix&&(override.prefixOffsetX!==undefined||override.prefixOffsetY!==undefined)?{transform:[{translateX:appearance.prefixOffsetX},{translateY:appearance.prefixOffsetY}]}:{}),
+              ...(isPrefix&&override.prefixOffsetX!==undefined?{marginLeft:Math.max(-24,Math.min(24,appearance.prefixOffsetX))}:{}),
+              ...(isPrefix&&override.prefixOffsetY!==undefined?{transform:[{translateY:Math.max(-8,Math.min(8,appearance.prefixOffsetY))}]}:{}),
               ...(override.align?{textAlign:appearance.align}:{}),
               ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?
                 {backgroundColor:'transparent'}:
