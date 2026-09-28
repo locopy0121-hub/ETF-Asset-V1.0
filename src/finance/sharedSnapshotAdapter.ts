@@ -17,6 +17,7 @@ export function buildSharedSnapshot(input:{
   quoteSourceTimes?:readonly {symbol:string;sourceQuoteAt?:number|null}[];
   marketDataVersion?:number;
   valuationComplete?:boolean;
+  cashConfigured?:boolean;
 }):SharedSnapshot{
   const portfolio=input.canonical.portfolio;
   const quoteTimes=new Map(input.quoteSourceTimes?.map(row=>[row.symbol,row.sourceQuoteAt??null])??[]);
@@ -29,7 +30,8 @@ export function buildSharedSnapshot(input:{
     asset:{
       totalAssets:portfolio.totalMarketValue,
       marketValue:portfolio.totalMarketValue,
-      cash:input.canonical.cashBalance,
+      cash:input.cashConfigured===false?0:input.canonical.cashBalance,
+      cashConfigured:input.cashConfigured!==false,
       unrealizedPnl:portfolio.totalUnrealizedProfit,
       realizedPnl:portfolio.realizedNetPnL,
       dividendIncome:portfolio.totalDividendsReceived,
