@@ -21,6 +21,7 @@ for(const key of ['holding-detail-header','holding-detail-quote','holding-detail
 const shell=read('src/components/PageShell.tsx');
 includes(shell,"edges={includeBottomInset?['top','bottom']:['top']}","PageShell must opt into bottom safe inset");
 includes(shell,"engineer.getWorkspace(pageKey,headerFrameKey)","detail header must have its own engineer workspace");
+includes(shell,"frameKey:frame.frameKey","header text inspector must follow the selected header frame");
 
 const app=read('App.tsx');
 includes(app,"const expectedPage=detail?'portfolio':active;","detail maintenance session must remain active");
@@ -31,5 +32,9 @@ assert.equal(config.expo.version,'3.1.18');
 assert.equal(config.expo.android.versionCode,30118);
 assert.equal(config.expo.androidNavigationBar?.barStyle,'dark-content');
 assert.equal(config.expo.androidNavigationBar?.backgroundColor,'#FFFFFF');
+
+const workflow=read('.github/workflows/ci.yml');
+includes(workflow,'android:windowLightNavigationBar','QA native theme must render dark system navigation icons');
+includes(workflow,'android:enforceNavigationBarContrast','QA native theme must preserve navigation contrast');
 
 console.log('V3.1.18 holding detail editor and Android safe-area regression PASS');
