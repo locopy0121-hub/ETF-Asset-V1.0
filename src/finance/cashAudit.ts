@@ -1,76 +1,55 @@
-/** Cash provenance and legacy-opening-cash migration. Canonical finance formulas stay immutable. */
+/** Cash provenance normalization. Canonical finance formulas stay immutable. */
 import { calculateLedgerCashFlow, type CanonicalLedgerEntry } from './canonicalLedger';
 
-export const LEGACY_DEFAULT_CASH = 750_000;
 export const LEGACY_REVERSAL_LABEL = '沖回舊版預設初始現金';
 export const LEGACY_REVERSAL_ID_PREFIX = 'legacy-opening-cash-reversal';
 
 export const isGeneratedLegacyReversal = (entry: CanonicalLedgerEntry) =>
   entry.kind === 'other' &&
   entry.id.startsWith(LEGACY_REVERSAL_ID_PREFIX) &&
-  entry.label === LEGACY_REVERSAL_LABEL &&
-  entry.amount === -LEGACY_DEFAULT_CASH;
+  entry.label === LEGACY_REVERSAL_LABEL;
 
-function removeFirstGeneratedLegacyReversal(entries: readonly CanonicalLedgerEntry[]) {
-  const index = entries.findIndex(isGeneratedLegacyReversal);
-  if (index < 0) return {entries:[...entries], removed:0};
-  const normalizedEntries = [...entries];
-  normalizedEntries.splice(index,1);
-  return {entries:normalizedEntries, removed:1};
+function removeGeneratedLegacyReversals(entries: readonly CanonicalLedgerEntry[]) {
+  const normalizedEntries = entries.filter(entry=>!isGeneratedLegacyReversal(entry));
+  return {
+    entries: normalizedEntries,
+    removed: entries.length-normalizedEntries.length,
+  };
 }
 
 /**
- * Storage migration for the product's historical NT$750,000 sentinel.
- *
- * V3.1.12 handled the obvious state (opening cash still equals 750,000) but
- * missed an already-normalized opening cash of 0 with the old generated
- * -750,000 reversal still present. That orphan reversal produces the exact
- * extra -750,000 cash delta seen on upgraded devices.
+ * V3.1.14 cash provenance normalization.
  *
  * Rules:
- * - The exact legacy opening sentinel is normalized to zero.
- * - Only a reversal created by TF Asset's dedicated generated ID is removable.
- * - At most one generated reversal is removed in a migration pass.
- * - User-created adjustments that merely share the same label/amount survive.
- * - Orphan-reversal cleanup is opt-in so schema 3 becomes idempotent.
+ * - No hard-coded opening-cash amount exists in runtime logic.
+ * - If storage has no explicit opening-cash provenance, opening cash is normalized to zero.
+ * - Stale system-generated reversal entries are identified only by TF Asset's dedicated ID + label,
+ *   never by a magic amount, and are removed during hydration.
+ * - User-created cash adjustments survive even when their amount happens to match a historical value.
  */
 export function migrateLegacyOpeningCash(
   initialCash: number,
   entries: readonly CanonicalLedgerEntry[],
-  options: Readonly<{removeOrphanGeneratedReversal?: boolean}> = {},
+  options: Readonly<{
+    forceOpeningCashZero?: boolean;
+    removeGeneratedLegacyReversals?: boolean;
+  }> = {},
 ) {
   const safeInitialCash = Number.isFinite(initialCash) ? initialCash : 0;
-
-  if (safeInitialCash === LEGACY_DEFAULT_CASH) {
-    const normalized = removeFirstGeneratedLegacyReversal(entries);
-    return {
-      initialCash: 0,
-      entries: normalized.entries,
-      migrated: true,
-      removedLegacyReversals: normalized.removed,
-      orphanLegacyReversalRemoved: false,
-    };
-  }
-
-  if (safeInitialCash === 0 && options.removeOrphanGeneratedReversal) {
-    const normalized = removeFirstGeneratedLegacyReversal(entries);
-    if (normalized.removed) {
-      return {
-        initialCash: 0,
-        entries: normalized.entries,
-        migrated: true,
-        removedLegacyReversals: 1,
-        orphanLegacyReversalRemoved: true,
-      };
-    }
-  }
+  const normalized = options.removeGeneratedLegacyReversals
+    ? removeGeneratedLegacyReversals(entries)
+    : {entries:[...entries],removed:0};
+  const normalizedInitialCash = options.forceOpeningCashZero ? 0 : safeInitialCash;
+  const migrated =
+    normalizedInitialCash !== initialCash ||
+    normalized.removed > 0;
 
   return {
-    initialCash: safeInitialCash,
-    entries: [...entries],
-    migrated: false,
-    removedLegacyReversals: 0,
-    orphanLegacyReversalRemoved: false,
+    initialCash: normalizedInitialCash,
+    entries: normalized.entries,
+    migrated,
+    removedLegacyReversals: normalized.removed,
+    orphanLegacyReversalRemoved: normalized.removed > 0 && normalizedInitialCash === 0,
   };
 }
 
@@ -96,7 +75,7 @@ export function auditCashSources(initialCash: number, entries: readonly Canonica
     otherNet,
     netMovement,
     cashBalance: initialCash + netMovement,
-    possibleLegacyDefault: initialCash === LEGACY_DEFAULT_CASH && !hasLegacyReversal,
+    possibleLegacyDefault: false,
     hasLegacyReversal,
   };
 }
