@@ -70,7 +70,7 @@ export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-80,80],['prefixOffsetY',-80,80],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-24,24],['prefixOffsetY',-8,8],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
     ['gradientMidStop',.1,.9],['marginVertical',0,32],['marginHorizontal',0,32],
     ['shadowOpacity',0,.8],['shadowBlur',0,48],['shadowOffsetX',-24,24],['shadowOffsetY',-24,24],
     ['glowOpacity',0,.8],['glowWidth',0,16],['thresholdValue',-1000000000000,1000000000000]] as const){
@@ -159,7 +159,7 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(['target:borderStyle','target:marginVertical','target:marginHorizontal',
       'target:shadowEnabled','target:shadowColor','target:shadowProfitColor','target:shadowOpacity',
       'target:shadowBlur','target:shadowOffsetX','target:shadowOffsetY'].includes(field))return nativeMaterial;
-  if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return true;
+  if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return kind!=='prefix';
   if(field==='target:profitToneOverride')return true;
   if(field==='target:conditionalStyles')return ['metric','text','value','prefix','generic'].includes(kind);
   if(['target:prefixText','target:prefixGap','target:prefixOffsetX','target:prefixOffsetY'].includes(field))return kind==='prefix';
