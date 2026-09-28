@@ -11,6 +11,13 @@ import {simulatedVisualTone,SIMULATION_LABELS} from './dataSimulation';
 import {TargetBackdrop,targetShadowStyle} from './TargetSurfaceEffects';
 import {mergeTargetAppearance,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from './inspectionModel';
 
+const withoutAbsolutePrefixGeometry=(value:TargetOverride):TargetOverride=>{
+  const next={...value};
+  delete next.offsetX;delete next.offsetY;delete next.width;delete next.height;
+  delete next.anchorX;delete next.anchorY;delete next.anchorBaseWidth;delete next.anchorBaseHeight;
+  return next;
+};
+
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
 export function InspectableTarget({target,frame,children,flex=false}:{
   target:InspectedTarget;frame:FrameMaintenanceContext;
@@ -28,7 +35,9 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     engineer.session.page===frame.page&&engineer.session.frameKey===frame.frameKey;
   const selected=engineer.selection?.page===target.page&&engineer.selection.frameKey===target.frameKey&&engineer.selection.id===target.id;
   const editing=engineer.session?.scope==='target'&&engineer.session.target?.page===target.page&&engineer.session.target.frameKey===target.frameKey&&engineer.session.target.id===target.id;
-  const override=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);
+  const storedOverride=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);
+  // Currency prefixes stay inside their money composite. Legacy absolute XY/size overrides are ignored.
+  const override=target.kind==='prefix'?withoutAbsolutePrefixGeometry(storedOverride):storedOverride;
   const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?
     override.profitToneOverride:target.profitTone??'neutral';
   // Simulation is session-only and only paints the selected real A in maintenance mode.

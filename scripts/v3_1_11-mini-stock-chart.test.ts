@@ -5,10 +5,10 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
-assert.equal(app.expo.version,'3.1.14');
-assert.equal(app.expo.android.versionCode,30114);
-assert.equal(app.expo.ios.buildNumber,'30114');
-assert.equal(pkg.version,'3.1.14');
+assert.equal(app.expo.version,'3.1.15');
+assert.equal(app.expo.android.versionCode,30115);
+assert.equal(app.expo.ios.buildNumber,'30115');
+assert.equal(pkg.version,'3.1.15');
 
 const domain=read('src/domain/chartEditor.ts');
 assert.match(domain,/MARKET_CHART_DATA_OPTIONS/);
@@ -51,4 +51,4 @@ assert.match(appTs,/HOLDING_CHART_TAP/);
 const renderer=read('src/components/OfficialCandleChart.tsx');
 for(const style of ['price-volume','cost-price','pnl','roi','column'])assert.ok(renderer.includes("'"+style+"'"),'renderer missing '+style);
 
-console.log('V3.1.14 Mini/full chart separation and stock-chart workspace regression PASS');
+console.log('V3.1.15 Mini/full chart separation and stock-chart workspace regression PASS');

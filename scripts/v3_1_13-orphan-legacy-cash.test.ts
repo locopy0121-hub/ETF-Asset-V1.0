@@ -12,10 +12,10 @@ import {parseBackupDocument,TF_LEDGER_KEY} from '../src/settings/backupDocumentF
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.1.14');
-assert.equal(app.expo.version,'3.1.14');
-assert.equal(app.expo.android.versionCode,30114);
-assert.equal(app.expo.ios.buildNumber,'30114');
+assert.equal(pkg.version,'3.1.15');
+assert.equal(app.expo.version,'3.1.15');
+assert.equal(app.expo.android.versionCode,30115);
+assert.equal(app.expo.ios.buildNumber,'30115');
 
 const genuine:CanonicalLedgerEntry[]=[
   {id:'real-adjustment',date:'2026-09-28',kind:'other',label:'本人現金調整',amount:-23_871},
@@ -37,7 +37,7 @@ assert.equal(repaired.removedLegacyReversals,1);
 assert.deepEqual(repaired.entries,genuine);
 
 const backupText=JSON.stringify({
-  product:'TF Asset',version:2,appVersion:'3.1.14',exportedAt:'2026-09-28T09:00:00.000Z',
+  product:'TF Asset',version:2,appVersion:'3.1.15',exportedAt:'2026-09-28T09:00:00.000Z',
   payload:{[TF_LEDGER_KEY]:JSON.stringify({schema:4,initialCash:0,cashConfigured:false,entries:genuine})},
   backupHistory:[],
 });
@@ -48,4 +48,4 @@ const settings=readFileSync('src/screens/SettingsScreen.tsx','utf8');
 assert.doesNotMatch(runtime,/750000|750_000|750,000/);
 assert.doesNotMatch(settings,/750000|750_000|750,000|confirmLegacyCashCorrection/);
 
-console.log('V3.1.14 provenance migration PASS — stale system reversal removed without amount matching');
+console.log('V3.1.15 provenance migration PASS — stale system reversal removed without amount matching');
