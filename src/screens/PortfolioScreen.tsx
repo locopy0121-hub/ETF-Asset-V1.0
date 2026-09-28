@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
@@ -53,7 +53,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   // Old saved three-column chart selections also render in safe chart-free mode.
   const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const activeQuickMode:PortfolioQuickMode=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
-  const simpleList=(effectiveDisplay.portfolioListStyle??'simple')!=='table'||listFallback;
+  const simpleList=listFallback;
   const [firstMode,setFirstMode]=useState<PortfolioPrimaryMode>(()=>{
     const initial=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
     return initial==='list'||initial==='wall'||initial==='quote'||initial==='compact'?initial:'list';
@@ -90,6 +90,31 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
       reminderEvent:reminders.get(item.symbol)??null,
     }));
   },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
+  // Keep the original V3.0.1 list directly mounted while browsing; only wrap it
+  // when its own A target is explicitly edited. This isolates stale generic overrides.
+  const listTarget:InspectedTarget={
+    id:'portfolio:holding-table',kind:'portfolio-list',label:'持股清單',
+    page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
+    properties:[
+      {name:'資料筆數',value:String(sorted.length),readOnly:true},
+      {name:'固定欄寬',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).fixedWidth)+' dp'},
+      {name:'列高',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).rowHeight)+' dp'},
+      {name:'欄位數',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).columns.length)},
+    ],
+    base:{...TARGET_APPEARANCE,backgroundColor:'#FFFFFF',padding:0},
+  };
+  useEffect(()=>{
+    if(!maintenance.enabled||viewMode!=='list')return;
+    maintenance.registerTarget('portfolio','holding-view',{
+      id:listTarget.id,kind:listTarget.kind,label:listTarget.label,
+      properties:listTarget.properties,base:listTarget.base,
+    });
+    return()=>maintenance.unregisterTarget('portfolio','holding-view',listTarget.id);
+  },[maintenance.enabled,maintenance.registerTarget,maintenance.unregisterTarget,
+    viewMode,sorted.length,effectiveDisplay.portfolioList]);
+  const listInspectorActive=maintenance.session?.page==='portfolio'&&
+    maintenance.session.frameKey==='holding-view'&&maintenance.session.scope==='target'&&
+    maintenance.session.target?.id===listTarget.id;
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
 
@@ -137,28 +162,23 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               <Pressable accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
                 <Text style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
               </Pressable>
-              <InspectableTarget
-                frame={{page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
-                  frameConfig:editor.config['holding-view']!,displayConfig:effectiveDisplay}}
-                target={{
-                  id:'portfolio:holding-table',kind:'portfolio-list',label:'持股清單',
-                  page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
-                  properties:[
-                    {name:'資料筆數',value:String(sorted.length),readOnly:true},
-                    {name:'固定欄寬',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).fixedWidth)+' dp'},
-                    {name:'列高',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).rowHeight)+' dp'},
-                    {name:'欄位數',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).columns.length)},
-                    {name:'標籤數',value:String((effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES).order.length)},
-                  ],
-                  base:{...TARGET_APPEARANCE,backgroundColor:'#FFFFFF',padding:0},
-                }}>
-                {()=> simpleList
-                  ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
+              {simpleList
+                ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
+                :listInspectorActive
+                  ?<InspectableTarget frame={{
+                      page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
+                      frameConfig:editor.config['holding-view']!,displayConfig:effectiveDisplay,
+                    }} target={listTarget}>
+                      {()=> <HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
+                        config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                        badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
+                        refreshToken={finance.sharedSnapshot.generatedAt}/>}
+                    </InspectableTarget>
                   :<HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
                     config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
                     badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
                     refreshToken={finance.sharedSnapshot.generatedAt}/>}
-              </InspectableTarget>
+
             </>:<>
 
               <View style={styles.sortRow}>
