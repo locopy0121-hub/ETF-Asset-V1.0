@@ -159,7 +159,8 @@ export function targetToolSupported(kind:TargetKind,field:string):boolean {
   if(['target:borderStyle','target:marginVertical','target:marginHorizontal',
       'target:shadowEnabled','target:shadowColor','target:shadowProfitColor','target:shadowOpacity',
       'target:shadowBlur','target:shadowOffsetX','target:shadowOffsetY'].includes(field))return nativeMaterial;
-  if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY','target:backgroundProfitColor','target:borderProfitColor'].includes(field))return kind!=='prefix';
+  if(['target:offsetX','target:offsetY','target:xy','target:dimensions','target:anchors','target:width','target:height','target:anchorX','target:anchorY'].includes(field))return kind!=='prefix';
+  if(field==='target:backgroundProfitColor'||field==='target:borderProfitColor')return true;
   if(field==='target:profitToneOverride')return true;
   if(field==='target:conditionalStyles')return ['metric','text','value','prefix','generic'].includes(kind);
   if(['target:prefixText','target:prefixGap','target:prefixOffsetX','target:prefixOffsetY'].includes(field))return kind==='prefix';
