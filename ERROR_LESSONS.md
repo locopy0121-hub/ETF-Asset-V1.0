@@ -430,3 +430,8 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 ## 2026-09-28｜Mini 摘要圖與完整股市圖表必須分層
 
 首頁與庫存屬摘要瀏覽面，圖表只能以 Mini 形式存在，不得把完整 K 線工具、十字線控制、資料來源編輯器塞回卡片造成擁擠或誤觸。Mini 的圖表區需與卡片主點擊區隔離：單點 Mini 進完整圖表頁、連點 Mini 切換視覺樣式、卡片其餘區域維持持股詳情。完整圖表頁才能承載市場／持股兩類資料、查詢、時間區間與專業圖型。持股歷史資料只做視覺估值，不得把歷史收盤價反推回正式帳務損益。
+
+
+## 2026-09-28｜V3.1.11 Mini 圖表改造的兩個 CI 失敗點
+
+首次 PR run 在 TypeScript Gate 因 `HoldingQuoteModule.tsx` 重構移除舊 Sparkline 時誤刪仍被版面樣式使用的 `spacing` token import，產生 TS2304；元件替換不能只檢查被刪函式附近，必須掃描整檔所有共用 token 的剩餘引用再清 import。第二次 run 已通過 TypeScript，但舊 `v2_1_1-release.test.cjs` 的 QA 版本 allowlist 只接受到 V3.1.10，令 aggregate gate 報 `unsupported QA version`；每次正式遞增版本時，版本 identity、workflow、歷史 regression 與 release allowlist 必須同步更新。修復後 run 36390921666 的 quality、backend-quality、QA APK 全部 PASS，APK badging 為 versionName 3.1.11 / versionCode 30111。
