@@ -1,7 +1,7 @@
 import { DEFAULT_ITEM_EFFECT, type ItemEffectConfig } from './displayItemContract';
 import type {EtfReminderType} from './etfBadges';
 export type QuoteModuleStyle = 'quote' | 'chart' | 'compact' | 'advanced';
-export type HoldingSortKey = 'manual' | 'changePct' | 'pnl' | 'roi' | 'marketValue' | 'weight' | 'price' | 'dividend';
+export type HoldingSortKey = 'manual' | 'changePct' | 'change' | 'symbol' | 'name' | 'pnl' | 'roi' | 'marketValue' | 'weight' | 'price' | 'dividend';
 
 export type HoldingWallFieldKey = 'name' | 'symbol' | 'price' | 'change' | 'changePercent' | 'pnl' | 'roi' | 'marketValue' | 'etfType' | 'dividendType';
 export type HoldingWallAlign = 'left' | 'center' | 'right';

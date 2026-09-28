@@ -1,5 +1,6 @@
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import {normalizePortfolioViewMode,normalizePortfolioLayoutMode} from '../domain/portfolioModeSwitch';
+import {sortPreset} from '../domain/holdingSort';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {DEFAULT_ETF_BADGES,normalizeEtfBadges,type EtfBadgeConfig} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST,normalizePortfolioList,type PortfolioListConfig} from '../domain/portfolioList';
@@ -331,5 +332,5 @@ export function mergeDisplayState(raw:unknown):PageDisplayState{
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
   const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{})});
   const home={...merge('home'),holdingWall:normalizeHoldingWall(source.home?.holdingWall),etfBadges:normalizeEtfBadges(source.home?.etfBadges),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts)};
-  return {home,ledger:merge('ledger'),portfolio:{...merge('portfolio'),portfolioViewMode:normalizePortfolioViewMode(source.portfolio?.portfolioViewMode),holdingLayoutMode:normalizePortfolioLayoutMode(source.portfolio?.holdingLayoutMode),holdingWall:normalizeHoldingWall(source.portfolio?.holdingWall),etfBadges:normalizeEtfBadges(source.portfolio?.etfBadges),portfolioList:normalizePortfolioList(source.portfolio?.portfolioList)},dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
+  return {home,ledger:merge('ledger'),portfolio:{...merge('portfolio'),portfolioViewMode:normalizePortfolioViewMode(source.portfolio?.portfolioViewMode),sortKey:sortPreset(source.portfolio?.sortKey).key,holdingLayoutMode:normalizePortfolioLayoutMode(source.portfolio?.holdingLayoutMode),holdingWall:normalizeHoldingWall(source.portfolio?.holdingWall),etfBadges:normalizeEtfBadges(source.portfolio?.etfBadges),portfolioList:normalizePortfolioList(source.portfolio?.portfolioList)},dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }

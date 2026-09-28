@@ -6,7 +6,8 @@ import { MetricTile } from './MetricTile';
 import { HoldingQuoteCollection } from './HoldingQuoteCollection';
 import { SegmentedControl } from './SegmentedControl';
 import {PortfolioModeSwitcher} from './PortfolioModeSwitcher';
-import {PORTFOLIO_SAFE_SWITCH_ID} from '../domain/portfolioModeSwitch';
+import {PortfolioQuickBar} from './PortfolioQuickBar';
+import {PORTFOLIO_SAFE_SWITCH_ID,PORTFOLIO_QUICK_SWITCH_ID} from '../domain/portfolioModeSwitch';
 import {AiQuestionBox} from './AiQuestionBox';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { usePageEditor } from '../editor/pageEditor';
@@ -59,6 +60,21 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
       return cloneElement(child as ReactElement<ComponentProps<typeof HoldingQuoteCollection>>,{
         ...props,maintenance:frame,
       });
+    }
+    if(child.type===PortfolioQuickBar){
+      const props=child.props as ComponentProps<typeof PortfolioQuickBar>;
+      const target:InspectedTarget={
+        id:PORTFOLIO_QUICK_SWITCH_ID,kind:'control',label:'持股四鍵快捷列',
+        page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        properties:[
+          {name:'目前模式',value:String(props.activeMode)},
+          {name:'第一鍵',value:props.firstMode},
+          {name:'排序',value:props.sortLabel},
+          {name:'可選項目',value:'清單／行情牆／純行情／精簡／圖表／進階／排序',readOnly:true},
+        ],
+        base:{...TARGET_APPEARANCE,backgroundColor:'#F6EAFF',padding:0,borderWidth:0},
+      };
+      return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>{()=>child}</InspectableTarget>;
     }
     if(child.type===SegmentedControl||child.type===PortfolioModeSwitcher){
       const props=child.props as ComponentProps<typeof PortfolioModeSwitcher>;

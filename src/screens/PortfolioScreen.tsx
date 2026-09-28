@@ -13,9 +13,10 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
 import {PortfolioModeSwitcher} from '../components/PortfolioModeSwitcher';
+import {PortfolioQuickBar} from '../components/PortfolioQuickBar';
 import {PortfolioSafeList} from '../components/PortfolioSafeList';
 import {PortfolioViewBoundary} from '../components/PortfolioViewBoundary';
-import {normalizePortfolioViewMode,normalizePortfolioLayoutMode,nextPortfolioMode,type PortfolioModeChoice} from '../domain/portfolioModeSwitch';
+import {normalizePortfolioViewMode,normalizePortfolioLayoutMode,nextPortfolioMode,nextPortfolioPrimaryMode,quickModeFromDisplay,quickModePatch,type PortfolioPrimaryMode,type PortfolioQuickMode,type PortfolioModeChoice} from '../domain/portfolioModeSwitch';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
@@ -23,7 +24,7 @@ import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionModel';
-import { sortHoldingQuotes } from '../domain/holdingSort';
+import { sortHoldingQuotes,sortPreset,nextSortPreset } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
@@ -45,11 +46,38 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   const maintenance=useMaintenance();
   const effectiveDisplay=maintenance.session?.page==='portfolio'?maintenance.session.draftDisplay:editor.displayConfig;
   const viewMode:PortfolioModeChoice=safeListOpen?'safe':normalizePortfolioViewMode(effectiveDisplay.portfolioViewMode);
-  const rawQuoteStyle=(effectiveDisplay.quoteStyle??'chart') as QuoteModuleStyle;
-  const sortKey=(effectiveDisplay.sortKey??'manual') as HoldingSortKey;
+  const rawQuoteStyle=(['quote','chart','compact','advanced'].includes(String(effectiveDisplay.quoteStyle))
+    ?effectiveDisplay.quoteStyle:'quote') as QuoteModuleStyle;
+  const sortKey=sortPreset(effectiveDisplay.sortKey).key as HoldingSortKey;
+  const currentSort=sortPreset(sortKey);
   const holdingLayoutMode=normalizePortfolioLayoutMode(effectiveDisplay.holdingLayoutMode);
   // Old saved three-column chart selections also render in safe chart-free mode.
   const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
+  const activeQuickMode:PortfolioQuickMode|'safe'=safeListOpen?'safe':
+    quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
+  const [firstMode,setFirstMode]=useState<PortfolioPrimaryMode>(()=>{
+    const initial=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
+    return initial==='list'||initial==='wall'||initial==='quote'||initial==='compact'?initial:'list';
+  });
+  const patchPortfolioDisplay=(patch:Partial<typeof effectiveDisplay>)=>{
+    if(maintenance.session?.page==='portfolio')maintenance.patchDisplay(patch);
+    else editor.updateDisplayConfig(patch);
+  };
+  const applyQuickMode=(mode:PortfolioQuickMode)=>{
+    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_QUICK_MODE',screen:'portfolio',message:'快捷切換 '+mode});
+    setSafeListOpen(false);
+    patchPortfolioDisplay(quickModePatch(mode,holdingLayoutMode));
+  };
+  const cycleFirst=()=>{
+    const next=nextPortfolioPrimaryMode(firstMode);
+    setFirstMode(next);
+    applyQuickMode(next);
+  };
+  const cycleSort=()=>{
+    const next=nextSortPreset(sortKey);
+    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_SORT',screen:'portfolio',message:'快捷排序 '+next.label});
+    patchPortfolioDisplay({sortKey:next.key});
+  };
   const setViewMode=(requested:PortfolioModeChoice)=>{
     const value=nextPortfolioMode(viewMode,requested);
     if(value===viewMode)return;
@@ -61,24 +89,19 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
     if(maintenance.session?.page==='portfolio')maintenance.patchDisplay({portfolioViewMode:value});
     else editor.updateDisplayConfig({portfolioViewMode:value});
   };
-  const setQuoteStyle=(value:QuoteModuleStyle)=>{
-    if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
-    editor.updateDisplayConfig({quoteStyle:value});
-  };
-  const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>{recordDiagnosticEvent({level:'info',code:'PORTFOLIO_LAYOUT',screen:'portfolio',message:'切換排列 '+value});editor.updateDisplayConfig({
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>{recordDiagnosticEvent({level:'info',code:'PORTFOLIO_LAYOUT',screen:'portfolio',message:'切換排列 '+value});patchPortfolioDisplay({
     holdingLayoutMode:value,
     ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{})
   });};
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
     const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
-    return sortHoldingQuotes(finance.holdings,sortKey,true).map(item=>({
+    return sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
       ...item,etfType:tags.get(item.symbol)?.etfType??null,
       dividendType:tags.get(item.symbol)?.dividendType??null,
       reminderEvent:reminders.get(item.symbol)??null,
     }));
-  },[finance.holdings,finance.entries,sortKey,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
+  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
 
@@ -111,19 +134,12 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
         },
         {key:'holding-view',element:
           <FrameCard title="持股檢視">
+            <PortfolioQuickBar firstMode={firstMode} activeMode={activeQuickMode}
+              sortLabel={currentSort.label} onCycleFirst={cycleFirst}
+              onSelect={applyQuickMode} onCycleSort={cycleSort}/>
             <PortfolioModeSwitcher items={[
-              {key:'list',label:'清單模式',description:'固定代號與可橫向捲動欄位'},
-              {key:'wall',label:'行情牆模式',description:'獨立持股行情卡片'},
-              {key:'safe',label:'安全簡易清單',description:'停用舊表格、動畫及行情牆元件'},
+              {key:'safe',label:'故障救援：安全簡易清單',description:'獨立唯讀清單，不覆寫持股顯示模式'},
             ] as const} value={viewMode} onChange={setViewMode}/>
-            <View style={styles.sortRow}>
-              <Text style={styles.sortTitle}>排序</Text>
-              {([{key:'manual',label:'手動'},{key:'pnl',label:'損益'},{key:'roi',label:'報酬率'},{key:'marketValue',label:'市值'}] as const).map(x=>
-                <Pressable key={x.key} onPress={()=>setSortKey(x.key)} style={[styles.chip,sortKey===x.key&&styles.chipActive]}>
-                  <Text style={[styles.chipText,sortKey===x.key&&styles.chipTextActive]}>{x.label}</Text>
-                </Pressable>
-              )}
-            </View>
 
             {viewMode==='safe'
               ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
@@ -153,13 +169,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
                   refreshToken={finance.sharedSnapshot.generatedAt}/>}
               </InspectableTarget>
             </>:<>
-              <SegmentedControl
-                items={holdingLayoutMode==='grid3'
-                  ?([{key:'quote',label:'純行情'},{key:'compact',label:'精簡'}] as const)
-                  :([{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const)}
-                value={quoteStyle}
-                onChange={setQuoteStyle}
-              />
+
               <View style={styles.sortRow}>
                 <Text style={styles.sortTitle}>排列</Text>
                 {([
