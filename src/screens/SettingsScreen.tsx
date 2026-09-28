@@ -55,7 +55,7 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.1.17';
+const VERSION='3.1.18';
 const BUILD='30117';
 
 export function SettingsScreen(){
