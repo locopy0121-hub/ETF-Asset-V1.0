@@ -11,8 +11,8 @@ assert.deepEqual(layoutToolProfile('dividend','dividend-calendar').kinds.include
 assert.equal(layoutKindLabel('frame'),'框架');
 
 const wb=read('src/components/PageLayoutToolWorkbench.tsx');
-assert.match(wb,/預覽直接點選/);
-assert.match(wb,/框架第一層就是寬度與高度/);
+assert.match(wb,/預覽直接使用 App 真實元件與目前資料/);
+assert.match(wb,/寬度、高度、最小高度、最大寬度/);
 assert.match(wb,/layoutEditMode/);
 assert.match(wb,/selection\.kind==='frame'/);
 assert.match(wb,/selection\.kind==='card'/);
@@ -30,9 +30,9 @@ assert.match(modal,/PageLayoutToolWorkbench/);
 assert.doesNotMatch(modal,/駐點維護工程師｜本頁常駐/);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.1');
-assert.equal(app.expo.version,'3.2.1');
-assert.equal(app.expo.android.versionCode,30201);
-assert.equal(app.expo.ios.buildNumber,'30201');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.1'/);
-console.log('V3.2.1 layout tool foundation: direct preview selection, dashed scope, contextual frame/card/text/value tools PASS');
+assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,30202);
+assert.equal(app.expo.ios.buildNumber,'30202');
+assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.2'/);
+console.log('V3.2.1+ layout tool foundation: real preview selection, dashed scope, contextual frame/card/text/value tools PASS');

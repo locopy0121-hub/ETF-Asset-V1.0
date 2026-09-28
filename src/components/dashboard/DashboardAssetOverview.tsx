@@ -1,12 +1,21 @@
-import {StyleSheet,View} from 'react-native';
+import {Pressable,StyleSheet,View} from 'react-native';
 import type {DashboardLayoutConfig} from '../../domain/dashboardLayout';
 import type {FrameMaintenanceContext} from '../../maintenance/inspectionModel';
 import {colors,radius} from '../../theme/tokens';
 import {DashboardEditableText} from './DashboardEditableContent';
+import {useLayoutRuntime} from '../../editor/LayoutSelectionContext';
+import {TARGET_APPEARANCE,mergeTargetAppearance} from '../../maintenance/inspectionModel';
+import {TargetBackdrop,targetShadowStyle} from '../../maintenance/TargetSurfaceEffects';
+import {colorWithAlpha} from '../../maintenance/frameEffects';
 
 export function DashboardAssetOverview({amount,caption,complete=true,layout,maintenance}:{
   amount:string;caption:string;complete?:boolean;layout:DashboardLayoutConfig['overview'];maintenance?:FrameMaintenanceContext;
 }){
+  const runtime=useLayoutRuntime();
+  const cardId='dashboard:overview-card';
+  const cardOverride=runtime.targets[cardId];
+  const card=mergeTargetAppearance({...TARGET_APPEARANCE,backgroundColor:colors.surfaceMuted,borderColor:colors.border,
+    borderRadius:radius.lg,padding:layout.padding},cardOverride);
   const renderItem=(item:DashboardLayoutConfig['overview']['order'][number])=>{
     if(item==='label')return <DashboardEditableText key="label" id="overview-label" label="資產總覽標題" frame={maintenance}
       style={[styles.label,{fontSize:layout.labelFontSize,color:layout.labelColor,textAlign:layout.align}]}>總資產（持股市值）</DashboardEditableText>;
@@ -25,12 +34,24 @@ export function DashboardAssetOverview({amount,caption,complete=true,layout,main
     return layout.captionVisible?<DashboardEditableText key="caption" id="overview-caption" label="資產總覽說明" frame={maintenance}
       numberOfLines={2} style={[styles.caption,{fontSize:layout.captionFontSize,color:layout.captionColor,textAlign:layout.align}]}>{caption}</DashboardEditableText>:null;
   };
-  return <View style={[styles.root,{minHeight:layout.minHeight,padding:layout.padding}]}>
+  return <Pressable disabled={!runtime.active}
+    onPress={runtime.active?(event=>{event.stopPropagation();runtime.onSelect?.({id:cardId,kind:'card',label:'資產總覽卡片'});}):undefined}
+    style={[styles.root,{minHeight:layout.minHeight,padding:card.padding,
+      backgroundColor:card.backgroundMode==='gradient'?'transparent':colorWithAlpha(card.backgroundColor,card.backgroundOpacity),
+      borderColor:card.borderColor,borderWidth:card.borderWidth,borderRadius:card.borderRadius,opacity:card.opacity,
+      marginVertical:card.marginVertical,marginHorizontal:card.marginHorizontal,
+      ...(cardOverride?.width!==undefined?{width:cardOverride.width}:{}),
+      ...(cardOverride?.height!==undefined?{height:cardOverride.height}:{}),
+      ...(cardOverride?.offsetX!==undefined||cardOverride?.offsetY!==undefined?{transform:[{translateX:cardOverride.offsetX??0},{translateY:cardOverride.offsetY??0}]}:{}),
+      ...targetShadowStyle(card,card.shadowColor)},
+      runtime.active&&runtime.selectedId===cardId?styles.layoutSelected:undefined]}>
+    {cardOverride?<TargetBackdrop appearance={card} start={card.backgroundColor} middle={card.gradientMidColor}
+      end={card.gradientEndColor} glow={card.glowColor}/>:null}
     <View style={[styles.content,{gap:layout.contentGap}]}>{layout.order.map(renderItem)}</View>
     {layout.decorationVisible?<View pointerEvents="none" style={styles.decoration}>
       <View style={[styles.bar,{height:22}]}/><View style={[styles.bar,{height:35}]}/><View style={[styles.bar,{height:50}]}/><View style={[styles.bar,{height:64}]}/>
     </View>:null}
-  </View>;
+  </Pressable>;
 }
 
 const styles=StyleSheet.create({
@@ -45,4 +66,5 @@ const styles=StyleSheet.create({
   caption:{fontSize:11,lineHeight:16,color:colors.textSecondary},
   decoration:{position:'absolute',right:12,bottom:10,height:72,width:60,flexDirection:'row',alignItems:'flex-end',gap:4,opacity:.16},
   bar:{flex:1,borderRadius:4,backgroundColor:colors.primary},
+  layoutSelected:{borderStyle:'dashed',borderWidth:2,borderColor:'#0B6CFF'},
 });

@@ -40,4 +40,4 @@ const app=JSON.parse(readFileSync('app.json','utf8'));
 assert.equal(pkg.version,'3.2.2');
 assert.equal(app.expo.android.versionCode,30202);
 assert.equal(app.expo.ios.buildNumber,'30202');
-console.log('V3.1.18 regression: original direct table, engineer opt-in and error-only fallback: PASS; Android device pending');
+console.log('V3.2.2 portfolio regression: direct table, safe fallback and unified real-layout settings entry: PASS');
