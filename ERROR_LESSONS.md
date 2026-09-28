@@ -1,3 +1,14 @@
+## 2026-09-28｜首頁模組重構不可順手改行情牆
+
+症狀：首頁儀表板與持股行情同屬首頁時，若把「頁面佈局」與「行情牆內容設定」混成同一資料模型，任何首頁改版都可能意外覆寫欄位、排列、跑馬燈、特效或卡片設定。
+
+修正原則：
+1. DashboardLayoutConfig 只持有儀表板自身布局屬性，不得持有 holdingWall、quoteStyle、holdingLayoutMode。
+2. 行情牆只能作為完整 Frame 被首頁排序；Frame 內部的 wall config 保持獨立。
+3. 頁面設定可新增儀表板布局編輯器，但不得重寫 HoldingMarketWallEditor。
+4. 重要 Frozen Scope 使用 Git blob SHA 回歸 Gate，避免「看起來沒改」但實際 source 漂移。
+5. Finance Core 與行情牆同樣視為本次 UI 重構的不可變依賴。
+
 ## 2026-09-28｜金額前綴不可同時是 Auto Layout 子項又允許 absolute XY
 
 症狀：資產儀表板的 NT$ 與主金額雖在同一 Row，但維護工程師仍可對前綴套用泛用 XY／Anchor；Android 在文字被包裝或父框架尺寸改變後，會出現基準線與位移疊加，造成 NT$ 掉到數字下方或穿入數字。
