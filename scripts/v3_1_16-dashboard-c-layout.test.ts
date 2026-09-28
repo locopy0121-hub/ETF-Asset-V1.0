@@ -53,7 +53,8 @@ assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'cf816b03b4a60
 assert.equal(gitBlob('src/components/FloatingHoldingCardPreview.tsx'),'951e2ab7f04fb1b000aef7377d4df5327187a488');
 assert.equal(gitBlob('src/domain/uiModels.ts'),'38dc8ad30ccc9305fe8d0ba67f9fc9c67a4ed46c');
 
-const finance=gitBlob('src/finance/canonicalLedger.ts');
-assert.ok(finance.length===40,'finance core file must remain a valid Git blob');
+assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceacaed3ee541ba7f5c6');
+assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'3bb641bfb2dc64b944ef34c856a5e3ca04417c14');
+assert.equal(gitBlob('src/finance/cashAudit.ts'),'a691f54b89c421df64b4fe0d5e5ecd74d530c2d5');
 
 console.log('V3.1.16 dashboard C PASS — modular layout/settings present; holding-wall source frozen byte-for-byte');
