@@ -153,7 +153,7 @@ export function FinanceProvider({children}:PropsWithChildren){
   }).filter(x=>x.shares>0),[snapshot,market.quotes,market.catalog,market.marketDataVersion]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);
 
-  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes,marketDataVersion:market.marketDataVersion,valuationComplete}),[snapshot,holdings,market.lastSuccessAt,market.quotes,market.marketDataVersion,valuationComplete]);
+  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes,marketDataVersion:market.marketDataVersion,valuationComplete,cashConfigured}),[snapshot,holdings,market.lastSuccessAt,market.quotes,market.marketDataVersion,valuationComplete,cashConfigured]);
 
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,
