@@ -171,6 +171,19 @@ jobs:
           let s=fs.readFileSync(strings,'utf8');
           s=s.replace(/<string name="app_name">[\s\S]*?<\/string>/,'<string name="app_name">TF Asset 資產管家</string>');
           fs.writeFileSync(strings,s);
+
+          // Keep Android system navigation controls visually distinct from app content.
+          // Android 15/16 are edge-to-edge; content safety is handled by SafeAreaView,
+          // while these theme attributes keep the system navigation icons readable.
+          const styles='../TFAssetNative/android/app/src/main/res/values/styles.xml';
+          let st=fs.readFileSync(styles,'utf8');
+          st=st.replace(/<\/style>/, [
+            '  <item name="android:navigationBarColor">#FFFFFF</item>',
+            '  <item name="android:windowLightNavigationBar">true</item>',
+            '  <item name="android:enforceNavigationBarContrast">true</item>',
+            '</style>'
+          ].join('\n'));
+          fs.writeFileSync(styles,st);
           NODE
 
       - name: Inject V3.1.18 Android Widget and Floating Monitor
