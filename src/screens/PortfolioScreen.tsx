@@ -21,8 +21,6 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
-import {InspectableTarget} from '../maintenance/InspectableTarget';
-import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionModel';
 import { sortHoldingQuotes,sortPreset,nextSortPreset } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
@@ -53,7 +51,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   // Old saved three-column chart selections also render in safe chart-free mode.
   const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const activeQuickMode:PortfolioQuickMode=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
-  const simpleList=(effectiveDisplay.portfolioListStyle??'simple')!=='table'||listFallback;
+  const simpleList=listFallback;
   const [firstMode,setFirstMode]=useState<PortfolioPrimaryMode>(()=>{
     const initial=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
     return initial==='list'||initial==='wall'||initial==='quote'||initial==='compact'?initial:'list';
@@ -137,28 +135,13 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
               <Pressable accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
                 <Text style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
               </Pressable>
-              <InspectableTarget
-                frame={{page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
-                  frameConfig:editor.config['holding-view']!,displayConfig:effectiveDisplay}}
-                target={{
-                  id:'portfolio:holding-table',kind:'portfolio-list',label:'持股清單',
-                  page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
-                  properties:[
-                    {name:'資料筆數',value:String(sorted.length),readOnly:true},
-                    {name:'固定欄寬',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).fixedWidth)+' dp'},
-                    {name:'列高',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).rowHeight)+' dp'},
-                    {name:'欄位數',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).columns.length)},
-                    {name:'標籤數',value:String((effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES).order.length)},
-                  ],
-                  base:{...TARGET_APPEARANCE,backgroundColor:'#FFFFFF',padding:0},
-                }}>
-                {()=> simpleList
-                  ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
-                  :<HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
-                    config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
-                    badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
-                    refreshToken={finance.sharedSnapshot.generatedAt}/>}
-              </InspectableTarget>
+              {simpleList
+                ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
+                :<HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
+                  config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                  badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
+                  refreshToken={finance.sharedSnapshot.generatedAt}/>}
+
             </>:<>
 
               <View style={styles.sortRow}>
