@@ -91,9 +91,9 @@ export function PageLayoutToolWorkbench({
     {selection.kind==='frame'?<View>
       <Accordion title="尺寸" subtitle="框架第一層就是寬度與高度" open={openGroup==='size'} onPress={()=>toggle('size')}>
         <ModeStep label="寬度" value={frameConfig.width} fallback={320} min={160} max={1600} step={10}
-          onAuto={()=>onPatchFrame(frame.key,{width:undefined})} onChange={width=>onPatchFrame(frame.key,{width})}/>
+          onAuto={()=>onPatchFrame(frame.key,{width:undefined} as any)} onChange={width=>onPatchFrame(frame.key,{width})}/>
         <ModeStep label="高度" value={frameConfig.height} fallback={260} min={80} max={2400} step={10}
-          onAuto={()=>onPatchFrame(frame.key,{height:undefined})} onChange={height=>onPatchFrame(frame.key,{height})}/>
+          onAuto={()=>onPatchFrame(frame.key,{height:undefined} as any)} onChange={height=>onPatchFrame(frame.key,{height})}/>
         <NumberStep label="最小高度" value={frameConfig.minHeight??0} min={0} max={600} step={10} suffix=" px" onChange={minHeight=>onPatchFrame(frame.key,{minHeight})}/>
       </Accordion>
       <Accordion title="內距／空間" subtitle="父框架的內容安全空間" open={openGroup==='spacing'} onPress={()=>toggle('spacing')}>

@@ -42,7 +42,7 @@ export function HoldingQuoteModule({
   onOpenChart?:()=>void;
   layoutEditMode?:boolean;
   layoutSelectionId?:string|null;
-  onLayoutSelect?:(id:string,label:string)=>void;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const showQuoteMetadata=useSettingsRuntime().prefs.marketCard.showQuoteMetadata;
   const change=item.price-item.previousClose;
@@ -160,7 +160,7 @@ function WallText({
   primary?:boolean;
   layoutEditMode?:boolean;
   layoutSelectionId?:string|null;
-  onLayoutSelect?:(id:string,label:string)=>void;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
@@ -205,7 +205,7 @@ function WallMetric({
   right?:boolean;
   layoutEditMode?:boolean;
   layoutSelectionId?:string|null;
-  onLayoutSelect?:(id:string,label:string)=>void;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
