@@ -1,3 +1,14 @@
+## 2026-09-28｜金額前綴不可同時是 Auto Layout 子項又允許 absolute XY
+
+症狀：資產儀表板的 NT$ 與主金額雖在同一 Row，但維護工程師仍可對前綴套用泛用 XY／Anchor；Android 在文字被包裝或父框架尺寸改變後，會出現基準線與位移疊加，造成 NT$ 掉到數字下方或穿入數字。
+
+修正原則：
+1. 金額前綴與數值視為同一個 composite layout，主結構使用 Flow/Flex，不使用彼此獨立 absolute positioning。
+2. 前綴只允許安全的相對間距／小範圍位移；泛用 XY、寬高與 Anchor 對 prefix 必須停用。
+3. 水平位移必須保留 layout space，不用 translateX 去穿越兄弟元件。
+4. Android 文字複合列優先使用 flex-end + 明確 lineHeight，不依賴跨 wrapper 的 baseline。
+5. 長金額與窄父框架必須有 minWidth=0、auto font shrink、overflow guard。
+
 ## 2026-09-28｜不要用 magic amount 修 magic amount
 
 症狀：雖然新帳戶預設已改為 0，但原始碼仍保留歷史固定現金數值並以該數值做 migration、provenance 與人工沖回判斷，導致錯誤概念持續存在於 Runtime。
