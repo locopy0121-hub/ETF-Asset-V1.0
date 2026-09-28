@@ -39,7 +39,7 @@ assert.doesNotMatch(overview,/position:'absolute'.*prefix/);
 const profit=read('src/components/dashboard/DashboardProfitAnalysis.tsx');
 assert.match(profit,/flexWrap:'wrap'/);
 assert.match(profit,/flexBasis:'46%'/);
-assert.match(profit,/items\.slice\(0,4\)/);
+assert.match(profit,/ordered\.slice\(0,4\)/);
 
 const modal=read('src/components/PageFrameSettingsModal.tsx');
 assert.match(modal,/方案 C｜儀表板佈局/);
