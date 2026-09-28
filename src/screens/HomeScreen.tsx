@@ -5,7 +5,10 @@ import { FloatingDashboardChart } from '../components/FloatingDashboardChart';
 import { NewsReaderModal } from '../components/NewsReaderModal';
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
-import { MetricTile } from '../components/MetricTile';
+import {DashboardAssetOverview} from '../components/dashboard/DashboardAssetOverview';
+import {DashboardProfitAnalysis} from '../components/dashboard/DashboardProfitAnalysis';
+import {DashboardProfitDetail} from '../components/dashboard/DashboardProfitDetail';
+import {DashboardQuickActions} from '../components/dashboard/DashboardQuickActions';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
@@ -15,11 +18,13 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
-import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
+import type { DashboardChartConfig } from '../editor/editorModel';
 import {nextSortPreset,sortHoldingQuotes,sortPreset} from '../domain/holdingSort';
 import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
 import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
+import {DEFAULT_DASHBOARD_LAYOUT} from '../domain/dashboardLayout';
+import type {MainPageKey} from '../domain/pageRegistry';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { useAiNewsRuntime, type AiNewsItem } from '../ai/AiNewsRuntime';
@@ -27,7 +32,7 @@ import { colors, radius, spacing } from '../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
-export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void}) {
+export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void;onNavigate:(page:MainPageKey)=>void}) {
   const finance=useFinance();
   const market=useMarketRuntime();
   const aiNews=useAiNewsRuntime();
@@ -67,18 +72,20 @@ export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:H
   },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
-  const totalDividend=portfolio.totalDividendsReceived;
-  const dashboardMetrics=(effectiveDisplay.dashboardMetrics??[]) as readonly DashboardMetricKey[];
+  const dashboardLayout=effectiveDisplay.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
-  const dashboardMetricInfo:Record<DashboardMetricKey,{label:string;value:number;caption:string;tone?:'gain'|'loss'}>={
-    totalMarketValue:{label:'持股市值',value:portfolio.totalMarketValue,caption:'Finance Core'},
-    totalPnl:{label:'含息總損益',value:portfolio.totalPnl,caption:'含息',tone:portfolio.totalPnl>=0?'gain':'loss'},
-    totalUnrealizedProfit:{label:'未實現損益',value:portfolio.totalUnrealizedProfit,caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain':'loss'},
-    realizedNetPnL:{label:'已實現損益',value:portfolio.realizedNetPnL,caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain':'loss'},
-    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'帳務核心'},
-    cashBalance:{label:'現金',value:finance.cashConfigured?finance.snapshot.cashBalance:0,caption:finance.cashConfigured?'Ledger':'未設定'},
-    holdingCount:{label:'持股檔數',value:finance.holdings.length,caption:'檔'},
-  };
+  const dashboardKpis=[
+    {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const,glyph:'↗'},
+    {key:'totalPnl',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'含息總損益',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const,glyph:'%'},
+    {key:'totalUnrealizedProfit',label:'未實現損益',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const,glyph:'▥'},
+    {key:'totalMarketValue',label:'持股市值',value:valuationComplete?money(portfolio.totalMarketValue):'待核對',caption:'持股行情＋股數',glyph:'◔'},
+  ];
+  const dashboardProfitRows=[
+    {key:'price',label:'純價差未實現',value:valuationComplete?money(portfolio.totalPriceUnrealizedProfit):'待核對',tone:portfolio.totalPriceUnrealizedProfit>=0?'gain' as const:'loss' as const},
+    {key:'net',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const},
+    {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const},
+    {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
+  ];
   const chartSeries=(chart:DashboardChartConfig)=>{
     const rows=finance.holdings.slice(0,8);
     const labels=rows.map(row=>row.symbol);
@@ -105,28 +112,47 @@ export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:H
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
   return <>
-    <PageShell pageKey="home" title="資產儀表板" subtitle="所有資產與損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+    <PageShell pageKey="home" title="資產管家" subtitle="掌握資產現況・所有損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <View
         style={styles.pageLayer}
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
       >
-      <PageEditorStack pageKey="home" frames={[
+      <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={[
         {key:'asset-dashboard',element:
-          <FrameCard title="資產儀表板">
-            <View style={styles.dashboardTop}>
-              <View style={styles.dashboardSummary}>
-                <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                {valuationComplete?<View style={styles.heroAmountShell}>
-                  <View style={styles.heroAmountRow} accessible accessibilityLabel={'目前持股總市值 NT$ '+money(portfolio.totalMarketValue)}>
-                    <Text style={styles.heroPrefix} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>NT$</Text>
-                    <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.42}>{money(portfolio.totalMarketValue)}</Text>
-                  </View>
-                </View>:<Text style={styles.heroValue}>估值待核對</Text>}
-                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
-              </View>
+          <FrameCard title="資產總覽">
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardAssetOverview
+                amount={money(portfolio.totalMarketValue)}
+                complete={valuationComplete}
+                caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'}
+                layout={dashboardLayout.overview}
+              />
             </View>
-            <View style={styles.metricRow}>
-              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='cashBalance'&&!finance.cashConfigured?'未設定':!valuationComplete&&['totalMarketValue','totalPnl','totalUnrealizedProfit','totalAssets','marketValue'].includes(key)?'待核對':key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
+          </FrameCard>
+        },
+        {key:'profit-analysis',element:
+          <FrameCard title="損益分析">
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardProfitAnalysis items={dashboardKpis} layout={dashboardLayout.profitAnalysis}/>
+            </View>
+          </FrameCard>
+        },
+        {key:'pnl-detail',element:
+          <FrameCard title="損益明細">
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardProfitDetail rows={dashboardProfitRows} layout={dashboardLayout.profitDetail} onMore={()=>onNavigate('portfolio')}/>
+            </View>
+          </FrameCard>
+        },
+        {key:'dashboard-quick-actions',element:
+          <FrameCard title="快捷功能">
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardQuickActions layout={dashboardLayout.quickActions} actions={[
+                {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>onNavigate('portfolio')},
+                {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>onNavigate('ledger')},
+                {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>onNavigate('portfolio')},
+                {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>onNavigate('dividend')},
+              ]}/>
             </View>
           </FrameCard>
         },
@@ -170,16 +196,6 @@ export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:H
             {holdingLayoutMode==='grid3'?<Text style={styles.ruleText}>三欄自動使用無圖表精簡卡，保留 ETF 代號、名稱、報價、漲跌與損益。</Text>:null}
             <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>
             <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
-          </FrameCard>
-        },
-        {key:'pnl-detail',element:
-          <FrameCard title="損益明細">
-            <View style={styles.metricRow}>
-              <MetricTile label="純價差未實現" value={valuationComplete?money(portfolio.totalPriceUnrealizedProfit):"待核對"} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
-              <MetricTile label="淨清算未實現" value={valuationComplete?money(portfolio.totalUnrealizedProfit):"待核對"} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
-              <MetricTile label="已實現" value={money(portfolio.realizedNetPnL)} caption="歷史賣出" tone={portfolio.realizedNetPnL>=0?'gain':'loss'}/>
-            </View>
-            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?"NT$ "+money(portfolio.totalPnl):"待核對"}</Text></View>
           </FrameCard>
         },
       ]}/>

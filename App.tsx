@@ -188,7 +188,7 @@ function AppBody(){
       case 'ai': return <AiScreen/>;
       case 'settings': return <SettingsScreen/>;
       case 'home':
-      default: return <HomeScreen onOpenHolding={openHolding} onOpenChart={openChart}/>;
+      default: return <HomeScreen onOpenHolding={openHolding} onOpenChart={openChart} onNavigate={navigatePage}/>;
     }
   },[active,detail,chartHolding]);
 

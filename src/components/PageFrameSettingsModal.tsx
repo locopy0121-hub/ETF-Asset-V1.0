@@ -7,6 +7,7 @@ import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
+import {DEFAULT_DASHBOARD_LAYOUT,type DashboardLayoutConfig} from '../domain/dashboardLayout';
 import {
   normalizeEditorConfig,
   type DashboardChartConfig,
@@ -30,6 +31,7 @@ import {useMarketRuntime} from '../market/MarketRuntime';
 import {PortfolioListEditor} from './PortfolioListEditor';
 import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
 import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
+import {DashboardLayoutPreview} from './dashboard/DashboardLayoutPreview';
 import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
@@ -67,7 +69,7 @@ export function PageFrameSettingsModal({
     setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
     setDisplayDraft({...displayConfig});
     const editFrame=pageKey==='portfolio'?'holding-view':pageKey==='home'?'holding-quotes':null;
-    setOpenFrame(initialContentTab?editFrame:(pageKey==='portfolio'?editFrame:null));
+    setOpenFrame(initialContentTab?editFrame:(pageKey==='home'?'asset-dashboard':pageKey==='portfolio'?editFrame:null));
     setOpenGroup(initialContentTab&&editFrame?editFrame+':content':(pageKey==='portfolio'?'holding-view:content':null));
     setShowWallPreview(true);
     setContentTab(initialContentTab??(pageKey==='portfolio'?'list':'wall'));
@@ -131,6 +133,11 @@ export function PageFrameSettingsModal({
           <Text style={styles.toolbarText}>AB：預設收合 {AB_COLLAPSE_RULES.defaultCollapsed?'✓':'×'} · 同層單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
           <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
         </View>
+        {pageKey==='home'?<View style={styles.section}>
+          <View style={styles.header}><View style={{flex:1}}><Text style={styles.sectionTitle}>方案 C｜儀表板佈局</Text><Text style={styles.description}>只控制首頁資產總覽、損益分析、損益明細與快捷功能；行情牆設定完全沿用原有獨立設定。</Text></View></View>
+          <View style={styles.body}><DashboardLayoutSettings value={displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT}
+            onChange={dashboardLayout=>setDisplayDraft(current=>({...current,dashboardLayout}))}/></View>
+        </View>:null}
         {orderedFrames.map((frame,index)=>{
           const expanded=openFrame===frame.key,value=draft[frame.key];if(!value)return null;
           const locked=value.behavior==='locked';
@@ -210,6 +217,49 @@ export function PageFrameSettingsModal({
   </Modal>;
 }
 
+function DashboardLayoutSettings({value,onChange}:{value:DashboardLayoutConfig;onChange:(value:DashboardLayoutConfig)=>void}){
+  const [open,setOpen]=useState<string|null>('preview');
+  const patch=(patchValue:Partial<DashboardLayoutConfig>)=>onChange({...value,...patchValue});
+  const patchOverview=(next:Partial<DashboardLayoutConfig['overview']>)=>patch({overview:{...value.overview,...next}});
+  const patchProfit=(next:Partial<DashboardLayoutConfig['profitAnalysis']>)=>patch({profitAnalysis:{...value.profitAnalysis,...next}});
+  const patchDetail=(next:Partial<DashboardLayoutConfig['profitDetail']>)=>patch({profitDetail:{...value.profitDetail,...next}});
+  const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>patch({quickActions:{...value.quickActions,...next}});
+  const toggle=(key:string)=>setOpen(current=>current===key?null:key);
+  return <View style={{gap:4}}>
+    <Text style={styles.dashboardHint}>模組顯示與上下排序使用下方各「實際框架」的顯示／順位；這裡只管理方案 C 內部排版，避免建立第二套排序狀態。</Text>
+    <AccordionGroup title="即時佈局預覽" subtitle="只預覽方案 C 儀表板，不載入行情牆" expanded={open==='preview'} onPress={()=>toggle('preview')}>
+      <DashboardLayoutPreview layout={value}/>
+    </AccordionGroup>
+    <AccordionGroup title="全局間距" subtitle="儀表板模組間距與內容內距" expanded={open==='global'} onPress={()=>toggle('global')}>
+      <EditorRow title="模組間距" subtitle={Math.round(value.sectionGap)+' dp'}><NumberStep label="dp" value={value.sectionGap} min={6} max={32} step={1} onChange={sectionGap=>patch({sectionGap})}/></EditorRow>
+      <EditorRow title="模組內容水平內距" subtitle={Math.round(value.contentPadding)+' dp'}><NumberStep label="dp" value={value.contentPadding} min={0} max={24} step={1} onChange={contentPadding=>patch({contentPadding})}/></EditorRow>
+    </AccordionGroup>
+    <AccordionGroup title="資產總覽" subtitle="主資產卡與 Money Composite" expanded={open==='overview'} onPress={()=>toggle('overview')}>
+      <EditorRow title="最小高度" subtitle={Math.round(value.overview.minHeight)+' dp'}><NumberStep label="dp" value={value.overview.minHeight} min={104} max={220} step={4} onChange={minHeight=>patchOverview({minHeight})}/></EditorRow>
+      <EditorRow title="卡片內距" subtitle={Math.round(value.overview.padding)+' dp'}><NumberStep label="dp" value={value.overview.padding} min={8} max={28} step={1} onChange={padding=>patchOverview({padding})}/></EditorRow>
+      <SwitchRow label="NT$ 前綴" value={value.overview.prefixVisible} onChange={prefixVisible=>patchOverview({prefixVisible})}/>
+      <SwitchRow label="說明文字" value={value.overview.captionVisible} onChange={captionVisible=>patchOverview({captionVisible})}/>
+      <SwitchRow label="右側裝飾" value={value.overview.decorationVisible} onChange={decorationVisible=>patchOverview({decorationVisible})}/>
+    </AccordionGroup>
+    <AccordionGroup title="損益分析" subtitle="固定 2×2 四宮格，不使用自由 XY" expanded={open==='profit'} onPress={()=>toggle('profit')}>
+      <EditorRow title="卡片間距" subtitle={Math.round(value.profitAnalysis.cardGap)+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} onChange={cardGap=>patchProfit({cardGap})}/></EditorRow>
+      <EditorRow title="卡片最小高度" subtitle={Math.round(value.profitAnalysis.cardHeight)+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardHeight} min={84} max={156} step={4} onChange={cardHeight=>patchProfit({cardHeight})}/></EditorRow>
+      <SwitchRow label="圖示" value={value.profitAnalysis.iconVisible} onChange={iconVisible=>patchProfit({iconVisible})}/>
+      <SwitchRow label="副文字" value={value.profitAnalysis.captionVisible} onChange={captionVisible=>patchProfit({captionVisible})}/>
+    </AccordionGroup>
+    <AccordionGroup title="損益明細" subtitle="首頁摘要筆數與行高" expanded={open==='detail'} onPress={()=>toggle('detail')}>
+      <EditorRow title="顯示筆數" subtitle={value.profitDetail.itemCount+' 筆'}><ChoiceGroup items={([{key:'2',label:'2 筆'},{key:'3',label:'3 筆'},{key:'4',label:'4 筆'}] as const)} value={String(value.profitDetail.itemCount) as '2'|'3'|'4'} onChange={v=>patchDetail({itemCount:Number(v) as 2|3|4})}/></EditorRow>
+      <EditorRow title="行高" subtitle={Math.round(value.profitDetail.rowHeight)+' dp'}><NumberStep label="dp" value={value.profitDetail.rowHeight} min={40} max={72} step={2} onChange={rowHeight=>patchDetail({rowHeight})}/></EditorRow>
+      <SwitchRow label="查看更多" value={value.profitDetail.showMore} onChange={showMore=>patchDetail({showMore})}/>
+    </AccordionGroup>
+    <AccordionGroup title="快捷功能" subtitle="只連接既有頁面，不新增影子資料" expanded={open==='quick'} onPress={()=>toggle('quick')}>
+      <EditorRow title="排列欄數" subtitle={value.quickActions.columns+' 欄'}><ChoiceGroup items={([{key:'2',label:'2 欄'},{key:'4',label:'4 欄'}] as const)} value={String(value.quickActions.columns) as '2'|'4'} onChange={v=>patchQuick({columns:Number(v) as 2|4})}/></EditorRow>
+      <EditorRow title="圖示大小" subtitle={Math.round(value.quickActions.iconSize)+' px'}><NumberStep label="px" value={value.quickActions.iconSize} min={18} max={36} step={1} onChange={iconSize=>patchQuick({iconSize})}/></EditorRow>
+      <SwitchRow label="功能名稱" value={value.quickActions.titleVisible} onChange={titleVisible=>patchQuick({titleVisible})}/>
+    </AccordionGroup>
+  </View>;
+}
+
 const dashboardMetricChoices:readonly {key:DashboardMetricKey;label:string}[]=[
   {key:'totalMarketValue',label:'持股市值'},{key:'totalPnl',label:'含息總損益'},{key:'totalUnrealizedProfit',label:'未實現損益'},
   {key:'realizedNetPnL',label:'已實現損益'},{key:'totalDividendsReceived',label:'累積淨股息'},{key:'cashBalance',label:'現金'},{key:'holdingCount',label:'持股檔數'},
@@ -253,9 +303,7 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
   };
   const chartGroup=(id:string,key:string)=>`${id}:${key}`;
   return <View style={styles.dashboardTools}>
-    <AccordionGroup title="儀表板資料卡" subtitle="選擇首頁摘要資料" expanded={openChart==='metrics'} onPress={()=>{setOpenChart(v=>v==='metrics'?null:'metrics');setOpenChartGroup(null);}}>
-      <View style={styles.choiceGroup}>{dashboardMetricChoices.map(item=><Pressable key={item.key} onPress={()=>toggleMetric(item.key)} style={[styles.choice,metrics.includes(item.key)&&styles.choiceActive]}><Text style={[styles.choiceText,metrics.includes(item.key)&&styles.choiceTextActive]}>{item.label}</Text></Pressable>)}</View>
-    </AccordionGroup>
+    <Text style={styles.dashboardHint}>方案 C 的四張核心 KPI 已固定由「損益分析」模組呈現；此區保留既有浮動圖表能力，不改行情牆。</Text>
     <View style={styles.chartHeader}><Text style={styles.dashboardTitle}>浮動圖表工具</Text><Pressable onPress={addChart} style={styles.addChart}><Text style={styles.addChartText}>＋ 新增圖表</Text></Pressable></View>
     <Text style={styles.dashboardHint}>圖表可跨框架自由放置；未鎖定時移動 Block，鎖定後手勢切換為資料縮放／平移。</Text>
     {charts.map((chart,index)=>{

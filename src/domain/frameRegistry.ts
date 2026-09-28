@@ -9,10 +9,12 @@ export type PageFrameDefinition = {
 export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = {
   home: [
     { key:'page-header', title:'頁面頂部表頭', description:'TF Asset 品牌、標題、副標及右側按鈕區' },
-    { key:'asset-dashboard', title:'資產儀表板', description:'總資產、今日損益與股息摘要' },
+    { key:'asset-dashboard', title:'資產總覽', description:'方案 C 主資產總覽與總資產金額' },
+    { key:'profit-analysis', title:'損益分析', description:'已實現、含息、未實現與持股市值四宮格' },
+    { key:'pnl-detail', title:'損益明細', description:'首頁損益摘要與查看更多入口' },
+    { key:'dashboard-quick-actions', title:'快捷功能', description:'首頁常用功能快速入口' },
     { key:'market-news', title:'市場新聞', description:'市場資訊快速掃描' },
-    { key:'holding-quotes', title:'持股行情模塊', description:'即時行情、漲跌與持股損益' },
-    { key:'pnl-detail', title:'損益明細', description:'今日、本月、今年與含息損益' },
+    { key:'holding-quotes', title:'持股行情模塊', description:'即時行情、漲跌與持股損益；行情牆內部設定保持原樣' },
   ],
   ledger: [
     { key:'page-header', title:'頁面頂部表頭', description:'TF Asset 品牌、標題、副標及右側按鈕區' },

@@ -1,3 +1,15 @@
+# V3.1.16｜2026-09-28｜方案 C 模組分區式首頁儀表板
+
+- 首頁資產儀表板重構為方案 C：資產總覽、損益分析、損益明細、快捷功能四個獨立模組；市場新聞與持股行情模塊保留為原有獨立 Frame。
+- 資產總覽沿用 V3.1.15 Money Composite，NT$ 與主金額維持同列 responsive flow；長金額自動縮放，禁止依賴自由 absolute XY。
+- 損益分析固定使用 responsive 2×2 Grid：已實現損益、含息總損益、未實現損益、持股市值；資料只讀取既有 Finance snapshot。
+- 損益明細改為首頁摘要列表，可設定 2／3／4 筆、行高與「查看更多」；完整持股資訊仍由原頁面承接。
+- 新增 DashboardLayoutConfig，只管理方案 C 的間距、資產主卡、KPI、明細與快捷功能；明確不包含 holdingWall、quoteStyle、holdingLayoutMode。
+- 頁面設定新增「方案 C｜儀表板佈局」與即時小型預覽；模組顯示／排序繼續沿用實際 Frame 設定，不建立第二套排序狀態。
+- 行情牆設定 Frozen：HoldingMarketWallEditor、HoldingQuoteCollection、FloatingHoldingCardPreview、uiModels 以 V3.1.15 Git blob SHA 鎖定回歸；本版不得修改。
+- Finance Core Frozen：canonicalLedger、FinanceRuntime、cashAudit 以 V3.1.15 Git blob SHA 鎖定。
+- App 3.1.16／30116；新增 `v3_1_16-dashboard-c-layout` Gate。
+
 # V3.1.15｜2026-09-28｜資產儀表板自適應金額列與防錯位保護
 
 - 主資產金額改成單一 responsive composite：NT$ 與金額共用同一個 Row，採底部對齊，不再依賴 Android baseline；長金額會在可用寬度內自動縮小。
