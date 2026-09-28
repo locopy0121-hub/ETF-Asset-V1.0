@@ -116,9 +116,11 @@ export function HomeScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:H
             <View style={styles.dashboardTop}>
               <View style={styles.dashboardSummary}>
                 <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                {valuationComplete?<View style={styles.heroAmountRow} accessible accessibilityLabel={'目前持股總市值 NT$ '+money(portfolio.totalMarketValue)}>
-                  <Text style={styles.heroPrefix}>NT$</Text>
-                  <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.52}>{money(portfolio.totalMarketValue)}</Text>
+                {valuationComplete?<View style={styles.heroAmountShell}>
+                  <View style={styles.heroAmountRow} accessible accessibilityLabel={'目前持股總市值 NT$ '+money(portfolio.totalMarketValue)}>
+                    <Text style={styles.heroPrefix} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>NT$</Text>
+                    <Text style={styles.heroValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.42}>{money(portfolio.totalMarketValue)}</Text>
+                  </View>
                 </View>:<Text style={styles.heroValue}>估值待核對</Text>}
                 <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>{valuationComplete?'含息總損益 NT$ '+money(portfolio.totalPnl):'待取得可信行情，帳務明細不受影響'}</Text>
               </View>
@@ -194,14 +196,15 @@ const styles=StyleSheet.create({
   refreshButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   refreshButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   heroLabel:{color:colors.textSecondary,fontSize:12,fontWeight:'700'},
-  heroAmountRow:{flexDirection:'row',alignItems:'baseline',width:'100%'},
-  heroPrefix:{color:colors.text,fontSize:34,fontWeight:'900',marginRight:8},
-  heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums'],flexShrink:1},
-  heroDelta:{fontSize:13,fontWeight:'800'},
+  heroAmountShell:{width:'100%',minWidth:0,overflow:'hidden'},
+  heroAmountRow:{flexDirection:'row',alignItems:'flex-end',width:'100%',minWidth:0,overflow:'hidden'},
+  heroPrefix:{color:colors.text,fontSize:18,lineHeight:42,fontWeight:'900',marginRight:8,flexShrink:1,maxWidth:'30%'},
+  heroValue:{color:colors.text,fontSize:42,lineHeight:46,fontWeight:'900',fontVariant:['tabular-nums'],flex:1,minWidth:0,flexShrink:1},
+  heroDelta:{fontSize:13,fontWeight:'800',marginTop:2},
   pageLayer:{position:'relative'},
-  dashboardTop:{minHeight:150,justifyContent:'flex-start'},
-  // A narrow fixed 48% hero column clips long NT$ balances on real devices.
-  dashboardSummary:{width:'100%',gap:6},
+  dashboardTop:{minHeight:128,justifyContent:'flex-start'},
+  // The hero amount is one responsive composite row; never position NT$ and the value independently.
+  dashboardSummary:{width:'100%',gap:4,minWidth:0},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},
