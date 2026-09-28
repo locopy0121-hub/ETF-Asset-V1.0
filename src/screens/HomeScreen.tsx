@@ -234,7 +234,7 @@ const styles=StyleSheet.create({
                 {key:'paged2',label:'雙欄滑動'},
               ] as const).map(x=>
                 <Pressable key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
-                  <Text style={[styles.sortChipText,sortKey===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                  <Text style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
                 </Pressable>
               )}
             </View>
