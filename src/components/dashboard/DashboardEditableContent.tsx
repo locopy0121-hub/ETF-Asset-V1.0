@@ -1,5 +1,5 @@
 import type {ReactNode} from 'react';
-import {StyleSheet,Text,type TextStyle,type ViewStyle} from 'react-native';
+import {StyleSheet,Text,type StyleProp,type TextStyle} from 'react-native';
 import {colorWithAlpha} from '../../maintenance/frameEffects';
 import {InspectableTarget} from '../../maintenance/InspectableTarget';
 import {
@@ -20,8 +20,8 @@ const hex=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9a-f]{
 export function DashboardEditableText({
   id,label,frame,children,style,kind='text',tone='neutral',numberOfLines,adjustsFontSizeToFit=false,minimumFontScale,
 }:{
-  id:string;label:string;frame?:FrameMaintenanceContext;children:string|number;
-  style:TextStyle|readonly (TextStyle|false|null|undefined)[];
+  id:string;label:string;frame?:FrameMaintenanceContext|undefined;children:string|number;
+  style:StyleProp<TextStyle>;
   kind?:Extract<TargetKind,'text'|'value'|'prefix'>;tone?:FinancialTone;
   numberOfLines?:number;adjustsFontSizeToFit?:boolean;minimumFontScale?:number;
 }){
@@ -98,7 +98,7 @@ export function DashboardEditableText({
 export function DashboardEditableMetric({
   id,frame,label,value,caption,tone='default',pageStyle,
 }:{
-  id:string;frame?:FrameMaintenanceContext;label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';pageStyle:TargetOverride;
+  id:string;frame?:FrameMaintenanceContext|undefined;label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';pageStyle:TargetOverride;
 }){
   if(!frame)return <MetricTile label={label} value={value}
     {...(caption!==undefined?{caption}:{})}{...(tone!=='default'?{tone}:{})} editorStyle={pageStyle}/>;
