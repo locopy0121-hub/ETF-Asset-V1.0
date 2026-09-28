@@ -8,18 +8,19 @@ const FIRST={
 } as const satisfies Record<PortfolioPrimaryMode,{label:string;glyph:string}>;
 
 /** Four native buttons, no animation, separate editable A ID. */
-export function PortfolioQuickBar({firstMode,activeMode,sortLabel,onCycleFirst,onSelect,onCycleSort}:{
+export function PortfolioQuickBar({firstMode,activeMode,sortLabel,onCycleFirst,onSelect,onCycleSort,firstHint}:{
   firstMode:PortfolioPrimaryMode;
   activeMode:PortfolioQuickMode|'safe';
   sortLabel:string;
   onCycleFirst:()=>void;
   onSelect:(mode:'chart'|'advanced')=>void;
   onCycleSort:()=>void;
+  firstHint?:string;
 }){
   const first=FIRST[firstMode];
   return <View style={styles.row} accessibilityLabel="持股快捷切換">
     <QuickButton label={first.label} glyph={first.glyph} selected={activeMode===firstMode}
-      onPress={onCycleFirst} hint="循環切換清單、行情牆、純行情、精簡"/>
+      onPress={onCycleFirst} hint={firstHint??'循環切換清單、行情牆、純行情、精簡'}/>
     <QuickButton label="圖表" glyph="⌁" selected={activeMode==='chart'}
       onPress={()=>onSelect('chart')}/>
     <QuickButton label="進階" glyph="▥" selected={activeMode==='advanced'}
