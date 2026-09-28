@@ -13,7 +13,7 @@ import type { ItemEffectConfig } from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {EtfBadgeRow} from './EtfBadgeRow';
 import {MiniHoldingChart} from './MiniHoldingChart';
-import { radius } from '../theme/tokens';
+import { radius, spacing } from '../theme/tokens';
 import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
