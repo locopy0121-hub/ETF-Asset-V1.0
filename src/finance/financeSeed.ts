@@ -13,7 +13,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   pinned?: boolean;
 }>;
 
-// New accounts start without fictitious money. V3.1.13 also migrates the exact legacy 750,000 sentinel to zero.
+// New accounts start with zero opening cash; persisted unconfigured opening cash is normalized to zero during hydration.
 export const INITIAL_CASH=0;
 
 /** Emergency/cache bootstrap only. Never treat these values as live market truth. */

@@ -1,3 +1,12 @@
+# V3.1.14｜2026-09-28｜徹底移除 750,000 執行常數並將未配置期初現金歸零
+
+- `cashAudit.ts` 不再定義任何 750,000 現金 magic number；generated reversal 僅以 TF Asset 專用 ID + label 辨識。
+- Ledger schema 升至 4。只要沒有明確 `cashConfigured` provenance，載入時期初現金直接正規化為 0；買賣、股息、其他真實 Ledger entries 保留。
+- 舊系統 generated reversal 在 hydration 時移除，不再以固定負數金額比對，也不再從設定頁建立新的 legacy reversal。
+- 帳務中心與設定頁移除舊金額警告／沖回入口；沒有現金來源時顯示未設定，交易淨流量只供對帳。
+- App 3.1.14／30114；備份格式接受 Ledger schema 1/2/3/4；新增 `v3_1_14-zero-legacy-cash` 回歸 Gate。
+- Canonical Finance Core、actual_fee、actual_tax、既有真實交易資料與行情來源不修改。
+
 ## 2026-09-28｜V3.1.11 Mini 圖表＋獨立股市式專業圖表頁
 
 - 首頁與庫存中的持股圖表統一限制為 Mini 呈現，避免在摘要頁塞入完整分析工具。

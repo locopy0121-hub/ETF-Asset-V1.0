@@ -32,7 +32,7 @@ export function parseBackupDocument(text:string):{
   if(typeof rawLedger!=='string')throw new Error('備份檔缺少帳務 Ledger，不能視為完整備份');
   let ledger:Record<string,unknown>;
   try{ledger=JSON.parse(rawLedger) as Record<string,unknown>;}catch{throw new Error('備份檔帳務資料無法解析');}
-  if(!ledger||typeof ledger!=='object'||![1,2,3].includes(Number(ledger.schema))||!Array.isArray(ledger.entries)
+  if(!ledger||typeof ledger!=='object'||![1,2,3,4].includes(Number(ledger.schema))||!Array.isArray(ledger.entries)
     ||typeof ledger.initialCash!=='number'||!Number.isFinite(ledger.initialCash)){
     throw new Error('帳務 Ledger 結構不完整，已拒絕匯入');
   }

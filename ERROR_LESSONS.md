@@ -1,3 +1,14 @@
+## 2026-09-28｜不要用 magic amount 修 magic amount
+
+症狀：雖然新帳戶預設已改為 0，但原始碼仍保留歷史固定現金數值並以該數值做 migration、provenance 與人工沖回判斷，導致錯誤概念持續存在於 Runtime。
+
+修正原則：
+1. 金融 Runtime 不保留歷史固定金額作為識別條件。
+2. 舊系統產生資料必須依專用 ID／provenance 辨識，不依金額猜測。
+3. 未有明確現金來源 provenance 時，opening cash 一律正規化為 0。
+4. migration 不得建立另一筆固定負數來抵消固定正數；應直接修正來源狀態。
+5. regression test 必須掃 Runtime 原始碼，防止 retired magic amount 再被寫回。
+
 ## 2026-09-28｜V3.1.10：歷史行情代號驗證不可比中央行情規格更窄
 
 009816 是六位 ETF 代號，但舊 `fetchOfficialDailyHistory` 使用 `^\d{4,5}[A-Z]?$`，在送出任何歷史查詢前就直接拋出「無效的歷史行情查詢」。歷史資料入口必須與中央行情代號契約對齊（4–8 位英數），並用回歸測試鎖定 009816 與 00406A。歷史圖表不可因單一月份 HTTP／路由失敗就丟棄已取得月份；逐月容錯與官方備援路由應保留已驗證交易日。持股歷史損益不可冒充歷史 Canonical Ledger：若用目前股數／成本套入歷史收盤價，必須明示為估值，當前正式損益仍只取 Canonical Core。
