@@ -30,7 +30,7 @@ jobs:
       - name: V3.2.3 holding detail editor / Android safe-area regression
         run: npx tsx scripts/v3_1_18-holding-detail-safearea.test.ts
       - name: V3.2.3 aggregate gates
-        run: npm run test:v3_2_2
+        run: npm run test:v3_2_3
       - name: Upload mandatory complete skill coverage report
         uses: actions/upload-artifact@v4
         with:
