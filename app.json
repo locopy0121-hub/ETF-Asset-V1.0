@@ -13,7 +13,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.tfasset.app",
-      "buildNumber": "30116"
+      "buildNumber": "30117"
     },
     "extra": {
       "eas": {
