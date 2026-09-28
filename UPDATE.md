@@ -1,3 +1,9 @@
+# V3.1.9｜庫存清單固定代號欄改為自由欄寬（2026-09-28）
+
+依 Android 實機設定畫面確認：原 A「固定代號欄」被 160 dp 最小值鎖住，對手機畫面過寬。本版只調整庫存清單顯示設定，不碰帳務核心。代號欄改為 72–240 dp 連續範圍，＋／− 每次 1 dp；新增直接數字輸入與可拖曳滑桿，變更沿用既有 draft/onChange 即時預覽，只有頁面「套用」才持久化。既有 160 dp 存檔仍保持 160，不強制改寫；使用者可自行縮窄。
+
+正式 V3.0.1 `PortfolioHoldingTable` renderer 保持原 Git blob 不改，只透過既有 `config.fixedWidth` 套用寬度，因此左欄固定、右欄橫向滑動及 Immutable Core 都維持。版本提升至 3.1.9／30109；由已成功 V3.1.8 HEAD `ef3c64c710789f3a22b5981d366f2da6093063dc` 建立備份 `backup-v3.1.8-20260928-before-v3.1.9` 後接續。新增欄寬正規化、1dp 微調、直接輸入、拖曳與原表格 SHA 防回歸 Gate。GitHub quality／Node+Redis+PostgreSQL／QA APK／ZIP/SHA/AAPT 必須實際完成後才回報 Build PASS；真機手感另行驗收。
+
 # V3.1.8｜第一鍵清單恢復 V3.0.1 正式橫向滑動表格（2026-09-28）
 
 依 Android V3.1.7 實機截圖的「此顯示模組暫時無法載入」，核查並直接比較 GitHub `go-v3.0.1-20260925-engineer-core` 的 `PortfolioScreen.tsx`、`PortfolioHoldingTable.tsx` 與目前版本。確定正式 V3.0.1 表格元件 Git blob `732a18dc3cb2e6cd1203f6f44741a334bfc3d225` 到 V3.1.7 仍未變更，症結之一是 V3.1.7 把第一鍵「清單」預設改成簡化卡片，且把它包在泛用 `InspectableTarget` 裡；截圖明確顯示渲染邊界捕捉了錯誤，但缺少真機錯誤詳細 Log，暫不宣稱單一確定根因。

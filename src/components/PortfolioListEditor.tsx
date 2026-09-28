@@ -1,8 +1,8 @@
-import {useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {Pressable,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,type ItemEffectConfig,type ItemEffectKind,type ItemEffectIntensity,type ItemEffectSpeed,type ItemEffectTrigger} from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
-import {DEFAULT_PORTFOLIO_LIST,type PortfolioColumnConfig,type PortfolioColumnKey,type PortfolioListConfig} from '../domain/portfolioList';
+import {DEFAULT_PORTFOLIO_LIST,PORTFOLIO_FIXED_WIDTH_MAX,PORTFOLIO_FIXED_WIDTH_MIN,type PortfolioColumnConfig,type PortfolioColumnKey,type PortfolioListConfig} from '../domain/portfolioList';
 import type {HoldingQuote} from '../domain/uiModels';
 import {colors,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
@@ -33,7 +33,7 @@ export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_
     <Text style={styles.hint}>A 管理欄位顯示及順序，B 可獨立設定內容、字級、調色盤、寬度、對齊、背景和特效。僅改顯示，不修改帳務核心。</Text>
     <View style={styles.card}>
       <Text style={styles.title}>A 固定代號欄</Text>
-      <Step label="固定欄寬" value={value.fixedWidth} min={160} max={270} step={10} suffix="dp" onChange={fixedWidth=>onChange({...value,fixedWidth})}/>
+      <FixedWidthControl value={value.fixedWidth} onChange={fixedWidth=>onChange({...value,fixedWidth})}/>
       <Step label="每列高度" value={value.rowHeight} min={52} max={96} step={4} suffix="dp" onChange={rowHeight=>onChange({...value,rowHeight})}/>
       <View style={styles.row}><Text style={styles.label}>名稱顯示在代號下方</Text><Switch value={value.showName} onValueChange={showName=>onChange({...value,showName})} trackColor={{true:colors.primary}}/></View>
       <Text style={styles.hint}>代號固定靠左，標籤群組靠右；不足時標籤縮小而非擠壓右側金額。</Text>
@@ -78,6 +78,65 @@ export function PortfolioListEditor({value,onChange,previewQuote,badges=DEFAULT_
   </View>;
 }
 function Mini({text,onPress,disabled=false}:{text:string;onPress:()=>void;disabled?:boolean}){return <Pressable onPress={onPress} disabled={disabled} style={[styles.mini,disabled&&styles.disabled]}><Text style={styles.miniText}>{text}</Text></Pressable>;}
+function FixedWidthControl({value,onChange}:{value:number;onChange:(v:number)=>void}){
+  const min=PORTFOLIO_FIXED_WIDTH_MIN,max=PORTFOLIO_FIXED_WIDTH_MAX;
+  const [input,setInput]=useState(String(value));
+  const trackRef=useRef<View>(null);
+  useEffect(()=>setInput(String(value)),[value]);
+  const commit=(next:number)=>onChange(Math.min(max,Math.max(min,Math.round(next))));
+  const fromPageX=(pageX:number)=>trackRef.current?.measureInWindow((x,_y,width)=>{
+    if(width<=0)return;
+    const ratio=Math.min(1,Math.max(0,(pageX-x)/width));
+    commit(min+ratio*(max-min));
+  });
+  const percent=(value-min)/(max-min)*100;
+  const finishInput=()=>{
+    const parsed=Number(input);
+    const next=Number.isFinite(parsed)&&input.trim()?Math.min(max,Math.max(min,Math.round(parsed))):value;
+    setInput(String(next));
+    if(next!==value)onChange(next);
+  };
+  return <View style={styles.widthControl}>
+    <View style={styles.row}>
+      <Text style={styles.label}>代號欄寬</Text>
+      <Mini text="−" onPress={()=>commit(value-1)}/>
+      <TextInput
+        accessibilityLabel="代號欄寬數值"
+        keyboardType="number-pad"
+        selectTextOnFocus
+        value={input}
+        onChangeText={text=>{
+          const digits=text.replace(/\D/g,'').slice(0,3);
+          setInput(digits);
+          const parsed=Number(digits);
+          if(digits&&parsed>=min&&parsed<=max)onChange(parsed);
+        }}
+        onEndEditing={finishInput}
+        style={styles.widthInput}
+      />
+      <Text style={styles.unit}>dp</Text>
+      <Mini text="＋" onPress={()=>commit(value+1)}/>
+    </View>
+    <View
+      ref={trackRef}
+      collapsable={false}
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel="拖曳調整代號欄寬"
+      accessibilityValue={{min,max,now:value,text:value+' dp'}}
+      accessibilityActions={[{name:'increment',label:'增加 1 dp'},{name:'decrement',label:'減少 1 dp'}]}
+      onAccessibilityAction={event=>commit(value+(event.nativeEvent.actionName==='increment'?1:-1))}
+      onStartShouldSetResponder={()=>true}
+      onMoveShouldSetResponder={()=>true}
+      onResponderGrant={event=>fromPageX(event.nativeEvent.pageX)}
+      onResponderMove={event=>fromPageX(event.nativeEvent.pageX)}
+      style={styles.sliderTrack}>
+      <View pointerEvents="none" style={[styles.sliderFill,{width:(percent+'%') as `${number}%`}]}/>
+      <View pointerEvents="none" style={[styles.sliderThumb,{left:(percent+'%') as `${number}%`}]}/>
+    </View>
+    <Text style={styles.hint}>{min}–{max} dp；＋／− 每次 1 dp，也可直接輸入或拖曳。上方真實清單同步預覽，套用後才保存。</Text>
+  </View>;
+}
 function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(v:number)=>void}){return <View style={styles.row}><Text style={styles.label}>{label}</Text><Mini text="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.value}>{value} {suffix}</Text><Mini text="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
 function Choice<T extends string>({values,labels,value,onChange}:{values:readonly T[];labels:Record<T,string>;value:T;onChange:(v:T)=>void}){
   return <View style={styles.options}>{values.map(v=><Pressable key={v} onPress={()=>onChange(v)} style={[styles.chip,value===v&&styles.chipOn]}><Text style={[styles.chipText,value===v&&styles.chipTextOn]}>{labels[v]}</Text></Pressable>)}</View>;
@@ -92,6 +151,8 @@ const styles=StyleSheet.create({
   details:{gap:8,padding:8,backgroundColor:colors.surfaceMuted,borderRadius:10},
   item:{fontSize:11,fontWeight:'900',color:colors.text},value:{minWidth:50,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
   input:{borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface,padding:8,borderRadius:8,color:colors.text,fontSize:11},
+  widthControl:{gap:7},widthInput:{width:48,height:30,borderWidth:1,borderColor:colors.border,borderRadius:7,textAlign:'center',paddingVertical:2,paddingHorizontal:4,color:colors.text,fontSize:10,fontWeight:'900',backgroundColor:colors.surface},unit:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  sliderTrack:{height:20,borderRadius:10,backgroundColor:colors.surfaceMuted,justifyContent:'center',overflow:'visible'},sliderFill:{position:'absolute',left:0,height:4,borderRadius:2,backgroundColor:colors.primary},sliderThumb:{position:'absolute',top:2,marginLeft:-8,width:16,height:16,borderRadius:8,backgroundColor:colors.primary,borderWidth:2,borderColor:colors.surface},
   mini:{width:28,height:28,borderRadius:6,backgroundColor:colors.surfaceMuted,justifyContent:'center',alignItems:'center'},
   miniText:{fontSize:14,fontWeight:'900',color:colors.primary},disabled:{opacity:.3},
   options:{flexDirection:'row',gap:5,flexWrap:'wrap'},
