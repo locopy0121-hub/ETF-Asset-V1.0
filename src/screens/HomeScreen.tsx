@@ -151,7 +151,54 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
                 {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>onNavigate('portfolio')},
                 {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>onNavigate('ledger')},
                 {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>onNavigate('portfolio')},
-                {key:'dividend',label:'股息資訊',glyph:'
+                {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>onNavigate('dividend')},
+              ]}/>
+            </View>
+          </FrameCard>
+        },
+        {key:'market-news',element:
+          <FrameCard title="市場新聞">
+            {newsItems.map(item=><Pressable key={item.id} accessibilityRole="button" onPress={()=>setSelectedNews(item)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed]}>
+              <View style={styles.newsDot}/>
+              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source} · 點擊於 App 內閱讀</Text></View>
+              <Text style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
+            </Pressable>)}
+            {!newsItems.length?<Text style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
+          </FrameCard>
+        },
+        {key:'holding-quotes',element:
+          <FrameCard title="持股行情模塊">
+            <PortfolioQuickBar firstMode={homeFirstMode} activeMode={quoteStyle} firstHint="切換純行情與精簡"
+              sortLabel={currentSort.label} onCycleFirst={cycleHomeFirst}
+              onSelect={setQuoteStyle} onCycleSort={cycleHomeSort}/>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>條件排序</Text>
+              {([{key:'pnl',label:'損益'},{key:'changePct',label:'漲跌'},{key:'marketValue',label:'市值'}] as const).map(x=>
+                <Pressable key={x.key} style={[styles.sortChip,sortKey===x.key&&styles.sortChipActive]} onPress={()=>setSortKey(x.key)}>
+                  <Text style={[styles.sortChipText,sortKey===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                </Pressable>
+              )}
+            </View>
+            <View style={styles.sortRow}>
+              <Text style={styles.sortLabel}>顯示排列</Text>
+              {([
+                {key:'list',label:'單欄'},
+                {key:'grid2',label:'雙欄'},
+                {key:'grid3',label:'三欄'},
+                {key:'horizontal',label:'橫向滑動'},
+                {key:'paged2',label:'雙欄滑動'},
+              ] as const).map(x=>
+                <Pressable key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
+                  <Text style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                </Pressable>
+              )}
+            </View>
+            {holdingLayoutMode==='grid3'?<Text style={styles.ruleText}>三欄自動使用無圖表精簡卡，保留 ETF 代號、名稱、報價、漲跌與損益。</Text>:null}
+            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>
+            <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
+          </FrameCard>
+        },
+      ]}/>
       {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)} onResize={(width,height)=>resizeDashboardChart(chart.id,width,height)}/>;})}
       </View>
     </PageShell>
