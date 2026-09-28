@@ -11,10 +11,10 @@ import type {CanonicalLedgerEntry} from '../src/finance/canonicalLedger';
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.1.12');
-assert.equal(app.expo.version,'3.1.12');
-assert.equal(app.expo.android.versionCode,30112);
-assert.equal(app.expo.ios.buildNumber,'30112');
+assert.equal(pkg.version,'3.1.13');
+assert.equal(app.expo.version,'3.1.13');
+assert.equal(app.expo.android.versionCode,30113);
+assert.equal(app.expo.ios.buildNumber,'30113');
 
 const genuine:CanonicalLedgerEntry[]=[
   {id:'real-adjustment',date:'2026-09-28',kind:'other',label:'本人現金調整',amount:-23_871},
@@ -45,9 +45,10 @@ assert.equal(realOpening.initialCash,750_001,'only the exact legacy sentinel may
 assert.deepEqual(realOpening.entries,genuine);
 
 const runtime=readFileSync('src/finance/FinanceRuntime.tsx','utf8');
-assert.match(runtime,/const SCHEMA=2/);
-assert.match(runtime,/parsed\.schema===1\|\|parsed\.schema===SCHEMA/);
+assert.match(runtime,/const SCHEMA=3/);
+assert.match(runtime,/sourceSchema===1\|\|sourceSchema===2\|\|sourceSchema===SCHEMA/);
 assert.match(runtime,/migrateLegacyOpeningCash/);
+assert.match(runtime,/removeOrphanGeneratedReversal:sourceSchema<SCHEMA/);
 assert.match(runtime,/setInitialCash\(normalized\.initialCash\)/);
 assert.match(runtime,/setEntries\(normalized\.entries\)/);
 
@@ -55,4 +56,4 @@ const seed=readFileSync('src/finance/financeSeed.ts','utf8');
 assert.match(seed,/INITIAL_CASH=0/);
 assert.match(seed,/SEED_LEDGER:readonly CanonicalLedgerEntry\[\]=\[\]/);
 
-console.log('V3.1.12 legacy opening cash migration PASS — phantom 750,000 removed without touching real ledger data');
+console.log('V3.1.13 legacy opening cash migration PASS — phantom 750,000 removed without touching real ledger data');

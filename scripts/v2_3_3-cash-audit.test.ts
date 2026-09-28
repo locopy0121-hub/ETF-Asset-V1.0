@@ -30,7 +30,7 @@ assert.deepEqual(migrated.entries,previous,'real ledger entries must survive the
 assert.equal(auditCashSources(migrated.initialCash,migrated.entries).cashBalance,-23979);
 
 const withGeneratedReversal:CanonicalLedgerEntry[]=[...previous,
-  {id:'user-confirmed-reversal',date:'2026-09-24',kind:'other',label:LEGACY_REVERSAL_LABEL,amount:-750000}];
+  {id:'legacy-opening-cash-reversal-1727164800000',date:'2026-09-24',kind:'other',label:LEGACY_REVERSAL_LABEL,amount:-750000}];
 const adjusted=auditCashSources(LEGACY_DEFAULT_CASH,withGeneratedReversal);
 assert.equal(adjusted.cashBalance,-23979);
 assert.equal(adjusted.possibleLegacyDefault,false);
@@ -52,4 +52,4 @@ const genuine=migrateLegacyOpeningCash(1_000_000,previous);
 assert.equal(genuine.initialCash,1_000_000,'non-legacy opening cash must never be changed');
 assert.deepEqual(genuine.entries,previous);
 
-console.log('V3.1.12 CASH MIGRATION: PASS — legacy 750,000 removed, real ledger preserved, reversal normalized, idempotent');
+console.log('V3.1.13 CASH MIGRATION: PASS — legacy 750,000 removed, real ledger preserved, reversal normalized, idempotent');

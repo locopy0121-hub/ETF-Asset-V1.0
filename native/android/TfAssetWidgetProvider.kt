@@ -418,7 +418,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       "appName"->"TF Asset" to neutral
       "totalAssets"->("$label NT$ "+money(asset.optDouble("totalAssets",Double.NaN))) to neutral
       "marketValue"->("$label NT$ "+money(asset.optDouble("marketValue",Double.NaN))) to neutral
-      "cash"->("$label NT$ "+money(asset.optDouble("cash",Double.NaN))) to neutral
+      "cash"->(if(asset.optBoolean("cashConfigured",true)) "$label NT$ "+money(asset.optDouble("cash",Double.NaN)) else "$label 未設定") to neutral
       "unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN).let{("$label "+signedMoney(it)) to it}
       "realizedPnl"->asset.optDouble("realizedPnl",Double.NaN).let{("$label "+signedMoney(it)) to it}
       "dividendIncome"->("$label "+money(asset.optDouble("dividendIncome",Double.NaN))) to neutral

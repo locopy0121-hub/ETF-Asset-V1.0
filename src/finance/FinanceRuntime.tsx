@@ -21,22 +21,24 @@ import {
   type OtherCashLedgerEntry,
 } from './canonicalLedger';
 import { INITIAL_CASH, SEED_LEDGER, type RuntimeQuote } from './financeSeed';
-import { migrateLegacyOpeningCash } from './cashAudit';
+import { isGeneratedLegacyReversal, migrateLegacyOpeningCash } from './cashAudit';
 import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
-const SCHEMA=2;
+const SCHEMA=3;
 
 type PersistedFinanceState = {
   schema: number;
   initialCash: number;
   entries: CanonicalLedgerEntry[];
+  cashConfigured?: boolean;
 };
 
 type FinanceContextValue = {
   hydrated: boolean;
   initialCash: number;
+  cashConfigured: boolean;
   entries: readonly CanonicalLedgerEntry[];
   quotes: readonly RuntimeQuote[];
   snapshot: ReturnType<typeof calculateCanonicalLedgerSnapshot>;
@@ -57,6 +59,7 @@ export function FinanceProvider({children}:PropsWithChildren){
   const market=useMarketRuntime();
   const [initialCash,setInitialCash]=useState(INITIAL_CASH);
   const [entries,setEntries]=useState<CanonicalLedgerEntry[]>(()=>[...SEED_LEDGER]);
+  const [cashConfigured,setCashConfigured]=useState(false);
   const [hydrated,setHydrated]=useState(false);
 
   useEffect(()=>{
@@ -66,16 +69,25 @@ export function FinanceProvider({children}:PropsWithChildren){
         if(!alive)return;
         if(raw){
           const parsed=JSON.parse(raw) as Partial<PersistedFinanceState>;
-          if((parsed.schema===1||parsed.schema===SCHEMA)&&Array.isArray(parsed.entries)){
+          const sourceSchema=Number(parsed.schema);
+          if((sourceSchema===1||sourceSchema===2||sourceSchema===SCHEMA)&&Array.isArray(parsed.entries)){
             const restored=parsed.entries as CanonicalLedgerEntry[];
             const parsedInitialCash=Number(parsed.initialCash);
             const normalized=migrateLegacyOpeningCash(
               Number.isFinite(parsedInitialCash)?parsedInitialCash:INITIAL_CASH,
               restored,
+              {removeOrphanGeneratedReversal:sourceSchema<SCHEMA},
             );
             if(validateLedgerSequence(normalized.entries).length===0){
+              const explicitCashAdjustment=normalized.entries.some(entry=>
+                entry.kind==='other'&&!isGeneratedLegacyReversal(entry)
+              );
+              const restoredCashConfigured=typeof parsed.cashConfigured==='boolean'
+                ? parsed.cashConfigured
+                : ((normalized.initialCash!==0&&normalized.initialCash!==750_000)||explicitCashAdjustment);
               setEntries(normalized.entries);
               setInitialCash(normalized.initialCash);
+              setCashConfigured(restoredCashConfigured);
             }
           }
         }
@@ -87,9 +99,9 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedFinanceState={schema:SCHEMA,initialCash,entries};
+    const payload:PersistedFinanceState={schema:SCHEMA,initialCash,entries,cashConfigured};
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,initialCash,entries]);
+  },[hydrated,initialCash,entries,cashConfigured]);
 
   useEffect(()=>{
     market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
@@ -140,11 +152,12 @@ export function FinanceProvider({children}:PropsWithChildren){
   }).filter(x=>x.shares>0),[snapshot,market.quotes,market.catalog,market.marketDataVersion]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);
 
-  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes,marketDataVersion:market.marketDataVersion,valuationComplete}),[snapshot,holdings,market.lastSuccessAt,market.quotes,market.marketDataVersion,valuationComplete]);
+  const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes,marketDataVersion:market.marketDataVersion,valuationComplete,cashConfigured}),[snapshot,holdings,market.lastSuccessAt,market.quotes,market.marketDataVersion,valuationComplete,cashConfigured]);
 
   const value=useMemo<FinanceContextValue>(()=>({
     hydrated,
     initialCash,
+    cashConfigured,
     entries,
     quotes:market.quotes,
     snapshot,
@@ -156,20 +169,22 @@ export function FinanceProvider({children}:PropsWithChildren){
       return validateLedgerSequence(candidate).length===0?candidate:current;
     }),
     addDividend:entry=>setEntries(current=>[...current,entry]),
-    addOther:entry=>setEntries(current=>[...current,entry]),
+    addOther:entry=>{setCashConfigured(true);setEntries(current=>[...current,entry]);},
     deleteEntry:id=>setEntries(current=>{
       const candidate=current.filter(entry=>entry.id!==id);
       return validateLedgerSequence(candidate).length===0?candidate:current;
     }),
     resetFinance:()=>{
+      setCashConfigured(false);
       setInitialCash(INITIAL_CASH);
       setEntries([...SEED_LEDGER]);
     },
     clearFinance:()=>{
+      setCashConfigured(false);
       setInitialCash(0);
       setEntries([]);
     },
-  }),[hydrated,initialCash,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes]);
+  }),[hydrated,initialCash,cashConfigured,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }

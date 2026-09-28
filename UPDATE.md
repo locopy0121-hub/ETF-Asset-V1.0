@@ -663,3 +663,21 @@ CI、APK、Artifact、SHA、badging 與 Android 實測結果必須待各項實�
 - 買進、賣出、股息與其他真實 Ledger entries 全數保留，不修改 Canonical Finance Core 公式，也不重新推導歷史 actualFee / actualTax。
 - 若舊版曾透過設定產生專用「沖回舊版預設初始現金 -750,000」紀錄，遷移時會同步移除該系統產生的沖回，避免歸零後再重複扣除 750,000；遷移前後現金結果保持一致。
 - 遷移具冪等性；非 750,000 的真實期初現金不會被更動。
+
+
+## V3.1.13 — 修復「期初現金已是 0，但仍多扣 750,000」的孤立系統沖回
+
+- 使用者實機畫面顯示「期初現金 NT$ 0」，但「目前現金 NT$ -773,871」。這不是 V3.1.12 已處理的 750,000 opening sentinel 狀態，而是另一種 persisted legacy state：opening 已歸零，但舊版系統產生的 `legacy-opening-cash-reversal-*` / -750,000 仍留在 Ledger。
+- V3.1.13 將 Ledger schema 升為 3。從 schema 1/2 升級時，若 opening=0 且存在具有 TF Asset 專用 generated ID、固定 label、固定 -750,000 amount 的孤立沖回，只移除一筆並寫回 schema 3；之後再次啟動不會持續刪除。
+- 若 opening 仍為 750,000，同樣只移除至多一筆「有專用 ID 證明來源」的 generated reversal，避免 V3.1.12 以 label+amount filter 一次刪除多筆的風險。使用者自行建立、僅文字與金額相同的其他現金調整不得刪除。
+- 備份格式驗證同步接受 ledger schema 1/2/3，避免 schema 升級後造成 create/export/import/restore 失敗。
+- 帳務中心額外顯示「其中其他現金調整」，並在仍偵測到 legacy generated reversal 時明示警告，方便實機核對。
+- Canonical Finance Core、actualFee、actualTax、Math.floor 與既有交易計算完全不修改。
+
+
+### V3.1.13 實機截圖再判讀：沒有沖回也會出現錯誤的「目前現金」
+
+- 最新實機截圖已明確顯示「期初現金 NT$ 0」，交易列表在 09-30 與 09-23 之間也沒有可見的 750,000 沖回。因此不能再把此畫面直接判定為 orphan reversal。
+- 畫面真正的錯誤是把「買賣、股息與調整淨現金流 -773,871」直接當成「目前現金 -773,871」。當使用者從未建立現金來源時，交易淨流量可以保留作對帳，但不能冒充可用現金餘額。
+- 新增 `cashConfigured` provenance：沒有明確現金來源時，帳務中心／設定／首頁／Widget／Monitor 的現金顯示為「未設定」；交易淨流量仍完整顯示。使用者新增「其他現金調整」後才視為已建立現金來源。
+- 此修正只在 Finance Runtime／Shared Snapshot／UI／Native 顯示層接線；`canonicalLedger.ts` 與鎖定公式零修改。
