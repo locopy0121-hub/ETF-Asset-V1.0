@@ -11,8 +11,8 @@ const prefs=read('src/settings/SettingsRuntime.tsx');
 const backup=read('src/settings/BackupService.ts');
 const ci=read('.github/workflows/ci.yml');
 // Supported QA identities must match all user-visible, backup and native build metadata.
-assert.ok(/^3\.0\.(?:[9]|[1-3]\d|40)$/.test(pkg.version)||/^3\.1\.(?:[1-9]|1[0-8])$/.test(pkg.version),'unsupported QA version');
-const expectedCode=pkg.version.startsWith('3.1.')?30100+Number(pkg.version.split('.')[2]):30000+Number(pkg.version.split('.')[2]);
+assert.ok(/^3\.0\.(?:[9]|[1-3]\d|40)$/.test(pkg.version)||/^3\.1\.(?:[1-9]|1[0-8])$/.test(pkg.version)||/^3\.2\.(?:[1-9]|[1-9]\d)$/.test(pkg.version),'unsupported QA version');
+const [major,minor,patch]=pkg.version.split('.').map(Number);const expectedCode=major*10000+minor*100+patch;
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,expectedCode);
 assert.equal(app.expo.android.package,'com.tfasset.app');
