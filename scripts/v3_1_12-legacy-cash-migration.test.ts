@@ -45,9 +45,10 @@ assert.equal(realOpening.initialCash,750_001,'only the exact legacy sentinel may
 assert.deepEqual(realOpening.entries,genuine);
 
 const runtime=readFileSync('src/finance/FinanceRuntime.tsx','utf8');
-assert.match(runtime,/const SCHEMA=2/);
-assert.match(runtime,/parsed\.schema===1\|\|parsed\.schema===SCHEMA/);
+assert.match(runtime,/const SCHEMA=3/);
+assert.match(runtime,/sourceSchema===1\|\|sourceSchema===2\|\|sourceSchema===SCHEMA/);
 assert.match(runtime,/migrateLegacyOpeningCash/);
+assert.match(runtime,/removeOrphanGeneratedReversal:sourceSchema<SCHEMA/);
 assert.match(runtime,/setInitialCash\(normalized\.initialCash\)/);
 assert.match(runtime,/setEntries\(normalized\.entries\)/);
 
