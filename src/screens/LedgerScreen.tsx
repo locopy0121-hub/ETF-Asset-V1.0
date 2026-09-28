@@ -221,8 +221,10 @@ export function LedgerScreen() {
               <Text style={styles.previewTitle}>現金來源：期初金額不屬於交易</Text>
               <PreviewRow label="期初現金" value={'NT$ '+money(cashSources.opening)}/>
               <PreviewRow label="買賣、股息與調整淨現金流" value={'NT$ '+money(cashSources.netMovement)}/>
+              <PreviewRow label="其中其他現金調整" value={'NT$ '+money(cashSources.otherNet)}/>
               <PreviewRow label="目前現金" value={'NT$ '+money(cashSources.cashBalance)} strong/>
               {cashSources.possibleLegacyDefault?<Text style={styles.validationError}>含舊版預設的 750,000 元；請至設定 → 帳務系統 → 現金來源核對。</Text>:null}
+              {cashSources.hasLegacyReversal?<Text style={styles.validationError}>偵測到舊版系統產生的 -750,000 沖回紀錄；V3.1.13 會在舊 schema 升級時清理一筆孤立沖回。</Text>:null}
             </View>
             {ordered.slice(0,20).map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
