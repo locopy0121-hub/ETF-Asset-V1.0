@@ -65,7 +65,11 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
-      marginHorizontal:surface.marginHorizontal,...targetShadowStyle(surface,shadow)},
+      marginHorizontal:surface.marginHorizontal,
+      ...(editorStyle.width!==undefined?{width:editorStyle.width}:{}),
+      ...(editorStyle.height!==undefined?{height:editorStyle.height}:{}),
+      ...(editorStyle.offsetX!==undefined||editorStyle.offsetY!==undefined?{transform:[{translateX:editorStyle.offsetX??0},{translateY:editorStyle.offsetY??0}]}:{}),
+      ...targetShadowStyle(surface,shadow)},
     (thresholdMatched||tapEnabled&&(emphasized||previewTap))&&{borderWidth:Math.max(2,surface.borderWidth),borderColor:theme.palette.primary}]}>
 
     {editorStyle?<TargetBackdrop appearance={surface} start={effectiveBackground} middle={gradientMid} end={gradientEnd} glow={glow}/>:null}

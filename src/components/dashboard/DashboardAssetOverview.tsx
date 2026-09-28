@@ -40,6 +40,9 @@ export function DashboardAssetOverview({amount,caption,complete=true,layout,main
       backgroundColor:card.backgroundMode==='gradient'?'transparent':colorWithAlpha(card.backgroundColor,card.backgroundOpacity),
       borderColor:card.borderColor,borderWidth:card.borderWidth,borderRadius:card.borderRadius,opacity:card.opacity,
       marginVertical:card.marginVertical,marginHorizontal:card.marginHorizontal,
+      ...(cardOverride?.width!==undefined?{width:cardOverride.width}:{}),
+      ...(cardOverride?.height!==undefined?{height:cardOverride.height}:{}),
+      ...(cardOverride?.offsetX!==undefined||cardOverride?.offsetY!==undefined?{transform:[{translateX:cardOverride.offsetX??0},{translateY:cardOverride.offsetY??0}]}:{}),
       ...targetShadowStyle(card,card.shadowColor)},
       runtime.active&&runtime.selectedId===cardId?styles.layoutSelected:undefined]}>
     {cardOverride?<TargetBackdrop appearance={card} start={card.backgroundColor} middle={card.gradientMidColor}
