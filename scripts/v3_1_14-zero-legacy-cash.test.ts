@@ -13,10 +13,10 @@ import {parseBackupDocument,TF_LEDGER_KEY} from '../src/settings/backupDocumentF
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.1.18');
-assert.equal(app.expo.version,'3.1.18');
-assert.equal(app.expo.android.versionCode,30118);
-assert.equal(app.expo.ios.buildNumber,'30118');
+assert.equal(pkg.version,'3.2.1');
+assert.equal(app.expo.version,'3.2.1');
+assert.equal(app.expo.android.versionCode,30201);
+assert.equal(app.expo.ios.buildNumber,'30201');
 
 const runtimeSource=readFileSync('src/finance/FinanceRuntime.tsx','utf8');
 const auditSource=readFileSync('src/finance/cashAudit.ts','utf8');

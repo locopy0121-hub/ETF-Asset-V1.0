@@ -32,6 +32,7 @@ import {PortfolioListEditor} from './PortfolioListEditor';
 import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
 import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
 import {DashboardLayoutPreview} from './dashboard/DashboardLayoutPreview';
+import {PageLayoutToolWorkbench} from './PageLayoutToolWorkbench';
 import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
@@ -71,7 +72,7 @@ export function PageFrameSettingsModal({
     const editFrame=pageKey==='portfolio'?'holding-view':pageKey==='home'?'holding-quotes':null;
     setOpenFrame(initialContentTab?editFrame:(pageKey==='home'?'asset-dashboard':pageKey==='portfolio'?editFrame:null));
     setOpenGroup(initialContentTab&&editFrame?editFrame+':content':(pageKey==='portfolio'?'holding-view:content':null));
-    setShowWallPreview(true);
+    setShowWallPreview(false);
     setContentTab(initialContentTab??(pageKey==='portfolio'?'list':'wall'));
   },[visible,config,displayConfig,initialContentTab]);
 
@@ -113,24 +114,26 @@ export function PageFrameSettingsModal({
     <View style={styles.root}>
       <View style={styles.top}>
         <View style={{flex:1}}>
-          <Text style={styles.kicker}>頁面設定 · 統一能力模型／常駐維護工程師</Text>
+          <Text style={styles.kicker}>頁面設定 · 排版工具／統一能力模型</Text>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.hint}>元件決定可用工具；AB 規則只負責收合。未編輯區預設收合，切換時上一組自動收起。</Text>
+          <Text style={styles.hint}>上方預覽直接點選真實物件；虛線框就是目前編輯範圍。下方手風琴只顯示該物件可用工具。</Text>
         </View>
         <Pressable style={styles.cancel} onPress={cancel}><Text style={styles.cancelText}>取消</Text></Pressable>
         <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.section}>
-          <View style={styles.header}><Text style={styles.sectionTitle}>駐點維護工程師｜本頁常駐</Text></View>
-          <View style={styles.body}><Text style={styles.rowHint}>在「系統設定 → 駐點維護工程師」開啟全局開關，各框架右上角活動扳手即可呼叫本頁工程師。上方直接編輯真實工作區，下方滑動使用完整 AB 技能庫；套用才寫入、取消立即還原。</Text></View>
+          <View style={styles.bodyNoTop}>
+            <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
+              onPatchFrame={patch} onChangeDisplay={setDisplayDraft} previewQuote={previewQuote}/>
+          </View>
         </View>
         <View style={styles.section}>
           <View style={styles.header}><Text style={styles.sectionTitle}>頁面標題</Text></View>
           <View style={styles.body}><Text style={styles.rowHint}>編輯本頁上方顯示的標題，儲存後即時套用。</Text><TextInput accessibilityLabel="頁面標題" value={titleDraft} onChangeText={setTitleDraft} maxLength={48} style={styles.pageTitleInput}/></View>
         </View>
         <View style={styles.toolbar}>
-          <Text style={styles.toolbarText}>AB：預設收合 {AB_COLLAPSE_RULES.defaultCollapsed?'✓':'×'} · 同層單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
+          <Text style={styles.toolbarText}>排版工具：預覽直選 ✓ · 虛線範圍 ✓ · 同層手風琴單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
           <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
         </View>
         {pageKey==='home'?<View style={styles.section}>
@@ -491,6 +494,7 @@ const styles=StyleSheet.create({
   content:{padding:spacing.lg,gap:spacing.md,paddingBottom:48},toolbar:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:spacing.md,flexDirection:'row',alignItems:'center',gap:spacing.md},toolbarText:{flex:1,fontSize:10,lineHeight:15,color:colors.textSecondary},resetText:{fontSize:11,fontWeight:'900',color:colors.primary},
   section:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,overflow:'hidden'},header:{padding:spacing.lg,flexDirection:'row',alignItems:'center',gap:spacing.md},sectionTitle:{fontSize:17,fontWeight:'900',color:colors.text},description:{fontSize:12,color:colors.textSecondary,marginTop:4},toggle:{fontSize:25,color:colors.primary,fontWeight:'600'},
   body:{paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border,gap:8},
+  bodyNoTop:{padding:spacing.lg,gap:8},
   accordion:{borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},accordionHeader:{paddingVertical:13,flexDirection:'row',alignItems:'center',gap:8},accordionTitle:{fontSize:13,fontWeight:'900',color:colors.text},accordionToggle:{fontSize:20,fontWeight:'900',color:colors.primary},accordionBody:{paddingBottom:10},
   editorRow:{paddingVertical:10,gap:8},rowLabel:{fontWeight:'800',color:colors.text},rowHint:{fontSize:10,color:colors.textSecondary,marginTop:3,lineHeight:15},editorControl:{marginTop:5},
   choiceGroup:{flexDirection:'row',flexWrap:'wrap',gap:6},choice:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},

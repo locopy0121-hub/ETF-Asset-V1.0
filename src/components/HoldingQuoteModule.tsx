@@ -28,6 +28,9 @@ export function HoldingQuoteModule({
   refreshToken,
   onPress,
   onOpenChart,
+  layoutEditMode=false,
+  layoutSelectionId=null,
+  onLayoutSelect,
 }:{
   item:HoldingQuote;
   style?:QuoteModuleStyle;
@@ -37,6 +40,9 @@ export function HoldingQuoteModule({
   refreshToken?:string|number|null|undefined;
   onPress?:()=>void;
   onOpenChart?:()=>void;
+  layoutEditMode?:boolean;
+  layoutSelectionId?:string|null;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const showQuoteMetadata=useSettingsRuntime().prefs.marketCard.showQuoteMetadata;
   const change=item.price-item.previousClose;
@@ -62,8 +68,13 @@ export function HoldingQuoteModule({
     micro&&styles.microCard,
     {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
-    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?<MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>:null}
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={'查看持股 '+item.symbol} style={styles.bodyPress}>
+    {layoutEditMode&&layoutSelectionId==='card'?<View pointerEvents="none" style={[StyleSheet.absoluteFill,styles.layoutSelected]}/>:null}
+    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?(layoutEditMode?
+      <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.('chart','Mini 圖表');}} style={layoutSelectionId==='chart'?styles.layoutSelected:undefined}>
+        <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>
+      </Pressable>:
+      <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>):null}
+    <Pressable onPress={layoutEditMode?()=>onLayoutSelect?.('card','行情卡片'):onPress} accessibilityRole="button" accessibilityLabel={layoutEditMode?'選取行情卡片':'查看持股 '+item.symbol} style={styles.bodyPress}>
     <View style={[styles.body,{padding:micro?Math.min(8,cardStyle.padding):cardStyle.padding,
       gap:micro?Math.min(5,cardStyle.rowGap):cardStyle.rowGap}]}>
       {cfg.header.visible&&(groups.header.length>0||badgeConfig.order.some(key=>badgeConfig.badges[key].enabled))?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
@@ -78,6 +89,7 @@ export function HoldingQuoteModule({
                 {groups.header.filter(field=>field.field==='symbol').map(field=><WallText
                   key={field.field} field={field} item={item} change={change} changePct={changePct}
                   wall={cfg} refreshToken={refreshToken} header narrow={narrow} primary
+                  layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}
                 />)}
                 {item.pinned?<Text accessibilityLabel="已釘選" style={styles.pinMarker}>★</Text>:null}
               </View>
@@ -87,6 +99,7 @@ export function HoldingQuoteModule({
             {groups.header.filter(field=>field.field==='name').map(field=><WallText
               key={field.field} field={field} item={item} change={change} changePct={changePct}
               wall={cfg} refreshToken={refreshToken} header narrow={narrow}
+              layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}
             />)}
           </View>
           {!narrow?<Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>:null}
@@ -101,10 +114,12 @@ export function HoldingQuoteModule({
       </Text>:null}
       {groups.quote.length?<View style={[styles.quoteRow,micro&&styles.microQuoteRow]}>
         <View style={micro?{minWidth:0}:{flex:1,minWidth:0}}>
-          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}/>
+          <WallText field={groups.quote[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} quotePrimary narrow={narrow}
+            layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}/>
         </View>
         {groups.quote.length>1?<View style={[styles.changeWrap,micro&&styles.microChangeWrap]}>
-          {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}/>)}
+          {groups.quote.slice(1).map(field=><WallText key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} narrow={narrow}
+            layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}/>)}
         </View>:null}
       </View>:null}
 
@@ -116,10 +131,12 @@ export function HoldingQuoteModule({
         </Text>
       </View>:!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardStyle.borderColor}]}>
         <View style={{flex:1}}>
-          <WallMetric field={groups.footer[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken}/>
+          <WallMetric field={groups.footer[0]!} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken}
+            layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}/>
         </View>
         {groups.footer.length>1?<View style={styles.rightMetric}>
-          {groups.footer.slice(1).map(field=><WallMetric key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} right/>)}
+          {groups.footer.slice(1).map(field=><WallMetric key={field.field} field={field} item={item} change={change} changePct={changePct} wall={cfg} refreshToken={refreshToken} right
+            layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}/>)}
         </View>:null}
       </View>:null}
     </View>
@@ -129,6 +146,7 @@ export function HoldingQuoteModule({
 
 function WallText({
   field,item,change,changePct,wall,refreshToken,header=false,quotePrimary=false,narrow=false,primary=false,
+  layoutEditMode=false,layoutSelectionId=null,onLayoutSelect,
 }:{
   field:HoldingWallFieldConfig;
   item:HoldingQuote;
@@ -140,6 +158,9 @@ function WallText({
   quotePrimary?:boolean;
   narrow?:boolean;
   primary?:boolean;
+  layoutEditMode?:boolean;
+  layoutSelectionId?:string|null;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
@@ -149,7 +170,7 @@ function WallText({
   const fontSize=header
     ?(primary?(narrow?12:15):11)*field.fontScale*wall.header.fontScale
     :(quotePrimary?(narrow?20:29):11)*field.fontScale;
-  return <EffectText
+  const rendered=<EffectText
     text={value}
     effect={field.effect}
     numeric={numeric}
@@ -166,10 +187,14 @@ function WallText({
       fontVariant:['tabular-nums'],
     }}
   />;
+  if(!layoutEditMode)return rendered;
+  const id='field:'+field.field;
+  return <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.(id,field.label);}} style={layoutSelectionId===id?styles.layoutSelected:undefined}>{rendered}</Pressable>;
 }
 
 function WallMetric({
   field,item,change,changePct,wall,refreshToken,right=false,
+  layoutEditMode=false,layoutSelectionId=null,onLayoutSelect,
 }:{
   field:HoldingWallFieldConfig;
   item:HoldingQuote;
@@ -178,11 +203,14 @@ function WallMetric({
   wall:HoldingWallConfig;
   refreshToken?:string|number|null|undefined;
   right?:boolean;
+  layoutEditMode?:boolean;
+  layoutSelectionId?:string|null;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
   const liveBackground=resolveWallBackground(field,item,change,systemColors);
-  return <View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
+  const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
     <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':(field.textColor??wall.style.secondaryTextColor),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
@@ -199,6 +227,9 @@ function WallMetric({
       }}
     />
   </View>;
+  if(!layoutEditMode)return rendered;
+  const id='field:'+field.field;
+  return <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.(id,field.label);}} style={layoutSelectionId===id?styles.layoutSelected:undefined}>{rendered}</Pressable>;
 }
 
 function EffectText({text,effect,numeric,refreshToken,style,numberOfLines,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;style:any;numberOfLines?:number;inlineBackgroundColor?:string|null}){
@@ -327,4 +358,5 @@ const styles=StyleSheet.create({
   microFooter:{paddingTop:4,flexDirection:'column',alignItems:'flex-start',gap:2},
   microPnlLabel:{fontSize:9,color:'#91A0B5'},
   microPnlValue:{fontSize:12,fontWeight:'900',maxWidth:'100%'},
+  layoutSelected:{borderWidth:2,borderStyle:'dashed',borderColor:'#0B6CFF',borderRadius:8},
 });
