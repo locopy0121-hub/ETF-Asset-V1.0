@@ -70,6 +70,7 @@ export function HoldingQuoteModule({
 
   return <View style={[
     styles.card,
+    showChart&&styles.chartCardLayout,
     compact&&!micro&&styles.compact,
     narrow&&styles.narrowCard,
     micro&&styles.microCard,
@@ -349,6 +350,7 @@ function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,ch
 const styles=StyleSheet.create({
   card:{flexDirection:'row',backgroundColor:'#0C121B',borderRadius:radius.lg,overflow:'hidden',minHeight:132,borderWidth:1,borderColor:'#263343'},
   compact:{minHeight:86},
+  chartCardLayout:{flexDirection:'column',minHeight:190},
   bodyPress:{flex:1},
   miniChartWrap:{paddingHorizontal:8,paddingBottom:6},
   body:{flex:1,padding:spacing.md,gap:8},
