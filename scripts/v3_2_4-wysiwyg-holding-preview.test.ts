@@ -20,7 +20,10 @@ assert.match(workbench,/holdingPreviewRows=previewRows\?\.length\?previewRows:/,
 assert.match(workbench,/<HoldingQuoteCollection rows=\{holdingPreviewRows\}/);
 assert.match(workbench,/badgeConfig=\{displayDraft\.etfBadges\?\?DEFAULT_ETF_BADGES\}/);
 assert.match(workbench,/layoutMode=\{holdingLayoutMode\}/);
-assert.match(workbench,/layoutEditMode layoutSelectionId=\{selection\.id\} onLayoutSelect=\{selectHolding\}/);
+assert.match(workbench,/layoutEditMode layoutSelectionId=\{frameKey===item\.key\?selection\.id:null\}/,
+  'actual-page holding renderer must receive the selected real target id');
+assert.match(workbench,/onLayoutSelect=\{\(id,label\)=>\{setFrameKey\(item\.key\);selectHolding\(id,label\);\}\}/,
+  'actual-page holding renderer must route taps back to the lower settings editor');
 assert.doesNotMatch(workbench,/layout="narrow"/,
   'hard-coded narrow preview is forbidden because it diverges from the actual screen');
 
@@ -41,13 +44,13 @@ assert.match(portfolio,/previewQuote=\{sorted\[0\]\} previewRows=\{sorted\}/,
   'portfolio settings preview must use the same sorted live holding rows');
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.11');
-assert.equal(app.expo.version,'3.2.11');
-assert.equal(app.expo.android.versionCode,30211);
-assert.equal(app.expo.ios.buildNumber,'30211');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.11'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.11'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30211'/);
+assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.equal(app.expo.version,pkg.version);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
+assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("VERSION='"+pkg.version+"'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("BUILD='"+String(app.expo.android.versionCode)+"'"));
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'financial core remains untouched: '+core);
