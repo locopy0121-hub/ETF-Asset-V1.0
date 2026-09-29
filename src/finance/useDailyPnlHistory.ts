@@ -98,18 +98,19 @@ export function useDailyPnlHistory(input:{
   useEffect(()=>{
     if(!input.hydrated||!storageHydrated||!candidate)return;
     setRecords(current=>{
-      const next=upsertDailyPnlRecord(current,candidate);
-      const before=current.find(row=>row.date===candidate.date);
+      const base=storedFingerprint===ledgerFingerprint?current:[];
+      const next=upsertDailyPnlRecord(base,candidate);
+      const before=base.find(row=>row.date===candidate.date);
       const after=next.find(row=>row.date===candidate.date);
       const unchanged=!!before&&!!after&&
         before.final===after.final&&before.basis===after.basis&&
         before.totalPnl===after.totalPnl&&before.todayPnl===after.todayPnl&&
         before.totalMarketValue===after.totalMarketValue&&before.previousMarketValue===after.previousMarketValue&&
         before.marketDataVersion===after.marketDataVersion;
-      if(!unchanged)persist(next);
+      if(!unchanged)persist(next,storedFingerprint,officialRebuiltAt);
       return unchanged?current:next;
     });
-  },[candidate,input.hydrated,storageHydrated]);
+  },[candidate,input.hydrated,storageHydrated,storedFingerprint,ledgerFingerprint,officialRebuiltAt]);
 
   // Full official rebuild runs when the ledger changes or when this ledger has
   // never been rebuilt. It deliberately does not depend on live quote ticks.
@@ -126,10 +127,22 @@ export function useDailyPnlHistory(input:{
       return;
     }
 
-    const today=taipeiClock(Date.now()).date;
-    const latestOfficial=records.filter(row=>row.basis==='official-history').sort((a,b)=>a.date.localeCompare(b.date)).at(-1)?.date??null;
-    // Same ledger + today's official close already rebuilt: no network work.
-    if(storedFingerprint===ledgerFingerprint&&latestOfficial===today)return;
+    const now=Date.now();
+    const nowClock=taipeiClock(now);
+    const today=nowClock.date;
+    const officialRows=records.filter(row=>row.basis==='official-history').sort((a,b)=>a.date.localeCompare(b.date));
+    const latestOfficial=officialRows.length?officialRows[officialRows.length-1]!.date:null;
+    const rebuildClock=officialRebuiltAt===null?null:taipeiClock(officialRebuiltAt);
+    const attemptedToday=rebuildClock?.date===today;
+    const afterClose=nowClock.hour>15||(nowClock.hour===15&&nowClock.minute>=0);
+    const attemptedAfterClose=!!rebuildClock&&attemptedToday&&
+      (rebuildClock.hour>15||(rebuildClock.hour===15&&rebuildClock.minute>=0));
+    // Same ledger + today's close is complete, or we already attempted the
+    // relevant phase today. This prevents repeated full-history fetch loops.
+    if(storedFingerprint===ledgerFingerprint&&(
+      latestOfficial===today||
+      (attemptedToday&&(!afterClose||attemptedAfterClose))
+    ))return;
 
     let alive=true;
     const controller=new AbortController();
@@ -168,12 +181,13 @@ export function useDailyPnlHistory(input:{
     };
     // records/live market ticks are intentionally excluded to avoid repeatedly
     // fetching all historical months while the home screen is open.
-  },[input.hydrated,storageHydrated,input.entries,input.initialCash,ledgerFingerprint,storedFingerprint]);
+  },[input.hydrated,storageHydrated,input.entries,input.initialCash,ledgerFingerprint,storedFingerprint,officialRebuiltAt]);
 
   const visibleRecords=useMemo(()=>{
-    if(!candidate)return records;
-    return upsertDailyPnlRecord(records,candidate);
-  },[records,candidate]);
+    const base=storedFingerprint===ledgerFingerprint?records:[];
+    if(!candidate)return base;
+    return upsertDailyPnlRecord(base,candidate);
+  },[records,candidate,storedFingerprint,ledgerFingerprint]);
   const stats=useMemo(()=>summarizeDailyPnl(visibleRecords),[visibleRecords]);
   const current=useMemo(()=>{
     const currentDate=candidate?.date??taipeiClock(Date.now()).date;
