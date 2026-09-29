@@ -71,6 +71,7 @@ export class OfficialSources{
           const body=await this.json(YAHOO+encodeURIComponent(symbol+suffix)+'?interval=1m&range=1d',
             {Referer:'https://finance.yahoo.com/'});
           const result=body?.chart?.result?.[0];
+          const previousClose=Number(result?.meta?.chartPreviousClose??result?.meta?.previousClose);
           const timestamps=Array.isArray(result?.timestamp)?result.timestamp:[];
           const closes=Array.isArray(result?.indicators?.quote?.[0]?.close)?result.indicators.quote[0].close:[];
           const points=[];
@@ -89,7 +90,7 @@ export class OfficialSources{
             if(day!==date)continue;
             points.push({at,price,quality:'backup_realtime',source:'YAHOO'});
           }
-          if(date&&points.length){series={date,points};break;}
+          if(date&&points.length){series={date,previousClose:Number.isFinite(previousClose)&&previousClose>0?previousClose:null,points};break;}
         }catch{}
       }
       if(series){
