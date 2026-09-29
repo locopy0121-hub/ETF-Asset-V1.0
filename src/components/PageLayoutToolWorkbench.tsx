@@ -17,6 +17,8 @@ import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
 import {DashboardQuickActions} from './dashboard/DashboardQuickActions';
 import {DEFAULT_DASHBOARD_LAYOUT,type DashboardLayoutConfig} from '../domain/dashboardLayout';
 import {useFinance} from '../finance/FinanceRuntime';
+import {deriveDailyPnlRecord} from '../finance/dailyPnlHistory';
+import {useMarketRuntime} from '../market/MarketRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
@@ -48,6 +50,18 @@ export function PageLayoutToolWorkbench({
   onChangePageTitle:(value:string)=>void;
 }){
   const finance=useFinance();
+  const market=useMarketRuntime();
+  const previewPnl=useMemo(()=>deriveDailyPnlRecord({
+    initialCash:finance.initialCash,
+    entries:finance.entries,
+    rawQuotes:finance.quotes,
+    currentSnapshot:finance.snapshot,
+    valuationComplete:finance.valuationComplete,
+    marketDataVersion:market.marketDataVersion,
+  }),[
+    finance.initialCash,finance.entries,finance.quotes,finance.snapshot,
+    finance.valuationComplete,market.marketDataVersion,
+  ]);
   const previewFrames=useMemo(()=>frames.filter(frame=>hasRealPreview(pageKey,frame.key)),[frames,pageKey]);
   const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
@@ -152,19 +166,31 @@ export function PageLayoutToolWorkbench({
       onOpenHolding={()=>{}} onOpenChart={()=>{}}
       layoutEditMode layoutSelectionId={selection.id} onLayoutSelect={selectHolding}/>:
     pageKey==='home'&&frame.key==='asset-dashboard'?
-      <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
-        caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}/>:
+      <View style={{paddingHorizontal:dashboard.contentPadding}}>
+        <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
+          caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
+          previousPnl={previewPnl?.previousTotalPnl??0}
+          todayPnl={previewPnl?.todayPnl??0}
+          totalPnl={portfolio.totalPnl}
+          pnlComplete={valuationComplete&&previewPnl!==null}/>
+      </View>:
     pageKey==='home'&&frame.key==='profit-analysis'?
-      <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>:
+      <View style={{paddingHorizontal:dashboard.contentPadding}}>
+        <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>
+      </View>:
     pageKey==='home'&&frame.key==='pnl-detail'?
-      <DashboardProfitDetail rows={rows} layout={dashboard.profitDetail}/>:
+      <View style={{paddingHorizontal:dashboard.contentPadding}}>
+        <DashboardProfitDetail rows={rows} layout={dashboard.profitDetail}/>
+      </View>:
     pageKey==='home'&&frame.key==='dashboard-quick-actions'?
-      <DashboardQuickActions layout={dashboard.quickActions} actions={[
-        {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>{}},
-        {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>{}},
-        {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>{}},
-        {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
-      ]}/>:null;
+      <View style={{paddingHorizontal:dashboard.contentPadding}}>
+        <DashboardQuickActions layout={dashboard.quickActions} actions={[
+          {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>{}},
+          {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>{}},
+          {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>{}},
+          {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
+        ]}/>
+      </View>:null;
 
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
@@ -483,6 +509,10 @@ function dashboardTargetBase(id:string,layout:DashboardLayoutConfig):TargetAppea
   if(id==='dashboard:overview-value')return {...TARGET_APPEARANCE,fontSize:layout.overview.valueFontSize,textColor:layout.overview.valueColor,align:layout.overview.align,fontWeight:'900'};
   if(id==='dashboard:overview-prefix')return {...TARGET_APPEARANCE,fontSize:layout.overview.prefixFontSize,textColor:layout.overview.prefixColor,align:layout.overview.align,fontWeight:'900',prefixText:'NT$',prefixGap:8};
   if(id==='dashboard:overview-caption')return {...TARGET_APPEARANCE,fontSize:layout.overview.captionFontSize,textColor:layout.overview.captionColor,align:layout.overview.align};
+  if(id==='dashboard:overview-previous-pnl-label'||id==='dashboard:overview-today-pnl-label'||id==='dashboard:overview-total-pnl-label')return {...TARGET_APPEARANCE,fontSize:9,lineHeight:12,textColor:colors.textSecondary,fontWeight:'800'};
+  if(id==='dashboard:overview-previous-pnl'||id==='dashboard:overview-today-pnl')return {...TARGET_APPEARANCE,fontSize:12,lineHeight:17,textColor:colors.text,fontWeight:'900'};
+  if(id==='dashboard:overview-total-pnl')return {...TARGET_APPEARANCE,fontSize:13,lineHeight:18,textColor:colors.text,fontWeight:'900'};
+  if(id==='dashboard:overview-pnl-pending')return {...TARGET_APPEARANCE,fontSize:10,lineHeight:15,textColor:colors.textSecondary,fontWeight:'800'};
   if(id.startsWith('dashboard:kpi-'))return {...TARGET_APPEARANCE,padding:layout.profitAnalysis.cardPadding,align:layout.profitAnalysis.align,
     labelFontSize:layout.profitAnalysis.labelFontSize,fontSize:layout.profitAnalysis.valueFontSize,captionFontSize:layout.profitAnalysis.captionFontSize,
     labelColor:layout.profitAnalysis.labelColor,textColor:layout.profitAnalysis.valueColor,captionColor:layout.profitAnalysis.captionColor,
