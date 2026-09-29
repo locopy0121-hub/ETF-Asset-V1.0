@@ -1,17 +1,40 @@
 import type {RuntimeQuote} from '../finance/financeSeed';
 
 const VALUATION_QUALITIES=new Set(['trade','backup_realtime','previous_close','official_close']);
+const EMPTY_INTRADAY:NonNullable<RuntimeQuote['intraday']>=[];
 
 const sourceTimeValid=(row:RuntimeQuote|undefined)=>
   Boolean(row&&typeof row.sourceQuoteAt==='number'&&Number.isFinite(row.sourceQuoteAt)&&row.sourceQuoteAt>0);
+
+/**
+ * Row-level helpers avoid repeated Array.find calls when a consumer already
+ * indexed the Market Center snapshot by symbol.
+ */
+export function marketQuoteSnapshotFromRow(row:RuntimeQuote|undefined):RuntimeQuote|undefined{
+  return row&&Number.isFinite(row.currentPrice)&&row.currentPrice>0?row:undefined;
+}
+
+export function marketIntradaySeriesFromRow(row:RuntimeQuote|undefined){
+  return {
+    date:row?.intradayDate??null,
+    previousClose:row?.intradayPreviousClose??null,
+    // Keep the immutable Market Center array by reference. Copying thousands
+    // of 5-second points on every render caused avoidable memory pressure.
+    points:row?.intraday??EMPTY_INTRADAY,
+  };
+}
+
+export function marketValuationQuoteFromRow(row:RuntimeQuote|undefined):RuntimeQuote|undefined{
+  if(!row||!Number.isFinite(row.currentPrice)||row.currentPrice<=0||!sourceTimeValid(row))return undefined;
+  return typeof row.quality==='string'&&VALUATION_QUALITIES.has(row.quality)?row:undefined;
+}
 
 /**
  * Quote-wall view. It only needs the latest normalized quote snapshot and does
  * not depend on whether an intraday series exists.
  */
 export function marketQuoteSnapshotFor(rows:readonly RuntimeQuote[],symbol:string):RuntimeQuote|undefined{
-  const row=rows.find(item=>item.symbol===symbol);
-  return row&&Number.isFinite(row.currentPrice)&&row.currentPrice>0?row:undefined;
+  return marketQuoteSnapshotFromRow(rows.find(item=>item.symbol===symbol));
 }
 
 /**
@@ -20,12 +43,7 @@ export function marketQuoteSnapshotFor(rows:readonly RuntimeQuote[],symbol:strin
  * until the market center publishes the next session.
  */
 export function marketIntradaySeriesFor(rows:readonly RuntimeQuote[],symbol:string){
-  const row=rows.find(item=>item.symbol===symbol);
-  return {
-    date:row?.intradayDate??null,
-    previousClose:row?.intradayPreviousClose??null,
-    points:[...(row?.intraday??[])],
-  };
+  return marketIntradaySeriesFromRow(rows.find(item=>item.symbol===symbol));
 }
 
 /**
@@ -34,11 +52,10 @@ export function marketIntradaySeriesFor(rows:readonly RuntimeQuote[],symbol:stri
  * points must never invalidate this view.
  */
 export function marketValuationQuoteFor(rows:readonly RuntimeQuote[],symbol:string):RuntimeQuote|undefined{
-  const row=rows.find(item=>item.symbol===symbol);
-  if(!row||!Number.isFinite(row.currentPrice)||row.currentPrice<=0||!sourceTimeValid(row))return undefined;
-  return typeof row.quality==='string'&&VALUATION_QUALITIES.has(row.quality)?row:undefined;
+  return marketValuationQuoteFromRow(rows.find(item=>item.symbol===symbol));
 }
 
 export function marketValuationComplete(rows:readonly RuntimeQuote[],symbols:readonly string[]){
-  return symbols.every(symbol=>Boolean(marketValuationQuoteFor(rows,symbol)));
+  const bySymbol=new Map(rows.map(row=>[row.symbol,row]));
+  return symbols.every(symbol=>Boolean(marketValuationQuoteFromRow(bySymbol.get(symbol))));
 }
