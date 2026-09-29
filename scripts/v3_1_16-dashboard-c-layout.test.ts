@@ -61,7 +61,13 @@ for(const visualFlag of ['backgroundProfitColor','textProfitColor','secondaryTex
 assert.doesNotMatch(uiModels,/actual_fee|actual_tax|Math\.floor/,'holding-wall UI model must not own immutable accounting calculations');
 
 assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceacaed3ee541ba7f5c6');
-assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'f39d4d51a40643a75d76498f68a7e1fc48ce222a');
+const financeRuntime=read('src/finance/FinanceRuntime.tsx');
+assert.match(financeRuntime,/calculateCanonicalLedgerSnapshot\(\{[\s\S]*quotes:canonicalQuotes/,
+  'FinanceRuntime must continue delegating portfolio arithmetic to Canonical Core');
+assert.match(financeRuntime,/marketValuationQuoteFor/,
+  'FinanceRuntime may evolve only as the market-center valuation adapter');
+assert.doesNotMatch(financeRuntime,/actual_fee|actual_tax|Math\.floor\(|transactionTax|brokerageFee/,
+  'FinanceRuntime must not absorb immutable fee/tax formulas');
 assert.equal(gitBlob('src/finance/cashAudit.ts'),'a691f54b89c421df64b4fe0d5e5ecd74d530c2d5');
 
 console.log('V3.2.11 dashboard C carry-forward PASS — WYSIWYG stays shared; FinanceRuntime only forwards intraday display data while canonical finance core stays frozen');
