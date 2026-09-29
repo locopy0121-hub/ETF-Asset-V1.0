@@ -11,7 +11,7 @@ import {
 import type { SharedSnapshot } from '../domain/snapshot';
 import type { HoldingQuote } from '../domain/uiModels';
 import { useMarketRuntime } from '../market/MarketRuntime';
-import {marketIntradaySeriesFor,marketQuoteSnapshotFor,marketValuationQuoteFor} from '../market/marketCenterViews';
+import {marketIntradaySeriesFromRow,marketQuoteSnapshotFromRow,marketValuationQuoteFromRow} from '../market/marketCenterViews';
 import {resolveEtfDisplayName} from '../market/etfDisplayName';
 import {
   calculateCanonicalLedgerSnapshot,
@@ -123,8 +123,26 @@ export function FinanceProvider({children}:PropsWithChildren){
     market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
   },[entries,market.setTrackedSymbols]);
 
+  const quoteBySymbol=useMemo(
+    ()=>new Map(market.quotes.map(row=>[row.symbol,row] as const)),
+    [market.quotes],
+  );
+  const catalogNameBySymbol=useMemo(
+    ()=>new Map(market.catalog.map(item=>[item.symbol,item.name] as const)),
+    [market.catalog],
+  );
+  const ledgerNameBySymbol=useMemo(()=>{
+    const names=new Map<string,string>();
+    for(const entry of entries){
+      if(!('symbol' in entry))continue;
+      const name=String(entry.name??'').trim();
+      if(name&&name!==entry.symbol)names.set(entry.symbol,name);
+    }
+    return names;
+  },[entries]);
+
   const valuationQuotes=useMemo(
-    ()=>market.quotes.filter(row=>marketValuationQuoteFor(market.quotes,row.symbol)===row),
+    ()=>market.quotes.filter(row=>marketValuationQuoteFromRow(row)===row),
     [market.quotes],
   );
   const canonicalQuotes=useMemo(
@@ -139,16 +157,21 @@ export function FinanceProvider({children}:PropsWithChildren){
   }),[initialCash,entries,canonicalQuotes]);
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
-    const quote=marketQuoteSnapshotFor(market.quotes,summary.etfCode);
-    const valuationQuote=marketValuationQuoteFor(market.quotes,summary.etfCode);
-    const intraday=marketIntradaySeriesFor(market.quotes,summary.etfCode);
+    const rawQuote=quoteBySymbol.get(summary.etfCode);
+    const quote=marketQuoteSnapshotFromRow(rawQuote);
+    const valuationQuote=marketValuationQuoteFromRow(rawQuote);
+    const intraday=marketIntradaySeriesFromRow(rawQuote);
     const verified=Boolean(valuationQuote);
-    const catalogName=market.catalog.find(item=>item.symbol===summary.etfCode)?.name;
     const previousClose=valuationQuote?.previousClose&&valuationQuote.previousClose>0?
       valuationQuote.previousClose:summary.currentPrice;
     return {
       symbol:summary.etfCode,
-      name:resolveEtfDisplayName(summary.etfCode,catalogName,summary.name,quote?.name),
+      name:resolveEtfDisplayName(
+        summary.etfCode,
+        catalogNameBySymbol.get(summary.etfCode),
+        ledgerNameBySymbol.get(summary.etfCode),
+        quote?.name,
+      ),
       quoteVerified:verified,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
@@ -169,12 +192,14 @@ export function FinanceProvider({children}:PropsWithChildren){
       realizedPnl:summary.realizedNetPnL,
       comprehensivePnl:summary.comprehensivePnL,
       pinned:quote?.pinned??false,
-      sparkline:[...(quote?.sparkline??[summary.currentPrice])],
+      sparkline:quote?.sparkline??[summary.currentPrice],
       intraday:intraday.points,
       intradayDate:intraday.date,
       intradayPreviousClose:intraday.previousClose,
     };
-  }).filter(x=>x.shares>0),[snapshot,market.quotes,market.catalog,market.marketDataVersion]);
+  }).filter(x=>x.shares>0),[
+    snapshot,quoteBySymbol,catalogNameBySymbol,ledgerNameBySymbol,market.marketDataVersion,
+  ]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);
 
   const sharedSnapshot=useMemo(()=>buildSharedSnapshot({canonical:snapshot,holdings,generatedAt:market.lastSuccessAt,quoteSourceTimes:market.quotes,marketDataVersion:market.marketDataVersion,valuationComplete,cashConfigured}),[snapshot,holdings,market.lastSuccessAt,market.quotes,market.marketDataVersion,valuationComplete,cashConfigured]);
