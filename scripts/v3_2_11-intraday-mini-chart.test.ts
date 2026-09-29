@@ -76,7 +76,7 @@ assert.ok(!mini.includes('holding.sparkline'),'Mini chart must not draw the old 
 assert.ok(!mini.includes('[previous,holding.price]'),'Mini chart must not synthesize a straight previous-close to current-price path');
 
 const finance=read('src/finance/FinanceRuntime.tsx');
-assert.match(finance,/marketIntradaySeriesFor\(market\.quotes,summary\.etfCode\)/,
+assert.match(finance,/marketIntradaySeries(?:For\(market\.quotes,summary\.etfCode\)|FromRow\(rawQuote\))/,
   'FinanceRuntime must consume the market-center intraday view instead of coupling chart readiness to quote rows');
 assert.match(finance,/intraday:intraday\.points/);
 assert.match(finance,/intradayDate:intraday\.date/);
