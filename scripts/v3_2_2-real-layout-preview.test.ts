@@ -40,7 +40,7 @@ assert.equal(pkg.version,'3.2.5');
 assert.equal(app.expo.version,'3.2.5');
 assert.equal(app.expo.android.versionCode,30205);
 assert.equal(app.expo.ios.buildNumber,'30205');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.4'/);
+assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.5'/);
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'financial core remains untouched: '+core);
 console.log('V3.2.5 real layout preview + persisted visual targets + no fabricated preview values: PASS');
