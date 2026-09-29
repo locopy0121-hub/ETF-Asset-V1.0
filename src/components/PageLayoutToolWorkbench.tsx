@@ -3,12 +3,12 @@ import {Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
-import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey} from '../domain/uiModels';
+import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey,type QuoteModuleStyle} from '../domain/uiModels';
 import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
 import {colors,radius} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
-import {HoldingQuoteModule} from './HoldingQuoteModule';
+import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
 import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard} from './FrameCard';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
@@ -21,6 +21,8 @@ import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/Layo
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
+import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
+import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
@@ -32,7 +34,7 @@ const hasRealPreview=(page:MainPageKey,key:string)=>
   key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,pageTitle,onChangePageTitle,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
@@ -41,6 +43,7 @@ export function PageLayoutToolWorkbench({
   onPatchFrame:(key:string,next:Partial<FrameEditorConfig>)=>void;
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
+  previewRows?:readonly HoldingQuote[]|undefined;
   pageTitle:string;
   onChangePageTitle:(value:string)=>void;
 }){
@@ -61,6 +64,10 @@ export function PageLayoutToolWorkbench({
   const profile=layoutToolProfile(pageKey,frame.key);
   const holding=(pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view');
   const wall=displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG;
+  const holdingLayoutMode=(displayDraft.holdingLayoutMode??'list') as HoldingLayoutMode;
+  const rawQuoteStyle=(displayDraft.quoteStyle??'quote') as QuoteModuleStyle;
+  const holdingQuoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
+  const holdingPreviewRows=previewRows?.length?previewRows:(previewQuote?[previewQuote]:[]);
   const dashboard=displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const targets=displayDraft.layoutTargets??{};
   const fx=normalizeFrameEffects(frameConfig.effects,DEFAULT_FRAME_EFFECTS);
@@ -137,9 +144,13 @@ export function PageLayoutToolWorkbench({
     page:pageKey,frameKey:frame.key,frameTitle:frame.title,frameConfig,displayConfig:displayDraft,
   };
     const realPreview=hasRealPreview(pageKey,frame.key);
-  const previewContent=holding&&previewQuote?
-    <HoldingQuoteModule item={previewQuote} wallConfig={wall} style={(displayDraft.quoteStyle??'quote') as any}
-      layout="narrow" layoutEditMode layoutSelectionId={selection.id} onLayoutSelect={selectHolding}/>:
+  const previewContent=holding&&holdingPreviewRows.length?
+    <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
+      badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
+      style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
+      refreshToken={finance.sharedSnapshot.generatedAt}
+      onOpenHolding={()=>{}} onOpenChart={()=>{}}
+      layoutEditMode layoutSelectionId={selection.id} onLayoutSelect={selectHolding}/>:
     pageKey==='home'&&frame.key==='asset-dashboard'?
       <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
         caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}/>:
@@ -159,7 +170,7 @@ export function PageLayoutToolWorkbench({
   const current=mergeTargetAppearance(base,targets[selection.id]);
 
   const visibleKinds=profile.kinds.filter(kind=>{
-    if(kind==='chart')return holding&&Boolean(previewQuote&&(displayDraft.quoteStyle==='chart'||displayDraft.quoteStyle==='advanced')&&previewQuote.sparkline?.length);
+    if(kind==='chart')return holding&&Boolean((holdingQuoteStyle==='chart'||holdingQuoteStyle==='advanced')&&holdingPreviewRows.some(row=>row.sparkline?.length));
     if(kind==='data')return holding;
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
