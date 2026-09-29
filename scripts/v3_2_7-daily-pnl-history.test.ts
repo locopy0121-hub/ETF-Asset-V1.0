@@ -49,15 +49,15 @@ assert.match(home,/DailyPnlHistoryModal/);
 assert.match(home,/onPressTotalPnl=\{\(\)=>setPnlHistoryOpen\(true\)\}/);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.7');
-assert.equal(app.expo.version,'3.2.7');
-assert.equal(app.expo.android.versionCode,30207);
-assert.equal(app.expo.ios.buildNumber,'30207');
+assert.equal(pkg.version,'3.2.8');
+assert.equal(app.expo.version,'3.2.8');
+assert.equal(app.expo.android.versionCode,30208);
+assert.equal(app.expo.ios.buildNumber,'30208');
 assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.7'/);
 assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.7'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30207'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30208'/);
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'immutable finance core missing: '+core);
 
-console.log('V3.2.7 dashboard total PnL + daily immutable history + statistics PASS');
+console.log('V3.2.8 dashboard total PnL + daily immutable history + statistics PASS');
