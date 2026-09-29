@@ -1,6 +1,7 @@
-import {misTrade,officialClose,chooseNewer,VALID_SYMBOL} from './parser.mjs';
+import {misNormalizedQuote,yahooQuoteFromChart,officialClose,chooseNewer,VALID_SYMBOL} from './parser.mjs';
 
 const MIS='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=';
+const YAHOO='https://query1.finance.yahoo.com/v8/finance/chart/';
 const DAILY={
   TWSE_DAILY:'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',
   TPEX_DAILY:'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',
@@ -11,13 +12,25 @@ export class OfficialSources{
     this.dailyCacheMs=dailyCacheMs;
     this.dailyCache=new Map();
   }
-  async json(url){
+  async json(url,headers={}){
     const res=await this.fetch(url,{signal:AbortSignal.timeout(9_000),
       headers:{Accept:'application/json','Cache-Control':'no-cache',
-        Referer:'https://mis.twse.com.tw/stock/index.jsp'}});
-    if(!res.ok)throw new Error('Official HTTP '+res.status);
-    const body=await res.json();
-    return body;
+        'User-Agent':'TF-Asset-MarketCenter/3.2.6',
+        Referer:'https://mis.twse.com.tw/stock/index.jsp',...headers}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    return await res.json();
+  }
+  async yahoo(symbol,now=Date.now()){
+    const errors=[];
+    for(const [suffix,market] of [['.TW','TSE'],['.TWO','OTC']]){
+      try{
+        const body=await this.json(YAHOO+encodeURIComponent(symbol+suffix)+'?interval=1m&range=1d',
+          {Referer:'https://finance.yahoo.com/'});
+        const quote=yahooQuoteFromChart(body,symbol,market,now);
+        if(quote)return {quote,errors};
+      }catch(error){errors.push('YAHOO '+symbol+suffix+': '+String(error.message??error).slice(0,120));}
+    }
+    return {quote:null,errors};
   }
   async trades(symbols,now=Date.now()){
     const wanted=new Set(symbols.filter(s=>VALID_SYMBOL.test(s)));
@@ -29,11 +42,19 @@ export class OfficialSources{
         const body=await this.json(MIS+encodeURIComponent(query)+'&json=1&delay=0&_='+now);
         const rows=Array.isArray(body.msgArray)?body.msgArray:[];
         for(const row of rows){
-          const quote=misTrade(row,now);
+          const quote=misNormalizedQuote(row,now);
           if(!quote||!wanted.has(quote.symbol))continue;
           chosen.set(quote.symbol,chooseNewer(chosen.get(quote.symbol),quote));
         }
       }catch(error){errors.push('TWSE_MIS: '+String(error.message??error).slice(0,120));}
+    }
+    // Provider/network failure or an unmapped symbol falls through to Yahoo.
+    // A valid TWSE pz/book/y candidate is retained with explicit fallback metadata.
+    const unresolved=[...wanted].filter(symbol=>!chosen.has(symbol));
+    for(const symbol of unresolved){
+      const out=await this.yahoo(symbol,now);
+      errors.push(...out.errors);
+      if(out.quote)chosen.set(symbol,out.quote);
     }
     return {quotes:[...chosen.values()],errors};
   }
@@ -51,7 +72,6 @@ export class OfficialSources{
       const entry={quotes:hit?.quotes??[],
         errors:[source+': '+String(error.message??error).slice(0,120)],
         expires:now+60_000};
-      // Old verified closes are still dated and never relabeled as fresh ticks.
       this.dailyCache.set(source,entry);
       return entry;
     }
@@ -73,9 +93,7 @@ export class OfficialSources{
     if(!list.length)return {quotes:[],errors:[],requested:[]};
     const trades=dailyOnly?{quotes:[],errors:[]}:await this.trades(list,now);
     const live=new Map(trades.quotes.map(q=>[q.symbol,q]));
-    // Daily official data is requested at most once per cache window, not every
-    // five-second poll. A quote absent in MIS cannot clear a prior accepted row.
-    const needs=dailyOnly?list:list.filter(s=>!live.has(s));
+    const needs=dailyOnly?list:list.filter(s=>!live.has(s)||live.get(s)?.quality==='previous_close');
     const closes=needs.length?await this.closes(needs,now):{quotes:[],errors:[]};
     const combined=new Map([...live.entries()]);
     for(const q of closes.quotes)combined.set(q.symbol,chooseNewer(combined.get(q.symbol),q));
