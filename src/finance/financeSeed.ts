@@ -24,6 +24,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   sparkline: readonly number[];
   intraday?:readonly RuntimeIntradayPoint[];
   intradayDate?:string|null;
+  intradayPreviousClose?:number|null;
   pinned?: boolean;
 }>;
 
