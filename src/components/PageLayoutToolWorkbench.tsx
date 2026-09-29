@@ -261,7 +261,7 @@ export function PageLayoutToolWorkbench({
     </Accordion>:null}
 
     {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
-      <TargetTools kind={selection.kind} id={selection.id} current={current} open={openGroup} toggle={toggle}
+      <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height} open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
 
@@ -407,16 +407,19 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
   </View>;
 }
 
-function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
+function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number;actualHeight?:number;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
   const card=kind==='card';
+  const effectiveWidth=Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4));
+  const effectiveHeight=Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35));
+  const effectiveLineHeight=Math.round(current.lineHeight>0?current.lineHeight:Math.max(current.fontSize*1.2,actualHeight??0));
   return <View>
     {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="直接修改本頁實際標題；套用後寫入既有 pageTitles" open={open==='content'} onPress={()=>toggle('content')}>
       <TextInput accessibilityLabel="頁面標題" value={contentValue} onChangeText={onContentChange}
         maxLength={48} style={styles.textInput}/>
     </Accordion>:null}
     {card?<Accordion title="尺寸／空間" subtitle="卡片實際尺寸、內距與外距" open={open==='surface'} onPress={()=>toggle('surface')}>
-      <NumberStep label="寬度" value={Math.round(current.width??0)} min={0} max={900} step={10} suffix={(current.width??0)===0?'（自動）':' px'} onChange={width=>patch({width:width||undefined} as any)}/>
-      <NumberStep label="高度" value={Math.round(current.height??0)} min={0} max={700} step={10} suffix={(current.height??0)===0?'（自動）':' px'} onChange={height=>patch({height:height||undefined} as any)}/>
+      <NumberStep label="寬度" value={effectiveWidth} min={28} max={900} step={10} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={effectiveHeight} min={24} max={700} step={10} suffix=" px" onChange={height=>patch({height})}/>
       <NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
       <NumberStep label="上下外距" value={current.marginVertical} min={0} max={32} step={1} suffix=" px" onChange={marginVertical=>patch({marginVertical})}/>
       <NumberStep label="左右外距" value={current.marginHorizontal} min={0} max={32} step={1} suffix=" px" onChange={marginHorizontal=>patch({marginHorizontal})}/>
@@ -426,7 +429,7 @@ function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onCon
       <ChoiceRow label="字體樣式" value={current.fontStyle} items={[['normal','正常'],['italic','斜體']]} onChange={fontStyle=>patch({fontStyle:fontStyle as TargetAppearance['fontStyle']})}/>
       <ChoiceRow label="裝飾" value={current.textDecorationLine} items={[['none','無'],['underline','底線'],['line-through','刪除線']]} onChange={textDecorationLine=>patch({textDecorationLine:textDecorationLine as TargetAppearance['textDecorationLine']})}/>
       <NumberStep label="字距" value={current.letterSpacing} min={-4} max={16} step={1} suffix=" px" onChange={letterSpacing=>patch({letterSpacing})}/>
-      <NumberStep label="行高" value={current.lineHeight} min={0} max={96} step={2} suffix={current.lineHeight===0?'（自動）':' px'} onChange={lineHeight=>patch({lineHeight})}/>
+      <NumberStep label="行高" value={effectiveLineHeight} min={8} max={96} step={2} suffix=" px" onChange={lineHeight=>patch({lineHeight})}/>
       <AlignRow value={current.align} onChange={align=>patch({align})}/>
     </Accordion>}
     {!card&&kind==='value'?<Accordion title="數值格式" subtitle="只改顯示格式，不改帳務原始數值" open={open==='number'} onPress={()=>toggle('number')}>
@@ -568,10 +571,6 @@ function Accordion({title,subtitle,open,onPress,children}:{title:string;subtitle
 }
 function NumberStep({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(value:number)=>void}){
   return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Pressable style={styles.step} onPress={()=>onChange(Math.max(min,value-step))}><Text style={styles.stepText}>−</Text></Pressable><Text style={styles.num}>{value}{suffix}</Text><Pressable style={styles.step} onPress={()=>onChange(Math.min(max,value+step))}><Text style={styles.stepText}>＋</Text></Pressable></View>;
-}
-function ModeStep({label,value,fallback,min,max,step,onAuto,onChange}:{label:string;value:number|undefined;fallback:number;min:number;max:number;step:number;onAuto:()=>void;onChange:(value:number)=>void}){
-  const actual=value??fallback;
-  return <View style={styles.modeBlock}><View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Pressable onPress={value===undefined?()=>onChange(fallback):onAuto} style={[styles.autoChip,value===undefined&&styles.autoChipActive]}><Text style={[styles.autoText,value===undefined&&styles.autoTextActive]}>{value===undefined?'自動':'固定'}</Text></Pressable></View>{value!==undefined?<NumberStep label="" value={actual} min={min} max={max} step={step} suffix=" px" onChange={onChange}/>:null}</View>;
 }
 function SwitchRow({label,value,onChange}:{label:string;value:boolean;onChange:(value:boolean)=>void}){return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Switch value={value} onValueChange={onChange} trackColor={{true:colors.primary}}/></View>;}
 function AlignRow({value,onChange}:{value:'left'|'center'|'right';onChange:(value:'left'|'center'|'right')=>void}){return <ChoiceRow label="對齊" value={value} items={[['left','靠左'],['center','置中'],['right','靠右']]} onChange={v=>onChange(v as 'left'|'center'|'right')}/>;}
