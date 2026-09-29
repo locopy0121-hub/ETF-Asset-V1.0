@@ -401,11 +401,13 @@ function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggl
       {fx.titleMarqueeEnabled?<><NumberStep label="速度" value={fx.titleMarqueeSpeed} min={24} max={180} step={8} suffix="" onChange={titleMarqueeSpeed=>patchFx({titleMarqueeSpeed})}/>
         <NumberStep label="循環間距" value={fx.titleMarqueeGap} min={12} max={80} step={4} suffix=" px" onChange={titleMarqueeGap=>patchFx({titleMarqueeGap})}/></>:null}
     </Accordion>
-    <Accordion title="背景" subtitle="純色／漸層與透明度" open={open==='background'} onPress={()=>toggle('background')}>
-      <ChoiceRow label="背景模式" value={fx.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={v=>patchFx({backgroundMode:v as FrameEffects['backgroundMode']})}/>
-      <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
-      <SwitchRow label="背景損益色" value={frame.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
-      <NumberStep label="背景透明度" value={Math.round(frame.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
+    <Accordion title="背景" subtitle="純色／漸層／圖片；圖片只影響背景，不改內容尺寸" open={open==='background'} onPress={()=>toggle('background')}>
+      <ChoiceRow label="背景模式" value={fx.backgroundMode} items={[['solid','純色'],['gradient','漸層'],['image','圖片']]} onChange={v=>patchFx({backgroundMode:v as FrameEffects['backgroundMode']})}/>
+      {fx.backgroundMode!=='image'?<>
+        <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
+        <SwitchRow label="背景損益色" value={frame.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
+        <NumberStep label="背景透明度" value={Math.round(frame.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
+      </>:null}
       {fx.backgroundMode==='gradient'?<>
         <ColorPalettePicker label="結束顏色" value={fx.gradientEndColor} onChange={gradientEndColor=>patchFx({gradientEndColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
         <SwitchRow label="漸層結束損益色" value={fx.gradientEndProfitColor} onChange={gradientEndProfitColor=>patchFx({gradientEndProfitColor})}/>
@@ -415,6 +417,31 @@ function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggl
           <SwitchRow label="漸層中間損益色" value={fx.gradientMidProfitColor} onChange={gradientMidProfitColor=>patchFx({gradientMidProfitColor})}/>
           <NumberStep label="中間位置" value={Math.round(fx.gradientMidStop*100)} min={10} max={90} step={5} suffix="%" onChange={v=>patchFx({gradientMidStop:v/100})}/></>:null}
       </>:null}
+      {fx.backgroundMode==='image'?<View style={styles.imageBackgroundTools}>
+        <ChoiceRow label="圖片來源" value={fx.imageSource} items={[['builtIn','內建圖片'],['custom','自訂圖片']]} onChange={v=>patchFx({imageSource:v as FrameEffects['imageSource']})}/>
+        {fx.imageSource==='builtIn'?<View>
+          <Text style={styles.orderTitle}>選擇背景圖片</Text>
+          <View style={styles.backgroundImageGrid}>
+            {THEME_BACKGROUNDS.map((uri,index)=><Pressable key={index} accessibilityRole="button"
+              accessibilityLabel={'背景圖片 '+(index+1)} onPress={()=>patchFx({imageIndex:index})}
+              style={[styles.backgroundImageChoice,index===fx.imageIndex&&styles.backgroundImageChoiceActive]}>
+              <Image source={{uri}} resizeMode="cover" style={styles.backgroundImageThumb}/>
+              <Text style={styles.backgroundImageNumber}>{index+1}</Text>
+            </Pressable>)}
+          </View>
+        </View>:<View style={styles.customImageBox}>
+          <Text style={styles.orderTitle}>自訂圖片 URI</Text>
+          <TextInput value={fx.imageUri??''} onChangeText={imageUri=>patchFx({imageUri:imageUri.trim()||null})}
+            placeholder="content://、file:// 或 ph:// 圖片 URI" autoCapitalize="none" autoCorrect={false}
+            style={styles.textInput}/>
+          <Pressable onPress={()=>patchFx({imageUri:null})} style={styles.removeImageButton}><Text style={styles.removeImageText}>移除自訂圖片</Text></Pressable>
+        </View>}
+        <ChoiceRow label="顯示方式" value={fx.imageFit} items={[['cover','填滿'],['contain','完整顯示'],['stretch','拉伸']]} onChange={v=>patchFx({imageFit:v as FrameEffects['imageFit']})}/>
+        <NumberStep label="圖片透明度" value={Math.round(fx.imageOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patchFx({imageOpacity:v/100})}/>
+        <NumberStep label="水平焦點" value={Math.round(fx.imageFocusX*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patchFx({imageFocusX:v/100})}/>
+        <NumberStep label="垂直焦點" value={Math.round(fx.imageFocusY*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patchFx({imageFocusY:v/100})}/>
+        <ColorPalettePicker label="圖片遮罩" value={fx.maskColor} onChange={maskColor=>patchFx({maskColor})} opacity={fx.maskOpacity} onOpacityChange={maskOpacity=>patchFx({maskOpacity})}/>
+      </View>:null}
     </Accordion>
     <Accordion title="邊框／圓角" subtitle="邊框樣式、四邊與四角" open={open==='border'} onPress={()=>toggle('border')}>
       <ColorPalettePicker label="邊框顏色" value={frame.borderColor} onChange={borderColor=>patch({borderColor})} opacity={frame.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
