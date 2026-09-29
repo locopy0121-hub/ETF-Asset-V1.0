@@ -67,7 +67,7 @@ export function MiniHoldingChart({
 
   const session=useMemo(()=>{
     const raw=Array.isArray(holding.intraday)?holding.intraday:[];
-    const date=holding.intradayDate??raw.length?taipeiDateMinute(raw[raw.length-1]?.at??0).date:null;
+    const date=holding.intradayDate??(raw.length?taipeiDateMinute(raw[raw.length-1]?.at??0).date:null);
     const byAt=new Map<number,{at:number;price:number}>();
     for(const item of raw){
       if(!item||!Number.isFinite(item.at)||!Number.isFinite(item.price)||item.at<=0||item.price<=0)continue;
