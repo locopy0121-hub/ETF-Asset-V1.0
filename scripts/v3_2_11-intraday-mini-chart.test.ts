@@ -76,9 +76,16 @@ assert.ok(!mini.includes('holding.sparkline'),'Mini chart must not draw the old 
 assert.ok(!mini.includes('[previous,holding.price]'),'Mini chart must not synthesize a straight previous-close to current-price path');
 
 const finance=read('src/finance/FinanceRuntime.tsx');
-assert.match(finance,/intraday:\[\.\.\.\(quote\?\.intraday\?\?\[\]\)\]/);
-assert.match(finance,/intradayDate:quote\?\.intradayDate\?\?null/);
-assert.match(finance,/intradayPreviousClose:quote\?\.intradayPreviousClose\?\?null/);
+assert.match(finance,/marketIntradaySeriesFor\(market\.quotes,summary\.etfCode\)/,
+  'FinanceRuntime must consume the market-center intraday view instead of coupling chart readiness to quote rows');
+assert.match(finance,/intraday:intraday\.points/);
+assert.match(finance,/intradayDate:intraday\.date/);
+assert.match(finance,/intradayPreviousClose:intraday\.previousClose/);
+const marketViews=read('src/market/marketCenterViews.ts');
+assert.match(marketViews,/export function marketIntradaySeriesFor/,
+  'intraday series must remain an independent market-center consumer view');
+assert.match(marketViews,/export function marketValuationQuoteFor/,
+  'valuation readiness must remain independent from intraday readiness');
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
 for(const token of [

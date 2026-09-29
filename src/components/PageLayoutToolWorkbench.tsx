@@ -1,12 +1,12 @@
 import {useEffect,useMemo,useState} from 'react';
-import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey,type QuoteModuleStyle} from '../domain/uiModels';
-import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
+import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameBehavior,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
-import {colors,radius} from '../theme/tokens';
+import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
 import {PageHeaderVisual} from './PageHeaderVisual';
@@ -26,6 +26,7 @@ import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
+import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
@@ -37,13 +38,15 @@ const hasRealPreview=(page:MainPageKey,key:string)=>
   key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
   draft:Record<string,FrameEditorConfig>;
   displayDraft:PageDisplayConfig;
   onPatchFrame:(key:string,next:Partial<FrameEditorConfig>)=>void;
+  onMoveFrame:(key:string,delta:-1|1)=>void;
+  onSetFrameBehavior:(key:string,behavior:FrameBehavior)=>void;
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
@@ -52,6 +55,7 @@ export function PageLayoutToolWorkbench({
 }){
   const finance=useFinance();
   const market=useMarketRuntime();
+  const {width:windowWidth}=useWindowDimensions();
   const previewPnl=useMemo(()=>deriveDailyPnlRecord({
     initialCash:finance.initialCash,
     entries:finance.entries,
@@ -63,7 +67,8 @@ export function PageLayoutToolWorkbench({
     finance.initialCash,finance.entries,finance.quotes,finance.snapshot,
     finance.valuationComplete,market.marketDataVersion,
   ]);
-  const previewFrames=useMemo(()=>frames.filter(frame=>hasRealPreview(pageKey,frame.key)),[frames,pageKey]);
+  const orderedFrames=useMemo(()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),[frames,draft]);
+  const previewFrames=useMemo(()=>orderedFrames.filter(frame=>hasRealPreview(pageKey,frame.key)),[orderedFrames,pageKey]);
   const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
@@ -72,6 +77,11 @@ export function PageLayoutToolWorkbench({
   const [openGroup,setOpenGroup]=useState<string|null>('size');
   const [frameMeasurements,setFrameMeasurements]=useState<Record<string,{width:number;height:number}>>({});
   const [previewBounds,setPreviewBounds]=useState({width:0,height:0});
+  const [previewViewportWidth,setPreviewViewportWidth]=useState(0);
+  const [actualCanvasHeight,setActualCanvasHeight]=useState(1);
+  const actualPageWidth=Math.max(280,Math.round(windowWidth-spacing.lg*2));
+  const previewScale=previewViewportWidth>0?Math.min(1,previewViewportWidth/actualPageWidth):1;
+  const scaledPageHeight=Math.max(1,Math.ceil(actualCanvasHeight*previewScale));
   useEffect(()=>{setFrameKey(initial);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');},[initial]);
 
   const frame=frames.find(item=>item.key===frameKey)??frames[0];
@@ -182,8 +192,10 @@ export function PageLayoutToolWorkbench({
       if(source==='comprehensivePnl')return row.comprehensivePnl;
       return row.marketValue;
     });
-    const values=source==='transactions'?[finance.entries.length]:holdingValues;
-    const labels=source==='transactions'?['交易筆數']:holdingPreviewRows.map(row=>row.symbol);
+    const values=source==='transactions'
+      ?holdingPreviewRows.map(row=>finance.entries.filter(entry=>'symbol' in entry&&entry.symbol===row.symbol&&(entry.kind==='buy'||entry.kind==='sell')).length)
+      :holdingValues;
+    const labels=holdingPreviewRows.map(row=>row.symbol);
     return {values:values.length?values:[0],labels:labels.length?labels:['目前']};
   };
   const selectFrameDirect=(item:PageFrameDefinition)=>{
@@ -226,18 +238,23 @@ export function PageLayoutToolWorkbench({
     const selected=frameKey===item.key;
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
-    return <View key={item.key} onLayout={event=>{
-      const {width,height}=event.nativeEvent.layout;
-      setFrameMeasurements(previous=>previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}});
-    }}>
+    return <View key={item.key}>
       <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
         {item.key==='page-header'?
-          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
+          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}
+            onLayout={event=>{
+              const {width,height}=event.nativeEvent.layout;
+              setFrameMeasurements(previous=>previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}});
+            }}>
             <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
           <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} editorStyle={itemConfig}>{previewContentFor(item)}</FrameCard>
+            <FrameCard title={item.title} editorStyle={itemConfig}
+              onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
+                previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
+              {previewContentFor(item)}
+            </FrameCard>
           </Pressable>}
       </LayoutSelectionProvider>
     </View>;
@@ -245,6 +262,7 @@ export function PageLayoutToolWorkbench({
 
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
+  const frameSortIndex=orderedFrames.findIndex(item=>item.key===frame.key);
 
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
@@ -268,28 +286,38 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.previewTitle}>實際頁面編輯區</Text>
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
+      <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
       <ScrollView nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
-        <View style={styles.actualCanvas} onLayout={event=>{
-          const {width,height}=event.nativeEvent.layout;
-          setPreviewBounds(previous=>previous.width===width&&previous.height===height?previous:{width,height});
+        <View style={styles.previewViewport} onLayout={event=>{
+          const width=event.nativeEvent.layout.width;
+          setPreviewViewportWidth(previous=>Math.abs(previous-width)<1?previous:width);
         }}>
-          {previewFrames.map(renderActualFrame)}
-          {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
-            const data=chartData(chart);
-            const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
-            const selected=selection.id==='chart:'+chart.id;
-            return <View key={'actual-chart-'+chart.id} pointerEvents="box-none">
-              {chart.visible?<FloatingDashboardChart config={{...chart,locked:true,touchThrough:true}}
-                values={data.values} labels={data.labels} bounds={previewBounds} onMove={()=>{}} onResize={()=>{}}/>:null}
-              <Pressable accessibilityRole="button" accessibilityLabel={'選取圖表 '+chart.title}
-                onPress={()=>{setFrameKey('asset-dashboard');setSelection({id:'chart:'+chart.id,kind:'chart',label:chart.title,width:chart.width,height:chart.height});setOpenGroup('chart');}}
-                style={[styles.chartSelectOverlay,{left:x,top:chart.y,width:chart.width,height:chart.height,zIndex:Math.max(100,chart.zIndex+100)},
-                  selected&&styles.chartSelected,!chart.visible&&styles.chartHidden]}>
-                {!chart.visible?<Text style={styles.chartHiddenText}>圖表已關閉 · {chart.title}</Text>:null}
-              </Pressable>
-            </View>;
-          }):null}
+          <View style={{width:Math.max(1,previewViewportWidth),height:scaledPageHeight,overflow:'hidden'}}>
+            <View style={[styles.actualCanvas,{width:actualPageWidth,gap:dashboard.sectionGap,
+              transformOrigin:'top left',transform:[{scale:previewScale}]}]} onLayout={event=>{
+              const height=event.nativeEvent.layout.height;
+              setActualCanvasHeight(previous=>Math.abs(previous-height)<1?previous:height);
+              setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
+            }}>
+              {previewFrames.map(renderActualFrame)}
+              {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
+                const data=chartData(chart);
+                const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
+                const selected=selection.id==='chart:'+chart.id;
+                return <View key={'actual-chart-'+chart.id} pointerEvents="box-none">
+                  {chart.visible?<FloatingDashboardChart config={{...chart,locked:true,touchThrough:true}}
+                    values={data.values} labels={data.labels} bounds={previewBounds} onMove={()=>{}} onResize={()=>{}}/>:null}
+                  <Pressable accessibilityRole="button" accessibilityLabel={'選取圖表 '+chart.title}
+                    onPress={()=>{setFrameKey('asset-dashboard');setSelection({id:'chart:'+chart.id,kind:'chart',label:chart.title,width:chart.width,height:chart.height});setOpenGroup('chart');}}
+                    style={[styles.chartSelectOverlay,{left:x,top:chart.y,width:chart.width,height:chart.height,zIndex:Math.max(100,chart.zIndex+100)},
+                      selected&&styles.chartSelected,!chart.visible&&styles.chartHidden]}>
+                    {!chart.visible?<Text style={styles.chartHiddenText}>圖表已關閉 · {chart.title}</Text>:null}
+                  </Pressable>
+                </View>;
+              }):null}
+            </View>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -300,8 +328,11 @@ export function PageLayoutToolWorkbench({
       </Pressable>)}
     </ScrollView>
 
-    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]} open={openGroup} toggle={toggle}
-      patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}/>:null}
+    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]}
+      position={frameSortIndex+1} canMoveUp={frameSortIndex>0} canMoveDown={frameSortIndex>=0&&frameSortIndex<orderedFrames.length-1}
+      open={openGroup} toggle={toggle}
+      patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}
+      setBehavior={behavior=>onSetFrameBehavior(frame.key,behavior)} move={delta=>onMoveFrame(frame.key,delta)}/>:null}
 
     {holding&&selection.kind==='card'?<HoldingCardTools wall={wall} open={openGroup} toggle={toggle} patch={patchWallStyle}/>:null}
     {holding&&(selection.kind==='text'||selection.kind==='value')&&selectedField?
@@ -326,7 +357,7 @@ export function PageLayoutToolWorkbench({
   </View>;
 }
 
-function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggle,patch,patchFx,setBehavior,move}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;position:number;canMoveUp:boolean;canMoveDown:boolean;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void;setBehavior:(behavior:FrameBehavior)=>void;move:(delta:-1|1)=>void}){
   const basePadding=frame.padding??(frame.layout==='compact'?12:frame.layout==='dense'?10:16);
   const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
   const actualWidth=Math.round(frame.width??measured?.width??320);
@@ -334,6 +365,20 @@ function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEd
   const actualMinHeight=Math.round((frame.minHeight??0)>0?(frame.minHeight??0):actualHeight);
   const actualMaxWidth=Math.round(fx.maxWidth>0?fx.maxWidth:actualWidth);
   return <View>
+    <Accordion title="排序" subtitle="恢復原有框架順位設定；只改同層顯示順序" open={open==='order'} onPress={()=>toggle('order')}>
+      <ChoiceRow label="排序模式" value={frame.behavior} items={[['manual','手動排序'],['auto','自動順位'],['locked','鎖定']]} onChange={value=>setBehavior(value as FrameBehavior)}/>
+      <View style={styles.row}><Text style={styles.rowLabel}>目前順位</Text><Text style={styles.readOnlyValue}>{position}</Text></View>
+      <View style={styles.orderButtons}>
+        <Pressable accessibilityRole="button" disabled={frame.behavior!=='manual'||!canMoveUp}
+          onPress={()=>move(-1)} style={[styles.orderButton,(frame.behavior!=='manual'||!canMoveUp)&&styles.orderButtonDisabled]}>
+          <Text style={styles.orderButtonText}>↑ 前移</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" disabled={frame.behavior!=='manual'||!canMoveDown}
+          onPress={()=>move(1)} style={[styles.orderButton,(frame.behavior!=='manual'||!canMoveDown)&&styles.orderButtonDisabled]}>
+          <Text style={styles.orderButtonText}>↓ 後移</Text>
+        </Pressable>
+      </View>
+    </Accordion>
     <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
       <NumberStep label="寬度" value={actualWidth} min={160} max={1600} step={10} suffix=" px" onChange={width=>patch({width})}/>
       <NumberStep label="高度" value={actualHeight} min={80} max={2400} step={10} suffix=" px" onChange={height=>patch({height})}/>
@@ -356,11 +401,13 @@ function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEd
       {fx.titleMarqueeEnabled?<><NumberStep label="速度" value={fx.titleMarqueeSpeed} min={24} max={180} step={8} suffix="" onChange={titleMarqueeSpeed=>patchFx({titleMarqueeSpeed})}/>
         <NumberStep label="循環間距" value={fx.titleMarqueeGap} min={12} max={80} step={4} suffix=" px" onChange={titleMarqueeGap=>patchFx({titleMarqueeGap})}/></>:null}
     </Accordion>
-    <Accordion title="背景" subtitle="純色／漸層與透明度" open={open==='background'} onPress={()=>toggle('background')}>
-      <ChoiceRow label="背景模式" value={fx.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={v=>patchFx({backgroundMode:v as FrameEffects['backgroundMode']})}/>
-      <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
-      <SwitchRow label="背景損益色" value={frame.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
-      <NumberStep label="背景透明度" value={Math.round(frame.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
+    <Accordion title="背景" subtitle="純色／漸層／圖片；圖片只影響背景，不改內容尺寸" open={open==='background'} onPress={()=>toggle('background')}>
+      <ChoiceRow label="背景模式" value={fx.backgroundMode} items={[['solid','純色'],['gradient','漸層'],['image','圖片']]} onChange={v=>patchFx({backgroundMode:v as FrameEffects['backgroundMode']})}/>
+      {fx.backgroundMode!=='image'?<>
+        <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
+        <SwitchRow label="背景損益色" value={frame.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
+        <NumberStep label="背景透明度" value={Math.round(frame.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
+      </>:null}
       {fx.backgroundMode==='gradient'?<>
         <ColorPalettePicker label="結束顏色" value={fx.gradientEndColor} onChange={gradientEndColor=>patchFx({gradientEndColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
         <SwitchRow label="漸層結束損益色" value={fx.gradientEndProfitColor} onChange={gradientEndProfitColor=>patchFx({gradientEndProfitColor})}/>
@@ -370,6 +417,31 @@ function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEd
           <SwitchRow label="漸層中間損益色" value={fx.gradientMidProfitColor} onChange={gradientMidProfitColor=>patchFx({gradientMidProfitColor})}/>
           <NumberStep label="中間位置" value={Math.round(fx.gradientMidStop*100)} min={10} max={90} step={5} suffix="%" onChange={v=>patchFx({gradientMidStop:v/100})}/></>:null}
       </>:null}
+      {fx.backgroundMode==='image'?<View style={styles.imageBackgroundTools}>
+        <ChoiceRow label="圖片來源" value={fx.imageSource} items={[['builtIn','內建圖片'],['custom','自訂圖片']]} onChange={v=>patchFx({imageSource:v as FrameEffects['imageSource']})}/>
+        {fx.imageSource==='builtIn'?<View>
+          <Text style={styles.orderTitle}>選擇背景圖片</Text>
+          <View style={styles.backgroundImageGrid}>
+            {THEME_BACKGROUNDS.map((uri,index)=><Pressable key={index} accessibilityRole="button"
+              accessibilityLabel={'背景圖片 '+(index+1)} onPress={()=>patchFx({imageIndex:index})}
+              style={[styles.backgroundImageChoice,index===fx.imageIndex&&styles.backgroundImageChoiceActive]}>
+              <Image source={{uri}} resizeMode="cover" style={styles.backgroundImageThumb}/>
+              <Text style={styles.backgroundImageNumber}>{index+1}</Text>
+            </Pressable>)}
+          </View>
+        </View>:<View style={styles.customImageBox}>
+          <Text style={styles.orderTitle}>自訂圖片 URI</Text>
+          <TextInput value={fx.imageUri??''} onChangeText={imageUri=>patchFx({imageUri:imageUri.trim()||null})}
+            placeholder="content://、file:// 或 ph:// 圖片 URI" autoCapitalize="none" autoCorrect={false}
+            style={styles.textInput}/>
+          <Pressable onPress={()=>patchFx({imageUri:null})} style={styles.removeImageButton}><Text style={styles.removeImageText}>移除自訂圖片</Text></Pressable>
+        </View>}
+        <ChoiceRow label="顯示方式" value={fx.imageFit} items={[['cover','填滿'],['contain','完整顯示'],['stretch','拉伸']]} onChange={v=>patchFx({imageFit:v as FrameEffects['imageFit']})}/>
+        <NumberStep label="圖片透明度" value={Math.round(fx.imageOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patchFx({imageOpacity:v/100})}/>
+        <NumberStep label="水平焦點" value={Math.round(fx.imageFocusX*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patchFx({imageFocusX:v/100})}/>
+        <NumberStep label="垂直焦點" value={Math.round(fx.imageFocusY*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patchFx({imageFocusY:v/100})}/>
+        <ColorPalettePicker label="圖片遮罩" value={fx.maskColor} onChange={maskColor=>patchFx({maskColor})} opacity={fx.maskOpacity} onOpacityChange={maskOpacity=>patchFx({maskOpacity})}/>
+      </View>:null}
     </Accordion>
     <Accordion title="邊框／圓角" subtitle="邊框樣式、四邊與四角" open={open==='border'} onPress={()=>toggle('border')}>
       <ColorPalettePicker label="邊框顏色" value={frame.borderColor} onChange={borderColor=>patch({borderColor})} opacity={frame.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
@@ -576,10 +648,26 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
       <NumberStep label="圓角" value={current.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
       {!card?<><NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
         <NumberStep label="透明度" value={Math.round(current.opacity*100)} min={5} max={100} step={5} suffix="%" onChange={v=>patch({opacity:v/100})}/></>:null}
-      {card?<><ChoiceRow label="背景模式" value={current.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={backgroundMode=>patch({backgroundMode:backgroundMode as TargetAppearance['backgroundMode']})}/>
+      {card?<><ChoiceRow label="背景模式" value={current.backgroundMode} items={[['solid','純色'],['gradient','漸層'],['image','圖片']]} onChange={backgroundMode=>patch({backgroundMode:backgroundMode as TargetAppearance['backgroundMode']})}/>
         {current.backgroundMode==='gradient'?<><ColorPalettePicker label="漸層結束色" value={current.gradientEndColor} onChange={gradientEndColor=>patch({gradientEndColor})} opacity={current.gradientEndOpacity} onOpacityChange={gradientEndOpacity=>patch({gradientEndOpacity})}/>
           <SwitchRow label="漸層結束損益色" value={current.gradientEndProfitColor} onChange={gradientEndProfitColor=>patch({gradientEndProfitColor})}/>
           <ChoiceRow label="漸層方向" value={current.gradientDirection} items={[['horizontal','水平'],['vertical','垂直']]} onChange={gradientDirection=>patch({gradientDirection:gradientDirection as TargetAppearance['gradientDirection']})}/></>:null}
+        {current.backgroundMode==='image'?<View style={styles.imageBackgroundTools}>
+          <ChoiceRow label="圖片來源" value={current.imageSource} items={[['builtIn','內建圖片'],['custom','自訂圖片']]} onChange={imageSource=>patch({imageSource:imageSource as TargetAppearance['imageSource']})}/>
+          {current.imageSource==='builtIn'?<View style={styles.backgroundImageGrid}>
+            {THEME_BACKGROUNDS.map((uri,index)=><Pressable key={index} onPress={()=>patch({imageIndex:index})}
+              style={[styles.backgroundImageChoice,index===current.imageIndex&&styles.backgroundImageChoiceActive]}>
+              <Image source={{uri}} resizeMode="cover" style={styles.backgroundImageThumb}/>
+              <Text style={styles.backgroundImageNumber}>{index+1}</Text>
+            </Pressable>)}
+          </View>:<View style={styles.customImageBox}>
+            <TextInput value={current.imageUri??''} onChangeText={imageUri=>patch({imageUri:imageUri.trim()||null})}
+              placeholder="content://、file:// 或 ph:// 圖片 URI" autoCapitalize="none" autoCorrect={false} style={styles.textInput}/>
+            <Pressable onPress={()=>patch({imageUri:null})} style={styles.removeImageButton}><Text style={styles.removeImageText}>移除自訂圖片</Text></Pressable>
+          </View>}
+          <ChoiceRow label="顯示方式" value={current.imageFit} items={[['cover','填滿'],['contain','完整顯示'],['stretch','拉伸']]} onChange={imageFit=>patch({imageFit:imageFit as TargetAppearance['imageFit']})}/>
+          <NumberStep label="圖片透明度" value={Math.round(current.imageOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({imageOpacity:v/100})}/>
+        </View>:null}
         <SwitchRow label="陰影" value={current.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
         {current.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={current.shadowColor} onChange={shadowColor=>patch({shadowColor})} opacity={current.shadowOpacity} onOpacityChange={shadowOpacity=>patch({shadowOpacity})}/>
           <SwitchRow label="陰影損益色" value={current.shadowProfitColor} onChange={shadowProfitColor=>patch({shadowProfitColor})}/>
@@ -605,12 +693,30 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
   </View>;
 }
 
+function OrderRows<T extends string>({order,labels,onChange}:{order:readonly T[];labels:Record<T,string>;onChange:(order:readonly T[])=>void}){
+  const move=(key:T,delta:-1|1)=>{
+    const next=[...order],index=next.indexOf(key),to=index+delta;
+    if(index<0||to<0||to>=next.length)return;
+    [next[index],next[to]]=[next[to]!,next[index]!];
+    onChange(next);
+  };
+  return <View style={styles.orderList}>
+    <Text style={styles.orderTitle}>功能設定排序</Text>
+    {order.map((key,index)=><View key={key} style={styles.orderRow}>
+      <Text style={styles.orderIndex}>{index+1}</Text><Text style={styles.orderLabel}>{labels[key]}</Text>
+      <Pressable disabled={index===0} onPress={()=>move(key,-1)} style={[styles.orderMini,index===0&&styles.orderButtonDisabled]}><Text style={styles.orderButtonText}>↑</Text></Pressable>
+      <Pressable disabled={index===order.length-1} onPress={()=>move(key,1)} style={[styles.orderMini,index===order.length-1&&styles.orderButtonDisabled]}><Text style={styles.orderButtonText}>↓</Text></Pressable>
+    </View>)}
+  </View>;
+}
+
 function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:string;value:DashboardLayoutConfig;open:string|null;toggle:(k:string)=>void;onChange:(v:DashboardLayoutConfig)=>void}){
   const patchOverview=(next:Partial<DashboardLayoutConfig['overview']>)=>onChange({...value,overview:{...value.overview,...next}});
   const patchProfit=(next:Partial<DashboardLayoutConfig['profitAnalysis']>)=>onChange({...value,profitAnalysis:{...value.profitAnalysis,...next}});
   const patchDetail=(next:Partial<DashboardLayoutConfig['profitDetail']>)=>onChange({...value,profitDetail:{...value.profitDetail,...next}});
   const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>onChange({...value,quickActions:{...value.quickActions,...next}});
   if(frameKey==='asset-dashboard')return <Accordion title="內容佈局" subtitle="資產總覽的真實內容結構" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.overview.order} labels={{label:'標題',amount:'金額',caption:'說明'}} onChange={order=>patchOverview({order})}/>
     <NumberStep label="最小高度" value={value.overview.minHeight} min={104} max={220} step={4} suffix=" px" onChange={minHeight=>patchOverview({minHeight})}/>
     <NumberStep label="卡片內距" value={value.overview.padding} min={8} max={28} step={1} suffix=" px" onChange={padding=>patchOverview({padding})}/>
     <NumberStep label="內容間距" value={value.overview.contentGap} min={0} max={24} step={1} suffix=" px" onChange={contentGap=>patchOverview({contentGap})}/>
@@ -620,6 +726,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="裝飾圖形" value={value.overview.decorationVisible} onChange={decorationVisible=>patchOverview({decorationVisible})}/>
   </Accordion>;
   if(frameKey==='profit-analysis')return <Accordion title="KPI 佈局" subtitle="卡片高度、間距、圖示與說明" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.profitAnalysis.order} labels={{realizedNetPnL:'已實現損益',totalPnl:'含息總損益',totalUnrealizedProfit:'未實現損益',totalMarketValue:'持股市值'}} onChange={order=>patchProfit({order})}/>
     <NumberStep label="卡片高度" value={value.profitAnalysis.cardHeight} min={84} max={156} step={4} suffix=" px" onChange={cardHeight=>patchProfit({cardHeight})}/>
     <NumberStep label="卡片間距" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} suffix=" px" onChange={cardGap=>patchProfit({cardGap})}/>
     <NumberStep label="卡片內距" value={value.profitAnalysis.cardPadding} min={0} max={28} step={1} suffix=" px" onChange={cardPadding=>patchProfit({cardPadding})}/>
@@ -627,6 +734,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="說明" value={value.profitAnalysis.captionVisible} onChange={captionVisible=>patchProfit({captionVisible})}/>
   </Accordion>;
   if(frameKey==='pnl-detail')return <Accordion title="明細佈局" subtitle="列數、高度、左右內距與欄位間距" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.profitDetail.order} labels={{price:'純價差未實現',net:'淨清算未實現',realized:'已實現損益',total:'含息總損益'}} onChange={order=>patchDetail({order})}/>
     <NumberStep label="顯示列數" value={value.profitDetail.itemCount} min={2} max={4} step={1} suffix=" 列" onChange={v=>patchDetail({itemCount:v as 2|3|4})}/>
     <NumberStep label="列高" value={value.profitDetail.rowHeight} min={40} max={72} step={2} suffix=" px" onChange={rowHeight=>patchDetail({rowHeight})}/>
     <NumberStep label="左右內距" value={value.profitDetail.rowPaddingHorizontal} min={0} max={32} step={1} suffix=" px" onChange={rowPaddingHorizontal=>patchDetail({rowPaddingHorizontal})}/>
@@ -634,6 +742,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="查看更多" value={value.profitDetail.showMore} onChange={showMore=>patchDetail({showMore})}/>
   </Accordion>;
   if(frameKey==='dashboard-quick-actions')return <Accordion title="快捷按鈕佈局" subtitle="欄數、內距、圖示文字間距" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.quickActions.order} labels={{'stock-query':'持股查詢',ledger:'交易紀錄',allocation:'資產配置',dividend:'股息資訊'}} onChange={order=>patchQuick({order})}/>
     <ChoiceRow label="欄數" value={String(value.quickActions.columns)} items={[['2','雙欄'],['4','四欄']]} onChange={v=>patchQuick({columns:Number(v) as 2|4})}/>
     <NumberStep label="按鈕內距" value={value.quickActions.itemPadding} min={0} max={28} step={1} suffix=" px" onChange={itemPadding=>patchQuick({itemPadding})}/>
     <NumberStep label="圖示／文字間距" value={value.quickActions.itemGap} min={0} max={24} step={1} suffix=" px" onChange={itemGap=>patchQuick({itemGap})}/>
@@ -710,7 +819,7 @@ const styles=StyleSheet.create({
   root:{gap:12},head:{flexDirection:'row',gap:8,alignItems:'flex-start'},title:{fontSize:18,fontWeight:'900',color:colors.text},hint:{fontSize:11,lineHeight:17,color:colors.textSecondary,marginTop:3},
   moduleRow:{gap:6,paddingVertical:2},moduleChip:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surfaceMuted},moduleChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},moduleText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},moduleTextActive:{color:'#FFFFFF'},
   previewShell:{borderWidth:1,borderColor:'#9AC3F7',borderRadius:radius.lg,padding:10,backgroundColor:'#EFF6FF'},previewTop:{marginBottom:8},previewTitle:{fontSize:12,fontWeight:'900',color:colors.primary},path:{fontSize:10,color:colors.textSecondary,marginTop:2},
-  livePageScroll:{height:380,borderRadius:radius.md,backgroundColor:colors.background},livePageContent:{padding:8,paddingBottom:24},actualCanvas:{position:'relative',gap:10,minHeight:420},
+  livePageScroll:{height:380,borderRadius:radius.md,backgroundColor:colors.background},livePageContent:{padding:8,paddingBottom:24},previewScaleText:{fontSize:9,fontWeight:'800',color:colors.textSecondary,marginBottom:5},previewViewport:{width:'100%',alignItems:'flex-start'},actualCanvas:{position:'relative',gap:10,minHeight:420},
   chartSelectOverlay:{position:'absolute',borderWidth:1,borderColor:'transparent',borderRadius:12},chartSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary},chartHidden:{borderStyle:'dashed',borderColor:'#94A3B8',backgroundColor:'rgba(248,250,252,0.72)',alignItems:'center',justifyContent:'center'},chartHiddenText:{fontSize:9,fontWeight:'900',color:colors.textSecondary,textAlign:'center',padding:6},
   frameSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary,borderRadius:radius.lg,padding:3},
   kindRow:{gap:6,paddingVertical:2},kindChip:{paddingHorizontal:11,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},kindChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},kindText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},kindTextActive:{color:'#FFFFFF'},
@@ -719,5 +828,8 @@ const styles=StyleSheet.create({
   modeBlock:{gap:2},autoChip:{paddingHorizontal:10,paddingVertical:6,borderRadius:999,backgroundColor:colors.surfaceMuted},autoChipActive:{backgroundColor:colors.primary},autoText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},autoTextActive:{color:'#FFFFFF'},
   choices:{flexDirection:'row',flexWrap:'wrap',gap:5,justifyContent:'flex-end',maxWidth:'68%'},choice:{paddingHorizontal:9,paddingVertical:7,borderRadius:10,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:9,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},
   textInput:{minHeight:44,borderWidth:1,borderColor:colors.border,borderRadius:12,paddingHorizontal:12,color:colors.text,backgroundColor:'#FFFFFF'},
+  orderButtons:{flexDirection:'row',gap:8},orderButton:{flex:1,minHeight:38,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:colors.border},orderButtonDisabled:{opacity:.35},orderButtonText:{fontSize:11,fontWeight:'900',color:colors.primary},
+  orderList:{gap:6,paddingVertical:2},orderTitle:{fontSize:10,fontWeight:'900',color:colors.textSecondary},orderRow:{minHeight:38,flexDirection:'row',alignItems:'center',gap:7,borderWidth:1,borderColor:colors.border,borderRadius:10,paddingHorizontal:8,backgroundColor:colors.surface},orderIndex:{width:20,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.primary},orderLabel:{flex:1,fontSize:10,fontWeight:'800',color:colors.text},orderMini:{width:32,height:30,borderRadius:8,alignItems:'center',justifyContent:'center',backgroundColor:'#EAF2FF'},
+  imageBackgroundTools:{gap:8},backgroundImageGrid:{flexDirection:'row',flexWrap:'wrap',gap:7},backgroundImageChoice:{width:58,height:58,borderRadius:10,borderWidth:1,borderColor:colors.border,overflow:'hidden',position:'relative'},backgroundImageChoiceActive:{borderWidth:3,borderColor:colors.primary},backgroundImageThumb:{width:'100%',height:'100%'},backgroundImageNumber:{position:'absolute',right:3,bottom:2,fontSize:9,fontWeight:'900',color:'#FFFFFF',backgroundColor:'rgba(15,23,42,.62)',paddingHorizontal:4,borderRadius:5},customImageBox:{gap:6},removeImageButton:{minHeight:36,borderWidth:1,borderColor:colors.border,borderRadius:10,alignItems:'center',justifyContent:'center'},removeImageText:{fontSize:10,fontWeight:'900',color:colors.primary},
   reset:{marginTop:10,minHeight:42,borderRadius:12,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},resetText:{fontSize:11,fontWeight:'900',color:colors.primary},
 });

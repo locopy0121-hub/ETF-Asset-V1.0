@@ -14,10 +14,11 @@ export type FrameCardProps=PropsWithChildren<{
   editorStyle?:Partial<FrameEditorConfig>;
   workActive?:boolean;workHidden?:boolean;
   onResizePreview?:(size:{width:number;height:number})=>void;
+  onMeasuredSize?:(size:{width:number;height:number})=>void;
 }>;
 
 export function FrameCard({title,action,children,layout='standard',appearance='theme',
-  editorStyle,workActive=false,workHidden=false,onResizePreview}:FrameCardProps){
+  editorStyle,workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
@@ -213,8 +214,10 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     workHidden&&{opacity:.5},
   ]} onLayout={(event:LayoutChangeEvent)=>{
     const {width,height}=event.nativeEvent.layout;
-    if(Number.isFinite(width)&&width>0&&Number.isFinite(height)&&height>0)
+    if(Number.isFinite(width)&&width>0&&Number.isFinite(height)&&height>0){
       measuredSize.current={width,height};
+      onMeasuredSize?.({width,height});
+    }
     if(Number.isFinite(width)&&width>0)
       setMeasuredFrameWidth(previous=>Math.abs(previous-width)<1?previous:width);
   }}>

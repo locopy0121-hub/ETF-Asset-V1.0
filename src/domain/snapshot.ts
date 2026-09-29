@@ -16,7 +16,7 @@ export type HoldingSnapshot = Readonly<{
   changePercent: number | null;
   marketStatus: MarketStatus;
   updatedAt: string | null;
-  marketQuality?:'trade'|'official_close'|'unavailable';
+  marketQuality?:'trade'|'backup_realtime'|'previous_close'|'official_close'|'unavailable';
   shares: number;
   avgCost: number;
   marketValue: number;

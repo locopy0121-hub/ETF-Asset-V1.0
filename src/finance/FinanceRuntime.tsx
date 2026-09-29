@@ -11,6 +11,7 @@ import {
 import type { SharedSnapshot } from '../domain/snapshot';
 import type { HoldingQuote } from '../domain/uiModels';
 import { useMarketRuntime } from '../market/MarketRuntime';
+import {marketIntradaySeriesFor,marketQuoteSnapshotFor,marketValuationQuoteFor} from '../market/marketCenterViews';
 import {
   calculateCanonicalLedgerSnapshot,
   calculateLedgerCashFlow,
@@ -27,6 +28,17 @@ import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=4;
+const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullable<HoldingQuote['quoteQuality']>=>{
+  switch(quality){
+    case 'trade':
+    case 'backup_realtime':
+    case 'previous_close':
+    case 'official_close':
+      return quality;
+    default:
+      return 'unavailable';
+  }
+};
 
 type PersistedFinanceState = {
   schema: number;
@@ -109,9 +121,13 @@ export function FinanceProvider({children}:PropsWithChildren){
     market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
   },[entries,market.setTrackedSymbols]);
 
+  const valuationQuotes=useMemo(
+    ()=>market.quotes.filter(row=>marketValuationQuoteFor(market.quotes,row.symbol)===row),
+    [market.quotes],
+  );
   const canonicalQuotes=useMemo(
-    ()=>ensureLedgerQuoteCoverage(entries,market.quotes),
-    [entries,market.quotes],
+    ()=>ensureLedgerQuoteCoverage(entries,valuationQuotes),
+    [entries,valuationQuotes],
   );
 
   const snapshot=useMemo(()=>calculateCanonicalLedgerSnapshot({
@@ -121,19 +137,21 @@ export function FinanceProvider({children}:PropsWithChildren){
   }),[initialCash,entries,canonicalQuotes]);
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
-    const quote=market.quotes.find(x=>x.symbol===summary.etfCode);
-    const verified=!!quote&&quote.currentPrice>0&&typeof quote.sourceQuoteAt==='number'&&
-      (quote.quality==='trade'||quote.quality==='official_close');
+    const quote=marketQuoteSnapshotFor(market.quotes,summary.etfCode);
+    const valuationQuote=marketValuationQuoteFor(market.quotes,summary.etfCode);
+    const intraday=marketIntradaySeriesFor(market.quotes,summary.etfCode);
+    const verified=Boolean(valuationQuote);
     const name=market.catalog.find(item=>item.symbol===summary.etfCode)?.name;
-    const previousClose=verified?quote!.previousClose:summary.currentPrice;
+    const previousClose=valuationQuote?.previousClose&&valuationQuote.previousClose>0?
+      valuationQuote.previousClose:summary.currentPrice;
     return {
       symbol:summary.etfCode,
-      name:(verified&&quote!.name!==summary.etfCode?quote!.name:name??summary.name),
+      name:(quote&&quote.name!==summary.etfCode?quote.name:name??summary.name),
       quoteVerified:verified,
-      quoteQuality:(verified?(quote!.quality??'trade'):'unavailable') as 'trade'|'official_close'|'unavailable',
-      quoteSourceAt:verified?(quote!.sourceQuoteAt??null):null,
+      quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
+      quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
       marketDataVersion:market.marketDataVersion,
-      previousCloseKnown:verified?quote!.previousCloseKnown!==false:false,
+      previousCloseKnown:verified?valuationQuote?.previousCloseKnown!==false:false,
       shares:summary.totalShares,
       price:summary.currentPrice,
       previousClose,
@@ -150,9 +168,9 @@ export function FinanceProvider({children}:PropsWithChildren){
       comprehensivePnl:summary.comprehensivePnL,
       pinned:quote?.pinned??false,
       sparkline:[...(quote?.sparkline??[summary.currentPrice])],
-      intraday:[...(quote?.intraday??[])],
-      intradayDate:quote?.intradayDate??null,
-      intradayPreviousClose:quote?.intradayPreviousClose??null,
+      intraday:intraday.points,
+      intradayDate:intraday.date,
+      intradayPreviousClose:intraday.previousClose,
     };
   }).filter(x=>x.shares>0),[snapshot,market.quotes,market.catalog,market.marketDataVersion]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);

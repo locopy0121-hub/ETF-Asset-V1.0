@@ -14,7 +14,7 @@ assert.match(workbench,/<DashboardAssetOverview amount=\{money\(portfolio\.total
 assert.match(workbench,/<DashboardProfitAnalysis items=\{kpis\}/);
 assert.match(workbench,/<DashboardProfitDetail rows=\{rows\}/);
 assert.match(workbench,/<HoldingQuoteCollection rows=\{holdingPreviewRows\}/);
-assert.match(workbench,/<FrameCard title=\{item\.title\} editorStyle=\{itemConfig\}>/,'actual-page editor must reuse the real FrameCard renderer for each rendered frame');
+assert.match(workbench,/<FrameCard title=\{item\.title\} editorStyle=\{itemConfig\}[\s\S]*?onMeasuredSize=/,'actual-page editor must reuse the real FrameCard renderer and read its rendered size');
 assert.match(workbench,/<LayoutSelectionProvider targets=\{targets\}/);
 assert.doesNotMatch(workbench,/NT\$ 123,456|圖表區|後續工具只掛到此類物件|V3\.2\.1 已建立物件分流/,
  'no fabricated values or development placeholders are allowed in the layout preview');
