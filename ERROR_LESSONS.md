@@ -1,3 +1,11 @@
+# 2026-09-29｜行情 z 缺值不可等同「沒有行情」
+
+- TWSE MIS HTTP 200 且 z='-' 只表示該列沒有可核實的最新成交 z，不代表整個行情不可用。
+- 官方診斷與 App 有效行情必須分離：officialTradePrice 只允許 z；effective currentPrice 可由明確標記的 fallback 供 UI 使用。
+- fallback 不得偽裝成 trade；必須保存 source / quality / priceType / isFallback / sourceQuoteAt / statusMessage。
+- 來源切換只能在 A→B 行情層完成；Client、Widget、Monitor 不得各自形成另一套來源真相。
+- 市場快取 schema migration 僅限 market database，嚴禁碰 Ledger 與 actual_fee / actual_tax 固化資料。
+
 ## 2026-09-28｜首頁模組重構不可順手改行情牆
 
 症狀：首頁儀表板與持股行情同屬首頁時，若把「頁面佈局」與「行情牆內容設定」混成同一資料模型，任何首頁改版都可能意外覆寫欄位、排列、跑馬燈、特效或卡片設定。
