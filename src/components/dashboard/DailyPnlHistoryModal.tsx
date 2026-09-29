@@ -76,7 +76,8 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
   const safePage=Math.min(page,pageCount-1);
   const pageRows=ordered.slice(safePage*PAGE_SIZE,(safePage+1)*PAGE_SIZE);
   const chartRows=useMemo(()=>sampleRows(ranged,metric),[ranged,metric]);
-  const selected=ranged.find(row=>row.date===selectedDate)??ranged[ranged.length-1]??null;
+  const latest=ranged[ranged.length-1]??null;
+  const selected=ranged.find(row=>row.date===selectedDate)??latest;
 
   const values=chartRows.map(row=>metricValue(row,metric));
   const baseline=metric==='asset'?(values[0]??0):0;
@@ -112,7 +113,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
         {historyError?<View style={[styles.notice,styles.noticeError]}><Text style={styles.noticeText}>歷史重建尚未完整：{historyError}</Text></View>:null}
 
         <View style={styles.statsGrid}>
-          <Stat label="最新總資產" value={selected?money(selected.totalMarketValue):'—'}/>
+          <Stat label="最新總資產" value={latest?money(latest.totalMarketValue):'—'}/>
           <Stat label="期間市值損益" value={signed(rangeStats.periodPnl)} valueColor={tone(rangeStats.periodPnl)}/>
           <Stat label="獲利／虧損日" value={`${rangeStats.gainDays}／${rangeStats.lossDays}`}/>
           <Stat label="平均每日市值" value={signed(rangeStats.averageDailyPnl)} valueColor={tone(rangeStats.averageDailyPnl)}/>
@@ -219,33 +220,40 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
           </View>
           <Text style={styles.tableHint}>日期固定於第一欄；其餘欄位左右滑動。點選任一列可同步上方走勢與詳細計算。</Text>
 
-          {ordered.length?<ScrollView horizontal showsHorizontalScrollIndicator>
-            <View style={styles.table}>
-              <View style={[styles.tableRow,styles.tableHeader]}>
-                <Cell text="日期" width={98} header/>
-                <Cell text="狀態" width={78} header/>
-                <Cell text="前日資產" width={110} header right/>
-                <Cell text="總資產" width={110} header right/>
-                <Cell text="今日損益" width={104} header right/>
-                <Cell text="前日總損益" width={112} header right/>
-                <Cell text="帳務調整" width={104} header right/>
-                <Cell text="總損益" width={104} header right/>
-                <Cell text="資金異動" width={104} header right/>
-              </View>
-              {pageRows.map(row=><Pressable key={row.date} onPress={()=>setSelectedDate(row.date)}
+          {ordered.length?<View style={styles.tableShell}>
+            <View style={styles.fixedColumn}>
+              <View style={[styles.tableRow,styles.tableHeader]}><Cell text="日期" width={98} header/></View>
+              {pageRows.map(row=><Pressable key={'fixed-'+row.date} onPress={()=>setSelectedDate(row.date)}
                 style={[styles.tableRow,selected?.date===row.date&&styles.tableRowSelected]}>
                 <Cell text={row.date} width={98} strong/>
-                <Cell text={row.basis==='official-history'?'正式':'暫估'} width={78}/>
-                <Cell text={money(row.previousMarketValue)} width={110} right/>
-                <Cell text={money(row.totalMarketValue)} width={110} right/>
-                <Cell text={signed(row.todayPnl)} width={104} right color={tone(row.todayPnl)}/>
-                <Cell text={signed(row.previousTotalPnl)} width={112} right color={tone(row.previousTotalPnl)}/>
-                <Cell text={signed(row.accountingAdjustment)} width={104} right color={tone(row.accountingAdjustment)}/>
-                <Cell text={signed(row.totalPnl)} width={104} right color={tone(row.totalPnl)} strong/>
-                <Cell text={signed(row.tradeMarketFlow)} width={104} right color={tone(-row.tradeMarketFlow)}/>
               </Pressable>)}
             </View>
-          </ScrollView>:<Text style={styles.empty}>取得正式行情後，系統會自第一筆交易日起自動建立統計表。</Text>}
+            <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroller}>
+              <View style={styles.tableBody}>
+                <View style={[styles.tableRow,styles.tableHeader]}>
+                  <Cell text="狀態" width={78} header/>
+                  <Cell text="前日資產" width={110} header right/>
+                  <Cell text="總資產" width={110} header right/>
+                  <Cell text="今日損益" width={104} header right/>
+                  <Cell text="前日總損益" width={112} header right/>
+                  <Cell text="帳務調整" width={104} header right/>
+                  <Cell text="總損益" width={104} header right/>
+                  <Cell text="資金異動" width={104} header right/>
+                </View>
+                {pageRows.map(row=><Pressable key={row.date} onPress={()=>setSelectedDate(row.date)}
+                  style={[styles.tableRow,selected?.date===row.date&&styles.tableRowSelected]}>
+                  <Cell text={row.basis==='official-history'?'正式':'暫估'} width={78}/>
+                  <Cell text={money(row.previousMarketValue)} width={110} right/>
+                  <Cell text={money(row.totalMarketValue)} width={110} right/>
+                  <Cell text={signed(row.todayPnl)} width={104} right color={tone(row.todayPnl)}/>
+                  <Cell text={signed(row.previousTotalPnl)} width={112} right color={tone(row.previousTotalPnl)}/>
+                  <Cell text={signed(row.accountingAdjustment)} width={104} right color={tone(row.accountingAdjustment)}/>
+                  <Cell text={signed(row.totalPnl)} width={104} right color={tone(row.totalPnl)} strong/>
+                  <Cell text={signed(row.tradeMarketFlow)} width={104} right/>
+                </Pressable>)}
+              </View>
+            </ScrollView>
+          </View>:<Text style={styles.empty}>取得正式行情後，系統會自第一筆交易日起自動建立統計表。</Text>}
 
           {ordered.length>PAGE_SIZE?<View style={styles.pagination}>
             <Pressable disabled={safePage<=0} onPress={()=>setPage(value=>Math.max(0,value-1))} style={[styles.pageButton,safePage<=0&&styles.pageButtonDisabled]}>
@@ -326,7 +334,10 @@ const styles=StyleSheet.create({
   tableHint:{fontSize:10,lineHeight:15,color:colors.textSecondary},
   sortButton:{minHeight:32,justifyContent:'center',paddingHorizontal:10,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   sortText:{fontSize:10,fontWeight:'900',color:colors.primary},
-  table:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden',backgroundColor:colors.surface},
+  tableShell:{flexDirection:'row',borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden',backgroundColor:colors.surface},
+  fixedColumn:{width:98,borderRightWidth:1,borderRightColor:colors.border,backgroundColor:colors.surface,zIndex:2},
+  tableScroller:{flex:1},
+  tableBody:{minWidth:826,backgroundColor:colors.surface},
   tableRow:{flexDirection:'row',minHeight:42,alignItems:'center',borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   tableHeader:{minHeight:38,backgroundColor:colors.surfaceMuted},
   tableRowSelected:{backgroundColor:colors.surfaceMuted},
