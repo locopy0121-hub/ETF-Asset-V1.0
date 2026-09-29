@@ -80,9 +80,9 @@ export function MiniHoldingChart({
   },[holding.intraday,holding.intradayDate]);
 
   const innerWidth=Math.max(44,width-8);
-  const baseline=holding.previousClose>0
-    ?holding.previousClose
-    :(session.points[0]?.price??holding.price);
+  const baseline=(holding.intradayPreviousClose??0)>0
+    ?holding.intradayPreviousClose!
+    :holding.previousClose>0?holding.previousClose:(session.points[0]?.price??holding.price);
   const values=session.points.map(item=>item.price);
   const pool=style==='cost'&&holding.costAvg>0?[...values,baseline,holding.costAvg]:[...values,baseline];
   const max=Math.max(...pool),min=Math.min(...pool),range=Math.max(.001,max-min);
