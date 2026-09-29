@@ -17,6 +17,7 @@ import {
 import { ColorPalettePicker } from '../components/ColorPalettePicker';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
 import {DiagnosticLogPanel} from '../components/DiagnosticLogPanel';
+import {MarketComparisonPanel} from '../components/MarketComparisonPanel';
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
@@ -55,8 +56,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.2.4';
-const BUILD='30204';
+const VERSION='3.2.5';
+const BUILD='30205';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -168,7 +169,7 @@ export function SettingsScreen(){
         <Text style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
       </Panel>:null}
       <ChildButton label="行情資料中心／市場更新" summary={'v'+market.marketDataVersion+'｜'+marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
+      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -255,7 +256,7 @@ export function SettingsScreen(){
   function dataSection(){
     return <View style={styles.children}>
       <ChildButton label="統一行情資料中心／即時更新" summary={'版本 '+market.marketDataVersion+' · '+marketPhaseLabel(market.phase)} active={dataPanel==='market'} onPress={()=>setDataPanel(dataPanel==='market'?null:'market')}/>
-      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length}/>:null}
+      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings}/>:null}
       <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
       {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
         <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
@@ -810,9 +811,11 @@ type MarketPanelProps={
   marketDataVersion:number;
   missingSymbols:readonly string[];
   quoteCount:number;
+  quotes:ReturnType<typeof useMarketRuntime>['quotes'];
+  holdings:ReturnType<typeof useFinance>['holdings'];
 };
 
-function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount}:MarketPanelProps){
+function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount,quotes,holdings}:MarketPanelProps){
   const [urlDraft,setUrlDraft]=useState(config.backendUrl??'');
   useEffect(()=>{setUrlDraft(config.backendUrl??'');},[config.backendUrl]);
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
@@ -837,6 +840,7 @@ function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastErr
     <StatusRow label="最近成功" value={formatTime(lastSuccessAt)}/>
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
     <ActionButton label={refreshing?'更新中…':'立即更新行情'} disabled={refreshing} onPress={onRefresh}/>
+    <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}/>
     <ToggleRow label="啟用市場更新排程" value={config.scheduleEnabled} onChange={scheduleEnabled=>patch({scheduleEnabled})}/>
     <ToggleRow label="回到前景立即刷新" value={config.refreshOnForeground} onChange={refreshOnForeground=>patch({refreshOnForeground})}/>
     <ToggleRow label="停止全部自動更新" value={config.stopAll} onChange={stopAll=>patch({stopAll})}/>

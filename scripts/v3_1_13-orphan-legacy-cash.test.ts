@@ -12,10 +12,10 @@ import {parseBackupDocument,TF_LEDGER_KEY} from '../src/settings/backupDocumentF
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.2.4');
-assert.equal(app.expo.version,'3.2.4');
-assert.equal(app.expo.android.versionCode,30204);
-assert.equal(app.expo.ios.buildNumber,'30204');
+assert.equal(pkg.version,'3.2.5');
+assert.equal(app.expo.version,'3.2.5');
+assert.equal(app.expo.android.versionCode,30205);
+assert.equal(app.expo.ios.buildNumber,'30205');
 
 const genuine:CanonicalLedgerEntry[]=[
   {id:'real-adjustment',date:'2026-09-28',kind:'other',label:'本人現金調整',amount:-23_871},
