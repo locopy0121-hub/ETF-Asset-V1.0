@@ -1,6 +1,7 @@
-import {View,StyleSheet,type ViewStyle} from 'react-native';
+import {Image,View,StyleSheet,type ViewStyle} from 'react-native';
 import type {TargetAppearance} from './inspectionModel';
 import {colorWithAlpha,sampleFrameGradient} from './frameEffects';
+import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
 
 const mixAlpha=(start:number,middle:number,end:number,position:number,pivot:number,enabled:boolean)=>{
   const at=Math.max(0,Math.min(1,position));
@@ -24,9 +25,15 @@ export function TargetBackdrop({appearance,start,middle,end,glow}:{
   appearance:TargetAppearance;start:string;middle:string;end:string;glow:string;
 }){
   const gradient=appearance.backgroundMode==='gradient';
+  const image=appearance.backgroundMode==='image';
+  const imageUri=appearance.imageSource==='builtIn'?THEME_BACKGROUNDS[appearance.imageIndex]:appearance.imageUri;
   const innerEdge=appearance.glowEnabled&&appearance.glowOpacity>0&&appearance.glowWidth>0;
-  if(!gradient&&!innerEdge)return null;
+  if(!gradient&&!image&&!innerEdge)return null;
   return <>
+    {image&&imageUri?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{overflow:'hidden',borderRadius:appearance.borderRadius}]}>
+      <Image source={{uri:imageUri}} resizeMode={appearance.imageFit}
+        style={[StyleSheet.absoluteFill,{opacity:appearance.imageOpacity}]}/>
+    </View>:null}
     {gradient?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
       overflow:'hidden',borderRadius:appearance.borderRadius,
       flexDirection:appearance.gradientDirection==='horizontal'?'row':'column',
