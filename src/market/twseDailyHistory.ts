@@ -129,7 +129,9 @@ async function fetchTpexMonth(date:string,symbol:string,signal?:AbortSignal):Pro
   }
 }
 
-async function fetchOfficialMonth(date:string,symbol:string,signal?:AbortSignal){
+async function fetchOfficialMonth(date:string,symbol:string,signal?:AbortSignal,preferred?:DailyCandle['source']|null){
+  if(preferred==='TWSE')return fetchTwseMonth(date,symbol,signal);
+  if(preferred==='TPEX')return fetchTpexMonth(date,symbol,signal);
   const twse=await fetchTwseMonth(date,symbol,signal);
   if(twse.rows.length)return twse;
   const tpex=await fetchTpexMonth(date,symbol,signal);
@@ -146,7 +148,9 @@ const MAX_HISTORY_MONTHS=360;
 
 function parseIsoDate(value:string){
   if(!ISO_DATE.test(value))return null;
-  const [year,month,day]=value.split('-').map(Number);
+  const parts=value.split('-').map(Number);
+  const year=parts[0]??NaN,month=parts[1]??NaN,day=parts[2]??NaN;
+  if(!Number.isInteger(year)||!Number.isInteger(month)||!Number.isInteger(day))return null;
   const date=new Date(Date.UTC(year,month-1,day));
   if(date.getUTCFullYear()!==year||date.getUTCMonth()!==month-1||date.getUTCDate()!==day)return null;
   return {year,month,day,date};
@@ -176,12 +180,14 @@ export async function fetchOfficialDailyHistoryRange(
   const all=new Map<string,DailyCandle>();
   const failures:string[]=[];
   let successfulResponses=0;
+  let preferredSource:DailyCandle['source']|null=null;
   for(let offset=0;offset<months;offset++){
     if(signal?.aborted)throw new Error('查詢已取消');
     const cursor=new Date(Date.UTC(end.year,end.month-1-offset,1));
     const monthDate=`${cursor.getUTCFullYear()}${String(cursor.getUTCMonth()+1).padStart(2,'0')}01`;
-    const month=await fetchOfficialMonth(monthDate,code,signal);
+    const month=await fetchOfficialMonth(monthDate,code,signal,preferredSource);
     if(month.hadResponse)successfulResponses+=1;
+    if(!preferredSource&&month.rows.length)preferredSource=month.rows[0]?.source??null;
     if(month.errors.length&&!month.hadResponse)failures.push(...month.errors);
     for(const candle of month.rows){
       if(candle.date>=startDate&&candle.date<=endDate)all.set(candle.date,candle);
