@@ -168,7 +168,11 @@ export function MarketComparisonPanel({
       note={appRow?appRow.name:'目前持股沒有此代號'}/>
 
     <CompareRow label="證券中心／官方行情" value={formatPrice(officialPrice)}
-      note={probeLoading?'讀取中…':probeError??(official?'TWSE_MIS · z｜實際成交價':'等待讀取')}/>
+      note={probeLoading?'讀取中…':probeError??(official
+        ?official.availability==='trade'
+          ?'TWSE_MIS · z｜實際成交價'
+          :'TWSE_MIS · z 暫無實際成交價（僅診斷，不以其他欄位替代）'
+        :'等待讀取')}/>
 
     <CompareRow label="行情中心" value={formatPrice(centerPrice)}
       note={centerRow?(centerRow.source??'未知來源')+' · '+marketSourceField(centerRow):'尚無中央行情'}/>
@@ -182,6 +186,7 @@ export function MarketComparisonPanel({
 
     <View style={styles.metaBox}>
       <CompareRow label="證券中心來源" value={official?.source??'TWSE_MIS'}/>
+      <CompareRow label="證券中心讀取狀態" value={probeLoading?'讀取中':probeError?'失敗｜'+probeError:official?.availability==='trade'?'成功｜取得 z 實際成交價':official?.availability==='z_missing'?'成功回應｜但 z 缺值':'等待讀取'}/>
       <CompareRow label="證券中心採用欄位" value="z｜實際成交價"/>
       <CompareRow label="證券中心來源時間" value={formatTime(official?.sourceQuoteAt)}/>
       <CompareRow label="證券中心讀取時間" value={formatTime(official?.checkedAt)}/>
@@ -192,6 +197,22 @@ export function MarketComparisonPanel({
       <CompareRow label="行情中心檢查時間" value={formatTime(centerRow?.checkedAt)}/>
       <CompareRow label="資料版本" value={'#'+marketDataVersion}/>
     </View>
+
+    {official?<View style={styles.rawBox}>
+      <Text style={styles.rawTitle}>證券中心原始欄位（唯讀）</Text>
+      <Text style={styles.rawNote}>z 缺值時僅顯示原始資料供查核；y／o／h／l／v／pz／b／a 不會被拿來替代官方比對價，也不會回寫 App 行情。</Text>
+      <CompareRow label="z｜實際成交價" value={formatRaw(official.raw.z)}/>
+      <CompareRow label="pz｜最近一筆成交參考" value={formatRaw(official.raw.pz)}/>
+      <CompareRow label="y｜昨收" value={formatRaw(official.raw.y)}/>
+      <CompareRow label="o｜開盤" value={formatRaw(official.raw.o)}/>
+      <CompareRow label="h｜最高" value={formatRaw(official.raw.h)}/>
+      <CompareRow label="l｜最低" value={formatRaw(official.raw.l)}/>
+      <CompareRow label="v｜成交量" value={formatRaw(official.raw.v)}/>
+      <CompareRow label="b｜最佳買價列" value={formatRaw(official.raw.b)}/>
+      <CompareRow label="a｜最佳賣價列" value={formatRaw(official.raw.a)}/>
+      <CompareRow label="d / t｜證交所原始時間" value={[official.raw.d,official.raw.t].filter(Boolean).join(' ')||'—'}/>
+      <CompareRow label="ex / ch｜市場／頻道" value={[official.raw.ex,official.raw.ch].filter(Boolean).join(' / ')||'—'}/>
+    </View>:null}
 
     <View style={styles.actions}>
       <Pressable disabled={probeLoading} onPress={()=>void readOfficial()} style={[styles.action,probeLoading&&styles.disabled]}>
@@ -223,6 +244,9 @@ function formatDiff(value:number|null){
   if(value===null)return '—';
   const fixed=value.toFixed(2);
   return value>0?'+'+fixed:fixed;
+}
+function formatRaw(value:string|null|undefined){
+  return typeof value==='string'&&value.trim()?value:'—';
 }
 function formatTime(value:number|null|undefined){
   if(!value)return '—';
@@ -257,6 +281,9 @@ const styles=StyleSheet.create({
   diffBox:{gap:1,padding:9,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
   diagnosis:{fontSize:10,fontWeight:'900',color:colors.primary,paddingTop:7,lineHeight:15},
   metaBox:{gap:1},
+  rawBox:{gap:1,padding:9,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.background},
+  rawTitle:{fontSize:10,fontWeight:'900',color:colors.text},
+  rawNote:{fontSize:9,lineHeight:13,color:colors.textSecondary,marginBottom:3},
   actions:{flexDirection:'row',gap:8},
   action:{flex:1,minHeight:40,borderRadius:radius.md,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center',paddingHorizontal:8},
   disabled:{opacity:.45},
