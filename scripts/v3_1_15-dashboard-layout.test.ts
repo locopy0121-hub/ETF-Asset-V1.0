@@ -5,10 +5,10 @@ const read=(path:string)=>readFileSync(path,'utf8');
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
 
-assert.equal(pkg.version,'3.2.4');
-assert.equal(app.expo.version,'3.2.4');
-assert.equal(app.expo.android.versionCode,30204);
-assert.equal(app.expo.ios.buildNumber,'30204');
+assert.equal(pkg.version,'3.2.5');
+assert.equal(app.expo.version,'3.2.5');
+assert.equal(app.expo.android.versionCode,30205);
+assert.equal(app.expo.ios.buildNumber,'30205');
 
 const home=read('src/screens/HomeScreen.tsx');
 const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
