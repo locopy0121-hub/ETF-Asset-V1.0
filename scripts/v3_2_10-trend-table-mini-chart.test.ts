@@ -24,7 +24,8 @@ assert.ok(modal.indexOf('fixedColumn')<modal.indexOf('<ScrollView horizontal'),'
 
 const mini=read('src/components/MiniHoldingChart.tsx');
 for(const token of [
-  "const baseline=holding.previousClose>0",
+  "holding.intradayPreviousClose",
+  "holding.previousClose>0",
   "borderStyle:'dashed'",
   "width:'100%'",
   "backgroundColor:'transparent'",
