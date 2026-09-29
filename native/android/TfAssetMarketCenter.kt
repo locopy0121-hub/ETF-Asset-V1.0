@@ -9,6 +9,7 @@ import java.net.URLEncoder
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.ResolverStyle
@@ -147,6 +148,57 @@ internal class TfAssetMarketCenter(private val context:Context){
     return null
   }
 
+  private fun yahooIntraday(symbol:String,now:Long):JSONArray{
+    for((suffix,_) in listOf(".TW" to "TSE",".TWO" to "OTC")){
+      try{
+        val raw=fetchJson(YAHOO_URL+URLEncoder.encode(symbol+suffix,"UTF-8")+"?interval=1m&range=1d")
+        val result=JSONObject(raw).optJSONObject("chart")?.optJSONArray("result")?.optJSONObject(0)?:continue
+        val meta=result.optJSONObject("meta")
+        val previousClose=finitePositive(meta?.optString("chartPreviousClose","")?:"")
+          ?:finitePositive(meta?.optString("previousClose","")?:"")
+        val timestamps=result.optJSONArray("timestamp")?:continue
+        val quote=result.optJSONObject("indicators")?.optJSONArray("quote")?.optJSONObject(0)?:continue
+        val closes=quote.optJSONArray("close")?:continue
+        val points=JSONArray()
+        for(index in 0 until minOf(timestamps.length(),closes.length())){
+          if(closes.isNull(index))continue
+          val price=closes.optDouble(index,Double.NaN)
+          val at=timestamps.optLong(index,0L)*1000L
+          if(!price.isFinite()||price<=0.0||at<=0L||at>now+120_000L)continue
+          val local=Instant.ofEpochMilli(at).atZone(TAIPEI)
+          val minute=local.hour*60+local.minute
+          if(minute !in 540..810)continue
+          points.put(JSONObject().put("symbol",symbol).put("currentPrice",price)
+            .put("previousClose",previousClose?:JSONObject.NULL)
+            .put("sourceQuoteAt",at).put("quality","backup_realtime").put("source","YAHOO"))
+        }
+        if(points.length()>0)return points
+      }catch(_:Exception){ /* Try the other Taiwan market suffix. */ }
+    }
+    return JSONArray()
+  }
+
+  private fun backfillIntraday(symbols:List<String>,now:Long,errors:MutableList<String>){
+    val local=Instant.ofEpochMilli(now).atZone(TAIPEI)
+    if(local.dayOfWeek.value>=6)return
+    val minute=local.hour*60+local.minute
+    if(minute<540)return
+    val day=local.toLocalDate().toString()
+    val closeCoverageAt=local.toLocalDate().atTime(13,25).atZone(TAIPEI).toInstant().toEpochMilli()
+    for(symbol in symbols){
+      val coverage=db.intradayCoverage(symbol,day)
+      val staleDuringSession=minute<=810&&(coverage.count<2||coverage.lastAt<now-10*60_000L)
+      val incompleteAfterClose=minute>810&&(coverage.count<2||coverage.lastAt<closeCoverageAt)
+      if(!staleDuringSession&&!incompleteAfterClose)continue
+      try{
+        val points=yahooIntraday(symbol,now)
+        if(points.length()>0)db.mergeIntraday(points,now)
+      }catch(error:Exception){
+        errors.add("YAHOO_INTRADAY "+symbol+": "+(error.message?:"unknown"))
+      }
+    }
+  }
+
   private fun qualityRank(value:String)=when(value){
     "trade"->50
     "backup_realtime"->40
@@ -216,7 +268,7 @@ internal class TfAssetMarketCenter(private val context:Context){
         subscribe.inputStream.close()
       }finally{subscribe.disconnect()}
     }catch(_:Exception){ /* Static backend watches still allow cache reads. */ }
-    val url=base+"/v1/market/quotes?symbols="+URLEncoder.encode(symbols.joinToString(","),"UTF-8")
+    val url=base+"/v1/market/quotes?symbols="+URLEncoder.encode(symbols.joinToString(","),"UTF-8")+"&intraday=1"
     val raw=fetchJson(url)
     val result=JSONObject(raw)
     val rows=result.optJSONArray("quotes")?:JSONArray()
@@ -249,7 +301,33 @@ internal class TfAssetMarketCenter(private val context:Context){
       .put("mode","remote_backend")
       .put("degraded",result.optBoolean("degraded",false))
       .put("errors",result.optJSONArray("errors")?:JSONArray())
-    return local
+    result.optJSONObject("intraday")?.let{seriesBySymbol->
+      val points=JSONArray()
+      for(symbol in symbols){
+        val series=seriesBySymbol.optJSONObject(symbol)?:continue
+        val previousClose=series.optDouble("previousClose",Double.NaN)
+        val rows=series.optJSONArray("points")?:continue
+        for(i in 0 until rows.length()){
+          val point=rows.optJSONObject(i)?:continue
+          points.put(JSONObject(point.toString()).put("symbol",symbol)
+            .put("currentPrice",point.optDouble("price",Double.NaN))
+            .put("sourceQuoteAt",point.optLong("at",0L))
+            .put("previousClose",if(previousClose.isFinite()&&previousClose>0)previousClose else JSONObject.NULL))
+        }
+      }
+      if(points.length()>0)db.mergeIntraday(points,now)
+    }
+    val hydrated=db.snapshot(symbols)
+    hydrated.put("updatedCount",local.optInt("updatedCount",0))
+      .put("conflictCount",local.optInt("conflictCount",0))
+      .put("coveredCount",local.optInt("coveredCount",0))
+      .put("requestedCount",symbols.size).put("queriedAt",now)
+      .put("missing",local.optJSONArray("missing")?:JSONArray())
+      .put("backendVersion",result.optLong("version",0L))
+      .put("mode","remote_backend")
+      .put("degraded",result.optBoolean("degraded",false))
+      .put("errors",result.optJSONArray("errors")?:JSONArray())
+    return hydrated
   }
 
   fun refresh(requested:Collection<String>):JSONObject=synchronized(FETCH_LOCK){
@@ -329,6 +407,9 @@ internal class TfAssetMarketCenter(private val context:Context){
           qualityRank(candidate.optString("quality",""))>qualityRank(prior.optString("quality",""))))chosen[symbol]=candidate
     }
     val committed=db.upsertVerified(chosen.values.toList(),now)
+    // Backfill a missing morning/gap from 1-minute market history. This is only
+    // used in local-fallback mode; a configured backend remains the sole source.
+    backfillIntraday(symbols,now,errors)
     val state=db.snapshot(symbols)
     val available=(0 until state.getJSONArray("quotes").length()).mapNotNull{
       state.getJSONArray("quotes").optJSONObject(it)?.optString("symbol","")

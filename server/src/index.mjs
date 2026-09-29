@@ -14,7 +14,7 @@ const sources=new OfficialSources();
 const jobs=new MarketJobs({store,sources,
   staticSymbols:(process.env.MARKET_TRACKED_SYMBOLS??'').split(','),
   pollSeconds:process.env.MARKET_POLL_SECONDS});
-const server=http.createServer(makeApp({store,jobs}));
+const server=http.createServer(makeApp({store,jobs,sources}));
 const wss=new WebSocketServer({noServer:true,maxPayload:1024});
 const allSockets=new Set();
 server.on('upgrade',(request,socket,head)=>{

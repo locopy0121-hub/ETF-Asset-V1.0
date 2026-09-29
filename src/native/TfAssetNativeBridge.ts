@@ -12,6 +12,17 @@ export type NativeMonitorStatus=Readonly<{
   displaySymbol:string;
 }>;
 
+export type UnifiedMarketIntradayPoint=Readonly<{
+  at:number;price:number;
+  quality:'trade'|'backup_realtime';
+  source:'TWSE_MIS'|'YAHOO';
+}>;
+export type UnifiedMarketIntradaySeries=Readonly<{
+  date:string;
+  previousClose?:number|null;
+  points:readonly UnifiedMarketIntradayPoint[];
+}>;
+
 export type UnifiedMarketRow=Readonly<{
   symbol:string;name:string;currentPrice:number;previousClose:number|null;officialTradePrice:number|null;
   sourceQuoteAt:number;
@@ -22,6 +33,7 @@ export type UnifiedMarketRow=Readonly<{
 }>;
 export type UnifiedMarketSnapshot=Readonly<{
   version:number;quotes:UnifiedMarketRow[];
+  intraday?:Record<string,UnifiedMarketIntradaySeries>;
   updatedCount?:number;coveredCount?:number;requestedCount?:number;missing?:string[];
   errors?:string[];queriedAt?:number;conflictCount?:number;
 }>;

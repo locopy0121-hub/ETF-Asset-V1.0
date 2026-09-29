@@ -80,6 +80,13 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
   style:{backgroundColor:'#0C121B',backgroundProfitColor:false,textColor:'#FFFFFF',textProfitColor:false,secondaryTextColor:'#91A0B5',secondaryTextProfitColor:false,gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderProfitColor:false,borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
 };
 
+export type HoldingIntradayPoint=Readonly<{
+  at:number;
+  price:number;
+  quality:'trade'|'backup_realtime';
+  source:'TWSE_MIS'|'YAHOO';
+}>;
+
 export type HoldingQuote = {
   /** Only authoritative exchange/issuer metadata; never infer from a ticker or price. */
   etfType?: string | null;
@@ -108,6 +115,9 @@ export type HoldingQuote = {
   comprehensivePnl: number;
   pinned?: boolean;
   sparkline: number[];
+  intraday?:HoldingIntradayPoint[];
+  intradayDate?:string|null;
+  intradayPreviousClose?:number|null;
 };
 
 export type MarketNewsItem = {

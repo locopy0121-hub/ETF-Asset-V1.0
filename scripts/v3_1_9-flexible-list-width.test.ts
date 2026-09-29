@@ -29,7 +29,7 @@ assert.equal(gitBlobHash,'732a18dc3cb2e6cd1203f6f44741a334bfc3d225',
 
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.2.10');
-assert.equal(app.expo.android.versionCode,30210);
-assert.equal(app.expo.ios.buildNumber,'30210');
+assert.equal(pkg.version,'3.2.11');
+assert.equal(app.expo.android.versionCode,30211);
+assert.equal(app.expo.ios.buildNumber,'30211');
 console.log('V3.1.18 free fixed-column width: 72-240dp, 1dp step, direct input, drag slider, persisted preview: PASS');

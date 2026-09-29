@@ -14,7 +14,7 @@ import {
   useState,
 } from 'react';
 
-import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
+import { FALLBACK_QUOTES, type RuntimeIntradayPoint, type RuntimeQuote } from '../finance/financeSeed';
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwsePriceDecision, resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
 import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData,setNativeMarketBackendUrl} from '../native/TfAssetNativeBridge';
@@ -111,6 +111,25 @@ function taipeiClock(){
     return {weekend:d.getDay()===0||d.getDay()===6,minutes:d.getHours()*60+d.getMinutes()};
   }
 }
+function taipeiDateMinuteAt(at:number){
+  try{
+    const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(at));
+    const get=(type:string)=>parts.find(p=>p.type===type)?.value??'';
+    return {date:`${get('year')}-${get('month')}-${get('day')}`,minute:(Number(get('hour'))||0)*60+(Number(get('minute'))||0)};
+  }catch{
+    const shifted=new Date(at+8*60*60*1000);
+    return {date:shifted.toISOString().slice(0,10),minute:shifted.getUTCHours()*60+shifted.getUTCMinutes()};
+  }
+}
+function appendIntraday(old:RuntimeQuote|undefined,point:RuntimeIntradayPoint){
+  const local=taipeiDateMinuteAt(point.at);
+  if(local.minute<540||local.minute>810)return {date:old?.intradayDate??null,points:[...(old?.intraday??[])]};
+  const base=old?.intradayDate===local.date?[...(old.intraday??[])]:[];
+  const byAt=new Map(base.map(item=>[item.at,item]));
+  byAt.set(point.at,point);
+  return {date:local.date,points:[...byAt.values()].sort((a,b)=>a.at-b.at).slice(-4000)};
+}
+
 export function resolveMarketPhase(config:MarketUpdateConfig):MarketPhase{
   if(config.stopAll||!config.scheduleEnabled)return 'offline';
   const clock=taipeiClock();
@@ -221,6 +240,9 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     const currentPrice=decision.price;
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
+    const intraday=(decision.quality==='trade'||decision.quality==='backup_realtime')
+      ?appendIntraday(old,{at:sourceQuoteAt,price:currentPrice,quality:decision.quality,source:'TWSE_MIS'})
+      :{date:old?.intradayDate??null,points:[...(old?.intraday??[])]};
     return {
       symbol,
       name:String(row?.n??old?.name??symbol),
@@ -236,6 +258,11 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
       ...(old?.pinned==null?{}:{pinned:old.pinned}),
       sparkline:sparkline.length?sparkline:[currentPrice],
+      intraday:intraday.points,
+      intradayDate:intraday.date,
+      intradayPreviousClose:intraday.date===old?.intradayDate
+        ?(old?.intradayPreviousClose??previousClose)
+        :previousClose,
     };
   });
   return {quotes:next,updatedCount,usableCount,newestSourceAt,unresolved};

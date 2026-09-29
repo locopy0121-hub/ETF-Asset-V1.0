@@ -37,7 +37,7 @@ assert.match(nativeCenter,/bid.*bid_ask/s);
 assert.match(nativeCenter,/previous_close/);
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
-assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,2/);
+assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,4/,'V3.2.11 intraday schema stores the displayed session previous-close baseline without touching the Ledger');
 for(const token of ['backup_realtime','bid_ask','previous_close','official_trade_price','price_type','is_fallback'])
   assert.ok(nativeDb.includes(token),'native B schema missing '+token);
 
@@ -50,17 +50,17 @@ for(const token of ['行情中心價格型態','行情中心 Fallback','行情�
   assert.ok(panel.includes(token),'diagnostic provenance UI missing '+token);
 
 const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'3.2.10');
-assert.equal(app.expo.version,'3.2.10');
-assert.equal(app.expo.android.versionCode,30210);
-assert.equal(app.expo.ios.buildNumber,'30210');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.10'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.10'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30210'/);
+assert.equal(pkg.version,'3.2.11');
+assert.equal(app.expo.version,'3.2.11');
+assert.equal(app.expo.android.versionCode,30211);
+assert.equal(app.expo.ios.buildNumber,'30211');
+assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.11'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.11'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30211'/);
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'finance core missing: '+core);
 assert.doesNotMatch(nativeCenter,/canonicalLedger|actual_fee|actual_tax/);
 assert.doesNotMatch(serverParser,/canonicalLedger|actual_fee|actual_tax/);
 
-console.log('V3.2.10 A→B normalized market fallback / Yahoo failover / z-truth separation PASS');
+console.log('V3.2.11 A→B normalized market fallback / Yahoo failover / z-truth separation PASS');
