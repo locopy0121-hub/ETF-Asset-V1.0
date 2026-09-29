@@ -35,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TF-Asset-V3.2.4-Skill-Coverage
-          path: reports/V3.2.3-full-skill-matrix.json
+          path: reports/V3.2.4-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
 
@@ -233,7 +233,7 @@ jobs:
             TF-Asset-V3.2.4-QA.apk
             TF-Asset-V3.2.4-QA.sha256
             TF-Asset-V3.2.4-badging.txt
-            reports/V3.2.3-full-skill-matrix.json
+            reports/V3.2.4-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
 
