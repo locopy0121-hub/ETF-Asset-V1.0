@@ -28,8 +28,8 @@ includes(app,"const expectedPage=detail?'portfolio':active;","detail maintenance
 includes(app,"maintenance.session.page!==expectedPage||chartHolding","chart page remains isolated from detail maintenance");
 
 const config=JSON.parse(read('app.json'));
-assert.equal(config.expo.version,'3.2.6');
-assert.equal(config.expo.android.versionCode,30206);
+assert.equal(config.expo.version,'3.2.7');
+assert.equal(config.expo.android.versionCode,30207);
 assert.equal(config.expo.androidNavigationBar,undefined,'SDK 57 app schema must not use removed androidNavigationBar config');
 
 const workflow=read('.github/workflows/ci.yml');

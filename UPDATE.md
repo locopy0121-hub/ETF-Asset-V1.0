@@ -1,3 +1,14 @@
+# V3.2.7｜2026-09-29｜首頁總損益＋每日損益紀錄／統計
+
+- 資產總覽主卡在總資產下方新增「前一日損益＋今日損益＝總損益」，總損益可點擊進入每日紀錄。
+- 資產總覽卡片所有啟用損益色的背景、邊框、漸層、陰影、Glow 與文字，統一以「總損益」正／負／零作為 tone。
+- 今日損益不建立第二套帳務公式；以目前 Canonical totalPnl 減去「當日以前 Ledger + previousClose」重建的前一日 Canonical totalPnl。
+- 每日紀錄使用行情 sourceQuoteAt 判斷交易日，15:00 後完成 final 落盤；final 紀錄禁止後續即時行情回寫。
+- 新增每日統計：期間損益、平均每日、獲利／虧損／持平日數、最佳／最差單日、最近 20 筆趨勢與每日公式明細。
+- previousClose 不完整或行情未核實時不建立假紀錄，首頁顯示「損益待核對」。
+- Immutable Finance Core、Canonical Ledger、actual_fee、actual_tax 與 Math.floor 固化邏輯未修改。
+- App 3.2.7／Android 30207／iOS 30207。
+
 # V3.2.6｜2026-09-29｜行情 A→B 正規化與備援
 
 - 官方診斷真值維持 TWSE MIS z only；z 缺值不以其他欄位冒充官方實際成交價。

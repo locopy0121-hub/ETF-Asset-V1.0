@@ -6,6 +6,7 @@ import { NewsReaderModal } from '../components/NewsReaderModal';
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import {DashboardAssetOverview} from '../components/dashboard/DashboardAssetOverview';
+import {DailyPnlHistoryModal} from '../components/dashboard/DailyPnlHistoryModal';
 import {DashboardProfitAnalysis} from '../components/dashboard/DashboardProfitAnalysis';
 import {DashboardProfitDetail} from '../components/dashboard/DashboardProfitDetail';
 import {DashboardQuickActions} from '../components/dashboard/DashboardQuickActions';
@@ -27,6 +28,7 @@ import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, ty
 import {DEFAULT_DASHBOARD_LAYOUT} from '../domain/dashboardLayout';
 import type {MainPageKey} from '../domain/pageRegistry';
 import { useFinance } from '../finance/FinanceRuntime';
+import {useDailyPnlHistory} from '../finance/useDailyPnlHistory';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { useAiNewsRuntime, type AiNewsItem } from '../ai/AiNewsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
@@ -39,6 +41,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [selectedNews,setSelectedNews]=useState<AiNewsItem|null>(null);
+  const [pnlHistoryOpen,setPnlHistoryOpen]=useState(false);
   const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
   const maintenance=useMaintenance();
@@ -73,6 +76,16 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
+  const pnlHistory=useDailyPnlHistory({
+    hydrated:finance.hydrated,
+    initialCash:finance.initialCash,
+    entries:finance.entries,
+    rawQuotes:finance.quotes,
+    currentSnapshot:finance.snapshot,
+    valuationComplete,
+    marketDataVersion:market.marketDataVersion,
+  });
+  const currentPnl=pnlHistory.current;
   const dashboardLayout=effectiveDisplay.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
   const dashboardKpis=[
@@ -128,6 +141,11 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
                 complete={valuationComplete}
                 caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'}
                 layout={dashboardLayout.overview}
+                previousPnl={currentPnl?.previousTotalPnl??0}
+                todayPnl={currentPnl?.todayPnl??0}
+                totalPnl={portfolio.totalPnl}
+                pnlComplete={valuationComplete&&currentPnl!==null}
+                onPressTotalPnl={()=>setPnlHistoryOpen(true)}
               />
             </View>
           </FrameCard>
@@ -206,6 +224,8 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
       </View>
     </PageShell>
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
+    <DailyPnlHistoryModal visible={pnlHistoryOpen} onClose={()=>setPnlHistoryOpen(false)}
+      records={pnlHistory.records} stats={pnlHistory.stats}/>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
