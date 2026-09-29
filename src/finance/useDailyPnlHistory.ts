@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {fetchOfficialDailyHistoryRange} from '../market/twseDailyHistory';
 import type {CanonicalLedgerEntry,CanonicalLedgerSnapshot} from './canonicalLedger';
 import type {RuntimeQuote} from './financeSeed';
@@ -51,6 +51,7 @@ export function useDailyPnlHistory(input:{
   const [officialRebuiltAt,setOfficialRebuiltAt]=useState<number|null>(null);
   const [historyLoading,setHistoryLoading]=useState(false);
   const [historyError,setHistoryError]=useState<string|null>(null);
+  const officialAttemptRef=useRef<string|null>(null);
   const ledgerFingerprint=useMemo(()=>tradeFingerprint(input.entries),[input.entries]);
   const historyStartDate=useMemo(()=>firstTradeDate(input.entries),[input.entries]);
 
@@ -119,11 +120,13 @@ export function useDailyPnlHistory(input:{
     const first=firstTradeDate(input.entries);
     const symbols=tradeSymbols(input.entries);
     if(!first||symbols.length===0){
+      if(storedFingerprint===ledgerFingerprint&&officialRebuiltAt!==null)return;
+      const at=Date.now();
       setRecords([]);
       setStoredFingerprint(ledgerFingerprint);
-      setOfficialRebuiltAt(Date.now());
+      setOfficialRebuiltAt(at);
       setHistoryError(null);
-      persist([],ledgerFingerprint,Date.now());
+      persist([],ledgerFingerprint,at);
       return;
     }
 
@@ -132,17 +135,13 @@ export function useDailyPnlHistory(input:{
     const today=nowClock.date;
     const officialRows=records.filter(row=>row.basis==='official-history').sort((a,b)=>a.date.localeCompare(b.date));
     const latestOfficial=officialRows.length?officialRows[officialRows.length-1]!.date:null;
-    const rebuildClock=officialRebuiltAt===null?null:taipeiClock(officialRebuiltAt);
-    const attemptedToday=rebuildClock?.date===today;
     const afterClose=nowClock.hour>15||(nowClock.hour===15&&nowClock.minute>=0);
-    const attemptedAfterClose=!!rebuildClock&&attemptedToday&&
-      (rebuildClock.hour>15||(rebuildClock.hour===15&&rebuildClock.minute>=0));
-    // Same ledger + today's close is complete, or we already attempted the
-    // relevant phase today. This prevents repeated full-history fetch loops.
-    if(storedFingerprint===ledgerFingerprint&&(
-      latestOfficial===today||
-      (attemptedToday&&(!afterClose||attemptedAfterClose))
-    ))return;
+    const phaseKey=ledgerFingerprint+'|'+today+'|'+(afterClose?'after-close':'pre-close');
+    // Never refetch the full range for every quote tick. A new ledger, date,
+    // or transition into the post-close phase creates a new attempt key.
+    if(storedFingerprint===ledgerFingerprint&&latestOfficial===today)return;
+    if(officialAttemptRef.current===phaseKey)return;
+    officialAttemptRef.current=phaseKey;
 
     let alive=true;
     const controller=new AbortController();
@@ -181,7 +180,7 @@ export function useDailyPnlHistory(input:{
     };
     // records/live market ticks are intentionally excluded to avoid repeatedly
     // fetching all historical months while the home screen is open.
-  },[input.hydrated,storageHydrated,input.entries,input.initialCash,ledgerFingerprint,storedFingerprint,officialRebuiltAt]);
+  },[input.hydrated,storageHydrated,input.entries,input.initialCash,input.marketDataVersion,ledgerFingerprint,storedFingerprint,officialRebuiltAt]);
 
   const visibleRecords=useMemo(()=>{
     const base=storedFingerprint===ledgerFingerprint?records:[];
