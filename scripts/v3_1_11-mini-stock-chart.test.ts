@@ -5,10 +5,10 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
-assert.equal(app.expo.version,'3.2.10');
-assert.equal(app.expo.android.versionCode,30210);
-assert.equal(app.expo.ios.buildNumber,'30210');
-assert.equal(pkg.version,'3.2.10');
+assert.equal(app.expo.version,'3.2.11');
+assert.equal(app.expo.android.versionCode,30211);
+assert.equal(app.expo.ios.buildNumber,'30211');
+assert.equal(pkg.version,'3.2.11');
 
 const domain=read('src/domain/chartEditor.ts');
 assert.match(domain,/MARKET_CHART_DATA_OPTIONS/);
