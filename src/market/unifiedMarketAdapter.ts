@@ -1,7 +1,11 @@
 import type {RuntimeQuote} from '../finance/financeSeed';
 import type {UnifiedMarketRow,UnifiedMarketSnapshot} from '../native/TfAssetNativeBridge';
 
-export type QuoteProvenance='trade'|'official_close';
+export type QuoteProvenance='trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
+const QUALITIES=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
+const SOURCES=new Set(['TWSE_MIS','YAHOO','TWSE_DAILY','TPEX_DAILY']);
+const PRICE_TYPES=new Set(['REALTIME_TRADE','BACKUP_REALTIME','BID_ASK','PREV_CLOSE','OFFICIAL_CLOSE']);
+
 export function isTrustedMarketRow(value:unknown,now=Date.now()):value is UnifiedMarketRow{
   if(!value||typeof value!=='object')return false;
   const row=value as Partial<UnifiedMarketRow>;
@@ -9,12 +13,16 @@ export function isTrustedMarketRow(value:unknown,now=Date.now()):value is Unifie
     &&typeof row.currentPrice==='number'&&Number.isFinite(row.currentPrice)&&row.currentPrice>0
     &&typeof row.sourceQuoteAt==='number'&&Number.isFinite(row.sourceQuoteAt)
     &&row.sourceQuoteAt>0&&row.sourceQuoteAt<=now+120_000
-    &&(row.quality==='trade'||row.quality==='official_close')
-    &&(row.source==='TWSE_MIS'||row.source==='TWSE_DAILY'||row.source==='TPEX_DAILY')
+    &&typeof row.quality==='string'&&QUALITIES.has(row.quality)
+    &&typeof row.source==='string'&&SOURCES.has(row.source)
+    &&typeof row.priceType==='string'&&PRICE_TYPES.has(row.priceType)
+    &&typeof row.isFallback==='boolean'
+    &&typeof row.market==='string'&&['TSE','OTC','UNKNOWN'].includes(row.market)
+    &&typeof row.statusMessage==='string'
     &&typeof row.checkedAt==='number';
 }
 
-/** No demo seeds or Ledger prices may enter this verified official quote feed. */
+/** No demo seeds or Ledger prices may enter this verified normalized quote feed. */
 export function marketRowsToRuntimeQuotes(
   snapshot:UnifiedMarketSnapshot,previous:readonly RuntimeQuote[]=[],now=Date.now(),
 ):RuntimeQuote[]{
@@ -25,14 +33,18 @@ export function marketRowsToRuntimeQuotes(
     const prev=typeof row.previousClose==='number'&&Number.isFinite(row.previousClose)&&row.previousClose>0
       ?row.previousClose
       :old?.previousClose&&old.previousClose>0?old.previousClose:row.currentPrice;
-    const unchanged=old?.sourceQuoteAt===row.sourceQuoteAt&&old.currentPrice===row.currentPrice;
+    const unchanged=old?.sourceQuoteAt===row.sourceQuoteAt&&old.currentPrice===row.currentPrice
+      &&old.priceType===row.priceType;
     const sparkline=unchanged?old.sparkline:
       [...(old?.sparkline??[]),row.currentPrice].filter(price=>price>0).slice(-30);
     return {
       symbol:row.symbol,name:row.name||old?.name||row.symbol,
       currentPrice:row.currentPrice,previousClose:prev,
+      officialTradePrice:row.officialTradePrice,
       sourceQuoteAt:row.sourceQuoteAt,
-      quality:row.quality,source:row.source,checkedAt:row.checkedAt,
+      quality:row.quality,source:row.source,priceType:row.priceType,
+      isFallback:row.isFallback,market:row.market,statusMessage:row.statusMessage,
+      checkedAt:row.checkedAt,
       previousCloseKnown:row.previousClose!==null||(old?.previousCloseKnown===true),
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',

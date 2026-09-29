@@ -15,7 +15,7 @@ import {
 } from 'react';
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
-import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
+import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwsePriceDecision, resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
 import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData,setNativeMarketBackendUrl} from '../native/TfAssetNativeBridge';
 import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
@@ -216,7 +216,9 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
     if(!isNewSourceTick(sourceQuoteAt,old?.sourceQuoteAt))return old!;
     updatedCount+=1;
     newestSourceAt=Math.max(newestSourceAt??0,sourceQuoteAt);
-    const currentPrice=resolveTwseCurrentPrice(row);
+    const decision=resolveTwsePriceDecision(row);
+    if(!decision)return old!;
+    const currentPrice=decision.price;
     const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
     const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
     return {
@@ -225,6 +227,10 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       currentPrice,
       previousClose,
       sourceQuoteAt,
+      quality:decision.quality,source:'TWSE_MIS',priceType:decision.priceType,
+      isFallback:decision.isFallback,officialTradePrice:decision.officialTradePrice,
+      market:String(row?.ex??'').toLowerCase()==='otc'?'OTC':String(row?.ex??'').toLowerCase()==='tse'?'TSE':'UNKNOWN',
+      statusMessage:decision.statusMessage,checkedAt:now,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
       dividendFrequency:old?.dividendFrequency??4,
       ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
