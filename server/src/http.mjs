@@ -7,7 +7,34 @@ const parseSymbols=(value,limit=32)=>{
   if(items.length>limit||items.some(s=>!VALID_SYMBOL.test(s)))return null;
   return [...new Set(items)];
 };
-export function makeApp({store,jobs}){
+const mergeIntraday=(stored={},fallback={})=>{
+  const symbols=new Set([...Object.keys(fallback),...Object.keys(stored)]);
+  const output={};
+  for(const symbol of symbols){
+    const candidates=[fallback[symbol],stored[symbol]].filter(Boolean);
+    if(!candidates.length)continue;
+    const date=candidates.map(series=>series.date).filter(Boolean).sort().at(-1);
+    if(!date)continue;
+    const byMinute=new Map();
+    for(const series of candidates){
+      if(series.date!==date||!Array.isArray(series.points))continue;
+      for(const point of series.points){
+        const at=Number(point.at),price=Number(point.price);
+        if(!Number.isFinite(at)||!Number.isFinite(price)||price<=0)continue;
+        const key=Math.floor(at/60_000);
+        const old=byMinute.get(key);
+        const rank=point.quality==='trade'?2:1;
+        const oldRank=old?.quality==='trade'?2:old?1:0;
+        if(!old||rank>oldRank||at>old.at)byMinute.set(key,{at,price,quality:point.quality,source:point.source});
+      }
+    }
+    const points=[...byMinute.values()].sort((a,b)=>a.at-b.at);
+    if(points.length)output[symbol]={date,points};
+  }
+  return output;
+};
+
+export function makeApp({store,jobs,sources}){
   const app=express();
   app.disable('x-powered-by');
   app.use(express.json({limit:'4kb'}));
@@ -33,7 +60,14 @@ export function makeApp({store,jobs}){
     try{
       const state=await store.snapshot(symbols);
       const includeIntraday=req.query.intraday==='1';
-      const intraday=includeIntraday?await store.intraday(symbols):undefined;
+      let intraday;
+      if(includeIntraday){
+        const [stored,fallback]=await Promise.all([
+          store.intraday(symbols),
+          sources?.intraday? sources.intraday(symbols):Promise.resolve({}),
+        ]);
+        intraday=mergeIntraday(stored,fallback);
+      }
       res.set('Cache-Control','no-store').json({...state,...(includeIntraday?{intraday}:{}),serverAt:Date.now()});
     }catch(error){res.status(503).json({error:'market_store_unavailable'});}
   });
