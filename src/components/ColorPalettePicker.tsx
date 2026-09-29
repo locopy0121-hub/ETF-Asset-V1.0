@@ -72,8 +72,8 @@ export function ColorPalettePicker({
   label:string;
   value:string;
   onChange:(value:string)=>void;
-  opacity?:number;
-  onOpacityChange?:(value:number)=>void;
+  opacity?:number|undefined;
+  onOpacityChange?:((value:number)=>void)|undefined;
   profitColorEnabled?:boolean;
   onProfitColorChange?:(value:boolean)=>void;
 }){
