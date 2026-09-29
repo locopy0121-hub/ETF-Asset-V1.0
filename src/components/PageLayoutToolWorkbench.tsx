@@ -326,7 +326,7 @@ export function PageLayoutToolWorkbench({
   </View>;
 }
 
-function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number};open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
   const basePadding=frame.padding??(frame.layout==='compact'?12:frame.layout==='dense'?10:16);
   const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
   const actualWidth=Math.round(frame.width??measured?.width??320);
@@ -535,7 +535,7 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
   </View>;
 }
 
-function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number;actualHeight?:number;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
+function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number|undefined;actualHeight?:number|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
   const card=kind==='card';
   const effectiveWidth=Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4));
   const effectiveHeight=Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35));
