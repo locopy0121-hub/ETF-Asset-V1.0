@@ -36,21 +36,21 @@ export function DashboardAssetOverview({
   const cardShadow=linkedColor(card.shadowColor,card.shadowProfitColor,totalTone,colorPrefs);
   const cardGlow=linkedColor(card.glowColor,card.glowProfitColor,totalTone,colorPrefs);
 
-  const pnlSummary=pnlComplete?<View style={styles.pnlRow} accessibilityLabel={`前一日損益 ${signedMoney(previousPnl)}，今日損益 ${signedMoney(todayPnl)}，總損益 ${signedMoney(totalPnl)}`}>
+  const pnlSummary=pnlComplete?<View style={styles.pnlRow} accessibilityLabel={`前日總損益 ${signedMoney(previousPnl)}，今日市值變動 ${signedMoney(todayPnl)}，總損益 ${signedMoney(totalPnl)}`}>
     <View style={styles.pnlCell}>
       <DashboardEditableText id="overview-previous-pnl-label" label="前一日損益標題" frame={maintenance}
         style={styles.pnlLabel}>前一日損益</DashboardEditableText>
-      <DashboardEditableText id="overview-previous-pnl" label="前一日損益" frame={maintenance} kind="value" tone={previousTone}
+      <DashboardEditableText id="overview-previous-pnl" label="前日總損益" frame={maintenance} kind="value" tone={previousTone}
         numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.pnlValue}>{signedMoney(previousPnl)}</DashboardEditableText>
     </View>
-    <Text style={styles.operator}>＋</Text>
+    <Text style={styles.operator}>│</Text>
     <View style={styles.pnlCell}>
       <DashboardEditableText id="overview-today-pnl-label" label="今日損益標題" frame={maintenance}
         style={styles.pnlLabel}>今日損益</DashboardEditableText>
-      <DashboardEditableText id="overview-today-pnl" label="今日損益" frame={maintenance} kind="value" tone={todayTone}
+      <DashboardEditableText id="overview-today-pnl" label="今日市值變動" frame={maintenance} kind="value" tone={todayTone}
         numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.pnlValue}>{signedMoney(todayPnl)}</DashboardEditableText>
     </View>
-    <Text style={styles.operator}>＝</Text>
+    <Text style={styles.operator}>│</Text>
     <Pressable disabled={runtime.active||!onPressTotalPnl}
       accessibilityRole="button" accessibilityLabel={`查看每日損益紀錄，總損益 ${signedMoney(totalPnl)}`}
       onPress={onPressTotalPnl?(event=>{event.stopPropagation();onPressTotalPnl();}):undefined}

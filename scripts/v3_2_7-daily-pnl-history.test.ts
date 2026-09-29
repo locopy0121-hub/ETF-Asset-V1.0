@@ -22,11 +22,15 @@ assert.ok(row);
 assert.equal(row?.date,'2026-09-29');
 assert.equal(row?.final,true);
 assert.equal(row?.totalPnl,current.portfolio.totalPnl);
-assert.equal(row?.todayPnl,(row?.totalPnl??0)-(row?.previousTotalPnl??0));
-assert.equal((row?.previousTotalPnl??0)+(row?.todayPnl??0),row?.totalPnl);
+assert.equal(row?.todayPnl,(row?.totalMarketValue??0)-(row?.previousMarketValue??0),'daily PnL must be market-value delta when there is no trade flow');
+assert.equal(
+  (row?.previousTotalPnl??0)+(row?.todayPnl??0)+(row?.accountingAdjustment??0),
+  row?.totalPnl,
+  'accounting bridge must reconcile market PnL to canonical total PnL',
+);
 
 const frozen=upsertDailyPnlRecord([row!],{...row!,totalPnl:row!.totalPnl+999,todayPnl:row!.todayPnl+999});
-assert.equal(frozen[0]?.totalPnl,row?.totalPnl,'final daily record must never be rewritten');
+assert.equal(frozen[0]?.totalPnl,row?.totalPnl,'final daily record must never be rewritten by another live estimate');
 const stats=summarizeDailyPnl([
   {...row!,date:'2026-09-28',todayPnl:-20,final:true},
   {...row!,date:'2026-09-29',todayPnl:30,final:true},
@@ -38,10 +42,12 @@ assert.equal(stats.best?.todayPnl,30);
 assert.equal(stats.worst?.todayPnl,-20);
 
 const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
-assert.match(overview,/前一日損益/);
-assert.match(overview,/今日損益/);
+assert.match(overview,/前日總損益/);
+assert.match(overview,/今日市值變動/);
 assert.match(overview,/總損益/);
 assert.match(overview,/onPressTotalPnl/);
+assert.doesNotMatch(overview,/>＋<\/Text>/,'dashboard must not claim market-value delta is a simple accounting addition');
+assert.doesNotMatch(overview,/>＝<\/Text>/,'dashboard must not claim market-value delta directly equals total PnL');
 assert.match(overview,/linkedColor\(card\.backgroundColor,card\.backgroundProfitColor,totalTone/);
 const home=read('src/screens/HomeScreen.tsx');
 assert.match(home,/useDailyPnlHistory/);
@@ -49,15 +55,15 @@ assert.match(home,/DailyPnlHistoryModal/);
 assert.match(home,/onPressTotalPnl=\{\(\)=>setPnlHistoryOpen\(true\)\}/);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.8');
-assert.equal(app.expo.version,'3.2.8');
-assert.equal(app.expo.android.versionCode,30208);
-assert.equal(app.expo.ios.buildNumber,'30208');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.8'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.8'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30208'/);
+assert.equal(pkg.version,'3.2.9');
+assert.equal(app.expo.version,'3.2.9');
+assert.equal(app.expo.android.versionCode,30209);
+assert.equal(app.expo.ios.buildNumber,'30209');
+assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.9'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.9'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30209'/);
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'immutable finance core missing: '+core);
 
-console.log('V3.2.8 dashboard total PnL + daily immutable history + statistics PASS');
+console.log('V3.2.9 daily market-value PnL bridge regression PASS');
