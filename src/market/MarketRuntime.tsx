@@ -89,6 +89,8 @@ const EMPTY_PERSISTED_QUOTES:RuntimeQuote[]=[];
 
 
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
+const sameStrings=(a:readonly string[],b:readonly string[])=>
+  a.length===b.length&&a.every((value,index)=>value===b[index]);
 const hhmm=(value:string)=>{
   const parts=String(value||'00:00').split(':').map(Number);
   const h=parts[0]??0;
@@ -396,7 +398,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
               const state=await refreshUnifiedMarketData(symbolsRef.current);
               const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
               const currentVersion=marketVersionRef.current;
-              setMissingSymbols(Array.isArray(state.missing)?state.missing:[]);
+              const nextMissing=Array.isArray(state.missing)?state.missing:[];
+              setMissingSymbols(current=>sameStrings(current,nextMissing)?current:nextMissing);
               if(state.version>currentVersion){
                 quotesRef.current=next;
                 setQuotes(next);
