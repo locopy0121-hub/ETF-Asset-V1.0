@@ -25,12 +25,12 @@ export function HoldingQuoteTicker({rows,config}:{rows:readonly HoldingQuote[];c
   },[position,config.enabled,config.direction,config.speed,viewportWidth,contentWidth]);
   if(!config.enabled||rows.length===0)return null;
   const cells=rows.slice(0,40).map(row=>quoteTickerCell(row,config));
-  return <View style={[styles.viewport,{backgroundColor:colorWithAlpha(config.backgroundColor,config.backgroundOpacity)}]}
+  return <View style={[styles.viewport,{backgroundColor:colorWithAlpha(config.backgroundColor,config.backgroundOpacity??1)}]}
     onLayout={e=>setViewportWidth(e.nativeEvent.layout.width)} accessible accessibilityLabel={cells.join('；')}>
     <Animated.View onLayout={e=>setContentWidth(e.nativeEvent.layout.width)}
       style={[styles.track,{gap:config.itemGap,transform:[{translateX:position}]}]}>
       {cells.map((cell,index)=><Text key={rows[index]!.symbol+'-'+index} numberOfLines={1}
-        style={[styles.cell,{color:colorWithAlpha(config.textColor,config.textOpacity)}]}>{cell}</Text>)}
+        style={[styles.cell,{color:colorWithAlpha(config.textColor,config.textOpacity??1)}]}>{cell}</Text>)}
     </Animated.View>
   </View>;
 }
