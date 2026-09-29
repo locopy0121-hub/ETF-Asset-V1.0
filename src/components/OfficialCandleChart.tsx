@@ -1,4 +1,4 @@
-import {useMemo,useState} from 'react';
+import {useMemo,useRef,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import type {DailyCandle} from '../market/twseDailyHistory';
 import type {ChartDataKey,NativeChartStyle} from '../domain/chartEditor';
@@ -47,7 +47,7 @@ export function OfficialCandleChart({
 }){
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
   const [crosshairEnabled,setCrosshairEnabled]=useState(crosshairDefault);
-  const [scrollX,setScrollX]=useState(0);
+  const scrollX=useRef(0);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
   const showVolume=dataKeys.includes('volume')||chartStyle==='price-volume';
   const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low');
@@ -82,7 +82,7 @@ export function OfficialCandleChart({
   const y=(value:number)=>(axisHigh-value)/span*PLOT_HEIGHT;
   const fullWidth=LEFT_PAD+ordered.length*STEP+4;
   const chooseAt=(touchX:number)=>{
-    const index=candleIndexAtX(touchX,scrollX,ordered.length,STEP,LEFT_PAD);
+    const index=candleIndexAtX(touchX,scrollX.current,ordered.length,STEP,LEFT_PAD);
     if(index>=0)setSelectedDate(ordered[index]!.date);
   };
   const selectedIdx=selected?ordered.findIndex(x=>x.date===selected.date):-1;
@@ -129,7 +129,7 @@ export function OfficialCandleChart({
     <View style={styles.plotRow}>
       <View style={styles.viewport}>
         <ScrollView horizontal scrollEnabled={!crosshairEnabled} showsHorizontalScrollIndicator
-          scrollEventThrottle={16} onScroll={event=>setScrollX(event.nativeEvent.contentOffset.x)}
+          scrollEventThrottle={32} onScroll={event=>{scrollX.current=event.nativeEvent.contentOffset.x;}}
           contentContainerStyle={[styles.scroll,{width:fullWidth}]}>
           {ordered.map((candle,index)=>{
             const positive=candle.close>=candle.open;
