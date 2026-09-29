@@ -40,6 +40,14 @@ const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullabl
   }
 };
 
+const holdingDisplayName=(symbol:string,catalogName:string|undefined,ledgerName:string|undefined,feedName:string|undefined)=>{
+  const candidates=[catalogName,ledgerName,feedName]
+    .map(value=>value?.trim())
+    .filter((value):value is string=>Boolean(value&&value!==symbol));
+  return candidates[0]??symbol;
+};
+
+
 type PersistedFinanceState = {
   schema: number;
   initialCash: number;
@@ -141,12 +149,12 @@ export function FinanceProvider({children}:PropsWithChildren){
     const valuationQuote=marketValuationQuoteFor(market.quotes,summary.etfCode);
     const intraday=marketIntradaySeriesFor(market.quotes,summary.etfCode);
     const verified=Boolean(valuationQuote);
-    const name=market.catalog.find(item=>item.symbol===summary.etfCode)?.name;
+    const catalogName=market.catalog.find(item=>item.symbol===summary.etfCode)?.name;
     const previousClose=valuationQuote?.previousClose&&valuationQuote.previousClose>0?
       valuationQuote.previousClose:summary.currentPrice;
     return {
       symbol:summary.etfCode,
-      name:(quote&&quote.name!==summary.etfCode?quote.name:name??summary.name),
+      name:holdingDisplayName(summary.etfCode,catalogName,summary.name,quote?.name),
       quoteVerified:verified,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
