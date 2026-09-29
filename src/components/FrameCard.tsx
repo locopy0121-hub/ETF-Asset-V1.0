@@ -116,8 +116,8 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     responsiveDensity==='dense'&&layout!=='dense'&&styles.titleDense,
     editorStyle&&{
       fontSize:editorStyle.titleFontSize,
-      color:linkedColor(editorStyle.titleColor??theme.palette.text,
-        editorStyle.titleProfitColor,'neutral',systemColors),
+      color:colorWithAlpha(linkedColor(editorStyle.titleColor??theme.palette.text,
+        editorStyle.titleProfitColor,'neutral',systemColors),editorStyle.titleOpacity??1),
       textAlign:editorStyle.titleAlign,
     },
   ];
@@ -184,7 +184,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     appearance==='outline'&&[styles.cardOutline,{borderWidth:2,borderColor:theme.palette.primary}],
     editorStyle&&{
       backgroundColor:gradientOn?'transparent':colorWithAlpha(bg,alpha),
-      borderColor:frameBorder,borderWidth:editorStyle.borderWidth,
+      borderColor:colorWithAlpha(frameBorder,editorStyle.borderOpacity??1),borderWidth:editorStyle.borderWidth,
       borderRadius:editorStyle.borderRadius,...corners,
       borderStyle:fx.borderStyle,
       ...(fx.borderTop>=0?{borderTopWidth:fx.borderTop}:{}),
