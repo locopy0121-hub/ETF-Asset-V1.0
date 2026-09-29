@@ -105,10 +105,10 @@ for(const token of ['前日持股市值','帳務調整','證券中心正式日�
   assert.ok(modal.includes(token),'daily history UI missing '+token);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.9');
-assert.equal(app.expo.version,'3.2.9');
-assert.equal(app.expo.android.versionCode,30209);
-assert.equal(app.expo.ios.buildNumber,'30209');
+assert.equal(pkg.version,'3.2.10');
+assert.equal(app.expo.version,'3.2.10');
+assert.equal(app.expo.android.versionCode,30210);
+assert.equal(app.expo.ios.buildNumber,'30210');
 assert.equal(pkg.scripts['test:v3_2_9'],'npm run test:v3_2_8 && tsx scripts/v3_2_9-official-daily-rebuild.test.ts');
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
