@@ -22,7 +22,8 @@ export type TargetAppearance=Readonly<{
   thresholdEnabled:boolean;thresholdValue:number;thresholdOperator:'gte'|'lte'; // presentation only
   borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   // V3.0.11: independent visual effects on native component instances, never ledger values.
-  backgroundMode:'solid'|'gradient';gradientDirection:'horizontal'|'vertical';
+  backgroundMode:'solid'|'gradient'|'image';gradientDirection:'horizontal'|'vertical';
+  imageSource:'builtIn'|'custom';imageIndex:number;imageUri:string|null;imageFit:'cover'|'contain'|'stretch';imageOpacity:number;imageFocusX:number;imageFocusY:number;
   gradientEndColor:string;gradientEndOpacity:number;gradientMidColor:string;gradientMidOpacity:number;gradientEndProfitColor:boolean;gradientMidProfitColor:boolean;
   gradientMidEnabled:boolean;gradientMidStop:number;
   borderStyle:'solid'|'dashed'|'dotted';marginVertical:number;marginHorizontal:number;
@@ -54,6 +55,7 @@ export const TARGET_APPEARANCE:TargetAppearance={
   visible:true,fontSize:17,labelFontSize:11,captionFontSize:10,textColor:'#0F172A',textOpacity:1,labelColor:'#64748B',labelOpacity:1,captionColor:'#64748B',captionOpacity:1,
   backgroundColor:'#F4ECFF',borderColor:'#DDD1EF',borderOpacity:1,borderWidth:0,borderRadius:12,padding:10,
   opacity:1,backgroundOpacity:1,backgroundMode:'solid',gradientDirection:'vertical',
+  imageSource:'builtIn',imageIndex:0,imageUri:null,imageFit:'cover',imageOpacity:1,imageFocusX:.5,imageFocusY:.5,
   gradientEndColor:'#EDE9FE',gradientEndOpacity:1,gradientMidColor:'#C4B5FD',gradientMidOpacity:1,gradientEndProfitColor:false,
   gradientMidProfitColor:false,gradientMidEnabled:false,gradientMidStop:.5,
   borderStyle:'solid',marginVertical:0,marginHorizontal:0,
@@ -71,7 +73,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
   for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['textOpacity',0,1],['labelOpacity',0,1],['captionOpacity',0,1],['backgroundOpacity',0,1],['borderOpacity',0,1],['gradientEndOpacity',0,1],['gradientMidOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-24,24],['prefixOffsetY',-8,8],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
-    ['gradientMidStop',.1,.9],['marginVertical',0,32],['marginHorizontal',0,32],
+    ['gradientMidStop',.1,.9],['imageIndex',0,9],['imageOpacity',0,1],['imageFocusX',0,1],['imageFocusY',0,1],['marginVertical',0,32],['marginHorizontal',0,32],
     ['shadowOpacity',0,.8],['shadowBlur',0,48],['shadowOffsetX',-24,24],['shadowOffsetY',-24,24],
     ['glowOpacity',0,.8],['glowWidth',0,16],['thresholdValue',-1000000000000,1000000000000]] as const){
     if(typeof v[field]==='number'&&Number.isFinite(v[field]))o[field]=clamp(v[field],min,max,min);
@@ -89,7 +91,11 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(['system','sans-serif','sans-serif-condensed','serif','monospace'].includes(String(v.fontFamily)))o.fontFamily=v.fontFamily;
   if(v.textDecorationLine==='none'||v.textDecorationLine==='underline'||v.textDecorationLine==='line-through'||v.textDecorationLine==='underline line-through')o.textDecorationLine=v.textDecorationLine;
   if(v.align==='left'||v.align==='right'||v.align==='center')o.align=v.align;
-  if(v.backgroundMode==='solid'||v.backgroundMode==='gradient')o.backgroundMode=v.backgroundMode;
+  if(v.backgroundMode==='solid'||v.backgroundMode==='gradient'||v.backgroundMode==='image')o.backgroundMode=v.backgroundMode;
+  if(v.imageSource==='builtIn'||v.imageSource==='custom')o.imageSource=v.imageSource;
+  if(v.imageFit==='cover'||v.imageFit==='contain'||v.imageFit==='stretch')o.imageFit=v.imageFit;
+  if(v.imageUri===null)o.imageUri=null;
+  else if(typeof v.imageUri==='string'&&/^(?:content|file|ph|assets-library):\/\/[^\s]{1,4096}$/.test(v.imageUri))o.imageUri=v.imageUri;
   if(v.gradientDirection==='horizontal'||v.gradientDirection==='vertical')o.gradientDirection=v.gradientDirection;
   if(v.borderStyle==='solid'||v.borderStyle==='dashed'||v.borderStyle==='dotted')o.borderStyle=v.borderStyle;
   if(v.anchorX==='free'||v.anchorX==='left'||v.anchorX==='center'||v.anchorX==='right')o.anchorX=v.anchorX;
@@ -122,7 +128,7 @@ export const VISUAL_TARGET_KEYS:readonly (keyof TargetAppearance)[]=[
   'padding','opacity','backgroundOpacity','fontWeight','fontFamily','fontStyle','textDecorationLine',
   'labelFontWeight','captionFontWeight','labelFontStyle','captionFontStyle',
   'labelLetterSpacing','captionLetterSpacing','labelLineHeight','captionLineHeight',
-  'letterSpacing','lineHeight','align','useProfitColor','backgroundMode','gradientDirection',
+  'letterSpacing','lineHeight','align','useProfitColor','backgroundMode','imageSource','imageIndex','imageUri','imageFit','imageOpacity','imageFocusX','imageFocusY','gradientDirection',
   'gradientEndColor','gradientEndOpacity','gradientMidColor','gradientMidOpacity','gradientEndProfitColor','gradientMidProfitColor',
   'gradientMidEnabled','gradientMidStop','borderStyle','marginVertical','marginHorizontal',
   'shadowEnabled','shadowColor','shadowProfitColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
