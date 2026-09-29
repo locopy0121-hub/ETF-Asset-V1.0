@@ -81,7 +81,7 @@ export function HoldingQuoteModule({
         <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>
       </Pressable>:
       <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>):null}
-    <Pressable onPress={layoutEditMode?()=>onLayoutSelect?.('card','行情卡片'):onPress} accessibilityRole="button" accessibilityLabel={layoutEditMode?'選取行情卡片':'查看持股 '+item.symbol} style={styles.bodyPress}>
+    <Pressable onPress={layoutEditMode?(event)=>{event.stopPropagation();onLayoutSelect?.('card','行情卡片');}:onPress} accessibilityRole="button" accessibilityLabel={layoutEditMode?'選取行情卡片':'查看持股 '+item.symbol} style={styles.bodyPress}>
     <View style={[styles.body,{padding:micro?Math.min(8,cardStyle.padding):cardStyle.padding,
       gap:micro?Math.min(5,cardStyle.rowGap):cardStyle.rowGap}]}>
       {cfg.header.visible&&(groups.header.length>0||badgeConfig.order.some(key=>badgeConfig.badges[key].enabled))?<EffectView effect={cfg.header.effect} numeric={changePct} refreshToken={refreshToken}>
