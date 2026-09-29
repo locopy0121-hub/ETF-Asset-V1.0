@@ -127,8 +127,8 @@ export type HoldingQuote = {
   realizedPnl: number;
   comprehensivePnl: number;
   pinned?: boolean;
-  sparkline: number[];
-  intraday?:HoldingIntradayPoint[];
+  sparkline: readonly number[];
+  intraday?:readonly HoldingIntradayPoint[];
   intradayDate?:string|null;
   intradayPreviousClose?:number|null;
 };
