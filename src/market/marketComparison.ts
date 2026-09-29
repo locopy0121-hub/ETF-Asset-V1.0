@@ -22,12 +22,16 @@ export function sameMarketPrice(left:number|null|undefined,right:number|null|und
   return diff!==null&&Math.abs(diff)<=epsilon;
 }
 
-export function marketSourceField(quote:Pick<RuntimeQuote,'source'|'quality'>|undefined){
+export function marketSourceField(quote:Pick<RuntimeQuote,'source'|'quality'|'priceType'|'isFallback'>|undefined){
   if(!quote)return '尚無';
-  if(quote.source==='TWSE_MIS'&&quote.quality==='trade')return 'z｜實際成交價';
+  if(quote.source==='TWSE_MIS'&&(quote.priceType==='REALTIME_TRADE'||(!quote.priceType&&quote.quality==='trade')))return 'z｜實際成交價';
+  if(quote.source==='TWSE_MIS'&&quote.priceType==='BACKUP_REALTIME')return 'pz｜最近成交參考（Fallback）';
+  if(quote.source==='TWSE_MIS'&&quote.priceType==='BID_ASK')return 'b/a｜委託簿參考（Fallback）';
+  if(quote.source==='TWSE_MIS'&&quote.priceType==='PREV_CLOSE')return 'y｜昨收（Fallback）';
+  if(quote.source==='YAHOO')return 'Yahoo｜備援行情（Fallback）';
   if(quote.source==='TWSE_DAILY'&&quote.quality==='official_close')return 'ClosingPrice｜官方收盤';
   if(quote.source==='TPEX_DAILY'&&quote.quality==='official_close')return 'Close｜官方收盤';
-  return (quote.source??'未知來源')+'｜'+(quote.quality??'未知品質');
+  return (quote.source??'未知來源')+'｜'+(quote.priceType??quote.quality??'未知品質');
 }
 
 export function diagnoseMarketComparison(input:{

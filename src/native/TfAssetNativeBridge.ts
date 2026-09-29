@@ -13,8 +13,12 @@ export type NativeMonitorStatus=Readonly<{
 }>;
 
 export type UnifiedMarketRow=Readonly<{
-  symbol:string;name:string;currentPrice:number;previousClose:number|null;
-  sourceQuoteAt:number;quality:'trade'|'official_close';source:'TWSE_MIS'|'TWSE_DAILY'|'TPEX_DAILY';checkedAt:number;
+  symbol:string;name:string;currentPrice:number;previousClose:number|null;officialTradePrice:number|null;
+  sourceQuoteAt:number;
+  quality:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
+  source:'TWSE_MIS'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
+  priceType:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
+  isFallback:boolean;market:'TSE'|'OTC'|'UNKNOWN';statusMessage:string;checkedAt:number;
 }>;
 export type UnifiedMarketSnapshot=Readonly<{
   version:number;quotes:UnifiedMarketRow[];

@@ -4,9 +4,14 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   previousClose: number;
   /** Timestamp from the exchange feed; never the HTTP receipt time. */
   sourceQuoteAt?:number|null;
-  quality?:'trade'|'official_close';
+  quality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
   previousCloseKnown?:boolean;
-  source?:'TWSE_MIS'|'TWSE_DAILY'|'TPEX_DAILY';
+  source?:'TWSE_MIS'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
+  priceType?:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
+  isFallback?:boolean;
+  officialTradePrice?:number|null;
+  market?:'TSE'|'OTC'|'UNKNOWN';
+  statusMessage?:string;
   checkedAt?:number;
   marketDataVersion?:number;
   sparkline: readonly number[];

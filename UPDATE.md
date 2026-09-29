@@ -1,3 +1,13 @@
+# V3.2.6｜2026-09-29｜行情 A→B 正規化與備援
+
+- 官方診斷真值維持 TWSE MIS z only；z 缺值不以其他欄位冒充官方實際成交價。
+- 生產 A 層新增明確 provenance：REALTIME_TRADE / BACKUP_REALTIME / BID_ASK / PREV_CLOSE / OFFICIAL_CLOSE。
+- TWSE MIS 完全無可用行情時，自動嘗試 Yahoo Finance .TW / .TWO failover，並保留 TSE / OTC 辨識結果。
+- Android SQLite 與 Node/PostgreSQL B 層同步保存 officialTradePrice、priceType、isFallback、market、statusMessage。
+- 行情比對診斷新增「行情中心價格型態／Fallback／說明」，可直接判讀 9.86 是 z 還是備援價格。
+- App／首頁／Widget／Monitor 維持讀取統一行情中心，不各自重抓來源。
+- Immutable Finance Core、Ledger、actual_fee、actual_tax 未修改。
+
 # V3.1.18｜2026-09-28｜個股資訊編輯入口＋Android 導航安全區
 
 - 個股／持股詳情頁正式接入既有頁面設定與駐點維護工程師，不再是不可編輯的孤立畫面；表頭、即時行情、持股資訊、損益拆解、股息、交易與股息紀錄、試算入口各自成為獨立可維護 Frame。

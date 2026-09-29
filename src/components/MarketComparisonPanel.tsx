@@ -193,6 +193,9 @@ export function MarketComparisonPanel({
       <CompareRow label="行情中心來源" value={centerRow?.source??'尚無'}/>
       <CompareRow label="行情中心採用欄位" value={marketSourceField(centerRow)}/>
       <CompareRow label="行情中心品質" value={centerRow?.quality??'尚無'}/>
+      <CompareRow label="行情中心價格型態" value={centerRow?.priceType??'尚無'}/>
+      <CompareRow label="行情中心 Fallback" value={centerRow?centerRow.isFallback?'是':'否':'—'}/>
+      <CompareRow label="行情中心說明" value={centerRow?.statusMessage??'尚無'}/>
       <CompareRow label="行情中心來源時間" value={formatTime(centerRow?.sourceQuoteAt)}/>
       <CompareRow label="行情中心檢查時間" value={formatTime(centerRow?.checkedAt)}/>
       <CompareRow label="資料版本" value={'#'+marketDataVersion}/>
