@@ -94,7 +94,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
   if(v.imageSource==='builtIn'||v.imageSource==='custom')out.imageSource=v.imageSource;
   if(v.imageFit==='cover'||v.imageFit==='contain'||v.imageFit==='stretch')out.imageFit=v.imageFit;
   if(v.imageUri===null)out.imageUri=null;
-  else if(typeof v.imageUri==='string'&&/^content:\/\/[^\s?#]{1,2048}$/.test(v.imageUri))
+  else if(typeof v.imageUri==='string'&&/^(?:content|file|ph|assets-library):\/\/[^\s]{1,4096}$/.test(v.imageUri))
     out.imageUri=v.imageUri;
   out.imageIndex=Math.round(out.imageIndex as number);
   out.shadowSpreadLayers=Math.round(out.shadowSpreadLayers as number);
