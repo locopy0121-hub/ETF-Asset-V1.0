@@ -28,6 +28,7 @@ import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/u
 import { calculateBuyScenario } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
+import {marketIntradaySeriesFor,marketQuoteSnapshotFor} from '../market/marketCenterViews';
 import { colors, radius, spacing } from '../theme/tokens';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
@@ -84,12 +85,26 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
     const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
-    return sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
+    return sortHoldingQuotes(finance.holdings.map(item=>{
+      const quote=marketQuoteSnapshotFor(market.quotes,item.symbol);
+      const intraday=marketIntradaySeriesFor(market.quotes,item.symbol);
+      return {
+        ...item,
+        ...(quote?{
+          price:quote.currentPrice,
+          previousClose:quote.previousClose,
+          sparkline:[...(quote.sparkline??item.sparkline)],
+        }:{}),
+        intraday:intraday.points,
+        intradayDate:intraday.date,
+        intradayPreviousClose:intraday.previousClose,
+      };
+    }),sortKey,currentSort.descending).map(item=>({
       ...item,etfType:tags.get(item.symbol)?.etfType??null,
       dividendType:tags.get(item.symbol)?.dividendType??null,
       reminderEvent:reminders.get(item.symbol)??null,
     }));
-  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
+  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,market.quotes,effectiveDisplay.etfBadges?.reminderEvents]);
   // Keep the original V3.0.1 list directly mounted while browsing; only wrap it
   // when its own A target is explicitly edited. This isolates stale generic overrides.
   const listTarget:InspectedTarget={
