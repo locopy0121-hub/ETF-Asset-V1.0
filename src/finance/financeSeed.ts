@@ -1,5 +1,12 @@
 import { freezeTradeEntry, type CanonicalLedgerEntry, type MarketQuoteInput } from './canonicalLedger';
 
+export type RuntimeIntradayPoint=Readonly<{
+  at:number;
+  price:number;
+  quality:'trade'|'backup_realtime';
+  source:'TWSE_MIS'|'YAHOO';
+}>;
+
 export type RuntimeQuote = MarketQuoteInput & Readonly<{
   previousClose: number;
   /** Timestamp from the exchange feed; never the HTTP receipt time. */
@@ -15,6 +22,8 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   checkedAt?:number;
   marketDataVersion?:number;
   sparkline: readonly number[];
+  intraday?:readonly RuntimeIntradayPoint[];
+  intradayDate?:string|null;
   pinned?: boolean;
 }>;
 
