@@ -78,10 +78,11 @@ assert.ok(!mini.includes('[previous,holding.price]'),'Mini chart must not synthe
 const finance=read('src/finance/FinanceRuntime.tsx');
 assert.match(finance,/intraday:\[\.\.\.\(quote\?\.intraday\?\?\[\]\)\]/);
 assert.match(finance,/intradayDate:quote\?\.intradayDate\?\?null/);
+assert.match(finance,/intradayPreviousClose:quote\?\.intradayPreviousClose\?\?null/);
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
 for(const token of [
-  'null,3',
+  'null,4',
   'market_intraday',
   'previous_close REAL',
   'intradayCoverage',
@@ -114,6 +115,7 @@ assert.match(adapter,/intradayPreviousClose/);
 const serverStore=read('server/src/store.mjs');
 assert.match(serverStore,/async intraday\(symbols=\[\]\)/);
 assert.match(serverStore,/date_trunc\('minute'/);
+assert.match(serverStore,/previous_close/);
 const serverSource=read('server/src/sources.mjs');
 assert.match(serverSource,/async intraday\(symbols,now=Date\.now\(\)\)/);
 assert.match(serverSource,/interval=1m&range=1d/);
