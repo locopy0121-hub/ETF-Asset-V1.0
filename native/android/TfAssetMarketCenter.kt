@@ -301,8 +301,33 @@ internal class TfAssetMarketCenter(private val context:Context){
       .put("mode","remote_backend")
       .put("degraded",result.optBoolean("degraded",false))
       .put("errors",result.optJSONArray("errors")?:JSONArray())
-    result.optJSONObject("intraday")?.let{local.put("intraday",it)}
-    return local
+    result.optJSONObject("intraday")?.let{seriesBySymbol->
+      val points=JSONArray()
+      for(symbol in symbols){
+        val series=seriesBySymbol.optJSONObject(symbol)?:continue
+        val previousClose=series.optDouble("previousClose",Double.NaN)
+        val rows=series.optJSONArray("points")?:continue
+        for(i in 0 until rows.length()){
+          val point=rows.optJSONObject(i)?:continue
+          points.put(JSONObject(point.toString()).put("symbol",symbol)
+            .put("currentPrice",point.optDouble("price",Double.NaN))
+            .put("sourceQuoteAt",point.optLong("at",0L))
+            .put("previousClose",if(previousClose.isFinite()&&previousClose>0)previousClose else JSONObject.NULL))
+        }
+      }
+      if(points.length()>0)db.mergeIntraday(points,now)
+    }
+    val hydrated=db.snapshot(symbols)
+    hydrated.put("updatedCount",local.optInt("updatedCount",0))
+      .put("conflictCount",local.optInt("conflictCount",0))
+      .put("coveredCount",local.optInt("coveredCount",0))
+      .put("requestedCount",symbols.size).put("queriedAt",now)
+      .put("missing",local.optJSONArray("missing")?:JSONArray())
+      .put("backendVersion",result.optLong("version",0L))
+      .put("mode","remote_backend")
+      .put("degraded",result.optBoolean("degraded",false))
+      .put("errors",result.optJSONArray("errors")?:JSONArray())
+    return hydrated
   }
 
   fun refresh(requested:Collection<String>):JSONObject=synchronized(FETCH_LOCK){
