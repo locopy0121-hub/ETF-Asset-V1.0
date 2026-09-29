@@ -15,6 +15,7 @@ export type HoldingLayoutMode='list'|'grid2'|'grid3'|'horizontal'|'paged2';
 
 export function HoldingQuoteCollection({
   rows,style,layoutMode='list',onOpenHolding,onOpenChart,wallConfig,badgeConfig,refreshToken,maintenance,
+  layoutEditMode=false,layoutSelectionId=null,onLayoutSelect,
 }:{
   rows:readonly HoldingQuote[];
   style:QuoteModuleStyle;
@@ -25,6 +26,9 @@ export function HoldingQuoteCollection({
   badgeConfig?:EtfBadgeConfig;
   refreshToken?:string|number|null|undefined;
   maintenance?:FrameMaintenanceContext;
+  layoutEditMode?:boolean;
+  layoutSelectionId?:string|null;
+  onLayoutSelect?:((id:string,label:string)=>void)|undefined;
 }){
   const {width}=useWindowDimensions();
   const engineer=useMaintenance();
@@ -55,7 +59,8 @@ export function HoldingQuoteCollection({
       return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',cardReset?'quote':style)}
         layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}
         wallConfig={adjusted} badgeConfig={cardBadges} refreshToken={refreshToken}
-        onPress={()=>onOpenHolding(item)} {...(onOpenChart?{onOpenChart:()=>onOpenChart(item)}:{})}/>;
+        onPress={()=>onOpenHolding(item)} {...(onOpenChart?{onOpenChart:()=>onOpenChart(item)}:{})}
+        layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}/>;
     };
     if(!maintenance)return render();
     const target:InspectedTarget={
