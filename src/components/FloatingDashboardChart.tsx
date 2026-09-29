@@ -122,7 +122,7 @@ export function FloatingDashboardChart({
     const spark=local.map(value=>blocks[Math.round(clamp(Math.abs(value)/max,0,1)*(blocks.length-1))]).join('');
     const selectedIndex=selected==null?null:clamp(selected,0,local.length-1);
     return <View style={[styles.plot,{opacity:config.contentOpacity}]}>
-      {config.gridVisible?<View pointerEvents="none" style={styles.grid}><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity??1)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity??1)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity??1)}]}/></View>:null}
+      {config.gridVisible?<View pointerEvents="none" style={styles.grid}><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*(config.textOpacity??1))}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*(config.textOpacity??1))}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*(config.textOpacity??1))}]}/></View>:null}
       {(config.style==='line'||config.style==='area'||config.style==='pnlTrend'||config.style==='dividendTrend'||config.style==='roiTrend'||config.style==='priceK')
         ?<View style={styles.sparkWrap}><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.spark,{color:accentColor,fontSize:large?44:28}]}>{spark}</Text></View>
         :config.style==='pie'||config.style==='donut'||config.style==='allocation'||config.style==='holdingWeight'
