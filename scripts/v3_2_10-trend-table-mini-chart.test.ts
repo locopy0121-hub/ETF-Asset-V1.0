@@ -35,18 +35,18 @@ assert.ok(!mini.includes("backgroundColor:'#090E15'"),'Mini chart must inherit t
 
 const quote=read('src/components/HoldingQuoteModule.tsx');
 assert.ok(quote.includes('showChart&&styles.chartCardLayout'),'chart cards must stack quote content and Mini trend vertically');
-assert.ok(quote.includes('showChart&&item.quoteVerified!==false?<View style={styles.miniChartWrap}'),'verified quote cards must keep a Mini trend even when sparkline falls back to previous-close/current-price');
+assert.ok(quote.includes('showChart&&item.quoteVerified!==false?<View style={styles.miniChartWrap}'),'verified quote cards must keep the Mini chart surface while real intraday points are still loading');
 assert.ok(quote.indexOf('style={styles.bodyPress}')<quote.indexOf('style={styles.miniChartWrap}'),'quote/name/price content must render before the Mini trend');
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.10');
-assert.equal(app.expo.version,'3.2.10');
-assert.equal(app.expo.android.versionCode,30210);
-assert.equal(app.expo.ios.buildNumber,'30210');
+assert.equal(pkg.version,'3.2.11');
+assert.equal(app.expo.version,'3.2.11');
+assert.equal(app.expo.android.versionCode,30211);
+assert.equal(app.expo.ios.buildNumber,'30211');
 assert.equal(pkg.scripts['test:v3_2_10'],'npm run test:v3_2_9 && tsx scripts/v3_2_10-trend-table-mini-chart.test.ts');
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'immutable finance core missing: '+core);
 
-console.log('V3.2.10 trend table and Mini financial chart regression PASS');
+console.log('V3.2.11 trend table and Mini financial chart regression PASS');
