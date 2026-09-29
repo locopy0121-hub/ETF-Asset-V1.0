@@ -1,10 +1,10 @@
 import {useEffect,useMemo,useState} from 'react';
-import {Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey,type QuoteModuleStyle} from '../domain/uiModels';
-import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
+import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
 import {colors,radius} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
@@ -25,8 +25,9 @@ import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
+import {FloatingDashboardChart} from './FloatingDashboardChart';
 
-type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey};
+type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
@@ -69,6 +70,8 @@ export function PageLayoutToolWorkbench({
   const [frameKey,setFrameKey]=useState(initial);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
   const [openGroup,setOpenGroup]=useState<string|null>('size');
+  const [frameMeasurements,setFrameMeasurements]=useState<Record<string,{width:number;height:number}>>({});
+  const [previewBounds,setPreviewBounds]=useState({width:0,height:0});
   useEffect(()=>{setFrameKey(initial);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');},[initial]);
 
   const frame=frames.find(item=>item.key===frameKey)??frames[0];
@@ -104,7 +107,10 @@ export function PageLayoutToolWorkbench({
     onChangeDisplay({...displayDraft,layoutTargets:{...targets,[id]:normalizeTargetOverride({...current,...next})}});
   };
   const resetTarget=(id:string)=>{
-    const next={...targets};delete next[id];onChangeDisplay({...displayDraft,layoutTargets:next});
+    Alert.alert('確認恢復目前物件','將恢復目前選取物件的排版設定。請再次確認是否恢復。',[
+      {text:'取消',style:'cancel'},
+      {text:'確認恢復',style:'destructive',onPress:()=>{const next={...targets};delete next[id];onChangeDisplay({...displayDraft,layoutTargets:next});}},
+    ]);
   };
 
   const chooseKind=(kind:LayoutToolTargetKind)=>{
@@ -113,6 +119,10 @@ export function PageLayoutToolWorkbench({
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
     else if(holding&&kind==='chart')setSelection({id:'chart',kind,label:'Mini 圖表'});
+    else if(pageKey==='home'&&frame.key==='asset-dashboard'&&kind==='chart'){
+      const chart=(displayDraft.dashboardCharts??[])[0];
+      if(chart)setSelection({id:'chart:'+chart.id,kind,label:chart.title});
+    }
     else if(frame.key==='page-header'&&kind==='text')setSelection({id:'header:title',kind:'text',label:'頁面主標題'});
     else if(kind==='card')setSelection(defaultDashboardSelection(frame.key,'card'));
     else if(kind==='text')setSelection(defaultDashboardSelection(frame.key,'text'));
@@ -134,7 +144,7 @@ export function PageLayoutToolWorkbench({
     const kind:LayoutToolTargetKind=target.kind==='prefix'?'text':
       target.kind==='card'||target.kind==='text'||target.kind==='value'||target.kind==='chart'||target.kind==='button'?
         target.kind:'text';
-    setSelection({id:target.id,kind,label:target.label});
+    setSelection({id:target.id,kind,label:target.label,...(target.width!==undefined?{width:target.width}:{}),...(target.height!==undefined?{height:target.height}:{})});
     setOpenGroup(target.id==='header:title'?'content':kind==='card'?'surface':kind==='text'||kind==='value'?'type':'layout');
   };
   const toggle=(key:string)=>setOpenGroup(current=>current===key?null:key);
@@ -196,12 +206,12 @@ export function PageLayoutToolWorkbench({
   const current=mergeTargetAppearance(base,targets[selection.id]);
 
   const visibleKinds=profile.kinds.filter(kind=>{
-    if(kind==='chart')return holding&&Boolean((holdingQuoteStyle==='chart'||holdingQuoteStyle==='advanced')&&holdingPreviewRows.some(row=>row.sparkline?.length));
+    if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(holding)return ['frame','card','text','value','chart','data'].includes(kind);
-    if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','layout'].includes(kind);
+    if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','chart','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='profit-analysis')return ['frame','card','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='pnl-detail')return ['frame','text','value','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='dashboard-quick-actions')return ['frame','text','layout'].includes(kind);
