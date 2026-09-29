@@ -86,7 +86,10 @@ export function PageLayoutToolWorkbench({
   const holdingQuoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const holdingPreviewRows=previewRows?.length?previewRows:(previewQuote?[previewQuote]:[]);
   const dashboard=displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
+  const dashboardCharts=displayDraft.dashboardCharts??[];
   const targets=displayDraft.layoutTargets??{};
+  const selectedDashboardChart=selection.id.startsWith('chart:')?
+    dashboardCharts.find(chart=>'chart:'+chart.id===selection.id):undefined;
   const fx=normalizeFrameEffects(frameConfig.effects,DEFAULT_FRAME_EFFECTS);
   const selectedField=selection.field?wall.fields.find(x=>x.field===selection.field):undefined;
 
@@ -102,6 +105,8 @@ export function PageLayoutToolWorkbench({
   };
   const patchFx=(next:Partial<FrameEffects>)=>onPatchFrame(frame.key,{effects:normalizeFrameEffects({...fx,...next},DEFAULT_FRAME_EFFECTS)});
   const patchDashboard=(next:DashboardLayoutConfig)=>onChangeDisplay({...displayDraft,dashboardLayout:next});
+  const patchDashboardChart=(id:string,next:Partial<DashboardChartConfig>)=>
+    onChangeDisplay({...displayDraft,dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,...next}:chart)});
   const patchTarget=(id:string,next:TargetOverride)=>{
     const current=targets[id]??{};
     onChangeDisplay({...displayDraft,layoutTargets:{...targets,[id]:normalizeTargetOverride({...current,...next})}});
@@ -256,6 +261,11 @@ export function PageLayoutToolWorkbench({
     {holding&&(selection.kind==='text'||selection.kind==='value')&&selectedField?
       <HoldingFieldTools field={selectedField} open={openGroup} toggle={toggle}
         patch={next=>patchField(selectedField.field,next)} move={delta=>moveField(selectedField.field,delta)}/>:null}
+    {holding&&selection.kind==='chart'?<HoldingMiniChartTools style={rawQuoteStyle} layoutMode={holdingLayoutMode} open={openGroup} toggle={toggle}
+      onChange={quoteStyle=>onChangeDisplay({...displayDraft,quoteStyle})}/>:null}
+    {!holding&&selection.kind==='chart'&&selectedDashboardChart?<DashboardChartTools chart={selectedDashboardChart}
+      actualX={selectedDashboardChart.x<0?Math.max(0,previewBounds.width-selectedDashboardChart.width):selectedDashboardChart.x}
+      open={openGroup} toggle={toggle} patch={next=>patchDashboardChart(selectedDashboardChart.id,next)}/>:null}
     {holding&&selection.kind==='data'?<Accordion title="欄位顯示" subtitle="只改顯示與排序，不改原始行情與帳務資料" open={openGroup==='layout'} onPress={()=>toggle('layout')}>
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
@@ -350,6 +360,78 @@ function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEd
       <SwitchRow label="響應式" value={fx.responsiveEnabled} onChange={responsiveEnabled=>patchFx({responsiveEnabled})}/>
       {fx.responsiveEnabled?<><NumberStep label="Compact 臨界" value={fx.responsiveCompactWidth} min={360} max={900} step={10} suffix=" px" onChange={responsiveCompactWidth=>patchFx({responsiveCompactWidth})}/>
         <NumberStep label="Dense 臨界" value={fx.responsiveDenseWidth} min={240} max={600} step={10} suffix=" px" onChange={responsiveDenseWidth=>patchFx({responsiveDenseWidth})}/></>:null}
+    </Accordion>
+  </View>;
+}
+
+
+const dashboardChartStyleItems:readonly (readonly [DashboardChartStyle,string])[]=[
+  ['line','折線'],['area','面積'],['bar','長條'],['horizontalBar','水平長條'],['stackedBar','堆疊長條'],
+  ['pie','圓餅'],['donut','甜甜圈'],['allocation','資產配置'],['pnlTrend','損益趨勢'],['dividendTrend','股息趨勢'],
+  ['investVsValue','投入 vs 市值'],['holdingWeight','持股占比'],['costVsPrice','成本 vs 市價'],['roiTrend','報酬率趨勢'],
+  ['priceK','價格／K 線'],['volume','成交量'],
+];
+const dashboardChartSourceItems:readonly (readonly [DashboardChartSource,string])[]=[
+  ['allocation','資產配置'],['pnl','持股損益'],['dividend','累計股息'],['roi','報酬率'],['marketValue','持股市值'],
+  ['avgCost','平均成本'],['price','市價'],['shares','股數'],['realizedPnl','已實現損益'],
+  ['comprehensivePnl','綜合損益'],['transactions','交易紀錄'],
+];
+
+function HoldingMiniChartTools({style,layoutMode,open,toggle,onChange}:{style:QuoteModuleStyle;layoutMode:HoldingLayoutMode;open:string|null;toggle:(k:string)=>void;onChange:(style:QuoteModuleStyle)=>void}){
+  const enabled=style==='chart'||style==='advanced';
+  return <View>
+    <Accordion title="圖表" subtitle="Mini 圖表顯示、樣式與實際資料來源" open={open==='chart'||open==='layout'} onPress={()=>toggle('chart')}>
+      <SwitchRow label="顯示 Mini 圖表" value={enabled} onChange={visible=>onChange(visible?(style==='advanced'?'advanced':'chart'):'quote')}/>
+      {enabled?<ChoiceRow label="圖表卡模式" value={style} items={[['chart','圖表'],['advanced','進階']]} onChange={value=>onChange(value as QuoteModuleStyle)}/>:null}
+      <View style={styles.row}><Text style={styles.rowLabel}>資料來源</Text><Text style={styles.readOnlyValue}>今日分時行情</Text></View>
+      <View style={styles.row}><Text style={styles.rowLabel}>實際排列</Text><Text style={styles.readOnlyValue}>{layoutMode==='grid3'?'三欄（可讀性規則隱藏 Mini 圖表）':layoutMode}</Text></View>
+    </Accordion>
+  </View>;
+}
+
+function DashboardChartTools({chart,actualX,open,toggle,patch}:{chart:DashboardChartConfig;actualX:number;open:string|null;toggle:(k:string)=>void;patch:(next:Partial<DashboardChartConfig>)=>void}){
+  return <View>
+    <Accordion title="圖表" subtitle="顯示／關閉、類型與資料來源" open={open==='chart'||open==='layout'} onPress={()=>toggle('chart')}>
+      <SwitchRow label="顯示圖表" value={chart.visible} onChange={visible=>patch({visible})}/>
+      <TextInput accessibilityLabel="圖表標題" value={chart.title} onChangeText={title=>patch({title:title.slice(0,20)})} style={styles.textInput}/>
+      <ChoiceRow label="圖表類型" value={chart.style} items={dashboardChartStyleItems} onChange={style=>patch({style:style as DashboardChartStyle})}/>
+      <ChoiceRow label="資料來源" value={chart.source} items={dashboardChartSourceItems} onChange={source=>patch({source:source as DashboardChartSource})}/>
+    </Accordion>
+    <Accordion title="尺寸／位置" subtitle="全部顯示目前實際像素值" open={open==='chart-size'} onPress={()=>toggle('chart-size')}>
+      <NumberStep label="X" value={Math.round(actualX)} min={0} max={1600} step={4} suffix=" px" onChange={x=>patch({x})}/>
+      <NumberStep label="Y" value={Math.round(chart.y)} min={0} max={2400} step={4} suffix=" px" onChange={y=>patch({y})}/>
+      <NumberStep label="寬度" value={Math.round(chart.width)} min={140} max={900} step={8} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={Math.round(chart.height)} min={120} max={700} step={8} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="圖層" value={chart.zIndex} min={0} max={99} step={1} suffix="" onChange={zIndex=>patch({zIndex})}/>
+    </Accordion>
+    <Accordion title="顏色／外觀" subtitle="沿用現有顏色規劃；每個顏色追加透明度" open={open==='chart-color'} onPress={()=>toggle('chart-color')}>
+      <ColorPalettePicker label="背景顏色" value={chart.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={chart.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
+      <ColorPalettePicker label="文字顏色" value={chart.textColor} onChange={textColor=>patch({textColor})} opacity={chart.textOpacity} onOpacityChange={textOpacity=>patch({textOpacity})}/>
+      <ColorPalettePicker label="主圖顏色" value={chart.accentColor} onChange={accentColor=>patch({accentColor})} opacity={chart.accentOpacity} onOpacityChange={accentOpacity=>patch({accentOpacity})}/>
+      <ColorPalettePicker label="上漲色" value={chart.gainColor} onChange={gainColor=>patch({gainColor})} opacity={chart.gainOpacity} onOpacityChange={gainOpacity=>patch({gainOpacity})}/>
+      <ColorPalettePicker label="下跌色" value={chart.lossColor} onChange={lossColor=>patch({lossColor})} opacity={chart.lossOpacity} onOpacityChange={lossOpacity=>patch({lossOpacity})}/>
+      <ColorPalettePicker label="中性色" value={chart.flatColor} onChange={flatColor=>patch({flatColor})} opacity={chart.flatOpacity} onOpacityChange={flatOpacity=>patch({flatOpacity})}/>
+      <ColorPalettePicker label="邊框顏色" value={chart.borderColor} onChange={borderColor=>patch({borderColor})} opacity={chart.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
+      <NumberStep label="邊框粗細" value={chart.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
+      <NumberStep label="圓角" value={chart.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
+      <NumberStep label="內容透明度" value={Math.round(chart.contentOpacity*100)} min={5} max={100} step={5} suffix="%" onChange={value=>patch({contentOpacity:value/100})}/>
+    </Accordion>
+    <Accordion title="圖表內容" subtitle="線條、資料點、圖例、座標與格線" open={open==='chart-content'} onPress={()=>toggle('chart-content')}>
+      <NumberStep label="線條粗細" value={chart.lineWidth} min={1} max={8} step={1} suffix=" px" onChange={lineWidth=>patch({lineWidth})}/>
+      <SwitchRow label="資料點" value={chart.showPoints} onChange={showPoints=>patch({showPoints})}/>
+      <NumberStep label="資料點大小" value={chart.pointSize} min={2} max={12} step={1} suffix=" px" onChange={pointSize=>patch({pointSize})}/>
+      <SwitchRow label="圖例" value={chart.legendVisible} onChange={legendVisible=>patch({legendVisible})}/>
+      <SwitchRow label="X 軸" value={chart.xAxisVisible} onChange={xAxisVisible=>patch({xAxisVisible})}/>
+      <SwitchRow label="Y 軸" value={chart.yAxisVisible} onChange={yAxisVisible=>patch({yAxisVisible})}/>
+      <SwitchRow label="格線" value={chart.gridVisible} onChange={gridVisible=>patch({gridVisible})}/>
+      <SwitchRow label="資料標籤" value={chart.dataLabels} onChange={dataLabels=>patch({dataLabels})}/>
+    </Accordion>
+    <Accordion title="互動" subtitle="十字線、縮放、平移與重設" open={open==='chart-interaction'} onPress={()=>toggle('chart-interaction')}>
+      <SwitchRow label="十字線" value={chart.crosshairEnabled} onChange={crosshairEnabled=>patch({crosshairEnabled})}/>
+      <SwitchRow label="兩指縮放" value={chart.pinchZoomEnabled} onChange={pinchZoomEnabled=>patch({pinchZoomEnabled})}/>
+      <SwitchRow label="平移" value={chart.panEnabled} onChange={panEnabled=>patch({panEnabled})}/>
+      <SwitchRow label="雙擊重設" value={chart.doubleTapReset} onChange={doubleTapReset=>patch({doubleTapReset})}/>
+      <SwitchRow label="記住縮放" value={chart.rememberZoom} onChange={rememberZoom=>patch({rememberZoom})}/>
     </Accordion>
   </View>;
 }
