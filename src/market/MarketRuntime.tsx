@@ -74,7 +74,7 @@ type MarketRuntimeValue = {
   marketDataVersion:number;
   missingSymbols:readonly string[];
   setConfig: (next: MarketUpdateConfig) => void;
-  refresh: (options?:{ force?: boolean }) => Promise<MarketRefreshResult>;
+  refresh: (options?:{ force?: boolean; silent?: boolean }) => Promise<MarketRefreshResult>;
   refreshCatalog: () => Promise<void>;
   setTrackedSymbols: (symbols: readonly string[]) => void;
 };
@@ -85,8 +85,12 @@ const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
 const FALLBACK_CATALOG:EtfCatalogItem[]=mergeEtfCatalog(
   FALLBACK_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'})),[],[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES,
 );
+const EMPTY_PERSISTED_QUOTES:RuntimeQuote[]=[];
+
 
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
+const sameStrings=(a:readonly string[],b:readonly string[])=>
+  a.length===b.length&&a.every((value,index)=>value===b[index]);
 const hhmm=(value:string)=>{
   const parts=String(value||'00:00').split(':').map(Number);
   const h=parts[0]??0;
@@ -349,12 +353,17 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{ quotesRef.current=quotes; },[quotes]);
   useEffect(()=>{ symbolsRef.current=trackedSymbols; },[trackedSymbols]);
 
+  const persistedQuotes=unifiedMarketCenterAvailable?EMPTY_PERSISTED_QUOTES:quotes;
+  const persistedLastSuccessAt=unifiedMarketCenterAvailable?null:lastSuccessAt;
   useEffect(()=>{
     if(!hydrated)return;
-    // Source of truth for Android quotes is SQLite; AsyncStorage stores only presentation/settings.
-    const payload:PersistedMarketState={schema:1,quoteClockVersion:2,config,quotes:unifiedMarketCenterAvailable?[]:quotes,lastSuccessAt,catalog,catalogFetchedAt};
+    // Native quotes live in SQLite. Do not serialize the full ETF catalog every 5-second quote tick.
+    const payload:PersistedMarketState={
+      schema:1,quoteClockVersion:2,config,quotes:persistedQuotes,
+      lastSuccessAt:persistedLastSuccessAt,catalog,catalogFetchedAt,
+    };
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,config,quotes,lastSuccessAt,catalog,catalogFetchedAt]);
+  },[hydrated,config,persistedQuotes,persistedLastSuccessAt,catalog,catalogFetchedAt]);
 
   const setConfig=useCallback((next:MarketUpdateConfig)=>{
     setConfigState({
@@ -371,12 +380,13 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     setTrackedSymbolsState(current=>current.length===next.length&&current.every((code,i)=>code===next[i])?current:next);
   },[]);
 
-  const refresh=useCallback((options?:{force?:boolean}):Promise<MarketRefreshResult>=>{
+  const refresh=useCallback((options?:{force?:boolean;silent?:boolean}):Promise<MarketRefreshResult>=>{
     if(refreshPromiseRef.current)return refreshPromiseRef.current;
     const task=(async():Promise<MarketRefreshResult>=>{
+      const announce=options?.silent!==true;
       refreshingRef.current=true;
-      setRefreshing(true);
-      setLastError(null);
+      if(announce)setRefreshing(true);
+      if(announce)setLastError(null);
       let lastFailure:unknown=null;
       try{
         const attempts=options?.force?3:2;
@@ -388,7 +398,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
               const state=await refreshUnifiedMarketData(symbolsRef.current);
               const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
               const currentVersion=marketVersionRef.current;
-              setMissingSymbols(Array.isArray(state.missing)?state.missing:[]);
+              const nextMissing=Array.isArray(state.missing)?state.missing:[];
+              setMissingSymbols(current=>sameStrings(current,nextMissing)?current:nextMissing);
               if(state.version>currentVersion){
                 quotesRef.current=next;
                 setQuotes(next);
@@ -429,7 +440,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         return 'error';
       }finally{
         refreshingRef.current=false;
-        setRefreshing(false);
+        if(options?.silent!==true)setRefreshing(false);
       }
     })();
     refreshPromiseRef.current=task.finally(()=>{refreshPromiseRef.current=null;});
@@ -456,7 +467,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   // Android background may suspend this socket: no false 'live' status.
   useEffect(()=>{
     if(!hydrated||!unifiedMarketCenterAvailable)return;
-    void setNativeMarketBackendUrl(config.backendUrl??'').then(()=>refresh({force:true}))
+    void setNativeMarketBackendUrl(config.backendUrl??'').then(()=>refresh({force:true,silent:true}))
       .catch(error=>setLastError('行情中心網址設定失敗：'+String(error)));
   },[hydrated,config.backendUrl,refresh]);
 
@@ -474,7 +485,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
           try{
             const incoming=JSON.parse(String(event.data)) as {type?:string;symbols?:string[]};
             if(incoming.type==='market_changed'&&incoming.symbols?.some(symbol=>trackedSymbols.includes(symbol)))
-              void refresh({force:true});
+              void refresh({force:true,silent:true});
           }catch{}
         };
       }catch(error){setLastError('行情中心推送暫時無法連線');}
@@ -503,20 +514,20 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    void refresh();
+    void refresh({silent:true});
   },[hydrated,trackedSymbols,refresh]);
 
   useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
     const seconds=marketRefreshSeconds(config,phase);
     if(seconds<=0)return;
-    const timer=setInterval(()=>{void refresh();},seconds*1000);
+    const timer=setInterval(()=>{void refresh({silent:true});},seconds*1000);
     return()=>clearInterval(timer);
   },[hydrated,config,phase,refresh]);
 
   useEffect(()=>{
     if(!config.refreshOnForeground)return;
-    const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{if(next==='active')void refresh({force:true});});
+    const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{if(next==='active')void refresh({force:true,silent:true});});
     return()=>sub.remove();
   },[config.refreshOnForeground,refresh]);
 

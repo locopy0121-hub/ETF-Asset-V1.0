@@ -12,6 +12,7 @@ import type { SharedSnapshot } from '../domain/snapshot';
 import type { HoldingQuote } from '../domain/uiModels';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import {marketIntradaySeriesFor,marketQuoteSnapshotFor,marketValuationQuoteFor} from '../market/marketCenterViews';
+import {resolveEtfDisplayName} from '../market/etfDisplayName';
 import {
   calculateCanonicalLedgerSnapshot,
   calculateLedgerCashFlow,
@@ -39,6 +40,7 @@ const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullabl
       return 'unavailable';
   }
 };
+
 
 type PersistedFinanceState = {
   schema: number;
@@ -141,12 +143,12 @@ export function FinanceProvider({children}:PropsWithChildren){
     const valuationQuote=marketValuationQuoteFor(market.quotes,summary.etfCode);
     const intraday=marketIntradaySeriesFor(market.quotes,summary.etfCode);
     const verified=Boolean(valuationQuote);
-    const name=market.catalog.find(item=>item.symbol===summary.etfCode)?.name;
+    const catalogName=market.catalog.find(item=>item.symbol===summary.etfCode)?.name;
     const previousClose=valuationQuote?.previousClose&&valuationQuote.previousClose>0?
       valuationQuote.previousClose:summary.currentPrice;
     return {
       symbol:summary.etfCode,
-      name:(quote&&quote.name!==summary.etfCode?quote.name:name??summary.name),
+      name:resolveEtfDisplayName(summary.etfCode,catalogName,summary.name,quote?.name),
       quoteVerified:verified,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
