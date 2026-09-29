@@ -196,8 +196,10 @@ function positiveNumber(value:string){
 }
 function sanitizePriceText(value:string){
   const cleaned=value.replace(/[^0-9.]/g,'');
-  const [whole,...rest]=cleaned.split('.');
-  return rest.length?whole+'.'+rest.join('').slice(0,4):whole;
+  const parts=cleaned.split('.');
+  const whole=parts[0]??'';
+  const decimals=parts.slice(1);
+  return decimals.length?whole+'.'+decimals.join('').slice(0,4):whole;
 }
 function formatPrice(value:number|null|undefined){
   return typeof value==='number'&&Number.isFinite(value)&&value>0?value.toFixed(2):'—';
