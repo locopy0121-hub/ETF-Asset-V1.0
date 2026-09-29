@@ -159,15 +159,20 @@ export function deriveDailyPnlRecord(input:{
 }
 
 function officialCloseTimestamp(date:string){
-  const [year,month,day]=date.split('-').map(Number);
+  const parts=date.split('-').map(Number);
+  const year=parts[0]??1970,month=parts[1]??1,day=parts[2]??1;
   // Taiwan market close 13:30 = 05:30 UTC.
   return Date.UTC(year,month-1,day,5,30,0);
 }
 
+function orderedTrades(entries:readonly CanonicalLedgerEntry[]){
+  return entries.filter((entry):entry is TradeEntry=>entry.kind==='buy'||entry.kind==='sell')
+    .slice().sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+}
+
 function sharesBySymbol(entries:readonly CanonicalLedgerEntry[]){
   const shares=new Map<string,number>();
-  for(const entry of entries){
-    if(entry.kind!=='buy'&&entry.kind!=='sell')continue;
+  for(const entry of orderedTrades(entries)){
     const current=shares.get(entry.symbol)??0;
     shares.set(entry.symbol,entry.kind==='buy'?current+entry.shares:Math.max(0,current-entry.shares));
   }
@@ -176,9 +181,7 @@ function sharesBySymbol(entries:readonly CanonicalLedgerEntry[]){
 
 function latestTradeMeta(entries:readonly CanonicalLedgerEntry[]){
   const meta=new Map<string,TradeEntry>();
-  for(const entry of entries){
-    if(entry.kind==='buy'||entry.kind==='sell')meta.set(entry.symbol,entry);
-  }
+  for(const entry of orderedTrades(entries))meta.set(entry.symbol,entry);
   return meta;
 }
 
