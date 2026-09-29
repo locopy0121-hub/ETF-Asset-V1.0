@@ -49,12 +49,12 @@ assert.match(header,/frameConfig\.titleProfitColor/);
 assert.match(header,/frameConfig\.borderProfitColor/);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.9');
-assert.equal(app.expo.version,'3.2.9');
-assert.equal(app.expo.android.versionCode,30209);
-assert.equal(app.expo.ios.buildNumber,'30209');
+assert.equal(pkg.version,'3.2.10');
+assert.equal(app.expo.version,'3.2.10');
+assert.equal(app.expo.android.versionCode,30210);
+assert.equal(app.expo.ios.buildNumber,'30210');
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'financial core remains untouched: '+core);
 
-console.log('V3.2.9 global profit-color linkage across layout color/background tools: PASS');
+console.log('V3.2.10 global profit-color linkage across layout color/background tools: PASS');
