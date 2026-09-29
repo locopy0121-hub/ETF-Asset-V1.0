@@ -32,7 +32,9 @@ const tradeFingerprint=(entries:readonly CanonicalLedgerEntry[])=>entries
       return [entry.id,entry.date,entry.kind,entry.symbol,entry.shares,entry.price,entry.amount,entry.actualFee,entry.actualTax].join(':');
     if(entry.kind==='dividend')
       return [entry.id,entry.date,entry.kind,entry.symbol,entry.perShareAmount,entry.sharesHeld].join(':');
-    return [entry.id,entry.date,entry.kind,entry.label,entry.amount].join(':');
+    if(entry.kind==='other')
+      return [entry.id,entry.date,entry.kind,entry.label,entry.amount].join(':');
+    return '';
   })
   .sort().join('|');
 
