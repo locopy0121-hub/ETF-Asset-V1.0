@@ -193,7 +193,7 @@ const styles=StyleSheet.create({
   gridLine:{position:'absolute',left:4,right:4,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:'#29313A',opacity:.42},
   baseline:{position:'absolute',left:4,right:4,borderTopWidth:1,borderStyle:'dashed',borderTopColor:'#718096',opacity:.78},
   lastDot:{position:'absolute',width:5,height:5,borderRadius:3,borderWidth:1,borderColor:'#0B0F14'},
-  emptyWrap:{...StyleSheet.absoluteFillObject,alignItems:'center',justifyContent:'center'},
+  emptyWrap:{position:'absolute',left:0,right:0,top:0,bottom:0,alignItems:'center',justifyContent:'center'},
   emptyText:{fontSize:9,fontWeight:'800',color:'#718096'},
   openLabel:{position:'absolute',left:4,bottom:0,fontSize:7,color:'#64748B'},
   closeLabel:{position:'absolute',right:4,bottom:0,fontSize:7,color:'#64748B'},
