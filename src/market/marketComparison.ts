@@ -24,7 +24,7 @@ export function sameMarketPrice(left:number|null|undefined,right:number|null|und
 
 export function marketSourceField(quote:Pick<RuntimeQuote,'source'|'quality'|'priceType'|'isFallback'>|undefined){
   if(!quote)return '尚無';
-  if(quote.source==='TWSE_MIS'&&quote.priceType==='REALTIME_TRADE')return 'z｜實際成交價';
+  if(quote.source==='TWSE_MIS'&&(quote.priceType==='REALTIME_TRADE'||(!quote.priceType&&quote.quality==='trade')))return 'z｜實際成交價';
   if(quote.source==='TWSE_MIS'&&quote.priceType==='BACKUP_REALTIME')return 'pz｜最近成交參考（Fallback）';
   if(quote.source==='TWSE_MIS'&&quote.priceType==='BID_ASK')return 'b/a｜委託簿參考（Fallback）';
   if(quote.source==='TWSE_MIS'&&quote.priceType==='PREV_CLOSE')return 'y｜昨收（Fallback）';
