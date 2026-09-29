@@ -80,7 +80,8 @@ export function parseOfficialEtfRow(raw: Record<string, unknown>, fetchedAt: num
   );
   const dividendType = normalizeOfficialDividendType(payout);
   if (!etfType && !dividendType) return null;
-  const name = officialField(raw, '基金中文名稱', '基金簡稱', '基金名稱', 'ETF名稱', '證券名稱');
+  // Prefer the exchange-provided short label for compact mobile UI; keep the legal fund name as fallback only.
+  const name = officialField(raw, '基金簡稱', '基金中文名稱', '基金名稱', 'ETF名稱', '證券名稱');
   return {
     symbol,
     ...(name ? { name } : {}),
