@@ -20,7 +20,7 @@ const SCHEMA=2;
 
 type PersistedHistory={
   schema:number;
-  records:DailyPnlRecord[];
+  records:readonly DailyPnlRecord[];
   ledgerFingerprint:string;
   officialRebuiltAt:number|null;
 };
@@ -55,7 +55,7 @@ export function useDailyPnlHistory(input:{
   const [historyError,setHistoryError]=useState<string|null>(null);
   const officialAttemptRef=useRef<string|null>(null);
   const persistTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
-  const pendingPersistRef=useRef<string|null>(null);
+  const pendingPersistRef=useRef<PersistedHistory|null>(null);
   const lastPersistAtRef=useRef(0);
   const ledgerFingerprint=useMemo(()=>tradeFingerprint(input.entries),[input.entries]);
   const historyStartDate=useMemo(()=>firstTradeDate(input.entries),[input.entries]);
@@ -78,21 +78,22 @@ export function useDailyPnlHistory(input:{
   },[]);
 
   const flushPersist=()=>{
-    const raw=pendingPersistRef.current;
-    if(!raw)return;
+    const payload=pendingPersistRef.current;
+    if(!payload)return;
     pendingPersistRef.current=null;
     lastPersistAtRef.current=Date.now();
-    AsyncStorage.setItem(STORAGE_KEY,raw).catch(()=>{});
+    // Serialization is intentionally deferred until the throttled flush. Live
+    // 5-second quote ticks only replace this lightweight structured reference.
+    AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
   };
 
   const persist=(next:readonly DailyPnlRecord[],fingerprint=ledgerFingerprint,rebuildAt=officialRebuiltAt,immediate=false)=>{
-    const payload:PersistedHistory={
+    pendingPersistRef.current={
       schema:SCHEMA,
-      records:[...next],
+      records:next,
       ledgerFingerprint:fingerprint,
       officialRebuiltAt:rebuildAt,
     };
-    pendingPersistRef.current=JSON.stringify(payload);
     if(immediate){
       if(persistTimerRef.current){
         clearTimeout(persistTimerRef.current);
