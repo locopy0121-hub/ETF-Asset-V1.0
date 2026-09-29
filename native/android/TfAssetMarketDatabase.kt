@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,3
+  context.applicationContext,"tf_asset_market_center_v1.db",null,4
 ){
   companion object{
     private val TAIPEI=ZoneId.of("Asia/Taipei")
@@ -58,6 +58,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       symbol TEXT NOT NULL,
       source_at INTEGER NOT NULL CHECK(source_at>0),
       price REAL NOT NULL CHECK(price>0),
+      previous_close REAL,
       quality TEXT NOT NULL CHECK(quality IN ('trade','backup_realtime')),
       source TEXT NOT NULL CHECK(source IN ('TWSE_MIS','YAHOO')),
       received_at INTEGER NOT NULL,
@@ -98,6 +99,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       }
     }
     if(oldVersion<3)createIntradayTable(db)
+    if(oldVersion==3)runCatching{db.execSQL("ALTER TABLE market_intraday ADD COLUMN previous_close REAL")}
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
@@ -118,6 +120,8 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       quality !in intradayQuality||source !in intradaySource||!inTaipeiSession(at))return
     val values=ContentValues().apply{
       put("symbol",symbol);put("source_at",at);put("price",price)
+      val previous=row.optDouble("previousClose",Double.NaN)
+      if(previous.isFinite()&&previous>0)put("previous_close",previous) else putNull("previous_close")
       put("quality",quality);put("source",source);put("received_at",receivedAt)
     }
     db.insertWithOnConflict("market_intraday",null,values,SQLiteDatabase.CONFLICT_IGNORE)
@@ -169,23 +173,29 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
         arrayOf(symbol),
       ).use{c->if(c.moveToFirst())c.getString(0) else null}?:continue
       val perMinute=linkedMapOf<String,JSONObject>()
-      val sql="""SELECT source_at,price,quality,source FROM market_intraday
+      val sql="""SELECT source_at,price,previous_close,quality,source FROM market_intraday
         WHERE symbol=? AND strftime('%Y-%m-%d',source_at/1000,'unixepoch','+8 hours')=?
         ORDER BY source_at ASC"""
       db.rawQuery(sql,arrayOf(symbol,latestDay)).use{c->
         while(c.moveToNext()){
           val at=c.getLong(0)
           if(!inTaipeiSession(at))continue
-          val quality=c.getString(2)
+          val previous=if(c.isNull(2))Double.NaN else c.getDouble(2)
+          val quality=c.getString(3)
           val key=Instant.ofEpochMilli(at).atZone(TAIPEI).format(MINUTE)
           val old=perMinute[key]
           if(old!=null&&(qualityRank[old.optString("quality","")]?:0)>=(qualityRank[quality]?:0))continue
           perMinute[key]=JSONObject().put("at",at).put("price",c.getDouble(1))
-            .put("quality",quality).put("source",c.getString(3))
+            .put("previousClose",if(previous.isFinite()&&previous>0)previous else JSONObject.NULL)
+            .put("quality",quality).put("source",c.getString(4))
         }
       }
       if(perMinute.isEmpty())continue
+      val previousClose=perMinute.values.asSequence()
+        .map{it.optDouble("previousClose",Double.NaN)}
+        .firstOrNull{it.isFinite()&&it>0}
       output.put(symbol,JSONObject().put("date",latestDay)
+        .put("previousClose",previousClose?:JSONObject.NULL)
         .put("points",JSONArray(perMinute.values.toList())))
     }
     return output
