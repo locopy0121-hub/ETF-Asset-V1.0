@@ -7,10 +7,12 @@ const read=(p:string)=>readFileSync(p,'utf8');
 const t0900=Date.UTC(2026,8,29,1,0,0);
 const t0905=Date.UTC(2026,8,29,1,5,0);
 const t0830=Date.UTC(2026,8,29,0,30,0);
+const tNext0900=Date.UTC(2026,8,30,1,0,0);
 const now=Date.UTC(2026,8,29,2,0,0);
 
 const normalized=normalizeUnifiedIntradaySeries({
   date:'2026-09-29',
+  previousClose:34.88,
   points:[
     {at:t0830,price:34.90,quality:'trade',source:'TWSE_MIS'},
     {at:t0900,price:34.85,quality:'trade',source:'TWSE_MIS'},
@@ -20,6 +22,7 @@ const normalized=normalizeUnifiedIntradaySeries({
 assert.ok(normalized);
 assert.equal(normalized?.points.length,2,'pre-open values must never enter the 09:00-13:30 Mini series');
 assert.equal(normalized?.points[0]?.at,t0900);
+assert.equal(normalized?.previousClose,34.88);
 
 const snapshot:UnifiedMarketSnapshot={
   version:11,
@@ -30,6 +33,7 @@ const snapshot:UnifiedMarketSnapshot={
   }],
   intraday:{'00878':{
     date:'2026-09-29',
+    previousClose:34.88,
     points:[
       {at:t0900,price:34.85,quality:'trade',source:'TWSE_MIS'},
       {at:t0905,price:34.83,quality:'backup_realtime',source:'YAHOO'},
@@ -39,6 +43,24 @@ const snapshot:UnifiedMarketSnapshot={
 const runtime=marketRowsToRuntimeQuotes(snapshot,[],now);
 assert.equal(runtime[0]?.intraday?.length,2);
 assert.equal(runtime[0]?.intradayDate,'2026-09-29');
+assert.equal(runtime[0]?.intradayPreviousClose,34.88);
+
+// After close and next-day pre-open, keep the last completed session on screen.
+// Only the first verified 09:00+ point of the new session rolls the Mini chart to the new date.
+const preOpen=marketRowsToRuntimeQuotes({version:12,quotes:snapshot.quotes},runtime,Date.UTC(2026,8,30,0,30,0));
+assert.equal(preOpen[0]?.intradayDate,'2026-09-29','overnight/pre-open must keep the previous trading session visible');
+assert.equal(preOpen[0]?.intraday?.length,2);
+const nextSession:UnifiedMarketSnapshot={
+  version:13,
+  quotes:[{...snapshot.quotes[0]!,sourceQuoteAt:tNext0900,currentPrice:34.90,previousClose:34.83,checkedAt:tNext0900}],
+  intraday:{'00878':{date:'2026-09-30',previousClose:34.83,points:[
+    {at:tNext0900,price:34.90,quality:'trade',source:'TWSE_MIS'},
+  ]}},
+};
+const rolled=marketRowsToRuntimeQuotes(nextSession,preOpen,tNext0900+30_000);
+assert.equal(rolled[0]?.intradayDate,'2026-09-30','new session must begin only after an actual 09:00+ point exists');
+assert.equal(rolled[0]?.intraday?.length,1);
+assert.equal(rolled[0]?.intradayPreviousClose,34.83);
 
 const mini=read('src/components/MiniHoldingChart.tsx');
 for(const token of [
@@ -61,6 +83,7 @@ const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
 for(const token of [
   'null,3',
   'market_intraday',
+  'previous_close REAL',
   'intradayCoverage',
   "quality IN ('trade','backup_realtime')",
   "source IN ('TWSE_MIS','YAHOO')",
@@ -75,15 +98,18 @@ for(const token of [
   '?interval=1m&range=1d',
   '&intraday=1',
   'incompleteAfterClose',
+  'previousClose',
 ]) assert.ok(nativeCenter.includes(token),'native intraday market center missing '+token);
 
 const bridge=read('src/native/TfAssetNativeBridge.ts');
 assert.match(bridge,/UnifiedMarketIntradayPoint/);
 assert.match(bridge,/intraday\?:Record<string,UnifiedMarketIntradaySeries>/);
+assert.match(bridge,/previousClose\?:number\|null/);
 
 const adapter=read('src/market/unifiedMarketAdapter.ts');
 assert.match(adapter,/normalizeUnifiedIntradaySeries/);
 assert.match(adapter,/local\.minute<540\|\|local\.minute>810/);
+assert.match(adapter,/intradayPreviousClose/);
 
 const serverStore=read('server/src/store.mjs');
 assert.match(serverStore,/async intraday\(symbols=\[\]\)/);
