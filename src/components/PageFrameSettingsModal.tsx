@@ -47,9 +47,10 @@ const behaviors:readonly {key:FrameBehavior;label:string}[]=[
 const aligns=([{key:'left',label:'靠左'},{key:'center',label:'置中'},{key:'right',label:'靠右'}] as const);
 
 export function PageFrameSettingsModal({
-  visible,pageKey,title,frames,onClose,previewQuote,initialContentTab,
+  visible,pageKey,title,frames,onClose,previewQuote,previewRows,initialContentTab,
 }:{
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;previewQuote?:HoldingQuote|undefined;
+  previewRows?:readonly HoldingQuote[]|undefined;
   initialContentTab?:'wall'|'badges'|undefined;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
@@ -125,7 +126,7 @@ export function PageFrameSettingsModal({
         <View style={styles.section}>
           <View style={styles.bodyNoTop}>
             <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
-              onPatchFrame={patch} onChangeDisplay={setDisplayDraft} previewQuote={previewQuote}
+              onPatchFrame={patch} onChangeDisplay={setDisplayDraft} previewQuote={previewQuote} previewRows={previewRows}
               pageTitle={titleDraft} onChangePageTitle={setTitleDraft}/>
           </View>
         </View>
