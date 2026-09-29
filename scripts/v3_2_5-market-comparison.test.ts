@@ -31,6 +31,7 @@ for(const token of [
   '行情比對／診斷','代號行情','App／首頁行情','證券中心／官方行情','行情中心',
   'App ↔ 證券中心','行情中心 ↔ 證券中心','App ↔ 行情中心',
   '證券中心來源時間','行情中心來源時間','重新讀取官方行情','加入比對紀錄','最近比對紀錄',
+  '證券中心讀取狀態','證券中心原始欄位（唯讀）','z｜實際成交價','y｜昨收','o｜開盤','h｜最高','l｜最低','v｜成交量',
 ]) assert.ok(panel.includes(token),'market comparison UI missing '+token);
 assert.match(panel,/@tf-asset\/market-comparison-v2/);
 assert.match(panel,/logs\.slice\(0,50\)/,'comparison log must remain bounded');
@@ -41,11 +42,17 @@ assert.doesNotMatch(panel,/brokerBySymbol|saveBenchmark|證券中心基準值|�
 
 const probe=read('src/market/officialMarketProbe.ts');
 assert.match(probe,/mis\.twse\.com\.tw\/stock\/api\/getStockInfo\.jsp/);
-assert.match(probe,/positive\(row\.z\)<=0/,'official diagnostic baseline must require TWSE MIS z');
+assert.match(probe,/price=positive\(selected\.z\)\|\|null/,'official comparison price must be z only');
+assert.match(probe,/availability:price===null\?'z_missing':'trade'/);
+assert.match(probe,/raw:rawFields\(selected\)/,'z-missing diagnosis must preserve raw TWSE fields');
+assert.match(probe,/y\/o\/h\/l\/v\/pz\/b\/a/,'fallback fields must be diagnostic-only');
+assert.match(probe,/TWSE MIS 請求失敗/);
+assert.match(probe,/TWSE MIS 回應解析失敗/);
+assert.match(probe,/mapping 無匹配/);
 assert.match(probe,/field:'z'/);
 assert.match(probe,/never writes to/);
-assert.doesNotMatch(probe,/refreshUnifiedMarketData|setNativeMarketBackendUrl|AsyncStorage|SQLiteDatabase/,
-  'official diagnostic probe must stay outside global market mutation paths');
+assert.doesNotMatch(probe,/resolveTwseCurrentPrice|refreshUnifiedMarketData|setNativeMarketBackendUrl|AsyncStorage|SQLiteDatabase/,
+  'official diagnostic probe must stay outside global market mutation paths and never promote fallback prices');
 
 const settings=read('src/screens/SettingsScreen.tsx');
 assert.match(settings,/<MarketComparisonPanel quotes=\{quotes\} holdings=\{holdings\} marketDataVersion=\{marketDataVersion\}\/>/);
