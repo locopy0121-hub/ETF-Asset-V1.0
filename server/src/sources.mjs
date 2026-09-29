@@ -11,6 +11,7 @@ export class OfficialSources{
     this.fetch=fetchImpl;
     this.dailyCacheMs=dailyCacheMs;
     this.dailyCache=new Map();
+    this.intradayCache=new Map();
   }
   async json(url,headers={}){
     const res=await this.fetch(url,{signal:AbortSignal.timeout(9_000),
@@ -58,6 +59,52 @@ export class OfficialSources{
     }
     return {quotes:[...chosen.values()],errors};
   }
+  async intraday(symbols,now=Date.now()){
+    const output={};
+    for(const symbol of symbols){
+      if(!VALID_SYMBOL.test(symbol))continue;
+      const cached=this.intradayCache.get(symbol);
+      if(cached&&cached.expires>now){output[symbol]=cached.series;continue;}
+      let series=null;
+      for(const [suffix] of [['.TW'],['.TWO']]){
+        try{
+          const body=await this.json(YAHOO+encodeURIComponent(symbol+suffix)+'?interval=1m&range=1d',
+            {Referer:'https://finance.yahoo.com/'});
+          const result=body?.chart?.result?.[0];
+          const timestamps=Array.isArray(result?.timestamp)?result.timestamp:[];
+          const closes=Array.isArray(result?.indicators?.quote?.[0]?.close)?result.indicators.quote[0].close:[];
+          const points=[];
+          let date=null;
+          for(let i=0;i<Math.min(timestamps.length,closes.length);i++){
+            const at=Number(timestamps[i])*1000,price=Number(closes[i]);
+            if(!Number.isFinite(at)||at<=0||at>now+120_000||!Number.isFinite(price)||price<=0)continue;
+            const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{
+              timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
+              hour:'2-digit',minute:'2-digit',hourCycle:'h23',
+            }).formatToParts(new Date(at)).map(p=>[p.type,p.value]));
+            const minute=Number(parts.hour)*60+Number(parts.minute);
+            if(minute<540||minute>810)continue;
+            const day=parts.year+'-'+parts.month+'-'+parts.day;
+            if(date===null||day>date){date=day;points.length=0;}
+            if(day!==date)continue;
+            points.push({at,price,quality:'backup_realtime',source:'YAHOO'});
+          }
+          if(date&&points.length){series={date,points};break;}
+        }catch{}
+      }
+      if(series){
+        const local=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hourCycle:'h23'})
+          .formatToParts(new Date(now));
+        const get=t=>local.find(p=>p.type===t)?.value??'0';
+        const minute=Number(get('hour'))*60+Number(get('minute'));
+        const ttl=minute>815?6*60*60_000:30_000;
+        this.intradayCache.set(symbol,{series,expires:now+ttl});
+        output[symbol]=series;
+      }
+    }
+    return output;
+  }
+
   async daily(source,now=Date.now()){
     const hit=this.dailyCache.get(source);
     if(hit&&hit.expires>now)return hit;
