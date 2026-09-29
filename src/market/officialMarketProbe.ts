@@ -21,7 +21,7 @@ const positive=(value:unknown)=>{
 /**
  * Read-only diagnostic probe.
  * It talks directly to TWSE MIS for one selected symbol and never writes to
- * MarketRuntime, SQLite, AsyncStorage quote caches, holdings, or Ledger.
+ * MarketRuntime, SQLite, persistent quote caches, holdings, or Ledger.
  */
 export async function fetchOfficialMarketProbe(symbol:string,now=Date.now()):Promise<OfficialMarketProbe>{
   const normalized=String(symbol??'').trim().toUpperCase();
