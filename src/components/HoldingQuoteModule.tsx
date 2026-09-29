@@ -75,7 +75,7 @@ export function HoldingQuoteModule({
     compact&&!micro&&styles.compact,
     narrow&&styles.narrowCard,
     micro&&styles.microCard,
-    {backgroundColor:colorWithAlpha(cardBackground,cardStyle.backgroundOpacity),borderColor:colorWithAlpha(cardBorder,cardStyle.borderOpacity),borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
+    {backgroundColor:colorWithAlpha(cardBackground,cardStyle.backgroundOpacity??1),borderColor:colorWithAlpha(cardBorder,cardStyle.borderOpacity??1),borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
     {layoutEditMode&&layoutSelectionId==='card'?<View pointerEvents="none" style={[StyleSheet.absoluteFill,styles.layoutSelected]}/>:null}
     <Pressable onPress={layoutEditMode?(event)=>{event.stopPropagation();onLayoutSelect?.('card','行情卡片');}:onPress} accessibilityRole="button" accessibilityLabel={layoutEditMode?'選取行情卡片':'查看持股 '+item.symbol} style={styles.bodyPress}>
@@ -85,7 +85,7 @@ export function HoldingQuoteModule({
         <View style={[
           styles.head,
           micro&&styles.microHead,
-          {backgroundColor:colorWithAlpha(cfg.header.backgroundColor,cfg.header.backgroundOpacity),borderBottomColor:colorWithAlpha(cfg.header.borderColor,cfg.header.borderOpacity),borderBottomWidth:cfg.header.borderWidth},
+          {backgroundColor:colorWithAlpha(cfg.header.backgroundColor,cfg.header.backgroundOpacity??1),borderBottomColor:colorWithAlpha(cfg.header.borderColor,cfg.header.borderOpacity??1),borderBottomWidth:cfg.header.borderWidth},
         ]}>
           <View style={styles.headerMain}>
             <View style={[styles.headerTop,micro&&styles.microHeaderTop]}>
@@ -106,7 +106,7 @@ export function HoldingQuoteModule({
               layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}
             />)}
           </View>
-          {!narrow?<Text style={[styles.chevron,{color:colorWithAlpha(cardSecondary,cardStyle.secondaryTextOpacity)}]}>›</Text>:null}
+          {!narrow?<Text style={[styles.chevron,{color:colorWithAlpha(cardSecondary,cardStyle.secondaryTextOpacity??1)}]}>›</Text>:null}
         </View>
       </EffectView>:null}
 
@@ -148,9 +148,9 @@ export function HoldingQuoteModule({
     {showChart&&item.quoteVerified!==false?<View style={styles.miniChartWrap}>
       {layoutEditMode?
         <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.('chart','Mini 圖表');}} style={layoutSelectionId==='chart'?styles.layoutSelected:undefined}>
-          <MiniHoldingChart holding={item} narrow={narrow} gainColor={colorWithAlpha(cardStyle.gainColor,cardStyle.gainOpacity)} lossColor={colorWithAlpha(cardStyle.lossColor,cardStyle.lossOpacity)}/>
+          <MiniHoldingChart holding={item} narrow={narrow} gainColor={colorWithAlpha(cardStyle.gainColor,cardStyle.gainOpacity??1)} lossColor={colorWithAlpha(cardStyle.lossColor,cardStyle.lossOpacity??1)}/>
         </Pressable>:
-        <MiniHoldingChart holding={item} narrow={narrow} gainColor={colorWithAlpha(cardStyle.gainColor,cardStyle.gainOpacity)} lossColor={colorWithAlpha(cardStyle.lossColor,cardStyle.lossOpacity)} {...(miniOpen?{onOpen:miniOpen}:{})}/>}
+        <MiniHoldingChart holding={item} narrow={narrow} gainColor={colorWithAlpha(cardStyle.gainColor,cardStyle.gainOpacity??1)} lossColor={colorWithAlpha(cardStyle.lossColor,cardStyle.lossOpacity??1)} {...(miniOpen?{onOpen:miniOpen}:{})}/>}
     </View>:null}
   </View>;
 }
@@ -187,9 +187,9 @@ function WallText({
     numeric={numeric}
     refreshToken={refreshToken}
     numberOfLines={1}
-    inlineBackgroundColor={liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity):liveBackground}
+    inlineBackgroundColor={liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity??1):liveBackground}
     style={{
-      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,field.textColor==null&&header?wall.header.textOpacity:field.textOpacity),
+      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,field.textColor==null&&header?wall.header.textOpacity??1:field.textOpacity??1),
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:header&&field.field==='symbol'?'left':field.align,
@@ -221,17 +221,17 @@ function WallMetric({
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
   const liveBackground=resolveWallBackground(field,item,change,systemColors);
-  const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity):'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
+  const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity??1):'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
     <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':
       colorWithAlpha(linkedColor(field.textColor??wall.style.secondaryTextColor,wall.style.secondaryTextProfitColor,
-        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),field.textColor==null?wall.style.secondaryTextOpacity:field.textOpacity),textAlign:field.align}]}>{field.label}</Text>
+        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),field.textColor==null?wall.style.secondaryTextOpacity:field.textOpacity??1),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
       numeric={numeric}
       refreshToken={refreshToken}
       style={{
-        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(fieldColor(field,item,change,wall,systemColors),field.textOpacity),
+        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(fieldColor(field,item,change,wall,systemColors),field.textOpacity??1),
         fontSize:12*field.fontScale,
         fontWeight:'900',
         marginTop:2,
