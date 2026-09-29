@@ -169,43 +169,79 @@ export function PageLayoutToolWorkbench({
     {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
   ];
 
-  const headerFrame:FrameMaintenanceContext={
-    page:pageKey,frameKey:frame.key,frameTitle:frame.title,frameConfig,displayConfig:displayDraft,
+  const chartData=(chart:DashboardChartConfig)=>{
+    const source=chart.source;
+    const holdingValues=holdingPreviewRows.map(row=>{
+      if(source==='pnl')return row.pnl;
+      if(source==='dividend')return row.cumulativeDividend;
+      if(source==='roi')return row.roi;
+      if(source==='avgCost')return row.avgCost;
+      if(source==='price')return row.price;
+      if(source==='shares')return row.shares;
+      if(source==='realizedPnl')return row.realizedPnl;
+      if(source==='comprehensivePnl')return row.comprehensivePnl;
+      return row.marketValue;
+    });
+    const values=source==='transactions'?[finance.entries.length]:holdingValues;
+    const labels=source==='transactions'?['交易筆數']:holdingPreviewRows.map(row=>row.symbol);
+    return {values:values.length?values:[0],labels:labels.length?labels:['目前']};
   };
-    const realPreview=hasRealPreview(pageKey,frame.key);
-  const previewContent=holding&&holdingPreviewRows.length?
-    <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
+  const selectFrameDirect=(item:PageFrameDefinition)=>{
+    setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');
+  };
+  const previewContentFor=(item:PageFrameDefinition)=>{
+    const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
+    if(itemHolding&&holdingPreviewRows.length)return <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
       badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
       style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
       refreshToken={finance.sharedSnapshot.generatedAt}
       onOpenHolding={()=>{}} onOpenChart={()=>{}}
-      layoutEditMode layoutSelectionId={selection.id} onLayoutSelect={selectHolding}/>:
-    pageKey==='home'&&frame.key==='asset-dashboard'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
-          caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
-          previousPnl={previewPnl?.previousTotalPnl??0}
-          todayPnl={previewPnl?.todayPnl??0}
-          totalPnl={portfolio.totalPnl}
-          pnlComplete={valuationComplete&&previewPnl!==null}/>
-      </View>:
-    pageKey==='home'&&frame.key==='profit-analysis'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>
-      </View>:
-    pageKey==='home'&&frame.key==='pnl-detail'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardProfitDetail rows={rows} layout={dashboard.profitDetail}/>
-      </View>:
-    pageKey==='home'&&frame.key==='dashboard-quick-actions'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardQuickActions layout={dashboard.quickActions} actions={[
-          {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>{}},
-          {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>{}},
-          {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>{}},
-          {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
-        ]}/>
-      </View>:null;
+      layoutEditMode layoutSelectionId={frameKey===item.key?selection.id:null}
+      onLayoutSelect={(id,label)=>{setFrameKey(item.key);selectHolding(id,label);}}/>;
+    if(pageKey==='home'&&item.key==='asset-dashboard')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
+        caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
+        previousPnl={previewPnl?.previousTotalPnl??0} todayPnl={previewPnl?.todayPnl??0}
+        totalPnl={portfolio.totalPnl} pnlComplete={valuationComplete&&previewPnl!==null}/>
+    </View>;
+    if(pageKey==='home'&&item.key==='profit-analysis')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>
+    </View>;
+    if(pageKey==='home'&&item.key==='pnl-detail')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardProfitDetail rows={rows} layout={dashboard.profitDetail}/>
+    </View>;
+    if(pageKey==='home'&&item.key==='dashboard-quick-actions')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardQuickActions layout={dashboard.quickActions} actions={[
+        {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>{}},
+        {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>{}},
+        {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>{}},
+        {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
+      ]}/>
+    </View>;
+    return null;
+  };
+  const renderActualFrame=(item:PageFrameDefinition)=>{
+    const itemConfig=draft[item.key];
+    if(!itemConfig||!itemConfig.visible)return null;
+    const selected=frameKey===item.key;
+    const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
+    const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
+    return <View key={item.key} onLayout={event=>{
+      const {width,height}=event.nativeEvent.layout;
+      setFrameMeasurements(previous=>previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}});
+    }}>
+      <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
+        {item.key==='page-header'?
+          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
+            <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
+              layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
+          </Pressable>:
+          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
+            <FrameCard title={item.title} editorStyle={itemConfig}>{previewContentFor(item)}</FrameCard>
+          </Pressable>}
+      </LayoutSelectionProvider>
+    </View>;
+  };
 
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
@@ -227,26 +263,36 @@ export function PageLayoutToolWorkbench({
     <View style={styles.head}><View style={{flex:1}}><Text style={styles.title}>排版工具</Text>
       <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料。點到哪個物件，虛線框就鎖定該物件，下方只顯示已實裝的工具。</Text></View></View>
 
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moduleRow}>
-      {previewFrames.map(item=><Pressable key={item.key} onPress={()=>{setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');}}
-        style={[styles.moduleChip,item.key===frame.key&&styles.moduleChipActive]}>
-        <Text style={[styles.moduleText,item.key===frame.key&&styles.moduleTextActive]}>{item.title}</Text>
-      </Pressable>)}
-    </ScrollView>
-
-    {realPreview?<View style={styles.previewShell}>
-      <View style={styles.previewTop}><Text style={styles.previewTitle}>{profile.label}｜真實元件預覽</Text><Text style={styles.path}>{frame.title} › {selection.label}</Text></View>
-      <LayoutSelectionProvider targets={targets} selectedId={selection.id} onSelect={selectTarget}>
-        {frame.key==='page-header'?
-          <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
-            <PageHeaderVisual title={pageTitle} frameConfig={frameConfig} frame={headerFrame}
-              layoutTargets={targets} selectedId={selection.id} onSelect={selectTarget}/>
-          </Pressable>:
-          <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={frame.title} editorStyle={frameConfig}>{previewContent}</FrameCard>
-          </Pressable>}
-      </LayoutSelectionProvider>
-    </View>:null}
+    <View style={styles.previewShell}>
+      <View style={styles.previewTop}>
+        <Text style={styles.previewTitle}>實際頁面編輯區</Text>
+        <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
+      </View>
+      <ScrollView nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+        showsVerticalScrollIndicator>
+        <View style={styles.actualCanvas} onLayout={event=>{
+          const {width,height}=event.nativeEvent.layout;
+          setPreviewBounds(previous=>previous.width===width&&previous.height===height?previous:{width,height});
+        }}>
+          {previewFrames.map(renderActualFrame)}
+          {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
+            const data=chartData(chart);
+            const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
+            const selected=selection.id==='chart:'+chart.id;
+            return <View key={'actual-chart-'+chart.id} pointerEvents="box-none">
+              {chart.visible?<FloatingDashboardChart config={{...chart,locked:true,touchThrough:true}}
+                values={data.values} labels={data.labels} bounds={previewBounds} onMove={()=>{}} onResize={()=>{}}/>:null}
+              <Pressable accessibilityRole="button" accessibilityLabel={'選取圖表 '+chart.title}
+                onPress={()=>{setFrameKey('asset-dashboard');setSelection({id:'chart:'+chart.id,kind:'chart',label:chart.title,width:chart.width,height:chart.height});setOpenGroup('chart');}}
+                style={[styles.chartSelectOverlay,{left:x,top:chart.y,width:chart.width,height:chart.height,zIndex:Math.max(100,chart.zIndex+100)},
+                  selected&&styles.chartSelected,!chart.visible&&styles.chartHidden]}>
+                {!chart.visible?<Text style={styles.chartHiddenText}>圖表已關閉 · {chart.title}</Text>:null}
+              </Pressable>
+            </View>;
+          }):null}
+        </View>
+      </ScrollView>
+    </View>
 
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
       {visibleKinds.map(kind=><Pressable key={kind} onPress={()=>chooseKind(kind)} style={[styles.kindChip,selection.kind===kind&&styles.kindChipActive]}>
