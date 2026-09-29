@@ -104,6 +104,12 @@ export function FloatingDashboardChart({
   }),[config.locked,config.width,config.height,config.aspectLocked,bounds.width,bounds.height,effectiveX,effectiveY,onResize]);
 
   if(!config.visible)return null;
+  const textColor=rgba(config.textColor,config.textOpacity);
+  const accentColor=rgba(config.accentColor,config.accentOpacity);
+  const gainColor=rgba(config.gainColor,config.gainOpacity);
+  const lossColor=rgba(config.lossColor,config.lossOpacity);
+  const flatColor=rgba(config.flatColor,config.flatOpacity);
+  const borderColor=rgba(config.borderColor,config.borderOpacity);
   const styleLabel:Record<string,string>={
     line:'折線圖',area:'面積圖',bar:'長條圖',horizontalBar:'水平長條',stackedBar:'堆疊長條',pie:'圓餅圖',donut:'甜甜圈',
     allocation:'資產配置',pnlTrend:'損益趨勢',dividendTrend:'股息趨勢',investVsValue:'投入 vs 市值',holdingWeight:'持股占比',
@@ -116,21 +122,21 @@ export function FloatingDashboardChart({
     const spark=local.map(value=>blocks[Math.round(clamp(Math.abs(value)/max,0,1)*(blocks.length-1))]).join('');
     const selectedIndex=selected==null?null:clamp(selected,0,local.length-1);
     return <View style={[styles.plot,{opacity:config.contentOpacity}]}>
-      {config.gridVisible?<View pointerEvents="none" style={styles.grid}><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12)}]}/></View>:null}
+      {config.gridVisible?<View pointerEvents="none" style={styles.grid}><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity)}]}/></View>:null}
       {(config.style==='line'||config.style==='area'||config.style==='pnlTrend'||config.style==='dividendTrend'||config.style==='roiTrend'||config.style==='priceK')
-        ?<View style={styles.sparkWrap}><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.spark,{color:config.accentColor,fontSize:large?44:28}]}>{spark}</Text></View>
+        ?<View style={styles.sparkWrap}><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.spark,{color:accentColor,fontSize:large?44:28}]}>{spark}</Text></View>
         :config.style==='pie'||config.style==='donut'||config.style==='allocation'||config.style==='holdingWeight'
-          ?<View style={styles.pieWrap}><View style={[styles.ring,{borderColor:config.accentColor,width:large?120:68,height:large?120:68,borderRadius:large?60:34,borderWidth:large?20:12}]}><Text style={[styles.ringText,{color:config.textColor}]}>{local.length}</Text></View>{config.legendVisible?<View style={styles.legend}>{local.slice(0,6).map((value,index)=><Pressable key={index} onPress={()=>setSelected(index)}><Text numberOfLines={1} style={[styles.legendText,{color:config.textColor}]}>{(view.labels[index]??String(index+1))+' '+Math.round(value).toLocaleString('zh-TW')}</Text></Pressable>)}</View>:null}</View>
-          :<View style={styles.bars}>{local.slice(0,12).map((value,index)=><Pressable key={index} onPress={()=>setSelected(index)} style={styles.barCol}><View style={[styles.bar,{height:Math.max(6,Math.round(Math.abs(value)/max*(large?150:74))),backgroundColor:value>0?config.gainColor:value<0?config.lossColor:config.flatColor,borderRadius:config.borderRadius>0?Math.min(6,config.borderRadius):0}]}/>{config.xAxisVisible?<Text numberOfLines={1} style={[styles.barLabel,{color:config.textColor}]}>{view.labels[index]??index+1}</Text>:null}</Pressable>)}</View>}
-      {config.tooltipEnabled&&selectedIndex!=null?<View style={[styles.tooltip,{backgroundColor:rgba(config.backgroundColor,.94),borderColor:config.borderColor}]}><Text style={[styles.tooltipText,{color:config.textColor}]}>{(view.labels[selectedIndex]??String(view.start+selectedIndex+1))+'：'+Number(local[selectedIndex]??0).toLocaleString('zh-TW')}</Text></View>:null}
-      {config.dataLabels&&local.length<=8?<View style={styles.dataLabels}>{local.map((value,index)=><Text key={index} style={[styles.dataLabel,{color:config.textColor}]}>{Math.round(value).toLocaleString('zh-TW')}</Text>)}</View>:null}
-      {config.locked&&zoom>1?<Text style={[styles.zoomBadge,{color:config.textColor}]}>{zoom.toFixed(1)+'×'}</Text>:null}
+          ?<View style={styles.pieWrap}><View style={[styles.ring,{borderColor:accentColor,width:large?120:68,height:large?120:68,borderRadius:large?60:34,borderWidth:large?20:12}]}><Text style={[styles.ringText,{color:textColor}]}>{local.length}</Text></View>{config.legendVisible?<View style={styles.legend}>{local.slice(0,6).map((value,index)=><Pressable key={index} onPress={()=>setSelected(index)}><Text numberOfLines={1} style={[styles.legendText,{color:textColor}]}>{(view.labels[index]??String(index+1))+' '+Math.round(value).toLocaleString('zh-TW')}</Text></Pressable>)}</View>:null}</View>
+          :<View style={styles.bars}>{local.slice(0,12).map((value,index)=><Pressable key={index} onPress={()=>setSelected(index)} style={styles.barCol}><View style={[styles.bar,{height:Math.max(6,Math.round(Math.abs(value)/max*(large?150:74))),backgroundColor:value>0?gainColor:value<0?lossColor:flatColor,borderRadius:config.borderRadius>0?Math.min(6,config.borderRadius):0}]}/>{config.xAxisVisible?<Text numberOfLines={1} style={[styles.barLabel,{color:textColor}]}>{view.labels[index]??index+1}</Text>:null}</Pressable>)}</View>}
+      {config.tooltipEnabled&&selectedIndex!=null?<View style={[styles.tooltip,{backgroundColor:rgba(config.backgroundColor,.94),borderColor}]}><Text style={[styles.tooltipText,{color:textColor}]}>{(view.labels[selectedIndex]??String(view.start+selectedIndex+1))+'：'+Number(local[selectedIndex]??0).toLocaleString('zh-TW')}</Text></View>:null}
+      {config.dataLabels&&local.length<=8?<View style={styles.dataLabels}>{local.map((value,index)=><Text key={index} style={[styles.dataLabel,{color:textColor}]}>{Math.round(value).toLocaleString('zh-TW')}</Text>)}</View>:null}
+      {config.locked&&zoom>1?<Text style={[styles.zoomBadge,{color:textColor}]}>{zoom.toFixed(1)+'×'}</Text>:null}
     </View>;
   };
 
   const cardStyle={
     left:effectiveX,top:effectiveY,width:config.width,height:config.height,zIndex:config.zIndex,
-    backgroundColor:rgba(config.backgroundColor,config.backgroundOpacity),opacity:config.opacity,borderColor:config.borderColor,
+    backgroundColor:rgba(config.backgroundColor,config.backgroundOpacity),opacity:config.opacity,borderColor,
     borderWidth:config.borderWidth,borderStyle:config.borderStyle,borderRadius:config.borderRadius,padding:config.padding,
     ...(config.shadowEnabled?{elevation:6,shadowOpacity:config.shadowOpacity,shadowRadius:10,shadowOffset:{width:0,height:3}}:{}),
   } as const;
@@ -139,20 +145,20 @@ export function FloatingDashboardChart({
     <View pointerEvents={config.touchThrough?'none':'auto'} {...responder.panHandlers} style={[styles.card,cardStyle]}>
       <View style={styles.header}>
         <View style={{flex:1}}>
-          <Text numberOfLines={1} style={[styles.title,{color:config.textColor,fontSize:config.titleFontSize,textAlign:config.titleAlign}]}>{config.title}</Text>
-          <Text style={[styles.sub,{color:config.textColor}]}>{(styleLabel[config.style]??config.style)+(config.locked?' · 檢視手勢':' · 編輯拖移')}</Text>
+          <Text numberOfLines={1} style={[styles.title,{color:textColor,fontSize:config.titleFontSize,textAlign:config.titleAlign}]}>{config.title}</Text>
+          <Text style={[styles.sub,{color:textColor}]}>{(styleLabel[config.style]??config.style)+(config.locked?' · 檢視手勢':' · 編輯拖移')}</Text>
         </View>
-        <Pressable onPress={()=>setFullScreen(true)} style={styles.iconButton}><Text style={[styles.drag,{color:config.accentColor}]}>⛶</Text></Pressable>
-        <Text style={[styles.drag,{color:config.accentColor}]}>{config.locked?'🔒':'↕'}</Text>
+        <Pressable onPress={()=>setFullScreen(true)} style={styles.iconButton}><Text style={[styles.drag,{color:accentColor}]}>⛶</Text></Pressable>
+        <Text style={[styles.drag,{color:accentColor}]}>{config.locked?'🔒':'↕'}</Text>
       </View>
       {plot(false)}
-      {!config.locked?<View {...resizeResponder.panHandlers} style={[styles.resizeHandle,{borderColor:config.accentColor}]}><Text style={[styles.resizeGlyph,{color:config.accentColor}]}>↘</Text></View>:null}
+      {!config.locked?<View {...resizeResponder.panHandlers} style={[styles.resizeHandle,{borderColor:accentColor}]}><Text style={[styles.resizeGlyph,{color:accentColor}]}>↘</Text></View>:null}
     </View>
     <Modal visible={fullScreen} animationType="fade" onRequestClose={()=>setFullScreen(false)}>
-      <View style={[styles.fullScreen,{backgroundColor:config.backgroundColor}]}>
-        <View style={styles.fullHeader}><Text style={[styles.fullTitle,{color:config.textColor}]}>{config.title}</Text><Pressable onPress={()=>setFullScreen(false)} style={styles.fullClose}><Text style={[styles.fullCloseText,{color:config.textColor}]}>×</Text></Pressable></View>
+      <View style={[styles.fullScreen,{backgroundColor:rgba(config.backgroundColor,config.backgroundOpacity)}]}>
+        <View style={styles.fullHeader}><Text style={[styles.fullTitle,{color:textColor}]}>{config.title}</Text><Pressable onPress={()=>setFullScreen(false)} style={styles.fullClose}><Text style={[styles.fullCloseText,{color:textColor}]}>×</Text></Pressable></View>
         <View style={styles.fullPlot}>{plot(true)}</View>
-        <View style={styles.fullActions}><Pressable onPress={resetZoom} style={[styles.resetButton,{borderColor:config.borderColor}]}><Text style={[styles.resetText,{color:config.accentColor}]}>重設縮放</Text></Pressable><Text style={[styles.fullHint,{color:config.textColor}]}>鎖定圖表後：兩指縮放 · 單指平移 · 雙擊重設</Text></View>
+        <View style={styles.fullActions}><Pressable onPress={resetZoom} style={[styles.resetButton,{borderColor}]}><Text style={[styles.resetText,{color:accentColor}]}>重設縮放</Text></Pressable><Text style={[styles.fullHint,{color:textColor}]}>鎖定圖表後：兩指縮放 · 單指平移 · 雙擊重設</Text></View>
       </View>
     </Modal>
   </>;
