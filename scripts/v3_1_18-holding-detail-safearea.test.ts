@@ -28,8 +28,10 @@ includes(app,"const expectedPage=detail?'portfolio':active;","detail maintenance
 includes(app,"maintenance.session.page!==expectedPage||chartHolding","chart page remains isolated from detail maintenance");
 
 const config=JSON.parse(read('app.json'));
-assert.equal(config.expo.version,'3.2.11');
-assert.equal(config.expo.android.versionCode,30211);
+const pkg=JSON.parse(read('package.json'));
+assert.equal(config.expo.version,pkg.version,'app.json and package.json versions must stay aligned');
+assert.ok(Number.isInteger(config.expo.android.versionCode)&&config.expo.android.versionCode>0,'Android versionCode must be a positive integer');
+assert.equal(String(config.expo.ios.buildNumber),String(config.expo.android.versionCode),'iOS buildNumber and Android versionCode must stay aligned');
 assert.equal(config.expo.androidNavigationBar,undefined,'SDK 57 app schema must not use removed androidNavigationBar config');
 
 const workflow=read('.github/workflows/ci.yml');
