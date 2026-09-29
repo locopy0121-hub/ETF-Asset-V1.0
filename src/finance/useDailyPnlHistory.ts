@@ -75,6 +75,7 @@ export function useDailyPnlHistory(input:{
     return upsertDailyPnlRecord(records,candidate);
   },[records,candidate]);
   const stats=useMemo(()=>summarizeDailyPnl(visibleRecords),[visibleRecords]);
+  const current=useMemo(()=>candidate?visibleRecords.find(row=>row.date===candidate.date)??null:null,[candidate,visibleRecords]);
 
-  return {hydrated:storageHydrated,records:visibleRecords,latest:stats.latest,stats};
+  return {hydrated:storageHydrated,records:visibleRecords,current,latest:stats.latest,stats};
 }
