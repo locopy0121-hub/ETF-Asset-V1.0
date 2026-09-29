@@ -1,5 +1,5 @@
 import {type ReactNode,useEffect,useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Alert,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
@@ -109,7 +109,14 @@ export function PageFrameSettingsModal({
     recordDiagnosticEvent({level:'info',code:'PAGE_EDITOR_APPLY',screen:pageKey,message:'頁面設定已套用'});
     onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
-  const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();};
+  const reset=()=>Alert.alert(
+    '確認恢復本頁預設排版',
+    '將恢復目前頁面的排版設定。請再次確認是否恢復。',
+    [
+      {text:'取消',style:'cancel'},
+      {text:'確認恢復',style:'destructive',onPress:()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();}},
+    ],
+  );
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
     <View style={styles.root}>
