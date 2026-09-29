@@ -104,12 +104,12 @@ export function FloatingDashboardChart({
   }),[config.locked,config.width,config.height,config.aspectLocked,bounds.width,bounds.height,effectiveX,effectiveY,onResize]);
 
   if(!config.visible)return null;
-  const textColor=rgba(config.textColor,config.textOpacity);
-  const accentColor=rgba(config.accentColor,config.accentOpacity);
-  const gainColor=rgba(config.gainColor,config.gainOpacity);
-  const lossColor=rgba(config.lossColor,config.lossOpacity);
-  const flatColor=rgba(config.flatColor,config.flatOpacity);
-  const borderColor=rgba(config.borderColor,config.borderOpacity);
+  const textColor=rgba(config.textColor,config.textOpacity??1);
+  const accentColor=rgba(config.accentColor,config.accentOpacity??1);
+  const gainColor=rgba(config.gainColor,config.gainOpacity??1);
+  const lossColor=rgba(config.lossColor,config.lossOpacity??1);
+  const flatColor=rgba(config.flatColor,config.flatOpacity??1);
+  const borderColor=rgba(config.borderColor,config.borderOpacity??1);
   const styleLabel:Record<string,string>={
     line:'折線圖',area:'面積圖',bar:'長條圖',horizontalBar:'水平長條',stackedBar:'堆疊長條',pie:'圓餅圖',donut:'甜甜圈',
     allocation:'資產配置',pnlTrend:'損益趨勢',dividendTrend:'股息趨勢',investVsValue:'投入 vs 市值',holdingWeight:'持股占比',
@@ -122,7 +122,7 @@ export function FloatingDashboardChart({
     const spark=local.map(value=>blocks[Math.round(clamp(Math.abs(value)/max,0,1)*(blocks.length-1))]).join('');
     const selectedIndex=selected==null?null:clamp(selected,0,local.length-1);
     return <View style={[styles.plot,{opacity:config.contentOpacity}]}>
-      {config.gridVisible?<View pointerEvents="none" style={styles.grid}><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity)}]}/></View>:null}
+      {config.gridVisible?<View pointerEvents="none" style={styles.grid}><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity??1)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity??1)}]}/><View style={[styles.gridLine,{borderColor:rgba(config.textColor,.12*config.textOpacity??1)}]}/></View>:null}
       {(config.style==='line'||config.style==='area'||config.style==='pnlTrend'||config.style==='dividendTrend'||config.style==='roiTrend'||config.style==='priceK')
         ?<View style={styles.sparkWrap}><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.spark,{color:accentColor,fontSize:large?44:28}]}>{spark}</Text></View>
         :config.style==='pie'||config.style==='donut'||config.style==='allocation'||config.style==='holdingWeight'
