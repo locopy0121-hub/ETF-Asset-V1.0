@@ -153,6 +153,9 @@ internal class TfAssetMarketCenter(private val context:Context){
       try{
         val raw=fetchJson(YAHOO_URL+URLEncoder.encode(symbol+suffix,"UTF-8")+"?interval=1m&range=1d")
         val result=JSONObject(raw).optJSONObject("chart")?.optJSONArray("result")?.optJSONObject(0)?:continue
+        val meta=result.optJSONObject("meta")
+        val previousClose=finitePositive(meta?.optString("chartPreviousClose","")?:"")
+          ?:finitePositive(meta?.optString("previousClose","")?:"")
         val timestamps=result.optJSONArray("timestamp")?:continue
         val quote=result.optJSONObject("indicators")?.optJSONArray("quote")?.optJSONObject(0)?:continue
         val closes=quote.optJSONArray("close")?:continue
@@ -166,6 +169,7 @@ internal class TfAssetMarketCenter(private val context:Context){
           val minute=local.hour*60+local.minute
           if(minute !in 540..810)continue
           points.put(JSONObject().put("symbol",symbol).put("currentPrice",price)
+            .put("previousClose",previousClose?:JSONObject.NULL)
             .put("sourceQuoteAt",at).put("quality","backup_realtime").put("source","YAHOO"))
         }
         if(points.length()>0)return points
