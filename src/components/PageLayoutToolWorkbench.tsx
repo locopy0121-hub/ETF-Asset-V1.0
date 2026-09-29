@@ -238,18 +238,23 @@ export function PageLayoutToolWorkbench({
     const selected=frameKey===item.key;
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
-    return <View key={item.key} onLayout={event=>{
-      const {width,height}=event.nativeEvent.layout;
-      setFrameMeasurements(previous=>previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}});
-    }}>
+    return <View key={item.key}>
       <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
         {item.key==='page-header'?
-          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
+          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}
+            onLayout={event=>{
+              const {width,height}=event.nativeEvent.layout;
+              setFrameMeasurements(previous=>previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}});
+            }}>
             <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
           <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} editorStyle={itemConfig}>{previewContentFor(item)}</FrameCard>
+            <FrameCard title={item.title} editorStyle={itemConfig}
+              onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
+                previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
+              {previewContentFor(item)}
+            </FrameCard>
           </Pressable>}
       </LayoutSelectionProvider>
     </View>;
@@ -280,28 +285,38 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.previewTitle}>實際頁面編輯區</Text>
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
+      <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
       <ScrollView nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
-        <View style={styles.actualCanvas} onLayout={event=>{
-          const {width,height}=event.nativeEvent.layout;
-          setPreviewBounds(previous=>previous.width===width&&previous.height===height?previous:{width,height});
+        <View style={styles.previewViewport} onLayout={event=>{
+          const width=event.nativeEvent.layout.width;
+          setPreviewViewportWidth(previous=>Math.abs(previous-width)<1?previous:width);
         }}>
-          {previewFrames.map(renderActualFrame)}
-          {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
-            const data=chartData(chart);
-            const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
-            const selected=selection.id==='chart:'+chart.id;
-            return <View key={'actual-chart-'+chart.id} pointerEvents="box-none">
-              {chart.visible?<FloatingDashboardChart config={{...chart,locked:true,touchThrough:true}}
-                values={data.values} labels={data.labels} bounds={previewBounds} onMove={()=>{}} onResize={()=>{}}/>:null}
-              <Pressable accessibilityRole="button" accessibilityLabel={'選取圖表 '+chart.title}
-                onPress={()=>{setFrameKey('asset-dashboard');setSelection({id:'chart:'+chart.id,kind:'chart',label:chart.title,width:chart.width,height:chart.height});setOpenGroup('chart');}}
-                style={[styles.chartSelectOverlay,{left:x,top:chart.y,width:chart.width,height:chart.height,zIndex:Math.max(100,chart.zIndex+100)},
-                  selected&&styles.chartSelected,!chart.visible&&styles.chartHidden]}>
-                {!chart.visible?<Text style={styles.chartHiddenText}>圖表已關閉 · {chart.title}</Text>:null}
-              </Pressable>
-            </View>;
-          }):null}
+          <View style={{width:Math.max(1,previewViewportWidth),height:scaledPageHeight,overflow:'hidden'}}>
+            <View style={[styles.actualCanvas,{width:actualPageWidth,gap:dashboard.sectionGap,
+              transformOrigin:'top left',transform:[{scale:previewScale}]}]} onLayout={event=>{
+              const height=event.nativeEvent.layout.height;
+              setActualCanvasHeight(previous=>Math.abs(previous-height)<1?previous:height);
+              setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
+            }}>
+              {previewFrames.map(renderActualFrame)}
+              {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
+                const data=chartData(chart);
+                const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
+                const selected=selection.id==='chart:'+chart.id;
+                return <View key={'actual-chart-'+chart.id} pointerEvents="box-none">
+                  {chart.visible?<FloatingDashboardChart config={{...chart,locked:true,touchThrough:true}}
+                    values={data.values} labels={data.labels} bounds={previewBounds} onMove={()=>{}} onResize={()=>{}}/>:null}
+                  <Pressable accessibilityRole="button" accessibilityLabel={'選取圖表 '+chart.title}
+                    onPress={()=>{setFrameKey('asset-dashboard');setSelection({id:'chart:'+chart.id,kind:'chart',label:chart.title,width:chart.width,height:chart.height});setOpenGroup('chart');}}
+                    style={[styles.chartSelectOverlay,{left:x,top:chart.y,width:chart.width,height:chart.height,zIndex:Math.max(100,chart.zIndex+100)},
+                      selected&&styles.chartSelected,!chart.visible&&styles.chartHidden]}>
+                    {!chart.visible?<Text style={styles.chartHiddenText}>圖表已關閉 · {chart.title}</Text>:null}
+                  </Pressable>
+                </View>;
+              }):null}
+            </View>
+          </View>
         </View>
       </ScrollView>
     </View>
