@@ -6,14 +6,25 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * Market-only database. It NEVER opens, migrates, deletes or recalculates the Ledger.
- * V2 adds quote provenance so fallback prices cannot masquerade as TWSE z trades.
+ * V3 adds current-session intraday history for Mini charts. Only real trade/recent-trade
+ * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,2
+  context.applicationContext,"tf_asset_market_center_v1.db",null,3
 ){
+  companion object{
+    private val TAIPEI=ZoneId.of("Asia/Taipei")
+    private val DAY=DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val MINUTE=DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+  }
+  internal data class IntradayCoverage(val count:Int,val firstAt:Long,val lastAt:Long)
+
   private val qualityRank=mapOf(
     "trade" to 50,"backup_realtime" to 40,"bid_ask" to 30,
     "official_close" to 20,"previous_close" to 10
@@ -21,6 +32,8 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
   private val allowedQuality=qualityRank.keys
   private val allowedSource=setOf("TWSE_MIS","YAHOO","TWSE_DAILY","TPEX_DAILY")
   private val allowedPriceType=setOf("REALTIME_TRADE","BACKUP_REALTIME","BID_ASK","PREV_CLOSE","OFFICIAL_CLOSE")
+  private val intradayQuality=setOf("trade","backup_realtime")
+  private val intradaySource=setOf("TWSE_MIS","YAHOO")
 
   private fun createQuoteTable(db:SQLiteDatabase,name:String="market_quotes"){
     db.execSQL("""CREATE TABLE IF NOT EXISTS $name(
@@ -39,14 +52,29 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       checked_at INTEGER NOT NULL
     )""")
   }
+
+  private fun createIntradayTable(db:SQLiteDatabase){
+    db.execSQL("""CREATE TABLE IF NOT EXISTS market_intraday(
+      symbol TEXT NOT NULL,
+      source_at INTEGER NOT NULL CHECK(source_at>0),
+      price REAL NOT NULL CHECK(price>0),
+      quality TEXT NOT NULL CHECK(quality IN ('trade','backup_realtime')),
+      source TEXT NOT NULL CHECK(source IN ('TWSE_MIS','YAHOO')),
+      received_at INTEGER NOT NULL,
+      PRIMARY KEY(symbol,source_at,source)
+    )""")
+    db.execSQL("CREATE INDEX IF NOT EXISTS market_intraday_symbol_time ON market_intraday(symbol,source_at DESC)")
+  }
+
   override fun onCreate(db:SQLiteDatabase){
     createQuoteTable(db)
+    createIntradayTable(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
+
   override fun onUpgrade(db:SQLiteDatabase,oldVersion:Int,newVersion:Int){
     if(oldVersion<2){
-      // Transactional market-cache migration only. The immutable Ledger database is never opened here.
       createQuoteTable(db,"market_quotes_v2")
       runCatching{
         db.execSQL("""INSERT OR REPLACE INTO market_quotes_v2(
@@ -69,8 +97,98 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
         createQuoteTable(db)
       }
     }
+    if(oldVersion<3)createIntradayTable(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
+  }
+
+  private fun inTaipeiSession(at:Long):Boolean{
+    val local=Instant.ofEpochMilli(at).atZone(TAIPEI)
+    val minute=local.hour*60+local.minute
+    return minute in 540..810
+  }
+
+  private fun insertIntraday(db:SQLiteDatabase,row:JSONObject,receivedAt:Long){
+    val symbol=row.optString("symbol","").trim().uppercase()
+    val at=row.optLong("sourceQuoteAt",0L)
+    val price=row.optDouble("currentPrice",Double.NaN)
+    val quality=row.optString("quality","")
+    val source=row.optString("source","")
+    if(!symbol.matches(Regex("[0-9A-Z]{4,8}"))||at<=0L||!price.isFinite()||price<=0.0||
+      quality !in intradayQuality||source !in intradaySource||!inTaipeiSession(at))return
+    val values=ContentValues().apply{
+      put("symbol",symbol);put("source_at",at);put("price",price)
+      put("quality",quality);put("source",source);put("received_at",receivedAt)
+    }
+    db.insertWithOnConflict("market_intraday",null,values,SQLiteDatabase.CONFLICT_IGNORE)
+  }
+
+  @Synchronized fun mergeIntraday(points:JSONArray,receivedAt:Long):Int{
+    val db=writableDatabase
+    var inserted=0
+    db.beginTransaction()
+    try{
+      for(i in 0 until points.length()){
+        val row=points.optJSONObject(i)?:continue
+        val before=db.compileStatement("SELECT COUNT(*) FROM market_intraday WHERE symbol=? AND source_at=? AND source=?").use{
+          it.bindString(1,row.optString("symbol","").trim().uppercase())
+          it.bindLong(2,row.optLong("sourceQuoteAt",0L))
+          it.bindString(3,row.optString("source",""))
+          it.simpleQueryForLong()
+        }
+        insertIntraday(db,row,receivedAt)
+        if(before==0L)inserted++
+      }
+      db.setTransactionSuccessful()
+    }finally{db.endTransaction()}
+    return inserted
+  }
+
+  @Synchronized fun intradayCoverage(symbol:String,day:String):IntradayCoverage{
+    val db=readableDatabase
+    val sql="""SELECT COUNT(*),COALESCE(MIN(source_at),0),COALESCE(MAX(source_at),0)
+      FROM market_intraday
+      WHERE symbol=? AND strftime('%Y-%m-%d',source_at/1000,'unixepoch','+8 hours')=?"""
+    return db.rawQuery(sql,arrayOf(symbol,day)).use{cursor->
+      if(cursor.moveToFirst())IntradayCoverage(cursor.getInt(0),cursor.getLong(1),cursor.getLong(2))
+      else IntradayCoverage(0,0L,0L)
+    }
+  }
+
+  private fun intradaySnapshot(symbols:Collection<String>):JSONObject{
+    val db=readableDatabase
+    val requested=if(symbols.isNotEmpty())symbols.map{it.trim().uppercase()}.distinct() else buildList{
+      db.rawQuery("SELECT DISTINCT symbol FROM market_intraday ORDER BY symbol",null).use{c->
+        while(c.moveToNext())add(c.getString(0))
+      }
+    }
+    val output=JSONObject()
+    for(symbol in requested){
+      val latestDay=db.rawQuery(
+        "SELECT strftime('%Y-%m-%d',source_at/1000,'unixepoch','+8 hours') FROM market_intraday WHERE symbol=? ORDER BY source_at DESC LIMIT 1",
+        arrayOf(symbol),
+      ).use{c->if(c.moveToFirst())c.getString(0) else null}?:continue
+      val perMinute=linkedMapOf<String,JSONObject>()
+      val sql="""SELECT source_at,price,quality,source FROM market_intraday
+        WHERE symbol=? AND strftime('%Y-%m-%d',source_at/1000,'unixepoch','+8 hours')=?
+        ORDER BY source_at ASC"""
+      db.rawQuery(sql,arrayOf(symbol,latestDay)).use{c->
+        while(c.moveToNext()){
+          val at=c.getLong(0)
+          if(!inTaipeiSession(at))continue
+          val quality=c.getString(2)
+          val key=Instant.ofEpochMilli(at).atZone(TAIPEI).format(MINUTE)
+          val old=perMinute[key]
+          if(old!=null&&(qualityRank[old.optString("quality","")]?:0)>=(qualityRank[quality]?:0))continue
+          perMinute[key]=JSONObject().put("at",at).put("price",c.getDouble(1))
+            .put("quality",quality).put("source",c.getString(3))
+        }
+      }
+      if(perMinute.isEmpty())continue
+      output.put(symbol,JSONObject().put("date",latestDay)
+        .put("points",JSONArray(perMinute.values.toList())))
+    }
+    return output
   }
 
   @Synchronized fun snapshot(symbols:Collection<String> = emptyList()):JSONObject{
@@ -98,6 +216,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       if(it.moveToFirst())it.getLong(0) else 0L
     }
     return JSONObject().put("version",version).put("quotes",rows)
+      .put("intraday",intradaySnapshot(symbols))
   }
 
   @Synchronized fun upsertVerified(candidates:List<JSONObject>,checkedAt:Long):JSONObject{
@@ -127,6 +246,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
             val oldRank=qualityRank[existing.second]?:0
             if(newRank<=oldRank){
               if(existing.second==quality&&kotlin.math.abs(existing.third-price)>0.0001)conflicts++
+              insertIntraday(db,row,checkedAt)
               continue
             }
           }
@@ -149,6 +269,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
           put("checked_at",checkedAt)
         }
         db.insertWithOnConflict("market_quotes",null,values,SQLiteDatabase.CONFLICT_REPLACE)
+        insertIntraday(db,row,checkedAt)
         accepted++
       }
       if(accepted>0)db.execSQL("UPDATE market_meta SET val=val+1 WHERE key='version'")
