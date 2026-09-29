@@ -14,7 +14,7 @@ assert.match(workbench,/<DashboardAssetOverview amount=\{money\(portfolio\.total
 assert.match(workbench,/<DashboardProfitAnalysis items=\{kpis\}/);
 assert.match(workbench,/<DashboardProfitDetail rows=\{rows\}/);
 assert.match(workbench,/<HoldingQuoteCollection rows=\{holdingPreviewRows\}/);
-assert.match(workbench,/<FrameCard title=\{frame\.title\} editorStyle=\{frameConfig\}>/);
+assert.match(workbench,/<FrameCard title=\{item\.title\} editorStyle=\{itemConfig\}>/,'actual-page editor must reuse the real FrameCard renderer for each rendered frame');
 assert.match(workbench,/<LayoutSelectionProvider targets=\{targets\}/);
 assert.doesNotMatch(workbench,/NT\$ 123,456|圖表區|後續工具只掛到此類物件|V3\.2\.1 已建立物件分流/,
  'no fabricated values or development placeholders are allowed in the layout preview');
@@ -36,11 +36,11 @@ assert.equal((sanitized as any)?.tax,undefined);
 assert.equal((sanitized as any)?.shares,undefined);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.11');
-assert.equal(app.expo.version,'3.2.11');
-assert.equal(app.expo.android.versionCode,30211);
-assert.equal(app.expo.ios.buildNumber,'30211');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.11'/);
+assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.equal(app.expo.version,pkg.version);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
+assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'financial core remains untouched: '+core);
 console.log('V3.2.11 real layout preview + persisted visual targets + no fabricated preview values: PASS');

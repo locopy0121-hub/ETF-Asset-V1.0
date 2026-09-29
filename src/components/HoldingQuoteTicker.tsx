@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {Animated,StyleSheet,Text,View} from 'react-native';
 import type {HoldingQuote,WallTickerConfig} from '../domain/uiModels';
 import {quoteTickerCell} from '../domain/quoteTicker';
+import {colorWithAlpha} from '../maintenance/frameEffects';
 
 /** A-layer presentation-only ticker. It NEVER polls, changes a source clock or writes finance data. */
 export function HoldingQuoteTicker({rows,config}:{rows:readonly HoldingQuote[];config:WallTickerConfig}){
@@ -24,12 +25,12 @@ export function HoldingQuoteTicker({rows,config}:{rows:readonly HoldingQuote[];c
   },[position,config.enabled,config.direction,config.speed,viewportWidth,contentWidth]);
   if(!config.enabled||rows.length===0)return null;
   const cells=rows.slice(0,40).map(row=>quoteTickerCell(row,config));
-  return <View style={[styles.viewport,{backgroundColor:config.backgroundColor}]}
+  return <View style={[styles.viewport,{backgroundColor:colorWithAlpha(config.backgroundColor,config.backgroundOpacity??1)}]}
     onLayout={e=>setViewportWidth(e.nativeEvent.layout.width)} accessible accessibilityLabel={cells.join('；')}>
     <Animated.View onLayout={e=>setContentWidth(e.nativeEvent.layout.width)}
       style={[styles.track,{gap:config.itemGap,transform:[{translateX:position}]}]}>
       {cells.map((cell,index)=><Text key={rows[index]!.symbol+'-'+index} numberOfLines={1}
-        style={[styles.cell,{color:config.textColor}]}>{cell}</Text>)}
+        style={[styles.cell,{color:colorWithAlpha(config.textColor,config.textOpacity??1)}]}>{cell}</Text>)}
     </Animated.View>
   </View>;
 }

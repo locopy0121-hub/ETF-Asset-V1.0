@@ -1,10 +1,10 @@
 import {useEffect,useMemo,useState} from 'react';
-import {Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey,type QuoteModuleStyle} from '../domain/uiModels';
-import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
+import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
 import {colors,radius} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
@@ -25,8 +25,9 @@ import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
+import {FloatingDashboardChart} from './FloatingDashboardChart';
 
-type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey};
+type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
@@ -69,6 +70,8 @@ export function PageLayoutToolWorkbench({
   const [frameKey,setFrameKey]=useState(initial);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
   const [openGroup,setOpenGroup]=useState<string|null>('size');
+  const [frameMeasurements,setFrameMeasurements]=useState<Record<string,{width:number;height:number}>>({});
+  const [previewBounds,setPreviewBounds]=useState({width:0,height:0});
   useEffect(()=>{setFrameKey(initial);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');},[initial]);
 
   const frame=frames.find(item=>item.key===frameKey)??frames[0];
@@ -83,7 +86,10 @@ export function PageLayoutToolWorkbench({
   const holdingQuoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const holdingPreviewRows=previewRows?.length?previewRows:(previewQuote?[previewQuote]:[]);
   const dashboard=displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
+  const dashboardCharts=displayDraft.dashboardCharts??[];
   const targets=displayDraft.layoutTargets??{};
+  const selectedDashboardChart=selection.id.startsWith('chart:')?
+    dashboardCharts.find(chart=>'chart:'+chart.id===selection.id):undefined;
   const fx=normalizeFrameEffects(frameConfig.effects,DEFAULT_FRAME_EFFECTS);
   const selectedField=selection.field?wall.fields.find(x=>x.field===selection.field):undefined;
 
@@ -99,12 +105,17 @@ export function PageLayoutToolWorkbench({
   };
   const patchFx=(next:Partial<FrameEffects>)=>onPatchFrame(frame.key,{effects:normalizeFrameEffects({...fx,...next},DEFAULT_FRAME_EFFECTS)});
   const patchDashboard=(next:DashboardLayoutConfig)=>onChangeDisplay({...displayDraft,dashboardLayout:next});
+  const patchDashboardChart=(id:string,next:Partial<DashboardChartConfig>)=>
+    onChangeDisplay({...displayDraft,dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,...next}:chart)});
   const patchTarget=(id:string,next:TargetOverride)=>{
     const current=targets[id]??{};
     onChangeDisplay({...displayDraft,layoutTargets:{...targets,[id]:normalizeTargetOverride({...current,...next})}});
   };
   const resetTarget=(id:string)=>{
-    const next={...targets};delete next[id];onChangeDisplay({...displayDraft,layoutTargets:next});
+    Alert.alert('確認恢復目前物件','將恢復目前選取物件的排版設定。請再次確認是否恢復。',[
+      {text:'取消',style:'cancel'},
+      {text:'確認恢復',style:'destructive',onPress:()=>{const next={...targets};delete next[id];onChangeDisplay({...displayDraft,layoutTargets:next});}},
+    ]);
   };
 
   const chooseKind=(kind:LayoutToolTargetKind)=>{
@@ -113,6 +124,10 @@ export function PageLayoutToolWorkbench({
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
     else if(holding&&kind==='chart')setSelection({id:'chart',kind,label:'Mini 圖表'});
+    else if(pageKey==='home'&&frame.key==='asset-dashboard'&&kind==='chart'){
+      const chart=(displayDraft.dashboardCharts??[])[0];
+      if(chart)setSelection({id:'chart:'+chart.id,kind,label:chart.title});
+    }
     else if(frame.key==='page-header'&&kind==='text')setSelection({id:'header:title',kind:'text',label:'頁面主標題'});
     else if(kind==='card')setSelection(defaultDashboardSelection(frame.key,'card'));
     else if(kind==='text')setSelection(defaultDashboardSelection(frame.key,'text'));
@@ -134,7 +149,7 @@ export function PageLayoutToolWorkbench({
     const kind:LayoutToolTargetKind=target.kind==='prefix'?'text':
       target.kind==='card'||target.kind==='text'||target.kind==='value'||target.kind==='chart'||target.kind==='button'?
         target.kind:'text';
-    setSelection({id:target.id,kind,label:target.label});
+    setSelection({id:target.id,kind,label:target.label,...(target.width!==undefined?{width:target.width}:{}),...(target.height!==undefined?{height:target.height}:{})});
     setOpenGroup(target.id==='header:title'?'content':kind==='card'?'surface':kind==='text'||kind==='value'?'type':'layout');
   };
   const toggle=(key:string)=>setOpenGroup(current=>current===key?null:key);
@@ -154,54 +169,90 @@ export function PageLayoutToolWorkbench({
     {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
   ];
 
-  const headerFrame:FrameMaintenanceContext={
-    page:pageKey,frameKey:frame.key,frameTitle:frame.title,frameConfig,displayConfig:displayDraft,
+  const chartData=(chart:DashboardChartConfig)=>{
+    const source=chart.source;
+    const holdingValues=holdingPreviewRows.map(row=>{
+      if(source==='pnl')return row.pnl;
+      if(source==='dividend')return row.cumulativeDividend;
+      if(source==='roi')return row.roi;
+      if(source==='avgCost')return row.avgCost;
+      if(source==='price')return row.price;
+      if(source==='shares')return row.shares;
+      if(source==='realizedPnl')return row.realizedPnl;
+      if(source==='comprehensivePnl')return row.comprehensivePnl;
+      return row.marketValue;
+    });
+    const values=source==='transactions'?[finance.entries.length]:holdingValues;
+    const labels=source==='transactions'?['交易筆數']:holdingPreviewRows.map(row=>row.symbol);
+    return {values:values.length?values:[0],labels:labels.length?labels:['目前']};
   };
-    const realPreview=hasRealPreview(pageKey,frame.key);
-  const previewContent=holding&&holdingPreviewRows.length?
-    <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
+  const selectFrameDirect=(item:PageFrameDefinition)=>{
+    setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');
+  };
+  const previewContentFor=(item:PageFrameDefinition)=>{
+    const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
+    if(itemHolding&&holdingPreviewRows.length)return <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
       badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
       style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
       refreshToken={finance.sharedSnapshot.generatedAt}
       onOpenHolding={()=>{}} onOpenChart={()=>{}}
-      layoutEditMode layoutSelectionId={selection.id} onLayoutSelect={selectHolding}/>:
-    pageKey==='home'&&frame.key==='asset-dashboard'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
-          caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
-          previousPnl={previewPnl?.previousTotalPnl??0}
-          todayPnl={previewPnl?.todayPnl??0}
-          totalPnl={portfolio.totalPnl}
-          pnlComplete={valuationComplete&&previewPnl!==null}/>
-      </View>:
-    pageKey==='home'&&frame.key==='profit-analysis'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>
-      </View>:
-    pageKey==='home'&&frame.key==='pnl-detail'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardProfitDetail rows={rows} layout={dashboard.profitDetail}/>
-      </View>:
-    pageKey==='home'&&frame.key==='dashboard-quick-actions'?
-      <View style={{paddingHorizontal:dashboard.contentPadding}}>
-        <DashboardQuickActions layout={dashboard.quickActions} actions={[
-          {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>{}},
-          {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>{}},
-          {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>{}},
-          {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
-        ]}/>
-      </View>:null;
+      layoutEditMode layoutSelectionId={frameKey===item.key?selection.id:null}
+      onLayoutSelect={(id,label)=>{setFrameKey(item.key);selectHolding(id,label);}}/>;
+    if(pageKey==='home'&&item.key==='asset-dashboard')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
+        caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
+        previousPnl={previewPnl?.previousTotalPnl??0} todayPnl={previewPnl?.todayPnl??0}
+        totalPnl={portfolio.totalPnl} pnlComplete={valuationComplete&&previewPnl!==null}/>
+    </View>;
+    if(pageKey==='home'&&item.key==='profit-analysis')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>
+    </View>;
+    if(pageKey==='home'&&item.key==='pnl-detail')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardProfitDetail rows={rows} layout={dashboard.profitDetail}/>
+    </View>;
+    if(pageKey==='home'&&item.key==='dashboard-quick-actions')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
+      <DashboardQuickActions layout={dashboard.quickActions} actions={[
+        {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>{}},
+        {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>{}},
+        {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>{}},
+        {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
+      ]}/>
+    </View>;
+    return null;
+  };
+  const renderActualFrame=(item:PageFrameDefinition)=>{
+    const itemConfig=draft[item.key];
+    if(!itemConfig||!itemConfig.visible)return null;
+    const selected=frameKey===item.key;
+    const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
+    const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
+    return <View key={item.key} onLayout={event=>{
+      const {width,height}=event.nativeEvent.layout;
+      setFrameMeasurements(previous=>previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}});
+    }}>
+      <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
+        {item.key==='page-header'?
+          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
+            <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
+              layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
+          </Pressable>:
+          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
+            <FrameCard title={item.title} editorStyle={itemConfig}>{previewContentFor(item)}</FrameCard>
+          </Pressable>}
+      </LayoutSelectionProvider>
+    </View>;
+  };
 
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
 
   const visibleKinds=profile.kinds.filter(kind=>{
-    if(kind==='chart')return holding&&Boolean((holdingQuoteStyle==='chart'||holdingQuoteStyle==='advanced')&&holdingPreviewRows.some(row=>row.sparkline?.length));
+    if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(holding)return ['frame','card','text','value','chart','data'].includes(kind);
-    if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','layout'].includes(kind);
+    if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','chart','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='profit-analysis')return ['frame','card','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='pnl-detail')return ['frame','text','value','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='dashboard-quick-actions')return ['frame','text','layout'].includes(kind);
@@ -212,26 +263,36 @@ export function PageLayoutToolWorkbench({
     <View style={styles.head}><View style={{flex:1}}><Text style={styles.title}>排版工具</Text>
       <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料。點到哪個物件，虛線框就鎖定該物件，下方只顯示已實裝的工具。</Text></View></View>
 
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moduleRow}>
-      {previewFrames.map(item=><Pressable key={item.key} onPress={()=>{setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');}}
-        style={[styles.moduleChip,item.key===frame.key&&styles.moduleChipActive]}>
-        <Text style={[styles.moduleText,item.key===frame.key&&styles.moduleTextActive]}>{item.title}</Text>
-      </Pressable>)}
-    </ScrollView>
-
-    {realPreview?<View style={styles.previewShell}>
-      <View style={styles.previewTop}><Text style={styles.previewTitle}>{profile.label}｜真實元件預覽</Text><Text style={styles.path}>{frame.title} › {selection.label}</Text></View>
-      <LayoutSelectionProvider targets={targets} selectedId={selection.id} onSelect={selectTarget}>
-        {frame.key==='page-header'?
-          <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
-            <PageHeaderVisual title={pageTitle} frameConfig={frameConfig} frame={headerFrame}
-              layoutTargets={targets} selectedId={selection.id} onSelect={selectTarget}/>
-          </Pressable>:
-          <Pressable onPress={()=>chooseKind('frame')} style={selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={frame.title} editorStyle={frameConfig}>{previewContent}</FrameCard>
-          </Pressable>}
-      </LayoutSelectionProvider>
-    </View>:null}
+    <View style={styles.previewShell}>
+      <View style={styles.previewTop}>
+        <Text style={styles.previewTitle}>實際頁面編輯區</Text>
+        <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
+      </View>
+      <ScrollView nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+        showsVerticalScrollIndicator>
+        <View style={styles.actualCanvas} onLayout={event=>{
+          const {width,height}=event.nativeEvent.layout;
+          setPreviewBounds(previous=>previous.width===width&&previous.height===height?previous:{width,height});
+        }}>
+          {previewFrames.map(renderActualFrame)}
+          {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
+            const data=chartData(chart);
+            const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
+            const selected=selection.id==='chart:'+chart.id;
+            return <View key={'actual-chart-'+chart.id} pointerEvents="box-none">
+              {chart.visible?<FloatingDashboardChart config={{...chart,locked:true,touchThrough:true}}
+                values={data.values} labels={data.labels} bounds={previewBounds} onMove={()=>{}} onResize={()=>{}}/>:null}
+              <Pressable accessibilityRole="button" accessibilityLabel={'選取圖表 '+chart.title}
+                onPress={()=>{setFrameKey('asset-dashboard');setSelection({id:'chart:'+chart.id,kind:'chart',label:chart.title,width:chart.width,height:chart.height});setOpenGroup('chart');}}
+                style={[styles.chartSelectOverlay,{left:x,top:chart.y,width:chart.width,height:chart.height,zIndex:Math.max(100,chart.zIndex+100)},
+                  selected&&styles.chartSelected,!chart.visible&&styles.chartHidden]}>
+                {!chart.visible?<Text style={styles.chartHiddenText}>圖表已關閉 · {chart.title}</Text>:null}
+              </Pressable>
+            </View>;
+          }):null}
+        </View>
+      </ScrollView>
+    </View>
 
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
       {visibleKinds.map(kind=><Pressable key={kind} onPress={()=>chooseKind(kind)} style={[styles.kindChip,selection.kind===kind&&styles.kindChipActive]}>
@@ -239,19 +300,24 @@ export function PageLayoutToolWorkbench({
       </Pressable>)}
     </ScrollView>
 
-    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} open={openGroup} toggle={toggle}
+    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]} open={openGroup} toggle={toggle}
       patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}/>:null}
 
     {holding&&selection.kind==='card'?<HoldingCardTools wall={wall} open={openGroup} toggle={toggle} patch={patchWallStyle}/>:null}
     {holding&&(selection.kind==='text'||selection.kind==='value')&&selectedField?
       <HoldingFieldTools field={selectedField} open={openGroup} toggle={toggle}
         patch={next=>patchField(selectedField.field,next)} move={delta=>moveField(selectedField.field,delta)}/>:null}
+    {holding&&selection.kind==='chart'?<HoldingMiniChartTools style={rawQuoteStyle} layoutMode={holdingLayoutMode} open={openGroup} toggle={toggle}
+      onChange={quoteStyle=>onChangeDisplay({...displayDraft,quoteStyle})}/>:null}
+    {!holding&&selection.kind==='chart'&&selectedDashboardChart?<DashboardChartTools chart={selectedDashboardChart}
+      actualX={selectedDashboardChart.x<0?Math.max(0,previewBounds.width-selectedDashboardChart.width):selectedDashboardChart.x}
+      open={openGroup} toggle={toggle} patch={next=>patchDashboardChart(selectedDashboardChart.id,next)}/>:null}
     {holding&&selection.kind==='data'?<Accordion title="欄位顯示" subtitle="只改顯示與排序，不改原始行情與帳務資料" open={openGroup==='layout'} onPress={()=>toggle('layout')}>
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
     {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
-      <TargetTools kind={selection.kind} id={selection.id} current={current} open={openGroup} toggle={toggle}
+      <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height} open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
 
@@ -260,24 +326,30 @@ export function PageLayoutToolWorkbench({
   </View>;
 }
 
-function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+  const basePadding=frame.padding??(frame.layout==='compact'?12:frame.layout==='dense'?10:16);
+  const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
+  const actualWidth=Math.round(frame.width??measured?.width??320);
+  const actualHeight=Math.round(frame.height??measured?.height??Math.max(frame.minHeight??0,260));
+  const actualMinHeight=Math.round((frame.minHeight??0)>0?(frame.minHeight??0):actualHeight);
+  const actualMaxWidth=Math.round(fx.maxWidth>0?fx.maxWidth:actualWidth);
   return <View>
     <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
-      <ModeStep label="寬度" value={frame.width} fallback={320} min={160} max={1600} step={10} onAuto={()=>patch({width:undefined} as any)} onChange={width=>patch({width})}/>
-      <ModeStep label="高度" value={frame.height} fallback={260} min={80} max={2400} step={10} onAuto={()=>patch({height:undefined} as any)} onChange={height=>patch({height})}/>
-      <NumberStep label="最小高度" value={frame.minHeight??0} min={0} max={600} step={10} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
-      <NumberStep label="最大寬度" value={fx.maxWidth} min={0} max={1600} step={20} suffix={fx.maxWidth===0?'（不限）':' px'} onChange={maxWidth=>patchFx({maxWidth})}/>
+      <NumberStep label="寬度" value={actualWidth} min={160} max={1600} step={10} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={actualHeight} min={80} max={2400} step={10} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="最小高度" value={actualMinHeight} min={0} max={2400} step={10} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
+      <NumberStep label="最大寬度" value={actualMaxWidth} min={160} max={1600} step={20} suffix=" px" onChange={maxWidth=>patchFx({maxWidth})}/>
     </Accordion>
     <Accordion title="內距／空間" subtitle="整體內距、四邊內距、內容間距與外距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
       <NumberStep label="整體 Padding" value={frame.padding??16} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
       {(['paddingTop','paddingRight','paddingBottom','paddingLeft'] as const).map((key,i)=><NumberStep key={key} label={['上內距','右內距','下內距','左內距'][i]!}
-        value={fx[key]} min={-1} max={32} step={1} suffix={fx[key]<0?'（跟隨）':' px'} onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
-      <NumberStep label="內容間距" value={fx.contentGap} min={-1} max={40} step={1} suffix={fx.contentGap<0?'（跟隨）':' px'} onChange={contentGap=>patchFx({contentGap})}/>
+        value={fx[key]>=0?fx[key]:basePadding} min={0} max={32} step={1} suffix=" px" onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
+      <NumberStep label="內容間距" value={fx.contentGap>=0?fx.contentGap:baseGap} min={0} max={40} step={1} suffix=" px" onChange={contentGap=>patchFx({contentGap})}/>
       <NumberStep label="上下外距" value={fx.marginVertical} min={0} max={32} step={1} suffix=" px" onChange={marginVertical=>patchFx({marginVertical})}/>
     </Accordion>
     <Accordion title="框架標題" subtitle="標題字體、顏色、對齊與跑馬燈" open={open==='title'} onPress={()=>toggle('title')}>
       <NumberStep label="字體大小" value={frame.titleFontSize} min={10} max={32} step={1} suffix=" px" onChange={titleFontSize=>patch({titleFontSize})}/>
-      <ColorPalettePicker label="標題顏色" value={frame.titleColor} onChange={titleColor=>patch({titleColor})}/>
+      <ColorPalettePicker label="標題顏色" value={frame.titleColor} onChange={titleColor=>patch({titleColor})} opacity={frame.titleOpacity} onOpacityChange={titleOpacity=>patch({titleOpacity})}/>
       <SwitchRow label="標題損益色" value={frame.titleProfitColor===true} onChange={titleProfitColor=>patch({titleProfitColor})}/>
       <AlignRow value={frame.titleAlign} onChange={titleAlign=>patch({titleAlign})}/>
       <SwitchRow label="跑馬燈" value={fx.titleMarqueeEnabled} onChange={titleMarqueeEnabled=>patchFx({titleMarqueeEnabled})}/>
@@ -286,47 +358,47 @@ function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfi
     </Accordion>
     <Accordion title="背景" subtitle="純色／漸層與透明度" open={open==='background'} onPress={()=>toggle('background')}>
       <ChoiceRow label="背景模式" value={fx.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={v=>patchFx({backgroundMode:v as FrameEffects['backgroundMode']})}/>
-      <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <ColorPalettePicker label="起始顏色" value={frame.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
       <SwitchRow label="背景損益色" value={frame.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
       <NumberStep label="背景透明度" value={Math.round(frame.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
       {fx.backgroundMode==='gradient'?<>
-        <ColorPalettePicker label="結束顏色" value={fx.gradientEndColor} onChange={gradientEndColor=>patchFx({gradientEndColor})}/>
+        <ColorPalettePicker label="結束顏色" value={fx.gradientEndColor} onChange={gradientEndColor=>patchFx({gradientEndColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
         <SwitchRow label="漸層結束損益色" value={fx.gradientEndProfitColor} onChange={gradientEndProfitColor=>patchFx({gradientEndProfitColor})}/>
         <ChoiceRow label="方向" value={fx.gradientDirection} items={[['horizontal','水平'],['vertical','垂直']]} onChange={v=>patchFx({gradientDirection:v as FrameEffects['gradientDirection']})}/>
         <SwitchRow label="第三色" value={fx.gradientMidEnabled} onChange={gradientMidEnabled=>patchFx({gradientMidEnabled})}/>
-        {fx.gradientMidEnabled?<><ColorPalettePicker label="中間顏色" value={fx.gradientMidColor} onChange={gradientMidColor=>patchFx({gradientMidColor})}/>
+        {fx.gradientMidEnabled?<><ColorPalettePicker label="中間顏色" value={fx.gradientMidColor} onChange={gradientMidColor=>patchFx({gradientMidColor})} opacity={frame.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
           <SwitchRow label="漸層中間損益色" value={fx.gradientMidProfitColor} onChange={gradientMidProfitColor=>patchFx({gradientMidProfitColor})}/>
           <NumberStep label="中間位置" value={Math.round(fx.gradientMidStop*100)} min={10} max={90} step={5} suffix="%" onChange={v=>patchFx({gradientMidStop:v/100})}/></>:null}
       </>:null}
     </Accordion>
     <Accordion title="邊框／圓角" subtitle="邊框樣式、四邊與四角" open={open==='border'} onPress={()=>toggle('border')}>
-      <ColorPalettePicker label="邊框顏色" value={frame.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <ColorPalettePicker label="邊框顏色" value={frame.borderColor} onChange={borderColor=>patch({borderColor})} opacity={frame.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
       <SwitchRow label="邊框損益色" value={frame.borderProfitColor===true} onChange={borderProfitColor=>patch({borderProfitColor})}/>
       <NumberStep label="邊框粗細" value={frame.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
       <ChoiceRow label="邊框樣式" value={fx.borderStyle} items={[['solid','實線'],['dashed','虛線'],['dotted','點線']]} onChange={v=>patchFx({borderStyle:v as FrameEffects['borderStyle']})}/>
       <NumberStep label="整體圓角" value={frame.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
       {(['cornerTopLeft','cornerTopRight','cornerBottomRight','cornerBottomLeft'] as const).map((key,i)=><NumberStep key={key} label={['左上角','右上角','右下角','左下角'][i]!}
-        value={fx[key]} min={-1} max={48} step={1} suffix={fx[key]<0?'（跟隨）':' px'} onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
+        value={fx[key]>=0?fx[key]:frame.borderRadius} min={0} max={48} step={1} suffix=" px" onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
     </Accordion>
     <Accordion title="陰影／光效" subtitle="原生陰影、Glow、外光暈" open={open==='effects'} onPress={()=>toggle('effects')}>
       <SwitchRow label="陰影" value={frame.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
-      {frame.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={fx.shadowColor} onChange={shadowColor=>patchFx({shadowColor})}/>
+      {frame.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={fx.shadowColor} onChange={shadowColor=>patchFx({shadowColor})} opacity={frame.shadowOpacity} onOpacityChange={shadowOpacity=>patch({shadowOpacity})}/>
         <SwitchRow label="陰影損益色" value={fx.shadowProfitColor} onChange={shadowProfitColor=>patchFx({shadowProfitColor})}/>
         <NumberStep label="陰影強度" value={Math.round(frame.shadowOpacity*100)} min={0} max={80} step={5} suffix="%" onChange={v=>patch({shadowOpacity:v/100})}/>
         <NumberStep label="陰影模糊" value={fx.shadowBlur} min={0} max={48} step={2} suffix="" onChange={shadowBlur=>patchFx({shadowBlur})}/></>:null}
       <SwitchRow label="Glow" value={fx.glowEnabled} onChange={glowEnabled=>patchFx({glowEnabled})}/>
-      {fx.glowEnabled?<><ColorPalettePicker label="Glow 顏色" value={fx.glowColor} onChange={glowColor=>patchFx({glowColor})}/>
+      {fx.glowEnabled?<><ColorPalettePicker label="Glow 顏色" value={fx.glowColor} onChange={glowColor=>patchFx({glowColor})} opacity={fx.glowOpacity} onOpacityChange={glowOpacity=>patchFx({glowOpacity})}/>
         <SwitchRow label="Glow 損益色" value={fx.glowProfitColor} onChange={glowProfitColor=>patchFx({glowProfitColor})}/>
         <NumberStep label="Glow 強度" value={Math.round(fx.glowOpacity*100)} min={0} max={80} step={5} suffix="%" onChange={v=>patchFx({glowOpacity:v/100})}/>
         <NumberStep label="Glow 寬度" value={fx.glowWidth} min={0} max={16} step={1} suffix=" px" onChange={glowWidth=>patchFx({glowWidth})}/>
         <SwitchRow label="呼吸光效" value={fx.glowPulse} onChange={glowPulse=>patchFx({glowPulse})}/></>:null}
       <SwitchRow label="外光暈" value={fx.outerGlowEnabled} onChange={outerGlowEnabled=>patchFx({outerGlowEnabled})}/>
-      {fx.outerGlowEnabled?<><ColorPalettePicker label="外光暈顏色" value={fx.outerGlowColor} onChange={outerGlowColor=>patchFx({outerGlowColor})}/>
+      {fx.outerGlowEnabled?<><ColorPalettePicker label="外光暈顏色" value={fx.outerGlowColor} onChange={outerGlowColor=>patchFx({outerGlowColor})} opacity={fx.outerGlowOpacity} onOpacityChange={outerGlowOpacity=>patchFx({outerGlowOpacity})}/>
         <SwitchRow label="外光暈損益色" value={fx.outerGlowProfitColor} onChange={outerGlowProfitColor=>patchFx({outerGlowProfitColor})}/></>:null}
     </Accordion>
     <Accordion title="動畫／響應式" subtitle="閃爍、進場與尺寸響應" open={open==='responsive'} onPress={()=>toggle('responsive')}>
       <SwitchRow label="閃爍" value={fx.blinkEnabled} onChange={blinkEnabled=>patchFx({blinkEnabled})}/>
-      {fx.blinkEnabled?<><ColorPalettePicker label="閃爍顏色" value={fx.blinkColor} onChange={blinkColor=>patchFx({blinkColor})}/>
+      {fx.blinkEnabled?<><ColorPalettePicker label="閃爍顏色" value={fx.blinkColor} onChange={blinkColor=>patchFx({blinkColor})} opacity={fx.blinkOpacity} onOpacityChange={blinkOpacity=>patchFx({blinkOpacity})}/>
         <SwitchRow label="閃爍損益色" value={fx.blinkProfitColor} onChange={blinkProfitColor=>patchFx({blinkProfitColor})}/></>:null}
       <SwitchRow label="進場動畫" value={fx.entranceEnabled} onChange={entranceEnabled=>patchFx({entranceEnabled})}/>
       {fx.entranceEnabled?<><ChoiceRow label="進場方式" value={fx.entranceMode} items={[['slide','滑入'],['zoom','縮放'],['rotate','旋轉']]} onChange={v=>patchFx({entranceMode:v as FrameEffects['entranceMode']})}/>
@@ -334,6 +406,78 @@ function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfi
       <SwitchRow label="響應式" value={fx.responsiveEnabled} onChange={responsiveEnabled=>patchFx({responsiveEnabled})}/>
       {fx.responsiveEnabled?<><NumberStep label="Compact 臨界" value={fx.responsiveCompactWidth} min={360} max={900} step={10} suffix=" px" onChange={responsiveCompactWidth=>patchFx({responsiveCompactWidth})}/>
         <NumberStep label="Dense 臨界" value={fx.responsiveDenseWidth} min={240} max={600} step={10} suffix=" px" onChange={responsiveDenseWidth=>patchFx({responsiveDenseWidth})}/></>:null}
+    </Accordion>
+  </View>;
+}
+
+
+const dashboardChartStyleItems:readonly (readonly [DashboardChartStyle,string])[]=[
+  ['line','折線'],['area','面積'],['bar','長條'],['horizontalBar','水平長條'],['stackedBar','堆疊長條'],
+  ['pie','圓餅'],['donut','甜甜圈'],['allocation','資產配置'],['pnlTrend','損益趨勢'],['dividendTrend','股息趨勢'],
+  ['investVsValue','投入 vs 市值'],['holdingWeight','持股占比'],['costVsPrice','成本 vs 市價'],['roiTrend','報酬率趨勢'],
+  ['priceK','價格／K 線'],['volume','成交量'],
+];
+const dashboardChartSourceItems:readonly (readonly [DashboardChartSource,string])[]=[
+  ['allocation','資產配置'],['pnl','持股損益'],['dividend','累計股息'],['roi','報酬率'],['marketValue','持股市值'],
+  ['avgCost','平均成本'],['price','市價'],['shares','股數'],['realizedPnl','已實現損益'],
+  ['comprehensivePnl','綜合損益'],['transactions','交易紀錄'],
+];
+
+function HoldingMiniChartTools({style,layoutMode,open,toggle,onChange}:{style:QuoteModuleStyle;layoutMode:HoldingLayoutMode;open:string|null;toggle:(k:string)=>void;onChange:(style:QuoteModuleStyle)=>void}){
+  const enabled=style==='chart'||style==='advanced';
+  return <View>
+    <Accordion title="圖表" subtitle="Mini 圖表顯示、樣式與實際資料來源" open={open==='chart'||open==='layout'} onPress={()=>toggle('chart')}>
+      <SwitchRow label="顯示 Mini 圖表" value={enabled} onChange={visible=>onChange(visible?(style==='advanced'?'advanced':'chart'):'quote')}/>
+      {enabled?<ChoiceRow label="圖表卡模式" value={style} items={[['chart','圖表'],['advanced','進階']]} onChange={value=>onChange(value as QuoteModuleStyle)}/>:null}
+      <View style={styles.row}><Text style={styles.rowLabel}>資料來源</Text><Text style={styles.readOnlyValue}>今日分時行情</Text></View>
+      <View style={styles.row}><Text style={styles.rowLabel}>實際排列</Text><Text style={styles.readOnlyValue}>{layoutMode==='grid3'?'三欄（可讀性規則隱藏 Mini 圖表）':layoutMode}</Text></View>
+    </Accordion>
+  </View>;
+}
+
+function DashboardChartTools({chart,actualX,open,toggle,patch}:{chart:DashboardChartConfig;actualX:number;open:string|null;toggle:(k:string)=>void;patch:(next:Partial<DashboardChartConfig>)=>void}){
+  return <View>
+    <Accordion title="圖表" subtitle="顯示／關閉、類型與資料來源" open={open==='chart'||open==='layout'} onPress={()=>toggle('chart')}>
+      <SwitchRow label="顯示圖表" value={chart.visible} onChange={visible=>patch({visible})}/>
+      <TextInput accessibilityLabel="圖表標題" value={chart.title} onChangeText={title=>patch({title:title.slice(0,20)})} style={styles.textInput}/>
+      <ChoiceRow label="圖表類型" value={chart.style} items={dashboardChartStyleItems} onChange={style=>patch({style:style as DashboardChartStyle})}/>
+      <ChoiceRow label="資料來源" value={chart.source} items={dashboardChartSourceItems} onChange={source=>patch({source:source as DashboardChartSource})}/>
+    </Accordion>
+    <Accordion title="尺寸／位置" subtitle="全部顯示目前實際像素值" open={open==='chart-size'} onPress={()=>toggle('chart-size')}>
+      <NumberStep label="X" value={Math.round(actualX)} min={0} max={1600} step={4} suffix=" px" onChange={x=>patch({x})}/>
+      <NumberStep label="Y" value={Math.round(chart.y)} min={0} max={2400} step={4} suffix=" px" onChange={y=>patch({y})}/>
+      <NumberStep label="寬度" value={Math.round(chart.width)} min={140} max={900} step={8} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={Math.round(chart.height)} min={120} max={700} step={8} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="圖層" value={chart.zIndex} min={0} max={99} step={1} suffix="" onChange={zIndex=>patch({zIndex})}/>
+    </Accordion>
+    <Accordion title="顏色／外觀" subtitle="沿用現有顏色規劃；每個顏色追加透明度" open={open==='chart-color'} onPress={()=>toggle('chart-color')}>
+      <ColorPalettePicker label="背景顏色" value={chart.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={chart.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
+      <ColorPalettePicker label="文字顏色" value={chart.textColor} onChange={textColor=>patch({textColor})} opacity={chart.textOpacity} onOpacityChange={textOpacity=>patch({textOpacity})}/>
+      <ColorPalettePicker label="主圖顏色" value={chart.accentColor} onChange={accentColor=>patch({accentColor})} opacity={chart.accentOpacity} onOpacityChange={accentOpacity=>patch({accentOpacity})}/>
+      <ColorPalettePicker label="上漲色" value={chart.gainColor} onChange={gainColor=>patch({gainColor})} opacity={chart.gainOpacity} onOpacityChange={gainOpacity=>patch({gainOpacity})}/>
+      <ColorPalettePicker label="下跌色" value={chart.lossColor} onChange={lossColor=>patch({lossColor})} opacity={chart.lossOpacity} onOpacityChange={lossOpacity=>patch({lossOpacity})}/>
+      <ColorPalettePicker label="中性色" value={chart.flatColor} onChange={flatColor=>patch({flatColor})} opacity={chart.flatOpacity} onOpacityChange={flatOpacity=>patch({flatOpacity})}/>
+      <ColorPalettePicker label="邊框顏色" value={chart.borderColor} onChange={borderColor=>patch({borderColor})} opacity={chart.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
+      <NumberStep label="邊框粗細" value={chart.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
+      <NumberStep label="圓角" value={chart.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
+      <NumberStep label="內容透明度" value={Math.round(chart.contentOpacity*100)} min={5} max={100} step={5} suffix="%" onChange={value=>patch({contentOpacity:value/100})}/>
+    </Accordion>
+    <Accordion title="圖表內容" subtitle="線條、資料點、圖例、座標與格線" open={open==='chart-content'} onPress={()=>toggle('chart-content')}>
+      <NumberStep label="線條粗細" value={chart.lineWidth} min={1} max={8} step={1} suffix=" px" onChange={lineWidth=>patch({lineWidth})}/>
+      <SwitchRow label="資料點" value={chart.showPoints} onChange={showPoints=>patch({showPoints})}/>
+      <NumberStep label="資料點大小" value={chart.pointSize} min={2} max={12} step={1} suffix=" px" onChange={pointSize=>patch({pointSize})}/>
+      <SwitchRow label="圖例" value={chart.legendVisible} onChange={legendVisible=>patch({legendVisible})}/>
+      <SwitchRow label="X 軸" value={chart.xAxisVisible} onChange={xAxisVisible=>patch({xAxisVisible})}/>
+      <SwitchRow label="Y 軸" value={chart.yAxisVisible} onChange={yAxisVisible=>patch({yAxisVisible})}/>
+      <SwitchRow label="格線" value={chart.gridVisible} onChange={gridVisible=>patch({gridVisible})}/>
+      <SwitchRow label="資料標籤" value={chart.dataLabels} onChange={dataLabels=>patch({dataLabels})}/>
+    </Accordion>
+    <Accordion title="互動" subtitle="十字線、縮放、平移與重設" open={open==='chart-interaction'} onPress={()=>toggle('chart-interaction')}>
+      <SwitchRow label="十字線" value={chart.crosshairEnabled} onChange={crosshairEnabled=>patch({crosshairEnabled})}/>
+      <SwitchRow label="兩指縮放" value={chart.pinchZoomEnabled} onChange={pinchZoomEnabled=>patch({pinchZoomEnabled})}/>
+      <SwitchRow label="平移" value={chart.panEnabled} onChange={panEnabled=>patch({panEnabled})}/>
+      <SwitchRow label="雙擊重設" value={chart.doubleTapReset} onChange={doubleTapReset=>patch({doubleTapReset})}/>
+      <SwitchRow label="記住縮放" value={chart.rememberZoom} onChange={rememberZoom=>patch({rememberZoom})}/>
     </Accordion>
   </View>;
 }
@@ -346,15 +490,15 @@ function HoldingCardTools({wall,open,toggle,patch}:{wall:HoldingWallConfig;open:
       <NumberStep label="圓角" value={wall.style.cornerRadius} min={0} max={40} step={2} suffix=" px" onChange={cornerRadius=>patch({cornerRadius})}/>
     </Accordion>
     <Accordion title="背景／邊框" subtitle="行情卡片實際使用色彩" open={open==='card-color'} onPress={()=>toggle('card-color')}>
-      <ColorPalettePicker label="背景" value={wall.style.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <ColorPalettePicker label="背景" value={wall.style.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={wall.style.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
       <SwitchRow label="背景損益色" value={wall.style.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
-      <ColorPalettePicker label="主要文字" value={wall.style.textColor} onChange={textColor=>patch({textColor})}/>
+      <ColorPalettePicker label="主要文字" value={wall.style.textColor} onChange={textColor=>patch({textColor})} opacity={wall.style.textOpacity} onOpacityChange={textOpacity=>patch({textOpacity})}/>
       <SwitchRow label="主要文字損益色" value={wall.style.textProfitColor===true} onChange={textProfitColor=>patch({textProfitColor})}/>
-      <ColorPalettePicker label="次要文字" value={wall.style.secondaryTextColor} onChange={secondaryTextColor=>patch({secondaryTextColor})}/>
+      <ColorPalettePicker label="次要文字" value={wall.style.secondaryTextColor} onChange={secondaryTextColor=>patch({secondaryTextColor})} opacity={wall.style.secondaryTextOpacity} onOpacityChange={secondaryTextOpacity=>patch({secondaryTextOpacity})}/>
       <SwitchRow label="次要文字損益色" value={wall.style.secondaryTextProfitColor===true} onChange={secondaryTextProfitColor=>patch({secondaryTextProfitColor})}/>
-      <ColorPalettePicker label="上漲色" value={wall.style.gainColor} onChange={gainColor=>patch({gainColor})}/>
-      <ColorPalettePicker label="下跌色" value={wall.style.lossColor} onChange={lossColor=>patch({lossColor})}/>
-      <ColorPalettePicker label="邊框" value={wall.style.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <ColorPalettePicker label="上漲色" value={wall.style.gainColor} onChange={gainColor=>patch({gainColor})} opacity={wall.style.gainOpacity} onOpacityChange={gainOpacity=>patch({gainOpacity})}/>
+      <ColorPalettePicker label="下跌色" value={wall.style.lossColor} onChange={lossColor=>patch({lossColor})} opacity={wall.style.lossOpacity} onOpacityChange={lossOpacity=>patch({lossOpacity})}/>
+      <ColorPalettePicker label="邊框" value={wall.style.borderColor} onChange={borderColor=>patch({borderColor})} opacity={wall.style.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
       <SwitchRow label="邊框損益色" value={wall.style.borderProfitColor===true} onChange={borderProfitColor=>patch({borderProfitColor})}/>
       <NumberStep label="邊框粗細" value={wall.style.borderWidth} min={0} max={6} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
     </Accordion>
@@ -373,10 +517,10 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
       </View></View>
     </Accordion>
     <Accordion title="顏色" subtitle="固定色與損益色分開控制" open={open==='color'} onPress={()=>toggle('color')}>
-      <ColorPalettePicker label="自訂文字色" value={field.textColor??'#FFFFFF'} onChange={textColor=>patch({textColor})}/>
+      <ColorPalettePicker label="自訂文字色" value={field.textColor??'#FFFFFF'} onChange={textColor=>patch({textColor})} opacity={field.textOpacity} onOpacityChange={textOpacity=>patch({textOpacity})}/>
       <SwitchRow label="文字損益色" value={field.useProfitColor} onChange={useProfitColor=>patch({useProfitColor})}/>
       <SwitchRow label="背景損益色" value={field.useProfitBackground??false} onChange={useProfitBackground=>patch({useProfitBackground})}/>
-      <ColorPalettePicker label="固定背景色" value={field.backgroundColor??'#0C121B'} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <ColorPalettePicker label="固定背景色" value={field.backgroundColor??'#0C121B'} onChange={backgroundColor=>patch({backgroundColor})} opacity={field.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
     </Accordion>
     <Accordion title="間距" subtitle="上下內距與欄位行距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
       <NumberStep label="上下內距" value={field.paddingY} min={0} max={16} step={1} suffix=" px" onChange={paddingY=>patch({paddingY})}/>
@@ -391,16 +535,19 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
   </View>;
 }
 
-function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
+function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number|undefined;actualHeight?:number|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
   const card=kind==='card';
+  const effectiveWidth=Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4));
+  const effectiveHeight=Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35));
+  const effectiveLineHeight=Math.round(current.lineHeight>0?current.lineHeight:Math.max(current.fontSize*1.2,actualHeight??0));
   return <View>
     {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="直接修改本頁實際標題；套用後寫入既有 pageTitles" open={open==='content'} onPress={()=>toggle('content')}>
       <TextInput accessibilityLabel="頁面標題" value={contentValue} onChangeText={onContentChange}
         maxLength={48} style={styles.textInput}/>
     </Accordion>:null}
     {card?<Accordion title="尺寸／空間" subtitle="卡片實際尺寸、內距與外距" open={open==='surface'} onPress={()=>toggle('surface')}>
-      <NumberStep label="寬度" value={Math.round(current.width??0)} min={0} max={900} step={10} suffix={(current.width??0)===0?'（自動）':' px'} onChange={width=>patch({width:width||undefined} as any)}/>
-      <NumberStep label="高度" value={Math.round(current.height??0)} min={0} max={700} step={10} suffix={(current.height??0)===0?'（自動）':' px'} onChange={height=>patch({height:height||undefined} as any)}/>
+      <NumberStep label="寬度" value={effectiveWidth} min={28} max={900} step={10} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={effectiveHeight} min={24} max={700} step={10} suffix=" px" onChange={height=>patch({height})}/>
       <NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
       <NumberStep label="上下外距" value={current.marginVertical} min={0} max={32} step={1} suffix=" px" onChange={marginVertical=>patch({marginVertical})}/>
       <NumberStep label="左右外距" value={current.marginHorizontal} min={0} max={32} step={1} suffix=" px" onChange={marginHorizontal=>patch({marginHorizontal})}/>
@@ -410,7 +557,7 @@ function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onCon
       <ChoiceRow label="字體樣式" value={current.fontStyle} items={[['normal','正常'],['italic','斜體']]} onChange={fontStyle=>patch({fontStyle:fontStyle as TargetAppearance['fontStyle']})}/>
       <ChoiceRow label="裝飾" value={current.textDecorationLine} items={[['none','無'],['underline','底線'],['line-through','刪除線']]} onChange={textDecorationLine=>patch({textDecorationLine:textDecorationLine as TargetAppearance['textDecorationLine']})}/>
       <NumberStep label="字距" value={current.letterSpacing} min={-4} max={16} step={1} suffix=" px" onChange={letterSpacing=>patch({letterSpacing})}/>
-      <NumberStep label="行高" value={current.lineHeight} min={0} max={96} step={2} suffix={current.lineHeight===0?'（自動）':' px'} onChange={lineHeight=>patch({lineHeight})}/>
+      <NumberStep label="行高" value={effectiveLineHeight} min={8} max={96} step={2} suffix=" px" onChange={lineHeight=>patch({lineHeight})}/>
       <AlignRow value={current.align} onChange={align=>patch({align})}/>
     </Accordion>}
     {!card&&kind==='value'?<Accordion title="數值格式" subtitle="只改顯示格式，不改帳務原始數值" open={open==='number'} onPress={()=>toggle('number')}>
@@ -418,39 +565,39 @@ function TargetTools({kind,id,current,open,toggle,patch,reset,contentValue,onCon
       <NumberStep label="小數位" value={current.displayDigits} min={0} max={4} step={1} suffix=" 位" onChange={displayDigits=>patch({displayDigits})}/>
     </Accordion>:null}
     <Accordion title="顏色／背景" subtitle={card?'卡片材質、邊框、陰影與光效':'文字色、背景、邊框與透明度'} open={open==='color'} onPress={()=>toggle('color')}>
-      {!card?<><ColorPalettePicker label="文字顏色" value={current.textColor} onChange={textColor=>patch({textColor})}/>
+      {!card?<><ColorPalettePicker label="文字顏色" value={current.textColor} onChange={textColor=>patch({textColor})} opacity={current.textOpacity} onOpacityChange={textOpacity=>patch({textOpacity})}/>
         <SwitchRow label="文字損益色" value={current.textProfitColor===true} onChange={textProfitColor=>patch({textProfitColor})}/></>:null}
-      <ColorPalettePicker label="背景顏色" value={current.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <ColorPalettePicker label="背景顏色" value={current.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})} opacity={current.backgroundOpacity} onOpacityChange={backgroundOpacity=>patch({backgroundOpacity})}/>
       <SwitchRow label="背景損益色" value={current.backgroundProfitColor===true} onChange={backgroundProfitColor=>patch({backgroundProfitColor})}/>
       <NumberStep label="背景透明度" value={Math.round(current.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({backgroundOpacity:v/100})}/>
-      <ColorPalettePicker label="邊框顏色" value={current.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <ColorPalettePicker label="邊框顏色" value={current.borderColor} onChange={borderColor=>patch({borderColor})} opacity={current.borderOpacity} onOpacityChange={borderOpacity=>patch({borderOpacity})}/>
       <SwitchRow label="邊框損益色" value={current.borderProfitColor===true} onChange={borderProfitColor=>patch({borderProfitColor})}/>
       <NumberStep label="邊框粗細" value={current.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
       <NumberStep label="圓角" value={current.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
       {!card?<><NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
         <NumberStep label="透明度" value={Math.round(current.opacity*100)} min={5} max={100} step={5} suffix="%" onChange={v=>patch({opacity:v/100})}/></>:null}
       {card?<><ChoiceRow label="背景模式" value={current.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={backgroundMode=>patch({backgroundMode:backgroundMode as TargetAppearance['backgroundMode']})}/>
-        {current.backgroundMode==='gradient'?<><ColorPalettePicker label="漸層結束色" value={current.gradientEndColor} onChange={gradientEndColor=>patch({gradientEndColor})}/>
+        {current.backgroundMode==='gradient'?<><ColorPalettePicker label="漸層結束色" value={current.gradientEndColor} onChange={gradientEndColor=>patch({gradientEndColor})} opacity={current.gradientEndOpacity} onOpacityChange={gradientEndOpacity=>patch({gradientEndOpacity})}/>
           <SwitchRow label="漸層結束損益色" value={current.gradientEndProfitColor} onChange={gradientEndProfitColor=>patch({gradientEndProfitColor})}/>
           <ChoiceRow label="漸層方向" value={current.gradientDirection} items={[['horizontal','水平'],['vertical','垂直']]} onChange={gradientDirection=>patch({gradientDirection:gradientDirection as TargetAppearance['gradientDirection']})}/></>:null}
         <SwitchRow label="陰影" value={current.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
-        {current.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={current.shadowColor} onChange={shadowColor=>patch({shadowColor})}/>
+        {current.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={current.shadowColor} onChange={shadowColor=>patch({shadowColor})} opacity={current.shadowOpacity} onOpacityChange={shadowOpacity=>patch({shadowOpacity})}/>
           <SwitchRow label="陰影損益色" value={current.shadowProfitColor} onChange={shadowProfitColor=>patch({shadowProfitColor})}/>
           <NumberStep label="陰影強度" value={Math.round(current.shadowOpacity*100)} min={0} max={80} step={5} suffix="%" onChange={v=>patch({shadowOpacity:v/100})}/></>:null}
         <SwitchRow label="Glow" value={current.glowEnabled} onChange={glowEnabled=>patch({glowEnabled})}/>
-        {current.glowEnabled?<><ColorPalettePicker label="Glow 顏色" value={current.glowColor} onChange={glowColor=>patch({glowColor})}/>
+        {current.glowEnabled?<><ColorPalettePicker label="Glow 顏色" value={current.glowColor} onChange={glowColor=>patch({glowColor})} opacity={current.glowOpacity} onOpacityChange={glowOpacity=>patch({glowOpacity})}/>
           <SwitchRow label="Glow 損益色" value={current.glowProfitColor} onChange={glowProfitColor=>patch({glowProfitColor})}/></>:null}
       </>:null}
     </Accordion>
     {card&&id.startsWith('dashboard:kpi-')?<Accordion title="卡片文字" subtitle="標題、主數值、說明各自可調" open={open==='card-type'} onPress={()=>toggle('card-type')}>
       <NumberStep label="標題大小" value={current.labelFontSize} min={8} max={32} step={1} suffix=" px" onChange={labelFontSize=>patch({labelFontSize})}/>
-      <ColorPalettePicker label="標題顏色" value={current.labelColor} onChange={labelColor=>patch({labelColor})}/>
+      <ColorPalettePicker label="標題顏色" value={current.labelColor} onChange={labelColor=>patch({labelColor})} opacity={current.labelOpacity} onOpacityChange={labelOpacity=>patch({labelOpacity})}/>
       <SwitchRow label="標題損益色" value={current.labelProfitColor===true} onChange={labelProfitColor=>patch({labelProfitColor})}/>
       <NumberStep label="數值大小" value={current.fontSize} min={10} max={48} step={1} suffix=" px" onChange={fontSize=>patch({fontSize})}/>
-      <ColorPalettePicker label="數值顏色" value={current.textColor} onChange={textColor=>patch({textColor})}/>
+      <ColorPalettePicker label="數值顏色" value={current.textColor} onChange={textColor=>patch({textColor})} opacity={current.textOpacity} onOpacityChange={textOpacity=>patch({textOpacity})}/>
       <SwitchRow label="數值損益色" value={current.textProfitColor===true} onChange={textProfitColor=>patch({textProfitColor})}/>
       <NumberStep label="說明大小" value={current.captionFontSize} min={8} max={30} step={1} suffix=" px" onChange={captionFontSize=>patch({captionFontSize})}/>
-      <ColorPalettePicker label="說明顏色" value={current.captionColor} onChange={captionColor=>patch({captionColor})}/>
+      <ColorPalettePicker label="說明顏色" value={current.captionColor} onChange={captionColor=>patch({captionColor})} opacity={current.captionOpacity} onOpacityChange={captionOpacity=>patch({captionOpacity})}/>
       <SwitchRow label="說明損益色" value={current.captionProfitColor===true} onChange={captionProfitColor=>patch({captionProfitColor})}/>
       <AlignRow value={current.align} onChange={align=>patch({align})}/>
     </Accordion>:null}
@@ -553,10 +700,6 @@ function Accordion({title,subtitle,open,onPress,children}:{title:string;subtitle
 function NumberStep({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(value:number)=>void}){
   return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Pressable style={styles.step} onPress={()=>onChange(Math.max(min,value-step))}><Text style={styles.stepText}>−</Text></Pressable><Text style={styles.num}>{value}{suffix}</Text><Pressable style={styles.step} onPress={()=>onChange(Math.min(max,value+step))}><Text style={styles.stepText}>＋</Text></Pressable></View>;
 }
-function ModeStep({label,value,fallback,min,max,step,onAuto,onChange}:{label:string;value:number|undefined;fallback:number;min:number;max:number;step:number;onAuto:()=>void;onChange:(value:number)=>void}){
-  const actual=value??fallback;
-  return <View style={styles.modeBlock}><View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Pressable onPress={value===undefined?()=>onChange(fallback):onAuto} style={[styles.autoChip,value===undefined&&styles.autoChipActive]}><Text style={[styles.autoText,value===undefined&&styles.autoTextActive]}>{value===undefined?'自動':'固定'}</Text></Pressable></View>{value!==undefined?<NumberStep label="" value={actual} min={min} max={max} step={step} suffix=" px" onChange={onChange}/>:null}</View>;
-}
 function SwitchRow({label,value,onChange}:{label:string;value:boolean;onChange:(value:boolean)=>void}){return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Switch value={value} onValueChange={onChange} trackColor={{true:colors.primary}}/></View>;}
 function AlignRow({value,onChange}:{value:'left'|'center'|'right';onChange:(value:'left'|'center'|'right')=>void}){return <ChoiceRow label="對齊" value={value} items={[['left','靠左'],['center','置中'],['right','靠右']]} onChange={v=>onChange(v as 'left'|'center'|'right')}/>;}
 function ChoiceRow({label,value,items,onChange}:{label:string;value:string;items:readonly (readonly [string,string])[];onChange:(value:string)=>void}){
@@ -567,10 +710,12 @@ const styles=StyleSheet.create({
   root:{gap:12},head:{flexDirection:'row',gap:8,alignItems:'flex-start'},title:{fontSize:18,fontWeight:'900',color:colors.text},hint:{fontSize:11,lineHeight:17,color:colors.textSecondary,marginTop:3},
   moduleRow:{gap:6,paddingVertical:2},moduleChip:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surfaceMuted},moduleChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},moduleText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},moduleTextActive:{color:'#FFFFFF'},
   previewShell:{borderWidth:1,borderColor:'#9AC3F7',borderRadius:radius.lg,padding:10,backgroundColor:'#EFF6FF'},previewTop:{marginBottom:8},previewTitle:{fontSize:12,fontWeight:'900',color:colors.primary},path:{fontSize:10,color:colors.textSecondary,marginTop:2},
+  livePageScroll:{height:380,borderRadius:radius.md,backgroundColor:colors.background},livePageContent:{padding:8,paddingBottom:24},actualCanvas:{position:'relative',gap:10,minHeight:420},
+  chartSelectOverlay:{position:'absolute',borderWidth:1,borderColor:'transparent',borderRadius:12},chartSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary},chartHidden:{borderStyle:'dashed',borderColor:'#94A3B8',backgroundColor:'rgba(248,250,252,0.72)',alignItems:'center',justifyContent:'center'},chartHiddenText:{fontSize:9,fontWeight:'900',color:colors.textSecondary,textAlign:'center',padding:6},
   frameSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary,borderRadius:radius.lg,padding:3},
   kindRow:{gap:6,paddingVertical:2},kindChip:{paddingHorizontal:11,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},kindChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},kindText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},kindTextActive:{color:'#FFFFFF'},
   accordion:{borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},accordionHead:{paddingVertical:11,flexDirection:'row',alignItems:'center',gap:8},accordionTitle:{fontSize:13,fontWeight:'900',color:colors.text},rowHint:{fontSize:9,lineHeight:14,color:colors.textSecondary,marginTop:2},chev:{fontSize:18,fontWeight:'900',color:colors.primary},accordionBody:{gap:8,paddingBottom:8},
-  row:{minHeight:40,flexDirection:'row',alignItems:'center',gap:8},rowLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.textSecondary},rowButtons:{flexDirection:'row',gap:6},step:{width:34,height:34,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},stepText:{fontSize:17,fontWeight:'900',color:colors.primary},num:{minWidth:76,textAlign:'center',fontSize:11,fontWeight:'900',color:colors.text},
+  row:{minHeight:40,flexDirection:'row',alignItems:'center',gap:8},rowLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.textSecondary},readOnlyValue:{fontSize:10,fontWeight:'900',color:colors.text},rowButtons:{flexDirection:'row',gap:6},step:{width:34,height:34,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},stepText:{fontSize:17,fontWeight:'900',color:colors.primary},num:{minWidth:76,textAlign:'center',fontSize:11,fontWeight:'900',color:colors.text},
   modeBlock:{gap:2},autoChip:{paddingHorizontal:10,paddingVertical:6,borderRadius:999,backgroundColor:colors.surfaceMuted},autoChipActive:{backgroundColor:colors.primary},autoText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},autoTextActive:{color:'#FFFFFF'},
   choices:{flexDirection:'row',flexWrap:'wrap',gap:5,justifyContent:'flex-end',maxWidth:'68%'},choice:{paddingHorizontal:9,paddingVertical:7,borderRadius:10,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:9,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},
   textInput:{minHeight:44,borderWidth:1,borderColor:colors.border,borderRadius:12,paddingHorizontal:12,color:colors.text,backgroundColor:'#FFFFFF'},

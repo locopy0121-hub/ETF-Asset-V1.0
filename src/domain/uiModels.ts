@@ -15,7 +15,9 @@ export type HoldingWallFieldConfig = Readonly<{
   /** Dynamic background mode; separate from fixed Color Picker selection. */
   useProfitBackground?:boolean;
   textColor:string|null;
+  textOpacity?:number;
   backgroundColor:string|null;
+  backgroundOpacity?:number;
   lineGap:number|null;
   paddingY:number;
   effect:ItemEffectConfig;
@@ -24,21 +26,30 @@ export type HoldingWallHeaderConfig = Readonly<{
   visible: boolean;
   fontScale: number;
   backgroundColor: string;
+  backgroundOpacity?:number;
   textColor: string;
+  textOpacity?:number;
   borderColor: string;
+  borderOpacity?:number;
   borderWidth: number;
   effect:ItemEffectConfig;
 }>;
 export type HoldingWallStyleConfig = Readonly<{
   backgroundColor: string;
+  backgroundOpacity?:number;
   backgroundProfitColor?: boolean;
   textColor: string;
+  textOpacity?:number;
   textProfitColor?: boolean;
   secondaryTextColor: string;
+  secondaryTextOpacity?:number;
   secondaryTextProfitColor?: boolean;
   gainColor: string;
+  gainOpacity?:number;
   lossColor: string;
+  lossOpacity?:number;
   borderColor: string;
+  borderOpacity?:number;
   borderProfitColor?: boolean;
   borderWidth: number;
   cornerRadius: number;
@@ -53,7 +64,9 @@ export type WallTickerConfig = Readonly<{
   showPrice:boolean;
   showChange:boolean;
   textColor:string;
+  textOpacity?:number;
   backgroundColor:string;
+  backgroundOpacity?:number;
 }>;
 export type HoldingWallConfig = Readonly<{
   header: HoldingWallHeaderConfig;
@@ -63,21 +76,21 @@ export type HoldingWallConfig = Readonly<{
 }>;
 
 export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
-  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',textColor:'#FFFFFF',borderColor:'#738197',borderWidth:1,effect:{...DEFAULT_ITEM_EFFECT}},
+  header:{visible:true,fontScale:1,backgroundColor:'#0C121B',backgroundOpacity:1,textColor:'#FFFFFF',textOpacity:1,borderColor:'#738197',borderOpacity:1,borderWidth:1,effect:{...DEFAULT_ITEM_EFFECT}},
   fields:[
-    {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'etfType',enabled:false,label:'ETF類型',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'dividendType',enabled:false,label:'配息型態',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'price',enabled:true,label:'價格',fontScale:1,align:'left',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'changePercent',enabled:true,label:'漲跌%',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'change',enabled:false,label:'漲跌',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'pnl',enabled:true,label:'損益',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
-    {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false,textColor:null,backgroundColor:null,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'symbol',enabled:true,label:'代號',fontScale:1,align:'left',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'etfType',enabled:false,label:'ETF類型',fontScale:1,align:'left',useProfitColor:false,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'dividendType',enabled:false,label:'配息型態',fontScale:1,align:'left',useProfitColor:false,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'name',enabled:true,label:'名稱',fontScale:1,align:'left',useProfitColor:false,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'price',enabled:true,label:'價格',fontScale:1,align:'left',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'changePercent',enabled:true,label:'漲跌%',fontScale:1,align:'right',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'change',enabled:false,label:'漲跌',fontScale:1,align:'right',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'pnl',enabled:true,label:'損益',fontScale:1,align:'right',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
   ],
-  ticker:{enabled:false,direction:'left',speed:55,itemGap:24,showPrice:true,showChange:true,textColor:'#DCEAFE',backgroundColor:'#101B2B'},
-  style:{backgroundColor:'#0C121B',backgroundProfitColor:false,textColor:'#FFFFFF',textProfitColor:false,secondaryTextColor:'#91A0B5',secondaryTextProfitColor:false,gainColor:'#EF5B64',lossColor:'#10B981',borderColor:'#263343',borderProfitColor:false,borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
+  ticker:{enabled:false,direction:'left',speed:55,itemGap:24,showPrice:true,showChange:true,textColor:'#DCEAFE',textOpacity:1,backgroundColor:'#101B2B',backgroundOpacity:1},
+  style:{backgroundColor:'#0C121B',backgroundOpacity:1,backgroundProfitColor:false,textColor:'#FFFFFF',textOpacity:1,textProfitColor:false,secondaryTextColor:'#91A0B5',secondaryTextOpacity:1,secondaryTextProfitColor:false,gainColor:'#EF5B64',gainOpacity:1,lossColor:'#10B981',lossOpacity:1,borderColor:'#263343',borderOpacity:1,borderProfitColor:false,borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
 };
 
 export type HoldingIntradayPoint=Readonly<{

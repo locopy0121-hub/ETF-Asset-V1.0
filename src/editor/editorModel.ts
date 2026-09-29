@@ -38,13 +38,19 @@ export type DashboardChartConfig = Readonly<{
   backgroundColor:string;
   backgroundOpacity:number;
   textColor:string;
+  textOpacity?:number;
   accentColor:string;
+  accentOpacity?:number;
   gainColor:string;
+  gainOpacity?:number;
   lossColor:string;
+  lossOpacity?:number;
   flatColor:string;
+  flatOpacity?:number;
   opacity:number;
   contentOpacity:number;
   borderColor:string;
+  borderOpacity?:number;
   borderWidth:number;
   borderStyle:ChartBorderStyle;
   borderRadius:number;
@@ -75,8 +81,8 @@ export type DashboardChartConfig = Readonly<{
 export const DEFAULT_DASHBOARD_METRICS:readonly DashboardMetricKey[]=['totalMarketValue','totalPnl','totalUnrealizedProfit','realizedNetPnL','totalDividendsReceived','cashBalance','holdingCount'];
 export const DEFAULT_DASHBOARD_CHARTS:readonly DashboardChartConfig[]=[{
   id:'allocation-main',title:'資產配置',visible:true,style:'donut',source:'allocation',x:-1,y:48,width:160,height:140,zIndex:10,locked:false,aspectLocked:false,
-  backgroundColor:'#FFFFFF',backgroundOpacity:1,textColor:'#0F172A',accentColor:'#0066FF',gainColor:'#10B981',lossColor:'#EF4444',flatColor:'#64748B',opacity:1,contentOpacity:1,
-  borderColor:'#0066FF',borderWidth:1,borderStyle:'solid',borderRadius:16,shadowEnabled:false,shadowOpacity:.18,padding:10,titleFontSize:12,titleAlign:'left',
+  backgroundColor:'#FFFFFF',backgroundOpacity:1,textColor:'#0F172A',textOpacity:1,accentColor:'#0066FF',accentOpacity:1,gainColor:'#10B981',gainOpacity:1,lossColor:'#EF4444',lossOpacity:1,flatColor:'#64748B',flatOpacity:1,opacity:1,contentOpacity:1,
+  borderColor:'#0066FF',borderOpacity:1,borderWidth:1,borderStyle:'solid',borderRadius:16,shadowEnabled:false,shadowOpacity:.18,padding:10,titleFontSize:12,titleAlign:'left',
   lineWidth:2,showPoints:true,pointSize:4,legendVisible:true,xAxisVisible:true,yAxisVisible:true,gridVisible:true,tooltipEnabled:true,dataLabels:false,crosshairEnabled:true,
   pinchZoomEnabled:true,panEnabled:true,doubleTapReset:true,rememberZoom:true,touchThrough:false,zoomMin:1,zoomMax:8,
 }];
@@ -89,12 +95,14 @@ export type FrameEditorConfig = Readonly<{
   behavior:FrameBehavior;
   titleFontSize:number;
   titleColor:string;
+  titleOpacity?:number;
   titleProfitColor?:boolean;
   titleAlign:TextAlign;
   backgroundColor:string;
   backgroundProfitColor?:boolean;
   backgroundOpacity:number;
   borderColor:string;
+  borderOpacity?:number;
   borderProfitColor?:boolean;
   borderWidth:number;
   borderRadius:number;
@@ -135,7 +143,7 @@ export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorCon
     const headerFrame=frame.key==='page-header'||frame.key==='holding-detail-header';
     return [
       frame.key,
-      {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:headerFrame?28:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:headerFrame?0:1,borderRadius:headerFrame?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
+      {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:headerFrame?28:17,titleColor:'#0F172A',titleOpacity:1,titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderOpacity:1,borderWidth:headerFrame?0:1,borderRadius:headerFrame?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
     ];
   }));
 
@@ -203,7 +211,9 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       useProfitColor:candidate?.useProfitColor??fallback.useProfitColor,
       useProfitBackground:candidate?.useProfitBackground===true,
       textColor:wallNullableColor(candidate?.textColor,fallback.textColor),
+      textOpacity:clamp(candidate?.textOpacity,0,1,fallback.textOpacity??1),
       backgroundColor:wallNullableColor(candidate?.backgroundColor,fallback.backgroundColor),
+      backgroundOpacity:clamp(candidate?.backgroundOpacity,0,1,fallback.backgroundOpacity??1),
       lineGap:candidate?.lineGap==null?fallback.lineGap:clamp(candidate.lineGap,0,32,fallback.lineGap??0),
       paddingY:clamp(candidate?.paddingY,0,16,fallback.paddingY),
       effect:normalizeWallEffect(candidate?.effect,fallback.effect),
@@ -214,8 +224,11 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       visible:header.visible??DEFAULT_HOLDING_WALL_CONFIG.header.visible,
       fontScale:clamp(header.fontScale,.7,1.8,DEFAULT_HOLDING_WALL_CONFIG.header.fontScale),
       backgroundColor:wallColor(header.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.header.backgroundColor),
+      backgroundOpacity:clamp(header.backgroundOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.header.backgroundOpacity??1),
       textColor:wallColor(header.textColor,DEFAULT_HOLDING_WALL_CONFIG.header.textColor),
+      textOpacity:clamp(header.textOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.header.textOpacity??1),
       borderColor:wallColor(header.borderColor,DEFAULT_HOLDING_WALL_CONFIG.header.borderColor),
+      borderOpacity:clamp(header.borderOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.header.borderOpacity??1),
       borderWidth:clamp(header.borderWidth,0,4,DEFAULT_HOLDING_WALL_CONFIG.header.borderWidth),
       effect:normalizeWallEffect(header.effect,DEFAULT_HOLDING_WALL_CONFIG.header.effect),
     },
@@ -228,18 +241,26 @@ const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
       showPrice:source.ticker?.showPrice!==false,
       showChange:source.ticker?.showChange!==false,
       textColor:wallColor(source.ticker?.textColor,DEFAULT_HOLDING_WALL_CONFIG.ticker!.textColor),
+      textOpacity:clamp(source.ticker?.textOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.ticker!.textOpacity??1),
       backgroundColor:wallColor(source.ticker?.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.ticker!.backgroundColor),
+      backgroundOpacity:clamp(source.ticker?.backgroundOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.ticker!.backgroundOpacity??1),
     },
     style:{
       backgroundColor:wallColor(style.backgroundColor,DEFAULT_HOLDING_WALL_CONFIG.style.backgroundColor),
+      backgroundOpacity:clamp(style.backgroundOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.style.backgroundOpacity??1),
       backgroundProfitColor:style.backgroundProfitColor===true,
       textColor:wallColor(style.textColor,DEFAULT_HOLDING_WALL_CONFIG.style.textColor),
+      textOpacity:clamp(style.textOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.style.textOpacity??1),
       textProfitColor:style.textProfitColor===true,
       secondaryTextColor:wallColor(style.secondaryTextColor,DEFAULT_HOLDING_WALL_CONFIG.style.secondaryTextColor),
+      secondaryTextOpacity:clamp(style.secondaryTextOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.style.secondaryTextOpacity??1),
       secondaryTextProfitColor:style.secondaryTextProfitColor===true,
       gainColor:wallColor(style.gainColor,DEFAULT_HOLDING_WALL_CONFIG.style.gainColor),
+      gainOpacity:clamp(style.gainOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.style.gainOpacity??1),
       lossColor:wallColor(style.lossColor,DEFAULT_HOLDING_WALL_CONFIG.style.lossColor),
+      lossOpacity:clamp(style.lossOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.style.lossOpacity??1),
       borderColor:wallColor(style.borderColor,DEFAULT_HOLDING_WALL_CONFIG.style.borderColor),
+      borderOpacity:clamp(style.borderOpacity,0,1,DEFAULT_HOLDING_WALL_CONFIG.style.borderOpacity??1),
       borderProfitColor:style.borderProfitColor===true,
       borderWidth:clamp(style.borderWidth,0,6,DEFAULT_HOLDING_WALL_CONFIG.style.borderWidth),
       cornerRadius:clamp(style.cornerRadius,0,40,DEFAULT_HOLDING_WALL_CONFIG.style.cornerRadius),
@@ -275,11 +296,14 @@ const normalizeDashboardCharts=(raw:unknown):readonly DashboardChartConfig[]=>{
       source:DASHBOARD_SOURCES.includes(source.source as DashboardChartSource)?source.source as DashboardChartSource:fallback.source,
       x:nextX===-1?-1:clamp(nextX,0,1200,fallback.x),y:clamp(nextY,0,1600,fallback.y),width:clamp(nextWidth,140,900,fallback.width),height:clamp(nextHeight,120,700,fallback.height),
       zIndex:clamp(source.zIndex,0,99,index+1),locked:source.locked===true,aspectLocked:source.aspectLocked===true,
-      backgroundColor:wallColor(source.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(source.backgroundOpacity,0,1,fallback.backgroundOpacity),
-      textColor:wallColor(source.textColor,fallback.textColor),accentColor:wallColor(source.accentColor,fallback.accentColor),
-      gainColor:wallColor(source.gainColor,fallback.gainColor),lossColor:wallColor(source.lossColor,fallback.lossColor),flatColor:wallColor(source.flatColor,fallback.flatColor),
+      backgroundColor:wallColor(source.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(source.backgroundOpacity,0,1,fallback.backgroundOpacity??1),
+      textColor:wallColor(source.textColor,fallback.textColor),textOpacity:clamp(source.textOpacity,0,1,fallback.textOpacity??1),
+      accentColor:wallColor(source.accentColor,fallback.accentColor),accentOpacity:clamp(source.accentOpacity,0,1,fallback.accentOpacity??1),
+      gainColor:wallColor(source.gainColor,fallback.gainColor),gainOpacity:clamp(source.gainOpacity,0,1,fallback.gainOpacity??1),
+      lossColor:wallColor(source.lossColor,fallback.lossColor),lossOpacity:clamp(source.lossOpacity,0,1,fallback.lossOpacity??1),
+      flatColor:wallColor(source.flatColor,fallback.flatColor),flatOpacity:clamp(source.flatOpacity,0,1,fallback.flatOpacity??1),
       opacity:clamp(source.opacity,.05,1,fallback.opacity),contentOpacity:clamp(source.contentOpacity,.05,1,fallback.contentOpacity),
-      borderColor:wallColor(source.borderColor,fallback.borderColor),borderWidth:clamp(source.borderWidth,0,8,fallback.borderWidth),
+      borderColor:wallColor(source.borderColor,fallback.borderColor),borderOpacity:clamp(source.borderOpacity,0,1,fallback.borderOpacity??1),borderWidth:clamp(source.borderWidth,0,8,fallback.borderWidth),
       borderStyle:source.borderStyle==='dashed'||source.borderStyle==='dotted'?source.borderStyle:'solid',borderRadius:clamp(source.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:source.shadowEnabled===true,shadowOpacity:clamp(source.shadowOpacity,0,.8,fallback.shadowOpacity),padding:clamp(source.padding,0,32,fallback.padding),
       titleFontSize:clamp(source.titleFontSize,8,28,fallback.titleFontSize),titleAlign:source.titleAlign==='center'||source.titleAlign==='right'?source.titleAlign:'left',
@@ -308,12 +332,12 @@ export function normalizeEditorConfig(
       layout: isFrameLayout(candidate.layout)?candidate.layout:fallback.layout,
       appearance: isFrameAppearance(candidate.appearance)?candidate.appearance:fallback.appearance,
       behavior:isFrameBehavior(candidate.behavior)?candidate.behavior:fallback.behavior,
-      titleFontSize:clamp(candidate.titleFontSize,10,32,fallback.titleFontSize),titleColor:wallColor(candidate.titleColor,fallback.titleColor),
+      titleFontSize:clamp(candidate.titleFontSize,10,32,fallback.titleFontSize),titleColor:wallColor(candidate.titleColor,fallback.titleColor),titleOpacity:clamp(candidate.titleOpacity,0,1,fallback.titleOpacity??1),
       titleProfitColor:candidate.titleProfitColor===true,backgroundProfitColor:candidate.backgroundProfitColor===true,
       borderProfitColor:candidate.borderProfitColor===true,
       titleAlign:candidate.titleAlign==='center'||candidate.titleAlign==='right'?candidate.titleAlign:'left',
-      backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
-      borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
+      backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity??1),
+      borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderOpacity:clamp(candidate.borderOpacity,0,1,fallback.borderOpacity??1),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),

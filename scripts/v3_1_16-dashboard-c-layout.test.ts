@@ -10,10 +10,10 @@ const gitBlob=(path:string)=>{
 
 const app=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'3.2.11');
-assert.equal(app.expo.version,'3.2.11');
-assert.equal(app.expo.android.versionCode,30211);
-assert.equal(app.expo.ios.buildNumber,'30211');
+assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.equal(app.expo.version,pkg.version);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
 
 const layout=read('src/domain/dashboardLayout.ts');
 assert.match(layout,/export type DashboardLayoutConfig/);

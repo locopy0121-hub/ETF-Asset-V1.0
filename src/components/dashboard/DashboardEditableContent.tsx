@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import {useState,type ReactNode} from 'react';
 import {Pressable,StyleSheet,Text,type StyleProp,type TextStyle} from 'react-native';
 import {colorWithAlpha} from '../../maintenance/frameEffects';
 import {InspectableTarget} from '../../maintenance/InspectableTarget';
@@ -33,6 +33,7 @@ export function DashboardEditableText({
   const colorPrefs=useSettingsRuntime().prefs.display;
   const targetId=`dashboard:${id}`;
   const layoutOverride=layoutRuntime.targets[targetId];
+  const [measured,setMeasured]=useState<{width:number;height:number}|null>(null);
   const raw=StyleSheet.flatten(style) as TextStyle;
   const size=typeof raw.fontSize==='number'?raw.fontSize:13;
   const color=hex(raw.color,'#0F172A');
@@ -60,7 +61,7 @@ export function DashboardEditableText({
       formatDisplayNumber(original,appearance.displayUnit,appearance.displayDigits,true):
       kind==='prefix'&&override?.prefixText!==undefined?appearance.prefixText:original;
     const custom:TextStyle|undefined=override?{
-      ...(override.textColor||override.textProfitColor!==undefined?{color:effectiveTextColor}:{}),
+      ...(override.textColor||override.textProfitColor!==undefined||override.textOpacity!==undefined?{color:colorWithAlpha(effectiveTextColor,appearance.textOpacity)}:{}),
       ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
       ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
       ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
@@ -72,7 +73,7 @@ export function DashboardEditableText({
       ...(override.padding!==undefined?{padding:appearance.padding}:{}),
       ...(override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
         {backgroundColor:colorWithAlpha(effectiveBackground,appearance.backgroundOpacity)}:{}),
-      ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:effectiveBorder}:{}),
+      ...(override.borderColor||override.borderProfitColor!==undefined||override.borderOpacity!==undefined?{borderColor:colorWithAlpha(effectiveBorder,appearance.borderOpacity)}:{}),
       ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
       ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
       ...(kind==='prefix'&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
@@ -81,7 +82,8 @@ export function DashboardEditableText({
       ...(override.opacity!==undefined?{opacity:appearance.opacity}:{}),
     }:undefined;
     return <Text style={[style,custom,layoutRuntime.active&&layoutRuntime.selectedId===targetId?styles.layoutSelected:undefined]}
-      onPress={layoutRuntime.active?(event=>{event.stopPropagation();layoutRuntime.onSelect?.({id:targetId,kind,label});}):undefined}
+      onLayout={event=>{const {width,height}=event.nativeEvent.layout;setMeasured({width,height});}}
+      onPress={layoutRuntime.active?(event=>{event.stopPropagation();layoutRuntime.onSelect?.({id:targetId,kind,label,...(measured??{})});}):undefined}
       {...(numberOfLines!==undefined?{numberOfLines}:{})}
       {...(adjustsFontSizeToFit?{adjustsFontSizeToFit:true}:{})}
       {...(minimumFontScale!==undefined?{minimumFontScale}:{})}>{text}</Text>;
@@ -108,7 +110,7 @@ export function DashboardEditableText({
         kind==='prefix'?(customized&&override.prefixText!==undefined?appearance.prefixText:original):
         (customized&&(appearance.labelText||appearance.captionText)?appearance.labelText||appearance.captionText:original);
       const custom:TextStyle|undefined=customized?{
-        ...(override.textColor||override.textProfitColor!==undefined||rule?.textColor?{color:appearance.textColor}:{}),
+        ...(override.textColor||override.textProfitColor!==undefined||override.textOpacity!==undefined||rule?.textColor?{color:colorWithAlpha(appearance.textColor,appearance.textOpacity)}:{}),
         ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
         ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
         ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
@@ -121,7 +123,7 @@ export function DashboardEditableText({
         ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?{backgroundColor:'transparent'}:
           override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
           {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
-        ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
+        ...(override.borderColor||override.borderProfitColor!==undefined||override.borderOpacity!==undefined?{borderColor:colorWithAlpha(appearance.borderColor,appearance.borderOpacity)}:{}),
         ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
         ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
         ...(kind==='prefix'&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
@@ -144,11 +146,13 @@ export function DashboardEditableMetric({
   const layoutRuntime=useLayoutRuntime();
   const targetId=`dashboard:${id}`;
   const layoutOverride=layoutRuntime.targets[targetId];
+  const [measured,setMeasured]=useState<{width:number;height:number}|null>(null);
   const directStyle:TargetOverride={...pageStyle,...(layoutOverride??{})};
   if(!frame){
     const tile=<MetricTile label={label} value={value}
       {...(caption!==undefined?{caption}:{})}{...(tone!=='default'?{tone}:{})} editorStyle={directStyle}/>;
-    return layoutRuntime.active?<Pressable onPress={event=>{event.stopPropagation();layoutRuntime.onSelect?.({id:targetId,kind:'card',label});}}
+    return layoutRuntime.active?<Pressable onLayout={event=>{const {width,height}=event.nativeEvent.layout;setMeasured({width,height});}}
+      onPress={event=>{event.stopPropagation();layoutRuntime.onSelect?.({id:targetId,kind:'card',label,...(measured??{})});}}
       style={layoutRuntime.selectedId===targetId?styles.metricSelected:undefined}>{tile}</Pressable>:tile;
   }
 

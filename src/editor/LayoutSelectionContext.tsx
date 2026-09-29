@@ -2,7 +2,7 @@ import {createContext,useContext,type PropsWithChildren} from 'react';
 import type {TargetOverride} from '../maintenance/inspectionModel';
 
 export type LayoutSelectionKind='frame'|'card'|'text'|'value'|'prefix'|'chart'|'data'|'button'|'badge'|'table'|'calendar'|'form'|'list'|'layout';
-export type LayoutSelectionTarget=Readonly<{id:string;kind:LayoutSelectionKind;label:string}>;
+export type LayoutSelectionTarget=Readonly<{id:string;kind:LayoutSelectionKind;label:string;width?:number;height?:number}>;
 
 type LayoutRuntimeContextValue=Readonly<{
   active:boolean;

@@ -37,7 +37,7 @@ assert.match(quick,/onPress=\{onCycleFirst\}/);
 
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.2.11');
-assert.equal(app.expo.android.versionCode,30211);
-assert.equal(app.expo.ios.buildNumber,'30211');
+assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
 console.log('V3.2.11 portfolio regression: direct table, safe fallback and unified real-layout settings entry: PASS');

@@ -1,5 +1,5 @@
 import {type ReactNode,useEffect,useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Alert,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
@@ -109,7 +109,14 @@ export function PageFrameSettingsModal({
     recordDiagnosticEvent({level:'info',code:'PAGE_EDITOR_APPLY',screen:pageKey,message:'頁面設定已套用'});
     onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
-  const reset=()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();};
+  const reset=()=>Alert.alert(
+    '確認恢復本頁預設排版',
+    '將恢復目前頁面的排版設定。請再次確認是否恢復。',
+    [
+      {text:'取消',style:'cancel'},
+      {text:'確認恢復',style:'destructive',onPress:()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();}},
+    ],
+  );
 
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
     <View style={styles.root}>
@@ -117,7 +124,7 @@ export function PageFrameSettingsModal({
         <View style={{flex:1}}>
           <Text style={styles.kicker}>頁面設定 · 排版工具／統一能力模型</Text>
           <Text style={styles.title}>{title}</Text>
-          <Text style={styles.hint}>上方預覽直接點選真實物件；虛線框就是目前編輯範圍。下方手風琴只顯示該物件可用工具。</Text>
+          <Text style={styles.hint}>上方直接顯示實際頁面；滑到哪裡、點到哪個真實物件，下方編輯器就開啟該物件目前設定值。</Text>
         </View>
         <Pressable style={styles.cancel} onPress={cancel}><Text style={styles.cancelText}>取消</Text></Pressable>
         <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>

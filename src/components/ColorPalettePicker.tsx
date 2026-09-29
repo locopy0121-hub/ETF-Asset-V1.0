@@ -64,12 +64,16 @@ export function ColorPalettePicker({
   label,
   value,
   onChange,
+  opacity,
+  onOpacityChange,
   profitColorEnabled,
   onProfitColorChange,
 }:{
   label:string;
   value:string;
   onChange:(value:string)=>void;
+  opacity?:number|undefined;
+  onOpacityChange?:((value:number)=>void)|undefined;
   profitColorEnabled?:boolean;
   onProfitColorChange?:(value:boolean)=>void;
 }){
@@ -155,6 +159,15 @@ export function ColorPalettePicker({
       <Text style={styles.toggleText}>開啟調色盤</Text>
     </Pressable>
 
+    {onOpacityChange?<View style={styles.opacityRow}>
+      <Text style={styles.opacityLabel}>透明度</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={label+'透明度降低'} style={styles.opacityButton}
+        onPress={()=>onOpacityChange(clamp((opacity??1)-.01,0,1))}><Text style={styles.opacityButtonText}>−</Text></Pressable>
+      <Text style={styles.opacityValue}>{Math.round(clamp(opacity??1,0,1)*100)}%</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={label+'透明度提高'} style={styles.opacityButton}
+        onPress={()=>onOpacityChange(clamp((opacity??1)+.01,0,1))}><Text style={styles.opacityButtonText}>＋</Text></Pressable>
+    </View>:null}
+
     {expanded?<Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={cancel}>
       <View style={styles.modalRoot}>
         <View style={styles.modalTop}>
@@ -235,6 +248,9 @@ const styles=StyleSheet.create({
   paletteToggle:{minHeight:34,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
   toggleText:{fontSize:9,fontWeight:'900',color:colors.primary},
   preview:{width:26,height:26,borderRadius:13,borderWidth:1,borderColor:colors.border},
+  opacityRow:{minHeight:34,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  opacityLabel:{fontSize:10,fontWeight:'900',color:colors.text,flex:1},opacityButton:{width:30,height:28,borderRadius:8,alignItems:'center',justifyContent:'center',backgroundColor:colors.surfaceMuted},
+  opacityButtonText:{fontSize:16,fontWeight:'900',color:colors.primary},opacityValue:{minWidth:42,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
   profitPill:{paddingHorizontal:8,paddingVertical:5,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
   profitPillOn:{borderColor:colors.primary,backgroundColor:'#EFF6FF'},
   profitText:{fontSize:9,fontWeight:'900',color:colors.textSecondary},
