@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import type {DashboardLayoutConfig} from '../../domain/dashboardLayout';
 import type {FrameMaintenanceContext} from '../../maintenance/inspectionModel';
@@ -21,6 +22,7 @@ export function DashboardAssetOverview({
   previousPnl?:number;todayPnl?:number;totalPnl?:number;pnlComplete?:boolean;onPressTotalPnl?:()=>void;
 }){
   const runtime=useLayoutRuntime();
+  const [cardSize,setCardSize]=useState<{width:number;height:number}|null>(null);
   const colorPrefs=useSettingsRuntime().prefs.display;
   const totalTone=financialTone(totalPnl);
   const previousTone=financialTone(previousPnl);
@@ -85,10 +87,11 @@ export function DashboardAssetOverview({
       numberOfLines={2} style={[styles.caption,{fontSize:layout.captionFontSize,color:layout.captionColor,textAlign:layout.align}]}>{caption}</DashboardEditableText>:null;
   };
   return <Pressable disabled={!runtime.active}
-    onPress={runtime.active?(event=>{event.stopPropagation();runtime.onSelect?.({id:cardId,kind:'card',label:'資產總覽卡片'});}):undefined}
+    onLayout={event=>{const {width,height}=event.nativeEvent.layout;setCardSize({width,height});}}
+    onPress={runtime.active?(event=>{event.stopPropagation();runtime.onSelect?.({id:cardId,kind:'card',label:'資產總覽卡片',...(cardSize??{})});}):undefined}
     style={[styles.root,{minHeight:layout.minHeight,padding:card.padding,
       backgroundColor:card.backgroundMode==='gradient'?'transparent':colorWithAlpha(cardBackground,card.backgroundOpacity),
-      borderColor:cardBorder,borderWidth:card.borderWidth,borderRadius:card.borderRadius,opacity:card.opacity,
+      borderColor:colorWithAlpha(cardBorder,card.borderOpacity),borderWidth:card.borderWidth,borderRadius:card.borderRadius,opacity:card.opacity,
       marginVertical:card.marginVertical,marginHorizontal:card.marginHorizontal,
       ...(cardOverride?.width!==undefined?{width:cardOverride.width}:{}),
       ...(cardOverride?.height!==undefined?{height:cardOverride.height}:{}),
