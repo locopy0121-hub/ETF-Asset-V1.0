@@ -2,6 +2,13 @@ import {View,StyleSheet,type ViewStyle} from 'react-native';
 import type {TargetAppearance} from './inspectionModel';
 import {colorWithAlpha,sampleFrameGradient} from './frameEffects';
 
+const mixAlpha=(start:number,middle:number,end:number,position:number,pivot:number,enabled:boolean)=>{
+  const at=Math.max(0,Math.min(1,position));
+  if(!enabled)return start+(end-start)*at;
+  const stop=Math.max(.1,Math.min(.9,pivot));
+  return at<=stop?start+(middle-start)*(at/stop):middle+(end-middle)*((at-stop)/(1-stop));
+};
+
 /** Shared native View renderer: gradient/background alpha stay behind native text and values. */
 export function targetShadowStyle(appearance:TargetAppearance,color:string):ViewStyle {
   if(!appearance.shadowEnabled)return {};
@@ -27,7 +34,7 @@ export function TargetBackdrop({appearance,start,middle,end,glow}:{
       {Array.from({length:16},(_,i)=><View key={i} style={{
         flex:1,backgroundColor:colorWithAlpha(
           sampleFrameGradient(start,middle,end,i/15,appearance.gradientMidStop,appearance.gradientMidEnabled),
-          appearance.backgroundOpacity),
+          appearance.backgroundOpacity*mixAlpha(1,appearance.gradientMidOpacity,appearance.gradientEndOpacity,i/15,appearance.gradientMidStop,appearance.gradientMidEnabled)),
       }}/>)}
     </View>:null}
     {innerEdge?<View pointerEvents="none" style={[StyleSheet.absoluteFill,{
