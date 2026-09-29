@@ -650,12 +650,30 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
   </View>;
 }
 
+function OrderRows<T extends string>({order,labels,onChange}:{order:readonly T[];labels:Record<T,string>;onChange:(order:readonly T[])=>void}){
+  const move=(key:T,delta:-1|1)=>{
+    const next=[...order],index=next.indexOf(key),to=index+delta;
+    if(index<0||to<0||to>=next.length)return;
+    [next[index],next[to]]=[next[to]!,next[index]!];
+    onChange(next);
+  };
+  return <View style={styles.orderList}>
+    <Text style={styles.orderTitle}>功能設定排序</Text>
+    {order.map((key,index)=><View key={key} style={styles.orderRow}>
+      <Text style={styles.orderIndex}>{index+1}</Text><Text style={styles.orderLabel}>{labels[key]}</Text>
+      <Pressable disabled={index===0} onPress={()=>move(key,-1)} style={[styles.orderMini,index===0&&styles.orderButtonDisabled]}><Text style={styles.orderButtonText}>↑</Text></Pressable>
+      <Pressable disabled={index===order.length-1} onPress={()=>move(key,1)} style={[styles.orderMini,index===order.length-1&&styles.orderButtonDisabled]}><Text style={styles.orderButtonText}>↓</Text></Pressable>
+    </View>)}
+  </View>;
+}
+
 function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:string;value:DashboardLayoutConfig;open:string|null;toggle:(k:string)=>void;onChange:(v:DashboardLayoutConfig)=>void}){
   const patchOverview=(next:Partial<DashboardLayoutConfig['overview']>)=>onChange({...value,overview:{...value.overview,...next}});
   const patchProfit=(next:Partial<DashboardLayoutConfig['profitAnalysis']>)=>onChange({...value,profitAnalysis:{...value.profitAnalysis,...next}});
   const patchDetail=(next:Partial<DashboardLayoutConfig['profitDetail']>)=>onChange({...value,profitDetail:{...value.profitDetail,...next}});
   const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>onChange({...value,quickActions:{...value.quickActions,...next}});
   if(frameKey==='asset-dashboard')return <Accordion title="內容佈局" subtitle="資產總覽的真實內容結構" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.overview.order} labels={{label:'標題',amount:'金額',caption:'說明'}} onChange={order=>patchOverview({order})}/>
     <NumberStep label="最小高度" value={value.overview.minHeight} min={104} max={220} step={4} suffix=" px" onChange={minHeight=>patchOverview({minHeight})}/>
     <NumberStep label="卡片內距" value={value.overview.padding} min={8} max={28} step={1} suffix=" px" onChange={padding=>patchOverview({padding})}/>
     <NumberStep label="內容間距" value={value.overview.contentGap} min={0} max={24} step={1} suffix=" px" onChange={contentGap=>patchOverview({contentGap})}/>
@@ -665,6 +683,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="裝飾圖形" value={value.overview.decorationVisible} onChange={decorationVisible=>patchOverview({decorationVisible})}/>
   </Accordion>;
   if(frameKey==='profit-analysis')return <Accordion title="KPI 佈局" subtitle="卡片高度、間距、圖示與說明" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.profitAnalysis.order} labels={{realizedNetPnL:'已實現損益',totalPnl:'含息總損益',totalUnrealizedProfit:'未實現損益',totalMarketValue:'持股市值'}} onChange={order=>patchProfit({order})}/>
     <NumberStep label="卡片高度" value={value.profitAnalysis.cardHeight} min={84} max={156} step={4} suffix=" px" onChange={cardHeight=>patchProfit({cardHeight})}/>
     <NumberStep label="卡片間距" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} suffix=" px" onChange={cardGap=>patchProfit({cardGap})}/>
     <NumberStep label="卡片內距" value={value.profitAnalysis.cardPadding} min={0} max={28} step={1} suffix=" px" onChange={cardPadding=>patchProfit({cardPadding})}/>
@@ -672,6 +691,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="說明" value={value.profitAnalysis.captionVisible} onChange={captionVisible=>patchProfit({captionVisible})}/>
   </Accordion>;
   if(frameKey==='pnl-detail')return <Accordion title="明細佈局" subtitle="列數、高度、左右內距與欄位間距" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.profitDetail.order} labels={{price:'純價差未實現',net:'淨清算未實現',realized:'已實現損益',total:'含息總損益'}} onChange={order=>patchDetail({order})}/>
     <NumberStep label="顯示列數" value={value.profitDetail.itemCount} min={2} max={4} step={1} suffix=" 列" onChange={v=>patchDetail({itemCount:v as 2|3|4})}/>
     <NumberStep label="列高" value={value.profitDetail.rowHeight} min={40} max={72} step={2} suffix=" px" onChange={rowHeight=>patchDetail({rowHeight})}/>
     <NumberStep label="左右內距" value={value.profitDetail.rowPaddingHorizontal} min={0} max={32} step={1} suffix=" px" onChange={rowPaddingHorizontal=>patchDetail({rowPaddingHorizontal})}/>
@@ -679,6 +699,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="查看更多" value={value.profitDetail.showMore} onChange={showMore=>patchDetail({showMore})}/>
   </Accordion>;
   if(frameKey==='dashboard-quick-actions')return <Accordion title="快捷按鈕佈局" subtitle="欄數、內距、圖示文字間距" open={open==='layout'} onPress={()=>toggle('layout')}>
+    <OrderRows order={value.quickActions.order} labels={{'stock-query':'持股查詢',ledger:'交易紀錄',allocation:'資產配置',dividend:'股息資訊'}} onChange={order=>patchQuick({order})}/>
     <ChoiceRow label="欄數" value={String(value.quickActions.columns)} items={[['2','雙欄'],['4','四欄']]} onChange={v=>patchQuick({columns:Number(v) as 2|4})}/>
     <NumberStep label="按鈕內距" value={value.quickActions.itemPadding} min={0} max={28} step={1} suffix=" px" onChange={itemPadding=>patchQuick({itemPadding})}/>
     <NumberStep label="圖示／文字間距" value={value.quickActions.itemGap} min={0} max={24} step={1} suffix=" px" onChange={itemGap=>patchQuick({itemGap})}/>
