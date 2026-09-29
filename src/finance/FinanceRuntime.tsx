@@ -152,6 +152,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       sparkline:[...(quote?.sparkline??[summary.currentPrice])],
       intraday:[...(quote?.intraday??[])],
       intradayDate:quote?.intradayDate??null,
+      intradayPreviousClose:quote?.intradayPreviousClose??null,
     };
   }).filter(x=>x.shares>0),[snapshot,market.quotes,market.catalog,market.marketDataVersion]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);
