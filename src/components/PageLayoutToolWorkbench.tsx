@@ -249,7 +249,7 @@ export function PageLayoutToolWorkbench({
       </Pressable>)}
     </ScrollView>
 
-    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} open={openGroup} toggle={toggle}
+    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]} open={openGroup} toggle={toggle}
       patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}/>:null}
 
     {holding&&selection.kind==='card'?<HoldingCardTools wall={wall} open={openGroup} toggle={toggle} patch={patchWallStyle}/>:null}
@@ -270,19 +270,25 @@ export function PageLayoutToolWorkbench({
   </View>;
 }
 
-function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number};open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+  const basePadding=frame.padding??(frame.layout==='compact'?12:frame.layout==='dense'?10:16);
+  const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
+  const actualWidth=Math.round(frame.width??measured?.width??320);
+  const actualHeight=Math.round(frame.height??measured?.height??Math.max(frame.minHeight??0,260));
+  const actualMinHeight=Math.round((frame.minHeight??0)>0?(frame.minHeight??0):actualHeight);
+  const actualMaxWidth=Math.round(fx.maxWidth>0?fx.maxWidth:actualWidth);
   return <View>
     <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
-      <ModeStep label="寬度" value={frame.width} fallback={320} min={160} max={1600} step={10} onAuto={()=>patch({width:undefined} as any)} onChange={width=>patch({width})}/>
-      <ModeStep label="高度" value={frame.height} fallback={260} min={80} max={2400} step={10} onAuto={()=>patch({height:undefined} as any)} onChange={height=>patch({height})}/>
-      <NumberStep label="最小高度" value={frame.minHeight??0} min={0} max={600} step={10} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
-      <NumberStep label="最大寬度" value={fx.maxWidth} min={0} max={1600} step={20} suffix={fx.maxWidth===0?'（不限）':' px'} onChange={maxWidth=>patchFx({maxWidth})}/>
+      <NumberStep label="寬度" value={actualWidth} min={160} max={1600} step={10} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={actualHeight} min={80} max={2400} step={10} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="最小高度" value={actualMinHeight} min={0} max={2400} step={10} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
+      <NumberStep label="最大寬度" value={actualMaxWidth} min={160} max={1600} step={20} suffix=" px" onChange={maxWidth=>patchFx({maxWidth})}/>
     </Accordion>
     <Accordion title="內距／空間" subtitle="整體內距、四邊內距、內容間距與外距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
       <NumberStep label="整體 Padding" value={frame.padding??16} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
       {(['paddingTop','paddingRight','paddingBottom','paddingLeft'] as const).map((key,i)=><NumberStep key={key} label={['上內距','右內距','下內距','左內距'][i]!}
-        value={fx[key]} min={-1} max={32} step={1} suffix={fx[key]<0?'（跟隨）':' px'} onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
-      <NumberStep label="內容間距" value={fx.contentGap} min={-1} max={40} step={1} suffix={fx.contentGap<0?'（跟隨）':' px'} onChange={contentGap=>patchFx({contentGap})}/>
+        value={fx[key]>=0?fx[key]:basePadding} min={0} max={32} step={1} suffix=" px" onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
+      <NumberStep label="內容間距" value={fx.contentGap>=0?fx.contentGap:baseGap} min={0} max={40} step={1} suffix=" px" onChange={contentGap=>patchFx({contentGap})}/>
       <NumberStep label="上下外距" value={fx.marginVertical} min={0} max={32} step={1} suffix=" px" onChange={marginVertical=>patchFx({marginVertical})}/>
     </Accordion>
     <Accordion title="框架標題" subtitle="標題字體、顏色、對齊與跑馬燈" open={open==='title'} onPress={()=>toggle('title')}>
@@ -316,7 +322,7 @@ function FrameTools({frame,fx,open,toggle,patch,patchFx}:{frame:FrameEditorConfi
       <ChoiceRow label="邊框樣式" value={fx.borderStyle} items={[['solid','實線'],['dashed','虛線'],['dotted','點線']]} onChange={v=>patchFx({borderStyle:v as FrameEffects['borderStyle']})}/>
       <NumberStep label="整體圓角" value={frame.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
       {(['cornerTopLeft','cornerTopRight','cornerBottomRight','cornerBottomLeft'] as const).map((key,i)=><NumberStep key={key} label={['左上角','右上角','右下角','左下角'][i]!}
-        value={fx[key]} min={-1} max={48} step={1} suffix={fx[key]<0?'（跟隨）':' px'} onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
+        value={fx[key]>=0?fx[key]:frame.borderRadius} min={0} max={48} step={1} suffix=" px" onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
     </Accordion>
     <Accordion title="陰影／光效" subtitle="原生陰影、Glow、外光暈" open={open==='effects'} onPress={()=>toggle('effects')}>
       <SwitchRow label="陰影" value={frame.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
