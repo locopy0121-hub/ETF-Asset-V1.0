@@ -250,7 +250,8 @@
     "test:v3_2_9": "npm run test:v3_2_8 && tsx scripts/v3_2_9-official-daily-rebuild.test.ts",
     "test:v3_2_10": "npm run test:v3_2_9 && tsx scripts/v3_2_10-trend-table-mini-chart.test.ts",
     "test:v3_2_11": "npm run test:v3_2_10 && tsx scripts/v3_2_11-intraday-mini-chart.test.ts",
-    "test:v3_2_12": "npm run test:v3_2_11 && tsx scripts/v3_2_12-live-settings-editor.test.ts",\n    "test:v3_2_13": "npm run test:v3_2_12 && tsx scripts/v3_2_13-preview-market-background.test.ts"
+    "test:v3_2_12": "npm run test:v3_2_11 && tsx scripts/v3_2_12-live-settings-editor.test.ts",
+    "test:v3_2_13": "npm run test:v3_2_12 && tsx scripts/v3_2_13-preview-market-background.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
