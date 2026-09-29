@@ -67,8 +67,8 @@ export function PageLayoutToolWorkbench({
     finance.initialCash,finance.entries,finance.quotes,finance.snapshot,
     finance.valuationComplete,market.marketDataVersion,
   ]);
-  const previewFrames=useMemo(()=>frames.filter(frame=>hasRealPreview(pageKey,frame.key))
-    .sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),[frames,pageKey,draft]);
+  const orderedFrames=useMemo(()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),[frames,draft]);
+  const previewFrames=useMemo(()=>orderedFrames.filter(frame=>hasRealPreview(pageKey,frame.key)),[orderedFrames,pageKey]);
   const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
@@ -262,6 +262,7 @@ export function PageLayoutToolWorkbench({
 
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
+  const frameSortIndex=orderedFrames.findIndex(item=>item.key===frame.key);
 
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
@@ -327,8 +328,11 @@ export function PageLayoutToolWorkbench({
       </Pressable>)}
     </ScrollView>
 
-    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]} open={openGroup} toggle={toggle}
-      patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}/>:null}
+    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]}
+      position={frameSortIndex+1} canMoveUp={frameSortIndex>0} canMoveDown={frameSortIndex>=0&&frameSortIndex<orderedFrames.length-1}
+      open={openGroup} toggle={toggle}
+      patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}
+      setBehavior={behavior=>onSetFrameBehavior(frame.key,behavior)} move={delta=>onMoveFrame(frame.key,delta)}/>:null}
 
     {holding&&selection.kind==='card'?<HoldingCardTools wall={wall} open={openGroup} toggle={toggle} patch={patchWallStyle}/>:null}
     {holding&&(selection.kind==='text'||selection.kind==='value')&&selectedField?
@@ -353,7 +357,7 @@ export function PageLayoutToolWorkbench({
   </View>;
 }
 
-function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void}){
+function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggle,patch,patchFx,setBehavior,move}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;position:number;canMoveUp:boolean;canMoveDown:boolean;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void;setBehavior:(behavior:FrameBehavior)=>void;move:(delta:-1|1)=>void}){
   const basePadding=frame.padding??(frame.layout==='compact'?12:frame.layout==='dense'?10:16);
   const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
   const actualWidth=Math.round(frame.width??measured?.width??320);
@@ -361,6 +365,20 @@ function FrameTools({frame,fx,measured,open,toggle,patch,patchFx}:{frame:FrameEd
   const actualMinHeight=Math.round((frame.minHeight??0)>0?(frame.minHeight??0):actualHeight);
   const actualMaxWidth=Math.round(fx.maxWidth>0?fx.maxWidth:actualWidth);
   return <View>
+    <Accordion title="排序" subtitle="恢復原有框架順位設定；只改同層顯示順序" open={open==='order'} onPress={()=>toggle('order')}>
+      <ChoiceRow label="排序模式" value={frame.behavior} items={[['manual','手動排序'],['auto','自動順位'],['locked','鎖定']]} onChange={value=>setBehavior(value as FrameBehavior)}/>
+      <View style={styles.row}><Text style={styles.rowLabel}>目前順位</Text><Text style={styles.readOnlyValue}>{position}</Text></View>
+      <View style={styles.orderButtons}>
+        <Pressable accessibilityRole="button" disabled={frame.behavior!=='manual'||!canMoveUp}
+          onPress={()=>move(-1)} style={[styles.orderButton,(frame.behavior!=='manual'||!canMoveUp)&&styles.orderButtonDisabled]}>
+          <Text style={styles.orderButtonText}>↑ 前移</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" disabled={frame.behavior!=='manual'||!canMoveDown}
+          onPress={()=>move(1)} style={[styles.orderButton,(frame.behavior!=='manual'||!canMoveDown)&&styles.orderButtonDisabled]}>
+          <Text style={styles.orderButtonText}>↓ 後移</Text>
+        </Pressable>
+      </View>
+    </Accordion>
     <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
       <NumberStep label="寬度" value={actualWidth} min={160} max={1600} step={10} suffix=" px" onChange={width=>patch({width})}/>
       <NumberStep label="高度" value={actualHeight} min={80} max={2400} step={10} suffix=" px" onChange={height=>patch({height})}/>
