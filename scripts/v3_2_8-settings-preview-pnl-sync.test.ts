@@ -40,19 +40,19 @@ for(const id of [
   'dashboard:overview-pnl-pending',
 ]) assert.ok(workbench.includes(id),'new PnL preview target lacks tool baseline '+id);
 
-for(const label of ['前一日損益','今日損益','總損益'])
+for(const label of ['前日總損益','今日市值變動','總損益'])
   assert.ok(overview.includes(label),'asset overview missing '+label);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.8');
-assert.equal(app.expo.version,'3.2.8');
-assert.equal(app.expo.android.versionCode,30208);
-assert.equal(app.expo.ios.buildNumber,'30208');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.8'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.8'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30208'/);
+assert.equal(pkg.version,'3.2.9');
+assert.equal(app.expo.version,'3.2.9');
+assert.equal(app.expo.android.versionCode,30209);
+assert.equal(app.expo.ios.buildNumber,'30209');
+assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.9'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.9'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30209'/);
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'immutable finance core missing: '+core);
 
-console.log('V3.2.8 Page Settings dashboard preview PnL / spacing / direct-target parity PASS');
+console.log('V3.2.9 Page Settings dashboard preview PnL / spacing / direct-target parity PASS');
