@@ -69,7 +69,7 @@ export class MarketStore extends EventEmitter{
           AND source IN ('TWSE_MIS','YAHOO')
         GROUP BY symbol
       ), ranked AS (
-        SELECT h.symbol,h.source_at,h.price,h.quality,h.source,d.day,
+        SELECT h.symbol,h.source_at,h.price,h.previous_close,h.quality,h.source,d.day,
           ROW_NUMBER() OVER(
             PARTITION BY h.symbol,date_trunc('minute',h.source_at AT TIME ZONE 'Asia/Taipei')
             ORDER BY CASE h.quality WHEN 'trade' THEN 2 ELSE 1 END DESC,h.source_at DESC
@@ -82,12 +82,15 @@ export class MarketStore extends EventEmitter{
           AND h.source IN ('TWSE_MIS','YAHOO')
           AND (h.source_at AT TIME ZONE 'Asia/Taipei')::time BETWEEN TIME '09:00' AND TIME '13:30'
       )
-      SELECT symbol,source_at,price,quality,source,to_char(day,'YYYY-MM-DD') AS day_text
+      SELECT symbol,source_at,price,previous_close,quality,source,to_char(day,'YYYY-MM-DD') AS day_text
       FROM ranked WHERE rn=1 ORDER BY symbol,source_at
     `,[normalized]);
     const output={};
     for(const row of result.rows){
-      const series=output[row.symbol]??{date:row.day_text,points:[]};
+      const previousClose=row.previous_close===null?null:Number(row.previous_close);
+      const series=output[row.symbol]??{date:row.day_text,previousClose,points:[]};
+      if((series.previousClose==null||!Number.isFinite(series.previousClose))&&Number.isFinite(previousClose)&&previousClose>0)
+        series.previousClose=previousClose;
       series.points.push({at:new Date(row.source_at).getTime(),price:Number(row.price),
         quality:row.quality,source:row.source});
       output[row.symbol]=series;
