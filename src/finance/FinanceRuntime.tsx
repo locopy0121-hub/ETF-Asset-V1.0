@@ -28,6 +28,17 @@ import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=4;
+const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullable<HoldingQuote['quoteQuality']>=>{
+  switch(quality){
+    case 'trade':
+    case 'backup_realtime':
+    case 'previous_close':
+    case 'official_close':
+      return quality;
+    default:
+      return 'unavailable';
+  }
+};
 
 type PersistedFinanceState = {
   schema: number;
@@ -137,9 +148,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       symbol:summary.etfCode,
       name:(quote&&quote.name!==summary.etfCode?quote.name:name??summary.name),
       quoteVerified:verified,
-      quoteQuality:valuationQuote?.quality==='trade'||valuationQuote?.quality==='backup_realtime'||
-        valuationQuote?.quality==='previous_close'||valuationQuote?.quality==='official_close'?
-        valuationQuote.quality:'unavailable',
+      quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
       marketDataVersion:market.marketDataVersion,
       previousCloseKnown:verified?valuationQuote?.previousCloseKnown!==false:false,
