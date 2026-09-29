@@ -117,6 +117,7 @@ export type HoldingQuote = {
   sparkline: number[];
   intraday?:HoldingIntradayPoint[];
   intradayDate?:string|null;
+  intradayPreviousClose?:number|null;
 };
 
 export type MarketNewsItem = {
