@@ -56,6 +56,45 @@ export class MarketStore extends EventEmitter{
     }catch(e){await client.query('ROLLBACK').catch(()=>{});throw e;}
     finally{client.release();}
   }
+  async intraday(symbols=[]){
+    const normalized=[...new Set(symbols.map(s=>String(s).trim().toUpperCase()))]
+      .filter(s=>VALID_SYMBOL.test(s));
+    if(!normalized.length)return {};
+    const result=await this.pg.query(`
+      WITH latest_day AS (
+        SELECT symbol,MAX((source_at AT TIME ZONE 'Asia/Taipei')::date) AS day
+        FROM market_quote_history
+        WHERE symbol=ANY($1::varchar[])
+          AND quality IN ('trade','backup_realtime')
+          AND source IN ('TWSE_MIS','YAHOO')
+        GROUP BY symbol
+      ), ranked AS (
+        SELECT h.symbol,h.source_at,h.price,h.quality,h.source,d.day,
+          ROW_NUMBER() OVER(
+            PARTITION BY h.symbol,date_trunc('minute',h.source_at AT TIME ZONE 'Asia/Taipei')
+            ORDER BY CASE h.quality WHEN 'trade' THEN 2 ELSE 1 END DESC,h.source_at DESC
+          ) AS rn
+        FROM market_quote_history h
+        JOIN latest_day d ON d.symbol=h.symbol
+          AND (h.source_at AT TIME ZONE 'Asia/Taipei')::date=d.day
+        WHERE h.symbol=ANY($1::varchar[])
+          AND h.quality IN ('trade','backup_realtime')
+          AND h.source IN ('TWSE_MIS','YAHOO')
+          AND (h.source_at AT TIME ZONE 'Asia/Taipei')::time BETWEEN TIME '09:00' AND TIME '13:30'
+      )
+      SELECT symbol,source_at,price,quality,source,to_char(day,'YYYY-MM-DD') AS day_text
+      FROM ranked WHERE rn=1 ORDER BY symbol,source_at
+    `,[normalized]);
+    const output={};
+    for(const row of result.rows){
+      const series=output[row.symbol]??{date:row.day_text,points:[]};
+      series.points.push({at:new Date(row.source_at).getTime(),price:Number(row.price),
+        quality:row.quality,source:row.source});
+      output[row.symbol]=series;
+    }
+    return output;
+  }
+
   async warmCache(){
     if(!this.redis?.isReady)return;
     const state=await this.dbSnapshot();
