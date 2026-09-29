@@ -648,10 +648,26 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
       <NumberStep label="圓角" value={current.borderRadius} min={0} max={48} step={2} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
       {!card?<><NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
         <NumberStep label="透明度" value={Math.round(current.opacity*100)} min={5} max={100} step={5} suffix="%" onChange={v=>patch({opacity:v/100})}/></>:null}
-      {card?<><ChoiceRow label="背景模式" value={current.backgroundMode} items={[['solid','純色'],['gradient','漸層']]} onChange={backgroundMode=>patch({backgroundMode:backgroundMode as TargetAppearance['backgroundMode']})}/>
+      {card?<><ChoiceRow label="背景模式" value={current.backgroundMode} items={[['solid','純色'],['gradient','漸層'],['image','圖片']]} onChange={backgroundMode=>patch({backgroundMode:backgroundMode as TargetAppearance['backgroundMode']})}/>
         {current.backgroundMode==='gradient'?<><ColorPalettePicker label="漸層結束色" value={current.gradientEndColor} onChange={gradientEndColor=>patch({gradientEndColor})} opacity={current.gradientEndOpacity} onOpacityChange={gradientEndOpacity=>patch({gradientEndOpacity})}/>
           <SwitchRow label="漸層結束損益色" value={current.gradientEndProfitColor} onChange={gradientEndProfitColor=>patch({gradientEndProfitColor})}/>
           <ChoiceRow label="漸層方向" value={current.gradientDirection} items={[['horizontal','水平'],['vertical','垂直']]} onChange={gradientDirection=>patch({gradientDirection:gradientDirection as TargetAppearance['gradientDirection']})}/></>:null}
+        {current.backgroundMode==='image'?<View style={styles.imageBackgroundTools}>
+          <ChoiceRow label="圖片來源" value={current.imageSource} items={[['builtIn','內建圖片'],['custom','自訂圖片']]} onChange={imageSource=>patch({imageSource:imageSource as TargetAppearance['imageSource']})}/>
+          {current.imageSource==='builtIn'?<View style={styles.backgroundImageGrid}>
+            {THEME_BACKGROUNDS.map((uri,index)=><Pressable key={index} onPress={()=>patch({imageIndex:index})}
+              style={[styles.backgroundImageChoice,index===current.imageIndex&&styles.backgroundImageChoiceActive]}>
+              <Image source={{uri}} resizeMode="cover" style={styles.backgroundImageThumb}/>
+              <Text style={styles.backgroundImageNumber}>{index+1}</Text>
+            </Pressable>)}
+          </View>:<View style={styles.customImageBox}>
+            <TextInput value={current.imageUri??''} onChangeText={imageUri=>patch({imageUri:imageUri.trim()||null})}
+              placeholder="content://、file:// 或 ph:// 圖片 URI" autoCapitalize="none" autoCorrect={false} style={styles.textInput}/>
+            <Pressable onPress={()=>patch({imageUri:null})} style={styles.removeImageButton}><Text style={styles.removeImageText}>移除自訂圖片</Text></Pressable>
+          </View>}
+          <ChoiceRow label="顯示方式" value={current.imageFit} items={[['cover','填滿'],['contain','完整顯示'],['stretch','拉伸']]} onChange={imageFit=>patch({imageFit:imageFit as TargetAppearance['imageFit']})}/>
+          <NumberStep label="圖片透明度" value={Math.round(current.imageOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={v=>patch({imageOpacity:v/100})}/>
+        </View>:null}
         <SwitchRow label="陰影" value={current.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
         {current.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={current.shadowColor} onChange={shadowColor=>patch({shadowColor})} opacity={current.shadowOpacity} onOpacityChange={shadowOpacity=>patch({shadowOpacity})}/>
           <SwitchRow label="陰影損益色" value={current.shadowProfitColor} onChange={shadowProfitColor=>patch({shadowProfitColor})}/>
