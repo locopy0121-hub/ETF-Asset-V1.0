@@ -54,7 +54,12 @@ export function PageEditorProvider({ children }: PropsWithChildren) {
 
   useEffect(()=>{
     if(!hydrated)return;
-    AsyncStorage.setItem(STORAGE_KEY,JSON.stringify({schema:STORAGE_SCHEMA,frames:state,display:displayState})).catch(()=>{});
+    // Drag/resize editors can emit many updates per second. Persist the latest
+    // snapshot after a short quiet period instead of saturating AsyncStorage.
+    const timer=setTimeout(()=>{
+      AsyncStorage.setItem(STORAGE_KEY,JSON.stringify({schema:STORAGE_SCHEMA,frames:state,display:displayState})).catch(()=>{});
+    },300);
+    return()=>clearTimeout(timer);
   },[hydrated,state,displayState]);
 
   const value = useMemo<EditorContextValue>(() => ({

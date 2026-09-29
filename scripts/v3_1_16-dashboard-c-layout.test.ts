@@ -64,7 +64,7 @@ assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceac
 const financeRuntime=read('src/finance/FinanceRuntime.tsx');
 assert.match(financeRuntime,/calculateCanonicalLedgerSnapshot\(\{[\s\S]*quotes:canonicalQuotes/,
   'FinanceRuntime must continue delegating portfolio arithmetic to Canonical Core');
-assert.match(financeRuntime,/marketValuationQuoteFor/,
+assert.match(financeRuntime,/marketValuationQuote(?:For|FromRow)/,
   'FinanceRuntime may evolve only as the market-center valuation adapter');
 assert.doesNotMatch(financeRuntime,/actual_fee|actual_tax|Math\.floor\(|transactionTax|brokerageFee/,
   'FinanceRuntime must not absorb immutable fee/tax formulas');

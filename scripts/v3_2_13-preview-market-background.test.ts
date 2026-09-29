@@ -38,8 +38,11 @@ must(marketIntradaySeriesFor([base],'0050').points.length===0,'intraday should r
 must(marketValuationQuoteFor([base],'0050')?.currentPrice===200,'previous close must remain valid for valuation outside market hours');
 must(Boolean(marketValuationQuoteFor([{...base,quality:'backup_realtime'}],'0050')),'verified backup realtime must remain usable for valuation');
 must(!marketValuationQuoteFor([{...base,quality:'bid_ask'}],'0050'),'bid/ask indication must not silently become portfolio valuation');
-must(finance.includes('marketValuationQuoteFor'),'FinanceRuntime is not reading the valuation view');
-must(home.includes('marketQuoteSnapshotFor')&&home.includes('marketIntradaySeriesFor'),'Home quote wall and chart do not read separate market views');
+must(finance.includes('marketValuationQuoteFromRow'),'FinanceRuntime is not reading the indexed valuation view');
+must(finance.includes('marketQuoteSnapshotFromRow')&&finance.includes('marketIntradaySeriesFromRow'),
+  'FinanceRuntime must project quote and intraday views independently before consumers render them');
+must(home.includes('finance.holdings')&&!home.includes('marketIntradaySeriesFor(market.quotes'),
+  'Home must consume Finance projected holdings instead of rebuilding market views and cloning chart data');
 must(portfolio.includes('marketQuoteSnapshotFor')&&portfolio.includes('marketIntradaySeriesFor'),'Portfolio quote wall and chart do not read separate market views');
 
 // Added background image capability reuses existing renderer; content opacity stays separate.

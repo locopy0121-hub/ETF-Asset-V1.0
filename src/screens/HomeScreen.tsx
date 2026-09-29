@@ -30,7 +30,6 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import { useFinance } from '../finance/FinanceRuntime';
 import {useDailyPnlHistory} from '../finance/useDailyPnlHistory';
 import { useMarketRuntime } from '../market/MarketRuntime';
-import {marketIntradaySeriesFor,marketQuoteSnapshotFor} from '../market/marketCenterViews';
 import { useAiNewsRuntime, type AiNewsItem } from '../ai/AiNewsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
@@ -69,26 +68,12 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const sorted=useMemo(()=>{
     const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
     const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
-    return sortHoldingQuotes(finance.holdings.map(item=>{
-      const quote=marketQuoteSnapshotFor(market.quotes,item.symbol);
-      const intraday=marketIntradaySeriesFor(market.quotes,item.symbol);
-      return {
-        ...item,
-        ...(quote?{
-          price:quote.currentPrice,
-          previousClose:quote.previousClose,
-          sparkline:[...(quote.sparkline??item.sparkline)],
-        }:{}),
-        intraday:intraday.points,
-        intradayDate:intraday.date,
-        intradayPreviousClose:intraday.previousClose,
-      };
-    }),sortKey,currentSort.descending).map(item=>({
+    return sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
       ...item,etfType:tags.get(item.symbol)?.etfType??null,
       dividendType:tags.get(item.symbol)?.dividendType??null,
       reminderEvent:reminders.get(item.symbol)??null,
     }));
-  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,market.quotes,effectiveDisplay.etfBadges?.reminderEvents]);
+  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
   const pnlHistory=useDailyPnlHistory({

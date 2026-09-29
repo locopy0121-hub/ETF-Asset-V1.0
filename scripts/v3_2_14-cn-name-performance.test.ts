@@ -23,8 +23,11 @@ assert.equal(
   'feed name remains a fallback instead of disappearing',
 );
 
-assert.match(finance,/resolveEtfDisplayName\(summary\.etfCode,catalogName,summary\.name,quote\?\.name\)/,
+assert.match(finance,/resolveEtfDisplayName\(/,
   'holding cards must use localized-name priority');
+assert.match(finance,/catalogNameBySymbol\.get\(summary\.etfCode\)/);
+assert.match(finance,/ledgerNameBySymbol\.get\(summary\.etfCode\)/,
+  'the actual persisted ledger label must remain ahead of an English feed fallback');
 
 // Performance contract: native market polling must not stringify the full catalog
 // on every 5-second quote tick, and scheduled/background refreshes stay silent.
@@ -34,8 +37,8 @@ assert.match(market,/\[hydrated,config,persistedQuotes,persistedLastSuccessAt,ca
 assert.doesNotMatch(market,/\[hydrated,config,quotes,lastSuccessAt,catalog,catalogFetchedAt\]/);
 assert.match(market,/setMissingSymbols\(current=>sameStrings\(current,nextMissing\)\?current:nextMissing\)/,
   'unchanged missing-symbol arrays must not force context rerenders');
-assert.match(market,/setInterval\(\(\)=>\{void refresh\(\{silent:true\}\);\},seconds\*1000\)/,
-  'scheduled market polling must not toggle visible refresh state');
+assert.match(market,/setInterval\(\(\)=>\{if\(AppState\.currentState==='active'\)void refresh\(\{silent:true\}\);\},seconds\*1000\)/,
+  'scheduled market polling must stay silent and idle while the app is inactive');
 assert.match(market,/refresh\(\{force:true,silent:true\}\)/,
   'background/foreground synchronization should be silent');
 assert.match(home,/market\.refresh\(\{force:true\}\)/,

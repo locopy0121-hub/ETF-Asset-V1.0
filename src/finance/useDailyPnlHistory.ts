@@ -20,7 +20,7 @@ const SCHEMA=2;
 
 type PersistedHistory={
   schema:number;
-  records:DailyPnlRecord[];
+  records:readonly DailyPnlRecord[];
   ledgerFingerprint:string;
   officialRebuiltAt:number|null;
 };
@@ -54,6 +54,9 @@ export function useDailyPnlHistory(input:{
   const [historyLoading,setHistoryLoading]=useState(false);
   const [historyError,setHistoryError]=useState<string|null>(null);
   const officialAttemptRef=useRef<string|null>(null);
+  const persistTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const pendingPersistRef=useRef<PersistedHistory|null>(null);
+  const lastPersistAtRef=useRef(0);
   const ledgerFingerprint=useMemo(()=>tradeFingerprint(input.entries),[input.entries]);
   const historyStartDate=useMemo(()=>firstTradeDate(input.entries),[input.entries]);
 
@@ -74,15 +77,48 @@ export function useDailyPnlHistory(input:{
     return()=>{alive=false;};
   },[]);
 
-  const persist=(next:readonly DailyPnlRecord[],fingerprint=ledgerFingerprint,rebuildAt=officialRebuiltAt)=>{
-    const payload:PersistedHistory={
+  const flushPersist=()=>{
+    const payload=pendingPersistRef.current;
+    if(!payload)return;
+    pendingPersistRef.current=null;
+    lastPersistAtRef.current=Date.now();
+    // Serialization is intentionally deferred until the throttled flush. Live
+    // 5-second quote ticks only replace this lightweight structured reference.
+    AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
+  };
+
+  const persist=(next:readonly DailyPnlRecord[],fingerprint=ledgerFingerprint,rebuildAt=officialRebuiltAt,immediate=false)=>{
+    pendingPersistRef.current={
       schema:SCHEMA,
-      records:[...next],
+      records:next,
       ledgerFingerprint:fingerprint,
       officialRebuiltAt:rebuildAt,
     };
-    AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
+    if(immediate){
+      if(persistTimerRef.current){
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current=null;
+      }
+      flushPersist();
+      return;
+    }
+    // Live quotes may update every five seconds. Coalesce those writes so the
+    // UI can update in memory without serializing the whole history every tick.
+    if(persistTimerRef.current!==null)return;
+    const wait=Math.max(0,30_000-(Date.now()-lastPersistAtRef.current));
+    persistTimerRef.current=setTimeout(()=>{
+      persistTimerRef.current=null;
+      flushPersist();
+    },wait);
   };
+
+  useEffect(()=>()=> {
+    if(persistTimerRef.current){
+      clearTimeout(persistTimerRef.current);
+      persistTimerRef.current=null;
+    }
+    flushPersist();
+  },[]);
 
   const candidate=useMemo(()=>deriveDailyPnlRecord({
     initialCash:input.initialCash,
@@ -128,7 +164,7 @@ export function useDailyPnlHistory(input:{
       setStoredFingerprint(ledgerFingerprint);
       setOfficialRebuiltAt(at);
       setHistoryError(null);
-      persist([],ledgerFingerprint,at);
+      persist([],ledgerFingerprint,at,true);
       return;
     }
 
@@ -169,7 +205,7 @@ export function useDailyPnlHistory(input:{
       setRecords(rebuilt);
       setStoredFingerprint(ledgerFingerprint);
       setOfficialRebuiltAt(rebuiltAt);
-      persist(rebuilt,ledgerFingerprint,rebuiltAt);
+      persist(rebuilt,ledgerFingerprint,rebuiltAt,true);
     })().catch(error=>{
       if(!alive||controller.signal.aborted)return;
       setHistoryError(error instanceof Error?error.message:String(error));
