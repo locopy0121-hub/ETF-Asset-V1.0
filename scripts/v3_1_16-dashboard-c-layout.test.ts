@@ -61,7 +61,7 @@ for(const visualFlag of ['backgroundProfitColor','textProfitColor','secondaryTex
 assert.doesNotMatch(uiModels,/actual_fee|actual_tax|Math\.floor/,'holding-wall UI model must not own immutable accounting calculations');
 
 assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceacaed3ee541ba7f5c6');
-assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'3bb641bfb2dc64b944ef34c856a5e3ca04417c14');
+assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'d2904874341fef23335a74a3039e6cb66bfa3806');
 assert.equal(gitBlob('src/finance/cashAudit.ts'),'a691f54b89c421df64b4fe0d5e5ecd74d530c2d5');
 
-console.log('V3.2.11 dashboard C carry-forward PASS — live HoldingQuoteCollection is shared with WYSIWYG preview; editor and finance core remain frozen');
+console.log('V3.2.11 dashboard C carry-forward PASS — WYSIWYG stays shared; FinanceRuntime only forwards intraday display data while canonical finance core stays frozen');
