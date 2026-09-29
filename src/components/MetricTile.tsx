@@ -63,7 +63,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
       setEmphasized(previous=>nextMetricTapEmphasis(previous,editorStyle?.tapAction??'none'));}}
 
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
-    editorStyle&&{borderColor:effectiveBorder,borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
+    editorStyle&&{borderColor:colorWithAlpha(effectiveBorder,surface.borderOpacity),borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
       marginHorizontal:surface.marginHorizontal,
       ...(editorStyle.width!==undefined?{width:editorStyle.width}:{}),
@@ -73,7 +73,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
     (thresholdMatched||tapEnabled&&(emphasized||previewTap))&&{borderWidth:Math.max(2,surface.borderWidth),borderColor:theme.palette.primary}]}>
 
     {editorStyle?<TargetBackdrop appearance={surface} start={effectiveBackground} middle={gradientMid} end={gradientEnd} glow={glow}/>:null}
-    <Text style={[styles.label,{color:effectiveLabel,
+    <Text style={[styles.label,{color:colorWithAlpha(effectiveLabel,surface.labelOpacity),
       fontSize:editorStyle?.labelFontSize??11,textAlign:editorStyle?.align??'left',
       ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
       ...(editorStyle?.labelFontWeight?{fontWeight:editorStyle.labelFontWeight}:{}),
@@ -81,7 +81,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
       ...(editorStyle?.labelLetterSpacing!==undefined?{letterSpacing:editorStyle.labelLetterSpacing}:{}),
       ...(editorStyle?.labelLineHeight&&editorStyle.labelLineHeight>0?{lineHeight:editorStyle.labelLineHeight}:{}),
       }]}>{displayedLabel}</Text>
-    <Text style={[styles.value,{color:effectiveTextColor,fontSize:editorStyle?.fontSize??17,
+    <Text style={[styles.value,{color:colorWithAlpha(effectiveTextColor,surface.textOpacity),fontSize:editorStyle?.fontSize??17,
       textAlign:editorStyle?.align??'left',
       ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
       ...(editorStyle?.fontWeight?{fontWeight:editorStyle.fontWeight}:{}),
@@ -90,7 +90,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
       ...(editorStyle?.letterSpacing!==undefined?{letterSpacing:editorStyle.letterSpacing}:{}),
       ...(editorStyle?.lineHeight&&editorStyle.lineHeight>0?{lineHeight:editorStyle.lineHeight}:{}),
       }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{displayedValue}</Text>
-    {displayedCaption?<Text style={[styles.caption,{color:effectiveCaption,fontSize:editorStyle?.captionFontSize??10,
+    {displayedCaption?<Text style={[styles.caption,{color:colorWithAlpha(effectiveCaption,surface.captionOpacity),fontSize:editorStyle?.captionFontSize??10,
       textAlign:editorStyle?.align??'left',
       ...(editorStyle?.fontFamily&&editorStyle.fontFamily!=='system'?{fontFamily:editorStyle.fontFamily}:{}),
       ...(editorStyle?.captionFontWeight?{fontWeight:editorStyle.captionFontWeight}:{}),
