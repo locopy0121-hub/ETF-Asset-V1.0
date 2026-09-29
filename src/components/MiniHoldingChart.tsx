@@ -11,27 +11,52 @@ const HEIGHT=70;
 const SESSION_START_MINUTE=9*60;
 const SESSION_END_MINUTE=13*60+30;
 const SESSION_MINUTES=SESSION_END_MINUTE-SESSION_START_MINUTE;
+const TAIPEI_OFFSET_MS=8*60*60*1000;
+export const MAX_MINI_RENDER_POINTS=160;
 
 type Point={x:number;y:number;value:number;at:number};
+type IntradayLike={at:number;price:number};
 
 function taipeiDateMinute(at:number){
-  try{
-    const parts=new Intl.DateTimeFormat('en-CA',{
-      timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
-      hour:'2-digit',minute:'2-digit',hourCycle:'h23',
-    }).formatToParts(new Date(at));
-    const get=(type:string)=>parts.find(part=>part.type===type)?.value??'';
-    return {
-      date:`${get('year')}-${get('month')}-${get('day')}`,
-      minute:(Number(get('hour'))||0)*60+(Number(get('minute'))||0),
-    };
-  }catch{
-    const shifted=new Date(at+8*60*60*1000);
-    return {
-      date:shifted.toISOString().slice(0,10),
-      minute:shifted.getUTCHours()*60+shifted.getUTCMinutes(),
-    };
+  const shifted=new Date(at+TAIPEI_OFFSET_MS);
+  return {
+    date:shifted.toISOString().slice(0,10),
+    minute:shifted.getUTCHours()*60+shifted.getUTCMinutes(),
+  };
+}
+
+/**
+ * Mini charts do not need one native View for every 5-second market tick.
+ * Preserve each bucket's high/low in chronological order so spikes remain
+ * visible while keeping the rendered node count bounded.
+ */
+export function downsampleIntradayPoints<T extends IntradayLike>(
+  rows:readonly T[],
+  maxPoints=MAX_MINI_RENDER_POINTS,
+):T[]{
+  const cap=Math.max(4,Math.floor(maxPoints));
+  if(rows.length<=cap)return [...rows];
+  const bucketCount=Math.max(1,Math.floor((cap-2)/2));
+  const span=(rows.length-2)/bucketCount;
+  const out:T[]=[rows[0]!];
+
+  for(let bucket=0;bucket<bucketCount;bucket+=1){
+    const start=1+Math.floor(bucket*span);
+    const end=Math.min(rows.length-1,1+Math.floor((bucket+1)*span));
+    if(start>=end)continue;
+    let lowIndex=start,highIndex=start;
+    for(let index=start+1;index<end;index+=1){
+      if(rows[index]!.price<rows[lowIndex]!.price)lowIndex=index;
+      if(rows[index]!.price>rows[highIndex]!.price)highIndex=index;
+    }
+    if(lowIndex===highIndex)out.push(rows[lowIndex]!);
+    else if(lowIndex<highIndex)out.push(rows[lowIndex]!,rows[highIndex]!);
+    else out.push(rows[highIndex]!,rows[lowIndex]!);
   }
+
+  const last=rows[rows.length-1]!;
+  if(out[out.length-1]!==last)out.push(last);
+  return out;
 }
 
 function segmentView(a:Point,b:Point,color:string,key:string){
@@ -80,10 +105,12 @@ export function MiniHoldingChart({
   },[holding.intraday,holding.intradayDate]);
 
   const innerWidth=Math.max(44,width-8);
+  const renderLimit=Math.max(48,Math.min(MAX_MINI_RENDER_POINTS,Math.round(innerWidth*.7)));
+  const sampled=useMemo(()=>downsampleIntradayPoints(session.points,renderLimit),[session.points,renderLimit]);
   const baseline=(holding.intradayPreviousClose??0)>0
     ?holding.intradayPreviousClose!
-    :holding.previousClose>0?holding.previousClose:(session.points[0]?.price??holding.price);
-  const values=session.points.map(item=>item.price);
+    :holding.previousClose>0?holding.previousClose:(sampled[0]?.price??holding.price);
+  const values=sampled.map(item=>item.price);
   const pool=style==='cost'&&holding.costAvg>0?[...values,baseline,holding.costAvg]:[...values,baseline];
   const max=Math.max(...pool),min=Math.min(...pool),range=Math.max(.001,max-min);
   const x=(at:number)=>{
@@ -92,7 +119,7 @@ export function MiniHoldingChart({
     return ratio*innerWidth;
   };
   const y=(value:number)=>5+(max-value)/range*(HEIGHT-12);
-  const points:Point[]=session.points.map(item=>({x:x(item.at),y:y(item.price),value:item.price,at:item.at}));
+  const points:Point[]=sampled.map(item=>({x:x(item.at),y:y(item.price),value:item.price,at:item.at}));
   const baselineY=y(baseline);
 
   const lineParts=points.slice(1).flatMap((point,index)=>{
@@ -138,9 +165,9 @@ export function MiniHoldingChart({
 
   return <Pressable
     accessibilityRole="button"
-    accessibilityLabel={`${holding.symbol} 當日分時 ${LABELS[style]}圖，${session.date??'日期待取得'}，${points.length} 個實際分時點，昨收基準 ${baseline}，單點開啟完整圖表，連點切換樣式`}
+    accessibilityLabel={`${holding.symbol} 當日分時 ${LABELS[style]}圖，${session.date??'日期待取得'}，${session.points.length} 個實際分時點，畫面採樣 ${points.length} 點，昨收基準 ${baseline}，單點開啟完整圖表，連點切換樣式`}
     onPress={onPress}
-    onLayout={event=>{const next=Math.round(event.nativeEvent.layout.width);if(next>0)setWidth(next);}}
+    onLayout={event=>{const next=Math.round(event.nativeEvent.layout.width);if(next>0)setWidth(current=>current===next?current:next);}}
     style={[styles.root,narrow&&styles.narrow]}
   >
     <View pointerEvents="none" style={styles.plot}>
