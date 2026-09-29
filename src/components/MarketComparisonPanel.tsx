@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
-import {useEffect,useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 import type {HoldingQuote} from '../domain/uiModels';
 import type {RuntimeQuote} from '../finance/financeSeed';
@@ -10,43 +10,45 @@ import {
   marketSourceField,
   priceDifference,
 } from '../market/marketComparison';
-import {colors,radius,spacing} from '../theme/tokens';
+import {fetchOfficialMarketProbe,type OfficialMarketProbe} from '../market/officialMarketProbe';
+import {colors,radius} from '../theme/tokens';
 
-const STORAGE_KEY='@tf-asset/market-comparison-v1';
+const STORAGE_KEY='@tf-asset/market-comparison-v2';
 
 type ComparisonLog=Readonly<{
   id:string;
   createdAt:number;
   symbol:string;
   appPrice:number|null;
-  brokerPrice:number|null;
+  officialPrice:number|null;
   centerPrice:number|null;
-  source:string|null;
-  quality:string|null;
-  sourceQuoteAt:number|null;
-  checkedAt:number|null;
+  officialSourceAt:number|null;
+  officialCheckedAt:number|null;
+  centerSource:string|null;
+  centerQuality:string|null;
+  centerSourceQuoteAt:number|null;
+  centerCheckedAt:number|null;
   marketDataVersion:number;
   diagnosis:string;
 }>;
 
 type PersistedComparison=Readonly<{
-  schema:1;
+  schema:2;
   symbol:string;
-  brokerBySymbol:Record<string,string>;
   logs:ComparisonLog[];
 }>;
 
 export function MarketComparisonPanel({
-  quotes,holdings,marketDataVersion,refreshing,onRefresh,
+  quotes,holdings,marketDataVersion,
 }:{
   quotes:readonly RuntimeQuote[];
   holdings:readonly HoldingQuote[];
   marketDataVersion:number;
-  refreshing:boolean;
-  onRefresh:()=>void;
 }){
   const [symbol,setSymbol]=useState('');
-  const [brokerBySymbol,setBrokerBySymbol]=useState<Record<string,string>>({});
+  const [official,setOfficial]=useState<OfficialMarketProbe|null>(null);
+  const [probeLoading,setProbeLoading]=useState(false);
+  const [probeError,setProbeError]=useState<string|null>(null);
   const [logs,setLogs]=useState<ComparisonLog[]>([]);
   const [hydrated,setHydrated]=useState(false);
 
@@ -56,9 +58,8 @@ export function MarketComparisonPanel({
       if(!alive||!raw)return;
       try{
         const parsed=JSON.parse(raw) as Partial<PersistedComparison>;
-        if(parsed.schema!==1)return;
+        if(parsed.schema!==2)return;
         if(typeof parsed.symbol==='string')setSymbol(parsed.symbol.trim().toUpperCase());
-        if(parsed.brokerBySymbol&&typeof parsed.brokerBySymbol==='object')setBrokerBySymbol(parsed.brokerBySymbol);
         if(Array.isArray(parsed.logs))setLogs(parsed.logs.slice(0,50));
       }catch{}
     }).finally(()=>{if(alive)setHydrated(true);});
@@ -76,24 +77,51 @@ export function MarketComparisonPanel({
   },[hydrated,symbol,symbols]);
 
   const normalized=symbol.trim().toUpperCase();
+  const normalizedRef=useRef(normalized);
+  normalizedRef.current=normalized;
+
   const appRow=holdings.find(row=>row.symbol===normalized);
   const centerRow=quotes.find(row=>row.symbol===normalized);
-  const brokerText=brokerBySymbol[normalized]??'';
-  const brokerValue=positiveNumber(brokerText);
   const appPrice=appRow?.price??null;
   const centerPrice=centerRow?.currentPrice??null;
-  const diagnosis=diagnoseMarketComparison({appPrice,brokerPrice:brokerValue,centerPrice});
+  const officialPrice=official?.symbol===normalized?official.price:null;
+  const diagnosis=diagnoseMarketComparison({appPrice,officialPrice,centerPrice});
 
-  const persist=async(nextLogs=logs,nextBroker=brokerBySymbol,nextSymbol=normalized)=>{
-    const payload:PersistedComparison={schema:1,symbol:nextSymbol,brokerBySymbol:nextBroker,logs:nextLogs.slice(0,50)};
-    await AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload));
-  };
+  useEffect(()=>{
+    if(!hydrated)return;
+    const payload:PersistedComparison={schema:2,symbol:normalized,logs:logs.slice(0,50)};
+    AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
+  },[hydrated,normalized,logs]);
 
-  const saveBenchmark=()=>{
-    if(!normalized){Alert.alert('請輸入代號','例如 0056、0050、00919。');return;}
-    if(brokerValue===null){Alert.alert('證券中心基準值無效','請輸入大於 0 的行情價格。');return;}
-    void persist();
-  };
+  const readOfficial=useCallback(async()=>{
+    const requestSymbol=normalizedRef.current;
+    if(!requestSymbol){
+      setOfficial(null);
+      setProbeError('請先指定要比對的 ETF／股票代號');
+      return;
+    }
+    setProbeLoading(true);
+    setProbeError(null);
+    try{
+      const next=await fetchOfficialMarketProbe(requestSymbol);
+      if(normalizedRef.current!==requestSymbol)return;
+      setOfficial(next);
+    }catch(error){
+      if(normalizedRef.current!==requestSymbol)return;
+      setOfficial(null);
+      setProbeError(error instanceof Error?error.message:String(error));
+    }finally{
+      if(normalizedRef.current===requestSymbol)setProbeLoading(false);
+    }
+  },[]);
+
+  useEffect(()=>{
+    setOfficial(null);
+    setProbeError(null);
+    if(!normalized)return;
+    const timer=setTimeout(()=>{void readOfficial();},250);
+    return()=>clearTimeout(timer);
+  },[normalized,readOfficial]);
 
   const addLog=()=>{
     if(!normalized){Alert.alert('請輸入代號','請先指定要比對的 ETF／股票代號。');return;}
@@ -102,25 +130,25 @@ export function MarketComparisonPanel({
       createdAt:Date.now(),
       symbol:normalized,
       appPrice,
-      brokerPrice:brokerValue,
+      officialPrice,
       centerPrice,
-      source:centerRow?.source??null,
-      quality:centerRow?.quality??null,
-      sourceQuoteAt:centerRow?.sourceQuoteAt??null,
-      checkedAt:centerRow?.checkedAt??null,
+      officialSourceAt:official?.sourceQuoteAt??null,
+      officialCheckedAt:official?.checkedAt??null,
+      centerSource:centerRow?.source??null,
+      centerQuality:centerRow?.quality??null,
+      centerSourceQuoteAt:centerRow?.sourceQuoteAt??null,
+      centerCheckedAt:centerRow?.checkedAt??null,
       marketDataVersion,
       diagnosis:marketComparisonDiagnosisLabel(diagnosis),
     };
-    const nextLogs=[next,...logs].slice(0,50);
-    setLogs(nextLogs);
-    void persist(nextLogs);
+    setLogs(current=>[next,...current].slice(0,50));
   };
 
   return <View style={styles.root}>
     <View style={styles.head}>
       <View style={{flex:1}}>
         <Text style={styles.title}>行情比對／診斷</Text>
-        <Text style={styles.note}>只做比對與留存診斷證據；不回寫行情、不修改市值、損益或 Ledger。</Text>
+        <Text style={styles.note}>唯讀誤差診斷：只讀三方目前數值，不回寫行情中心、App 行情、SQLite、快取或帳務。</Text>
       </View>
       <Text style={styles.version}>v{marketDataVersion}</Text>
     </View>
@@ -136,40 +164,38 @@ export function MarketComparisonPanel({
       </Pressable>)}
     </ScrollView>:null}
 
-    <CompareRow label="App／首頁行情" value={formatPrice(appPrice)} note={appRow?appRow.name:'目前持股沒有此代號'}/>
+    <CompareRow label="App／首頁行情" value={formatPrice(appPrice)}
+      note={appRow?appRow.name:'目前持股沒有此代號'}/>
 
-    <View>
-      <Text style={styles.label}>證券中心基準值</Text>
-      <View style={styles.brokerRow}>
-        <TextInput accessibilityLabel="證券中心基準行情" value={brokerText}
-          onChangeText={value=>setBrokerBySymbol(current=>({...current,[normalized]:sanitizePriceText(value)}))}
-          keyboardType="decimal-pad" placeholder="自行輸入券商看到的行情" style={[styles.input,{flex:1}]}/>
-        <Pressable onPress={saveBenchmark} style={styles.miniAction}><Text style={styles.miniActionText}>儲存</Text></Pressable>
-      </View>
-    </View>
+    <CompareRow label="證券中心／官方行情" value={formatPrice(officialPrice)}
+      note={probeLoading?'讀取中…':probeError??(official?'TWSE_MIS · z｜實際成交價':'等待讀取')}/>
 
     <CompareRow label="行情中心" value={formatPrice(centerPrice)}
       note={centerRow?(centerRow.source??'未知來源')+' · '+marketSourceField(centerRow):'尚無中央行情'}/>
 
     <View style={styles.diffBox}>
-      <CompareRow label="App ↔ 證券中心" value={formatDiff(priceDifference(appPrice,brokerValue))}/>
-      <CompareRow label="行情中心 ↔ 證券中心" value={formatDiff(priceDifference(centerPrice,brokerValue))}/>
+      <CompareRow label="App ↔ 證券中心" value={formatDiff(priceDifference(appPrice,officialPrice))}/>
+      <CompareRow label="行情中心 ↔ 證券中心" value={formatDiff(priceDifference(centerPrice,officialPrice))}/>
       <CompareRow label="App ↔ 行情中心" value={formatDiff(priceDifference(appPrice,centerPrice))}/>
       <Text style={styles.diagnosis}>判定：{marketComparisonDiagnosisLabel(diagnosis)}</Text>
     </View>
 
     <View style={styles.metaBox}>
-      <CompareRow label="行情來源" value={centerRow?.source??'尚無'}/>
-      <CompareRow label="採用欄位" value={marketSourceField(centerRow)}/>
-      <CompareRow label="行情品質" value={centerRow?.quality??'尚無'}/>
-      <CompareRow label="交易所來源時間" value={formatTime(centerRow?.sourceQuoteAt)}/>
-      <CompareRow label="中心檢查時間" value={formatTime(centerRow?.checkedAt)}/>
+      <CompareRow label="證券中心來源" value={official?.source??'TWSE_MIS'}/>
+      <CompareRow label="證券中心採用欄位" value="z｜實際成交價"/>
+      <CompareRow label="證券中心來源時間" value={formatTime(official?.sourceQuoteAt)}/>
+      <CompareRow label="證券中心讀取時間" value={formatTime(official?.checkedAt)}/>
+      <CompareRow label="行情中心來源" value={centerRow?.source??'尚無'}/>
+      <CompareRow label="行情中心採用欄位" value={marketSourceField(centerRow)}/>
+      <CompareRow label="行情中心品質" value={centerRow?.quality??'尚無'}/>
+      <CompareRow label="行情中心來源時間" value={formatTime(centerRow?.sourceQuoteAt)}/>
+      <CompareRow label="行情中心檢查時間" value={formatTime(centerRow?.checkedAt)}/>
       <CompareRow label="資料版本" value={'#'+marketDataVersion}/>
     </View>
 
     <View style={styles.actions}>
-      <Pressable disabled={refreshing} onPress={onRefresh} style={[styles.action,refreshing&&styles.disabled]}>
-        <Text style={styles.actionText}>{refreshing?'更新中…':'更新行情後比對'}</Text>
+      <Pressable disabled={probeLoading} onPress={()=>void readOfficial()} style={[styles.action,probeLoading&&styles.disabled]}>
+        <Text style={styles.actionText}>{probeLoading?'讀取中…':'重新讀取官方行情'}</Text>
       </Pressable>
       <Pressable onPress={addLog} style={styles.action}><Text style={styles.actionText}>加入比對紀錄</Text></Pressable>
     </View>
@@ -179,28 +205,17 @@ export function MarketComparisonPanel({
         <Text style={styles.logTitle}>最近比對紀錄（{logs.length}/50）</Text>
         <Pressable onPress={()=>Alert.alert('清除行情比對紀錄','只會刪除診斷紀錄，不影響行情或帳務。',[
           {text:'取消',style:'cancel'},
-          {text:'清除',style:'destructive',onPress:()=>{setLogs([]);void persist([]);}},
+          {text:'清除',style:'destructive',onPress:()=>setLogs([])},
         ])}><Text style={styles.clear}>清除</Text></Pressable>
       </View>
       {logs.slice(0,10).map(log=><View key={log.id} style={styles.logRow}>
-        <Text style={styles.logMain}>{log.symbol}｜券 {formatPrice(log.brokerPrice)}｜中心 {formatPrice(log.centerPrice)}｜App {formatPrice(log.appPrice)}</Text>
-        <Text style={styles.logMeta}>{formatTime(log.createdAt)}｜{log.source??'無來源'}｜#{log.marketDataVersion}｜{log.diagnosis}</Text>
+        <Text style={styles.logMain}>{log.symbol}｜官方 {formatPrice(log.officialPrice)}｜中心 {formatPrice(log.centerPrice)}｜App {formatPrice(log.appPrice)}</Text>
+        <Text style={styles.logMeta}>{formatTime(log.createdAt)}｜官方 {formatTime(log.officialSourceAt)}｜中心 {formatTime(log.centerSourceQuoteAt)}｜#{log.marketDataVersion}｜{log.diagnosis}</Text>
       </View>)}
     </View>:null}
   </View>;
 }
 
-function positiveNumber(value:string){
-  const number=Number(value.replace(/,/g,''));
-  return Number.isFinite(number)&&number>0?number:null;
-}
-function sanitizePriceText(value:string){
-  const cleaned=value.replace(/[^0-9.]/g,'');
-  const parts=cleaned.split('.');
-  const whole=parts[0]??'';
-  const decimals=parts.slice(1);
-  return decimals.length?whole+'.'+decimals.join('').slice(0,4):whole;
-}
 function formatPrice(value:number|null|undefined){
   return typeof value==='number'&&Number.isFinite(value)&&value>0?value.toFixed(2):'—';
 }
@@ -234,9 +249,6 @@ const styles=StyleSheet.create({
   chipActive:{borderColor:colors.primary,backgroundColor:colors.surfaceMuted},
   chipText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
   chipTextActive:{color:colors.primary},
-  brokerRow:{flexDirection:'row',gap:7,alignItems:'center'},
-  miniAction:{minHeight:40,paddingHorizontal:12,borderRadius:radius.md,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center'},
-  miniActionText:{fontSize:10,fontWeight:'900',color:'#FFFFFF'},
   compareRow:{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between',gap:10,paddingVertical:5,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   compareLabel:{flex:1,fontSize:10,fontWeight:'700',color:colors.textSecondary},
   compareRight:{flex:1.6,alignItems:'flex-end'},

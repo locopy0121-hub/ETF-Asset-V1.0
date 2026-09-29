@@ -840,8 +840,7 @@ function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastErr
     <StatusRow label="最近成功" value={formatTime(lastSuccessAt)}/>
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
     <ActionButton label={refreshing?'更新中…':'立即更新行情'} disabled={refreshing} onPress={onRefresh}/>
-    <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}
-      refreshing={refreshing} onRefresh={onRefresh}/>
+    <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}/>
     <ToggleRow label="啟用市場更新排程" value={config.scheduleEnabled} onChange={scheduleEnabled=>patch({scheduleEnabled})}/>
     <ToggleRow label="回到前景立即刷新" value={config.refreshOnForeground} onChange={refreshOnForeground=>patch({refreshOnForeground})}/>
     <ToggleRow label="停止全部自動更新" value={config.stopAll} onChange={stopAll=>patch({stopAll})}/>
