@@ -46,7 +46,7 @@ assert.equal(app.expo.version,'3.2.5');
 assert.equal(app.expo.android.versionCode,30205);
 assert.equal(app.expo.ios.buildNumber,'30205');
 assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='3\.2\.5'/);
-assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.4'/);
+assert.match(read('src/screens/SettingsScreen.tsx'),/VERSION='3\.2\.5'/);
 assert.match(read('src/screens/SettingsScreen.tsx'),/BUILD='30205'/);
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
