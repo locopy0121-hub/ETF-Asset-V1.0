@@ -187,7 +187,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
   const unresolved:string[]=[];
   let updatedCount=0,usableCount=0;
   let newestSourceAt:number|null=null;
-  const next=symbols.map(symbol=>{
+  const next:RuntimeQuote[]=symbols.map((symbol):RuntimeQuote=>{
     const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
     const row=bySymbol.get(symbol);
     if(!hasUsableTwseQuote(row)){

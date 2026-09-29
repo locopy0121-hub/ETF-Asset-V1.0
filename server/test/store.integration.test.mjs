@@ -16,7 +16,9 @@ test('PostgreSQL transactional quote/version, Redis cache, HTTP and reconnect sa
   await store.warmCache();
   const now=Date.now(),sourceQuoteAt=now-5_000;
   const first={symbol:'0050',name:'ETF',currentPrice:123.45,previousClose:122,
-    sourceQuoteAt,quality:'trade',source:'TWSE_MIS',checkedAt:now};
+    officialTradePrice:123.45,sourceQuoteAt,quality:'trade',source:'TWSE_MIS',
+    priceType:'REALTIME_TRADE',isFallback:false,market:'TSE',
+    statusMessage:'TWSE MIS z 實際成交價',checkedAt:now};
   try{
     const a=await store.commit([first],now);
     assert.equal(a.updatedCount,1);
@@ -29,7 +31,9 @@ test('PostgreSQL transactional quote/version, Redis cache, HTTP and reconnect sa
     assert.equal(older.version,1);
     assert.equal((await store.snapshot(['0050'])).quotes[0].currentPrice,123.45);
     const b=await store.commit([{...first,symbol:'00919',name:'ETF B',
-      sourceQuoteAt:sourceQuoteAt+1000,quality:'official_close',source:'TWSE_DAILY',currentPrice:25.22}],now);
+      sourceQuoteAt:sourceQuoteAt+1000,quality:'official_close',source:'TWSE_DAILY',currentPrice:25.22,
+      officialTradePrice:null,priceType:'OFFICIAL_CLOSE',isFallback:true,market:'TSE',
+      statusMessage:'官方日收盤備援'}],now);
     assert.equal(b.version,2);
     const mixed=await store.snapshot(['0050','00919','00713']);
     assert.equal(mixed.coveredCount,2);
