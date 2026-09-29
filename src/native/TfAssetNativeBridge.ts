@@ -19,6 +19,7 @@ export type UnifiedMarketIntradayPoint=Readonly<{
 }>;
 export type UnifiedMarketIntradaySeries=Readonly<{
   date:string;
+  previousClose?:number|null;
   points:readonly UnifiedMarketIntradayPoint[];
 }>;
 
