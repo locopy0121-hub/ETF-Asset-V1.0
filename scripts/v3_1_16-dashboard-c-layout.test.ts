@@ -49,10 +49,11 @@ for(const token of ['DashboardAssetOverview','DashboardProfitAnalysis','Dashboar
   assert.ok(layoutTool.includes(token),'real layout workbench missing dashboard module '+token);
 assert.match(layoutTool,/wallConfig=\{wall\}/,'holding wall keeps its independent live draft config');
 
-// Frozen renderer gate: the original holding-wall renderer/editor sources remain byte-for-byte unchanged.
-// uiModels is intentionally allowed to evolve only for presentation metadata; assert that contract semantically below.
+// Holding-wall editor and floating preview stay frozen. V3.2.4 intentionally extends the
+// real collection renderer only with layout-edit selection passthrough so Page Settings
+// can render the same collection path as the live page. No quote/accounting data is changed.
 assert.equal(gitBlob('src/components/HoldingMarketWallEditor.tsx'),'e8f4d4ba19bec21e79d6b8e0ca8e3ca0241a8466');
-assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'cf816b03b4a606a121ba8b041e2fe360688c47f9');
+assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'9127e9205df8bac7d76d1c9bf70c23313592e5ce');
 assert.equal(gitBlob('src/components/FloatingHoldingCardPreview.tsx'),'951e2ab7f04fb1b000aef7377d4df5327187a488');
 const uiModels=read('src/domain/uiModels.ts');
 for(const visualFlag of ['backgroundProfitColor','textProfitColor','secondaryTextProfitColor','borderProfitColor','useProfitColor','useProfitBackground'])
@@ -63,4 +64,4 @@ assert.equal(gitBlob('src/finance/canonicalLedger.ts'),'84324138ec2e56a655e0ceac
 assert.equal(gitBlob('src/finance/FinanceRuntime.tsx'),'3bb641bfb2dc64b944ef34c856a5e3ca04417c14');
 assert.equal(gitBlob('src/finance/cashAudit.ts'),'a691f54b89c421df64b4fe0d5e5ecd74d530c2d5');
 
-console.log('V3.2.4 dashboard C carry-forward PASS — original holding-wall renderers remain frozen; presentation-only profit-color model extension verified');
+console.log('V3.2.4 dashboard C carry-forward PASS — live HoldingQuoteCollection is shared with WYSIWYG preview; editor and finance core remain frozen');
