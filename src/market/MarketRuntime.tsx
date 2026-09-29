@@ -292,6 +292,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const catalogRefreshingRef=useRef(false);
   const refreshingRef=useRef(false);
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
+  const refreshVisibleRef=useRef(false);
   const quotesRef=useRef<RuntimeQuote[]>([]);
   const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
 
@@ -381,9 +382,19 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[]);
 
   const refresh=useCallback((options?:{force?:boolean;silent?:boolean}):Promise<MarketRefreshResult>=>{
-    if(refreshPromiseRef.current)return refreshPromiseRef.current;
+    const announce=options?.silent!==true;
+    if(refreshPromiseRef.current){
+      // A manual refresh may join a silent timer/background refresh. Promote
+      // that shared operation to visible UI state instead of starting duplicate work.
+      if(announce&&!refreshVisibleRef.current){
+        refreshVisibleRef.current=true;
+        setRefreshing(true);
+        setLastError(null);
+      }
+      return refreshPromiseRef.current;
+    }
+    refreshVisibleRef.current=announce;
     const task=(async():Promise<MarketRefreshResult>=>{
-      const announce=options?.silent!==true;
       refreshingRef.current=true;
       if(announce)setRefreshing(true);
       if(announce)setLastError(null);
@@ -440,7 +451,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         return 'error';
       }finally{
         refreshingRef.current=false;
-        if(options?.silent!==true)setRefreshing(false);
+        if(refreshVisibleRef.current)setRefreshing(false);
+        refreshVisibleRef.current=false;
       }
     })();
     refreshPromiseRef.current=task.finally(()=>{refreshPromiseRef.current=null;});
@@ -521,7 +533,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
     const seconds=marketRefreshSeconds(config,phase);
     if(seconds<=0)return;
-    const timer=setInterval(()=>{void refresh({silent:true});},seconds*1000);
+    const timer=setInterval(()=>{if(AppState.currentState==='active')void refresh({silent:true});},seconds*1000);
     return()=>clearInterval(timer);
   },[hydrated,config,phase,refresh]);
 
