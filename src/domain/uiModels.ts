@@ -15,9 +15,9 @@ export type HoldingWallFieldConfig = Readonly<{
   /** Dynamic background mode; separate from fixed Color Picker selection. */
   useProfitBackground?:boolean;
   textColor:string|null;
-  textOpacity:number;
+  textOpacity?:number;
   backgroundColor:string|null;
-  backgroundOpacity:number;
+  backgroundOpacity?:number;
   lineGap:number|null;
   paddingY:number;
   effect:ItemEffectConfig;
@@ -26,30 +26,30 @@ export type HoldingWallHeaderConfig = Readonly<{
   visible: boolean;
   fontScale: number;
   backgroundColor: string;
-  backgroundOpacity:number;
+  backgroundOpacity?:number;
   textColor: string;
-  textOpacity:number;
+  textOpacity?:number;
   borderColor: string;
-  borderOpacity:number;
+  borderOpacity?:number;
   borderWidth: number;
   effect:ItemEffectConfig;
 }>;
 export type HoldingWallStyleConfig = Readonly<{
   backgroundColor: string;
-  backgroundOpacity:number;
+  backgroundOpacity?:number;
   backgroundProfitColor?: boolean;
   textColor: string;
-  textOpacity:number;
+  textOpacity?:number;
   textProfitColor?: boolean;
   secondaryTextColor: string;
-  secondaryTextOpacity:number;
+  secondaryTextOpacity?:number;
   secondaryTextProfitColor?: boolean;
   gainColor: string;
-  gainOpacity:number;
+  gainOpacity?:number;
   lossColor: string;
-  lossOpacity:number;
+  lossOpacity?:number;
   borderColor: string;
-  borderOpacity:number;
+  borderOpacity?:number;
   borderProfitColor?: boolean;
   borderWidth: number;
   cornerRadius: number;
@@ -64,9 +64,9 @@ export type WallTickerConfig = Readonly<{
   showPrice:boolean;
   showChange:boolean;
   textColor:string;
-  textOpacity:number;
+  textOpacity?:number;
   backgroundColor:string;
-  backgroundOpacity:number;
+  backgroundOpacity?:number;
 }>;
 export type HoldingWallConfig = Readonly<{
   header: HoldingWallHeaderConfig;
