@@ -29,7 +29,8 @@ const mergeIntraday=(stored={},fallback={})=>{
       }
     }
     const points=[...byMinute.values()].sort((a,b)=>a.at-b.at);
-    if(points.length)output[symbol]={date,points};
+    const previousClose=candidates.find(series=>series.date===date&&Number.isFinite(Number(series.previousClose))&&Number(series.previousClose)>0)?.previousClose??null;
+    if(points.length)output[symbol]={date,previousClose,points};
   }
   return output;
 };
