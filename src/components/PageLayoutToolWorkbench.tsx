@@ -1,12 +1,12 @@
 import {useEffect,useMemo,useState} from 'react';
-import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import type {MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey,type QuoteModuleStyle} from '../domain/uiModels';
-import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
+import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameBehavior,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
-import {colors,radius} from '../theme/tokens';
+import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
 import {PageHeaderVisual} from './PageHeaderVisual';
@@ -26,6 +26,7 @@ import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
+import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
@@ -37,13 +38,15 @@ const hasRealPreview=(page:MainPageKey,key:string)=>
   key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
   draft:Record<string,FrameEditorConfig>;
   displayDraft:PageDisplayConfig;
   onPatchFrame:(key:string,next:Partial<FrameEditorConfig>)=>void;
+  onMoveFrame:(key:string,delta:-1|1)=>void;
+  onSetFrameBehavior:(key:string,behavior:FrameBehavior)=>void;
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
@@ -52,6 +55,7 @@ export function PageLayoutToolWorkbench({
 }){
   const finance=useFinance();
   const market=useMarketRuntime();
+  const {width:windowWidth}=useWindowDimensions();
   const previewPnl=useMemo(()=>deriveDailyPnlRecord({
     initialCash:finance.initialCash,
     entries:finance.entries,
@@ -63,7 +67,8 @@ export function PageLayoutToolWorkbench({
     finance.initialCash,finance.entries,finance.quotes,finance.snapshot,
     finance.valuationComplete,market.marketDataVersion,
   ]);
-  const previewFrames=useMemo(()=>frames.filter(frame=>hasRealPreview(pageKey,frame.key)),[frames,pageKey]);
+  const previewFrames=useMemo(()=>frames.filter(frame=>hasRealPreview(pageKey,frame.key))
+    .sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),[frames,pageKey,draft]);
   const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
@@ -72,6 +77,11 @@ export function PageLayoutToolWorkbench({
   const [openGroup,setOpenGroup]=useState<string|null>('size');
   const [frameMeasurements,setFrameMeasurements]=useState<Record<string,{width:number;height:number}>>({});
   const [previewBounds,setPreviewBounds]=useState({width:0,height:0});
+  const [previewViewportWidth,setPreviewViewportWidth]=useState(0);
+  const [actualCanvasHeight,setActualCanvasHeight]=useState(1);
+  const actualPageWidth=Math.max(280,Math.round(windowWidth-spacing.lg*2));
+  const previewScale=previewViewportWidth>0?Math.min(1,previewViewportWidth/actualPageWidth):1;
+  const scaledPageHeight=Math.max(1,Math.ceil(actualCanvasHeight*previewScale));
   useEffect(()=>{setFrameKey(initial);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');},[initial]);
 
   const frame=frames.find(item=>item.key===frameKey)??frames[0];
@@ -182,8 +192,10 @@ export function PageLayoutToolWorkbench({
       if(source==='comprehensivePnl')return row.comprehensivePnl;
       return row.marketValue;
     });
-    const values=source==='transactions'?[finance.entries.length]:holdingValues;
-    const labels=source==='transactions'?['交易筆數']:holdingPreviewRows.map(row=>row.symbol);
+    const values=source==='transactions'
+      ?holdingPreviewRows.map(row=>finance.entries.filter(entry=>'symbol' in entry&&entry.symbol===row.symbol&&(entry.kind==='buy'||entry.kind==='sell')).length)
+      :holdingValues;
+    const labels=holdingPreviewRows.map(row=>row.symbol);
     return {values:values.length?values:[0],labels:labels.length?labels:['目前']};
   };
   const selectFrameDirect=(item:PageFrameDefinition)=>{
