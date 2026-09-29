@@ -224,7 +224,7 @@ function WallMetric({
   const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity??1):'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
     <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':
       colorWithAlpha(linkedColor(field.textColor??wall.style.secondaryTextColor,wall.style.secondaryTextProfitColor,
-        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),field.textColor==null?wall.style.secondaryTextOpacity:field.textOpacity??1),textAlign:field.align}]}>{field.label}</Text>
+        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),field.textColor==null?(wall.style.secondaryTextOpacity??1):(field.textOpacity??1)),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
