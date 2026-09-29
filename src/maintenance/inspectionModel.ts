@@ -10,7 +10,7 @@ export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'por
 export type TargetProperty=Readonly<{name:string;value:string;readOnly?:boolean}>;
 export type TargetAppearance=Readonly<{
   visible:boolean;fontSize:number;labelFontSize:number;captionFontSize:number;
-  textColor:string;labelColor:string;captionColor:string;backgroundColor:string;borderColor:string;
+  textColor:string;textOpacity:number;labelColor:string;labelOpacity:number;captionColor:string;captionOpacity:number;backgroundColor:string;borderColor:string;borderOpacity:number;
   // Each color source is independent. Legacy useProfitColor is kept for V3.0.2 saved overrides.
   textProfitColor?:boolean;labelProfitColor?:boolean;captionProfitColor?:boolean;
   backgroundProfitColor?:boolean;borderProfitColor?:boolean;
@@ -23,7 +23,7 @@ export type TargetAppearance=Readonly<{
   borderWidth:number;borderRadius:number;padding:number;opacity:number;backgroundOpacity:number;
   // V3.0.11: independent visual effects on native component instances, never ledger values.
   backgroundMode:'solid'|'gradient';gradientDirection:'horizontal'|'vertical';
-  gradientEndColor:string;gradientMidColor:string;gradientEndProfitColor:boolean;gradientMidProfitColor:boolean;
+  gradientEndColor:string;gradientEndOpacity:number;gradientMidColor:string;gradientMidOpacity:number;gradientEndProfitColor:boolean;gradientMidProfitColor:boolean;
   gradientMidEnabled:boolean;gradientMidStop:number;
   borderStyle:'solid'|'dashed'|'dotted';marginVertical:number;marginHorizontal:number;
   shadowEnabled:boolean;shadowColor:string;shadowProfitColor:boolean;shadowOpacity:number;
@@ -51,10 +51,10 @@ export type FrameMaintenanceContext=Readonly<{
 const hex=(v:unknown):v is string=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v);
 const clamp=(n:unknown,min:number,max:number,fallback:number)=>typeof n==='number'&&Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;
 export const TARGET_APPEARANCE:TargetAppearance={
-  visible:true,fontSize:17,labelFontSize:11,captionFontSize:10,textColor:'#0F172A',labelColor:'#64748B',captionColor:'#64748B',
-  backgroundColor:'#F4ECFF',borderColor:'#DDD1EF',borderWidth:0,borderRadius:12,padding:10,
+  visible:true,fontSize:17,labelFontSize:11,captionFontSize:10,textColor:'#0F172A',textOpacity:1,labelColor:'#64748B',labelOpacity:1,captionColor:'#64748B',captionOpacity:1,
+  backgroundColor:'#F4ECFF',borderColor:'#DDD1EF',borderOpacity:1,borderWidth:0,borderRadius:12,padding:10,
   opacity:1,backgroundOpacity:1,backgroundMode:'solid',gradientDirection:'vertical',
-  gradientEndColor:'#EDE9FE',gradientMidColor:'#C4B5FD',gradientEndProfitColor:false,
+  gradientEndColor:'#EDE9FE',gradientEndOpacity:1,gradientMidColor:'#C4B5FD',gradientMidOpacity:1,gradientEndProfitColor:false,
   gradientMidProfitColor:false,gradientMidEnabled:false,gradientMidStop:.5,
   borderStyle:'solid',marginVertical:0,marginHorizontal:0,
   shadowEnabled:false,shadowColor:'#000000',shadowProfitColor:false,shadowOpacity:.28,
@@ -70,7 +70,7 @@ export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['backgroundOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-24,24],['prefixOffsetY',-8,8],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['textOpacity',0,1],['labelOpacity',0,1],['captionOpacity',0,1],['backgroundOpacity',0,1],['borderOpacity',0,1],['gradientEndOpacity',0,1],['gradientMidOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-24,24],['prefixOffsetY',-8,8],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
     ['gradientMidStop',.1,.9],['marginVertical',0,32],['marginHorizontal',0,32],
     ['shadowOpacity',0,.8],['shadowBlur',0,48],['shadowOffsetX',-24,24],['shadowOffsetY',-24,24],
     ['glowOpacity',0,.8],['glowWidth',0,16],['thresholdValue',-1000000000000,1000000000000]] as const){
@@ -116,14 +116,14 @@ export function normalizeTargetMap(raw:unknown):Record<string,Record<string,Targ
 }
 /** Restore only visual customizations: never reset content, visibility, native actions or XY. */
 export const VISUAL_TARGET_KEYS:readonly (keyof TargetAppearance)[]=[
-  'fontSize','labelFontSize','captionFontSize','textColor','labelColor','captionColor',
-  'backgroundColor','borderColor','displayUnit','displayDigits','textProfitColor','labelProfitColor','captionProfitColor',
+  'fontSize','labelFontSize','captionFontSize','textColor','textOpacity','labelColor','labelOpacity','captionColor','captionOpacity',
+  'backgroundColor','borderColor','borderOpacity','displayUnit','displayDigits','textProfitColor','labelProfitColor','captionProfitColor',
   'backgroundProfitColor','borderProfitColor','profitToneOverride','conditionalStyles','thresholdEnabled','thresholdValue','thresholdOperator','borderWidth','borderRadius',
   'padding','opacity','backgroundOpacity','fontWeight','fontFamily','fontStyle','textDecorationLine',
   'labelFontWeight','captionFontWeight','labelFontStyle','captionFontStyle',
   'labelLetterSpacing','captionLetterSpacing','labelLineHeight','captionLineHeight',
   'letterSpacing','lineHeight','align','useProfitColor','backgroundMode','gradientDirection',
-  'gradientEndColor','gradientMidColor','gradientEndProfitColor','gradientMidProfitColor',
+  'gradientEndColor','gradientEndOpacity','gradientMidColor','gradientMidOpacity','gradientEndProfitColor','gradientMidProfitColor',
   'gradientMidEnabled','gradientMidStop','borderStyle','marginVertical','marginHorizontal',
   'shadowEnabled','shadowColor','shadowProfitColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
   'glowEnabled','glowColor','glowProfitColor','glowOpacity','glowWidth',
