@@ -225,7 +225,9 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
     </PageShell>
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
     <DailyPnlHistoryModal visible={pnlHistoryOpen} onClose={()=>setPnlHistoryOpen(false)}
-      records={pnlHistory.records} stats={pnlHistory.stats}/>
+      records={pnlHistory.records} stats={pnlHistory.stats}
+      historyLoading={pnlHistory.historyLoading} historyError={pnlHistory.historyError}
+      historyStartDate={pnlHistory.historyStartDate}/>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
