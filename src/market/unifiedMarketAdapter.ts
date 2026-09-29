@@ -24,7 +24,7 @@ function taipeiDateMinute(at:number){
 
 export function normalizeUnifiedIntradaySeries(
   value:UnifiedMarketIntradaySeries|undefined,now=Date.now(),
-):{date:string;points:RuntimeIntradayPoint[]}|null{
+):{date:string;previousClose:number|null;points:RuntimeIntradayPoint[]}|null{
   if(!value||typeof value.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value.date)||!Array.isArray(value.points))return null;
   const byAt=new Map<number,RuntimeIntradayPoint>();
   for(const raw of value.points){
@@ -36,7 +36,9 @@ export function normalizeUnifiedIntradaySeries(
     byAt.set(raw.at,{at:raw.at,price:raw.price,quality:raw.quality,source:raw.source});
   }
   const points=[...byAt.values()].sort((a,b)=>a.at-b.at);
-  return points.length?{date:value.date,points}:null;
+  const previousClose=typeof value.previousClose==='number'&&Number.isFinite(value.previousClose)&&value.previousClose>0
+    ?value.previousClose:null;
+  return points.length?{date:value.date,previousClose,points}:null;
 }
 
 export function isTrustedMarketRow(value:unknown,now=Date.now()):value is UnifiedMarketRow{
@@ -73,6 +75,9 @@ export function marketRowsToRuntimeQuotes(
     const incomingIntraday=normalizeUnifiedIntradaySeries(snapshot.intraday?.[row.symbol],now);
     const intraday=incomingIntraday?.points??old?.intraday??[];
     const intradayDate=incomingIntraday?.date??old?.intradayDate??null;
+    const intradayPreviousClose=incomingIntraday
+      ?(incomingIntraday.previousClose??(intradayDate===old?.intradayDate?old?.intradayPreviousClose:null)??prev)
+      :(old?.intradayPreviousClose??null);
     return {
       symbol:row.symbol,name:row.name||old?.name||row.symbol,
       currentPrice:row.currentPrice,previousClose:prev,
@@ -90,6 +95,7 @@ export function marketRowsToRuntimeQuotes(
       sparkline:sparkline.length?sparkline:[row.currentPrice],
       intraday,
       intradayDate,
+      intradayPreviousClose,
     };
   });
 }
