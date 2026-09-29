@@ -57,7 +57,7 @@ export function createDiagnosticEntry(event:DiagnosticEvent,at:number,id:string)
   };
 }
 export function exportDiagnosticEntries(entries:readonly DiagnosticEntry[]):string{
-  return JSON.stringify({schema:1,app:'TF Asset',version:'3.2.4',
+  return JSON.stringify({schema:1,app:'TF Asset',version:'3.2.5',
     note:'僅含診斷事件與代碼，不含帳務紀錄；原生崩潰限 Java/Kotlin 可攔截範圍。',
     exportedAt:new Date().toISOString(),entries:entries.map(entry=>({...entry}))},null,2);
 }
