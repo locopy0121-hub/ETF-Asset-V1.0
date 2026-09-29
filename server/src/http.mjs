@@ -32,7 +32,9 @@ export function makeApp({store,jobs}){
     if(!symbols||!symbols.length)return res.status(400).json({error:'symbols_required_max_32'});
     try{
       const state=await store.snapshot(symbols);
-      res.set('Cache-Control','no-store').json({...state,serverAt:Date.now()});
+      const includeIntraday=req.query.intraday==='1';
+      const intraday=includeIntraday?await store.intraday(symbols):undefined;
+      res.set('Cache-Control','no-store').json({...state,...(includeIntraday?{intraday}:{}),serverAt:Date.now()});
     }catch(error){res.status(503).json({error:'market_store_unavailable'});}
   });
   app.post('/v1/market/subscriptions',async(req,res)=>{
