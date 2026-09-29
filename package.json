@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.7",
+  "version": "3.2.8",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -245,7 +245,8 @@
     "test:v3_2_4": "npm run test:v3_2_3 && tsx scripts/v3_2_4-wysiwyg-holding-preview.test.ts",
     "test:v3_2_5": "npm run test:v3_2_4 && tsx scripts/v3_2_5-market-comparison.test.ts",
     "test:v3_2_6": "npm run test:v3_2_4 && tsx scripts/v3_2_6-market-a-layer.test.ts",
-    "test:v3_2_7": "npm run test:v3_2_6 && tsx scripts/v3_2_7-daily-pnl-history.test.ts"
+    "test:v3_2_7": "npm run test:v3_2_6 && tsx scripts/v3_2_7-daily-pnl-history.test.ts",
+    "test:v3_2_8": "npm run test:v3_2_7 && tsx scripts/v3_2_8-settings-preview-pnl-sync.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
