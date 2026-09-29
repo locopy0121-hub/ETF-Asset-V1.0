@@ -47,8 +47,8 @@ assert.match(skills,/list-settings','頁面設定：庫存清單／持股圖表'
 
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.2.7');
-assert.equal(app.expo.version,'3.2.7');
-assert.equal(app.expo.android.versionCode,30207);
-assert.equal(app.expo.ios.buildNumber,'30207');
+assert.equal(pkg.version,'3.2.8');
+assert.equal(app.expo.version,'3.2.8');
+assert.equal(app.expo.android.versionCode,30208);
+assert.equal(app.expo.ios.buildNumber,'30208');
 console.log('V3.1.18 historical source, 009816, holding PnL chart editor, Home shared icon quickbar: PASS');

@@ -1,3 +1,14 @@
+# V3.2.8｜2026-09-29｜設定頁資產總覽預覽同步正式首頁損益列
+
+- 修正「頁面設定 → 排版工具 → 資產總覽」仍顯示舊的「損益待核對」問題。
+- 設定預覽改用與首頁相同的 `deriveDailyPnlRecord` Canonical 輸入：Ledger、目前 Snapshot、原始行情、valuationComplete、marketDataVersion。
+- 預覽正式顯示「前一日損益 ＋ 今日損益 ＝ 總損益」，總損益色／卡片損益色與首頁同樣以最終總損益判斷。
+- 設定預覽不另外掛第二個 `useDailyPnlHistory`，避免產生第二個持久化寫入者；只做純推導。
+- 資產總覽、損益分析、損益明細、快捷功能的設定預覽補上與首頁一致的 dashboard contentPadding。
+- 新增前一日／今日／總損益標題與數值的排版工具基準，直接點選後可使用既有文字／數值工具。
+- App 3.2.8／Android 30208／iOS 30208。
+- Immutable Finance Core、Ledger、actual_fee／actual_tax、Math.floor 固化規則未修改。
+
 # V3.2.7｜2026-09-29｜首頁總損益＋每日損益紀錄／統計
 
 - 資產總覽主卡在總資產下方新增「前一日損益＋今日損益＝總損益」，總損益可點擊進入每日紀錄。
