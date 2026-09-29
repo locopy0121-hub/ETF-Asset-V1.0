@@ -137,7 +137,9 @@ export function FinanceProvider({children}:PropsWithChildren){
       symbol:summary.etfCode,
       name:(quote&&quote.name!==summary.etfCode?quote.name:name??summary.name),
       quoteVerified:verified,
-      quoteQuality:(valuationQuote?.quality??'unavailable') as HoldingQuote['quoteQuality'],
+      quoteQuality:valuationQuote?.quality==='trade'||valuationQuote?.quality==='backup_realtime'||
+        valuationQuote?.quality==='previous_close'||valuationQuote?.quality==='official_close'?
+        valuationQuote.quality:'unavailable',
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
       marketDataVersion:market.marketDataVersion,
       previousCloseKnown:verified?valuationQuote?.previousCloseKnown!==false:false,
