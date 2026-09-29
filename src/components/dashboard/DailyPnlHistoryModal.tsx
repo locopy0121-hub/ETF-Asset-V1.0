@@ -30,8 +30,8 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats}:{
           <Stat label="平均每日" value={signed(stats.averageDailyPnl)} valueColor={tone(stats.averageDailyPnl)}/>
           <Stat label="獲利／虧損日" value={`${stats.gainDays}／${stats.lossDays}`}/>
           <Stat label="持平日" value={String(stats.flatDays)}/>
-          <Stat label="最佳單日" value={stats.best?`${stats.best.date}  ${signed(stats.best.todayPnl)}`:'—'} valueColor={stats.best?tone(stats.best.todayPnl):undefined}/>
-          <Stat label="最差單日" value={stats.worst?`${stats.worst.date}  ${signed(stats.worst.todayPnl)}`:'—'} valueColor={stats.worst?tone(stats.worst.todayPnl):undefined}/>
+          <Stat label="最佳單日" value={stats.best?`${stats.best.date}  ${signed(stats.best.todayPnl)}`:'—'} {...(stats.best?{valueColor:tone(stats.best.todayPnl)}:{})}/>
+          <Stat label="最差單日" value={stats.worst?`${stats.worst.date}  ${signed(stats.worst.todayPnl)}`:'—'} {...(stats.worst?{valueColor:tone(stats.worst.todayPnl)}:{})}/>
         </View>
 
         <View style={styles.section}>
