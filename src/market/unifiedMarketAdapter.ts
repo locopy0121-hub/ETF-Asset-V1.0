@@ -1,10 +1,43 @@
-import type {RuntimeQuote} from '../finance/financeSeed';
-import type {UnifiedMarketRow,UnifiedMarketSnapshot} from '../native/TfAssetNativeBridge';
+import type {RuntimeIntradayPoint,RuntimeQuote} from '../finance/financeSeed';
+import type {UnifiedMarketIntradaySeries,UnifiedMarketRow,UnifiedMarketSnapshot} from '../native/TfAssetNativeBridge';
 
 export type QuoteProvenance='trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
 const QUALITIES=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
 const SOURCES=new Set(['TWSE_MIS','YAHOO','TWSE_DAILY','TPEX_DAILY']);
 const PRICE_TYPES=new Set(['REALTIME_TRADE','BACKUP_REALTIME','BID_ASK','PREV_CLOSE','OFFICIAL_CLOSE']);
+const INTRADAY_QUALITIES=new Set(['trade','backup_realtime']);
+const INTRADAY_SOURCES=new Set(['TWSE_MIS','YAHOO']);
+
+function taipeiDateMinute(at:number){
+  try{
+    const parts=new Intl.DateTimeFormat('en-CA',{
+      timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',hourCycle:'h23',
+    }).formatToParts(new Date(at));
+    const get=(type:string)=>parts.find(part=>part.type===type)?.value??'';
+    return {date:`${get('year')}-${get('month')}-${get('day')}`,minute:(Number(get('hour'))||0)*60+(Number(get('minute'))||0)};
+  }catch{
+    const shifted=new Date(at+8*60*60*1000);
+    return {date:shifted.toISOString().slice(0,10),minute:shifted.getUTCHours()*60+shifted.getUTCMinutes()};
+  }
+}
+
+export function normalizeUnifiedIntradaySeries(
+  value:UnifiedMarketIntradaySeries|undefined,now=Date.now(),
+):{date:string;points:RuntimeIntradayPoint[]}|null{
+  if(!value||typeof value.date!=='string'||!/^d{4}-d{2}-d{2}$/.test(value.date)||!Array.isArray(value.points))return null;
+  const byAt=new Map<number,RuntimeIntradayPoint>();
+  for(const raw of value.points){
+    if(!raw||typeof raw.at!=='number'||!Number.isFinite(raw.at)||raw.at<=0||raw.at>now+120_000||raw.at<now-10*86_400_000)continue;
+    if(typeof raw.price!=='number'||!Number.isFinite(raw.price)||raw.price<=0)continue;
+    if(!INTRADAY_QUALITIES.has(raw.quality)||!INTRADAY_SOURCES.has(raw.source))continue;
+    const local=taipeiDateMinute(raw.at);
+    if(local.date!==value.date||local.minute<540||local.minute>810)continue;
+    byAt.set(raw.at,{at:raw.at,price:raw.price,quality:raw.quality,source:raw.source});
+  }
+  const points=[...byAt.values()].sort((a,b)=>a.at-b.at);
+  return points.length?{date:value.date,points}:null;
+}
 
 export function isTrustedMarketRow(value:unknown,now=Date.now()):value is UnifiedMarketRow{
   if(!value||typeof value!=='object')return false;
@@ -37,6 +70,9 @@ export function marketRowsToRuntimeQuotes(
       &&old.priceType===row.priceType;
     const sparkline=unchanged?old.sparkline:
       [...(old?.sparkline??[]),row.currentPrice].filter(price=>price>0).slice(-30);
+    const incomingIntraday=normalizeUnifiedIntradaySeries(snapshot.intraday?.[row.symbol],now);
+    const intraday=incomingIntraday?.points??old?.intraday??[];
+    const intradayDate=incomingIntraday?.date??old?.intradayDate??null;
     return {
       symbol:row.symbol,name:row.name||old?.name||row.symbol,
       currentPrice:row.currentPrice,previousClose:prev,
@@ -52,6 +88,8 @@ export function marketRowsToRuntimeQuotes(
       ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
       ...(old?.pinned==null?{}:{pinned:old.pinned}),
       sparkline:sparkline.length?sparkline:[row.currentPrice],
+      intraday,
+      intradayDate,
     };
   });
 }
