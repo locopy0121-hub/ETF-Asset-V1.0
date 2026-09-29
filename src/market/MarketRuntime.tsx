@@ -260,6 +260,9 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
       sparkline:sparkline.length?sparkline:[currentPrice],
       intraday:intraday.points,
       intradayDate:intraday.date,
+      intradayPreviousClose:intraday.date===old?.intradayDate
+        ?(old?.intradayPreviousClose??previousClose)
+        :previousClose,
     };
   });
   return {quotes:next,updatedCount,usableCount,newestSourceAt,unresolved};
