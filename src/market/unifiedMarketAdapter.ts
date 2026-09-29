@@ -25,7 +25,7 @@ function taipeiDateMinute(at:number){
 export function normalizeUnifiedIntradaySeries(
   value:UnifiedMarketIntradaySeries|undefined,now=Date.now(),
 ):{date:string;points:RuntimeIntradayPoint[]}|null{
-  if(!value||typeof value.date!=='string'||!/^d{4}-d{2}-d{2}$/.test(value.date)||!Array.isArray(value.points))return null;
+  if(!value||typeof value.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value.date)||!Array.isArray(value.points))return null;
   const byAt=new Map<number,RuntimeIntradayPoint>();
   for(const raw of value.points){
     if(!raw||typeof raw.at!=='number'||!Number.isFinite(raw.at)||raw.at<=0||raw.at>now+120_000||raw.at<now-10*86_400_000)continue;
