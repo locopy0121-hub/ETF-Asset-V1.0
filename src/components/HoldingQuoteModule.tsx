@@ -16,6 +16,7 @@ import {MiniHoldingChart} from './MiniHoldingChart';
 import { radius, spacing } from '../theme/tokens';
 import {useSettingsRuntime, type DisplayPrefs} from '../settings/SettingsRuntime';
 import {linkedColor} from '../maintenance/workspaceModel';
+import {colorWithAlpha} from '../maintenance/frameEffects';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const pct=(value:number)=>`${value>=0?'+':''}${value.toFixed(2)}%`;
@@ -74,7 +75,7 @@ export function HoldingQuoteModule({
     compact&&!micro&&styles.compact,
     narrow&&styles.narrowCard,
     micro&&styles.microCard,
-    {backgroundColor:cardBackground,borderColor:cardBorder,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
+    {backgroundColor:colorWithAlpha(cardBackground,cardStyle.backgroundOpacity),borderColor:colorWithAlpha(cardBorder,cardStyle.borderOpacity),borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
     {layoutEditMode&&layoutSelectionId==='card'?<View pointerEvents="none" style={[StyleSheet.absoluteFill,styles.layoutSelected]}/>:null}
     <Pressable onPress={layoutEditMode?(event)=>{event.stopPropagation();onLayoutSelect?.('card','行情卡片');}:onPress} accessibilityRole="button" accessibilityLabel={layoutEditMode?'選取行情卡片':'查看持股 '+item.symbol} style={styles.bodyPress}>
@@ -84,7 +85,7 @@ export function HoldingQuoteModule({
         <View style={[
           styles.head,
           micro&&styles.microHead,
-          {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
+          {backgroundColor:colorWithAlpha(cfg.header.backgroundColor,cfg.header.backgroundOpacity),borderBottomColor:colorWithAlpha(cfg.header.borderColor,cfg.header.borderOpacity),borderBottomWidth:cfg.header.borderWidth},
         ]}>
           <View style={styles.headerMain}>
             <View style={[styles.headerTop,micro&&styles.microHeaderTop]}>
@@ -105,7 +106,7 @@ export function HoldingQuoteModule({
               layoutEditMode={layoutEditMode} layoutSelectionId={layoutSelectionId} onLayoutSelect={onLayoutSelect}
             />)}
           </View>
-          {!narrow?<Text style={[styles.chevron,{color:cardSecondary}]}>›</Text>:null}
+          {!narrow?<Text style={[styles.chevron,{color:colorWithAlpha(cardSecondary,cardStyle.secondaryTextOpacity)}]}>›</Text>:null}
         </View>
       </EffectView>:null}
 
@@ -147,9 +148,9 @@ export function HoldingQuoteModule({
     {showChart&&item.quoteVerified!==false?<View style={styles.miniChartWrap}>
       {layoutEditMode?
         <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.('chart','Mini 圖表');}} style={layoutSelectionId==='chart'?styles.layoutSelected:undefined}>
-          <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>
+          <MiniHoldingChart holding={item} narrow={narrow} gainColor={colorWithAlpha(cardStyle.gainColor,cardStyle.gainOpacity)} lossColor={colorWithAlpha(cardStyle.lossColor,cardStyle.lossOpacity)}/>
         </Pressable>:
-        <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>}
+        <MiniHoldingChart holding={item} narrow={narrow} gainColor={colorWithAlpha(cardStyle.gainColor,cardStyle.gainOpacity)} lossColor={colorWithAlpha(cardStyle.lossColor,cardStyle.lossOpacity)} {...(miniOpen?{onOpen:miniOpen}:{})}/>}
     </View>:null}
   </View>;
 }
@@ -186,9 +187,9 @@ function WallText({
     numeric={numeric}
     refreshToken={refreshToken}
     numberOfLines={1}
-    inlineBackgroundColor={liveBackground}
+    inlineBackgroundColor={liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity):liveBackground}
     style={{
-      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
+      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,field.textColor==null&&header?wall.header.textOpacity:field.textOpacity),
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:header&&field.field==='symbol'?'left':field.align,
@@ -220,17 +221,17 @@ function WallMetric({
   const numeric=fieldNumeric(field.field,item,change,changePct);
   const systemColors=useSettingsRuntime().prefs.display;
   const liveBackground=resolveWallBackground(field,item,change,systemColors);
-  const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
+  const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity):'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
     <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':
-      linkedColor(field.textColor??wall.style.secondaryTextColor,wall.style.secondaryTextProfitColor,
-        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),textAlign:field.align}]}>{field.label}</Text>
+      colorWithAlpha(linkedColor(field.textColor??wall.style.secondaryTextColor,wall.style.secondaryTextProfitColor,
+        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),field.textColor==null?wall.style.secondaryTextOpacity:field.textOpacity),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
       numeric={numeric}
       refreshToken={refreshToken}
       style={{
-        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':fieldColor(field,item,change,wall,systemColors),
+        color:field.useProfitBackground&&liveBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(fieldColor(field,item,change,wall,systemColors),field.textOpacity),
         fontSize:12*field.fontScale,
         fontWeight:'900',
         marginTop:2,
