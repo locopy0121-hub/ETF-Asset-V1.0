@@ -37,7 +37,7 @@ assert.match(nativeCenter,/bid.*bid_ask/s);
 assert.match(nativeCenter,/previous_close/);
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
-assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,2/);
+assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,3/,'V3.2.11 adds display-only intraday cache schema 3 while preserving B-layer quote provenance');
 for(const token of ['backup_realtime','bid_ask','previous_close','official_trade_price','price_type','is_fallback'])
   assert.ok(nativeDb.includes(token),'native B schema missing '+token);
 
