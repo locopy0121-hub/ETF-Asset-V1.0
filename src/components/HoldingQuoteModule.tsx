@@ -76,11 +76,6 @@ export function HoldingQuoteModule({
     {backgroundColor:cardBackground,borderColor:cardBorder,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
     {layoutEditMode&&layoutSelectionId==='card'?<View pointerEvents="none" style={[StyleSheet.absoluteFill,styles.layoutSelected]}/>:null}
-    {showChart&&item.quoteVerified!==false&&Array.isArray(item.sparkline)&&item.sparkline.length>0?(layoutEditMode?
-      <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.('chart','Mini 圖表');}} style={layoutSelectionId==='chart'?styles.layoutSelected:undefined}>
-        <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>
-      </Pressable>:
-      <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>):null}
     <Pressable onPress={layoutEditMode?(event)=>{event.stopPropagation();onLayoutSelect?.('card','行情卡片');}:onPress} accessibilityRole="button" accessibilityLabel={layoutEditMode?'選取行情卡片':'查看持股 '+item.symbol} style={styles.bodyPress}>
     <View style={[styles.body,{padding:micro?Math.min(8,cardStyle.padding):cardStyle.padding,
       gap:micro?Math.min(5,cardStyle.rowGap):cardStyle.rowGap}]}>
@@ -148,6 +143,13 @@ export function HoldingQuoteModule({
       </View>:null}
     </View>
     </Pressable>
+    {showChart&&item.quoteVerified!==false?<View style={styles.miniChartWrap}>
+      {layoutEditMode?
+        <Pressable onPress={event=>{event.stopPropagation();onLayoutSelect?.('chart','Mini 圖表');}} style={layoutSelectionId==='chart'?styles.layoutSelected:undefined}>
+          <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>
+        </Pressable>:
+        <MiniHoldingChart holding={item} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor} {...(miniOpen?{onOpen:miniOpen}:{})}/>}
+    </View>:null}
   </View>;
 }
 
@@ -348,6 +350,7 @@ const styles=StyleSheet.create({
   card:{flexDirection:'row',backgroundColor:'#0C121B',borderRadius:radius.lg,overflow:'hidden',minHeight:132,borderWidth:1,borderColor:'#263343'},
   compact:{minHeight:86},
   bodyPress:{flex:1},
+  miniChartWrap:{paddingHorizontal:8,paddingBottom:6},
   body:{flex:1,padding:spacing.md,gap:8},
   head:{flexDirection:'row',alignItems:'flex-start',paddingBottom:5},
   headerMain:{flex:1,minWidth:0,gap:3},
