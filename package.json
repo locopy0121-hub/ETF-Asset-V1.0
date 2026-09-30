@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.19",
+  "version": "3.2.20",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_2_19 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_2_20 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -257,7 +257,8 @@
     "test:v3_2_16": "npm run test:v3_2_15 && tsx scripts/v3_2_16-session-reset.test.ts",
     "test:v3_2_17": "npm run test:v3_2_16 && tsx scripts/v3_2_17-live-market-scheduler.test.ts",
     "test:v3_2_18": "npm run test:v3_2_17 && tsx scripts/v3_2_18-market-fallback-repair.test.ts",
-    "test:v3_2_19": "npm run test:v3_2_18 && tsx scripts/v3_2_19-sqlite-single-source.test.ts"
+    "test:v3_2_19": "npm run test:v3_2_18 && tsx scripts/v3_2_19-sqlite-single-source.test.ts",
+    "test:v3_2_20": "npm run test:v3_2_19 && tsx scripts/v3_2_20-live-freshness-stability.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
