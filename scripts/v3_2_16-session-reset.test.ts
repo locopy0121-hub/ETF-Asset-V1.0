@@ -91,10 +91,9 @@ assert.match(runtime,/state\.version>currentVersion\|\|sessionDateChanged/,
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.16');
-assert.equal(app.expo.version,'3.2.16');
-assert.equal(app.expo.android.versionCode,30216);
-assert.equal(app.expo.ios.buildNumber,'30216');
+assert.equal(pkg.version,app.expo.version,'package/app semantic versions must stay aligned');
+assert.ok(Number(app.expo.android.versionCode)>=30216,'session-reset regression requires build 30216 or newer');
+assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode),'iOS/Android build identities must stay aligned');
 assert.equal(pkg.scripts['test:v3_2_16'],'npm run test:v3_2_15 && tsx scripts/v3_2_16-session-reset.test.ts');
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
