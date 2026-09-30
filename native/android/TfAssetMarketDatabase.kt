@@ -22,6 +22,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     private val TAIPEI=ZoneId.of("Asia/Taipei")
     private val DAY=DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val MINUTE=DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    private const val SESSION_START_MINUTE=9*60
   }
   internal data class IntradayCoverage(val count:Int,val firstAt:Long,val lastAt:Long)
 
@@ -159,24 +160,37 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     }
   }
 
-  private fun intradaySnapshot(symbols:Collection<String>):JSONObject{
+  private fun activeTradingDay(now:Long):String?{
+    val local=Instant.ofEpochMilli(now).atZone(TAIPEI)
+    if(local.dayOfWeek.value>=6)return null
+    val minute=local.hour*60+local.minute
+    return if(minute>=SESSION_START_MINUTE)local.toLocalDate().format(DAY) else null
+  }
+
+  private fun intradaySnapshot(symbols:Collection<String>,now:Long=System.currentTimeMillis()):JSONObject{
     val db=readableDatabase
     val requested=if(symbols.isNotEmpty())symbols.map{it.trim().uppercase()}.distinct() else buildList{
-      db.rawQuery("SELECT DISTINCT symbol FROM market_intraday ORDER BY symbol",null).use{c->
+      db.rawQuery("""SELECT symbol FROM market_quotes
+        UNION SELECT symbol FROM market_intraday ORDER BY symbol""",null).use{c->
         while(c.moveToNext())add(c.getString(0))
       }
     }
+    // Before 09:00 retain the last completed session. At 09:00 on a weekday,
+    // publish today's session identity immediately even if the first trade has
+    // not arrived yet. Historical rows stay in SQLite and are never deleted.
+    val currentDay=activeTradingDay(now)
     val output=JSONObject()
     for(symbol in requested){
       val latestDay=db.rawQuery(
         "SELECT strftime('%Y-%m-%d',source_at/1000,'unixepoch','+8 hours') FROM market_intraday WHERE symbol=? ORDER BY source_at DESC LIMIT 1",
         arrayOf(symbol),
-      ).use{c->if(c.moveToFirst())c.getString(0) else null}?:continue
+      ).use{c->if(c.moveToFirst())c.getString(0) else null}
+      val viewDay=currentDay?:latestDay?:continue
       val perMinute=linkedMapOf<String,JSONObject>()
       val sql="""SELECT source_at,price,previous_close,quality,source FROM market_intraday
         WHERE symbol=? AND strftime('%Y-%m-%d',source_at/1000,'unixepoch','+8 hours')=?
         ORDER BY source_at ASC"""
-      db.rawQuery(sql,arrayOf(symbol,latestDay)).use{c->
+      db.rawQuery(sql,arrayOf(symbol,viewDay)).use{c->
         while(c.moveToNext()){
           val at=c.getLong(0)
           if(!inTaipeiSession(at))continue
@@ -190,12 +204,17 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
             .put("quality",quality).put("source",c.getString(4))
         }
       }
-      if(perMinute.isEmpty())continue
-      val previousClose=perMinute.values.asSequence()
+      if(perMinute.isEmpty()&&currentDay==null)continue
+      val pointPreviousClose=perMinute.values.asSequence()
         .map{it.optDouble("previousClose",Double.NaN)}
         .firstOrNull{it.isFinite()&&it>0}
-      output.put(symbol,JSONObject().put("date",latestDay)
-        .put("previousClose",previousClose?:JSONObject.NULL)
+      val quotePreviousClose=db.rawQuery(
+        "SELECT previous_close FROM market_quotes WHERE symbol=? LIMIT 1",arrayOf(symbol),
+      ).use{c->
+        if(c.moveToFirst()&&!c.isNull(0))c.getDouble(0).takeIf{it.isFinite()&&it>0.0} else null
+      }
+      output.put(symbol,JSONObject().put("date",viewDay)
+        .put("previousClose",pointPreviousClose?:quotePreviousClose?:JSONObject.NULL)
         .put("points",JSONArray(perMinute.values.toList())))
     }
     return output
