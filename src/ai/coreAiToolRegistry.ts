@@ -346,7 +346,8 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
           id:entry.id,date:entry.date,kind:'dividend',symbol:entry.symbol,name:entry.name,
           shares:entry.sharesHeld,cashFlow:calculateLedgerCashFlow(entry),
         };
-        return {id:entry.id,date:entry.date,kind:'other',label:entry.label,cashFlow:calculateLedgerCashFlow(entry)};
+        if(entry.kind==='other')return {id:entry.id,date:entry.date,kind:'other',label:entry.label,cashFlow:calculateLedgerCashFlow(entry)};
+        throw new Error('Unsupported canonical ledger entry kind');
       });
     results.push(success<TransactionsToolData>('get_transactions',{security,limit,kinds,rows},'CANONICAL_LEDGER',{calculatedAt:now()}));
   }
