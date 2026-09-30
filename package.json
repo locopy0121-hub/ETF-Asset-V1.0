@@ -265,7 +265,7 @@
     "test:v3_2_25": "npm run test:v3_2_23 && tsx scripts/v3_2_25-local-ai-tools.test.ts",
     "test:v3_2_26": "npm run test:v3_2_25 && tsx scripts/v3_2_26-gemini-worker-compat.test.ts",
     "test:v3_2_27": "npm run test:v3_2_26 && tsx scripts/v3_2_27-gemini-contract-repair.test.ts",
-    "test:v3_2_28": "npm run test:v3_2_27 && tsx scripts/v3_2_28-ai-core-read-tools.test.ts"
+    "test:v3_2_28": "npm run test:v3_2_27 && tsx scripts/v3_2_28-ai-core-tools.test.ts && tsx scripts/v3_2_28-ai-core-read-tools.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
