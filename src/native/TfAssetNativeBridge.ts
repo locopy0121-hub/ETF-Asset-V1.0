@@ -41,6 +41,9 @@ type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   readUnifiedMarketData:()=>Promise<string>;
   setMarketBackendUrl:(url:string)=>Promise<boolean>;
+  queryLocalEtfComponents:(symbol:string,topN:number)=>Promise<string>;
+  queryLocalEtfMeta:(symbol:string)=>Promise<string>;
+  replaceLocalEtfResearch:(payloadJson:string)=>Promise<string>;
   saveBackupDocument:(text:string,fileName:string)=>Promise<ExternalBackupReceipt|null>;
   openBackupDocument:()=>Promise<OpenedBackupDocument|null>;
   syncWidget:(configJson:string,snapshotJson:string)=>Promise<boolean>;
@@ -99,6 +102,70 @@ export async function refreshUnifiedMarketData(symbols:readonly string[]):Promis
 export async function setNativeMarketBackendUrl(url:string){
   if(!unifiedMarketCenterAvailable||!native)return false;
   return native.setMarketBackendUrl(url);
+}
+
+export type LocalEtfComponent=Readonly<{
+  stockSymbol:string;
+  stockName:string;
+  weight:number;
+  industry:string;
+  source:string;
+  effectiveDate:string;
+  updatedAt:string;
+}>;
+export type LocalEtfComponentsResult=Readonly<{
+  symbol:string;
+  topN:number;
+  total:number;
+  available:boolean;
+  components:readonly LocalEtfComponent[];
+}>;
+export type LocalEtfMeta=Readonly<{
+  symbol:string;
+  frequency:string;
+  terRatio:number|null;
+  category:string;
+  issuer:string;
+  trackingIndex:string;
+  active:boolean;
+  source:string;
+  effectiveDate:string;
+  updatedAt:string;
+}>;
+export type LocalEtfMetaResult=Readonly<{symbol:string;available:boolean;meta:LocalEtfMeta|null}>;
+export type LocalEtfResearchImport=Readonly<{
+  datasetVersion:string;
+  importedAt:string;
+  components:readonly Readonly<{
+    etfSymbol:string;stockSymbol:string;stockName:string;weight:number;industry:string;
+    source:string;effectiveDate:string;updatedAt:string;
+  }>[];
+  meta:readonly Readonly<{
+    etfSymbol:string;frequency:string;terRatio:number|null;category:string;issuer:string;
+    trackingIndex:string;active:boolean;source:string;effectiveDate:string;updatedAt:string;
+  }>[];
+}>;
+
+export const localEtfResearchAvailable=Platform.OS==='android'
+  &&typeof native?.queryLocalEtfComponents==='function'
+  &&typeof native?.queryLocalEtfMeta==='function';
+
+export async function queryLocalEtfComponents(symbol:string,topN=20):Promise<LocalEtfComponentsResult>{
+  if(!localEtfResearchAvailable||!native)throw new Error('本機 ETF 研究資料庫尚未安裝');
+  const raw=await native.queryLocalEtfComponents(symbol,Math.max(1,Math.min(100,Math.floor(topN))));
+  return JSON.parse(raw) as LocalEtfComponentsResult;
+}
+export async function queryLocalEtfMeta(symbol:string):Promise<LocalEtfMetaResult>{
+  if(!localEtfResearchAvailable||!native)throw new Error('本機 ETF 研究資料庫尚未安裝');
+  const raw=await native.queryLocalEtfMeta(symbol);
+  return JSON.parse(raw) as LocalEtfMetaResult;
+}
+export async function replaceLocalEtfResearch(payload:LocalEtfResearchImport){
+  if(!localEtfResearchAvailable||!native||typeof native.replaceLocalEtfResearch!=='function')
+    throw new Error('本機 ETF 研究資料匯入介面尚未安裝');
+  return JSON.parse(await native.replaceLocalEtfResearch(JSON.stringify(payload))) as Readonly<{
+    componentCount:number;metaCount:number;datasetVersion:string;importedAt:string;
+  }>;
 }
 
 

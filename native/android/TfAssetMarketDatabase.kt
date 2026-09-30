@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,4
+  context.applicationContext,"tf_asset_market_center_v1.db",null,5
 ){
   companion object{
     private val TAIPEI=ZoneId.of("Asia/Taipei")
@@ -68,9 +68,41 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     db.execSQL("CREATE INDEX IF NOT EXISTS market_intraday_symbol_time ON market_intraday(symbol,source_at DESC)")
   }
 
+  private fun createResearchTables(db:SQLiteDatabase){
+    db.execSQL("""CREATE TABLE IF NOT EXISTS etf_components(
+      etf_symbol TEXT NOT NULL,
+      stock_symbol TEXT NOT NULL,
+      stock_name TEXT NOT NULL DEFAULT '',
+      weight REAL NOT NULL CHECK(weight>=0 AND weight<=100),
+      industry TEXT NOT NULL DEFAULT '',
+      source TEXT NOT NULL DEFAULT '',
+      effective_date TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY(etf_symbol,stock_symbol)
+    )""")
+    db.execSQL("CREATE INDEX IF NOT EXISTS etf_components_symbol_weight ON etf_components(etf_symbol,weight DESC)")
+    db.execSQL("""CREATE TABLE IF NOT EXISTS etf_meta(
+      etf_symbol TEXT PRIMARY KEY NOT NULL,
+      frequency TEXT NOT NULL DEFAULT '',
+      ter_ratio REAL,
+      category TEXT NOT NULL DEFAULT '',
+      issuer TEXT NOT NULL DEFAULT '',
+      tracking_index TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1,
+      source TEXT NOT NULL DEFAULT '',
+      effective_date TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT ''
+    )""")
+    db.execSQL("""CREATE TABLE IF NOT EXISTS etf_research_meta(
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL DEFAULT ''
+    )""")
+  }
+
   override fun onCreate(db:SQLiteDatabase){
     createQuoteTable(db)
     createIntradayTable(db)
+    createResearchTables(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
@@ -101,6 +133,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     }
     if(oldVersion<3)createIntradayTable(db)
     if(oldVersion==3)runCatching{db.execSQL("ALTER TABLE market_intraday ADD COLUMN previous_close REAL")}
+    if(oldVersion<5)createResearchTables(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
@@ -247,6 +280,108 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     return JSONObject().put("version",version).put("quotes",rows)
       .put("intraday",intradaySnapshot(symbols))
   }
+
+
+  @Synchronized fun queryEtfComponents(symbolInput:String,topNInput:Int=20):JSONObject{
+    val symbol=symbolInput.trim().uppercase()
+    require(symbol.matches(Regex("[0-9A-Z]{4,8}"))){"ETF 代號格式錯誤"}
+    val topN=topNInput.coerceIn(1,100)
+    val db=readableDatabase
+    val rows=JSONArray()
+    db.rawQuery("""SELECT stock_symbol,stock_name,weight,industry,source,effective_date,updated_at
+      FROM etf_components WHERE etf_symbol=? ORDER BY weight DESC,stock_symbol ASC LIMIT ?""",
+      arrayOf(symbol,topN.toString())).use{c->
+      while(c.moveToNext()){
+        rows.put(JSONObject().put("stockSymbol",c.getString(0)).put("stockName",c.getString(1))
+          .put("weight",c.getDouble(2)).put("industry",c.getString(3))
+          .put("source",c.getString(4)).put("effectiveDate",c.getString(5))
+          .put("updatedAt",c.getString(6)))
+      }
+    }
+    val total=db.rawQuery("SELECT COUNT(*) FROM etf_components WHERE etf_symbol=?",arrayOf(symbol)).use{
+      if(it.moveToFirst())it.getInt(0) else 0
+    }
+    return JSONObject().put("symbol",symbol).put("topN",topN).put("total",total)
+      .put("components",rows).put("available",total>0)
+  }
+
+  @Synchronized fun queryEtfMeta(symbolInput:String):JSONObject{
+    val symbol=symbolInput.trim().uppercase()
+    require(symbol.matches(Regex("[0-9A-Z]{4,8}"))){"ETF 代號格式錯誤"}
+    val db=readableDatabase
+    val meta=db.rawQuery("""SELECT frequency,ter_ratio,category,issuer,tracking_index,active,
+      source,effective_date,updated_at FROM etf_meta WHERE etf_symbol=? LIMIT 1""",arrayOf(symbol)).use{c->
+      if(!c.moveToFirst())null else JSONObject().put("symbol",symbol)
+        .put("frequency",c.getString(0))
+        .put("terRatio",if(c.isNull(1))JSONObject.NULL else c.getDouble(1))
+        .put("category",c.getString(2)).put("issuer",c.getString(3))
+        .put("trackingIndex",c.getString(4)).put("active",c.getInt(5)!=0)
+        .put("source",c.getString(6)).put("effectiveDate",c.getString(7)).put("updatedAt",c.getString(8))
+    }
+    return JSONObject().put("symbol",symbol).put("available",meta!=null)
+      .put("meta",meta?:JSONObject.NULL)
+  }
+
+  @Synchronized fun replaceEtfResearch(payload:JSONObject):JSONObject{
+    val components=payload.optJSONArray("components")?:JSONArray()
+    val metas=payload.optJSONArray("meta")?:JSONArray()
+    val datasetVersion=payload.optString("datasetVersion","").trim().take(120)
+    val importedAt=payload.optString("importedAt","").trim().take(40)
+    require(components.length()<=100_000){"ETF 成分資料超過單次匯入限制"}
+    require(metas.length()<=10_000){"ETF 屬性資料超過單次匯入限制"}
+    val db=writableDatabase
+    var componentCount=0
+    var metaCount=0
+    db.beginTransaction()
+    try{
+      db.delete("etf_components",null,null)
+      db.delete("etf_meta",null,null)
+      for(i in 0 until components.length()){
+        val row=components.optJSONObject(i)?:continue
+        val etf=row.optString("etfSymbol","").trim().uppercase()
+        val stock=row.optString("stockSymbol","").trim().uppercase()
+        val weight=row.optDouble("weight",Double.NaN)
+        if(!etf.matches(Regex("[0-9A-Z]{4,8}"))||!stock.matches(Regex("[0-9A-Z]{4,10}"))||
+          !weight.isFinite()||weight<0.0||weight>100.0)continue
+        val values=ContentValues().apply{
+          put("etf_symbol",etf);put("stock_symbol",stock)
+          put("stock_name",row.optString("stockName","").trim().take(100))
+          put("weight",weight);put("industry",row.optString("industry","").trim().take(100))
+          put("source",row.optString("source","").trim().take(160))
+          put("effective_date",row.optString("effectiveDate","").trim().take(40))
+          put("updated_at",row.optString("updatedAt","").trim().take(40))
+        }
+        if(db.insertWithOnConflict("etf_components",null,values,SQLiteDatabase.CONFLICT_REPLACE)>=0)componentCount++
+      }
+      for(i in 0 until metas.length()){
+        val row=metas.optJSONObject(i)?:continue
+        val etf=row.optString("etfSymbol","").trim().uppercase()
+        if(!etf.matches(Regex("[0-9A-Z]{4,8}")))continue
+        val ter=row.optDouble("terRatio",Double.NaN)
+        val values=ContentValues().apply{
+          put("etf_symbol",etf);put("frequency",row.optString("frequency","").trim().take(80))
+          if(ter.isFinite()&&ter>=0.0&&ter<=20.0)put("ter_ratio",ter) else putNull("ter_ratio")
+          put("category",row.optString("category","").trim().take(100))
+          put("issuer",row.optString("issuer","").trim().take(100))
+          put("tracking_index",row.optString("trackingIndex","").trim().take(160))
+          put("active",if(row.optBoolean("active",true))1 else 0)
+          put("source",row.optString("source","").trim().take(160))
+          put("effective_date",row.optString("effectiveDate","").trim().take(40))
+          put("updated_at",row.optString("updatedAt","").trim().take(40))
+        }
+        if(db.insertWithOnConflict("etf_meta",null,values,SQLiteDatabase.CONFLICT_REPLACE)>=0)metaCount++
+      }
+      db.delete("etf_research_meta",null,null)
+      val versionValues=ContentValues().apply{put("key","dataset_version");put("value",datasetVersion)}
+      db.insertWithOnConflict("etf_research_meta",null,versionValues,SQLiteDatabase.CONFLICT_REPLACE)
+      val importedValues=ContentValues().apply{put("key","imported_at");put("value",importedAt)}
+      db.insertWithOnConflict("etf_research_meta",null,importedValues,SQLiteDatabase.CONFLICT_REPLACE)
+      db.setTransactionSuccessful()
+    }finally{db.endTransaction()}
+    return JSONObject().put("componentCount",componentCount).put("metaCount",metaCount)
+      .put("datasetVersion",datasetVersion).put("importedAt",importedAt)
+  }
+
 
   @Synchronized fun upsertVerified(candidates:List<JSONObject>,checkedAt:Long):JSONObject{
     val db=writableDatabase
