@@ -9,6 +9,7 @@ import {executeCoreAiReadTools,localAnswerFromCoreTools,type CoreAiAssetSummary,
 import {refreshUnifiedMarketData,unifiedMarketCenterAvailable} from '../native/TfAssetNativeBridge';
 import {buildAiEvidencePackage,localAnswerFromEvidence} from './aiIntelligenceMiddleware';
 import type {AiEvidencePackage} from './intelligenceTypes';
+import {decideAiResponse} from './aiResponseArbitration';
 
 const GEMINI_ENDPOINT='https://etf-butler-ai.locopy0121.workers.dev/';
 const REQUEST_TIMEOUT_MS=15000;
@@ -297,6 +298,10 @@ export async function answerWithGemini(
       researchEnabled,
     });
     evidence=await buildAiEvidencePackage({question,toolPlan,analysisContext,newsItems});
+    const decision=decideAiResponse(toolPlan,evidence);
+    if(decision.route!=='GEMINI'&&decision.text){
+      return {intent:'help',text:decision.text,sessionContext:toolPlan.session};
+    }
     const text=await requestGemini(
       question,
       buildSnapshot(holdings,portfolio,newsItems,entries,quotes),
