@@ -111,7 +111,15 @@ const knownCandidates=(runtime:CoreAiToolRuntime):SecurityCandidate[]=>{
   return rows;
 };
 
-const explicitSymbol=(question:string)=>question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/)?.[0]??null;
+const explicitSymbol=(question:string)=>{
+  const candidates=question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
+  return candidates.find(value=>{
+    const escaped=value.replace(/[.*+?^${}()|[\]\\]/g,'\\const explicitSymbol=(question:string)=>question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/)?.[0]??null;');
+    const looksLikeAmount=new RegExp(escaped+'\\s*(元|萬|千)').test(question)
+      ||new RegExp('(投入|加碼|金額|預算)\\s*(?:NT\\$|TWD|新台幣)?\\s*'+escaped,'i').test(question);
+    return !looksLikeAmount;
+  })??null;
+};
 const hasMarketIntent=(question:string)=>/(股價|行情|價格|現價|走勢|漲跌|開盤|收盤|今天|現在|最近怎樣|成交)/i.test(question);
 const hasHoldingIntent=(question:string)=>/(我有幾張|我有幾股|持有多少|我的持股|成本|我的.*損益|我的.*市值)/i.test(question);
 const hasKnownSecurityHint=(question:string,known:readonly SecurityCandidate[])=>{
@@ -141,7 +149,8 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
   const resolver=runtime.resolveSecurity??resolveSecurity;
   let security=runtime.session?.activeSecurity??null;
 
-  if(hasExplicitSecurityHint(question,known)){
+  const referenceOnly=/^(那|它|這檔|這個|這支|剛剛|前面)/.test(question.trim());
+  if(hasExplicitSecurityHint(question,known)&&!(runtime.session?.activeSecurity&&referenceOnly)){
     try{
       const resolved=await resolver(question,known);
       if(resolved){
