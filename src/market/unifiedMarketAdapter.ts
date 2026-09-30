@@ -38,7 +38,17 @@ export function normalizeUnifiedIntradaySeries(
   const points=[...byAt.values()].sort((a,b)=>a.at-b.at);
   const previousClose=typeof value.previousClose==='number'&&Number.isFinite(value.previousClose)&&value.previousClose>0
     ?value.previousClose:null;
-  return points.length?{date:value.date,previousClose,points}:null;
+  // An explicit empty series is meaningful: the Market Center has rolled to
+  // a new trading day at open and is waiting for the first valid trade point.
+  return {date:value.date,previousClose,points};
+}
+
+export function marketIntradaySessionDateChanged(
+  previous:readonly RuntimeQuote[],next:readonly RuntimeQuote[],
+){
+  const prior=new Map(previous.map(row=>[row.symbol,row.intradayDate??null] as const));
+  return next.some(row=>prior.has(row.symbol)
+    &&prior.get(row.symbol)!==(row.intradayDate??null));
 }
 
 export function isTrustedMarketRow(value:unknown,now=Date.now()):value is UnifiedMarketRow{

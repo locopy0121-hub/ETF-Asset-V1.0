@@ -18,7 +18,7 @@ import { FALLBACK_QUOTES, type RuntimeIntradayPoint, type RuntimeQuote } from '.
 import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwsePriceDecision, resolveTwsePreviousClose } from './twseQuoteParser';
 import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
 import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData,setNativeMarketBackendUrl} from '../native/TfAssetNativeBridge';
-import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
+import {marketIntradaySessionDateChanged,marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
 import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
 export type { EtfCatalogItem } from './etfMetadata';
@@ -409,15 +409,21 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
               const state=await refreshUnifiedMarketData(symbolsRef.current);
               const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
               const currentVersion=marketVersionRef.current;
+              const sessionDateChanged=marketIntradaySessionDateChanged(quotesRef.current,next);
               const nextMissing=Array.isArray(state.missing)?state.missing:[];
               setMissingSymbols(current=>sameStrings(current,nextMissing)?current:nextMissing);
-              if(state.version>currentVersion){
+              // A 09:00 session rollover can change the intraday view without
+              // accepting a newer quote row, so it must not be gated only by
+              // the SQLite quote version.
+              if(state.version>currentVersion||sessionDateChanged){
                 quotesRef.current=next;
                 setQuotes(next);
-                marketVersionRef.current=state.version;
-                setMarketDataVersion(state.version);
-                const newest=next.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
-                if(newest>0)setLastSuccessAt(current=>Math.max(current??0,newest));
+                if(state.version>currentVersion){
+                  marketVersionRef.current=state.version;
+                  setMarketDataVersion(state.version);
+                  const newest=next.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
+                  if(newest>0)setLastSuccessAt(current=>Math.max(current??0,newest));
+                }
               }
               if(next.length===0){
                 setLastError('交易所尚無可核實行情；原始帳務資料不受影響');
@@ -426,7 +432,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
               const missing=Array.isArray(state.missing)?state.missing:[];
               const errors=Array.isArray(state.errors)?state.errors:[];
               setLastError(missing.length?'行情中心尚缺 '+missing.join('、'):(errors.length?errors[0]??null:null));
-              return state.updatedCount&&state.updatedCount>0?'updated':'unchanged';
+              return (state.updatedCount&&state.updatedCount>0)||sessionDateChanged?'updated':'unchanged';
             }
             const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
             if(result.usableCount<=0)throw new Error('TWSE 無可靠報價時間或可用行情');
