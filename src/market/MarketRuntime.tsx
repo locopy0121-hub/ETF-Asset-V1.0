@@ -43,7 +43,7 @@ export const DEFAULT_MARKET_UPDATE: MarketUpdateConfig = {
   scheduleEnabled: true,
   refreshOnForeground: true,
   stopAll: false,
-  live: { enabled: true, start: '09:00', end: '13:30', refreshSeconds: 5 },
+  live: { enabled: true, start: '09:00', end: '13:30', refreshSeconds: 1 },
   afterHours: { enabled: true, start: '13:31', end: '18:00', refreshSeconds: 60 },
 };
 
@@ -274,6 +274,7 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
+  const [phase,setPhase]=useState<MarketPhase>(()=>resolveMarketPhase(DEFAULT_MARKET_UPDATE));
   const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[]);
   const [marketDataVersion,setMarketDataVersion]=useState(0);
   const marketVersionRef=useRef(0);
@@ -358,7 +359,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const persistedLastSuccessAt=unifiedMarketCenterAvailable?null:lastSuccessAt;
   useEffect(()=>{
     if(!hydrated)return;
-    // Native quotes live in SQLite. Do not serialize the full ETF catalog every 5-second quote tick.
+    // Native quotes live in SQLite. Do not serialize the full ETF catalog on every scheduled quote tick.
     const payload:PersistedMarketState={
       schema:1,quoteClockVersion:2,config,quotes:persistedQuotes,
       lastSuccessAt:persistedLastSuccessAt,catalog,catalogFetchedAt,
@@ -516,7 +517,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     return()=>{closed=true;sub.remove();socket?.close();};
   },[hydrated,config.backendUrl,trackedSymbols,refresh]);
 
-  const phase=resolveMarketPhase(config);
+  useEffect(()=>{
+    setPhase(resolveMarketPhase(config));
+  },[config]);
 
   useEffect(()=>{
     if(hydrated&&shouldRefreshEtfCatalog(catalogFetchedAt))void refreshCatalog();
@@ -537,11 +540,35 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
-    const seconds=marketRefreshSeconds(config,phase);
-    if(seconds<=0)return;
-    const timer=setInterval(()=>{if(AppState.currentState==='active')void refresh({silent:true});},seconds*1000);
-    return()=>clearInterval(timer);
-  },[hydrated,config,phase,refresh]);
+    let disposed=false;
+    let lastPhase:MarketPhase|null=null;
+    let nextDueAt=0;
+    const tick=()=>{
+      const currentPhase=resolveMarketPhase(config);
+      setPhase(current=>current===currentPhase?current:currentPhase);
+      if(disposed||AppState.currentState!=='active')return;
+      const seconds=marketRefreshSeconds(config,currentPhase);
+      if(seconds<=0){
+        lastPhase=currentPhase;
+        nextDueAt=0;
+        return;
+      }
+      const now=Date.now();
+      if(currentPhase!==lastPhase){
+        lastPhase=currentPhase;
+        nextDueAt=0;
+      }
+      if(now<nextDueAt)return;
+      nextDueAt=now+seconds*1000;
+      void refresh({silent:true});
+    };
+    tick();
+    // One-second scheduler heartbeat guarantees a 09:00 phase transition is
+    // noticed even when the App stays open across the market boundary. Network
+    // refresh cadence still follows the configured phase interval.
+    const timer=setInterval(tick,1000);
+    return()=>{disposed=true;clearInterval(timer);};
+  },[hydrated,config,refresh]);
 
   useEffect(()=>{
     if(!config.refreshOnForeground)return;
