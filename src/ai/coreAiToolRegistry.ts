@@ -109,6 +109,7 @@ export type TransactionToolRow=Readonly<{
 export type TransactionsToolData=Readonly<{
   security:ResolvedSecurity|null;
   limit:number;
+  kinds:readonly TransactionToolRow['kind'][];
   rows:readonly TransactionToolRow[];
 }>;
 
@@ -196,6 +197,12 @@ const hasPortfolioSummaryIntent=(question:string,security:ResolvedSecurity|null)
 const requestedLimit=(question:string,defaultValue=5)=>{
   const value=Number(question.match(/最近\s*(\d{1,2})\s*筆/)?.[1]??defaultValue);
   return Math.max(1,Math.min(50,Number.isFinite(value)?Math.floor(value):defaultValue));
+};
+const requestedLedgerKinds=(question:string):readonly TransactionToolRow['kind'][]=>{
+  if(/(買了|買進|買入)/i.test(question))return ['buy'];
+  if(/(賣出|賣掉)/i.test(question))return ['sell'];
+  if(/帳務/i.test(question))return ['buy','sell','dividend','other'];
+  return ['buy','sell'];
 };
 const dividendPeriod=(question:string):DividendsToolData['period']=>
   /(本月|這個月)/i.test(question)?'CURRENT_MONTH':
@@ -318,7 +325,9 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
 
   if(hasTransactionIntent(question)&&runtime.entries){
     const limit=requestedLimit(question);
+    const kinds=requestedLedgerKinds(question);
     const rows=runtime.entries
+      .filter(entry=>kinds.includes(entry.kind))
       .filter(entry=>!security||('symbol' in entry&&entry.symbol===security.symbol))
       .slice()
       .sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))
@@ -335,7 +344,7 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
         };
         return {id:entry.id,date:entry.date,kind:'other',label:entry.label,cashFlow:calculateLedgerCashFlow(entry)};
       });
-    results.push(success<TransactionsToolData>('get_transactions',{security,limit,rows},'CANONICAL_LEDGER',{calculatedAt:now()}));
+    results.push(success<TransactionsToolData>('get_transactions',{security,limit,kinds,rows},'CANONICAL_LEDGER',{calculatedAt:now()}));
   }
 
   if(hasDividendIntent(question)&&runtime.entries){
