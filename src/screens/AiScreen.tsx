@@ -28,9 +28,18 @@ export function AiScreen(){
   return <><PageShell pageKey="ai" title="AI 助理" subtitle="財務資料與 App 操作型助理；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
     <PageEditorStack pageKey="ai" frames={[{key:'ai-news',element:
       <FrameCard title="AI 財務管家">
+        <View style={styles.overview}>
+          <View style={styles.overviewTile}><Text style={styles.overviewLabel}>持股</Text><Text style={styles.overviewValue}>{finance.holdings.length} 檔</Text></View>
+          <View style={styles.overviewTile}><Text style={styles.overviewLabel}>帳務</Text><Text style={styles.overviewValue}>{finance.entries.length} 筆</Text></View>
+          <View style={styles.overviewTile}><Text style={styles.overviewLabel}>新聞</Text><Text style={styles.overviewValue}>{ai.items.length} 則</Text></View>
+        </View>
+        <View style={styles.capabilityPanel}>
+          <Text style={styles.capabilityTitle}>可直接處理</Text>
+          <Text style={styles.capabilityText}>資產配置 · 持股排行 · 最近交易 · 單檔成本／損益 · 股息更新 · 持股新聞</Text>
+        </View>
         <AiQuestionBox
           title="直接詢問或下達資料整理指令"
-          suggestions={['你可以做什麼？','更新持股股息日','目前持股市值？','目前損益？','最近持股有什麼新聞？']}
+          suggestions={['你可以做什麼？','目前資產配置？','哪一檔賺最多？','最近 5 筆交易？','目前持股市值？','目前損益？','更新持股股息日','最近持股有什麼新聞？']}
           onAsk={ask}
           onAction={runAction}
         />
@@ -48,6 +57,13 @@ export function AiScreen(){
 }
 
 const styles=StyleSheet.create({
+  overview:{flexDirection:'row',gap:8},
+  overviewTile:{flex:1,paddingVertical:10,paddingHorizontal:10,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},
+  overviewLabel:{fontSize:9,fontWeight:'800',color:colors.textSecondary},
+  overviewValue:{fontSize:15,fontWeight:'900',color:colors.text,marginTop:2},
+  capabilityPanel:{padding:10,borderRadius:radius.md,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border,backgroundColor:'#F8FBFF'},
+  capabilityTitle:{fontSize:10,fontWeight:'900',color:colors.primary},
+  capabilityText:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:3},
   source:{flexDirection:'row',alignItems:'center',gap:spacing.sm,paddingTop:spacing.md,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
   sourceTitle:{fontSize:11,fontWeight:'900',color:colors.text},sourceText:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:3},
   error:{fontSize:10,color:colors.loss,marginTop:3},
