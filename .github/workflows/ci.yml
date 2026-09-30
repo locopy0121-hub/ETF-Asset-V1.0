@@ -32,7 +32,7 @@ jobs:
       - name: V3.2.21 aggregate gates
         run: npm run test:v3_2_21
       - name: Generate declared skill coverage matrix
-        run: npx tsx scripts/v3_0_14-full-engineer-audit.test.ts
+        run: npx tsx scripts/v3_2_21-skill-report.ts
       - name: Upload mandatory complete skill coverage report
         uses: actions/upload-artifact@v4
         with:
@@ -137,7 +137,7 @@ jobs:
         run: npm run test:v3_2_21
 
       - name: Generate declared skill coverage matrix for APK evidence
-        run: npx tsx scripts/v3_0_14-full-engineer-audit.test.ts
+        run: npx tsx scripts/v3_2_21-skill-report.ts
 
       - name: Create pure React Native Android build workspace
         run: |
