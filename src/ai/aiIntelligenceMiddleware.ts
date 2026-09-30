@@ -597,32 +597,144 @@ const formatMetric=(row:AiMetricEvidence)=>{
   return null;
 };
 
+const ingredientLabel:Readonly<Record<AiIngredientKey,string>>={
+  SECURITY_IDENTITY:'證券身分',
+  MARKET_QUOTE:'市場行情',
+  HISTORICAL_PRICES:'官方歷史行情',
+  MARKET_DIVIDENDS:'市場配息紀錄',
+  NAV:'淨值/iNAV',
+  ETF_META:'ETF 基本資料',
+  ETF_HOLDINGS:'ETF 成分股',
+  MARKET_NEWS:'外部新聞',
+  SECURITY_PROFILE:'上市/掛牌資料',
+  BENCHMARK_HISTORY:'追蹤指數歷史資料',
+  CAPITAL_CONTEXT:'使用者資本狀態',
+  TRANSACTIONS:'交易現金流',
+  PORTFOLIO_DIVIDENDS:'使用者已記錄股息',
+};
+
+const evidenceIdentity=(evidence:AiEvidencePackage,symbol:string)=>
+  evidence.ingredients.find(row=>row.ingredient==='SECURITY_IDENTITY'&&row.symbol===symbol);
+
+const targetLabel=(evidence:AiEvidencePackage,symbol:string)=>{
+  const identity=evidenceIdentity(evidence,symbol);
+  const name=String(identity?.details?.name??'').trim();
+  return name&&name!==symbol?symbol+' '+name:symbol;
+};
+
+const zhDateTime=(value:unknown)=>{
+  const text=String(value??'').trim();
+  const parsed=Date.parse(text);
+  if(!Number.isFinite(parsed))return text;
+  return new Date(parsed).toLocaleString('zh-TW',{
+    timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',
+  });
+};
+
+const rawSecurityMentions=(question:string)=>question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
+
+function unavailableReason(evidence:AiEvidencePackage){
+  if(!evidence.missingRequired.length)return '';
+  return '缺少'+evidence.missingRequired.map(key=>ingredientLabel[key]).join('、');
+}
+
 export function localAnswerFromEvidence(evidence:AiEvidencePackage):string|null{
+  if(evidence.recipeId==='SECURITY_PROFILE'){
+    const symbol=evidence.symbols[0];
+    if(!symbol)return '目前沒有辨識到要查詢的證券代號。';
+    const profile=evidence.ingredients.find(row=>row.ingredient==='SECURITY_PROFILE'&&row.symbol===symbol&&evidenceUsable(row));
+    if(profile){
+      const name=String(profile.details?.name??'').trim();
+      const listingDate=String(profile.details?.listingDate??'').trim();
+      const status=String(profile.details?.status??'UNKNOWN');
+      if(listingDate){
+        const verb=status==='PRELISTING'?'預計掛牌':'掛牌日期';
+        const sourceNote=profile.status==='VERIFIED'
+          ?'已取得出版社正文佐證'
+          :'目前只有外部來源線索，正文驗證層級仍不足';
+        return symbol+(name&&name!==symbol?' '+name:'')+' '+verb+'：'+listingDate+'。'+sourceNote+'，來源：'+profile.source+'。';
+      }
+    }
+    const identity=evidenceIdentity(evidence,symbol);
+    if(identity?.status==='VERIFIED'){
+      return targetLabel(evidence,symbol)+' 已可在 '+String(identity.details?.market??'市場')+' 已上市證券目錄中確認；但目前中繼層沒有取得可核實的原始掛牌日期。';
+    }
+    return symbol+' 目前尚未在 TF Asset 取得可核實的已上市身分或掛牌日期；可能尚未掛牌、代號尚未生效，或外部來源尚未同步。這種情況不應回覆成 Gemini 服務錯誤。';
+  }
+
   if(evidence.recipeId==='MARKET_PERFORMANCE'){
     const verified=evidence.metrics.map(formatMetric).filter((value):value is string=>Boolean(value));
     const period=evidence.metrics.find(row=>row.period)?.period;
     if(verified.length){
-      const target=evidence.symbols.join('、')||'該標的';
+      const target=evidence.symbols.map(symbol=>targetLabel(evidence,symbol)).join('、')||'該標的';
       const range=period?'（'+period.from+'～'+period.to+'）':'';
       const total=evidence.metrics.find(row=>row.metric==='TOTAL_RETURN');
       const caveat=total?.status==='UNAVAILABLE'?'；目前缺市場配息材料，因此未把價格報酬冒充含息總報酬':'';
       return target+' 官方歷史行情'+range+'：'+verified.join('｜')+caveat+'。';
     }
+    const symbol=evidence.symbols[0];
+    if(symbol){
+      const identity=evidenceIdentity(evidence,symbol);
+      const historyAttempt=evidence.acquisitionAttempts.find(row=>row.ingredient==='HISTORICAL_PRICES'&&row.symbol===symbol);
+      if(identity?.status!=='VERIFIED'){
+        return symbol+' 目前無法在官方已上市目錄中確認完整身分，而且沒有足夠的官方歷史行情，因此不能可靠估算今年年化報酬。請先確認代號或等待掛牌後有實際交易資料。';
+      }
+      if(historyAttempt&&historyAttempt.status!=='FETCHED'){
+        return targetLabel(evidence,symbol)+' 目前沒有足夠的官方日線資料可計算年化；TF Asset 不會用持股損益、模型記憶或猜測數字代替。';
+      }
+    }
   }
+
+  if(evidence.recipeId==='ETF_COMPARE'){
+    const mentions=rawSecurityMentions(evidence.question);
+    if(mentions.length>=2&&new Set(mentions).size===1){
+      return '你輸入的兩個代號都是 '+mentions[0]+'，屬於同一標的，沒有可比較的差異。請再提供另一檔 ETF 代號。';
+    }
+    if(evidence.symbols.length>=2){
+      const lines=evidence.symbols.map(symbol=>{
+        const metrics=evidence.metrics
+          .filter(row=>row.symbol===symbol)
+          .map(formatMetric)
+          .filter((value):value is string=>Boolean(value));
+        return metrics.length?targetLabel(evidence,symbol)+'：'+metrics.join('｜'):targetLabel(evidence,symbol)+'：目前缺少足夠且同口徑的市場材料';
+      });
+      const comparable=evidence.symbols.every(symbol=>evidence.metrics.some(row=>row.symbol===symbol&&row.status==='VERIFIED'));
+      return '同一套公式／市場資料口徑比較：\n'+lines.join('\n')+
+        (comparable?'。':'。目前材料未齊，不應強行判定哪一檔較好。');
+    }
+  }
+
   if(evidence.recipeId==='MARKET_NEWS'){
     const row=evidence.ingredients.find(item=>item.ingredient==='MARKET_NEWS'&&evidenceUsable(item));
-    const items=(row?.details?.items??[]) as Array<{title?:unknown;source?:unknown;publishedAt?:unknown}>;
-    const lines=items.slice(0,5).map((item,index)=>{
+    const items=(row?.details?.items??[]) as Array<{
+      title?:unknown;source?:unknown;publishedAt?:unknown;
+      articleBodyVerified?:unknown;highlights?:unknown;
+    }>;
+    const lines=items.slice(0,3).map((item,index)=>{
       const title=String(item.title??'').trim();
       const source=String(item.source??'').trim();
-      const date=String(item.publishedAt??'').trim();
-      return title?(index+1)+'. '+title+(source?'｜'+source:'')+(date?'｜'+date:''):null;
+      const date=zhDateTime(item.publishedAt);
+      const highlights=Array.isArray(item.highlights)
+        ?item.highlights.map(value=>String(value).trim()).filter(Boolean).slice(0,2)
+        :[];
+      if(!title)return null;
+      const summary=highlights.length?'\n   '+highlights.join(' '):'';
+      return (index+1)+'. '+title+(source?'｜'+source:'')+(date?'｜'+date:'')+summary;
     }).filter((value):value is string=>Boolean(value));
     if(lines.length){
-      const prefix=evidence.symbols.length?evidence.symbols.join('、')+' ':'';
-      const note=row?.status==='PARTIAL'?'目前為外部新聞標題／來源材料，正文尚未完成驗證。':'';
-      return prefix+'近期新聞材料：\n'+lines.join('\n')+(note?'\n'+note:'');
+      const prefix=evidence.symbols.length?evidence.symbols.map(symbol=>targetLabel(evidence,symbol)).join('、')+' ':'';
+      const note=row?.status==='PARTIAL'
+        ?'目前只有標題／來源可核實，未把標題自行擴寫成新聞內容。'
+        :'其中已有出版社正文可核實，摘要只取自實際正文。';
+      return prefix+'近期新聞：\n'+lines.join('\n')+'\n'+note;
     }
+    const symbol=evidence.symbols[0];
+    if(symbol)return targetLabel(evidence,symbol)+' 目前沒有取得與代號/名稱直接相關且可核實的近期新聞。';
+  }
+
+  if(evidence.recipeId!=='GENERAL'&&evidence.missingRequired.length){
+    return '目前這個問題的資料證據還不完整（'+unavailableReason(evidence)+'），TF Asset 不會把 Gemini 服務異常當成答案，也不會自行補猜市場數字。';
   }
   return null;
 }
