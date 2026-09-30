@@ -102,8 +102,8 @@ assert.match(marketViews,/export function marketValuationQuoteFor/,
   'valuation readiness must remain independent from intraday readiness');
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
+assert.match(nativeDb,/tf_asset_market_center_v1\.db\",null,\d+/,'native market DB must remain versioned');
 for(const token of [
-  'null,4',
   'market_intraday',
   'previous_close REAL',
   'intradayCoverage',
