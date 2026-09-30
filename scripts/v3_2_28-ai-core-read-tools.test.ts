@@ -74,7 +74,7 @@ assert.equal(general.results.length,0);
 
 const pending=await executeCoreAiReadTools('0051',{
   holdings,
-  quotes:[{...quotes[0],quality:'backup_realtime'}],
+  quotes:[{...quotes[0]!,quality:'backup_realtime'}],
   resolveSecurity:resolver,
 });
 assert.equal(pending.results.find(row=>row.tool==='get_quote')?.meta.verificationStatus,'PENDING');
