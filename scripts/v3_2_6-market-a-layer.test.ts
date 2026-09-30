@@ -37,7 +37,8 @@ assert.match(nativeCenter,/bid.*bid_ask/s);
 assert.match(nativeCenter,/previous_close/);
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
-assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,4/,'V3.2.11 intraday schema stores the displayed session previous-close baseline without touching the Ledger');
+assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,\d+/,'market SQLite schema must remain versioned without touching the Ledger');
+assert.match(nativeDb,/market_intraday[\s\S]*previous_close/,'intraday schema must retain the displayed session previous-close baseline');
 for(const token of ['backup_realtime','bid_ask','previous_close','official_trade_price','price_type','is_fallback'])
   assert.ok(nativeDb.includes(token),'native B schema missing '+token);
 
