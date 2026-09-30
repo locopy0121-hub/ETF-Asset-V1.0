@@ -1,4 +1,5 @@
 import type {AiNewsItem} from './AiNewsRuntime';
+import type {AiSessionContext} from './aiConversationTypes';
 import {formatDividendEvent,refreshHoldingDividendEvents,type HoldingDividendEvent} from './dividendAssistant';
 import {calculateLedgerCashFlow,type CanonicalLedgerEntry} from '../finance/canonicalLedger';
 
@@ -26,6 +27,7 @@ export type AiAssistantAnswer=Readonly<{
   intent:'capabilities'|'news'|'dividend-update'|'dividend'|'performance'|'market-value'|'allocation'|'ranking'|'ledger'|'holdings'|'holding-detail'|'help';
   text:string;
   actions?:readonly AiAssistantAction[];
+  sessionContext?:AiSessionContext;
 }>;
 
 type HoldingLike=Readonly<{
@@ -238,6 +240,6 @@ export async function answerAiQuestion(
 
   return {
     intent:'help',
-    text:'我目前還無法判斷這個指令。你可以直接問：\n「目前資產配置？」\n「哪一檔賺最多？」\n「最近 5 筆交易？」\n「0050 成本和損益？」\n「今年股息多少？」\n「更新持股股息日」\n「最近持股有什麼新聞？」',
+    text:'目前 Gemini 對話服務暫時沒有取得可用回答。本機資料工具仍可處理持股、行情、帳務、股息與新聞問題；你也可以稍後再重試一般對話。',
   };
 }
