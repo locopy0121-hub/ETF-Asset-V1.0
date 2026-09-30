@@ -307,8 +307,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         const parsed=JSON.parse(legacy) as Partial<PersistedMarketState>;
         if(parsed.schema===1){
           if(parsed.config){
+            const legacyLive={...DEFAULT_MARKET_UPDATE.live,...parsed.config.live};
+            // V3.2.17 changed the historical factory default from 5s to 1s.
+            // Migrate only that exact legacy default; preserve every other user choice.
+            const migratedLive=legacyLive.refreshSeconds===5?{...legacyLive,refreshSeconds:1}:legacyLive;
             const next={...DEFAULT_MARKET_UPDATE,...parsed.config,
-              live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},
+              live:migratedLive,
               afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}};
             // The persisted user-approved server URL is applied before the
             // first native read/refresh. Ledger migration is not involved.
