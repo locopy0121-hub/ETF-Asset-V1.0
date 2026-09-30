@@ -236,6 +236,12 @@ async function refreshQuoteFromMarketCenter(symbol:string):Promise<CoreAiQuote|n
   };
 }
 
+const explicitLocalActionRequested=(question:string)=>
+  /(更新持股股息日|更新股息日|更新配息日|掃描股息|檢查股息紀錄|未登錄股息)/i.test(question);
+
+const appDataFallbackRequested=(question:string)=>
+  /(目前|我的|我有|持股|資產配置|最近交易|交易紀錄|帳務紀錄|本月|這個月|今年|年度|累積股息|損益|報酬|市值|成本|幾張|幾股|哪一檔|哪個月|持股新聞)/i.test(question);
+
 export async function answerWithGemini(
   question:string,
   holdings:readonly HoldingLike[],
@@ -245,10 +251,12 @@ export async function answerWithGemini(
   quotes:readonly RuntimeQuote[]=[],
   session:AiSessionContext={activeTopic:'GENERAL'},
 ):Promise<AiAssistantAnswer>{
-  const local=await answerAiQuestion(question,holdings,portfolio,newsItems,entries);
-
-  // Existing Canonical write-related flows stay deterministic/local in this version.
-  if(local.intent==='dividend-update')return {...local,sessionContext:session};
+  // Keep the CURRENT App's explicit deterministic action path. Ordinary conversation
+  // must not be pre-classified by the legacy keyword parser before Gemini sees it.
+  if(explicitLocalActionRequested(question)){
+    const actionAnswer=await answerAiQuestion(question,holdings,portfolio,newsItems,entries);
+    if(actionAnswer.intent==='dividend-update')return {...actionAnswer,sessionContext:session};
+  }
 
   const toolPlan=await executeCoreAiReadTools(question,{
     holdings,
@@ -275,14 +283,30 @@ export async function answerWithGemini(
       analysisContext,
       toolPlan,
     );
-    return {...local,text,sessionContext:toolPlan.session};
+    return {intent:'help',text,sessionContext:toolPlan.session};
   }catch(error){
     console.warn('[TF Asset AI] using App-side fallback',error instanceof Error?error.message:String(error));
-    // Provider failure must not turn an understood quote/holding question back into
-    // the old fixed-command help screen. Use verified App-side Tool output first.
+
+    // First fallback is always the new App Tool result. This fixes ordinary
+    // non-holding quote questions without restoring the old command whitelist.
     const toolFallback=localAnswerFromCoreTools(toolPlan);
-    return {...local,text:toolFallback??local.text,sessionContext:toolPlan.session};
+    if(toolFallback)return {intent:'help',text:toolFallback,sessionContext:toolPlan.session};
+
+    // Existing deterministic answers remain useful when the user explicitly asks
+    // for their App data and the provider is unavailable. Do not use this path for
+    // general financial knowledge, because the old parser is not the AI brain.
+    if(appDataFallbackRequested(question)){
+      try{
+        const local=await answerAiQuestion(question,holdings,portfolio,newsItems,entries);
+        return {...local,sessionContext:toolPlan.session};
+      }catch{/* fall through to clean provider-unavailable answer */}
+    }
+
+    return {
+      intent:'help',
+      text:'目前 Gemini 對話服務暫時無法取得回答；TF Asset 本機資料與行情工具仍保持可用。請稍後再重試這個一般對話問題。',
+      sessionContext:toolPlan.session,
+    };
   }
 }
-
 export const GEMINI_ASSISTANT_ENDPOINT=GEMINI_ENDPOINT;
