@@ -411,11 +411,15 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
             if(unifiedMarketCenterAvailable){
               // Native App and Widget call the same official fetcher; one SQLite
               // transaction publishes a single versioned snapshot to every screen.
-              const state=await refreshUnifiedMarketData(symbolsRef.current);
+              // TWSE/backup sources may only WRITE through the native Market Center.
+              // App consumers never render a network response directly: after the
+              // native transaction finishes, read the authoritative SQLite snapshot.
+              const refreshMeta=await refreshUnifiedMarketData(symbolsRef.current);
+              const state=await loadUnifiedMarketData();
               const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
               const currentVersion=marketVersionRef.current;
               const sessionDateChanged=marketIntradaySessionDateChanged(quotesRef.current,next);
-              const nextMissing=Array.isArray(state.missing)?state.missing:[];
+              const nextMissing=Array.isArray(refreshMeta.missing)?refreshMeta.missing:[];
               setMissingSymbols(current=>sameStrings(current,nextMissing)?current:nextMissing);
               // A 09:00 session rollover can change the intraday view without
               // accepting a newer quote row, so it must not be gated only by
@@ -434,10 +438,10 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
                 setLastError('交易所尚無可核實行情；原始帳務資料不受影響');
                 return 'error';
               }
-              const missing=Array.isArray(state.missing)?state.missing:[];
-              const errors=Array.isArray(state.errors)?state.errors:[];
+              const missing=Array.isArray(refreshMeta.missing)?refreshMeta.missing:[];
+              const errors=Array.isArray(refreshMeta.errors)?refreshMeta.errors:[];
               setLastError(missing.length?'行情中心尚缺 '+missing.join('、'):(errors.length?errors[0]??null:null));
-              return (state.updatedCount&&state.updatedCount>0)||sessionDateChanged?'updated':'unchanged';
+              return (refreshMeta.updatedCount&&refreshMeta.updatedCount>0)||sessionDateChanged?'updated':'unchanged';
             }
             const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
             if(result.usableCount<=0)throw new Error('TWSE 無可靠報價時間或可用行情');

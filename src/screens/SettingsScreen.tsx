@@ -56,8 +56,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.2.18';
-const BUILD='30218';
+const VERSION='3.2.19';
+const BUILD='30219';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -820,11 +820,11 @@ function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastErr
   useEffect(()=>{setUrlDraft(config.backendUrl??'');},[config.backendUrl]);
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
   return <Panel title="行情資料中心（唯一行情入口）">
-    <StatusRow label="資料中心模式" value={config.backendUrl?'遠端 HTTPS 後端＋本機 SQLite':'本機官方資料中心（尚未部署後端）'}/>
+    <StatusRow label="資料中心模式" value={config.backendUrl?'遠端來源＋本機 SQLite 正式資料中心':'本機 SQLite 正式行情資料中心'}/>
     <StatusRow label="統一 SQLite 資料版本" value={String(marketDataVersion)}/>
     <StatusRow label="官方行情資料筆數" value={String(quoteCount)}/>
     <StatusRow label="待取得代號" value={missingSymbols.join('、')||'無'}/>
-    <Text style={styles.fieldLabel}>已部署的 HTTPS 資料中心網址</Text>
+    <Text style={styles.fieldLabel}>遠端行情資料中心網址（選填）</Text>
     <TextInput accessibilityLabel="行情資料中心 HTTPS 網址" style={styles.input} keyboardType="url"
       autoCapitalize="none" autoCorrect={false} placeholder="https://您的資料中心網域"
       value={urlDraft} onChangeText={setUrlDraft}/>
@@ -835,7 +835,7 @@ function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastErr
       }
       patch({backendUrl:endpoint});
     }}/>
-    <Text style={styles.note}>未部署時維持本機 SQLite 備援模式，不假裝已連接雲端。資料中心只接收 ETF 代號，不接收私密 Ledger。</Text>
+    <Text style={styles.note}>留空即使用 App 內建 SQLite 正式行情資料中心；遠端網址只是選用來源。TWSE／備援來源先寫入 SQLite，首頁、庫存、圖表、損益與 Widget 再統一讀取 SQLite，不直接讀網路回應。</Text>
     <StatusRow label="行情來源" value={config.source}/>
     <StatusRow label="最近成功" value={formatTime(lastSuccessAt)}/>
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
