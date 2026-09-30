@@ -142,7 +142,7 @@ async function postGemini(body:Record<string,unknown>,onDiagnostic?:DiagnosticSi
       responseBodyPreview:raw.replace(/\s+/g,' ').trim().slice(0,1800),
       stage:'response',
     });
-    if(!response.ok)throw new Error('Gemini HTTP '+response.status+(raw.trim()?': '+raw.replace(/\s+/g,' ').trim().slice(0,240):''));
+    if(!response.ok)throw new Error('Gemini HTTP '+response.status+'；請查看 AI 頁面的 Gemini 連線／格式診斷');
     try{return JSON.parse(raw);}catch{return raw;}
   }catch(error){
     if(!receivedResponse)onDiagnostic?.({
