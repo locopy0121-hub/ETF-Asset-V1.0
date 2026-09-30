@@ -30,10 +30,9 @@ assert.match(runtime,/if\(now<nextDueAt\)return;[\s\S]*?nextDueAt=now\+seconds\*
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.17');
-assert.equal(app.expo.version,'3.2.17');
-assert.equal(app.expo.android.versionCode,30217);
-assert.equal(app.expo.ios.buildNumber,'30217');
+assert.equal(pkg.version,app.expo.version,'package/app semantic versions must stay aligned');
+assert.ok(Number(app.expo.android.versionCode)>=30217,'V3.2.17 scheduler regression requires build 30217 or newer');
+assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode),'iOS/Android build identities must stay aligned');
 assert.equal(pkg.scripts['test:v3_2_17'],
   'npm run test:v3_2_16 && tsx scripts/v3_2_17-live-market-scheduler.test.ts');
 
