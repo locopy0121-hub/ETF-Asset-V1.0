@@ -25,7 +25,7 @@ export function PortfolioAllocationDonut({rows,totalMarketValue,valuationComplet
       symbol:item.symbol,
       value:item.marketValue,
       ratio:denominator>0?item.marketValue/denominator:0,
-      color:PALETTE[index%PALETTE.length],
+      color:PALETTE[index%PALETTE.length]??'#55C6E8',
     }));
   },[rows]);
   let offset=0;
