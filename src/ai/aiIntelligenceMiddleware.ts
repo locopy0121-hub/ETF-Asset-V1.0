@@ -257,7 +257,9 @@ async function acquireMissing(
   acquirer:AiIngredientAcquirer,
 ):Promise<Map<string,readonly DailyCandle[]>>{
   const history=new Map<string,readonly DailyCandle[]>();
-  const needsHistory=plan.requirements.some(row=>row.ingredient==='HISTORICAL_PRICES');
+  const mentions=plan.question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
+  const selfComparison=plan.recipe.id==='ETF_COMPARE'&&mentions.length>=2&&new Set(mentions).size===1;
+  const needsHistory=!selfComparison&&plan.requirements.some(row=>row.ingredient==='HISTORICAL_PRICES');
   if(needsHistory){
     for(const symbol of plan.symbols){
       if(evidenceUsable(findEvidence(evidence,'HISTORICAL_PRICES',symbol)))continue;
