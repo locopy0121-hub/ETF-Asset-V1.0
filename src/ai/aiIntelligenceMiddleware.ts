@@ -298,24 +298,32 @@ async function acquireMissing(
   if(needsNews){
     for(const symbol of plan.symbols){
       if(evidenceUsable(findEvidence(evidence,'MARKET_NEWS',symbol)))continue;
-      const name=symbol;
+      const name=securityNameFor(symbol,evidence);
       try{
         const rows=await acquirer.fetchNews(symbol,name);
         if(rows.length){
           const newest=rows.map(row=>Date.parse(row.publishedAt||'')).filter(Number.isFinite).sort((a,b)=>b-a)[0];
+          const bodyVerified=rows.some(row=>row.articleBodyVerified===true&&Boolean(row.highlights?.length));
           upsertEvidence(evidence,{
             ingredient:'MARKET_NEWS',
             symbol,
-            status:'PARTIAL',
-            source:'GOOGLE_NEWS_RSS',
+            status:bodyVerified?'VERIFIED':'PARTIAL',
+            source:bodyVerified?'PUBLISHER_ARTICLE+GOOGLE_NEWS_DISCOVERY':'GOOGLE_NEWS_RSS',
             fetchedAt:nowIso(),
             ...(newest?{observedAt:new Date(newest).toISOString()}:{}),
-            summary:'外部新聞中繼取得 '+rows.length+' 筆標題/來源材料；正文尚未驗證',
-            details:{articleBodyVerified:false,items:externalNewsToDetails(rows)},
+            summary:bodyVerified
+              ?'外部新聞中繼取得 '+rows.length+' 筆相關材料，且已有出版社正文驗證'
+              :'外部新聞中繼取得 '+rows.length+' 筆相關標題/來源材料；正文尚未驗證',
+            details:{articleBodyVerified:bodyVerified,items:externalNewsToDetails(rows)},
           });
-          attempts.push({ingredient:'MARKET_NEWS',symbol,source:'GOOGLE_NEWS_RSS',status:'FETCHED',message:'已取得標題、來源與發布時間；正文需另行驗證'});
+          attempts.push({
+            ingredient:'MARKET_NEWS',symbol,
+            source:bodyVerified?'PUBLISHER_ARTICLE+GOOGLE_NEWS_DISCOVERY':'GOOGLE_NEWS_RSS',
+            status:'FETCHED',
+            message:bodyVerified?'已取得並驗證部分出版社正文':'已取得標題、來源與發布時間；正文仍待驗證',
+          });
         }else{
-          attempts.push({ingredient:'MARKET_NEWS',symbol,source:'GOOGLE_NEWS_RSS',status:'UNAVAILABLE',message:'沒有取得相關新聞'});
+          attempts.push({ingredient:'MARKET_NEWS',symbol,source:'GOOGLE_NEWS_RSS',status:'UNAVAILABLE',message:'沒有取得與代號/名稱直接相關的新聞'});
         }
       }catch(error){
         attempts.push({
@@ -326,9 +334,56 @@ async function acquireMissing(
     }
   }
 
+  const needsProfile=plan.requirements.some(row=>row.ingredient==='SECURITY_PROFILE');
+  if(needsProfile){
+    for(const symbol of plan.symbols){
+      if(evidenceUsable(findEvidence(evidence,'SECURITY_PROFILE',symbol)))continue;
+      const name=securityNameFor(symbol,evidence);
+      if(!acquirer.fetchSecurityProfile){
+        attempts.push({ingredient:'SECURITY_PROFILE',symbol,source:'TF_ASSET_PROFILE_DISCOVERY',status:'NO_PROVIDER',message:'沒有可用的上市/掛牌資料 Provider'});
+        continue;
+      }
+      try{
+        const profile=await acquirer.fetchSecurityProfile(symbol,name);
+        if(profile){
+          upsertEvidence(evidence,{
+            ingredient:'SECURITY_PROFILE',
+            symbol,
+            status:profile.articleBodyVerified?'VERIFIED':'PARTIAL',
+            source:profile.source,
+            fetchedAt:nowIso(),
+            ...(profile.publishedAt?{observedAt:profile.publishedAt}:{}),
+            summary:profile.listingDate
+              ?profile.symbol+' '+profile.name+' '+(profile.status==='PRELISTING'?'預計':'')+'掛牌日期 '+profile.listingDate
+              :profile.symbol+' '+profile.name+' 上市狀態資料',
+            details:{
+              name:profile.name,
+              status:profile.status,
+              ...(profile.listingDate?{listingDate:profile.listingDate}:{}),
+              sourceUrl:profile.sourceUrl,
+              articleBodyVerified:profile.articleBodyVerified,
+              evidenceText:profile.evidenceText,
+            },
+          });
+          attempts.push({
+            ingredient:'SECURITY_PROFILE',symbol,source:profile.source,status:'FETCHED',
+            message:profile.articleBodyVerified?'已由出版社正文取得上市/掛牌事實':'僅由標題層取得上市/掛牌線索',
+          });
+        }else{
+          attempts.push({ingredient:'SECURITY_PROFILE',symbol,source:'TF_ASSET_PROFILE_DISCOVERY',status:'UNAVAILABLE',message:'找不到可核實的上市/掛牌資料'});
+        }
+      }catch(error){
+        attempts.push({
+          ingredient:'SECURITY_PROFILE',symbol,source:'TF_ASSET_PROFILE_DISCOVERY',status:'FAILED',
+          message:error instanceof Error?error.message:String(error),
+        });
+      }
+    }
+  }
+
   const required=plan.requirements.filter(row=>row.required);
   for(const requirement of required){
-    if(requirement.ingredient==='HISTORICAL_PRICES'||requirement.ingredient==='MARKET_NEWS')continue;
+    if(['HISTORICAL_PRICES','MARKET_NEWS','SECURITY_PROFILE'].includes(requirement.ingredient))continue;
     const has=plan.symbols.length
       ?plan.symbols.some(symbol=>evidenceUsable(findEvidence(evidence,requirement.ingredient,symbol)))
         ||evidenceUsable(findEvidence(evidence,requirement.ingredient))
