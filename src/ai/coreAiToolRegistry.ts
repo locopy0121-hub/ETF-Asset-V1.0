@@ -114,9 +114,19 @@ const knownCandidates=(runtime:CoreAiToolRuntime):SecurityCandidate[]=>{
 const explicitSymbol=(question:string)=>question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/)?.[0]??null;
 const hasMarketIntent=(question:string)=>/(股價|行情|價格|現價|走勢|漲跌|開盤|收盤|今天|現在|最近怎樣|成交)/i.test(question);
 const hasHoldingIntent=(question:string)=>/(我有幾張|我有幾股|持有多少|我的持股|成本|我的.*損益|我的.*市值)/i.test(question);
-const hasExplicitSecurityHint=(question:string)=>Boolean(explicitSymbol(question))
-  ||/(股票|ETF|股價|行情|現價|配息|股息|幾張|幾股|成本|市值)/i.test(question)
-  ||(question.trim().length>=2&&question.trim().length<=12&&/[\u4e00-\u9fff]/.test(question));
+const hasKnownSecurityHint=(question:string,known:readonly SecurityCandidate[])=>{
+  const normalized=question.trim().toUpperCase().replace(/\s+/g,'');
+  return known.some(row=>{
+    const name=row.name.trim().toUpperCase().replace(/\s+/g,'');
+    return name.length>=2&&normalized.includes(name);
+  });
+};
+const looksLikeGeneralKnowledge=(question:string)=>/(什麼是|是什麼|意思|原理|定義|為什麼|如何|怎麼|差別)/i.test(question);
+const hasExplicitSecurityHint=(question:string,known:readonly SecurityCandidate[])=>Boolean(explicitSymbol(question))
+  ||hasKnownSecurityHint(question,known)
+  ||(!looksLikeGeneralKnowledge(question)
+    &&(/(股價|行情|現價|走勢|漲跌|配息|股息|幾張|幾股|成本|市值)/i.test(question)
+      ||(question.trim().length>=2&&question.trim().length<=12&&/[\u4e00-\u9fff]/.test(question))));
 
 function success<T>(tool:string,data:T,source:string,extra:Partial<AiToolResult<T>['meta']>={}):AiToolResult<T>{
   return {ok:true,tool,version:1,data,meta:{source,fetchedAt:now(),...extra}};
@@ -131,7 +141,7 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
   const resolver=runtime.resolveSecurity??resolveSecurity;
   let security=runtime.session?.activeSecurity??null;
 
-  if(hasExplicitSecurityHint(question)){
+  if(hasExplicitSecurityHint(question,known)){
     try{
       const resolved=await resolver(question,known);
       if(resolved){
