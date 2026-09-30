@@ -75,7 +75,7 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
     },
   }),[safePosition.x,safePosition.y,maxX,maxY,mode]);
 
-  const ask=(question:string)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes);
+  const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   if(!deriveAiUiState(aiSettings.prefs.ai,'home').showFloatingAi)return null;
