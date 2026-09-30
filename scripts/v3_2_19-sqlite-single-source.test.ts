@@ -20,10 +20,9 @@ assert.match(settings,/TWSE／備援來源先寫入 SQLite，首頁、庫存、�
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.19');
-assert.equal(app.expo.version,'3.2.19');
-assert.equal(app.expo.android.versionCode,30219);
-assert.equal(app.expo.ios.buildNumber,'30219');
+assert.equal(pkg.version,app.expo.version,'package/app semantic versions must stay aligned');
+assert.ok(Number(app.expo.android.versionCode)>=30219,'V3.2.19 SQLite single-source regression requires build 30219 or newer');
+assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode),'iOS/Android build identities must stay aligned');
 assert.equal(pkg.scripts['test:v3_2_19'],'npm run test:v3_2_18 && tsx scripts/v3_2_19-sqlite-single-source.test.ts');
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])

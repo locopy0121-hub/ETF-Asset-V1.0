@@ -51,6 +51,7 @@ export function MarketComparisonPanel({
   const [probeError,setProbeError]=useState<string|null>(null);
   const [logs,setLogs]=useState<ComparisonLog[]>([]);
   const [hydrated,setHydrated]=useState(false);
+  const [clock,setClock]=useState(()=>Date.now());
 
   useEffect(()=>{
     let alive=true;
@@ -86,6 +87,9 @@ export function MarketComparisonPanel({
   const centerPrice=centerRow?.currentPrice??null;
   const officialPrice=official?.symbol===normalized?official.price:null;
   const diagnosis=diagnoseMarketComparison({appPrice,officialPrice,centerPrice});
+  const officialLag=official?.sourceQuoteAt&&centerRow?.sourceQuoteAt
+    ?Math.max(0,official.sourceQuoteAt-centerRow.sourceQuoteAt):null;
+  const centerAge=centerRow?.sourceQuoteAt?Math.max(0,clock-centerRow.sourceQuoteAt):null;
 
   useEffect(()=>{
     if(!hydrated)return;
@@ -113,6 +117,11 @@ export function MarketComparisonPanel({
     }finally{
       if(normalizedRef.current===requestSymbol)setProbeLoading(false);
     }
+  },[]);
+
+  useEffect(()=>{
+    const timer=setInterval(()=>setClock(Date.now()),1000);
+    return()=>clearInterval(timer);
   },[]);
 
   useEffect(()=>{
@@ -198,6 +207,9 @@ export function MarketComparisonPanel({
       <CompareRow label="行情中心說明" value={centerRow?.statusMessage??'尚無'}/>
       <CompareRow label="行情中心來源時間" value={formatTime(centerRow?.sourceQuoteAt)}/>
       <CompareRow label="行情中心檢查時間" value={formatTime(centerRow?.checkedAt)}/>
+      <CompareRow label="行情中心距來源時間" value={centerAge===null?'—':Math.round(centerAge/1000)+' 秒'}/>
+      <CompareRow label="官方 ↔ SQLite 來源時差" value={officialLag===null?'—':Math.round(officialLag/1000)+' 秒'}/>
+      <CompareRow label="同步判定" value={officialLag===null?'等待官方來源時間':officialLag<=2000?'同步':'SQLite 待追上'}/>
       <CompareRow label="資料版本" value={'#'+marketDataVersion}/>
     </View>
 
