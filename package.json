@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.22",
+  "version": "3.2.23",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -260,7 +260,8 @@
     "test:v3_2_19": "npm run test:v3_2_18 && tsx scripts/v3_2_19-sqlite-single-source.test.ts",
     "test:v3_2_20": "npm run test:v3_2_19 && tsx scripts/v3_2_20-live-freshness-stability.test.ts",
     "test:v3_2_21": "npm run test:v3_2_20 && node scripts/v3_2_21-allocation-donut.test.cjs",
-    "test:v3_2_22": "npm run test:v3_2_21 && tsx scripts/v3_2_22-dividend-calendar-ui.test.ts"
+    "test:v3_2_22": "npm run test:v3_2_21 && tsx scripts/v3_2_22-dividend-calendar-ui.test.ts",
+    "test:v3_2_23": "npm run test:v3_2_22 && tsx scripts/v3_2_23-ai-capability-hub.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
