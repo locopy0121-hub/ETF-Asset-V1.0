@@ -3,6 +3,7 @@ import {Pressable,StyleSheet,Text,View} from 'react-native';
 
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {type AiAssistantAction} from '../ai/aiAssistant';
+import type {AiSessionContext} from '../ai/aiConversationTypes';
 import {answerWithGemini} from '../ai/geminiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
 import {AiQuestionBox} from '../components/AiQuestionBox';
@@ -21,7 +22,7 @@ export function AiScreen(){
   const finance=useFinance();
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const ask=(question:string)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes);
+  const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
