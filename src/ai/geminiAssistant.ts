@@ -123,6 +123,7 @@ async function postGemini(body:Record<string,unknown>,onDiagnostic?:DiagnosticSi
     payloadBytes:new TextEncoder().encode(serialized).length,
   };
   onDiagnostic?.({...base,status:null,statusText:null,responseContentType:null,responseBodyPreview:'',stage:'request'});
+  let receivedResponse=false;
   try{
     const response=await fetch(GEMINI_ENDPOINT,{
       method:'POST',
@@ -130,6 +131,7 @@ async function postGemini(body:Record<string,unknown>,onDiagnostic?:DiagnosticSi
       signal:controller.signal,
       body:serialized,
     });
+    receivedResponse=true;
     const raw=await response.text();
     const contentType=response.headers.get('content-type');
     onDiagnostic?.({
@@ -143,7 +145,7 @@ async function postGemini(body:Record<string,unknown>,onDiagnostic?:DiagnosticSi
     if(!response.ok)throw new Error('Gemini HTTP '+response.status+(raw.trim()?': '+raw.replace(/\s+/g,' ').trim().slice(0,240):''));
     try{return JSON.parse(raw);}catch{return raw;}
   }catch(error){
-    onDiagnostic?.({
+    if(!receivedResponse)onDiagnostic?.({
       ...base,status:null,statusText:null,responseContentType:null,
       responseBodyPreview:error instanceof Error?error.message:String(error),
       stage:'network-error',
