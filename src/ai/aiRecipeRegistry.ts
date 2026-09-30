@@ -216,7 +216,7 @@ export function resolveAiRecipe(question:string):AiRecipe{
   }
   if(/(新聞|消息|公告|近期動態|消息面)/i.test(text))return RECIPES.MARKET_NEWS;
   if(/(上市|掛牌|何時上市|何時掛牌|募集|開募|成立日期|成立時間|發行日期|發行時間)/i.test(text))return RECIPES.SECURITY_PROFILE;
-  if(/(比較|對比|vs\.?|差異|差別|重疊|哪一檔)/i.test(text)||(symbols.length>=2&&/(跟|和|與)/.test(text)){
+  if(/(比較|對比|vs\.?|差異|差別|重疊|哪一檔)/i.test(text)||(symbols.length>=2&&/(跟|和|與)/.test(text))){
     return RECIPES.ETF_COMPARE;
   }
   if(/(近期表現|最近表現|績效|報酬|年化|波動|回撤|近\s*\d+\s*(?:天|日|週|月|年)|YTD|今年表現)/i.test(text)){
