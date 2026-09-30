@@ -5,7 +5,7 @@ import type {RuntimeQuote} from '../finance/financeSeed';
 import {buildAnalysisContext,extractInvestmentAmount,extractTargetSymbol} from './buildAnalysisContext';
 import type {AiHoldingProjection,AnalysisContext} from './analysisTypes';
 import type {AiSessionContext} from './aiConversationTypes';
-import {executeCoreAiReadTools,localAnswerFromCoreTools,type CoreAiQuote,type CoreAiToolPlan} from './coreAiToolRegistry';
+import {executeCoreAiReadTools,localAnswerFromCoreTools,type CoreAiAssetSummary,type CoreAiQuote,type CoreAiToolPlan} from './coreAiToolRegistry';
 import {refreshUnifiedMarketData,unifiedMarketCenterAvailable} from '../native/TfAssetNativeBridge';
 
 const GEMINI_ENDPOINT='https://etf-butler-ai.locopy0121.workers.dev/';
@@ -128,10 +128,15 @@ function compactGrounding(
     ?snapshot.news.filter(row=>!target||row.symbol===target).slice(0,10)
     :[];
 
-  const holdings=wantsPrivate
+  const toolNames=new Set(toolPlan.results.filter(row=>row.ok).map(row=>row.tool));
+  const holdingToolCovered=toolNames.has('get_holding_detail')&&Boolean(target);
+  const portfolioToolCovered=toolNames.has('get_portfolio_summary');
+  const ledgerToolCovered=toolNames.has('get_transactions')||toolNames.has('get_dividends');
+
+  const holdings=wantsPrivate&&!holdingToolCovered&&!portfolioToolCovered
     ?snapshot.holdings.filter(row=>!target||row.symbol===target)
     :[];
-  const ledger=wantsLedger
+  const ledger=wantsLedger&&!ledgerToolCovered
     ?snapshot.ledger.filter(entry=>!target||!('symbol' in entry)||entry.symbol===target).slice(-12)
     :[];
 
@@ -148,7 +153,7 @@ function compactGrounding(
       activeTopic:toolPlan.session.activeTopic??'GENERAL',
     },
     toolResults:toolPlan.results,
-    portfolio:wantsPrivate?snapshot.portfolio:null,
+    portfolio:wantsPrivate&&!portfolioToolCovered&&!holdingToolCovered?snapshot.portfolio:null,
     holdings,
     market,
     ledger,
@@ -250,6 +255,7 @@ export async function answerWithGemini(
   entries:readonly CanonicalLedgerEntry[]=[],
   quotes:readonly RuntimeQuote[]=[],
   session:AiSessionContext={activeTopic:'GENERAL'},
+  assetSummary?:CoreAiAssetSummary,
 ):Promise<AiAssistantAnswer>{
   // Keep the CURRENT App's explicit deterministic action path. Ordinary conversation
   // must not be pre-classified by the legacy keyword parser before Gemini sees it.
@@ -261,6 +267,8 @@ export async function answerWithGemini(
   const toolPlan=await executeCoreAiReadTools(question,{
     holdings,
     quotes,
+    entries,
+    ...(assetSummary?{assetSummary}:{}),
     session,
     refreshQuote:refreshQuoteFromMarketCenter,
   });
