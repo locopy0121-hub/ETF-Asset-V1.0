@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
+import {PortfolioAllocationDonut} from '../components/PortfolioAllocationDonut';
 import {PortfolioHoldingTable} from '../components/PortfolioHoldingTable';
 import {DEFAULT_ETF_BADGES,todayEtfReminderMap,type EtfBadgeConfig} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST,type PortfolioListConfig} from '../domain/portfolioList';
@@ -153,11 +154,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
         },
         {key:'allocation',element:
           <FrameCard title="資產配置">
-            {!valuationComplete?<Text style={styles.tableRule}>部分持股尚缺官方行情；資產占比暫不顯示，帳務成本仍保留。</Text>:null}
-            {valuationComplete?sorted.map(item=><View key={item.symbol} style={styles.allocationRow}>
-              <View style={styles.allocationLabel}><Text style={styles.allocationSymbol}>{item.symbol}</Text><Text style={styles.allocationPct}>{item.weight.toFixed(1)}%</Text></View>
-              <View style={styles.track}><View style={[styles.fill,{width:`${Math.min(100,Math.max(0,item.weight))}%`}]}/></View>
-            </View>):null}
+            <PortfolioAllocationDonut rows={sorted} totalMarketValue={portfolio.totalMarketValue} valuationComplete={valuationComplete}/>
           </FrameCard>
         },
         {key:'holding-view',element:

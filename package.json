@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.20",
+  "version": "3.2.21",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -258,7 +258,8 @@
     "test:v3_2_17": "npm run test:v3_2_16 && tsx scripts/v3_2_17-live-market-scheduler.test.ts",
     "test:v3_2_18": "npm run test:v3_2_17 && tsx scripts/v3_2_18-market-fallback-repair.test.ts",
     "test:v3_2_19": "npm run test:v3_2_18 && tsx scripts/v3_2_19-sqlite-single-source.test.ts",
-    "test:v3_2_20": "npm run test:v3_2_19 && tsx scripts/v3_2_20-live-freshness-stability.test.ts"
+    "test:v3_2_20": "npm run test:v3_2_19 && tsx scripts/v3_2_20-live-freshness-stability.test.ts",
+    "test:v3_2_21": "npm run test:v3_2_20 && node scripts/v3_2_21-allocation-donut.test.cjs"
   },
   "dependencies": {
     "expo": "~57.0.21",
@@ -266,7 +267,8 @@
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "@react-native-async-storage/async-storage": "2.2.0"
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

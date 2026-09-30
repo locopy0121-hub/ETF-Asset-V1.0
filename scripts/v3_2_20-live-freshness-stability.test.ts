@@ -16,10 +16,11 @@ assert.match(panel,/同步判定/);
 assert.match(panel,/officialLag<=2000\?'同步':'SQLite 待追上'/);
 assert.match(panel,/setInterval\(\(\)=>setClock\(Date\.now\(\)\),1000\)/);
 
-assert.equal(pkg.version,'3.2.20');
-assert.equal(app.expo.version,'3.2.20');
-assert.equal(app.expo.android.versionCode,30220);
-assert.equal(app.expo.ios.buildNumber,'30220');
+assert.ok(pkg.version.startsWith('3.2.') && Number(pkg.version.split('.')[2])>=20,'V3.2.20 no-downgrade contract must survive later versions');
+assert.equal(app.expo.version,pkg.version);
+const expectedCode=30200+Number(pkg.version.split('.')[2]);
+assert.equal(app.expo.android.versionCode,expectedCode);
+assert.equal(app.expo.ios.buildNumber,String(expectedCode));
 assert.equal(pkg.scripts['test:v3_2_20'],'npm run test:v3_2_19 && tsx scripts/v3_2_20-live-freshness-stability.test.ts');
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
