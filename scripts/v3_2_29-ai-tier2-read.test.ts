@@ -54,20 +54,24 @@ async function main(){
 
   resolverCalls=0;
   const annualDividendPlan=await executeCoreAiReadTools('今年股息多少？',{
-    holdings,quotes:[],entries,resolveSecurity:resolver,
+    holdings,quotes:[],entries,session:{activeSecurity:tsmc,activeTopic:'PORTFOLIO'},resolveSecurity:resolver,
   });
   assert.equal(resolverCalls,0,'portfolio-wide dividend question must not call the security resolver');
   const annualDividend=annualDividendPlan.results.find(row=>row.tool==='get_dividends')?.data as {period?:string;rows?:unknown[]};
   assert.equal(annualDividend.period,'CURRENT_YEAR');
   assert.equal(annualDividend.rows?.length,2);
+  assert.equal(annualDividendPlan.resolvedSecurity,null,'explicit portfolio-wide dividend period must not stay scoped to the previous security');
+  assert.equal(annualDividendPlan.session.activeSecurity,undefined,'portfolio-wide question must clear sticky security context');
 
   const buyPlan=await executeCoreAiReadTools('我最近買了什麼？',{
-    holdings,quotes:[],entries,
+    holdings,quotes:[],entries,session:{activeSecurity:tsmc,activeTopic:'PORTFOLIO'},
   });
   const buys=buyPlan.results.find(row=>row.tool==='get_transactions')?.data as {kinds?:string[];rows?:Array<{kind:string;symbol?:string}>};
   assert.deepEqual(buys.kinds,['buy']);
   assert.equal(buys.rows?.length,2);
   assert.ok(buys.rows?.every(row=>row.kind==='buy'));
+  assert.equal(buyPlan.resolvedSecurity,null,'portfolio-wide transaction question must not be filtered by the previous security');
+  assert.equal(buyPlan.session.activeSecurity,undefined);
 
   const latestTradePlan=await executeCoreAiReadTools('最近 1 筆交易',{
     holdings,quotes:[],entries,
