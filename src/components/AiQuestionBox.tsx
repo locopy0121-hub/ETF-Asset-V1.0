@@ -110,8 +110,7 @@ export function AiQuestionBox({
         ...(override.align?{textAlign:appearance.align}:{}),
       }]}>{customized&&appearance.labelText?appearance.labelText:title}</Text>}
     </InspectableTarget>:<Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>}
-    {suggestions.length?<ScrollView horizontal showsHorizontalScrollIndicator={false}
-      style={styles.suggestionViewport} contentContainerStyle={styles.suggestions}>
+    {suggestions.length?<View style={styles.suggestions}>
       {suggestions.map((item,index)=>{
         const chip=(background=theme.palette.surfaceMuted,color=theme.palette.primary,fontSize=12)=><Pressable
           onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:background}]}>
@@ -129,7 +128,7 @@ export function AiQuestionBox({
           )}
         </InspectableTarget>;
       })}
-    </ScrollView>:null}
+    </View>:null}
     {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:conversation','generic','AI 對話區域',[
       {name:'目前訊息數',value:String(visible.length),readOnly:true},
       {name:'對話視窗高度',value:'340 dp',readOnly:true},
@@ -150,9 +149,8 @@ export function AiQuestionBox({
 const styles=StyleSheet.create({
   root:{gap:spacing.sm},
   title:{fontSize:13,fontWeight:'900',color:colors.text},
-  suggestionViewport:{flexGrow:0,maxHeight:46},
-  suggestions:{gap:6,paddingRight:8,alignItems:'center'},
-  chip:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center',minHeight:36},
+  suggestions:{flexDirection:'row',flexWrap:'wrap',gap:6,alignItems:'center'},
+  chip:{paddingHorizontal:11,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center',minHeight:34},
   chipText:{fontSize:12,fontWeight:'800',color:colors.primary,includeFontPadding:false},
   threadViewport:{flexGrow:0,height:340,minHeight:240,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border,borderRadius:radius.md,backgroundColor:colors.surface},
   thread:{gap:7,padding:8,paddingBottom:12},
