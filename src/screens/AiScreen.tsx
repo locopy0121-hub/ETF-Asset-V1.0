@@ -22,7 +22,7 @@ export function AiScreen(){
   const finance=useFinance();
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session);
+  const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session,finance.sharedSnapshot.asset);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
