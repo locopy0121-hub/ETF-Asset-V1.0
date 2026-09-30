@@ -16,7 +16,7 @@ assert.match(panel,/同步判定/);
 assert.match(panel,/officialLag<=2000\?'同步':'SQLite 待追上'/);
 assert.match(panel,/setInterval\(\(\)=>setClock\(Date\.now\(\)\),1000\)/);
 
-assert.match(pkg.version,/^3\\.2\\.(?:2[0-9]|[3-9][0-9])$/,'V3.2.20 no-downgrade contract must survive later versions');
+assert.ok(pkg.version.startsWith('3.2.') && Number(pkg.version.split('.')[2])>=20,'V3.2.20 no-downgrade contract must survive later versions');
 assert.equal(app.expo.version,pkg.version);
 const expectedCode=30200+Number(pkg.version.split('.')[2]);
 assert.equal(app.expo.android.versionCode,expectedCode);
