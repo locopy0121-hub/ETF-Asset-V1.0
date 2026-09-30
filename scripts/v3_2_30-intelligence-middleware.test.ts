@@ -109,7 +109,7 @@ async function main(){
   const newsEvidence=news.ingredients.find(row=>row.ingredient==='MARKET_NEWS');
   assert.equal(newsEvidence?.source,'GOOGLE_NEWS_RSS');
   assert.equal(newsEvidence?.status,'PARTIAL');
-  assert.match(localAnswerFromEvidence(news)??'',/正文尚未完成驗證/);
+  assert.match(localAnswerFromEvidence(news)??'',/標題／來源可核實/);
 
   const middleware=fs.readFileSync('src/ai/aiIntelligenceMiddleware.ts','utf8');
   const registry=fs.readFileSync('src/ai/aiRecipeRegistry.ts','utf8');

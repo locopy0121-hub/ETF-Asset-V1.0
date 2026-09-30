@@ -4,6 +4,7 @@ export type AiRecipeId=
   |'MARKET_QUOTE'
   |'MARKET_PERFORMANCE'
   |'MARKET_NEWS'
+  |'SECURITY_PROFILE'
   |'ETF_COMPARE'
   |'PORTFOLIO_CONTEXT'
   |'SCENARIO_ANALYSIS'
@@ -18,6 +19,7 @@ export type AiIngredientKey=
   |'ETF_META'
   |'ETF_HOLDINGS'
   |'MARKET_NEWS'
+  |'SECURITY_PROFILE'
   |'BENCHMARK_HISTORY'
   |'CAPITAL_CONTEXT'
   |'TRANSACTIONS'
@@ -110,6 +112,7 @@ export type AiIntelligencePlan=Readonly<{
 
 export type AiEvidencePackage=Readonly<{
   generatedAt:string;
+  question:string;
   recipeId:AiRecipeId;
   mode:AiQuestionMode;
   symbols:readonly string[];

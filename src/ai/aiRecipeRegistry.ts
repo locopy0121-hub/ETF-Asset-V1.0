@@ -131,6 +131,16 @@ const RECIPES:Readonly<Record<AiRecipeId,AiRecipe>>={
     ],
     metrics:[],
   },
+  SECURITY_PROFILE:{
+    id:'SECURITY_PROFILE',
+    mode:'FACT',
+    description:'查詢證券或 ETF 的上市、掛牌、募集、成立與基本身分狀態。',
+    requirements:[
+      requirement('SECURITY_IDENTITY',true,'確認查詢代號'),
+      requirement('SECURITY_PROFILE',true,'取得上市/掛牌/募集等外部身分事實',{freshnessMs:7*DAY}),
+    ],
+    metrics:[],
+  },
   ETF_COMPARE:{
     id:'ETF_COMPARE',
     mode:'COMPARE',
@@ -205,6 +215,7 @@ export function resolveAiRecipe(question:string):AiRecipe{
     return RECIPES.SCENARIO_ANALYSIS;
   }
   if(/(新聞|消息|公告|近期動態|消息面)/i.test(text))return RECIPES.MARKET_NEWS;
+  if(/(上市|掛牌|何時上市|何時掛牌|募集|開募|成立日期|成立時間|發行日期|發行時間)/i.test(text))return RECIPES.SECURITY_PROFILE;
   if(/(比較|對比|vs\.?|差異|差別|重疊|哪一檔)/i.test(text)||(symbols.length>=2&&/(跟|和|與)/.test(text))){
     return RECIPES.ETF_COMPARE;
   }

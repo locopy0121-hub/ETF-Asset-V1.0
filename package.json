@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.30",
+  "version": "3.2.31",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -267,7 +267,8 @@
     "test:v3_2_27": "npm run test:v3_2_26 && tsx scripts/v3_2_27-gemini-contract-repair.test.ts",
     "test:v3_2_28": "npm run test:v3_2_27 && tsx scripts/v3_2_28-ai-core-tools.test.ts",
     "test:v3_2_29": "npm run test:v3_2_28 && tsx scripts/v3_2_29-ai-tier2-read.test.ts",
-    "test:v3_2_30": "npm run test:v3_2_29 && tsx scripts/v3_2_30-intelligence-middleware.test.ts"
+    "test:v3_2_30": "npm run test:v3_2_29 && tsx scripts/v3_2_30-intelligence-middleware.test.ts",
+    "test:v3_2_31": "npm run test:v3_2_30 && tsx scripts/v3_2_31-ai-responder.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
