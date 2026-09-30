@@ -122,6 +122,14 @@ const explicitSymbol=(question:string)=>{
 };
 const hasMarketIntent=(question:string)=>/(股價|行情|價格|現價|走勢|漲跌|開盤|收盤|今天|現在|最近怎樣|成交)/i.test(question);
 const hasHoldingIntent=(question:string)=>/(我有幾張|我有幾股|持有多少|我的持股|成本|我的.*損益|我的.*市值)/i.test(question);
+const compactText=(value:string)=>value.trim().toUpperCase().replace(/\\s+/g,'');
+const isBareSecurityReference=(question:string,security:ResolvedSecurity|null)=>{
+  if(!security)return false;
+  const q=compactText(question);
+  if(q===security.symbol.toUpperCase())return true;
+  const name=compactText(security.name);
+  return Boolean(name&&q===name);
+};
 const hasKnownSecurityHint=(question:string,known:readonly SecurityCandidate[])=>{
   const normalized=question.trim().toUpperCase().replace(/\s+/g,'');
   return known.some(row=>{
@@ -170,7 +178,11 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
     results.push(failure('resolve_security','SECURITY_NOT_FOUND','目前無法確認這個證券代號。'));
   }
 
-  if(security&&hasMarketIntent(question)){
+  const bareSecurityReference=isBareSecurityReference(question,security);
+  const wantsQuote=hasMarketIntent(question)||bareSecurityReference;
+  const wantsHolding=hasHoldingIntent(question)||bareSecurityReference;
+
+  if(security&&wantsQuote){
     let quote=runtime.quotes.find(row=>row.symbol.trim().toUpperCase()===security!.symbol)??null;
     if(runtime.refreshQuote){
       try{quote=await runtime.refreshQuote(security.symbol)??quote;}catch{/* retain last-known-good App quote */}
@@ -197,7 +209,7 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
     }
   }
 
-  if(security&&hasHoldingIntent(question)){
+  if(security&&wantsHolding){
     const holding=runtime.holdings.find(row=>row.symbol.trim().toUpperCase()===security!.symbol);
     results.push(success<HoldingDetailToolData>('get_holding_detail',{
       security,
@@ -212,7 +224,7 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
     },'CANONICAL_PORTFOLIO_PROJECTION'));
   }
 
-  const activeTopic=hasMarketIntent(question)?'MARKET':hasHoldingIntent(question)?'PORTFOLIO':runtime.session?.activeTopic??'GENERAL';
+  const activeTopic=wantsQuote?'MARKET':wantsHolding?'PORTFOLIO':runtime.session?.activeTopic??'GENERAL';
   return {
     results,
     resolvedSecurity:security,
@@ -222,6 +234,7 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
 
 export function localAnswerFromCoreTools(plan:CoreAiToolPlan):string|null{
   const quote=plan.results.find(row=>row.tool==='get_quote'&&row.ok) as AiToolResult<QuoteToolData>|undefined;
+  const holding=plan.results.find(row=>row.tool==='get_holding_detail'&&row.ok) as AiToolResult<HoldingDetailToolData>|undefined;
   if(quote?.data){
     const {security,price,change,changePercent}=quote.data;
     const parts=[security.symbol+' '+security.name];
@@ -229,13 +242,20 @@ export function localAnswerFromCoreTools(plan:CoreAiToolPlan):string|null{
     if(change!==null&&changePercent!==null)parts.push((change>=0?'+':'')+change.toFixed(2)+'（'+(changePercent>=0?'+':'')+changePercent.toFixed(2)+'%）');
     if(quote.meta.observedAt)parts.push('行情時間 '+new Date(quote.meta.observedAt).toLocaleString('zh-TW'));
     if(quote.meta.verificationStatus==='PENDING')parts.push('此筆為行情中心目前較低驗證層級資料，請以狀態標示為準');
+    if(holding?.data){
+      const d=holding.data;
+      parts.push(d.held
+        ?'目前持有 '+d.shares.toLocaleString('zh-TW')+' 股，平均成本 NT$ '+d.avgCost.toLocaleString('zh-TW')
+        :'目前不在你的 TF Asset 持股中');
+    }
     return parts.join('｜')+'。';
   }
-  const holding=plan.results.find(row=>row.tool==='get_holding_detail'&&row.ok) as AiToolResult<HoldingDetailToolData>|undefined;
   if(holding?.data){
     const d=holding.data;
     if(!d.held)return d.security.symbol+' '+d.security.name+' 目前不在你的 TF Asset 持股中。';
     return d.security.symbol+' '+d.security.name+' 目前持有 '+d.shares.toLocaleString('zh-TW')+' 股，平均成本 NT$ '+d.avgCost.toLocaleString('zh-TW')+'。';
   }
+  const resolved=plan.results.find(row=>row.tool==='resolve_security'&&row.ok) as AiToolResult<ResolvedSecurity>|undefined;
+  if(resolved?.data)return resolved.data.symbol+' '+resolved.data.name+' 已辨識，但 TF Asset 目前沒有可用行情或持股明細。';
   return null;
 }
