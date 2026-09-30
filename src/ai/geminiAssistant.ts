@@ -9,6 +9,21 @@ import type {AiHoldingProjection,AnalysisContext} from './analysisTypes';
 const GEMINI_ENDPOINT='https://etf-butler-ai.locopy0121.workers.dev/';
 const REQUEST_TIMEOUT_MS=15000;
 
+export type GeminiDiagnostic=Readonly<{
+  at:string;
+  endpoint:string;
+  method:'POST';
+  requestKeys:readonly string[];
+  payloadBytes:number;
+  status:number|null;
+  statusText:string|null;
+  responseContentType:string|null;
+  responseBodyPreview:string;
+  stage:'request'|'response'|'network-error';
+}>;
+
+type DiagnosticSink=(diagnostic:GeminiDiagnostic)=>void;
+
 type HoldingLike=Readonly<{
   symbol:string;
   name:string;
@@ -96,19 +111,46 @@ function extractText(payload:unknown):string{
   return '';
 }
 
-async function postGemini(body:Record<string,unknown>):Promise<unknown>{
+async function postGemini(body:Record<string,unknown>,onDiagnostic?:DiagnosticSink):Promise<unknown>{
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS);
+  const serialized=JSON.stringify(body);
+  const base={
+    at:new Date().toISOString(),
+    endpoint:GEMINI_ENDPOINT,
+    method:'POST' as const,
+    requestKeys:Object.keys(body),
+    payloadBytes:new TextEncoder().encode(serialized).length,
+  };
+  onDiagnostic?.({...base,status:null,statusText:null,responseContentType:null,responseBodyPreview:'',stage:'request'});
+  let receivedResponse=false;
   try{
     const response=await fetch(GEMINI_ENDPOINT,{
       method:'POST',
       headers:{'Content-Type':'application/json',Accept:'application/json'},
       signal:controller.signal,
-      body:JSON.stringify(body),
+      body:serialized,
     });
-    if(!response.ok)throw new Error('Gemini HTTP '+response.status);
+    receivedResponse=true;
     const raw=await response.text();
+    const contentType=response.headers.get('content-type');
+    onDiagnostic?.({
+      ...base,
+      status:response.status,
+      statusText:response.statusText||null,
+      responseContentType:contentType,
+      responseBodyPreview:raw.replace(/\s+/g,' ').trim().slice(0,1800),
+      stage:'response',
+    });
+    if(!response.ok)throw new Error('Gemini HTTP '+response.status+'；請查看 AI 頁面的 Gemini 連線／格式診斷');
     try{return JSON.parse(raw);}catch{return raw;}
+  }catch(error){
+    if(!receivedResponse)onDiagnostic?.({
+      ...base,status:null,statusText:null,responseContentType:null,
+      responseBodyPreview:error instanceof Error?error.message:String(error),
+      stage:'network-error',
+    });
+    throw error;
   }finally{
     clearTimeout(timer);
   }
@@ -118,6 +160,7 @@ async function requestGemini(
   question:string,
   snapshot:ReturnType<typeof buildSnapshot>,
   analysisContext:AnalysisContext,
+  onDiagnostic?:DiagnosticSink,
 ):Promise<string>{
   // The deployed Cloudflare Worker currently accepts the established request envelope
   // (provider/app/locale/message/prompt/instruction/snapshot). Do not add root-level
@@ -146,7 +189,7 @@ async function requestGemini(
     prompt:question,
     instruction:TF_ASSET_GEMINI_SYSTEM_INSTRUCTION,
     snapshot:groundedSnapshot,
-  });
+  },onDiagnostic);
   const text=extractText(payload);
   if(!text)throw new Error('Gemini 未回傳可用文字');
   return text;
@@ -159,6 +202,7 @@ export async function answerWithGemini(
   newsItems:readonly AiNewsItem[],
   entries:readonly CanonicalLedgerEntry[]=[],
   quotes:readonly RuntimeQuote[]=[],
+  onDiagnostic?:DiagnosticSink,
 ):Promise<AiAssistantAnswer>{
   const local=await answerAiQuestion(question,holdings,portfolio,newsItems,entries);
 
@@ -181,6 +225,7 @@ export async function answerWithGemini(
       question,
       buildSnapshot(holdings,portfolio,newsItems,entries,quotes),
       analysisContext,
+      onDiagnostic,
     );
     return {...local,text};
   }catch(error){

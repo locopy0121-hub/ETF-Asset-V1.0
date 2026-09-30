@@ -3,7 +3,7 @@ import {Pressable,StyleSheet,Text,View} from 'react-native';
 
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {type AiAssistantAction} from '../ai/aiAssistant';
-import {answerWithGemini} from '../ai/geminiAssistant';
+import {answerWithGemini,type GeminiDiagnostic} from '../ai/geminiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
 import {AiQuestionBox} from '../components/AiQuestionBox';
 import {FrameCard} from '../components/FrameCard';
@@ -21,7 +21,16 @@ export function AiScreen(){
   const finance=useFinance();
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const ask=(question:string)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes);
+  const [geminiDiagnostic,setGeminiDiagnostic]=useState<GeminiDiagnostic|null>(null);
+  const ask=(question:string)=>answerWithGemini(
+    question,
+    finance.holdings,
+    finance.snapshot.portfolio,
+    ai.items,
+    finance.entries,
+    finance.quotes,
+    setGeminiDiagnostic,
+  );
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
@@ -37,6 +46,16 @@ export function AiScreen(){
         <View style={styles.capabilityPanel}>
           <Text style={styles.capabilityTitle}>Gemini 已接入</Text>
           <Text style={styles.capabilityText}>資產配置 · 持股排行 · 最近交易 · 單檔成本／損益 · 股息更新 · 持股新聞</Text>
+        </View>
+        <View style={styles.diagnosticPanel}>
+          <Text style={styles.diagnosticTitle}>Gemini 連線／格式診斷</Text>
+          <Text style={styles.diagnosticLine}>Endpoint：{geminiDiagnostic?.endpoint??'https://etf-butler-ai.locopy0121.workers.dev/'}</Text>
+          <Text style={styles.diagnosticLine}>Method：POST · Content-Type：application/json</Text>
+          <Text style={styles.diagnosticLine}>Request keys：{geminiDiagnostic?.requestKeys.join(', ')??'provider, app, locale, message, prompt, instruction, snapshot'}</Text>
+          <Text style={styles.diagnosticLine}>Payload：{geminiDiagnostic?geminiDiagnostic.payloadBytes+' bytes':'尚未送出'}</Text>
+          <Text style={[styles.diagnosticLine,geminiDiagnostic?.status&&geminiDiagnostic.status>=400?styles.error:null]}>HTTP：{geminiDiagnostic?.status??'尚未取得'}{geminiDiagnostic?.statusText?' '+geminiDiagnostic.statusText:''}</Text>
+          <Text style={styles.diagnosticLine}>Response Content-Type：{geminiDiagnostic?.responseContentType??'—'}</Text>
+          <Text style={styles.diagnosticBody} selectable>{geminiDiagnostic?.responseBodyPreview||'送出一個問題後，這裡會顯示 Worker 回傳的錯誤本文前 1,800 字；不顯示持股、帳務或完整 Snapshot 內容。'}</Text>
         </View>
         <AiQuestionBox
           title="直接詢問或下達資料整理指令"
@@ -65,6 +84,10 @@ const styles=StyleSheet.create({
   capabilityPanel:{padding:10,borderRadius:radius.md,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border,backgroundColor:'#F8FBFF'},
   capabilityTitle:{fontSize:10,fontWeight:'900',color:colors.primary},
   capabilityText:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:3},
+  diagnosticPanel:{padding:10,borderRadius:radius.md,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border,backgroundColor:'#FFFDF7',gap:3},
+  diagnosticTitle:{fontSize:10,fontWeight:'900',color:colors.text},
+  diagnosticLine:{fontSize:9,lineHeight:14,color:colors.textSecondary},
+  diagnosticBody:{fontSize:9,lineHeight:14,color:colors.text,marginTop:3,padding:7,borderRadius:radius.sm,backgroundColor:colors.surfaceMuted},
   source:{flexDirection:'row',alignItems:'center',gap:spacing.sm,paddingTop:spacing.md,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
   sourceTitle:{fontSize:11,fontWeight:'900',color:colors.text},sourceText:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:3},
   error:{fontSize:10,color:colors.loss,marginTop:3},
