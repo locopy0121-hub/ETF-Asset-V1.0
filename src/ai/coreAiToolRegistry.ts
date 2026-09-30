@@ -244,14 +244,18 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
   const results:AiToolResult<unknown>[]=[];
   const known=knownCandidates(runtime);
   const resolver=runtime.resolveSecurity??resolveSecurity;
-  let security=runtime.session?.activeSecurity??null;
-
+  const previousSecurity=runtime.session?.activeSecurity??null;
   const referenceOnly=/^(那|它|這檔|這個|這支|剛剛|前面|如果|再)/.test(question.trim());
-  const hasSpecificKnownTarget=Boolean(explicitSymbol(question))||hasKnownSecurityHint(question,known);
-  const continuingActiveSecurity=Boolean(runtime.session?.activeSecurity)
-    &&!hasSpecificKnownTarget
-    &&(referenceOnly||hasHoldingIntent(question));
-  if(hasExplicitSecurityHint(question,known)&&!continuingActiveSecurity){
+  const explicitPortfolioScope=/(總資產|整體資產|投資組合|全部持股|我的持股|我最近|今年|年度|本月|這個月|交易紀錄|帳務紀錄|最近\s*\d*\s*筆(?:交易|帳務)?)/i.test(question);
+  const hasSpecificTargetHint=Boolean(explicitSymbol(question))||hasKnownSecurityHint(question,known)||hasNamedSecurityPrefix(question);
+  const contextualProperty=/^(?:目前|現在|我的)?\s*(?:成本|股息|配息|現價|股價|走勢|損益|市值|報酬)/i.test(question.trim());
+  const inheritPrevious=Boolean(previousSecurity)
+    &&!explicitPortfolioScope
+    &&!hasSpecificTargetHint
+    &&(referenceOnly||hasHoldingIntent(question)||contextualProperty);
+  let security=inheritPrevious?previousSecurity:null;
+
+  if(hasExplicitSecurityHint(question,known)&&!inheritPrevious){
     try{
       const resolved=await resolver(question,known);
       if(resolved){
@@ -367,10 +371,16 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
   }
 
   const activeTopic=hasMarketIntent(question)?'MARKET':(hasHoldingIntent(question)||hasDividendIntent(question)||hasTransactionIntent(question)||hasPortfolioSummaryIntent(question,security))?'PORTFOLIO':runtime.session?.activeTopic??'GENERAL';
+  const shouldClearPrevious=Boolean(previousSecurity)&&explicitPortfolioScope&&!security;
+  const nextSession:AiSessionContext=security
+    ?{...runtime.session,activeTopic,activeSecurity:security}
+    :shouldClearPrevious
+      ?{activeTopic}
+      :{...runtime.session,activeTopic};
   return {
     results,
     resolvedSecurity:security,
-    session:{...runtime.session,activeTopic,...(security?{activeSecurity:security}:{})},
+    session:nextSession,
   };
 }
 
