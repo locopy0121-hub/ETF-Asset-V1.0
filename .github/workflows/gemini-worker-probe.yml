@@ -35,3 +35,7 @@ jobs:
           probe action_chat '{"action":"chat","message":"ping"}'
           probe messages '{"messages":[{"role":"user","content":"ping"}]}'
           probe contents '{"contents":[{"parts":[{"text":"ping"}]}]}'
+          probe question_snapshot '{"question":"只根據資料回答目前總市值是多少？","snapshot":{"portfolio":{"totalMarketValue":12345},"marker":"SNAPSHOT_TEST_927"}}'
+          probe question_context '{"question":"只根據資料回答目前總市值是多少？","context":{"portfolio":{"totalMarketValue":23456},"marker":"CONTEXT_TEST_928"}}'
+          probe question_data '{"question":"只根據資料回答目前總市值是多少？","data":{"portfolio":{"totalMarketValue":34567},"marker":"DATA_TEST_929"}}'
+          probe question_instruction_snapshot '{"question":"只輸出這個數字，不要其他文字","instruction":"只可根據 snapshot 回答","snapshot":{"value":45678,"marker":"SNAPSHOT_TEST_930"}}'
