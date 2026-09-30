@@ -515,7 +515,7 @@ function overallStatus(
 ):AiEvidenceStatus{
   if(plan.recipe.id==='GENERAL')return 'VERIFIED';
   const requiredRows=plan.requirements.filter(row=>row.required).flatMap(requirement=>{
-    if(plan.symbols.length&&['SECURITY_IDENTITY','MARKET_QUOTE','HISTORICAL_PRICES','MARKET_NEWS'].includes(requirement.ingredient)){
+    if(plan.symbols.length&&['SECURITY_IDENTITY','MARKET_QUOTE','HISTORICAL_PRICES','MARKET_NEWS','SECURITY_PROFILE'].includes(requirement.ingredient)){
       return plan.symbols.map(symbol=>findEvidence(evidence,requirement.ingredient,symbol)).filter((row):row is AiIngredientEvidence=>Boolean(row));
     }
     const row=findEvidence(evidence,requirement.ingredient);
@@ -537,7 +537,7 @@ function requiredMissing(
 ):AiIngredientKey[]{
   const missing:AiIngredientKey[]=[];
   for(const requirement of plan.requirements.filter(row=>row.required)){
-    const symbols=plan.symbols.length&&['SECURITY_IDENTITY','MARKET_QUOTE','HISTORICAL_PRICES','MARKET_NEWS'].includes(requirement.ingredient)
+    const symbols=plan.symbols.length&&['SECURITY_IDENTITY','MARKET_QUOTE','HISTORICAL_PRICES','MARKET_NEWS','SECURITY_PROFILE'].includes(requirement.ingredient)
       ?plan.symbols:[undefined];
     const ok=symbols.every(symbol=>{
       const row=findEvidence(evidence,requirement.ingredient,symbol);
@@ -570,6 +570,7 @@ export async function buildAiEvidencePackage(input:{
   const missingRequired=requiredMissing(plan,evidence);
   return {
     generatedAt:nowIso(),
+    question:input.question,
     recipeId:plan.recipe.id,
     mode:plan.recipe.mode,
     symbols:plan.symbols,
