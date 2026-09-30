@@ -114,9 +114,9 @@ const knownCandidates=(runtime:CoreAiToolRuntime):SecurityCandidate[]=>{
 const explicitSymbol=(question:string)=>{
   const candidates=question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
   return candidates.find(value=>{
-    const escaped=value.replace(/[.*+?^${}()|[\]\\]/g,'\\const explicitSymbol=(question:string)=>question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/)?.[0]??null;');
-    const looksLikeAmount=new RegExp(escaped+'\\s*(元|萬|千)').test(question)
-      ||new RegExp('(投入|加碼|金額|預算)\\s*(?:NT\\$|TWD|新台幣)?\\s*'+escaped,'i').test(question);
+    // value is restricted to [0-9A-Z], so it is safe to embed directly in RegExp.
+    const looksLikeAmount=new RegExp(value+'\\s*(元|萬|千)').test(question.toUpperCase())
+      ||new RegExp('(投入|加碼|金額|預算)\\s*(?:NT\\$|TWD|新台幣)?\\s*'+value,'i').test(question);
     return !looksLikeAmount;
   })??null;
 };
