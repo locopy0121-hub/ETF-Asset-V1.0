@@ -4,6 +4,7 @@ import { PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } 
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import { type AiAssistantAction } from '../ai/aiAssistant';
+import type {AiSessionContext} from '../ai/aiConversationTypes';
 import { answerWithGemini } from '../ai/geminiAssistant';
 import { dividendEventToLedger } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
