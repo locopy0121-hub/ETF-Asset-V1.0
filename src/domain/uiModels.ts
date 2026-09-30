@@ -108,7 +108,7 @@ export type HoldingQuote = {
   symbol: string;
   name: string;
   quoteVerified?: boolean;
-  quoteQuality?: 'trade'|'backup_realtime'|'previous_close'|'official_close'|'unavailable';
+  quoteQuality?: 'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close'|'unavailable';
   quoteSourceAt?: number|null;
   marketDataVersion?:number;
   previousCloseKnown?:boolean;
