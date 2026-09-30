@@ -120,7 +120,7 @@ async function main(){
   assert.match(registry,/ANNUALIZED_VOLATILITY/);
   assert.match(registry,/HOLDINGS_OVERLAP/);
   assert.match(gemini,/intelligence:evidence/,'validated evidence must be grounded into the Gemini presentation layer');
-  assert.match(gemini,/portfolioDataIsContextOnly/,'prompt must preserve the market-facts vs App-capital-context boundary');
+  assert.match(gemini,/App\/Portfolio 資料只可作為使用者資本與條件材料/,'prompt must preserve the market-facts vs App-capital-context boundary');
   assert.match(gemini,/localAnswerFromEvidence/,'deterministic evidence must survive Gemini provider failure');
 
   console.log('V3.2.30 TF Asset Intelligence Middleware / Recipe / Evidence architecture PASS');
