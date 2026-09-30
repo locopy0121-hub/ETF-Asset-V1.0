@@ -37,7 +37,7 @@ must(marketQuoteSnapshotFor([base],'0050')?.currentPrice===200,'quote wall view 
 must(marketIntradaySeriesFor([base],'0050').points.length===0,'intraday should remain independently empty');
 must(marketValuationQuoteFor([base],'0050')?.currentPrice===200,'previous close must remain valid for valuation outside market hours');
 must(Boolean(marketValuationQuoteFor([{...base,quality:'backup_realtime'}],'0050')),'verified backup realtime must remain usable for valuation');
-must(!marketValuationQuoteFor([{...base,quality:'bid_ask'}],'0050'),'bid/ask indication must not silently become portfolio valuation');
+must(Boolean(marketValuationQuoteFor([{...base,quality:'bid_ask'}],'0050')),'verified bid/ask indication must remain usable as explicit reference valuation');
 must(finance.includes('marketValuationQuoteFromRow'),'FinanceRuntime is not reading the indexed valuation view');
 must(finance.includes('marketQuoteSnapshotFromRow')&&finance.includes('marketIntradaySeriesFromRow'),
   'FinanceRuntime must project quote and intraday views independently before consumers render them');
