@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
-import { answerAiQuestion, type AiAssistantAction } from '../ai/aiAssistant';
+import { type AiAssistantAction } from '../ai/aiAssistant';
+import { answerWithGemini } from '../ai/geminiAssistant';
 import { dividendEventToLedger } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
@@ -74,7 +75,7 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
     },
   }),[safePosition.x,safePosition.y,maxX,maxY,mode]);
 
-  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries);
+  const ask=(question:string)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   if(!deriveAiUiState(aiSettings.prefs.ai,'home').showFloatingAi)return null;
@@ -100,7 +101,7 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
     <View {...responder.panHandlers} style={[styles.header,{backgroundColor:theme.palette.surfaceMuted,borderBottomColor:theme.palette.border}]}>
       <View style={{flex:1}}>
         <Text style={[styles.title,{color:theme.palette.text}]}>AI 助理</Text>
-        <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>全局浮動 · 財務資料／股息更新／行情／新聞整理</Text>
+        <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>Gemini · 財務資料／股息更新／行情／新聞整理</Text>
       </View>
       <Pressable onPress={()=>changeMode('minimized')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text style={[styles.headerActionText,{color:theme.palette.primary}]}>−</Text></Pressable>
       <Pressable onPress={()=>changeMode('closed')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text style={[styles.headerActionText,{color:theme.palette.primary}]}>×</Text></Pressable>
