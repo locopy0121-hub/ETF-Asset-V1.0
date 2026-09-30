@@ -134,7 +134,8 @@ async function main(){
   assert.match(gemini,/explicitLocalActionRequested/,'existing deterministic App actions must remain explicit exceptions, not the conversation router');
   assert.match(gemini,/refreshUnifiedMarketData\(\[symbol\]\)/,'quotes must reuse the current TF Asset Market Center');
   assert.match(gemini,/body:JSON\.stringify\(\{question\}\)/,'current deployed Worker question contract must remain compatible');
-  assert.match(gemini,/portfolio:wantsPrivate\?snapshot\.portfolio:null/,'private portfolio must be disclosed only when relevant');
+  assert.match(gemini,/portfolio:wantsPrivate/,'private portfolio disclosure must remain gated by private-question intent');
+  assert.match(gemini,/\?snapshot\.portfolio:null/,'private portfolio must still resolve to null when the gate is not satisfied');
   assert.match(box,/sessionContext/,'current chat UI must carry structured session context');
   assert.match(registry,/CANONICAL_PORTFOLIO_PROJECTION/);
   assert.doesNotMatch(registry,/SELECT\s|INSERT\s|UPDATE\s|DELETE\s/i,'AI READ registry must not query SQLite directly');
