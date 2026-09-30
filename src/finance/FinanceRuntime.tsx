@@ -33,6 +33,7 @@ const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullabl
   switch(quality){
     case 'trade':
     case 'backup_realtime':
+    case 'bid_ask':
     case 'previous_close':
     case 'official_close':
       return quality;
