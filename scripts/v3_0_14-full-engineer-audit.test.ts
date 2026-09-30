@@ -116,5 +116,6 @@ writeFileSync('reports/V3.2.16-full-skill-matrix.json',JSON.stringify({...report
 writeFileSync('reports/V3.2.17-full-skill-matrix.json',JSON.stringify({...report,version:'3.2.17'},null,2)+'\n');
 writeFileSync('reports/V3.2.18-full-skill-matrix.json',JSON.stringify({...report,version:'3.2.18'},null,2)+'\n');
 writeFileSync('reports/V3.2.19-full-skill-matrix.json',JSON.stringify({...report,version:'3.2.19'},null,2)+'\n');
+writeFileSync('reports/V3.2.20-full-skill-matrix.json',JSON.stringify({...report,version:'3.2.20'},null,2)+'\n');
 console.log('V3.0.14 30 categories, 169 retained tools, 12 advanced capabilities, 3 missing domains: PASS');
 console.log('Native adapter matrix '+matrix.length+' rows written; actual Android rendering remains separate QA.');
