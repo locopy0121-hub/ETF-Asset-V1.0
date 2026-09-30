@@ -47,8 +47,8 @@ assert.match(context,/isCurrentlyHeld/);
 assert.match(context,/Canonical|portfolio|holdings/i);
 assert.match(prompt,/不得直接觸碰 SQLite/);
 assert.match(prompt,/不得自行假設/);
-assert.match(gemini,/executeLocalAiTool/);
-assert.match(gemini,/toolResults/);
+assert.match(gemini,/buildAnalysisContext/);
 assert.match(gemini,/researchEnabled/);
+assert.match(gemini,/aiAnalysis/,'Gemini must receive App-resolved local analysis inside the established snapshot envelope');
 
 console.log('V3.2.25 local-data Gemini tool architecture PASS');
