@@ -149,8 +149,12 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
   const resolver=runtime.resolveSecurity??resolveSecurity;
   let security=runtime.session?.activeSecurity??null;
 
-  const referenceOnly=/^(那|它|這檔|這個|這支|剛剛|前面)/.test(question.trim());
-  if(hasExplicitSecurityHint(question,known)&&!(runtime.session?.activeSecurity&&referenceOnly)){
+  const referenceOnly=/^(那|它|這檔|這個|這支|剛剛|前面|如果|再)/.test(question.trim());
+  const hasSpecificKnownTarget=Boolean(explicitSymbol(question))||hasKnownSecurityHint(question,known);
+  const continuingActiveSecurity=Boolean(runtime.session?.activeSecurity)
+    &&!hasSpecificKnownTarget
+    &&(referenceOnly||hasHoldingIntent(question));
+  if(hasExplicitSecurityHint(question,known)&&!continuingActiveSecurity){
     try{
       const resolved=await resolver(question,known);
       if(resolved){
