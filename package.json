@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.31",
+  "version": "3.2.32",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -268,7 +268,8 @@
     "test:v3_2_28": "npm run test:v3_2_27 && tsx scripts/v3_2_28-ai-core-tools.test.ts",
     "test:v3_2_29": "npm run test:v3_2_28 && tsx scripts/v3_2_29-ai-tier2-read.test.ts",
     "test:v3_2_30": "npm run test:v3_2_29 && tsx scripts/v3_2_30-intelligence-middleware.test.ts",
-    "test:v3_2_31": "npm run test:v3_2_30 && tsx scripts/v3_2_31-ai-responder.test.ts"
+    "test:v3_2_31": "npm run test:v3_2_30 && tsx scripts/v3_2_31-ai-responder.test.ts",
+    "test:v3_2_32": "npm run test:v3_2_31 && tsx scripts/v3_2_32-ai-local-first.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
