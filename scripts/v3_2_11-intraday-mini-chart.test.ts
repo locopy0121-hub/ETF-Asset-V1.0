@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {normalizeUnifiedIntradaySeries,marketRowsToRuntimeQuotes} from '../src/market/unifiedMarketAdapter';
+import {marketIntradaySessionDateChanged,normalizeUnifiedIntradaySeries,marketRowsToRuntimeQuotes} from '../src/market/unifiedMarketAdapter';
 import type {UnifiedMarketSnapshot} from '../src/native/TfAssetNativeBridge';
 
 const read=(p:string)=>readFileSync(p,'utf8');
@@ -46,10 +46,24 @@ assert.equal(runtime[0]?.intradayDate,'2026-09-29');
 assert.equal(runtime[0]?.intradayPreviousClose,34.88);
 
 // After close and next-day pre-open, keep the last completed session on screen.
-// Only the first verified 09:00+ point of the new session rolls the Mini chart to the new date.
 const preOpen=marketRowsToRuntimeQuotes({version:12,quotes:snapshot.quotes},runtime,Date.UTC(2026,8,30,0,30,0));
 assert.equal(preOpen[0]?.intradayDate,'2026-09-29','overnight/pre-open must keep the previous trading session visible');
 assert.equal(preOpen[0]?.intraday?.length,2);
+
+// At 09:00 the Market Center publishes today's session identity even before the
+// first valid trade. That explicit empty series must clear yesterday's line.
+const openingReset:UnifiedMarketSnapshot={
+  version:12,
+  quotes:snapshot.quotes,
+  intraday:{'00878':{date:'2026-09-30',previousClose:34.83,points:[]}},
+};
+const opened=marketRowsToRuntimeQuotes(openingReset,preOpen,tNext0900+30_000);
+assert.equal(opened[0]?.intradayDate,'2026-09-30','market open must roll to the current trading day before the first point');
+assert.equal(opened[0]?.intraday?.length,0,'yesterday intraday points must not leak into the new session');
+assert.equal(opened[0]?.intradayPreviousClose,34.83);
+assert.equal(marketIntradaySessionDateChanged(preOpen,opened),true,
+  'runtime must detect a session-date change even when quote version is unchanged');
+
 const nextSession:UnifiedMarketSnapshot={
   version:13,
   quotes:[{...snapshot.quotes[0]!,sourceQuoteAt:tNext0900,currentPrice:34.90,previousClose:34.83,checkedAt:tNext0900}],
@@ -57,9 +71,9 @@ const nextSession:UnifiedMarketSnapshot={
     {at:tNext0900,price:34.90,quality:'trade',source:'TWSE_MIS'},
   ]}},
 };
-const rolled=marketRowsToRuntimeQuotes(nextSession,preOpen,tNext0900+30_000);
-assert.equal(rolled[0]?.intradayDate,'2026-09-30','new session must begin only after an actual 09:00+ point exists');
-assert.equal(rolled[0]?.intraday?.length,1);
+const rolled=marketRowsToRuntimeQuotes(nextSession,opened,tNext0900+30_000);
+assert.equal(rolled[0]?.intradayDate,'2026-09-30');
+assert.equal(rolled[0]?.intraday?.length,1,'today points must append to the new session after rollover');
 assert.equal(rolled[0]?.intradayPreviousClose,34.83);
 
 const mini=read('src/components/MiniHoldingChart.tsx');
@@ -96,6 +110,9 @@ for(const token of [
   "quality IN ('trade','backup_realtime')",
   "source IN ('TWSE_MIS','YAHOO')",
   'intradaySnapshot',
+  'activeTradingDay',
+  'val currentDay=activeTradingDay(now)',
+  'val viewDay=currentDay?:latestDay?:continue',
 ]) assert.ok(nativeDb.includes(token),'native intraday DB missing '+token);
 assert.ok(!nativeDb.includes("quality IN ('trade','backup_realtime','bid_ask')"),'bid/ask must never be recorded as an actual trade path');
 
