@@ -46,16 +46,16 @@ assert.doesNotMatch(finance,/marketValuationQuoteFor\(market\.quotes,row\.symbol
 assert.doesNotMatch(home,/marketIntradaySeriesFor\(market\.quotes/,
   'home must consume the already projected finance holdings instead of cloning intraday data again');
 assert.match(market,/refreshVisibleRef/);
-assert.match(market,/AppState\.currentState==='active'/,
+assert.match(market,/AppState\.currentState!=='active'/,
   'scheduled quote polling must stay idle while the app is inactive');
 assert.match(history,/30_000/,
-  'live PnL persistence must be throttled instead of writing every 5-second quote tick');
+  'live PnL persistence must be throttled instead of writing every scheduled quote tick');
 assert.match(history,/pendingPersistRef=useRef<PersistedHistory\|null>\(null\)/,
   'pending history must remain structured until the throttled flush');
 assert.match(history,/AsyncStorage\.setItem\(STORAGE_KEY,JSON\.stringify\(payload\)\)/,
   'history serialization belongs inside the flush path');
 assert.doesNotMatch(history,/pendingPersistRef\.current=JSON\.stringify/,
-  'five-second quote ticks must not stringify the entire persisted history');
+  'scheduled quote ticks must not stringify the entire persisted history');
 assert.match(editor,/setTimeout\(\(\)=>\{/);
 assert.match(editor,/\},300\);/,
   'layout editor persistence should be debounced during drag and resize');
