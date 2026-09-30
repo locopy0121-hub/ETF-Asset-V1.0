@@ -189,7 +189,7 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
         quality:quote.quality??null,
         statusMessage:quote.statusMessage??null,
       },'TF_ASSET_MARKET_CENTER',{
-        observedAt:quote.sourceQuoteAt?new Date(quote.sourceQuoteAt).toISOString():undefined,
+        ...(quote.sourceQuoteAt?{observedAt:new Date(quote.sourceQuoteAt).toISOString()}:{}),
         verificationStatus:quoteVerification(quote.quality),
       }));
     }else{
