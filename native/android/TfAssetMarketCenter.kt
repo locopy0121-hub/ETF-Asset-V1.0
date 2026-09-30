@@ -375,16 +375,19 @@ internal class TfAssetMarketCenter(private val context:Context){
         candidates.addAll(best.values)
       }catch(error:Exception){errors.add("MIS: "+(error.message?:"unknown"))}
     }
+    // MIS may return only bid/ask or yesterday close. Those rows are useful
+    // references, but must not stop the realtime fallback chain. Ask Yahoo for
+    // every symbol that still lacks trade/backup_realtime quality.
+    val realtimeCovered=candidates.filter{
+      qualityRank(it.optString("quality",""))>=qualityRank("backup_realtime")
+    }.map{it.optString("symbol","")}.toSet()
+    val needsRealtime=symbols.filterNot{realtimeCovered.contains(it)}
+    for(symbol in needsRealtime){
+      val yahoo=yahooQuote(symbol,now)
+      if(yahoo!=null)candidates.add(yahoo)
+    }
     var covered=candidates.map{it.optString("symbol","")}.toSet()
     var missing=symbols.filterNot{covered.contains(it)}
-    if(missing.isNotEmpty()){
-      for(symbol in missing.toList()){
-        val yahoo=yahooQuote(symbol,now)
-        if(yahoo!=null)candidates.add(yahoo)
-      }
-      covered=candidates.map{it.optString("symbol","")}.toSet()
-      missing=symbols.filterNot{covered.contains(it)}
-    }
     if(missing.isNotEmpty()){
       for((source,url) in listOf("TWSE_DAILY" to TWSE_DAILY,"TPEX_DAILY" to TPEX_DAILY)){
         try{
