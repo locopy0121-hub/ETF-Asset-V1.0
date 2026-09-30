@@ -212,13 +212,14 @@ function identityEvidence(plan:AiIntelligencePlan,toolPlan:CoreAiToolPlan):AiIng
   const rows:AiIngredientEvidence[]=[];
   for(const symbol of plan.symbols){
     const resolved=toolPlan.resolvedSecurity?.symbol===symbol?toolPlan.resolvedSecurity:null;
+    const resolvedVerified=Boolean(resolved&&resolved.market!=='UNKNOWN'&&resolved.name!==resolved.symbol);
     rows.push({
       ingredient:'SECURITY_IDENTITY',
       symbol,
-      status:resolved?'VERIFIED':'PARTIAL',
-      source:resolved?'TF_ASSET_SECURITY_RESOLVER':'QUESTION_SYMBOL_PARSER',
+      status:resolvedVerified?'VERIFIED':'PARTIAL',
+      source:resolvedVerified?'TF_ASSET_SECURITY_RESOLVER':'QUESTION_SYMBOL_PARSER',
       fetchedAt:nowIso(),
-      summary:resolved?symbol+' '+resolved.name:symbol+'（代號已解析，名稱/市場待補）',
+      summary:resolvedVerified?symbol+' '+resolved!.name:symbol+'（代號已解析，但尚未在官方已上市目錄確認名稱/市場）',
       ...(resolved?{details:{
         securityId:resolved.securityId,
         name:resolved.name,
@@ -238,7 +239,16 @@ function findEvidence(rows:readonly AiIngredientEvidence[],ingredient:AiIngredie
 
 const externalNewsToDetails=(rows:readonly ExternalNewsRow[])=>rows.slice(0,10).map(row=>({
   title:row.title,source:row.source,publishedAt:row.publishedAt,url:row.url,
+  ...(row.publisherUrl?{publisherUrl:row.publisherUrl}:{}),
+  articleBodyVerified:row.articleBodyVerified===true,
+  ...(row.highlights?.length?{highlights:row.highlights.slice(0,5)}:{}),
 }));
+
+const securityNameFor=(symbol:string,evidence:readonly AiIngredientEvidence[])=>{
+  const identity=findEvidence(evidence,'SECURITY_IDENTITY',symbol);
+  const name=String(identity?.details?.name??'').trim();
+  return name&&name!==symbol?name:symbol;
+};
 
 async function acquireMissing(
   plan:AiIntelligencePlan,
