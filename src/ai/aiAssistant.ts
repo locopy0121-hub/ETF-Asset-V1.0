@@ -23,7 +23,7 @@ export type AiAssistantAction=
   }>;
 
 export type AiAssistantAnswer=Readonly<{
-  intent:'capabilities'|'news'|'dividend-update'|'dividend'|'performance'|'market-value'|'holdings'|'holding-detail'|'help';
+  intent:'capabilities'|'news'|'dividend-update'|'dividend'|'performance'|'market-value'|'allocation'|'ranking'|'ledger'|'holdings'|'holding-detail'|'help';
   text:string;
   actions?:readonly AiAssistantAction[];
 }>;
@@ -40,6 +40,7 @@ type HoldingLike=Readonly<{
   avgCost?:number;
   realizedPnl?:number;
   comprehensivePnl?:number;
+  weight?:number;
 }>;
 
 type PortfolioLike=Readonly<{
@@ -73,6 +74,25 @@ const openDividendAction=(holding:HoldingLike):AiAssistantAction=>({
   question:'更新 '+holding.symbol+' 股息日',
 });
 
+const holdingWeight=(holding:HoldingLike,holdings:readonly HoldingLike[])=>{
+  if(Number.isFinite(Number(holding.weight)))return Number(holding.weight);
+  const total=holdings.reduce((sum,row)=>sum+Math.max(0,Number(row.marketValue??0)),0);
+  return total>0?Math.max(0,Number(holding.marketValue??0))/total*100:0;
+};
+const latestLedgerRows=(entries:readonly CanonicalLedgerEntry[],limit=5)=>[...entries]
+  .sort((a,b)=>b.date.localeCompare(a.date))
+  .slice(0,limit)
+  .map((entry,index)=>{
+    if(entry.kind==='buy'||entry.kind==='sell'){
+      const kind=entry.kind==='buy'?'買進':'賣出';
+      return (index+1)+'. '+entry.date+'｜'+kind+' '+entry.symbol+' '+entry.name+'｜'+
+        Number(entry.shares).toLocaleString('zh-TW')+' 股 × '+Number(entry.price).toFixed(2)+
+        '｜現金流 NT$ '+money(calculateLedgerCashFlow(entry));
+    }
+    if(entry.kind==='dividend')return (index+1)+'. '+entry.date+'｜股息 '+entry.symbol+' '+entry.name+'｜淨入帳 NT$ '+money(calculateLedgerCashFlow(entry));
+    return (index+1)+'. '+entry.date+'｜現金調整 '+entry.label+'｜NT$ '+money(calculateLedgerCashFlow(entry));
+  });
+
 function textNews(items:readonly AiNewsItem[],symbol?:HoldingLike){
   const related=(symbol?items.filter(item=>item.symbol===symbol.symbol):items).slice(0,5);
   if(!related.length)return symbol?'目前沒有已取得的 '+symbol.symbol+' '+symbol.name+' 新聞。':'目前沒有已取得的持股新聞。';
@@ -93,7 +113,7 @@ export async function answerAiQuestion(
   if(includesAny(q,['你可以做什麼','可以做什麼','會做什麼','有什麼功能','能做什麼','幫什麼'])){
     return {
       intent:'capabilities',
-      text:'我可以直接使用目前 App 的持股、帳務、股息與行情資料回答問題，也能整理持股新聞。你可以問持股市值、損益、報酬、年度／本月股息、某檔 ETF 資訊，或輸入「更新持股股息日」掃描證交所最新配息事件並找出尚未登錄的紀錄。需要寫入帳務的動作，我會先列出內容並提供「＋新增」，不會自行寫入。',
+      text:'我目前可直接使用 TF Asset 內的持股、帳務、股息、行情與持股新聞資料。\n\n可以查：① 總市值／總損益 ② 資產配置與持股占比 ③ 持股損益排行 ④ 最近交易與帳務紀錄 ⑤ 單檔 ETF 的股數、成本、市值、損益、報酬率、累積股息 ⑥ 本月／年度股息 ⑦ 更新持股股息日 ⑧ 最近持股新聞。\n\n涉及新增股息等寫入動作時，我會先列出內容並要求確認，不會自行寫入。',
     };
   }
 
@@ -122,6 +142,43 @@ export async function answerAiQuestion(
       id:'open-news-'+item.id,kind:'openNews',label:'開啟來源：'+item.source,url:item.url,
     }));
     return {intent:'news',text:textNews(newsItems,symbol),actions};
+  }
+
+  if(includesAny(q,['資產配置','配置','占比','比重','權重'])){
+    const rows=[...holdings]
+      .map(holding=>({...holding,aiWeight:holdingWeight(holding,holdings)}))
+      .sort((a,b)=>b.aiWeight-a.aiWeight);
+    if(!rows.length)return {intent:'allocation',text:'目前沒有持股，因此沒有可整理的資產配置。'};
+    return {
+      intent:'allocation',
+      text:'目前資產配置：\n\n'+rows.map((holding,index)=>
+        (index+1)+'. '+holding.symbol+' '+holding.name+'｜'+holding.aiWeight.toFixed(1)+'%｜市值 NT$ '+money(holding.marketValue)
+      ).join('\n')+'\n\n合計持股市值 NT$ '+money(portfolio.totalMarketValue)+'。',
+    };
+  }
+
+  if(includesAny(q,['排行','排名','賺最多','虧最多','最好','最差','最大持股','最小持股'])){
+    if(!holdings.length)return {intent:'ranking',text:'目前沒有持股可進行排行。'};
+    const byPnl=[...holdings].sort((a,b)=>Number(b.pnl??0)-Number(a.pnl??0));
+    const byWeight=[...holdings].sort((a,b)=>holdingWeight(b,holdings)-holdingWeight(a,holdings));
+    if(includesAny(q,['最大持股'])){const h=byWeight[0]!;return {intent:'ranking',text:'目前最大持股為 '+h.symbol+' '+h.name+'，占比 '+holdingWeight(h,holdings).toFixed(1)+'%，市值 NT$ '+money(h.marketValue)+'。'};}
+    if(includesAny(q,['最小持股'])){const h=byWeight.at(-1)!;return {intent:'ranking',text:'目前最小持股為 '+h.symbol+' '+h.name+'，占比 '+holdingWeight(h,holdings).toFixed(1)+'%，市值 NT$ '+money(h.marketValue)+'。'};}
+    if(includesAny(q,['虧最多','最差'])){const h=byPnl.at(-1)!;return {intent:'ranking',text:'目前帳面損益最低的是 '+h.symbol+' '+h.name+'：NT$ '+money(h.pnl)+'，報酬率 '+pct(h.roi)+'%。'};}
+    if(includesAny(q,['賺最多','最好'])){const h=byPnl[0]!;return {intent:'ranking',text:'目前帳面損益最高的是 '+h.symbol+' '+h.name+'：NT$ '+money(h.pnl)+'，報酬率 '+pct(h.roi)+'%。'};}
+    return {intent:'ranking',text:'持股損益排行：\n\n'+byPnl.map((h,index)=>(index+1)+'. '+h.symbol+' '+h.name+'｜損益 NT$ '+money(h.pnl)+'｜'+pct(h.roi)+'%').join('\n')};
+  }
+
+  if(includesAny(q,['最近交易','交易紀錄','帳務紀錄','最近紀錄','買賣紀錄','最近買賣'])){
+    const rows=latestLedgerRows(entries,5);
+    const buys=entries.filter(entry=>entry.kind==='buy').length;
+    const sells=entries.filter(entry=>entry.kind==='sell').length;
+    const dividends=entries.filter(entry=>entry.kind==='dividend').length;
+    return {
+      intent:'ledger',
+      text:rows.length
+        ?'帳務摘要：買進 '+buys+' 筆、賣出 '+sells+' 筆、股息 '+dividends+' 筆。\n\n最近紀錄：\n'+rows.join('\n\n')
+        :'目前尚無帳務紀錄。',
+    };
   }
 
   if(includesAny(q,['股息','配息'])){
@@ -174,12 +231,12 @@ export async function answerAiQuestion(
   if(symbol){
     return {
       intent:'holding-detail',
-      text:symbol.symbol+' '+symbol.name+'\n持有：'+Number(symbol.shares??0).toLocaleString('zh-TW')+' 股\n現價：NT$ '+Number(symbol.price??0).toLocaleString('zh-TW')+'\n平均成本：NT$ '+Number(symbol.avgCost??0).toLocaleString('zh-TW')+'\n市值：NT$ '+money(symbol.marketValue)+'\n損益：NT$ '+money(symbol.pnl)+'\n報酬率：'+pct(symbol.roi)+'%\n累積股息：NT$ '+money(symbol.cumulativeDividend),
+      text:symbol.symbol+' '+symbol.name+'\n持有：'+Number(symbol.shares??0).toLocaleString('zh-TW')+' 股\n現價：NT$ '+Number(symbol.price??0).toLocaleString('zh-TW')+'\n平均成本：NT$ '+Number(symbol.avgCost??0).toLocaleString('zh-TW')+'\n市值：NT$ '+money(symbol.marketValue)+'\n持股占比：'+holdingWeight(symbol,holdings).toFixed(1)+'%\n損益：NT$ '+money(symbol.pnl)+'\n報酬率：'+pct(symbol.roi)+'%\n含息損益：NT$ '+money(symbol.comprehensivePnl)+'\n累積股息：NT$ '+money(symbol.cumulativeDividend),
     };
   }
 
   return {
     intent:'help',
-    text:'我沒有把這句話判斷成要查新聞。你可以直接問「目前持股市值？」「0050 損益？」「今年股息多少？」「更新持股股息日」或「最近持股有什麼新聞？」。',
+    text:'我目前還無法判斷這個指令。你可以直接問：\n「目前資產配置？」\n「哪一檔賺最多？」\n「最近 5 筆交易？」\n「0050 成本和損益？」\n「今年股息多少？」\n「更新持股股息日」\n「最近持股有什麼新聞？」',
   };
 }
