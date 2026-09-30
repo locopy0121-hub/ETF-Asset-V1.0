@@ -90,7 +90,8 @@ const latestLedgerRows=(entries:readonly CanonicalLedgerEntry[],limit=5)=>[...en
         '｜現金流 NT$ '+money(calculateLedgerCashFlow(entry));
     }
     if(entry.kind==='dividend')return (index+1)+'. '+entry.date+'｜股息 '+entry.symbol+' '+entry.name+'｜淨入帳 NT$ '+money(calculateLedgerCashFlow(entry));
-    return (index+1)+'. '+entry.date+'｜現金調整 '+entry.label+'｜NT$ '+money(calculateLedgerCashFlow(entry));
+    if(entry.kind==='other')return (index+1)+'. '+entry.date+'｜現金調整 '+entry.label+'｜NT$ '+money(calculateLedgerCashFlow(entry));
+    return (index+1)+'. '+entry.date+'｜帳務紀錄｜NT$ '+money(calculateLedgerCashFlow(entry));
   });
 
 function textNews(items:readonly AiNewsItem[],symbol?:HoldingLike){
