@@ -83,7 +83,7 @@ async function fetchOfficialSecurityCatalog():Promise<readonly SecurityCandidate
       }),
   ];
   await Promise.allSettled(requests);
-  catalogCache={rows,expiresAt:Date.now()+CACHE_MS};
+  catalogCache={rows,expiresAt:Date.now()+(rows.length?CACHE_MS:60_000)};
   return rows;
 }
 
