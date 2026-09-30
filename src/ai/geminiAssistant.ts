@@ -113,7 +113,7 @@ function compactGrounding(
   const wantsLedger=/(交易|買入|賣出|帳務|紀錄|最近\s*\d*\s*筆|股息|配息)/i.test(q);
   const wantsNews=/(新聞|消息|重大|事件)/i.test(q);
   const wantsPrivate=/(我|我的|持股|資產|損益|成本|報酬|股息|配息|交易|帳務|配置|市值|幾張|幾股)/i.test(q);
-  const researchRequested=Boolean(target)||/(成分|重複|曝險|產業|比較|分析|模擬|what[- ]?if)/i.test(q);
+  const researchRequested=/(成分|重複|曝險|產業|比較|分析|模擬|what[- ]?if|費用率|追蹤指數)/i.test(q);
 
   const market=wantsMarket
     ?snapshot.market.filter(row=>!target||row.symbol===target).slice(0,target?1:12).map(row=>({
@@ -260,9 +260,9 @@ export async function answerWithGemini(
   try{
     const targetSymbol=toolPlan.resolvedSecurity?.symbol??extractTargetSymbol(question);
     const investmentAmount=extractInvestmentAmount(question);
-    const researchEnabled=Boolean(targetSymbol)||/(成分|重複|曝險|產業|比較|分析|what[- ]?if|模擬)/i.test(question);
+    const researchEnabled=/(成分|重複|曝險|產業|比較|分析|what[- ]?if|模擬|費用率|追蹤指數)/i.test(question);
     const analysisContext=await buildAnalysisContext({
-      targetSymbol,
+      targetSymbol:researchEnabled?targetSymbol:null,
       investmentAmount,
       holdings:toHoldingProjection(holdings),
       totalMarketValue:Number(portfolio.totalMarketValue)||0,
