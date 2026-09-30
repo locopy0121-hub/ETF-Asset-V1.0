@@ -93,6 +93,7 @@ async function main(){
 
   const registry=fs.readFileSync('src/ai/coreAiToolRegistry.ts','utf8');
   const gemini=fs.readFileSync('src/ai/geminiAssistant.ts','utf8');
+  const aiScreen=fs.readFileSync('src/screens/AiScreen.tsx','utf8');
   assert.match(registry,/get_portfolio_summary/);
   assert.match(registry,/get_transactions/);
   assert.match(registry,/get_dividends/);
@@ -101,7 +102,7 @@ async function main(){
   assert.match(gemini,/entries,/,'full in-memory Canonical ledger must be available to the App-side Tool runtime');
   assert.match(gemini,/ledgerToolCovered/,'structured ledger Tool output must replace redundant raw ledger grounding');
   assert.match(gemini,/portfolioToolCovered/,'structured portfolio Tool output must replace redundant full portfolio grounding');
-  assert.match(gemini,/finance\.sharedSnapshot\.asset/,'AI must receive the current Canonical shared asset snapshot from the App');
+  assert.match(aiScreen,/finance\.sharedSnapshot\.asset/,'AI must receive the current Canonical shared asset snapshot from the App');
 
   console.log('V3.2.29 current-App canonical portfolio / ledger / dividend READ tools PASS');
 }
