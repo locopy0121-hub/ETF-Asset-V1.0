@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.28",
+  "version": "3.2.29",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_2_28 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v3_2_29 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -265,7 +265,8 @@
     "test:v3_2_25": "npm run test:v3_2_23 && tsx scripts/v3_2_25-local-ai-tools.test.ts",
     "test:v3_2_26": "npm run test:v3_2_25 && tsx scripts/v3_2_26-gemini-worker-compat.test.ts",
     "test:v3_2_27": "npm run test:v3_2_26 && tsx scripts/v3_2_27-gemini-contract-repair.test.ts",
-    "test:v3_2_28": "npm run test:v3_2_27 && tsx scripts/v3_2_28-ai-core-tools.test.ts"
+    "test:v3_2_28": "npm run test:v3_2_27 && tsx scripts/v3_2_28-ai-core-tools.test.ts",
+    "test:v3_2_29": "npm run test:v3_2_28 && tsx scripts/v3_2_29-ai-tier2-read.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
