@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import {resolveSecurityFromKnown,type ResolvedSecurity} from '../src/market/securityResolver';
+import {resolveSecurity,resolveSecurityFromKnown,type ResolvedSecurity} from '../src/market/securityResolver';
 import {
   executeCoreAiReadTools,
   localAnswerFromCoreTools,
-  type CoreAiToolRuntime,
 } from '../src/ai/coreAiToolRegistry';
 
 const tsmc:ResolvedSecurity={
@@ -24,6 +23,27 @@ const known=[
 assert.deepEqual(resolveSecurityFromKnown('台積電股價',known),tsmc);
 assert.equal(resolveSecurityFromKnown('2330 現在多少',known)?.securityId,'TWSE:2330');
 assert.equal(resolveSecurityFromKnown('元大台灣50 配息',known)?.symbol,'0050');
+
+const originalFetch=globalThis.fetch;
+globalThis.fetch=(async(input:any)=>{
+  const url=String(input);
+  if(url.includes('openapi.twse.com.tw'))return {
+    ok:true,
+    json:async()=>[{Code:'2330',Name:'台積電'}],
+  } as any;
+  if(url.includes('tpex.org.tw'))return {
+    ok:true,
+    json:async()=>[],
+  } as any;
+  throw new Error('unexpected catalog URL '+url);
+}) as typeof fetch;
+try{
+  const officialResolved=await resolveSecurity('台積電股價',[]);
+  assert.equal(officialResolved?.securityId,'TWSE:2330','non-holding stock name must resolve from the current market-layer official catalog');
+  assert.equal(officialResolved?.name,'台積電');
+}finally{
+  globalThis.fetch=originalFetch;
+}
 
 const holdings=[{
   symbol:'2330',name:'台積電',shares:2000,price:950,avgCost:580,
@@ -110,6 +130,7 @@ assert.doesNotMatch(assistant,/我目前還無法判斷這個指令/,'fixed-comm
 assert.match(gemini,/一般 AI 的自然對話/);
 assert.match(gemini,/不要把快捷問題當成能力白名單/);
 assert.match(gemini,/executeCoreAiReadTools/);
+assert.match(gemini,/explicitLocalActionRequested/,'existing deterministic App actions must remain explicit exceptions, not the conversation router');
 assert.match(gemini,/refreshUnifiedMarketData\(\[symbol\]\)/,'quotes must reuse the current TF Asset Market Center');
 assert.match(gemini,/body:JSON\.stringify\(\{question\}\)/,'current deployed Worker question contract must remain compatible');
 assert.match(gemini,/portfolio:wantsPrivate\?snapshot\.portfolio:null/,'private portfolio must be disclosed only when relevant');
