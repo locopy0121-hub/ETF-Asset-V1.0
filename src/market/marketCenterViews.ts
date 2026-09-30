@@ -1,6 +1,6 @@
 import type {RuntimeQuote} from '../finance/financeSeed';
 
-const VALUATION_QUALITIES=new Set(['trade','backup_realtime','previous_close','official_close']);
+const VALUATION_QUALITIES=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
 const EMPTY_INTRADAY:NonNullable<RuntimeQuote['intraday']>=[];
 
 const sourceTimeValid=(row:RuntimeQuote|undefined)=>
@@ -47,7 +47,7 @@ export function marketIntradaySeriesFor(rows:readonly RuntimeQuote[],symbol:stri
 }
 
 /**
- * Portfolio valuation view. A verified trade, backup real-time quote, previous
+ * Portfolio valuation view. A verified trade, backup real-time quote, bid/ask indicative quote, previous
  * close, or official close may value holdings. Missing 09:00-13:30 intraday
  * points must never invalidate this view.
  */
