@@ -4,6 +4,7 @@ import { PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } 
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import { type AiAssistantAction } from '../ai/aiAssistant';
+import type {AiSessionContext} from '../ai/aiConversationTypes';
 import { answerWithGemini } from '../ai/geminiAssistant';
 import { dividendEventToLedger } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
@@ -75,7 +76,7 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
     },
   }),[safePosition.x,safePosition.y,maxX,maxY,mode]);
 
-  const ask=(question:string)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes);
+  const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
 
   if(!deriveAiUiState(aiSettings.prefs.ai,'home').showFloatingAi)return null;

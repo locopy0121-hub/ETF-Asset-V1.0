@@ -2,6 +2,7 @@ import {useMemo,useRef,useState} from 'react';
 import {Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 
 import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
+import {EMPTY_AI_SESSION_CONTEXT,type AiSessionContext} from '../ai/aiConversationTypes';
 import {colors,radius,spacing} from '../theme/tokens';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
@@ -20,7 +21,7 @@ export function AiQuestionBox({
   title?:string;
   placeholder?:string;
   suggestions?:readonly string[];
-  onAsk:(question:string)=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
+  onAsk:(question:string,session:AiSessionContext)=>string|AiAssistantAnswer|Promise<string|AiAssistantAnswer>;
   onAction?:(action:AiAssistantAction)=>void|Promise<void>;
   maintenance?:FrameMaintenanceContext;
 }){
@@ -28,6 +29,7 @@ export function AiQuestionBox({
   const [input,setInput]=useState('');
   const [messages,setMessages]=useState<Message[]>([]);
   const [asking,setAsking]=useState(false);
+  const [sessionContext,setSessionContext]=useState<AiSessionContext>(EMPTY_AI_SESSION_CONTEXT);
   const [confirming,setConfirming]=useState<string|null>(null);
   const scrollRef=useRef<ScrollView|null>(null);
   const visible=useMemo(()=>messages.slice(-20),[messages]);
@@ -43,8 +45,9 @@ export function AiQuestionBox({
     setInput('');
     setAsking(true);
     try{
-      const result=await onAsk(question);
+      const result=await onAsk(question,sessionContext);
       const normalized:AiAssistantAnswer=typeof result==='string'?{intent:'help',text:result}:result;
+      if(normalized.sessionContext)setSessionContext(normalized.sessionContext);
       const answer:Message={id:'a-'+Date.now(),role:'assistant',text:normalized.text||'目前沒有可整理的資料。',...(normalized.actions?.length?{actions:normalized.actions}:{})};
       setMessages(current=>[...current,answer]);
     }catch(error){

@@ -7,7 +7,7 @@ const context=fs.readFileSync('src/ai/buildAnalysisContext.ts','utf8');
 
 assert.match(gemini,/buildAnalysisContext/);
 assert.doesNotMatch(gemini,/tools:GEMINI_LOCAL_TOOLS/);
-assert.doesNotMatch(gemini,/toolResults,/);
+assert.doesNotMatch(gemini,/body:JSON\.stringify\(\{\s*question\s*,\s*toolResults/,'Tool results may be embedded inside the question grounding, but must not change the deployed Worker root contract');
 
 // Local Tool contracts remain implemented for App-side research and a future Worker upgrade.
 assert.match(tools,/queryLocalEtfComponents/);
