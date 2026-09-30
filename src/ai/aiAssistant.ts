@@ -212,6 +212,13 @@ export async function answerAiQuestion(
 
   if(includesAny(q,['損益','報酬','績效'])){
     if(symbol)return {intent:'performance',text:symbol.symbol+' '+symbol.name+'：損益 NT$ '+money(symbol.pnl)+'，報酬率 '+pct(symbol.roi)+'%，含息損益 NT$ '+money(symbol.comprehensivePnl)+'。'};
+    if(includesAny(q,['報酬率','報酬'])){
+      const unrealized=Number(portfolio.totalUnrealizedProfit)||0;
+      const marketValue=Number(portfolio.totalMarketValue)||0;
+      const costBasis=Math.max(0,marketValue-unrealized);
+      const roi=costBasis>0?unrealized/costBasis*100:0;
+      return {intent:'performance',text:'目前持股未實現報酬率 '+roi.toFixed(2)+'%；未實現損益 NT$ '+money(unrealized)+'，持股市值 NT$ '+money(marketValue)+'。含息總損益 NT$ '+money(portfolio.totalPnl)+'。'};
+    }
     return {intent:'performance',text:'目前含息總損益 NT$ '+money(portfolio.totalPnl)+'；未實現損益 NT$ '+money(portfolio.totalUnrealizedProfit)+'；已實現損益 NT$ '+money(portfolio.realizedNetPnL)+'。'};
   }
 
