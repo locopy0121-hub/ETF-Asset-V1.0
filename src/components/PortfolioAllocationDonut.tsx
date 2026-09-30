@@ -29,15 +29,16 @@ export function PortfolioAllocationDonut({rows,totalMarketValue,valuationComplet
     }));
   },[rows]);
   let offset=0;
+  const chartSize=compact?156:SIZE;
   return <View style={styles.panel}>
     <Text style={styles.count}>{rows.length} 檔 ETF</Text>
     {!valuationComplete?
       <Text style={styles.message}>部分持股尚缺官方行情；資產占比暫不顯示，帳務成本仍保留。</Text>
       :allocations.length===0?
         <Text style={styles.message}>尚無可顯示的持股市值。</Text>
-        :<View style={[styles.layout,compact&&styles.compact]}>
-          <View style={styles.chart} accessibilityLabel="持股市值資產配置環形圖">
-            <Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+        :<View style={[styles.layout]}>
+          <View style={[styles.chart,{width:chartSize,height:chartSize}]} accessibilityLabel="持股市值資產配置環形圖">
+            <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${SIZE} ${SIZE}`}>
               <Circle cx={SIZE/2} cy={SIZE/2} r={RADIUS} stroke="#2A3543" strokeWidth={30} fill="none"/>
               {allocations.map(item=>{
                 const length=item.ratio*CIRCUMFERENCE;
@@ -50,9 +51,9 @@ export function PortfolioAllocationDonut({rows,totalMarketValue,valuationComplet
                   rotation={-90} originX={SIZE/2} originY={SIZE/2}/>;
               })}
             </Svg>
-            <View pointerEvents="none" style={styles.center}>
-              <Text style={styles.centerCaption}>持股總市值</Text>
-              <Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.65} style={styles.total}>{amount(totalMarketValue)}</Text>
+            <View pointerEvents="none" style={[styles.center,{left:compact?17:39,right:compact?17:39,top:compact?45:65,bottom:compact?45:65}]}>
+              <Text style={[styles.centerCaption,compact&&{fontSize:9}]}>持股總市值</Text>
+              <Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.65} style={[styles.total,compact&&{fontSize:15}]}>{amount(totalMarketValue)}</Text>
             </View>
           </View>
           <View style={styles.legend}>
@@ -70,7 +71,6 @@ const styles=StyleSheet.create({
   panel:{backgroundColor:'#1C2835',borderRadius:18,padding:14,gap:12},
   count:{color:'#DDBD64',fontWeight:'800',fontSize:12,textAlign:'right'},
   layout:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
-  compact:{flexDirection:'column',alignItems:'stretch'},
   chart:{width:SIZE,height:SIZE,alignSelf:'center',justifyContent:'center',alignItems:'center'},
   center:{position:'absolute',left:39,right:39,top:65,bottom:65,justifyContent:'center',alignItems:'center',gap:4},
   centerCaption:{color:'#AAB7C6',fontSize:11},
