@@ -33,12 +33,13 @@ export async function buildAnalysisContext(input:{
   holdings:readonly AiHoldingProjection[];
   totalMarketValue:number;
   topN?:number;
+  researchEnabled?:boolean;
 }):Promise<AnalysisContext>{
   const targetSymbol=normalizeSymbol(input.targetSymbol||undefined)||null;
   const warnings:string[]=[];
   const componentsBySymbol=new Map<string,readonly LocalEtfComponent[]>();
   const coverage:EtfResearchCoverage[]=[];
-  const symbols=[...new Set([
+  const symbols=input.researchEnabled===false?[]:[...new Set([
     ...input.holdings.map(row=>row.symbol),
     ...(targetSymbol?[targetSymbol]:[]),
   ])];
