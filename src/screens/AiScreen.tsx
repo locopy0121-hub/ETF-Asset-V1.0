@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
-import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
+import {type AiAssistantAction} from '../ai/aiAssistant';
+import {answerWithGemini} from '../ai/geminiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
 import {AiQuestionBox} from '../components/AiQuestionBox';
 import {FrameCard} from '../components/FrameCard';
@@ -20,12 +21,12 @@ export function AiScreen(){
   const finance=useFinance();
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
-  const ask=(question:string)=>answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries);
+  const ask=(question:string)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes);
   const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
 
-  return <><PageShell pageKey="ai" title="AI 助理" subtitle="財務資料與 App 操作型助理；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+  return <><PageShell pageKey="ai" title="AI 助理" subtitle="Gemini AI × TF Asset 即時資料中心；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
     <PageEditorStack pageKey="ai" frames={[{key:'ai-news',element:
       <FrameCard title="AI 財務管家">
         <View style={styles.overview}>
@@ -34,7 +35,7 @@ export function AiScreen(){
           <View style={styles.overviewTile}><Text style={styles.overviewLabel}>新聞</Text><Text style={styles.overviewValue}>{ai.items.length} 則</Text></View>
         </View>
         <View style={styles.capabilityPanel}>
-          <Text style={styles.capabilityTitle}>可直接處理</Text>
+          <Text style={styles.capabilityTitle}>Gemini 已接入</Text>
           <Text style={styles.capabilityText}>資產配置 · 持股排行 · 最近交易 · 單檔成本／損益 · 股息更新 · 持股新聞</Text>
         </View>
         <AiQuestionBox
