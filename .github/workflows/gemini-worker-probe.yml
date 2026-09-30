@@ -39,3 +39,4 @@ jobs:
           probe question_context '{"question":"只根據資料回答目前總市值是多少？","context":{"portfolio":{"totalMarketValue":23456},"marker":"CONTEXT_TEST_928"}}'
           probe question_data '{"question":"只根據資料回答目前總市值是多少？","data":{"portfolio":{"totalMarketValue":34567},"marker":"DATA_TEST_929"}}'
           probe question_instruction_snapshot '{"question":"只輸出這個數字，不要其他文字","instruction":"只可根據 snapshot 回答","snapshot":{"value":45678,"marker":"SNAPSHOT_TEST_930"}}'
+          probe embedded_grounding '{"question":"【TF Asset 本機可信資料】{\"portfolio\":{\"totalMarketValue\":56789},\"source\":\"Canonical Finance Core\"}\\n【規則】只能根據上述本機資料回答，不得自行猜測。\\n【使用者問題】目前總市值是多少？"}'
