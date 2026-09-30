@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.26",
+  "version": "3.2.27",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -263,7 +263,8 @@
     "test:v3_2_22": "npm run test:v3_2_21 && tsx scripts/v3_2_22-dividend-calendar-ui.test.ts",
     "test:v3_2_23": "npm run test:v3_2_22 && tsx scripts/v3_2_23-ai-capability-hub.test.ts",
     "test:v3_2_25": "npm run test:v3_2_23 && tsx scripts/v3_2_25-local-ai-tools.test.ts",
-    "test:v3_2_26": "npm run test:v3_2_25 && tsx scripts/v3_2_26-gemini-worker-compat.test.ts"
+    "test:v3_2_26": "npm run test:v3_2_25 && tsx scripts/v3_2_26-gemini-worker-compat.test.ts",
+    "test:v3_2_27": "npm run test:v3_2_26 && tsx scripts/v3_2_27-gemini-contract-repair.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
