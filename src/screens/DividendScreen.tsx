@@ -9,7 +9,7 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import {buildDividendCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents} from '../dividend/dividendCalendar';
+import {buildDividendCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents,type DividendCalendarEventType} from '../dividend/dividendCalendar';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToLedger} from '../ai/dividendAssistant';
@@ -20,6 +20,9 @@ import { colors, spacing } from '../theme/tokens';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const nowIso=()=>deviceLocalCalendarDate();
+const calendarEventColor=(type:DividendCalendarEventType)=>
+  type==='lastBuyDate'?'#8B5CF6':type==='exDate'?colors.primary:type==='recordDate'?colors.warning:colors.gain;
+const shortDate=(date:string)=>date?date.slice(5).replace('-',' / '):'';
 
 export function DividendScreen() {
   const finance=useFinance();
@@ -51,7 +54,12 @@ export function DividendScreen() {
   },[calendarEvents,month]);
   const selectedEvents=monthEvents.filter(event=>event.date===selectedDate);
   const monthDate=new Date(month+'-01T12:00:00');
-  const shiftMonth=(delta:number)=>{const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);setMonth(deviceLocalCalendarDate(d).slice(0,7));};
+  const shiftMonth=(delta:number)=>{
+    const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);
+    const next=deviceLocalCalendarDate(d).slice(0,7);
+    setMonth(next);
+    setSelectedDate(next===today.slice(0,7)?today:next+'-01');
+  };
   const firstWeekday=monthDate.getDay();
   const nextMonth=new Date(monthDate);nextMonth.setMonth(nextMonth.getMonth()+1);
   const daysInMonth=Math.round((nextMonth.getTime()-monthDate.getTime())/86400000);
@@ -84,25 +92,65 @@ export function DividendScreen() {
           </FrameCard>
         },
         {key:'dividend-calendar',element:
-          <FrameCard title="股息月曆">
+          <FrameCard title="股息月曆" action={<Text style={styles.calendarCount}>{monthEvents.length} 項事件</Text>}>
             <View style={styles.calendarTop}>
-              <Pressable onPress={()=>shiftMonth(-1)}><Text style={styles.arrow}>‹</Text></Pressable>
-              <Text style={styles.month}>{month.replace('-',' 年 ')} 月</Text>
-              <Pressable onPress={()=>shiftMonth(1)}><Text style={styles.arrow}>›</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="上一個月" onPress={()=>shiftMonth(-1)} style={styles.arrowButton}><Text style={styles.arrow}>‹</Text></Pressable>
+              <View style={styles.monthBlock}>
+                <Text style={styles.month}>{month.replace('-',' 年 ')} 月</Text>
+                <Text style={styles.monthCaption}>{month===today.slice(0,7)?'本月':'股息事件月曆'}</Text>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel="下一個月" onPress={()=>shiftMonth(1)} style={styles.arrowButton}><Text style={styles.arrow}>›</Text></Pressable>
             </View>
-            <View style={styles.week}>{['日','一','二','三','四','五','六'].map(x=><Text key={x} style={styles.weekday}>{x}</Text>)}</View>
+            <View style={styles.week}>{['日','一','二','三','四','五','六'].map((x,index)=><Text key={x} style={[styles.weekday,(index===0||index===6)&&styles.weekend]}>{x}</Text>)}</View>
             <View style={styles.grid}>{Array.from({length:calendarCells},(_,i)=>{
               const day=i-firstWeekday+1;
               const valid=day>=1&&day<=daysInMonth;
               const dayEvents=valid?(events.get(day)??[]):[];
               const date=valid?month+'-'+String(day).padStart(2,'0'):'';
-              return <Pressable key={i} disabled={!valid||!dayEvents.length} onPress={()=>setSelectedDate(date)} style={[styles.day,dayEvents.length>0&&styles.eventDay,selectedDate===date&&styles.selectedDay]}>
-                <Text style={[styles.dayText,!valid&&styles.dayGhost]}>{valid?day:''}</Text>
-                {dayEvents.length?<View style={styles.eventDots}>{dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:event.type==='lastBuyDate'?'#8B5CF6':event.type==='exDate'?colors.primary:event.type==='recordDate'?colors.warning:colors.gain}]}/>)}</View>:null}
+              const selected=valid&&selectedDate===date;
+              const isToday=valid&&today===date;
+              return <Pressable
+                key={i}
+                disabled={!valid}
+                accessibilityRole="button"
+                accessibilityLabel={valid?`${date}，${dayEvents.length} 項股息事件`:'空白日期'}
+                onPress={()=>valid&&setSelectedDate(date)}
+                style={[styles.day,!valid&&styles.dayInvalid,dayEvents.length>0&&styles.eventDay,selected&&styles.selectedDay]}
+              >
+                <View style={[styles.dayNumberWrap,isToday&&styles.todayNumberWrap,selected&&styles.selectedNumberWrap]}>
+                  <Text style={[styles.dayText,!valid&&styles.dayGhost,selected&&styles.selectedDayText]}>{valid?day:''}</Text>
+                </View>
+                {dayEvents.length?<View style={styles.eventDots}>
+                  {dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:calendarEventColor(event.type)}]}/>)}
+                  {dayEvents.length>3?<Text style={styles.moreEvents}>+{dayEvents.length-3}</Text>:null}
+                </View>:<View style={styles.eventDotsPlaceholder}/>}
               </Pressable>;
             })}</View>
-            {selectedEvents.length?<View style={styles.eventDetails}>{selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}><Text style={styles.eventType}>{dividendCalendarTypeLabel(event.type)}</Text><Text style={styles.eventText}>{event.symbol} {event.name} · {event.date}{event.status?' · '+event.status:''}</Text></View>)}</View>:null}
-            <View style={styles.legend}><Legend color="#8B5CF6" label="最後購買日"/><Legend color={colors.primary} label="除息日"/><Legend color={colors.warning} label="股權登記日"/><Legend color={colors.gain} label="股息配發日"/></View>
+            {selectedDate.startsWith(month)?<View style={styles.eventDetails}>
+              <View style={styles.eventDetailHeader}>
+                <View>
+                  <Text style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
+                  <Text style={styles.eventDetailTitle}>{selectedDate===today?'今天':'日期事件'}</Text>
+                </View>
+                <Text style={styles.eventDetailCount}>{selectedEvents.length?selectedEvents.length+' 項':'無事件'}</Text>
+              </View>
+              {selectedEvents.length?selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}>
+                <View style={[styles.eventTypeBadge,{backgroundColor:calendarEventColor(event.type)+'18'}]}>
+                  <View style={[styles.eventTypeDot,{backgroundColor:calendarEventColor(event.type)}]}/>
+                  <Text style={[styles.eventType,{color:calendarEventColor(event.type)}]}>{dividendCalendarTypeLabel(event.type)}</Text>
+                </View>
+                <View style={styles.eventInfo}>
+                  <Text style={styles.eventSymbol}>{event.symbol} · {event.name}</Text>
+                  <Text style={styles.eventText}>{event.date}{event.status?' · '+event.status:''}</Text>
+                </View>
+              </View>):<Text style={styles.noEventText}>這一天沒有已記錄的股息事件。</Text>}
+            </View>:null}
+            <View style={styles.legend}>
+              <Legend color="#8B5CF6" label="最後購買日"/>
+              <Legend color={colors.primary} label="除息日"/>
+              <Legend color={colors.warning} label="股權登記日"/>
+              <Legend color={colors.gain} label="股息配發日"/>
+            </View>
           </FrameCard>
         },
         {key:'dividend-list',element:
@@ -155,27 +203,48 @@ function Legend({color,label}:{color:string;label:string}){return <View style={s
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   aiBox:{paddingTop:spacing.md,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
-  calendarTop:{flexDirection:'row',justifyContent:'center',gap:20,alignItems:'center'},
-  month:{fontWeight:'900',fontSize:15,color:colors.text},
-  arrow:{fontSize:24,fontWeight:'900',color:colors.primary},
-  week:{flexDirection:'row'},
-  weekday:{flex:1,textAlign:'center',fontSize:10,fontWeight:'800',color:colors.textSecondary},
-  grid:{flexDirection:'row',flexWrap:'wrap'},
-  day:{width:'14.285%',height:45,alignItems:'center',justifyContent:'center',borderRadius:10},
+  calendarCount:{fontSize:10,fontWeight:'900',color:colors.primary,backgroundColor:colors.surfaceMuted,paddingHorizontal:9,paddingVertical:5,borderRadius:999},
+  calendarTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:4,paddingVertical:2},
+  monthBlock:{alignItems:'center',gap:2},
+  month:{fontWeight:'900',fontSize:18,color:colors.text,fontVariant:['tabular-nums']},
+  monthCaption:{fontSize:9,fontWeight:'700',color:colors.textSecondary},
+  arrowButton:{width:36,height:36,borderRadius:18,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},
+  arrow:{fontSize:25,lineHeight:27,fontWeight:'900',color:colors.primary},
+  week:{flexDirection:'row',paddingTop:2,paddingBottom:5,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  weekday:{flex:1,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.textSecondary},
+  weekend:{color:colors.primary},
+  grid:{flexDirection:'row',flexWrap:'wrap',paddingTop:6},
+  day:{width:'14.285%',height:48,alignItems:'center',justifyContent:'center',borderRadius:12,paddingTop:3},
+  dayInvalid:{opacity:0},
   eventDay:{backgroundColor:colors.surfaceMuted},
-  selectedDay:{borderWidth:1,borderColor:colors.primary},
-  dayText:{fontSize:12,fontWeight:'700',color:colors.text},
+  selectedDay:{backgroundColor:'#E8F1FF',borderWidth:1.5,borderColor:colors.primary},
+  dayNumberWrap:{width:26,height:26,borderRadius:13,alignItems:'center',justifyContent:'center'},
+  todayNumberWrap:{borderWidth:1,borderColor:colors.primary},
+  selectedNumberWrap:{backgroundColor:colors.primary},
+  dayText:{fontSize:12,fontWeight:'800',color:colors.text},
+  selectedDayText:{color:'#FFFFFF',fontWeight:'900'},
   dayGhost:{color:'transparent'},
-  eventDots:{flexDirection:'row',gap:2,marginTop:4},
+  eventDots:{height:10,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:2,marginTop:2},
+  eventDotsPlaceholder:{height:10,marginTop:2},
   eventDot:{width:5,height:5,borderRadius:3},
-  eventDetails:{gap:6,padding:10,borderRadius:10,backgroundColor:colors.surfaceMuted},
-  eventDetailRow:{flexDirection:'row',gap:8,alignItems:'flex-start'},
-  eventType:{width:72,fontSize:10,fontWeight:'900',color:colors.primary},
-  eventText:{flex:1,fontSize:10,lineHeight:16,color:colors.text},
-  legend:{flexDirection:'row',gap:spacing.lg,justifyContent:'center'},
-  legendItem:{flexDirection:'row',alignItems:'center',gap:5},
+  moreEvents:{fontSize:7,fontWeight:'900',color:colors.textSecondary,marginLeft:1},
+  eventDetails:{gap:8,padding:12,borderRadius:14,backgroundColor:colors.surfaceMuted,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border},
+  eventDetailHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingBottom:3},
+  eventDetailDate:{fontSize:15,fontWeight:'900',color:colors.text,fontVariant:['tabular-nums']},
+  eventDetailTitle:{fontSize:9,fontWeight:'800',color:colors.textSecondary,marginTop:1},
+  eventDetailCount:{fontSize:9,fontWeight:'900',color:colors.primary,backgroundColor:'#FFFFFF',paddingHorizontal:8,paddingVertical:4,borderRadius:999},
+  eventDetailRow:{flexDirection:'row',gap:8,alignItems:'center',paddingVertical:3},
+  eventTypeBadge:{minWidth:82,flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:8,paddingVertical:6,borderRadius:999},
+  eventTypeDot:{width:6,height:6,borderRadius:3},
+  eventType:{fontSize:9,fontWeight:'900'},
+  eventInfo:{flex:1,minWidth:0},
+  eventSymbol:{fontSize:10,fontWeight:'900',color:colors.text},
+  eventText:{fontSize:9,lineHeight:14,color:colors.textSecondary,marginTop:1},
+  noEventText:{fontSize:10,lineHeight:16,color:colors.textSecondary,paddingVertical:5},
+  legend:{flexDirection:'row',flexWrap:'wrap',gap:6,justifyContent:'center'},
+  legendItem:{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:colors.surfaceMuted,paddingHorizontal:8,paddingVertical:5,borderRadius:999},
   legendDot:{width:7,height:7,borderRadius:4},
-  legendText:{fontSize:10,color:colors.textSecondary},
+  legendText:{fontSize:9,fontWeight:'700',color:colors.textSecondary},
   dividendRow:{flexDirection:'row',alignItems:'center',gap:spacing.md,paddingVertical:11,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   dateBadge:{width:48,paddingVertical:7,borderRadius:10,backgroundColor:colors.surfaceMuted,alignItems:'center'},
   dateBadgeText:{fontSize:10,fontWeight:'800',color:colors.primary},
