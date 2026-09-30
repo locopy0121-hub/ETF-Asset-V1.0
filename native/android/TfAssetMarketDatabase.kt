@@ -270,14 +270,20 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
         }
         if(existing!=null){
           if(at<existing.first)continue
-          if(at==existing.first){
-            val newRank=qualityRank[quality]?:0
-            val oldRank=qualityRank[existing.second]?:0
-            if(newRank<=oldRank){
-              if(existing.second==quality&&kotlin.math.abs(existing.third-price)>0.0001)conflicts++
-              insertIntraday(db,row,checkedAt)
-              continue
-            }
+          val newRank=qualityRank[quality]?:0
+          val oldRank=qualityRank[existing.second]?:0
+          // Never let a newer indicative/fallback row replace a stronger last-known-good
+          // quote. A TWSE trade remains authoritative until another equal/higher quality
+          // row arrives; lower-quality rows may still be stored as diagnostics/intraday
+          // candidates but cannot make the App appear to go backwards.
+          if(newRank<oldRank){
+            insertIntraday(db,row,checkedAt)
+            continue
+          }
+          if(at==existing.first&&newRank<=oldRank){
+            if(existing.second==quality&&kotlin.math.abs(existing.third-price)>0.0001)conflicts++
+            insertIntraday(db,row,checkedAt)
+            continue
           }
         }
         val values=ContentValues().apply{
