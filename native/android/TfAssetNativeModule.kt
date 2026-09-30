@@ -190,6 +190,29 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     }.start()
   }
 
+  @ReactMethod fun queryLocalEtfComponents(symbol:String,topN:Int,promise:Promise){
+    Thread{
+      try{promise.resolve(TfAssetMarketDatabase(reactContext).queryEtfComponents(symbol,topN).toString())}
+      catch(error:Exception){promise.reject("ETF_COMPONENTS_READ",error)}
+    }.start()
+  }
+
+  @ReactMethod fun queryLocalEtfMeta(symbol:String,promise:Promise){
+    Thread{
+      try{promise.resolve(TfAssetMarketDatabase(reactContext).queryEtfMeta(symbol).toString())}
+      catch(error:Exception){promise.reject("ETF_META_READ",error)}
+    }.start()
+  }
+
+  @ReactMethod fun replaceLocalEtfResearch(payloadJson:String,promise:Promise){
+    Thread{
+      try{
+        val payload=org.json.JSONObject(payloadJson)
+        promise.resolve(TfAssetMarketDatabase(reactContext).replaceEtfResearch(payload).toString())
+      }catch(error:Exception){promise.reject("ETF_RESEARCH_WRITE",error)}
+    }.start()
+  }
+
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
     // Finance amounts always come from the App's canonical snapshot; Native only overlays prices.
     val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
