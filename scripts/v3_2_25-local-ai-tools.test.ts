@@ -49,6 +49,6 @@ assert.match(prompt,/不得直接觸碰 SQLite/);
 assert.match(prompt,/不得自行假設/);
 assert.match(gemini,/buildAnalysisContext/);
 assert.match(gemini,/researchEnabled/);
-assert.match(gemini,/aiAnalysis/,'Gemini must receive App-resolved local analysis inside the established snapshot envelope');
+assert.match(gemini,/【TF Asset 本機可信資料】/,'Gemini must receive App-resolved local analysis inside the deployed Worker question field');
 
 console.log('V3.2.25 local-data Gemini tool architecture PASS');
