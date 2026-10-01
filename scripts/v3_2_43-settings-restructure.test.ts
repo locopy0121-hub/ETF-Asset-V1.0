@@ -4,9 +4,13 @@ import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.43');
-assert.equal(app.expo.version,'3.2.43');
-assert.equal(app.expo.android.versionCode,30243);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.equal(major,3);
+assert.equal(minor,2);
+assert.ok(patch>=43,'settings information architecture requires V3.2.43+');
+const expectedCode=major*10000+minor*100+patch;
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,expectedCode);
 
 const frames=read('src/domain/frameRegistry.ts');
 const settingsBlock=frames.slice(frames.indexOf("settings: ["),frames.indexOf("  ],",frames.indexOf("settings: ["))+4);
@@ -63,6 +67,6 @@ const appBlock=screen.slice(appStart,appEnd);
 for(const label of ['還原預設設定','版本資訊','更新資訊'])assert.ok(appBlock.includes(label),'App management entry missing: '+label);
 for(const label of ['各頁標題設定','主頁左右滑動','開發／診斷資訊'])assert.ok(!appBlock.includes(label),'misplaced App management entry remains: '+label);
 
-assert.ok(screen.includes("VERSION='3.2.43'"));
-assert.ok(screen.includes("BUILD='30243'"));
+assert.ok(screen.includes("VERSION='"+pkg.version+"'"));
+assert.ok(screen.includes("BUILD='"+expectedCode+"'"));
 console.log('V3.2.43 settings information architecture / deduplication PASS');
