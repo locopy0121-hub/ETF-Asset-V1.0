@@ -163,7 +163,7 @@ function recorded(entries:readonly CanonicalLedgerEntry[],event:{symbol:string;e
   return entries.some(entry=>{
     if(entry.kind!=='dividend'||entry.symbol!==event.symbol)return false;
     if(event.paymentDate)return entry.date===event.paymentDate&&Math.abs(entry.perShareAmount-event.perShareAmount)<0.000001;
-    return Math.abs(entry.perShareAmount-event.perShareAmount)<0.000001&&Boolean(entry.note?.includes('除息日 '+event.exDate));
+    return event.perShareAmount>0&&Math.abs(entry.perShareAmount-event.perShareAmount)<0.000001&&Boolean(entry.note?.includes('除息日 '+event.exDate));
   });
 }
 
@@ -172,9 +172,10 @@ export async function refreshHoldingDividendEvents(
   entries:readonly CanonicalLedgerEntry[],
 ):Promise<HoldingDividendEvent[]>{
   if(!holdings.length)return [];
-  const [htmlResult,exResult]=await Promise.allSettled([fetchDividendRows(),fetchExRows()]);
+  const [htmlResult,exResult,holidayResult]=await Promise.allSettled([fetchDividendRows(),fetchExRows(),fetchTwseClosedDates()]);
   const htmlRows=htmlResult.status==='fulfilled'?htmlResult.value:[];
   const exRows=exResult.status==='fulfilled'?exResult.value:[];
+  const closedDates=holidayResult.status==='fulfilled'?holidayResult.value:new Set<string>();
   if(!htmlRows.length&&!exRows.length)throw new Error('目前無法取得證交所 ETF 配息資料');
 
   const today=isoToday();
@@ -187,7 +188,7 @@ export async function refreshHoldingDividendEvents(
       exDate:rocCompactToIso(String(row.Date??'')),
       recordDate:'',
       paymentDate:'',
-      perShareAmount:Number(row.CashDividend)||0,
+      perShareAmount:Number(numericText(String(row.CashDividend??'')))||0,
     })).filter(row=>row.exDate);
 
     const byEx=new Map<string,DividendHtmlRow>();
@@ -196,7 +197,7 @@ export async function refreshHoldingDividendEvents(
       byEx.set(row.exDate,{
         symbol:row.symbol,name:row.name||old?.name||holding.name,exDate:row.exDate,
         recordDate:row.recordDate||old?.recordDate||'',paymentDate:row.paymentDate||old?.paymentDate||'',
-        perShareAmount:row.perShareAmount||old?.perShareAmount||0,
+        perShareAmount:row.perShareAmount>0?row.perShareAmount:(old?.perShareAmount??0),
       });
     }
 
@@ -206,10 +207,10 @@ export async function refreshHoldingDividendEvents(
       .slice(-4);
 
     for(const row of candidates){
-      const lastPurchaseDate=await fetchLastTradingDay(holding.symbol,row.exDate);
+      const lastPurchaseDate=previousTradingDay(row.exDate,closedDates);
       const eligibleShares=sharesOnDate(entries,holding.symbol,lastPurchaseDate);
-      const estimatedDividend=eligibleShares*row.perShareAmount;
-      const distributionYield=holding.price>0?row.perShareAmount/holding.price*100:0;
+      const estimatedDividend=row.perShareAmount>0?eligibleShares*row.perShareAmount:0;
+      const distributionYield=holding.price>0&&row.perShareAmount>0?row.perShareAmount/holding.price*100:0;
       const alreadyRecorded=recorded(entries,row);
       let status:DividendEventStatus='預告';
       if(alreadyRecorded)status='已登錄';
@@ -234,20 +235,22 @@ export function dividendEventToLedger(event:HoldingDividendEvent):DividendLedger
     name:event.name,
     perShareAmount:event.perShareAmount,
     sharesHeld:event.eligibleShares,
-    note:[`TWSE 配息事件`,`除息日 ${event.exDate}`,event.recordDate?`股權登記日 ${event.recordDate}`:'',event.paymentDate?`配發日 ${event.paymentDate}`:'',`最後購買日 ${event.lastPurchaseDate}`].filter(Boolean).join('；'),
+    note:[`TWSE 配息事件`,`除息日 ${event.exDate}`,event.recordDate?`收益分配基準日 ${event.recordDate}`:'',event.paymentDate?`配發日 ${event.paymentDate}`:'',`最後購買日 ${event.lastPurchaseDate}`].filter(Boolean).join('；'),
   };
 }
 
 export function formatDividendEvent(event:HoldingDividendEvent){
-  const money=(value:number)=>value.toLocaleString('zh-TW',{maximumFractionDigits:2});
+  const money=(value:number)=>value.toLocaleString('zh-TW',{maximumFractionDigits:3});
+  const amountKnown=event.perShareAmount>0;
   return [
     `${event.symbol} ${event.name}`,
-    `除息日：${event.exDate||'尚未公告'}`,
     `最後購買日：${event.lastPurchaseDate||'尚未確認'}`,
-    `每股配息：NT$ ${money(event.perShareAmount)}`,
+    `除息日：${event.exDate||'尚未公告'}`,
+    `收益分配基準日：${event.recordDate||'尚未公告'}`,
+    `每股配息：${amountKnown?'NT$ '+money(event.perShareAmount):'尚未公告'}`,
     `符合持股：${event.eligibleShares.toLocaleString('zh-TW')} 股`,
-    `預估股息：NT$ ${money(event.estimatedDividend)}`,
-    `配息率：${event.distributionYield.toFixed(2)}%`,
+    `預估股息：${amountKnown?'NT$ '+money(event.estimatedDividend):'待配息金額公告'}`,
+    `配息率：${amountKnown?event.distributionYield.toFixed(2)+'%':'待公告'}`,
     `股息配發日：${event.paymentDate||'尚未公告'}`,
     `狀態：${event.status}${event.status==='已登錄'||event.status==='預告'?'':'（尚未登錄）  [＋新增]'}`,
   ].join('\n');
