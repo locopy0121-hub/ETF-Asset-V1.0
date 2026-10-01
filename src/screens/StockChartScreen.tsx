@@ -124,7 +124,7 @@ function Chip({label,active,onPress,disabled=false}:{label:string;active:boolean
 }
 
 const styles=StyleSheet.create({
-  safe:{flex:1,backgroundColor:colors.background},
+  safe:{flex:1,backgroundColor:colors.background,paddingTop:spacing.xs},
   topbar:{minHeight:62,flexDirection:'row',alignItems:'center',paddingHorizontal:spacing.md,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border,backgroundColor:colors.surface},
   back:{width:42,height:42,alignItems:'center',justifyContent:'center'},backText:{fontSize:34,lineHeight:36,fontWeight:'400',color:colors.primary},
   titleWrap:{flex:1,alignItems:'center'},kicker:{fontSize:9,fontWeight:'900',color:colors.primary},title:{fontSize:15,fontWeight:'900',color:colors.text},
