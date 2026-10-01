@@ -55,17 +55,17 @@ const BACKGROUND_ASSETS=[
 const BACKGROUNDS:readonly string[]=BACKGROUND_ASSETS.map(source=>Image.resolveAssetSource(source).uri);
 
 export const THEME_PRESETS:readonly ThemePalette[]=[
- {key:'sky',label:'經典金融',dark:false,background:'#F8FAFC',surface:'#FFFFFF',surfaceMuted:'#EFF6FF',border:'#DBEAFE',primary:'#0066FF',text:'#0F172A',textSecondary:'#64748B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
- {key:'midnight',label:'極簡清新',dark:true,background:'#08111F',surface:'#FFFFFF',surfaceMuted:'#EFF6FF',border:'#BFDBFE',primary:'#1D4ED8',text:'#0F172A',textSecondary:'#64748B',gain:'#E11D48',loss:'#059669',flat:'#64748B',warning:'#D97706'},
- {key:'sand',label:'科技藍光',dark:false,background:'#FFF7ED',surface:'#FFFBF5',surfaceMuted:'#FFEDD5',border:'#FED7AA',primary:'#EA580C',text:'#431407',textSecondary:'#9A3412',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#D97706'},
- {key:'forest',label:'行情動能',dark:false,background:'#ECFDF5',surface:'#F7FFF9',surfaceMuted:'#D1FAE5',border:'#A7F3D0',primary:'#047857',text:'#064E3B',textSecondary:'#477569',gain:'#DC2626',loss:'#047857',flat:'#6B7280',warning:'#B45309'},
- {key:'violet',label:'股息收益',dark:false,background:'#FAF5FF',surface:'#FFFFFF',surfaceMuted:'#F3E8FF',border:'#E9D5FF',primary:'#7C3AED',text:'#2E1065',textSecondary:'#6B5A80',gain:'#E11D48',loss:'#059669',flat:'#7C7288',warning:'#D97706'},
- {key:'rose',label:'成長動能',dark:false,background:'#FFF1F2',surface:'#FFFFFF',surfaceMuted:'#FFE4E6',border:'#FECDD3',primary:'#E11D48',text:'#4C0519',textSecondary:'#9F1239',gain:'#E11D48',loss:'#059669',flat:'#78716C',warning:'#D97706'},
- {key:'aqua',label:'牛市活力',dark:false,background:'#F0FDFA',surface:'#FFFFFF',surfaceMuted:'#CCFBF1',border:'#99F6E4',primary:'#0F766E',text:'#134E4A',textSecondary:'#52736F',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'},
- {key:'amber',label:'永續綠能',dark:false,background:'#FFFBEB',surface:'#FFFFFF',surfaceMuted:'#FEF3C7',border:'#FDE68A',primary:'#B45309',text:'#451A03',textSecondary:'#92400E',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#B45309'},
- {key:'ocean',label:'AI 智慧',dark:true,background:'#071A2B',surface:'#FFFFFF',surfaceMuted:'#E0F2FE',border:'#BAE6FD',primary:'#0284C7',text:'#0F172A',textSecondary:'#64748B',gain:'#E11D48',loss:'#059669',flat:'#64748B',warning:'#D97706'},
- {key:'slate',label:'尊榮質感',dark:false,background:'#F8FAFC',surface:'#FFFFFF',surfaceMuted:'#F1F5F9',border:'#CBD5E1',primary:'#475569',text:'#0F172A',textSecondary:'#64748B',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'}
-];
+ {key:'sky',label:'經典金融',dark:false,background:'#F8F6F0',surface:'#FFFFFF',surfaceMuted:'#FFF7DF',border:'#E7D49A',primary:'#C99700',text:'#171717',textSecondary:'#6B6252',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#D97706'},
+ {key:'midnight',label:'極簡清新',dark:false,background:'#F5FAFF',surface:'#FFFFFF',surfaceMuted:'#EAF4FF',border:'#CFE4FF',primary:'#1677FF',text:'#0F172A',textSecondary:'#64748B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'sand',label:'科技藍光',dark:true,background:'#06152F',surface:'#FFFFFF',surfaceMuted:'#E8F3FF',border:'#9CCBFF',primary:'#007BFF',text:'#0F172A',textSecondary:'#64748B',gain:'#F43F5E',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'forest',label:'行情動能',dark:true,background:'#071A1A',surface:'#FFFFFF',surfaceMuted:'#E8F8F4',border:'#A7E4D5',primary:'#009B7A',text:'#10211E',textSecondary:'#58706B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'violet',label:'股息收益',dark:false,background:'#EFFBF2',surface:'#FFFFFF',surfaceMuted:'#E1F6E6',border:'#B7E5C1',primary:'#16834A',text:'#123B25',textSecondary:'#557262',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#C99700'},
+ {key:'rose',label:'成長動能',dark:true,background:'#160A35',surface:'#FFFFFF',surfaceMuted:'#F2EAFE',border:'#D8C5FB',primary:'#7C3AED',text:'#24113F',textSecondary:'#6B5A80',gain:'#F43F5E',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'aqua',label:'牛市活力',dark:false,background:'#FFF4E8',surface:'#FFFFFF',surfaceMuted:'#FFE7CC',border:'#F6C995',primary:'#F97316',text:'#431407',textSecondary:'#9A4E17',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#D97706'},
+ {key:'amber',label:'永續綠能',dark:false,background:'#F0FDF4',surface:'#FFFFFF',surfaceMuted:'#DCFCE7',border:'#BBF7D0',primary:'#15803D',text:'#14532D',textSecondary:'#4F7560',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'},
+ {key:'ocean',label:'AI 智慧',dark:true,background:'#0B1027',surface:'#FFFFFF',surfaceMuted:'#EEEAFE',border:'#C8B5FB',primary:'#6D28D9',text:'#21113A',textSecondary:'#695A80',gain:'#F43F5E',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'slate',label:'尊榮質感',dark:true,background:'#0E1117',surface:'#FFFFFF',surfaceMuted:'#F1F3F6',border:'#C7CDD6',primary:'#C7A34A',text:'#171A20',textSecondary:'#626A76',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#C99700'}
+]
 
 export const APP_ICON_KEYS:readonly AppIconKey[]=['icon01','icon02','icon03','icon04','icon05','icon06','icon07','icon08','icon09','icon10'];
 export const APP_ICON_PREVIEWS:readonly string[]=[
