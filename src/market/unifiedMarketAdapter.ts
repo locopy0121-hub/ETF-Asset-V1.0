@@ -96,6 +96,7 @@ export function marketRowsToRuntimeQuotes(
       quality:row.quality,source:row.source,priceType:row.priceType,
       isFallback:row.isFallback,market:row.market,statusMessage:row.statusMessage,
       checkedAt:row.checkedAt,
+      volume:typeof row.volume==='number'&&Number.isFinite(row.volume)&&row.volume>=0?row.volume:null,
       previousCloseKnown:row.previousClose!==null||(old?.previousCloseKnown===true),
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
