@@ -41,16 +41,16 @@ export type ThemePrefs=ThemeSnapshot&Readonly<{
 }>;
 
 const BACKGROUND_ASSETS=[
-  require('../assets/theme/background_01.png'),
-  require('../assets/theme/background_02.png'),
-  require('../assets/theme/background_03.png'),
-  require('../assets/theme/background_04.png'),
-  require('../assets/theme/background_05.png'),
-  require('../assets/theme/background_06.png'),
-  require('../assets/theme/background_07.png'),
-  require('../assets/theme/background_08.png'),
-  require('../assets/theme/background_09.png'),
-  require('../assets/theme/background_10.png'),
+  require('../assets/theme/background_01.jpg'),
+  require('../assets/theme/background_02.jpg'),
+  require('../assets/theme/background_03.jpg'),
+  require('../assets/theme/background_04.jpg'),
+  require('../assets/theme/background_05.jpg'),
+  require('../assets/theme/background_06.jpg'),
+  require('../assets/theme/background_07.jpg'),
+  require('../assets/theme/background_08.jpg'),
+  require('../assets/theme/background_09.jpg'),
+  require('../assets/theme/background_10.jpg'),
 ] as const;
 const BACKGROUNDS:readonly string[]=BACKGROUND_ASSETS.map(source=>Image.resolveAssetSource(source).uri);
 
@@ -69,16 +69,16 @@ export const THEME_PRESETS:readonly ThemePalette[]=[
 
 export const APP_ICON_KEYS:readonly AppIconKey[]=['icon01','icon02','icon03','icon04','icon05','icon06','icon07','icon08','icon09','icon10'];
 export const APP_ICON_PREVIEWS:readonly string[]=[
-  require('../assets/theme/icon_01.png'),
-  require('../assets/theme/icon_02.png'),
-  require('../assets/theme/icon_03.png'),
-  require('../assets/theme/icon_04.png'),
-  require('../assets/theme/icon_05.png'),
-  require('../assets/theme/icon_06.png'),
-  require('../assets/theme/icon_07.png'),
-  require('../assets/theme/icon_08.png'),
-  require('../assets/theme/icon_09.png'),
-  require('../assets/theme/icon_10.png'),
+  require('../assets/theme/icon_01.jpg'),
+  require('../assets/theme/icon_02.jpg'),
+  require('../assets/theme/icon_03.jpg'),
+  require('../assets/theme/icon_04.jpg'),
+  require('../assets/theme/icon_05.jpg'),
+  require('../assets/theme/icon_06.jpg'),
+  require('../assets/theme/icon_07.jpg'),
+  require('../assets/theme/icon_08.jpg'),
+  require('../assets/theme/icon_09.jpg'),
+  require('../assets/theme/icon_10.jpg'),
 ].map(source=>Image.resolveAssetSource(source).uri);
 export const THEME_BACKGROUNDS=BACKGROUNDS;
 
