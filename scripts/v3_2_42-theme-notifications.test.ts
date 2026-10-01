@@ -13,11 +13,11 @@ const labels=['經典金融','極簡清新','科技藍光','行情動能','股�
 for(const label of labels)assert.ok(theme.includes("label:'"+label+"'"),'theme label missing: '+label);
 for(let i=1;i<=10;i++){
   const key=String(i).padStart(2,'0');
-  assert.ok(existsSync('src/assets/theme/icon_'+key+'.png'),'preview icon missing: '+key);
-  assert.ok(existsSync('src/assets/theme/background_'+key+'.png'),'background missing: '+key);
-  assert.ok(existsSync('native/android/res/drawable/tf_theme_icon_'+key+'.png'),'native icon missing: '+key);
-  assert.ok(theme.includes("require('../assets/theme/icon_"+key+".png')"),'preview icon not bound: '+key);
-  assert.ok(theme.includes("require('../assets/theme/background_"+key+".png')"),'background not bound: '+key);
+  assert.ok(existsSync('src/assets/theme/icon_'+key+'.jpg'),'preview icon missing: '+key);
+  assert.ok(existsSync('src/assets/theme/background_'+key+'.jpg'),'background missing: '+key);
+  assert.ok(existsSync('native/android/res/drawable/tf_theme_icon_'+key+'.jpg'),'native icon missing: '+key);
+  assert.ok(theme.includes("require('../assets/theme/icon_"+key+".jpg')"),'preview icon not bound: '+key);
+  assert.ok(theme.includes("require('../assets/theme/background_"+key+".jpg')"),'background not bound: '+key);
 }
 
 const injector=read('scripts/inject-v1_1_2-android.cjs');
@@ -45,7 +45,7 @@ assert.ok(settings.includes("VERSION='3.2.42'"));
 assert.ok(settings.includes("BUILD='30242'"));
 
 const ci=read('.github/workflows/ci.yml');
-assert.ok(ci.includes('tf_theme_icon_*.png'),'QA APK must package approved ETF icons');
+assert.ok(ci.includes('tf_theme_icon_*.jpg'),'QA APK must package approved ETF icons');
 assert.ok(ci.includes('tf_notification_small.xml'),'QA APK must package notification icon');
 assert.ok(ci.includes('POST_NOTIFICATIONS'),'QA APK must validate notification permission');
 console.log('V3.2.42 approved ETF theme assets + Android notification center PASS');
