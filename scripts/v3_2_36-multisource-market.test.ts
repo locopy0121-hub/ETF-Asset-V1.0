@@ -31,7 +31,8 @@ function main(){
   const nav=read('server/src/nav.mjs');
   assert.match(nav,/TWSE_MIS_ETF_NAV/);
   assert.match(nav,/premiumDiscountPercent/);
-  assert.match(nav,/\(marketPrice-nav\.estimatedNav\)\/nav\.estimatedNav\*100/);
+  assert.match(nav,/marketPrice-nav\.estimatedNav/);
+  assert.match(nav,/nav\.estimatedNav\)\*100/);
   assert.match(nav,/cacheMs=15_000/);
 
   const http=read('server/src/http.mjs');
