@@ -5,10 +5,10 @@ const read=(p:string)=>fs.readFileSync(p,'utf8');
 const runtime=read('src/market/MarketRuntime.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 
-assert.match(runtime,/const refreshMeta=await refreshUnifiedMarketData\(symbolsRef\.current\);[\s\S]*?const state=await loadUnifiedMarketData\(\);/,
-  'network refresh must commit through native center and App must then read SQLite');
-assert.doesNotMatch(runtime,/const state=await refreshUnifiedMarketData\(symbolsRef\.current\);/,
-  'App must not render the network refresh return value as its authoritative snapshot');
+assert.match(runtime,/const refreshMeta=await refreshUnifiedMarketData\(symbolsRef\.current\);\s*const state=refreshMeta;/,
+  'native refresh must return the authoritative post-transaction SQLite snapshot');
+assert.doesNotMatch(runtime,/refreshUnifiedMarketData\(symbolsRef\.current\);\s*const state=await loadUnifiedMarketData\(\)/,
+  'App must not perform a duplicate SQLite read immediately after the native transaction snapshot');
 assert.match(runtime,/const next=marketRowsToRuntimeQuotes\(state,quotesRef\.current\)/,
   'all App consumers must project from the SQLite snapshot');
 assert.match(runtime,/if\(unifiedMarketCenterAvailable\)\{[\s\S]*?const snapshot=await loadUnifiedMarketData\(\)/,
