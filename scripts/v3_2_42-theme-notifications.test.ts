@@ -4,9 +4,13 @@ import {existsSync,readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.42');
-assert.equal(app.expo.version,'3.2.42');
-assert.equal(app.expo.android.versionCode,30242);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.equal(major,3);
+assert.equal(minor,2);
+assert.ok(patch>=42,'theme/notification contract requires V3.2.42+');
+const expectedCode=major*10000+minor*100+patch;
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,expectedCode);
 
 const theme=read('src/theme/ThemeRuntime.tsx');
 const labels=['經典金融','極簡清新','科技藍光','行情動能','股息收益','成長動能','牛市活力','永續綠能','AI 智慧','尊榮質感'];
@@ -41,8 +45,8 @@ const settings=read('src/screens/SettingsScreen.tsx');
 assert.ok(settings.includes('開啟 Android 通知設定'));
 assert.ok(settings.includes('發送測試通知'));
 assert.ok(settings.includes('通知頻道'));
-assert.ok(settings.includes("VERSION='3.2.42'"));
-assert.ok(settings.includes("BUILD='30242'"));
+assert.ok(settings.includes("VERSION='"+pkg.version+"'"));
+assert.ok(settings.includes("BUILD='"+expectedCode+"'"));
 
 const ci=read('.github/workflows/ci.yml');
 assert.ok(ci.includes('tf_theme_icon_*.jpg'),'QA APK must package approved ETF icons');
