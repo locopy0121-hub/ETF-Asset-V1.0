@@ -58,8 +58,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='3.2.43';
-const BUILD='30243';
+const VERSION='3.2.44';
+const BUILD='30244';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -569,9 +569,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V3.2.43 設定中心分類去重與入口歸位" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V3.2.43 更新資訊">
-        <Text style={styles.infoText}>設定中心完成資訊架構檢整：行情資料中心只保留單一入口；通知與提醒獨立成大項；頁面標題、月曆顯示與滑動設定歸入介面與主題；Runtime 診斷集中回系統設定。底層帳務、行情與資料內容不因本次分類調整而重算或搬移。</Text>
+      <ChildButton label="更新資訊" summary="V3.2.44 股息頁新增建檔入口與完整股息紀錄表單" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V3.2.44 更新資訊">
+        <Text style={styles.infoText}>股息頁補上獨立的「新增股息」建檔功能，可直接從持股帶入 ETF 名稱與股數，填寫配發日、每股股息、最後購買日、除息日、股權登記日與備註，儲存後同步進入 Canonical Ledger、股息清單、月曆與統計。</Text>
       </Panel>:null}
     </View>;
   }
