@@ -49,17 +49,17 @@ import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'engineer'|'market'|'permissions'|'diagnostics'|'logs'|'notifications';
+type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
-type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
-type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
+type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'swipe'|'dividendCalendar';
+type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.2.42';
-const BUILD='30242';
+const VERSION='3.2.43';
+const BUILD='30243';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -170,6 +170,7 @@ export function SettingsScreen(){
     if(key==='backup')return backupSection();
     if(key==='monitor')return monitorSection();
     if(key==='display')return displaySection();
+    if(key==='notifications')return notificationSection();
     if(key==='ai')return aiSection();
     if(key==='app')return appSection();
     if(key==='legal')return legalSection();
@@ -183,8 +184,6 @@ export function SettingsScreen(){
         <ToggleRow label="顯示各模塊／框架／元件活動扳手" value={settings.prefs.engineerEnabled} onChange={settings.patchEngineerEnabled}/>
         <Text style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
       </Panel>:null}
-      <ChildButton label="行情資料中心／市場更新" summary={'v'+market.marketDataVersion+'｜'+marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -213,11 +212,11 @@ export function SettingsScreen(){
         <StatusRow label="交易紀錄" value={String(finance.entries.length)}/>
         <StatusRow label="持股筆數" value={String(finance.holdings.length)}/>
         <StatusRow label="ETF 基礎資料" value={String(market.catalog.length)}/>
+        <StatusRow label="Monitor Mode" value={monitor.config.mode}/>
+        <StatusRow label="Stored TF Asset keys" value={String(storageStats.keys)}/>
       </Panel>:null}
       <ChildButton label="錯誤紀錄 Log" summary="閃退、操作路徑、錯誤堆疊與匯出" active={systemPanel==='logs'} onPress={()=>setSystemPanel(systemPanel==='logs'?null:'logs')}/>
       {systemPanel==='logs'?<Panel title="錯誤診斷中心"><DiagnosticLogPanel/></Panel>:null}
-      <ChildButton label="通知與提醒" summary="除息、配息、行情、失敗、備份" active={systemPanel==='notifications'} onPress={()=>setSystemPanel(systemPanel==='notifications'?null:'notifications')}/>
-      {systemPanel==='notifications'?<NotificationPanel/>:null}
     </View>;
   }
 
@@ -279,7 +278,7 @@ export function SettingsScreen(){
         <ActionButton label="編輯首頁行情牆" onPress={()=>openMarketEditor('home','wall')}/>
         <ActionButton label="編輯庫存行情牆" onPress={()=>openMarketEditor('portfolio','wall')}/>
       </Panel>:null}
-      <ChildButton label="ETF 分類、配息與提醒" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
+      <ChildButton label="ETF 分類與配息標籤" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
       {dataPanel==='badges'?<Panel title="ETF 智慧標籤 A/B">
         <Text style={styles.note}>僅變更畫面標籤；官方分類與配息原始資料保持不變，未知資料仍標示待確認。</Text>
         <ActionButton label="編輯首頁標籤" onPress={()=>openMarketEditor('home','badges')}/>
@@ -706,7 +705,7 @@ export function SettingsScreen(){
     <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
       <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
       <Text style={[styles.title,{color:theme.palette.text}]}>{settings.prefs.pageTitles.settings||'控制中心'}</Text>
-      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、資料、主題與顯示設定集中管理</Text>
+      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、行情資料、介面、通知與 App 管理集中設定</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {PAGE_FRAMES.settings.map((frame,index)=>{
