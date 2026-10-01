@@ -1,6 +1,7 @@
 import {extractArticleBody,extractArticleHighlights} from './articleSummary';
 import {isPublisherArticleUrl,resolvePublisherUrl} from './newsArticleResolver';
 import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
+import {fetchOfficialMarketProbe} from '../market/officialMarketProbe';
 
 export type ExternalNewsRow=Readonly<{
   title:string;
@@ -24,7 +25,20 @@ export type ExternalSecurityProfile=Readonly<{
   evidenceText:string;
 }>;
 
+export type ExternalMarketQuote=Readonly<{
+  symbol:string;
+  name:string;
+  price:number|null;
+  previousClose:number|null;
+  source:'TWSE_MIS';
+  sourceQuoteAt:number|null;
+  checkedAt:number;
+  quality:'trade'|'diagnostic';
+  statusMessage:string;
+}>;
+
 export type AiIngredientAcquirer=Readonly<{
+  fetchQuote?:(symbol:string)=>Promise<ExternalMarketQuote|null>;
   fetchHistory:(symbol:string,months?:number)=>Promise<readonly DailyCandle[]>;
   fetchNews:(symbol:string,name:string)=>Promise<readonly ExternalNewsRow[]>;
   fetchSecurityProfile?:(symbol:string,name:string)=>Promise<ExternalSecurityProfile|null>;
@@ -199,6 +213,25 @@ async function withTimeout<T>(task:(signal:AbortSignal)=>Promise<T>,timeoutMs:nu
   finally{clearTimeout(timer);}
 }
 
+const defaultFetchQuote=(symbol:string)=>
+  withTimeout(async()=>{
+    const probe=await fetchOfficialMarketProbe(symbol);
+    const previousClose=Number(String(probe.raw.y??'').replace(/,/g,''));
+    return {
+      symbol:probe.symbol,
+      name:probe.name,
+      price:probe.price,
+      previousClose:Number.isFinite(previousClose)&&previousClose>0?previousClose:null,
+      source:'TWSE_MIS' as const,
+      sourceQuoteAt:probe.sourceQuoteAt,
+      checkedAt:probe.checkedAt,
+      quality:probe.quality,
+      statusMessage:probe.price===null
+        ?'TWSE MIS 已回傳標的，但目前沒有 z 實際成交價；不可把昨收或買賣價冒充現價。'
+        :'TWSE MIS z 實際成交價。',
+    };
+  },7000);
+
 const defaultFetchHistory=(symbol:string,months=12)=>
   withTimeout(signal=>fetchOfficialDailyHistory(symbol,Math.max(1,Math.min(12,Math.floor(months))),new Date(),signal),9000);
 
@@ -209,6 +242,7 @@ const defaultFetchSecurityProfile=(symbol:string,name:string)=>
   withTimeout(signal=>fetchExternalSecurityProfile(symbol,name,signal),12000);
 
 export const DEFAULT_AI_INGREDIENT_ACQUIRER:AiIngredientAcquirer={
+  fetchQuote:defaultFetchQuote,
   fetchHistory:defaultFetchHistory,
   fetchNews:defaultFetchNews,
   fetchSecurityProfile:defaultFetchSecurityProfile,
