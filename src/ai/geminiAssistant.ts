@@ -245,6 +245,7 @@ async function refreshQuoteFromMarketCenter(symbol:string):Promise<CoreAiQuote|n
     currentPrice:row.currentPrice,
     previousClose:row.previousClose,
     sourceQuoteAt:row.sourceQuoteAt,
+    checkedAt:snapshot.queriedAt??row.checkedAt,
     quality:row.quality,
     source:row.source,
     statusMessage:row.statusMessage,
