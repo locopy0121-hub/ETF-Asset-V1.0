@@ -130,7 +130,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       if(index>=0&&cursor.moveToFirst())cursor.getString(index) else null
     }?:uri.lastPathSegment?:"TF-Asset-Backup.json"
   }
-  init{reactContext.addActivityEventListener(activityListener);installCrashJournal()}
+  init{reactContext.addActivityEventListener(activityListener);installCrashJournal();TfAssetNotificationCenter.ensureChannels(reactContext)}
   override fun getName() = "TfAssetNative"
 
   @ReactMethod fun readPendingCrashJournal(promise:Promise){
@@ -347,6 +347,25 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   @ReactMethod fun canDrawOverlays(promise:Promise){ promise.resolve(Settings.canDrawOverlays(reactContext)) }
   @ReactMethod fun openOverlaySettings(promise:Promise){ val intent=Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,Uri.parse("package:"+reactContext.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); reactContext.startActivity(intent); promise.resolve(true) }
+
+  @ReactMethod fun ensureNotificationChannels(promise:Promise){
+    runCatching{
+      TfAssetNotificationCenter.ensureChannels(reactContext)
+      TfAssetNotificationCenter.status(reactContext).toString()
+    }.onSuccess{promise.resolve(it)}.onFailure{promise.reject("NOTIFICATION_CHANNELS",it)}
+  }
+  @ReactMethod fun getNotificationStatus(promise:Promise){
+    runCatching{TfAssetNotificationCenter.status(reactContext).toString()}
+      .onSuccess{promise.resolve(it)}.onFailure{promise.reject("NOTIFICATION_STATUS",it)}
+  }
+  @ReactMethod fun openNotificationSettings(channelId:String,promise:Promise){
+    runCatching{TfAssetNotificationCenter.openSettings(reactContext,channelId.ifBlank{null})}
+      .onSuccess{promise.resolve(true)}.onFailure{promise.reject("NOTIFICATION_SETTINGS",it)}
+  }
+  @ReactMethod fun postTestNotification(channelId:String,promise:Promise){
+    runCatching{TfAssetNotificationCenter.postTest(reactContext,channelId)}
+      .onSuccess{promise.resolve(it)}.onFailure{promise.reject("NOTIFICATION_TEST",it)}
+  }
 
   /** SAF document picker stores JSON OUTSIDE private app data and verifies write by reading it back. */
   @ReactMethod fun saveBackupDocument(text:String,fileName:String,promise:Promise){
