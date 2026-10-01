@@ -144,8 +144,14 @@ export function validateIngredientEvidence(
       message:policy.label+' 驗證層級不足（'+row.status+'）。',
     });
   }
-  if(policy.freshnessMs&&row.observedAt){
-    const observed=Date.parse(row.observedAt);
+  if(policy.freshnessMs){
+    // MARKET_QUOTE freshness is based on when TF Asset last verified the quote
+    // source, not blindly on the exchange trade timestamp. After-hours an
+    // official close can be older while a fresh source check is still valid.
+    const freshnessAnchor=row.ingredient==='MARKET_QUOTE'
+      ?row.fetchedAt
+      :(row.observedAt??row.fetchedAt);
+    const observed=Date.parse(freshnessAnchor);
     if(Number.isFinite(observed)&&now-observed>policy.freshnessMs){
       issues.push({
         ingredient:requirement.ingredient,
