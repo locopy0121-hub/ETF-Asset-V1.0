@@ -35,6 +35,7 @@ export type UnifiedMarketRow=Readonly<{
   source:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
   priceType:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
   isFallback:boolean;market:'TSE'|'OTC'|'UNKNOWN';statusMessage:string;checkedAt:number;
+  volume?:number|null;
 }>;
 export type UnifiedMarketSnapshot=Readonly<{
   version:number;quotes:UnifiedMarketRow[];
