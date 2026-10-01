@@ -100,7 +100,9 @@ export function PageShell({title,pageKey,subtitle,actions,children,headerFrameKe
   </SafeAreaView>;
 }
 const styles=StyleSheet.create({
-  safe:{flex:1,backgroundColor:colors.background},
+  // SafeAreaView supplies the device inset; this small visual gutter keeps
+  // page headers clearly separated from Android status-bar icons on edge-to-edge devices.
+  safe:{flex:1,backgroundColor:colors.background,paddingTop:spacing.xs},
   header:{paddingHorizontal:spacing.lg,paddingVertical:spacing.md,
     backgroundColor:colors.surface,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border,
     flexDirection:'row',alignItems:'center',position:'relative'},

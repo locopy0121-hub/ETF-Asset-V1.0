@@ -45,6 +45,7 @@ import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
 import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, backupDocumentPickerAvailable, saveExternalBackup, chooseExternalBackup, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 type PluginPanel=null|'widget'|'monitor';
 type SystemPanel=null|'engineer'|'market'|'permissions'|'diagnostics'|'logs'|'notifications';
@@ -56,8 +57,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='3.2.38';
-const BUILD='30238';
+const VERSION='3.2.39';
+const BUILD='30239';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -670,7 +671,7 @@ export function SettingsScreen(){
     </Panel>;
   }
 
-  return <View style={[styles.root,{backgroundColor:'transparent'}]}>
+  return <SafeAreaView edges={['top']} style={[styles.root,{backgroundColor:'transparent'}]}>
     <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
       <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
       <Text style={[styles.title,{color:theme.palette.text}]}>{settings.prefs.pageTitles.settings||'控制中心'}</Text>
@@ -707,7 +708,7 @@ export function SettingsScreen(){
         dividendType:market.catalog.find(item=>item.symbol===finance.holdings[0]?.symbol)?.dividendType??null,
       }:undefined}
     />:null}
-  </View>;
+  </SafeAreaView>;
 }
 
 

@@ -213,8 +213,8 @@ export function PageLayoutToolWorkbench({
     if(pageKey==='home'&&item.key==='asset-dashboard')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
       <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
         caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
-        previousPnl={previewPnl?.previousTotalPnl??0} todayPnl={previewPnl?.todayPnl??0}
-        totalPnl={portfolio.totalPnl} pnlComplete={valuationComplete&&previewPnl!==null}/>
+        yesterdayPnl={null} todayPnl={previewPnl?.todayPnl??null}
+        totalPnl={portfolio.totalPnl} pnlComplete={valuationComplete}/>
     </View>;
     if(pageKey==='home'&&item.key==='profit-analysis')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
       <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>
