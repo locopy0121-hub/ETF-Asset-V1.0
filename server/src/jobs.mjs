@@ -86,6 +86,7 @@ export class MarketJobs{
     }
   }
   start(){
+    this.sources.start?.(this.staticSymbols);
     // node-cron supports seconds; strict Taipei exchange-time check inside job.
     // 1s is the minimum TF Asset cadence. Circuit breakers prevent provider retry storms.
     const quote=cron.schedule('*/'+this.pollSeconds+' * * * * *',
@@ -99,5 +100,5 @@ export class MarketJobs{
     // trading-day boot (if after market close).
     void this.runDaily().catch(()=>{});
   }
-  stop(){for(const task of this.tasks)task.stop();this.tasks=[];}
+  stop(){for(const task of this.tasks)task.stop();this.tasks=[];this.sources.stop?.();}
 }
