@@ -54,9 +54,11 @@ export function useDailyPnlHistory(input:{
   const [historyLoading,setHistoryLoading]=useState(false);
   const [historyError,setHistoryError]=useState<string|null>(null);
   const officialAttemptRef=useRef<string|null>(null);
+  const marketDataVersionRef=useRef(input.marketDataVersion);
   const persistTimerRef=useRef<ReturnType<typeof setTimeout>|null>(null);
   const pendingPersistRef=useRef<PersistedHistory|null>(null);
   const lastPersistAtRef=useRef(0);
+  useEffect(()=>{marketDataVersionRef.current=input.marketDataVersion;},[input.marketDataVersion]);
   const ledgerFingerprint=useMemo(()=>tradeFingerprint(input.entries),[input.entries]);
   const historyStartDate=useMemo(()=>firstTradeDate(input.entries),[input.entries]);
 
@@ -197,7 +199,7 @@ export function useDailyPnlHistory(input:{
         initialCash:input.initialCash,
         entries:input.entries,
         histories,
-        marketDataVersion:input.marketDataVersion,
+        marketDataVersion:marketDataVersionRef.current,
       });
       if(!rebuilt.length)throw new Error('尚無足夠正式收盤資料可重建持股歷史');
 
@@ -217,8 +219,9 @@ export function useDailyPnlHistory(input:{
       controller.abort();
     };
     // records/live market ticks are intentionally excluded to avoid repeatedly
-    // fetching all historical months while the home screen is open.
-  },[input.hydrated,storageHydrated,input.entries,input.initialCash,input.marketDataVersion,ledgerFingerprint,storedFingerprint,officialRebuiltAt]);
+    // aborting/restarting the full historical fetch every 1-second quote tick.
+    // The rebuild reads the latest market version from a ref when it completes.
+  },[input.hydrated,storageHydrated,input.entries,input.initialCash,ledgerFingerprint,storedFingerprint,officialRebuiltAt]);
 
   const visibleRecords=useMemo(()=>{
     const base=storedFingerprint===ledgerFingerprint?records:[];

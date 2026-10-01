@@ -65,15 +65,24 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
     holdingLayoutMode:value,
     ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{}),
   });
-  const sorted=useMemo(()=>{
-    const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
-    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
-    return sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
-      ...item,etfType:tags.get(item.symbol)?.etfType??null,
-      dividendType:tags.get(item.symbol)?.dividendType??null,
-      reminderEvent:reminders.get(item.symbol)??null,
-    }));
-  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,effectiveDisplay.etfBadges?.reminderEvents]);
+  const catalogBySymbol=useMemo(
+    ()=>new Map(market.catalog.map(item=>[item.symbol,item] as const)),
+    [market.catalog],
+  );
+  const dividendReminders=useMemo(
+    ()=>todayEtfReminderMap(
+      finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),
+      undefined,
+      effectiveDisplay.etfBadges?.reminderEvents,
+    ),
+    [finance.entries,effectiveDisplay.etfBadges?.reminderEvents],
+  );
+  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
+    ...item,
+    etfType:catalogBySymbol.get(item.symbol)?.etfType??null,
+    dividendType:catalogBySymbol.get(item.symbol)?.dividendType??null,
+    reminderEvent:dividendReminders.get(item.symbol)??null,
+  })),[finance.holdings,sortKey,currentSort.descending,catalogBySymbol,dividendReminders]);
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
   const pnlHistory=useDailyPnlHistory({
@@ -100,6 +109,14 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
     {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const},
     {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
   ];
+  const transactionCountBySymbol=useMemo(()=>{
+    const counts=new Map<string,number>();
+    for(const entry of finance.entries){
+      if((entry.kind!=='buy'&&entry.kind!=='sell')||!('symbol' in entry))continue;
+      counts.set(entry.symbol,(counts.get(entry.symbol)??0)+1);
+    }
+    return counts;
+  },[finance.entries]);
   const chartSeries=(chart:DashboardChartConfig)=>{
     const rows=finance.holdings.slice(0,8);
     const labels=rows.map(row=>row.symbol);
@@ -112,7 +129,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
       case 'shares':return {labels,values:rows.map(row=>row.shares)};
       case 'realizedPnl':return {labels,values:rows.map(row=>row.realizedPnl)};
       case 'comprehensivePnl':return {labels,values:rows.map(row=>row.comprehensivePnl)};
-      case 'transactions':return {labels,values:rows.map(row=>finance.entries.filter(entry=>'symbol' in entry&&entry.symbol===row.symbol&&(entry.kind==='buy'||entry.kind==='sell')).length)};
+      case 'transactions':return {labels,values:rows.map(row=>transactionCountBySymbol.get(row.symbol)??0)};
       case 'marketValue':
       case 'allocation':
       default:return {labels,values:rows.map(row=>row.marketValue)};

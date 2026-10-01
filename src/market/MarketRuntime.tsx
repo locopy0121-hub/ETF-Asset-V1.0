@@ -409,13 +409,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         for(let attempt=1;attempt<=attempts;attempt+=1){
           try{
             if(unifiedMarketCenterAvailable){
-              // Native App and Widget call the same official fetcher; one SQLite
-              // transaction publishes a single versioned snapshot to every screen.
-              // TWSE/backup sources may only WRITE through the native Market Center.
-              // App consumers never render a network response directly: after the
-              // native transaction finishes, read the authoritative SQLite snapshot.
+              // Native refresh commits SQLite and already returns the authoritative
+              // post-transaction snapshot. Re-reading the same SQLite snapshot through
+              // a second native bridge call on every 1-second tick doubled DB/JSON work
+              // and caused avoidable UI pressure. Consume the returned snapshot directly.
               const refreshMeta=await refreshUnifiedMarketData(symbolsRef.current);
-              const state=await loadUnifiedMarketData();
+              const state=refreshMeta;
               const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
               const currentVersion=marketVersionRef.current;
               const sessionDateChanged=marketIntradaySessionDateChanged(quotesRef.current,next);

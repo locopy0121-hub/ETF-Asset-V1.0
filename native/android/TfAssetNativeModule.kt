@@ -307,6 +307,20 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     if(at>0L)prefs.edit().remove("monitor_force_refresh_requested_at").apply()
     promise.resolve(at.toDouble())
   }
+  @ReactMethod fun consumeMarketForceRefreshRequests(promise:Promise){
+    val widgetAt=prefs.getLong("widget_force_refresh_requested_at",0L)
+    val monitorAt=prefs.getLong("monitor_force_refresh_requested_at",0L)
+    if(widgetAt>0L||monitorAt>0L){
+      prefs.edit()
+        .remove("widget_force_refresh_requested_at")
+        .remove("monitor_force_refresh_requested_at")
+        .apply()
+    }
+    val map=Arguments.createMap()
+    map.putDouble("widgetAt",widgetAt.toDouble())
+    map.putDouble("monitorAt",monitorAt.toDouble())
+    promise.resolve(map)
+  }
   @ReactMethod fun startMonitor(promise:Promise){
     prefs.edit().putBoolean("monitor_user_closed",false).apply()
     val cfg=runCatching{org.json.JSONObject(prefs.getString("monitor_config","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
