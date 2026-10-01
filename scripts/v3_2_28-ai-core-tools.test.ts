@@ -63,6 +63,7 @@ async function main(){
     return {
       symbol:'2330',name:'台積電',currentPrice:950,previousClose:940,
       sourceQuoteAt:Date.parse('2026-09-30T13:30:00+08:00'),
+      checkedAt:Date.parse('2026-09-30T13:30:01+08:00'),
       quality:'trade',source:'TWSE_MIS',statusMessage:'實際成交行情',market:'TSE',
     };
   };
