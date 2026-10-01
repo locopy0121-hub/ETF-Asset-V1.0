@@ -3,6 +3,7 @@ import type {AnalysisContext} from './analysisTypes';
 import type {AiToolResult,CoreAiToolPlan,QuoteToolData} from './coreAiToolRegistry';
 import {AI_METRIC_REGISTRY,extractAiQuestionSymbols,resolveAiRecipe} from './aiRecipeRegistry';
 import {DEFAULT_AI_INGREDIENT_ACQUIRER,type AiIngredientAcquirer,type ExternalNewsRow} from './aiIngredientGateway';
+import {AI_INGREDIENT_CATALOG,evidenceSatisfiesIngredient,validateIngredientEvidence,type AiIngredientValidationIssue} from './aiIngredientCatalog';
 import type {
   AiAcquisitionAttempt,
   AiEvidencePackage,
@@ -257,6 +258,71 @@ async function acquireMissing(
   acquirer:AiIngredientAcquirer,
 ):Promise<Map<string,readonly DailyCandle[]>>{
   const history=new Map<string,readonly DailyCandle[]>();
+  const quoteRequirement=plan.requirements.find(row=>row.ingredient==='MARKET_QUOTE');
+  if(quoteRequirement){
+    for(const symbol of plan.symbols){
+      const existing=findEvidence(evidence,'MARKET_QUOTE',symbol);
+      if(evidenceSatisfiesIngredient('MARKET_QUOTE',existing))continue;
+      if(!acquirer.fetchQuote){
+        attempts.push({
+          ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',
+          status:'NO_PROVIDER',message:'目前沒有外部即時行情 Provider。',
+        });
+        continue;
+      }
+      try{
+        const quote=await acquirer.fetchQuote(symbol);
+        if(quote){
+          const verified=quote.price!==null&&quote.quality==='trade';
+          upsertEvidence(evidence,{
+            ingredient:'MARKET_QUOTE',
+            symbol,
+            status:verified?'VERIFIED':'PARTIAL',
+            source:quote.source,
+            fetchedAt:new Date(quote.checkedAt).toISOString(),
+            ...(quote.sourceQuoteAt?{observedAt:new Date(quote.sourceQuoteAt).toISOString()}:{}),
+            summary:verified?'TWSE MIS 實際成交價 '+quote.price:quote.statusMessage,
+            details:{
+              price:quote.price,
+              previousClose:quote.previousClose,
+              quality:quote.quality,
+              market:quote.market,
+              statusMessage:quote.statusMessage,
+            },
+          });
+          if(quote.market!=='UNKNOWN'&&quote.name&&quote.name!==symbol){
+            upsertEvidence(evidence,{
+              ingredient:'SECURITY_IDENTITY',
+              symbol,
+              status:'VERIFIED',
+              source:'TWSE_MIS',
+              fetchedAt:new Date(quote.checkedAt).toISOString(),
+              summary:symbol+' '+quote.name+'（由 TWSE MIS 身分欄位確認）',
+              details:{
+                securityId:quote.market+':'+symbol,
+                name:quote.name,
+                market:quote.market,
+                assetType:symbol.startsWith('00')?'ETF':'STOCK',
+              },
+            });
+          }
+          attempts.push({
+            ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',
+            status:verified?'FETCHED':'UNAVAILABLE',
+            message:quote.statusMessage,
+          });
+        }else{
+          attempts.push({ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',status:'UNAVAILABLE',message:'官方行情沒有回傳此代號。'});
+        }
+      }catch(error){
+        attempts.push({
+          ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',status:'FAILED',
+          message:error instanceof Error?error.message:String(error),
+        });
+      }
+    }
+  }
+
   const mentions=plan.question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
   const selfComparison=plan.recipe.id==='ETF_COMPARE'&&mentions.length>=2&&new Set(mentions).size===1;
   const needsHistory=!selfComparison&&plan.requirements.some(row=>row.ingredient==='HISTORICAL_PRICES');
