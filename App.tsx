@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, InteractionManager, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, InteractionManager, Linking, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
@@ -36,6 +36,15 @@ import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
 import { consumeNativeMarketForceRefreshRequests, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 type NativeSurfaceSyncJob<TConfig>=Readonly<{config:TConfig;snapshot:SharedSnapshot}>;
+
+type LauncherShortcutRoute='buy'|'monitor'|'today-pnl'|'dividend'|'ai';
+const LAUNCHER_SHORTCUT_PREFIX='tfasset://shortcut/';
+const LAUNCHER_SHORTCUT_ROUTES:readonly LauncherShortcutRoute[]=['buy','monitor','today-pnl','dividend','ai'];
+export function resolveLauncherShortcutUrl(url:string|null|undefined):LauncherShortcutRoute|null{
+  if(typeof url!=='string'||!url.startsWith(LAUNCHER_SHORTCUT_PREFIX))return null;
+  const route=url.slice(LAUNCHER_SHORTCUT_PREFIX.length).split(/[?#]/,1)[0] as LauncherShortcutRoute;
+  return LAUNCHER_SHORTCUT_ROUTES.includes(route)?route:null;
+}
 
 function useLatestAsyncJob<T>(runner:(value:T)=>Promise<unknown>,label:string){
   const runnerRef=useRef(runner);
@@ -112,6 +121,21 @@ function AppBody(){
   const [chartHolding,setChartHolding]=useState<HoldingQuote|null>(null);
   const pageHistory=useRef<MainPageKey[]>([]);
   const swipeStart=useRef<{x:number;y:number}|null>(null);
+  const applyLauncherShortcut=useCallback((url:string|null|undefined)=>{
+    const route=resolveLauncherShortcutUrl(url);
+    if(!route)return false;
+    pageHistory.current=[];
+    setDetail(null);
+    setChartHolding(null);
+    switch(route){
+      case 'buy': setActive('ledger'); break;
+      case 'monitor': setActive('settings'); break;
+      case 'today-pnl': setActive('home'); break;
+      case 'dividend': setActive('dividend'); break;
+      case 'ai': setActive('ai'); break;
+    }
+    return true;
+  },[]);
   const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
   const aiUi=deriveAiUiState(settings.prefs.ai,active);
   const swipeToAdjacent=(direction:-1|1)=>{
@@ -133,6 +157,12 @@ function AppBody(){
     swipeToAdjacent(dx<0?1:-1);
   };
   useEffect(()=>{if(aiUi.nextActivePage!==active)setActive(aiUi.nextActivePage);},[aiUi.nextActivePage,active]);
+  useEffect(()=>{
+    let alive=true;
+    void Linking.getInitialURL().then(url=>{if(alive)applyLauncherShortcut(url);}).catch(error=>console.warn('Launcher shortcut initial URL failed',error));
+    const subscription=Linking.addEventListener('url',event=>{applyLauncherShortcut(event.url);});
+    return()=>{alive=false;subscription.remove();};
+  },[applyLauncherShortcut]);
   useEffect(()=>{
     const subscription=BackHandler.addEventListener('hardwareBackPress',()=>{
       // Native Modal.onRequestClose handles visible native dialogs first.

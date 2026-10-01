@@ -58,6 +58,7 @@ if(!manifest.includes('android:name=".Icon01"')){
       '        <action android:name="android.intent.action.MAIN" />',
       '        <category android:name="android.intent.category.LAUNCHER" />',
       '      </intent-filter>',
+      '      <meta-data android:name="android.app.shortcuts" android:resource="@xml/tf_asset_shortcuts" />',
       '    </activity-alias>'
     ].join('\n'));
   }
@@ -69,5 +70,7 @@ if(aliasCount!==10)throw new Error(`Expected 10 launcher aliases, found ${aliasC
 for(const key of ['01','10']){
   if(!manifest.includes(`android:name=".Icon${key}"`))throw new Error(`Launcher alias Icon${key} missing`);
 }
+const shortcutMetadataCount=(manifest.match(/android:name="android\.app\.shortcuts"/g)||[]).length;
+if(shortcutMetadataCount!==10)throw new Error(`Expected shortcuts metadata on 10 launcher aliases, found ${shortcutMetadataCount}`);
 fs.writeFileSync(manifestPath,manifest);
 console.log('V1.1.2 Android native injection: PASS');
