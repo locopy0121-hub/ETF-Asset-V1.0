@@ -211,7 +211,6 @@ jobs:
           grep 'android:name=".Icon10"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
           test "$(grep -c 'android.app.shortcuts' ../TFAssetNative/android/app/src/main/AndroidManifest.xml)" = "10"
           test "$(grep -c '^  <shortcut
-
       - name: Install native workspace dependencies
         working-directory: ../TFAssetNative
         run: npm install --no-audit --no-fund
