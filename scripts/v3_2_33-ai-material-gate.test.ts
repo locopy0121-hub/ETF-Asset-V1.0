@@ -17,8 +17,11 @@ const security:ResolvedSecurity={
   assetType:'ETF',
 };
 
+const NOW=Date.now();
+const NOW_ISO=new Date(NOW).toISOString();
+
 const analysis:AnalysisContext={
-  generatedAt:'2026-10-01T08:00:00+08:00',
+  generatedAt:NOW_ISO,
   targetSymbol:null,
   isCurrentlyHeld:null,
   portfolio:{totalMarketValue:0,holdingCount:0,holdings:[]},
@@ -46,8 +49,8 @@ const pendingQuotePlan:CoreAiToolPlan={
     },
     meta:{
       source:'TF_ASSET_MARKET_CENTER',
-      fetchedAt:'2026-10-01T08:00:00+08:00',
-      observedAt:'2026-10-01T08:00:00+08:00',
+      fetchedAt:NOW_ISO,
+      observedAt:NOW_ISO,
       verificationStatus:'PENDING',
     },
   }],
@@ -69,7 +72,7 @@ const baseAcquirer:AiIngredientAcquirer={
     previousClose:64.5,
     source:'TWSE_MIS',
     market:'TWSE',
-    sourceQuoteAt:Date.parse('2026-10-01T08:00:00+08:00'),
+    sourceQuoteAt:Date.parse(NOW_ISO),
     checkedAt:Date.parse('2026-10-01T08:00:01+08:00'),
     quality:'trade',
     statusMessage:'TWSE MIS z 實際成交價。',
@@ -115,8 +118,8 @@ async function main(){
       previousClose:64.5,
       source:'TWSE_MIS',
       market:'TWSE',
-      sourceQuoteAt:Date.parse('2026-10-01T07:59:00+08:00'),
-      checkedAt:Date.parse('2026-10-01T08:00:01+08:00'),
+      sourceQuoteAt:NOW-60_000,
+      checkedAt:NOW,
       quality:'diagnostic',
       statusMessage:'TWSE MIS 已回傳標的，但目前沒有 z 實際成交價；不可把昨收或買賣價冒充現價。',
     }),
