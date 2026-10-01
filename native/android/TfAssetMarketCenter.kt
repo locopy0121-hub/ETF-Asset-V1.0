@@ -123,6 +123,7 @@ internal class TfAssetMarketCenter(private val context:Context){
       .put("sourceQuoteAt",at).put("quality",quality).put("source","TWSE_MIS")
       .put("priceType",priceType).put("isFallback",fallback)
       .put("market",marketFromMis(row)).put("statusMessage",message)
+      .put("volume",finitePositive(row.optString("v",""))?:0.0)
   }
 
   private fun yahooQuote(symbol:String,now:Long):JSONObject?{
@@ -142,7 +143,8 @@ internal class TfAssetMarketCenter(private val context:Context){
           .put("officialTradePrice",JSONObject.NULL)
           .put("sourceQuoteAt",at).put("quality","backup_realtime").put("source","YAHOO")
           .put("priceType","BACKUP_REALTIME").put("isFallback",true).put("market",market)
-          .put("statusMessage","TWSE 無可用行情；採用 Yahoo Finance 備援行情")
+          .put("statusMessage","主來源無可用行情；採用 Yahoo Finance 備援行情")
+          .put("volume",finitePositive(meta.optString("regularMarketVolume",""))?:0.0)
       }catch(_:Exception){ /* Try the other Taiwan market suffix. */ }
     }
     return null
