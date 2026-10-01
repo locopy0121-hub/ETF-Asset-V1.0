@@ -3,10 +3,11 @@ import {isSession,taipeiClock} from './clock.mjs';
 import {VALID_SYMBOL} from './parser.mjs';
 
 export class MarketJobs{
-  constructor({store,sources,staticSymbols=[],pollSeconds=5,logger=console}){
-    this.store=store;this.sources=sources;this.staticSymbols=staticSymbols
+  constructor({store,sources,navService=null,staticSymbols=[],pollSeconds=1,logger=console}){
+    this.store=store;this.sources=sources;this.navService=navService;this.staticSymbols=staticSymbols
       .map(s=>s.trim().toUpperCase()).filter(s=>VALID_SYMBOL.test(s));
-    this.pollSeconds=Math.max(5,Math.min(60,Number(pollSeconds)||5));
+    // TF Asset live market cadence supports 1 second minimum; source breakers protect providers.
+    this.pollSeconds=Math.max(1,Math.min(60,Number(pollSeconds)||1));
     this.logger=logger;this.tasks=[];this.busy=false;this.closeBusy=false;
     this.errorsInRow=0;this.nextAttempt=0;
   }
@@ -69,17 +70,27 @@ export class MarketJobs{
       client.release();this.closeBusy=false;
     }
   }
-  async runNav(){
-    // There is no trustworthy official iNAV adapter until the provider and
-    // timestamp schema have been verified. Never invent an iNAV from price.
-    return {skipped:'NO_VERIFIED_NAV_SOURCE'};
+  async runNav(now=Date.now()){
+    if(!this.navService)return {skipped:'NO_NAV_SERVICE'};
+    if(!isSession(now))return {skipped:'outside_session'};
+    const symbols=await this.symbols();
+    if(!symbols.length)return {skipped:'no_subscribers'};
+    try{
+      const state=await this.store.snapshot(symbols);
+      const quoteMap=new Map(state.quotes.map(q=>[q.symbol,q]));
+      const nav=await this.navService.refresh(symbols,quoteMap,now);
+      return {requestedCount:symbols.length,availableCount:nav.filter(row=>row.available).length};
+    }catch(error){
+      this.logger.warn('ETF NAV job failed:',error.message);
+      return {error:error.message};
+    }
   }
   start(){
     // node-cron supports seconds; strict Taipei exchange-time check inside job.
-    // Catch slow overlapping jobs. 5s is configurable and NOT a 5ms official feed.
+    // 1s is the minimum TF Asset cadence. Circuit breakers prevent provider retry storms.
     const quote=cron.schedule('*/'+this.pollSeconds+' * * * * *',
       ()=>{void this.runQuotes();},{timezone:'Asia/Taipei'});
-    const nav=cron.schedule('0 * * * * *',
+    const nav=cron.schedule('*/15 * * * * *',
       ()=>{void this.runNav();},{timezone:'Asia/Taipei'});
     const daily=cron.schedule('0 10 14 * * 1-5',
       ()=>{void this.runDaily();},{timezone:'Asia/Taipei'});

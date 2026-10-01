@@ -35,11 +35,11 @@ const mergeIntraday=(stored={},fallback={})=>{
   return output;
 };
 
-export function makeApp({store,jobs,sources}){
+export function makeApp({store,jobs,sources,navService=null}){
   const app=express();
   app.disable('x-powered-by');
   app.use(express.json({limit:'4kb'}));
-  app.get('/health/live',(_req,res)=>res.json({status:'alive',service:'tf-asset-market-center',version:'2.3.1'}));
+  app.get('/health/live',(_req,res)=>res.json({status:'alive',service:'tf-asset-market-center',version:'3.2.36'}));
   app.get('/health/ready',async(_req,res)=>{
     try{const status=await store.ready();res.status(status.redis?200:206).json(status);}
     catch(error){res.status(503).json({postgres:false,redis:!!store.redis?.isReady});}
@@ -84,13 +84,30 @@ export function makeApp({store,jobs,sources}){
       res.json({accepted:true,expiresInSeconds:110});
     }catch(error){res.status(503).json({error:'watch_registry_unavailable'});}
   });
+  app.get('/v1/market/nav',async(req,res)=>{
+    const symbols=parseSymbols(req.query.symbols);
+    if(!symbols||!symbols.length)return res.status(400).json({error:'symbols_required_max_32'});
+    if(!navService)return res.status(503).json({error:'nav_service_unavailable'});
+    try{
+      const state=await store.snapshot(symbols);
+      const quoteMap=new Map(state.quotes.map(q=>[q.symbol,q]));
+      const rows=await navService.getMany(symbols,quoteMap);
+      res.set('Cache-Control','no-store').json({
+        quotesVersion:state.version,nav:rows,serverAt:Date.now(),
+      });
+    }catch(error){res.status(503).json({error:'nav_source_unavailable'});}
+  });
+
   app.get('/v1/market/status',async(req,res)=>{
     try{
       const state=await store.snapshot(parseSymbols(req.query.symbols)??[]);
       res.json({version:state.version,coveredCount:state.coveredCount,
         requestedCount:state.requestedCount,missing:state.missing,
         cache:state.cache,degraded:state.degraded,
-        lastJobError:jobs.errorsInRow,nextAttemptAt:jobs.nextAttempt});
+        lastJobError:jobs.errorsInRow,nextAttemptAt:jobs.nextAttempt,
+        sources:typeof sources?.health==='function'?sources.health():{},
+        navSources:typeof navService?.health==='function'?navService.health():{},
+      });
     }catch(error){res.status(503).json({error:'market_store_unavailable'});}
   });
   return app;

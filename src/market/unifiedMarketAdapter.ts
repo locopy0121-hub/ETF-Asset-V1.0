@@ -3,10 +3,10 @@ import type {UnifiedMarketIntradaySeries,UnifiedMarketRow,UnifiedMarketSnapshot}
 
 export type QuoteProvenance='trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
 const QUALITIES=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
-const SOURCES=new Set(['TWSE_MIS','YAHOO','TWSE_DAILY','TPEX_DAILY']);
+const SOURCES=new Set(['TWSE_MIS','FUGLE','SHIOAJI','YAHOO','TWSE_DAILY','TPEX_DAILY']);
 const PRICE_TYPES=new Set(['REALTIME_TRADE','BACKUP_REALTIME','BID_ASK','PREV_CLOSE','OFFICIAL_CLOSE']);
 const INTRADAY_QUALITIES=new Set(['trade','backup_realtime']);
-const INTRADAY_SOURCES=new Set(['TWSE_MIS','YAHOO']);
+const INTRADAY_SOURCES=new Set(['TWSE_MIS','FUGLE','SHIOAJI','YAHOO']);
 
 function taipeiDateMinute(at:number){
   try{
@@ -96,6 +96,7 @@ export function marketRowsToRuntimeQuotes(
       quality:row.quality,source:row.source,priceType:row.priceType,
       isFallback:row.isFallback,market:row.market,statusMessage:row.statusMessage,
       checkedAt:row.checkedAt,
+      volume:typeof row.volume==='number'&&Number.isFinite(row.volume)&&row.volume>=0?row.volume:null,
       previousCloseKnown:row.previousClose!==null||(old?.previousCloseKnown===true),
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',

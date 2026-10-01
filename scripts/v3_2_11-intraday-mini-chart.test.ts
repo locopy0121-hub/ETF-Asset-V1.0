@@ -108,7 +108,7 @@ for(const token of [
   'previous_close REAL',
   'intradayCoverage',
   "quality IN ('trade','backup_realtime')",
-  "source IN ('TWSE_MIS','YAHOO')",
+  "source IN ('TWSE_MIS','FUGLE','SHIOAJI','YAHOO')",
   'intradaySnapshot',
   'activeTradingDay',
   'val currentDay=activeTradingDay(now)',

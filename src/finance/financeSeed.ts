@@ -4,7 +4,7 @@ export type RuntimeIntradayPoint=Readonly<{
   at:number;
   price:number;
   quality:'trade'|'backup_realtime';
-  source:'TWSE_MIS'|'YAHOO';
+  source:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO';
 }>;
 
 export type RuntimeQuote = MarketQuoteInput & Readonly<{
@@ -13,7 +13,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   sourceQuoteAt?:number|null;
   quality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
   previousCloseKnown?:boolean;
-  source?:'TWSE_MIS'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
+  source?:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
   priceType?:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
   isFallback?:boolean;
   officialTradePrice?:number|null;
@@ -21,6 +21,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   statusMessage?:string;
   checkedAt?:number;
   marketDataVersion?:number;
+  volume?:number|null;
   sparkline: readonly number[];
   intraday?:readonly RuntimeIntradayPoint[];
   intradayDate?:string|null;

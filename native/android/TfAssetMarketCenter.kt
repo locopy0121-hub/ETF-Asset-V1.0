@@ -37,7 +37,7 @@ internal class TfAssetMarketCenter(private val context:Context){
       setRequestProperty("Accept","application/json")
       setRequestProperty("Cache-Control","no-cache, no-store")
       setRequestProperty("Referer","https://mis.twse.com.tw/stock/index.jsp")
-      setRequestProperty("User-Agent","TF-Asset-MarketCenter/3.2.6")
+      setRequestProperty("User-Agent","TF-Asset-MarketCenter/3.2.36")
     }
     return try{
       if(connection.responseCode!=200)throw IllegalStateException("HTTP "+connection.responseCode)
@@ -123,6 +123,7 @@ internal class TfAssetMarketCenter(private val context:Context){
       .put("sourceQuoteAt",at).put("quality",quality).put("source","TWSE_MIS")
       .put("priceType",priceType).put("isFallback",fallback)
       .put("market",marketFromMis(row)).put("statusMessage",message)
+      .put("volume",finitePositive(row.optString("v",""))?:0.0)
   }
 
   private fun yahooQuote(symbol:String,now:Long):JSONObject?{
@@ -142,7 +143,8 @@ internal class TfAssetMarketCenter(private val context:Context){
           .put("officialTradePrice",JSONObject.NULL)
           .put("sourceQuoteAt",at).put("quality","backup_realtime").put("source","YAHOO")
           .put("priceType","BACKUP_REALTIME").put("isFallback",true).put("market",market)
-          .put("statusMessage","TWSE 無可用行情；採用 Yahoo Finance 備援行情")
+          .put("statusMessage","主來源無可用行情；採用 Yahoo Finance 備援行情")
+          .put("volume",finitePositive(meta.optString("regularMarketVolume",""))?:0.0)
       }catch(_:Exception){ /* Try the other Taiwan market suffix. */ }
     }
     return null
@@ -278,7 +280,7 @@ internal class TfAssetMarketCenter(private val context:Context){
       val source=row.optString("source","")
       val quality=row.optString("quality","")
       val code=row.optString("symbol","").trim().uppercase()
-      if(!symbols.contains(code)||source !in setOf("TWSE_MIS","YAHOO","TWSE_DAILY","TPEX_DAILY")||
+      if(!symbols.contains(code)||source !in setOf("TWSE_MIS","FUGLE","SHIOAJI","YAHOO","TWSE_DAILY","TPEX_DAILY")||
         quality !in setOf("trade","backup_realtime","bid_ask","previous_close","official_close"))continue
       if(!row.has("priceType"))row.put("priceType",if(quality=="trade")"REALTIME_TRADE" else "OFFICIAL_CLOSE")
       if(!row.has("isFallback"))row.put("isFallback",quality!="trade")

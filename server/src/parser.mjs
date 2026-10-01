@@ -3,7 +3,7 @@ import {canPublishDailyClose,closeTimeMs,officialDay} from './clock.mjs';
 export const VALID_SYMBOL=/^[0-9A-Z]{4,8}$/;
 export const SOURCE_QUALITY=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
 export const PRICE_TYPES=new Set(['REALTIME_TRADE','BACKUP_REALTIME','BID_ASK','PREV_CLOSE','OFFICIAL_CLOSE']);
-export const MARKET_SOURCES=new Set(['TWSE_MIS','YAHOO','TWSE_DAILY','TPEX_DAILY']);
+export const MARKET_SOURCES=new Set(['TWSE_MIS','FUGLE','SHIOAJI','YAHOO','TWSE_DAILY','TPEX_DAILY']);
 const NUMERIC=/^[+]?(?:\d+(?:\.\d*)?|\.\d+)$/;
 
 export function positive(value){
@@ -23,6 +23,22 @@ export function firstBookPrice(value){
 }
 export function validSourceAt(at,now=Date.now()){
   return Number.isSafeInteger(at)&&at>0&&at<=now+120_000&&at>=now-31*86_400_000;
+}
+
+/** Normalize seconds/milliseconds/microseconds/nanoseconds or ISO strings to epoch ms. */
+export function epochLikeToMs(value,now=Date.now()){
+  if(typeof value==='string'&&!/^\d+(?:\.\d+)?$/.test(value.trim())){
+    const parsed=Date.parse(value);
+    return validSourceAt(parsed,now)?parsed:null;
+  }
+  const n=Number(value);
+  if(!Number.isFinite(n)||n<=0)return null;
+  let ms;
+  if(n>1e17)ms=Math.floor(n/1_000_000);
+  else if(n>1e14)ms=Math.floor(n/1_000);
+  else if(n>1e11)ms=Math.floor(n);
+  else ms=Math.floor(n*1_000);
+  return validSourceAt(ms,now)?ms:null;
 }
 export function misSourceTime(row,now=Date.now()){
   const day=String(row?.d??''),time=String(row?.t??'');
@@ -68,6 +84,7 @@ export function misTrade(row,now=Date.now()){
     officialTradePrice:price,sourceQuoteAt,quality:'trade',source:'TWSE_MIS',
     priceType:'REALTIME_TRADE',isFallback:false,market:marketFromMis(row),
     statusMessage:'TWSE MIS z 實際成交價',checkedAt:now,
+    volume:positive(row?.v)??0,
   };
 }
 /**
@@ -106,8 +123,47 @@ export function misNormalizedQuote(row,now=Date.now()){
     currentPrice:price,previousClose:prev,officialTradePrice:z,
     sourceQuoteAt,quality,source:'TWSE_MIS',priceType,isFallback,
     market:marketFromMis(row),statusMessage,checkedAt:now,
+    volume:positive(row?.v)??0,
   };
 }
+export function fugleQuoteFromPayload(payload,symbolInput,now=Date.now()){
+  const symbol=String(payload?.symbol??symbolInput??'').trim().toUpperCase();
+  if(!VALID_SYMBOL.test(symbol))return null;
+  // closePrice / lastTrade.price are actual trades. Never use lastTrial/lastPrice while isTrial.
+  const price=positive(payload?.lastTrade?.price??payload?.closePrice);
+  const sourceQuoteAt=epochLikeToMs(payload?.lastTrade?.time??payload?.closeTime??payload?.lastUpdated,now);
+  if(price===null||sourceQuoteAt===null)return null;
+  const market=String(payload?.market??payload?.exchange??'').toUpperCase();
+  return {
+    symbol,name:String(payload?.name??symbol).trim()||symbol,
+    currentPrice:price,previousClose:positive(payload?.previousClose??payload?.referencePrice),
+    officialTradePrice:null,sourceQuoteAt,quality:'trade',source:'FUGLE',
+    priceType:'REALTIME_TRADE',isFallback:false,
+    market:market.includes('OTC')||market.includes('TPEX')?'OTC':market.includes('TSE')||market.includes('TWSE')?'TSE':'UNKNOWN',
+    statusMessage:'Fugle 盤中實際成交價',checkedAt:now,
+    volume:positive(payload?.total?.tradeVolume)??0,
+  };
+}
+
+export function shioajiQuoteFromPayload(payload,symbolInput,now=Date.now()){
+  const row=Array.isArray(payload)?payload[0]:payload?.quote??payload;
+  const symbol=String(row?.code??row?.symbol??symbolInput??'').trim().toUpperCase();
+  if(!VALID_SYMBOL.test(symbol))return null;
+  const price=positive(row?.close??row?.price??row?.lastPrice);
+  const sourceQuoteAt=epochLikeToMs(row?.ts??row?.timestamp??row?.datetime??row?.sourceQuoteAt,now);
+  if(price===null||sourceQuoteAt===null)return null;
+  const exchange=String(row?.exchange??row?.market??'').toUpperCase();
+  return {
+    symbol,name:String(row?.name??symbol).trim()||symbol,
+    currentPrice:price,previousClose:positive(row?.previousClose??row?.yesterday_price??row?.reference),
+    officialTradePrice:null,sourceQuoteAt,quality:'backup_realtime',source:'SHIOAJI',
+    priceType:'BACKUP_REALTIME',isFallback:true,
+    market:exchange.includes('OTC')||exchange.includes('TPEX')?'OTC':exchange.includes('TSE')||exchange.includes('TWSE')?'TSE':'UNKNOWN',
+    statusMessage:'永豐 Shioaji 行情備援',checkedAt:now,
+    volume:positive(row?.total_volume??row?.volume)??0,
+  };
+}
+
 export function yahooQuoteFromChart(payload,symbol,market,now=Date.now()){
   const result=payload?.chart?.result?.[0];
   const meta=result?.meta;
@@ -120,7 +176,8 @@ export function yahooQuoteFromChart(payload,symbol,market,now=Date.now()){
     currentPrice:price,previousClose:positive(meta?.previousClose??meta?.chartPreviousClose),
     officialTradePrice:null,sourceQuoteAt,quality:'backup_realtime',source:'YAHOO',
     priceType:'BACKUP_REALTIME',isFallback:true,market,
-    statusMessage:'TWSE 無可用行情；採用 Yahoo Finance 備援行情',checkedAt:now,
+    statusMessage:'TWSE/Fugle/Shioaji 無可用行情；採用 Yahoo Finance 備援行情',checkedAt:now,
+    volume:positive(meta?.regularMarketVolume)??0,
   };
 }
 export function officialClose(row,source,now=Date.now()){
@@ -135,7 +192,8 @@ export function officialClose(row,source,now=Date.now()){
   if(!validSourceAt(sourceQuoteAt,now))return null;
   return {symbol,name,currentPrice:price,previousClose:null,officialTradePrice:null,sourceQuoteAt,
     quality:'official_close',source,priceType:'OFFICIAL_CLOSE',isFallback:true,
-    market:listed?'TSE':'OTC',statusMessage:'官方日收盤備援',checkedAt:now};
+    market:listed?'TSE':'OTC',statusMessage:'官方日收盤備援',checkedAt:now,
+    volume:positive(listed?row?.TradeVolume:row?.TradingShares)??0};
 }
 const QUALITY_RANK={trade:50,backup_realtime:40,bid_ask:30,official_close:20,previous_close:10};
 export function chooseNewer(current,candidate){

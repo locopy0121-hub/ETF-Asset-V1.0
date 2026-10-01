@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,5
+  context.applicationContext,"tf_asset_market_center_v1.db",null,6
 ){
   companion object{
     private val TAIPEI=ZoneId.of("Asia/Taipei")
@@ -31,10 +31,10 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     "official_close" to 20,"previous_close" to 10
   )
   private val allowedQuality=qualityRank.keys
-  private val allowedSource=setOf("TWSE_MIS","YAHOO","TWSE_DAILY","TPEX_DAILY")
+  private val allowedSource=setOf("TWSE_MIS","FUGLE","SHIOAJI","YAHOO","TWSE_DAILY","TPEX_DAILY")
   private val allowedPriceType=setOf("REALTIME_TRADE","BACKUP_REALTIME","BID_ASK","PREV_CLOSE","OFFICIAL_CLOSE")
   private val intradayQuality=setOf("trade","backup_realtime")
-  private val intradaySource=setOf("TWSE_MIS","YAHOO")
+  private val intradaySource=setOf("TWSE_MIS","FUGLE","SHIOAJI","YAHOO")
 
   private fun createQuoteTable(db:SQLiteDatabase,name:String="market_quotes"){
     db.execSQL("""CREATE TABLE IF NOT EXISTS $name(
@@ -45,12 +45,13 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       official_trade_price REAL,
       source_at INTEGER NOT NULL CHECK(source_at>0),
       quality TEXT NOT NULL CHECK(quality IN ('trade','backup_realtime','bid_ask','previous_close','official_close')),
-      source TEXT NOT NULL CHECK(source IN ('TWSE_MIS','YAHOO','TWSE_DAILY','TPEX_DAILY')),
+      source TEXT NOT NULL CHECK(source IN ('TWSE_MIS','FUGLE','SHIOAJI','YAHOO','TWSE_DAILY','TPEX_DAILY')),
       price_type TEXT NOT NULL CHECK(price_type IN ('REALTIME_TRADE','BACKUP_REALTIME','BID_ASK','PREV_CLOSE','OFFICIAL_CLOSE')),
       is_fallback INTEGER NOT NULL DEFAULT 0,
       market TEXT NOT NULL DEFAULT 'UNKNOWN',
       status_message TEXT NOT NULL DEFAULT '',
-      checked_at INTEGER NOT NULL
+      checked_at INTEGER NOT NULL,
+      volume INTEGER CHECK(volume>=0)
     )""")
   }
 
@@ -61,7 +62,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       price REAL NOT NULL CHECK(price>0),
       previous_close REAL,
       quality TEXT NOT NULL CHECK(quality IN ('trade','backup_realtime')),
-      source TEXT NOT NULL CHECK(source IN ('TWSE_MIS','YAHOO')),
+      source TEXT NOT NULL CHECK(source IN ('TWSE_MIS','FUGLE','SHIOAJI','YAHOO')),
       received_at INTEGER NOT NULL,
       PRIMARY KEY(symbol,source_at,source)
     )""")
@@ -134,6 +135,30 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     if(oldVersion<3)createIntradayTable(db)
     if(oldVersion==3)runCatching{db.execSQL("ALTER TABLE market_intraday ADD COLUMN previous_close REAL")}
     if(oldVersion<5)createResearchTables(db)
+    if(oldVersion<6){
+      // V6 widens quote provenance for server-side Fugle/Shioaji failover.
+      // Rebuild constrained tables so existing verified rows are preserved.
+      db.execSQL("ALTER TABLE market_quotes RENAME TO market_quotes_v5")
+      createQuoteTable(db)
+      db.execSQL("""INSERT OR REPLACE INTO market_quotes(
+        symbol,name,price,previous_close,official_trade_price,source_at,quality,source,
+        price_type,is_fallback,market,status_message,checked_at
+      )
+      SELECT symbol,name,price,previous_close,official_trade_price,source_at,quality,source,
+        price_type,is_fallback,market,status_message,checked_at
+      FROM market_quotes_v5""")
+      db.execSQL("DROP TABLE market_quotes_v5")
+
+      db.execSQL("DROP INDEX IF EXISTS market_intraday_symbol_time")
+      db.execSQL("ALTER TABLE market_intraday RENAME TO market_intraday_v5")
+      createIntradayTable(db)
+      db.execSQL("""INSERT OR IGNORE INTO market_intraday(
+        symbol,source_at,price,previous_close,quality,source,received_at
+      )
+      SELECT symbol,source_at,price,previous_close,quality,source,received_at
+      FROM market_intraday_v5""")
+      db.execSQL("DROP TABLE market_intraday_v5")
+    }
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
@@ -258,7 +283,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     val allow=symbols.toSet()
     val rows=JSONArray()
     db.rawQuery("""SELECT symbol,name,price,previous_close,official_trade_price,source_at,
-      quality,source,price_type,is_fallback,market,status_message,checked_at
+      quality,source,price_type,is_fallback,market,status_message,checked_at,volume
       FROM market_quotes ORDER BY symbol""",null).use{cursor->
       while(cursor.moveToNext()){
         val symbol=cursor.getString(0)
@@ -271,6 +296,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
           .put("source",cursor.getString(7)).put("priceType",cursor.getString(8))
           .put("isFallback",cursor.getInt(9)!=0).put("market",cursor.getString(10))
           .put("statusMessage",cursor.getString(11)).put("checkedAt",cursor.getLong(12))
+          .put("volume",if(cursor.isNull(13))JSONObject.NULL else cursor.getLong(13))
         rows.put(row)
       }
     }
@@ -437,6 +463,8 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
           put("market",market)
           put("status_message",row.optString("statusMessage",""))
           put("checked_at",checkedAt)
+          val volume=row.optDouble("volume",Double.NaN)
+          if(volume.isFinite()&&volume>=0)put("volume",volume.toLong()) else putNull("volume")
         }
         db.insertWithOnConflict("market_quotes",null,values,SQLiteDatabase.CONFLICT_REPLACE)
         insertIntraday(db,row,checkedAt)
