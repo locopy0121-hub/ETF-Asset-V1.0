@@ -30,7 +30,7 @@ export class OfficialSources {
     dailyCacheMs=300_000,
     fugleApiKey=process.env.FUGLE_API_KEY??'',
     fugleStream=null,
-    fugleRestCacheMs=15_000,
+    fugleRestCacheMs=Number(process.env.FUGLE_REST_CACHE_MS??15_000),
     shioajiBridgeUrl=process.env.SHIOAJI_BRIDGE_URL??'',
     timeoutMs=2_500,
     breakerThreshold=3,
