@@ -14,7 +14,7 @@ const entries:CanonicalLedgerEntry[]=[
 const snapshot=calculateCanonicalLedgerSnapshot({
   initialCash:0,
   entries,
-  quotes:[{symbol:'0050',name:'元大台灣50',currentPrice:140,previousClose:138,liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,brokerProfileId:'HUANAN_DEFAULT'}],
+  quotes:[{symbol:'0050',name:'元大台灣50',currentPrice:140,previousClose:138,liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,brokerProfileId:'default'}],
 });
 
 const stats=buildPurchasePnlStatistics({entries,holdings:snapshot.holdings,asOfDate:'2026-10-02'});
