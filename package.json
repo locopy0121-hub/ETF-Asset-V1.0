@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.33",
+  "version": "3.2.34",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -270,7 +270,8 @@
     "test:v3_2_30": "npm run test:v3_2_29 && tsx scripts/v3_2_30-intelligence-middleware.test.ts",
     "test:v3_2_31": "npm run test:v3_2_30 && tsx scripts/v3_2_31-ai-responder.test.ts",
     "test:v3_2_32": "npm run test:v3_2_31 && tsx scripts/v3_2_32-ai-local-first.test.ts",
-    "test:v3_2_33": "npm run test:v3_2_32 && tsx scripts/v3_2_33-ai-material-gate.test.ts"
+    "test:v3_2_33": "npm run test:v3_2_32 && tsx scripts/v3_2_33-ai-material-gate.test.ts",
+    "test:v3_2_34": "npm run test:v3_2_33 && tsx scripts/v3_2_34-ai-quote-freshness.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
