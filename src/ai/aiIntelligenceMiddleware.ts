@@ -328,7 +328,7 @@ async function acquireMissing(
   const needsHistory=!selfComparison&&plan.requirements.some(row=>row.ingredient==='HISTORICAL_PRICES');
   if(needsHistory){
     for(const symbol of plan.symbols){
-      if(evidenceUsable(findEvidence(evidence,'HISTORICAL_PRICES',symbol)))continue;
+      if(evidenceSatisfiesIngredient('HISTORICAL_PRICES',findEvidence(evidence,'HISTORICAL_PRICES',symbol)))continue;
       try{
         const rows=await acquirer.fetchHistory(symbol,12);
         if(rows.length){
@@ -365,7 +365,7 @@ async function acquireMissing(
   const needsNews=plan.requirements.some(row=>row.ingredient==='MARKET_NEWS');
   if(needsNews){
     for(const symbol of plan.symbols){
-      if(evidenceUsable(findEvidence(evidence,'MARKET_NEWS',symbol)))continue;
+      if(evidenceSatisfiesIngredient('MARKET_NEWS',findEvidence(evidence,'MARKET_NEWS',symbol)))continue;
       const name=securityNameFor(symbol,evidence);
       try{
         const rows=await acquirer.fetchNews(symbol,name);
@@ -405,7 +405,7 @@ async function acquireMissing(
   const needsProfile=plan.requirements.some(row=>row.ingredient==='SECURITY_PROFILE');
   if(needsProfile){
     for(const symbol of plan.symbols){
-      if(evidenceUsable(findEvidence(evidence,'SECURITY_PROFILE',symbol)))continue;
+      if(evidenceSatisfiesIngredient('SECURITY_PROFILE',findEvidence(evidence,'SECURITY_PROFILE',symbol)))continue;
       const name=securityNameFor(symbol,evidence);
       if(!acquirer.fetchSecurityProfile){
         attempts.push({ingredient:'SECURITY_PROFILE',symbol,source:'TF_ASSET_PROFILE_DISCOVERY',status:'NO_PROVIDER',message:'沒有可用的上市/掛牌資料 Provider'});
@@ -547,7 +547,7 @@ function missingForMetric(
 ):AiIngredientKey[]{
   return AI_METRIC_REGISTRY[metric].requiredIngredients.filter(ingredient=>{
     const row=findEvidence(evidence,ingredient,symbol);
-    return !evidenceUsable(row);
+    return !evidenceSatisfiesIngredient(ingredient,row);
   });
 }
 
@@ -599,17 +599,38 @@ function overallStatus(
   return 'VERIFIED';
 }
 
+function validationIssuesForPlan(
+  plan:AiIntelligencePlan,
+  evidence:readonly AiIngredientEvidence[],
+  now=Date.now(),
+):AiIngredientValidationIssue[]{
+  const issues:AiIngredientValidationIssue[]=[];
+  for(const requirement of plan.requirements){
+    const scope=AI_INGREDIENT_CATALOG[requirement.ingredient].scope;
+    const symbols=scope==='SYMBOL'&&plan.symbols.length?plan.symbols:[undefined];
+    for(const symbol of symbols){
+      const row=findEvidence(evidence,requirement.ingredient,symbol);
+      const found=validateIngredientEvidence(requirement,row,now);
+      for(const issue of found){
+        issues.push(symbol&&!issue.symbol?{...issue,symbol}:issue);
+      }
+    }
+  }
+  return issues;
+}
+
 function requiredMissing(
   plan:AiIntelligencePlan,
   evidence:readonly AiIngredientEvidence[],
+  now=Date.now(),
 ):AiIngredientKey[]{
   const missing:AiIngredientKey[]=[];
   for(const requirement of plan.requirements.filter(row=>row.required)){
-    const symbols=plan.symbols.length&&['SECURITY_IDENTITY','MARKET_QUOTE','HISTORICAL_PRICES','MARKET_NEWS','SECURITY_PROFILE'].includes(requirement.ingredient)
-      ?plan.symbols:[undefined];
+    const scope=AI_INGREDIENT_CATALOG[requirement.ingredient].scope;
+    const symbols=scope==='SYMBOL'&&plan.symbols.length?plan.symbols:[undefined];
     const ok=symbols.every(symbol=>{
       const row=findEvidence(evidence,requirement.ingredient,symbol);
-      return Boolean(row&&['VERIFIED','PARTIAL'].includes(row.status));
+      return validateIngredientEvidence(requirement,row,now).length===0;
     });
     if(!ok&&!missing.includes(requirement.ingredient))missing.push(requirement.ingredient);
   }
@@ -635,6 +656,7 @@ export async function buildAiEvidencePackage(input:{
   const computed:AiMetricEvidence[]=[];
   for(const [symbol,rows] of history)computed.push(...historyMetrics(symbol,rows,plan.metrics));
   const metrics=fillUnavailableMetrics(plan,evidence,computed);
+  const validationIssues=validationIssuesForPlan(plan,evidence);
   const missingRequired=requiredMissing(plan,evidence);
   return {
     generatedAt:nowIso(),
@@ -647,6 +669,7 @@ export async function buildAiEvidencePackage(input:{
     metrics,
     missingRequired,
     acquisitionAttempts:attempts,
+    validationIssues,
     rules:{
       marketFactsFromMarketSources:true,
       portfolioDataIsContextOnly:true,
