@@ -49,17 +49,17 @@ import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'engineer'|'market'|'permissions'|'diagnostics'|'logs'|'notifications';
+type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
-type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
-type AppPanel=null|'reset'|'version'|'updates'|'debug'|'titles'|'swipe';
-type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
+type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'swipe'|'dividendCalendar';
+type AppPanel=null|'reset'|'version'|'updates';
+type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='3.2.42';
-const BUILD='30242';
+const VERSION='3.2.43';
+const BUILD='30243';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -170,6 +170,7 @@ export function SettingsScreen(){
     if(key==='backup')return backupSection();
     if(key==='monitor')return monitorSection();
     if(key==='display')return displaySection();
+    if(key==='notifications')return notificationSection();
     if(key==='ai')return aiSection();
     if(key==='app')return appSection();
     if(key==='legal')return legalSection();
@@ -183,8 +184,6 @@ export function SettingsScreen(){
         <ToggleRow label="顯示各模塊／框架／元件活動扳手" value={settings.prefs.engineerEnabled} onChange={settings.patchEngineerEnabled}/>
         <Text style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
       </Panel>:null}
-      <ChildButton label="行情資料中心／市場更新" summary={'v'+market.marketDataVersion+'｜'+marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -213,11 +212,11 @@ export function SettingsScreen(){
         <StatusRow label="交易紀錄" value={String(finance.entries.length)}/>
         <StatusRow label="持股筆數" value={String(finance.holdings.length)}/>
         <StatusRow label="ETF 基礎資料" value={String(market.catalog.length)}/>
+        <StatusRow label="Monitor Mode" value={monitor.config.mode}/>
+        <StatusRow label="Stored TF Asset keys" value={String(storageStats.keys)}/>
       </Panel>:null}
       <ChildButton label="錯誤紀錄 Log" summary="閃退、操作路徑、錯誤堆疊與匯出" active={systemPanel==='logs'} onPress={()=>setSystemPanel(systemPanel==='logs'?null:'logs')}/>
       {systemPanel==='logs'?<Panel title="錯誤診斷中心"><DiagnosticLogPanel/></Panel>:null}
-      <ChildButton label="通知與提醒" summary="除息、配息、行情、失敗、備份" active={systemPanel==='notifications'} onPress={()=>setSystemPanel(systemPanel==='notifications'?null:'notifications')}/>
-      {systemPanel==='notifications'?<NotificationPanel/>:null}
     </View>;
   }
 
@@ -279,7 +278,7 @@ export function SettingsScreen(){
         <ActionButton label="編輯首頁行情牆" onPress={()=>openMarketEditor('home','wall')}/>
         <ActionButton label="編輯庫存行情牆" onPress={()=>openMarketEditor('portfolio','wall')}/>
       </Panel>:null}
-      <ChildButton label="ETF 分類、配息與提醒" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
+      <ChildButton label="ETF 分類與配息標籤" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
       {dataPanel==='badges'?<Panel title="ETF 智慧標籤 A/B">
         <Text style={styles.note}>僅變更畫面標籤；官方分類與配息原始資料保持不變，未知資料仍標示待確認。</Text>
         <ActionButton label="編輯首頁標籤" onPress={()=>openMarketEditor('home','badges')}/>
@@ -503,7 +502,15 @@ export function SettingsScreen(){
   function displaySection(){
     const d=settings.prefs.display;
     return <View style={styles.children}>
-      <ChildButton label="主題與背景" summary={theme.palette.label+' · 背景 '+(theme.prefs.customBackgroundUri?'自訂':String(theme.prefs.backgroundIndex+1))} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
+      <ChildButton label="各頁標題／頂部表頭文字" summary="首頁／紀錄／庫存／股息／AI／設定" active={displayPanel==='titles'} onPress={()=>setDisplayPanel(displayPanel==='titles'?null:'titles')}/>
+      {displayPanel==='titles'?<Panel title="頁面標題與表頭文字">
+        <Text style={styles.note}>此處統一管理各頁表頭文字；框架位置、尺寸與元件排版仍由各頁排版工具管理，避免重複入口。</Text>
+        {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
+          <Text style={styles.rowTitle}>{page.label}</Text>
+          <TextInput accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
+        </View>)}
+      </Panel>:null}
+      <ChildButton label="主題、背景與 App Icon" summary={theme.palette.label+' · 背景 '+(theme.prefs.customBackgroundUri?'自訂':String(theme.prefs.backgroundIndex+1))} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
       {displayPanel==='theme'?<ThemePanel/>:null}
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
@@ -516,6 +523,23 @@ export function SettingsScreen(){
       {displayPanel==='percent'?<Panel title="百分比格式"><ChoiceRow label="小數位" options={[0,1,2].map(x=>({key:String(x),label:x+' 位'}))} value={String(d.percentDecimals)} onChange={x=>settings.patchDisplay({percentDecimals:x==='0'?0:x==='1'?1:2})}/></Panel>:null}
       <ChildButton label="日期格式" summary={d.dateFormat} active={displayPanel==='date'} onPress={()=>setDisplayPanel(displayPanel==='date'?null:'date')}/>
       {displayPanel==='date'?<Panel title="日期格式"><ChoiceRow label="日期格式" options={[{key:'YYYY-MM-DD',label:'2026-09-21'},{key:'YYYY/MM/DD',label:'2026/09/21'}]} value={d.dateFormat} onChange={dateFormat=>settings.patchDisplay({dateFormat:dateFormat==='YYYY/MM/DD'?'YYYY/MM/DD':'YYYY-MM-DD'})}/></Panel>:null}
+      <ChildButton label="股息月曆顯示" summary="最後購買日、除息日、登記日、配發日與狀態" active={displayPanel==='dividendCalendar'} onPress={()=>setDisplayPanel(displayPanel==='dividendCalendar'?null:'dividendCalendar')}/>
+      {displayPanel==='dividendCalendar'?<Panel title="股息月曆顯示">
+        <Text style={styles.note}>這裡只控制月曆上顯示哪些事件，不會改變通知提醒是否啟用。</Text>
+        <ToggleRow label="顯示最後購買日" value={settings.prefs.dividendCalendar.showLastBuyDate!==false} onChange={showLastBuyDate=>settings.patchDividendCalendar({showLastBuyDate})}/>
+        <ToggleRow label="顯示除息日" value={settings.prefs.dividendCalendar.showExDate} onChange={showExDate=>settings.patchDividendCalendar({showExDate})}/>
+        <ToggleRow label="顯示股權登記日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
+        <ToggleRow label="顯示股息配發日" value={settings.prefs.dividendCalendar.showPaymentDate} onChange={showPaymentDate=>settings.patchDividendCalendar({showPaymentDate})}/>
+        <ToggleRow label="顯示事件狀態" value={settings.prefs.dividendCalendar.showStatus} onChange={showStatus=>settings.patchDividendCalendar({showStatus})}/>
+      </Panel>:null}
+      <ChildButton label="頁面左右滑動" summary={settings.prefs.navigation.swipeEnabled?'已啟用':'已關閉'} active={displayPanel==='swipe'} onPress={()=>setDisplayPanel(displayPanel==='swipe'?null:'swipe')}/>
+      {displayPanel==='swipe'?<Panel title="頁面左右滑動">
+        <Switch value={settings.prefs.navigation.swipeEnabled} onValueChange={swipeEnabled=>settings.patchNavigation({swipeEnabled})}/>
+        <Stepper label="切換靈敏度（距離）" value={settings.prefs.navigation.swipeThreshold} min={50} max={150} step={10} suffix=" px" onChange={swipeThreshold=>settings.patchNavigation({swipeThreshold})}/>
+        <Text style={styles.rowTitle}>僅從螢幕左右邊緣滑動（降低與橫向行情表、圖表衝突）</Text>
+        <Switch value={settings.prefs.navigation.swipeEdgeOnly} onValueChange={swipeEdgeOnly=>settings.patchNavigation({swipeEdgeOnly})}/>
+        <Text style={styles.note}>關閉時維持原全畫面左右滑動；開啟後只接受距左右邊緣 32 px 內起始的手勢。垂直捲動優先。</Text>
+      </Panel>:null}
       <ChildButton label="損益顏色" summary={d.profitColorMode==='red-up-green-down'?'紅漲綠跌':'綠漲紅跌'} active={displayPanel==='pnl'} onPress={()=>setDisplayPanel(displayPanel==='pnl'?null:'pnl')}/>
       {displayPanel==='pnl'?<ProfitColorPanel/>:null}
     </View>;
@@ -533,21 +557,6 @@ export function SettingsScreen(){
 
   function appSection(){
     return <View style={styles.children}>
-      <ChildButton label="主頁左右滑動" summary={settings.prefs.navigation.swipeEnabled?'已啟用':'已關閉'} active={appPanel==='swipe'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'swipe'))}/>
-      {appPanel==='swipe'?<Panel title="主頁左右滑動">
-        <Switch value={settings.prefs.navigation.swipeEnabled} onValueChange={swipeEnabled=>settings.patchNavigation({swipeEnabled})}/>
-        <Stepper label="切換靈敏度（距離）" value={settings.prefs.navigation.swipeThreshold} min={50} max={150} step={10} suffix=" px" onChange={swipeThreshold=>settings.patchNavigation({swipeThreshold})}/>
-        <Text style={styles.rowTitle}>僅從螢幕左右邊緣滑動（降低與橫向行情表、圖表衝突）</Text>
-        <Switch value={settings.prefs.navigation.swipeEdgeOnly} onValueChange={swipeEdgeOnly=>settings.patchNavigation({swipeEdgeOnly})}/>
-        <Text style={styles.note}>關閉時維持原全畫面左右滑動；開啟後只接受距左右邊緣 32 px 內起始的手勢。垂直捲動優先，圖表複合手勢仍須真機驗證。</Text>
-      </Panel>:null}
-      <ChildButton label="各頁標題設定" summary="首頁／紀錄／庫存／股息／AI／設定" active={appPanel==='titles'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'titles'))}/>
-      {appPanel==='titles'?<Panel title="頁面標題">
-        {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
-          <Text style={styles.rowTitle}>{page.label}</Text>
-          <TextInput accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
-        </View>)}
-      </Panel>:null}
       <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'reset'))}/>
       {appPanel==='reset'?<Panel title="還原預設設定">
         <Text style={styles.note}>只重設通知、顯示格式與交易預設值，不刪除交易、股息、持股與帳務資料。</Text>
@@ -560,17 +569,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V2.1.8 Widget 四欄預覽及末排等寬修正（QA）" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V2.1.8 更新資訊">
-        <Text style={styles.infoText}>新增 AI 助理與持股相關新聞自動取得，首頁市場新聞顯示代號、名稱、來源、日期與智慧摘要；首頁右上加入更新行情。總資產主值改採持股市值，不與現金合併。Monitor／Mini 修正雙擊切換回彈，並加入更新行情、縮小／放大與關閉控制。調色盤 V1.0.15 閃退修護持續保留。</Text>
-      </Panel>:null}
-      <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'debug'))}/>
-      {appPanel==='debug'?<Panel title="開發／診斷資訊">
-        <StatusRow label="Market Phase" value={market.phase}/>
-        <StatusRow label="Market Source" value={market.config.source}/>
-        <StatusRow label="Broker Profile ID" value={broker.activeProfileId}/>
-        <StatusRow label="Monitor Mode" value={monitor.config.mode}/>
-        <StatusRow label="Stored TF Asset keys" value={String(storageStats.keys)}/>
+      <ChildButton label="更新資訊" summary="V3.2.43 設定中心分類去重與入口歸位" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V3.2.43 更新資訊">
+        <Text style={styles.infoText}>設定中心完成資訊架構檢整：行情資料中心只保留單一入口；通知與提醒獨立成大項；頁面標題、月曆顯示與滑動設定歸入介面與主題；Runtime 診斷集中回系統設定。底層帳務、行情與資料內容不因本次分類調整而重算或搬移。</Text>
       </Panel>:null}
     </View>;
   }
@@ -583,9 +584,15 @@ export function SettingsScreen(){
       {legalPanel==='market'?<Panel title="行情資料聲明"><Text style={styles.infoText}>行情來自公開市場資料來源，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
       <ChildButton label="試算聲明" summary="假設結果非保證報酬" active={legalPanel==='calculator'} onPress={()=>setLegalPanel(legalPanel==='calculator'?null:'calculator')}/>
       {legalPanel==='calculator'?<Panel title="試算聲明"><Text style={styles.infoText}>所有情境試算均依輸入條件計算，不代表未來實際市場價格、配息或報酬。</Text></Panel>:null}
+      <ChildButton label="資料與隱私說明" summary="本機資料、外部行情與 AI 資料使用邊界" active={legalPanel==='privacy'} onPress={()=>setLegalPanel(legalPanel==='privacy'?null:'privacy')}/>
+      {legalPanel==='privacy'?<Panel title="資料與隱私說明"><Text style={styles.infoText}>交易、持股、股息與設定以 App 資料層為主要來源；需要外部行情、新聞或 AI 資料時，僅依功能需要取得對應內容。備份與匯出由使用者主動操作，不把設定頁顯示狀態當成雲端備份證明。</Text></Panel>:null}
       <ChildButton label="關於 TF Asset" summary={'Version '+VERSION} active={legalPanel==='about'} onPress={()=>setLegalPanel(legalPanel==='about'?null:'about')}/>
       {legalPanel==='about'?<Panel title="關於 TF Asset"><StatusRow label="名稱" value="TF Asset｜資產管家"/><StatusRow label="版本" value={VERSION}/><StatusRow label="核心原則" value="Single Source of Truth"/></Panel>:null}
     </View>;
+  }
+
+  function notificationSection(){
+    return <View style={styles.children}><NotificationPanel/></View>;
   }
 
   function NotificationPanel(){
@@ -610,19 +617,13 @@ export function SettingsScreen(){
       }}/>:null}
       <ToggleRow label="除息提醒" value={n.exDividend} onChange={exDividend=>settings.patchNotifications({exDividend})}/>
       <ToggleRow label="配息提醒" value={n.dividend} onChange={dividend=>settings.patchNotifications({dividend})}/>
-      <Text style={styles.subTitle}>股息月曆事件顯示</Text>
-      <ToggleRow label="顯示最後購買日" value={settings.prefs.dividendCalendar.showLastBuyDate!==false} onChange={showLastBuyDate=>settings.patchDividendCalendar({showLastBuyDate})}/>
-      <ToggleRow label="顯示除息日" value={settings.prefs.dividendCalendar.showExDate} onChange={showExDate=>settings.patchDividendCalendar({showExDate})}/>
-      <ToggleRow label="顯示股權登記日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
-      <ToggleRow label="顯示股息配發日" value={settings.prefs.dividendCalendar.showPaymentDate} onChange={showPaymentDate=>settings.patchDividendCalendar({showPaymentDate})}/>
-      <ToggleRow label="顯示事件狀態" value={settings.prefs.dividendCalendar.showStatus} onChange={showStatus=>settings.patchDividendCalendar({showStatus})}/>
       <ToggleRow label="行情異常提醒" value={n.marketAlert} onChange={marketAlert=>settings.patchNotifications({marketAlert})}/>
       <ToggleRow label="更新失敗提醒" value={n.updateFailure} onChange={updateFailure=>settings.patchNotifications({updateFailure})}/>
       <ToggleRow label="備份提醒" value={n.backupReminder} onChange={backupReminder=>settings.patchNotifications({backupReminder})}/>
       <ToggleRow label="震動" value={n.vibration} onChange={vibration=>settings.patchNotifications({vibration})}/>
       <ToggleRow label="聲音" value={n.sound} onChange={sound=>settings.patchNotifications({sound})}/>
       <Stepper label="提前提醒" value={n.leadDays} min={0} max={30} step={1} suffix=" 天" onChange={leadDays=>settings.patchNotifications({leadDays})}/>
-      {notificationPermission==='denied'?<Text style={styles.note}>Android 通知權限尚未允許。V3.2.42 已建立 TF Asset 原生通知頻道；允許後可在系統通知頁分別控制股息、行情、更新與備份通知。</Text>:null}
+      {notificationPermission==='denied'?<Text style={styles.note}>Android 通知權限尚未允許。允許後可在系統通知頁分別控制股息、行情、更新與備份通知。</Text>:null}
     </Panel>;
   }
 
@@ -706,7 +707,7 @@ export function SettingsScreen(){
     <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
       <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
       <Text style={[styles.title,{color:theme.palette.text}]}>{settings.prefs.pageTitles.settings||'控制中心'}</Text>
-      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、資料、主題與顯示設定集中管理</Text>
+      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、行情資料、介面、通知與 App 管理集中設定</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {PAGE_FRAMES.settings.map((frame,index)=>{
