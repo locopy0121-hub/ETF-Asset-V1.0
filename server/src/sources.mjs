@@ -3,6 +3,7 @@ import {
   shioajiQuoteFromPayload,VALID_SYMBOL,
 } from './parser.mjs';
 import {CircuitBreaker,SourceError,CircuitOpenError} from './circuitBreaker.mjs';
+import {FugleStream} from './fugleStream.mjs';
 
 const MIS='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=';
 const FUGLE='https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/';
@@ -12,7 +13,7 @@ const DAILY={
   TPEX_DAILY:'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes',
 };
 const QUALITY_RANK={trade:50,backup_realtime:40,bid_ask:30,official_close:20,previous_close:10};
-const SOURCE_PRIORITY={TWSE_MIS:10,FUGLE:11,SHIOAJI:20,YAHOO:30,TWSE_DAILY:40,TPEX_DAILY:41};
+const SOURCE_PRIORITY={FUGLE:10,TWSE_MIS:20,SHIOAJI:30,YAHOO:40,TWSE_DAILY:50,TPEX_DAILY:51};
 
 const choosePreferred=(current,candidate)=>{
   if(!current)return candidate;
@@ -28,16 +29,23 @@ export class OfficialSources {
     fetchImpl=globalThis.fetch,
     dailyCacheMs=300_000,
     fugleApiKey=process.env.FUGLE_API_KEY??'',
+    fugleStream=null,
+    fugleRestCacheMs=15_000,
     shioajiBridgeUrl=process.env.SHIOAJI_BRIDGE_URL??'',
     timeoutMs=2_500,
     breakerThreshold=3,
     breakerCooldownMs=5*60_000,
+    logger=console,
   }={}){
     this.fetch=fetchImpl;
+    this.logger=logger;
     this.dailyCacheMs=dailyCacheMs;
     this.dailyCache=new Map();
     this.intradayCache=new Map();
+    this.fugleRestCache=new Map();
+    this.fugleRestCacheMs=Math.max(1_000,Number(fugleRestCacheMs)||15_000);
     this.fugleApiKey=String(fugleApiKey).trim();
+    this.fugleStream=fugleStream??new FugleStream({apiKey:this.fugleApiKey,logger});
     this.shioajiBridgeUrl=String(shioajiBridgeUrl).trim().replace(/\/$/,'');
     this.timeoutMs=Math.max(500,Number(timeoutMs)||2_500);
     this.breakers=Object.fromEntries(
@@ -53,18 +61,34 @@ export class OfficialSources {
     return true;
   }
 
+  start(symbols=[]){
+    this.fugleStream?.start?.(symbols);
+  }
+
+  stop(){
+    this.fugleStream?.stop?.();
+  }
+
+  setTrackedSymbols(symbols=[]){
+    this.fugleStream?.setSymbols?.(symbols);
+  }
+
   async json(source,url,{headers={},method='GET',body=null,now=Date.now(),timeoutMs=this.timeoutMs}={}){
     const breaker=this.breakers[source];
     if(!breaker)throw new Error('unknown source '+source);
     return breaker.execute(async()=>{
       let res;
       try{
+        const baseHeaders={
+          Accept:'application/json','Cache-Control':'no-cache',
+          'User-Agent':'TF-Asset-MarketCenter/3.2.37',
+        };
+        // Use provider-appropriate headers only. Do not spoof unrelated Referer values.
+        if(source==='YAHOO')baseHeaders.Referer='https://finance.yahoo.com/';
+        if(source==='TWSE_MIS')baseHeaders.Referer='https://mis.twse.com.tw/stock/index.jsp';
         res=await this.fetch(url,{
           method,body,signal:AbortSignal.timeout(timeoutMs),
-          headers:{Accept:'application/json','Cache-Control':'no-cache',
-            'User-Agent':'TF-Asset-MarketCenter/3.2.36',
-            Referer:source==='YAHOO'?'https://finance.yahoo.com/':'https://mis.twse.com.tw/stock/index.jsp',
-            ...headers},
+          headers:{...baseHeaders,...headers},
         });
       }catch(error){
         throw new SourceError('NETWORK',source+' network/timeout',{cause:error});
@@ -103,11 +127,21 @@ export class OfficialSources {
 
   async fugle(symbol,now){
     if(!this.fugleApiKey)return {quote:null,errors:[]};
+
+    // Primary path: authenticated server-side WebSocket. No per-second REST polling.
+    const streamed=this.fugleStream?.latest?.(symbol,now)??null;
+    if(streamed)return {quote:streamed,errors:[]};
+
+    // Bootstrap/reconnect path: bounded REST snapshot with a short hot cache.
+    const cached=this.fugleRestCache.get(symbol);
+    if(cached&&cached.expires>now)return {quote:{...cached.quote,checkedAt:now},errors:[]};
     try{
       const body=await this.json('FUGLE',FUGLE+encodeURIComponent(symbol),{
         now,headers:{'X-API-KEY':this.fugleApiKey},
       });
-      return {quote:fugleQuoteFromPayload(body,symbol,now),errors:[]};
+      const quote=fugleQuoteFromPayload(body,symbol,now);
+      if(quote)this.fugleRestCache.set(symbol,{quote,expires:now+this.fugleRestCacheMs});
+      return {quote,errors:[]};
     }catch(error){return {quote:null,errors:[this.errorText('FUGLE',error)]};}
   }
 
@@ -148,20 +182,24 @@ export class OfficialSources {
     const chosen=new Map(),errors=[];
     const add=q=>{if(q&&wanted.includes(q.symbol))chosen.set(q.symbol,choosePreferred(chosen.get(q.symbol),q));};
 
-    // Primary A: TWSE MIS
-    const mis=await this.mis(wanted,now);
-    errors.push(...mis.errors);mis.quotes.forEach(add);
+    this.setTrackedSymbols(wanted);
 
-    // Primary B: Fugle. Spend quota only where MIS did not produce an actual trade.
+    // P1: Fugle WebSocket/REST bootstrap. This is TF Asset's primary live feed.
     if(this.configured('FUGLE')){
-      const needsFugle=wanted.filter(symbol=>(QUALITY_RANK[chosen.get(symbol)?.quality]??0)<QUALITY_RANK.trade);
-      for(const symbol of needsFugle){
+      for(const symbol of wanted){
         const out=await this.fugle(symbol,now);
         errors.push(...out.errors);add(out.quote);
       }
     }
 
-    // Secondary A: Shioaji bridge, only when no trade/backup realtime is available.
+    // P2: TWSE MIS only fills symbols not already backed by an actual Fugle trade.
+    const needsOfficial=wanted.filter(symbol=>(QUALITY_RANK[chosen.get(symbol)?.quality]??0)<QUALITY_RANK.trade);
+    if(needsOfficial.length){
+      const mis=await this.mis(needsOfficial,now);
+      errors.push(...mis.errors);mis.quotes.forEach(add);
+    }
+
+    // P3: Shioaji read-only bridge.
     const needsRealtime=()=>wanted.filter(symbol=>
       (QUALITY_RANK[chosen.get(symbol)?.quality]??0)<QUALITY_RANK.backup_realtime);
     if(this.configured('SHIOAJI')){
@@ -170,7 +208,7 @@ export class OfficialSources {
       errors.push(...out.errors);out.quotes.forEach(add);
     }
 
-    // Secondary B: Yahoo.
+    // P4: Yahoo fallback.
     for(const symbol of needsRealtime()){
       const out=await this.yahoo(symbol,now);
       errors.push(...out.errors);add(out.quote);
@@ -268,8 +306,15 @@ export class OfficialSources {
   }
 
   health(now=Date.now()){
-    return Object.fromEntries(Object.entries(this.breakers).map(([source,breaker])=>[
+    const http=Object.fromEntries(Object.entries(this.breakers).map(([source,breaker])=>[
       source,{configured:this.configured(source),priority:SOURCE_PRIORITY[source],...breaker.health(now)},
     ]));
+    return {
+      ...http,
+      FUGLE_STREAM:{
+        priority:SOURCE_PRIORITY.FUGLE,
+        ...(this.fugleStream?.health?.(now)??{configured:false,state:'DISABLED'}),
+      },
+    };
   }
 }
