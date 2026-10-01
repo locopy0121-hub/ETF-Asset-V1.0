@@ -100,7 +100,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const dashboardKpis=[
     {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const,glyph:'↗'},
     {key:'totalPnl',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'未實現＋已實現＋股息',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const,glyph:'%'},
-    {key:'totalUnrealizedProfit',label:'未實現損益',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const,glyph:'▥'},
+    {key:'totalUnrealizedProfit',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'估計清算後',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const,glyph:'▥'},
     {key:'totalMarketValue',label:'持股市值',value:valuationComplete?money(portfolio.totalMarketValue):'待核對',caption:'持股行情＋股數',glyph:'◔'},
   ];
   const dashboardProfitRows=[
