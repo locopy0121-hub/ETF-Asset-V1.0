@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-const [major,minor,patch]=String(pkg.version).split('.').map(Number);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
 assert.equal(major,3);assert.equal(minor,2);assert.ok(patch>=45);
 const expectedCode=major*10000+minor*100+patch;
 assert.equal(app.expo.version,pkg.version);
