@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, BackHandler, InteractionManager, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
 import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import {resolveBackNavigation,resolvePageSwipeDirection} from './src/domain/navigationGestures';
 import type { HoldingQuote } from './src/domain/uiModels';
+import type { SharedSnapshot } from './src/domain/snapshot';
 import { PageEditorProvider, usePageEditor } from './src/editor/pageEditor';
 import {MaintenanceProvider,useMaintenance} from './src/maintenance/MaintenanceRuntime';
 import {MaintenanceWorkbench} from './src/maintenance/MaintenanceWorkbench';
@@ -13,7 +14,9 @@ import { BrokerSettingsRuntimeProvider, useBrokerSettingsRuntime } from './src/f
 import { FinanceProvider, useFinance } from './src/finance/FinanceRuntime';
 import { MarketRuntimeProvider, useMarketRuntime } from './src/market/MarketRuntime';
 import { MonitorSettingsRuntimeProvider, useMonitorSettingsRuntime } from './src/monitor/MonitorSettingsRuntime';
+import type {MonitorConfig} from './src/monitor/monitorDomain';
 import { WidgetSettingsRuntimeProvider, useWidgetSettingsRuntime } from './src/widget/WidgetSettingsRuntime';
+import type {WidgetConfig} from './src/widget/widgetDomain';
 import { GlobalFloatingAi } from './src/components/GlobalFloatingAi';
 import { AiScreen } from './src/screens/AiScreen';
 import { DividendScreen } from './src/screens/DividendScreen';
@@ -30,7 +33,33 @@ import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsCon
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
-import { consumeNativeMonitorForceRefreshRequest, consumeNativeWidgetForceRefreshRequest, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
+import { consumeNativeMarketForceRefreshRequests, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
+
+type NativeSurfaceSyncJob<TConfig>=Readonly<{config:TConfig;snapshot:SharedSnapshot}>;
+
+function useLatestAsyncJob<T>(runner:(value:T)=>Promise<unknown>,label:string){
+  const runnerRef=useRef(runner);
+  const stateRef=useRef<{running:boolean;pending:T|null}>({running:false,pending:null});
+  useEffect(()=>{runnerRef.current=runner;},[runner]);
+  return useCallback((value:T)=>{
+    const state=stateRef.current;
+    state.pending=value;
+    if(state.running)return;
+    state.running=true;
+    void (async()=>{
+      try{
+        while(state.pending!==null){
+          const next=state.pending;
+          state.pending=null;
+          try{await runnerRef.current(next);}
+          catch(error){console.warn(label+' sync failed',error);}
+        }
+      }finally{
+        state.running=false;
+      }
+    })();
+  },[label]);
+}
 
 export default function App() {
   return <SafeAreaProvider>
@@ -67,6 +96,14 @@ function AppBody(){
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
   const maintenance=useMaintenance();
+  const queueWidgetSync=useLatestAsyncJob<NativeSurfaceSyncJob<WidgetConfig>>(
+    job=>syncNativeWidget(job.config,job.snapshot),
+    'Widget',
+  );
+  const queueMonitorSync=useLatestAsyncJob<NativeSurfaceSyncJob<MonitorConfig>>(
+    job=>syncNativeMonitor(job.config,job.snapshot),
+    'Monitor',
+  );
   const {width:screenWidth}=useWindowDimensions();
   const [floatingAiOpen,setFloatingAiOpen]=useState(false);
   const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
@@ -120,50 +157,52 @@ function AppBody(){
   useEffect(()=>{
     if(!shouldRefreshAiNews(finance.hydrated,settings.hydrated,settings.prefs.ai))return;
     aiNews.setTrackedHoldings(finance.holdings.map(x=>({symbol:x.symbol,name:x.name})));
-    void aiNews.refresh();
+    // Article discovery/enrichment can parse sizeable payloads. Defer it until
+    // the first screen and navigation interactions have settled.
+    const task=InteractionManager.runAfterInteractions(()=>{void aiNews.refresh();});
+    return()=>task.cancel();
   },[finance.hydrated,settings.hydrated,settings.prefs.ai.enabled,aiHoldingKey]);
 
   useEffect(()=>{
     if(!finance.hydrated||!widgetSettings.hydrated)return;
-    void syncNativeWidget(widgetSettings.config,finance.sharedSnapshot);
-  },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config]);
+    // Last-write-wins queue: a slow native/widget write can never pile up one
+    // Promise per 1-second market tick. Intermediate snapshots are coalesced.
+    queueWidgetSync({config:widgetSettings.config,snapshot:finance.sharedSnapshot});
+  },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config,queueWidgetSync]);
 
   useEffect(()=>{
     if(!market.hydrated)return;
-    // The Android widget receiver can deliver a new tap without remounting React.
-    // Consume requests while the app is foregrounded, and once upon resuming.
+    // One bridge poll consumes both Widget and Monitor requests. Keep the
+    // 1-second responsiveness contract without doing two JS<->Native calls.
     let alive=true;
     let inFlight=false;
     const poll=async()=>{
-      if(!alive||inFlight)return;
+      if(!alive||inFlight||AppState.currentState!=='active')return;
       inFlight=true;
       try{
-        const requestedAt=await consumeNativeWidgetForceRefreshRequest();
-        if(alive&&requestedAt>0)await market.refresh({force:true});
+        const request=await consumeNativeMarketForceRefreshRequests();
+        const requested=request.widgetAt>0||(monitorSettings.config.enabled&&request.monitorAt>0);
+        if(alive&&requested)await market.refresh({force:true});
       }catch(error){
-        console.warn('Widget forced quote refresh failed',error);
+        console.warn('Native forced quote refresh poll failed',error);
       }finally{inFlight=false;}
     };
     void poll();
-    const widgetTimer=setInterval(()=>{if(AppState.currentState==='active')void poll();},1000);
-    const foreground=AppState.addEventListener('change',state=>{
-      if(state==='active')void poll();
-    });
-    return()=>{alive=false;clearInterval(widgetTimer);foreground.remove();};
-  },[market.hydrated,market.refresh]);
-
-  useEffect(()=>{
-    if(!market.hydrated||!monitorSettings.config.enabled)return;
-    const poll=()=>void consumeNativeMonitorForceRefreshRequest().then(requestedAt=>{if(requestedAt>0)void market.refresh({force:true});});
-    poll();
-    const timer=setInterval(poll,1000);
-    return()=>clearInterval(timer);
+    const timer=setInterval(()=>{void poll();},1000);
+    const foreground=AppState.addEventListener('change',state=>{if(state==='active')void poll();});
+    return()=>{alive=false;clearInterval(timer);foreground.remove();};
   },[market.hydrated,market.refresh,monitorSettings.config.enabled]);
 
   useEffect(()=>{
-    if(!finance.hydrated||!monitorSettings.hydrated)return;
-    void syncNativeMonitor(monitorSettings.config,finance.sharedSnapshot);
-  },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config]);
+    if(!finance.hydrated||!monitorSettings.hydrated||monitorSettings.config.enabled)return;
+    // Disabled monitor only needs config/state transitions, not every market tick.
+    queueMonitorSync({config:monitorSettings.config,snapshot:finance.sharedSnapshot});
+  },[finance.hydrated,monitorSettings.hydrated,monitorSettings.config,queueMonitorSync]);
+
+  useEffect(()=>{
+    if(!finance.hydrated||!monitorSettings.hydrated||!monitorSettings.config.enabled)return;
+    queueMonitorSync({config:monitorSettings.config,snapshot:finance.sharedSnapshot});
+  },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config,queueMonitorSync]);
 
   const openHolding=(holding:HoldingQuote)=>{
     recordDiagnosticEvent({level:'info',code:'HOLDING_TAP',screen:active,message:'點擊 ETF 卡片，準備開啟詳情'});
