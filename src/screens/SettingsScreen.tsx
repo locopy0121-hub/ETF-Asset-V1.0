@@ -58,8 +58,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='3.2.44';
-const BUILD='30244';
+const VERSION='3.2.45';
+const BUILD='30245';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -528,7 +528,7 @@ export function SettingsScreen(){
         <Text style={styles.note}>這裡只控制月曆上顯示哪些事件，不會改變通知提醒是否啟用。</Text>
         <ToggleRow label="顯示最後購買日" value={settings.prefs.dividendCalendar.showLastBuyDate!==false} onChange={showLastBuyDate=>settings.patchDividendCalendar({showLastBuyDate})}/>
         <ToggleRow label="顯示除息日" value={settings.prefs.dividendCalendar.showExDate} onChange={showExDate=>settings.patchDividendCalendar({showExDate})}/>
-        <ToggleRow label="顯示股權登記日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
+        <ToggleRow label="顯示收益分配基準日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
         <ToggleRow label="顯示股息配發日" value={settings.prefs.dividendCalendar.showPaymentDate} onChange={showPaymentDate=>settings.patchDividendCalendar({showPaymentDate})}/>
         <ToggleRow label="顯示事件狀態" value={settings.prefs.dividendCalendar.showStatus} onChange={showStatus=>settings.patchDividendCalendar({showStatus})}/>
       </Panel>:null}
