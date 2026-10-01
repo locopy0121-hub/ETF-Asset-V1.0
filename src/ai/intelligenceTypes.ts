@@ -110,6 +110,13 @@ export type AiIntelligencePlan=Readonly<{
   metrics:readonly AiMetricId[];
 }>;
 
+export type AiEvidenceValidationIssue=Readonly<{
+  ingredient:AiIngredientKey;
+  symbol?:string;
+  code:'MISSING'|'STATUS_TOO_LOW'|'STALE'|'INSUFFICIENT_ITEMS'|'INVALID_VALUE';
+  message:string;
+}>;
+
 export type AiEvidencePackage=Readonly<{
   generatedAt:string;
   question:string;
@@ -121,6 +128,7 @@ export type AiEvidencePackage=Readonly<{
   metrics:readonly AiMetricEvidence[];
   missingRequired:readonly AiIngredientKey[];
   acquisitionAttempts:readonly AiAcquisitionAttempt[];
+  validationIssues?:readonly AiEvidenceValidationIssue[];
   rules:Readonly<{
     marketFactsFromMarketSources:boolean;
     portfolioDataIsContextOnly:boolean;
