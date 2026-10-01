@@ -43,7 +43,7 @@ for(const token of ['backup_realtime','bid_ask','previous_close','official_trade
   assert.ok(nativeDb.includes(token),'native B schema missing '+token);
 
 const bridge=read('src/native/TfAssetNativeBridge.ts');
-assert.match(bridge,/source:'TWSE_MIS'\|'YAHOO'\|'TWSE_DAILY'\|'TPEX_DAILY'/);
+for(const source of ['TWSE_MIS','FUGLE','SHIOAJI','YAHOO','TWSE_DAILY','TPEX_DAILY'])\n  assert.ok(bridge.includes(`'${source}'`),'native bridge missing market source '+source);
 assert.match(bridge,/priceType:'REALTIME_TRADE'\|'BACKUP_REALTIME'\|'BID_ASK'\|'PREV_CLOSE'\|'OFFICIAL_CLOSE'/);
 
 const panel=read('src/components/MarketComparisonPanel.tsx');
