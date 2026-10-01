@@ -18,7 +18,7 @@ for(const token of [
   'marketDataVersion:market.marketDataVersion',
   'yesterdayPnl={null}',
   'todayPnl={previewPnl?.todayPnl??null}',
-  'totalPnl={portfolio.totalPnl}',
+  'totalPnl={portfolio.totalUnrealizedProfit}',
   'pnlComplete={valuationComplete}',
   'paddingHorizontal:dashboard.contentPadding',
 ]) assert.ok(workbench.includes(token),'settings real preview missing '+token);
@@ -26,7 +26,7 @@ for(const token of [
 for(const token of [
   'yesterdayPnl={pnlHistory.previousTradingDay?.todayPnl??null}',
   'todayPnl={currentPnl?.todayPnl??null}',
-  'totalPnl={portfolio.totalPnl}',
+  'totalPnl={portfolio.totalUnrealizedProfit}',
   'pnlComplete={valuationComplete}',
 ]) assert.ok(home.includes(token),'live Home dashboard contract missing '+token);
 
