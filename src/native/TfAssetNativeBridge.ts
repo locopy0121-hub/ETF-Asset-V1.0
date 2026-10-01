@@ -17,6 +17,20 @@ export type NativeMarketForceRefreshRequests=Readonly<{
   monitorAt:number;
 }>;
 
+export type NativeNotificationStatus=Readonly<{
+  permissionGranted:boolean;
+  appEnabled:boolean;
+  channelCount:number;
+  channels:Readonly<Record<string,boolean>>;
+}>;
+export const NATIVE_NOTIFICATION_CHANNELS={
+  dividend:'tf_asset_dividend',
+  market:'tf_asset_market',
+  updates:'tf_asset_updates',
+  backup:'tf_asset_backup',
+  general:'tf_asset_general',
+} as const;
+
 export type UnifiedMarketIntradayPoint=Readonly<{
   at:number;price:number;
   quality:'trade'|'backup_realtime';
@@ -68,6 +82,10 @@ type TfAssetNativeModule={
   readPendingCrashJournal:()=>Promise<string>;
   acknowledgeCrashJournal:()=>Promise<boolean>;
   saveCriticalDiagnostic:(code:string,screen:string)=>Promise<boolean>;
+  ensureNotificationChannels:()=>Promise<string>;
+  getNotificationStatus:()=>Promise<string>;
+  openNotificationSettings:(channelId:string)=>Promise<boolean>;
+  postTestNotification:(channelId:string)=>Promise<boolean>;
 };
 
 const native=NativeModules.TfAssetNative as TfAssetNativeModule|undefined;
@@ -101,6 +119,21 @@ export async function canDrawOverlays(){return native?native.canDrawOverlays():f
 export async function openOverlaySettings(){return native?native.openOverlaySettings():false;}
 export async function pickNativeThemeBackground(){return native?native.pickThemeBackground():null;}
 export async function setNativeAppIcon(iconKey:string){return native?native.setAppIcon(iconKey):false;}
+
+export async function ensureNativeNotificationChannels():Promise<NativeNotificationStatus|null>{
+  if(!native?.ensureNotificationChannels)return null;
+  return JSON.parse(await native.ensureNotificationChannels()) as NativeNotificationStatus;
+}
+export async function getNativeNotificationStatus():Promise<NativeNotificationStatus|null>{
+  if(!native?.getNotificationStatus)return null;
+  return JSON.parse(await native.getNotificationStatus()) as NativeNotificationStatus;
+}
+export async function openNativeNotificationSettings(channelId=''){
+  return native?.openNotificationSettings?native.openNotificationSettings(channelId):false;
+}
+export async function postNativeTestNotification(channelId=NATIVE_NOTIFICATION_CHANNELS.general){
+  return native?.postTestNotification?native.postTestNotification(channelId):false;
+}
 
 export const unifiedMarketCenterAvailable=Platform.OS==='android'
   &&typeof native?.refreshUnifiedMarketData==='function'
