@@ -19,16 +19,18 @@ assert.equal(String(app.expo.ios.buildNumber),String(expectedCode));
 const home=read('src/screens/HomeScreen.tsx');
 assert.ok(home.includes('yesterdayPnl={pnlHistory.previousTradingDay?.todayPnl??null}'));
 assert.ok(home.includes('todayPnl={currentPnl?.todayPnl??null}'));
-assert.ok(home.includes('totalPnl={portfolio.totalUnrealizedProfit}'));
+assert.ok(home.includes('totalPnl={portfolio.totalPriceUnrealizedProfit}'));
 assert.ok(!home.includes('totalPnl={portfolio.totalPnl}'),
-  'dashboard cumulative total must not show realized/dividend-inclusive Finance Core totalPnl');
+  'dashboard holding total must not show realized/dividend-inclusive Finance Core totalPnl');
+assert.ok(!home.includes('totalPnl={portfolio.totalUnrealizedProfit}'),
+  'dashboard holding total must not include estimated liquidation fee/tax');
 
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
-assert.ok(workbench.includes('totalPnl={portfolio.totalUnrealizedProfit}'),
-  'settings preview must match live dashboard cumulative holdings PnL');
+assert.ok(workbench.includes('totalPnl={portfolio.totalPriceUnrealizedProfit}'),
+  'settings preview must match live dashboard holding market-value-minus-trade-cost P/L');
 
 const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
-for(const label of ['昨日損益','今日損益','累計總損益'])assert.ok(overview.includes(label));
+for(const label of ['昨日損益','今日損益','持股總損益'])assert.ok(overview.includes(label));
 
 assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
 const settings=read('src/screens/SettingsScreen.tsx');
