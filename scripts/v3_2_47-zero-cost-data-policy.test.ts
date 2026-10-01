@@ -9,6 +9,7 @@ import {
 } from '../src/dataSources/zeroCostRegistry';
 import {resolveSecurityViaOpenFigi} from '../src/market/securityResolver';
 
+async function main(){
 for(const source of ZERO_COST_DATA_SOURCES){
   assert.equal(source.monetaryCost,0,source.id);
   assert.equal(source.creditCardRequired,false,source.id);
@@ -58,3 +59,6 @@ assert.equal(app.expo.version,'3.2.47');
 assert.equal(app.expo.android.versionCode,30247);
 
 console.log('V3.2.47 zero-cost data-source policy / OpenFIGI fallback PASS');
+}
+
+void main();
