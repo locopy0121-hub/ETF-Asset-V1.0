@@ -37,7 +37,7 @@ export function runtimeQuoteToMarketQuote(quote:RuntimeQuote,now=Date.now()):Mar
     price:quote.currentPrice,
     change,
     changePercent:change===null||previousClose===null?null:change/previousClose*100,
-    volume:null,
+    volume:typeof quote.volume==='number'&&Number.isFinite(quote.volume)&&quote.volume>=0?quote.volume:null,
     source:quote.source??'TWSE_MIS',
     isRealtime,
     sourceTimestamp,
