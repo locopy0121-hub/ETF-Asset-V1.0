@@ -5,16 +5,24 @@ import {Pool} from 'pg';
 import {createClient} from 'redis';
 import {validateCandidate,chooseNewer,VALID_SYMBOL} from './parser.mjs';
 
-const rowJson=row=>({
-  symbol:row.symbol,name:row.name,currentPrice:Number(row.price),
-  previousClose:row.previous_close===null?null:Number(row.previous_close),
-  officialTradePrice:row.official_trade_price===null?null:Number(row.official_trade_price),
-  sourceQuoteAt:new Date(row.source_at).getTime(),
-  quality:row.quality,source:row.source,priceType:row.price_type,
-  isFallback:Boolean(row.is_fallback),market:row.market??'UNKNOWN',
-  statusMessage:row.status_message??'',
-  checkedAt:new Date(row.checked_at).getTime(),marketDataVersion:Number(row.version),
-});
+const rowJson=row=>{
+  const price=Number(row.price);
+  const previousClose=row.previous_close===null?null:Number(row.previous_close);
+  const change=previousClose&&previousClose>0?price-previousClose:null;
+  return {
+    symbol:row.symbol,name:row.name,currentPrice:price,price,
+    previousClose,change,
+    changePercent:change===null||previousClose===null?null:change/previousClose*100,
+    volume:row.volume===null||row.volume===undefined?null:Number(row.volume),
+    officialTradePrice:row.official_trade_price===null?null:Number(row.official_trade_price),
+    sourceQuoteAt:new Date(row.source_at).getTime(),
+    quality:row.quality,source:row.source,priceType:row.price_type,
+    isFallback:Boolean(row.is_fallback),
+    isRealtime:['trade','backup_realtime'].includes(row.quality),
+    market:row.market??'UNKNOWN',statusMessage:row.status_message??'',
+    checkedAt:new Date(row.checked_at).getTime(),marketDataVersion:Number(row.version),
+  };
+};
 export class MarketStore extends EventEmitter{
   constructor({databaseUrl=process.env.DATABASE_URL,redisUrl=process.env.REDIS_URL}={}){
     super();
@@ -29,8 +37,10 @@ export class MarketStore extends EventEmitter{
   async start(){
     const sql=await readFile(fileURLToPath(new URL('../sql/001_market_center.sql',import.meta.url)),'utf8');
     const metadataSql=await readFile(fileURLToPath(new URL('../sql/002_quote_metadata.sql',import.meta.url)),'utf8');
+    const multiSourceSql=await readFile(fileURLToPath(new URL('../sql/003_multisource_market.sql',import.meta.url)),'utf8');
     await this.pg.query(sql);
     await this.pg.query(metadataSql);
+    await this.pg.query(multiSourceSql);
     if(this.redis){
       try{await Promise.race([this.redis.connect(),new Promise((_,reject)=>
         setTimeout(()=>reject(new Error('Redis connect timeout')),4_000))]);
@@ -66,7 +76,7 @@ export class MarketStore extends EventEmitter{
         FROM market_quote_history
         WHERE symbol=ANY($1::varchar[])
           AND quality IN ('trade','backup_realtime')
-          AND source IN ('TWSE_MIS','YAHOO')
+          AND source IN ('TWSE_MIS','FUGLE','SHIOAJI','YAHOO')
         GROUP BY symbol
       ), ranked AS (
         SELECT h.symbol,h.source_at,h.price,h.previous_close,h.quality,h.source,d.day,
@@ -79,7 +89,7 @@ export class MarketStore extends EventEmitter{
           AND (h.source_at AT TIME ZONE 'Asia/Taipei')::date=d.day
         WHERE h.symbol=ANY($1::varchar[])
           AND h.quality IN ('trade','backup_realtime')
-          AND h.source IN ('TWSE_MIS','YAHOO')
+          AND h.source IN ('TWSE_MIS','FUGLE','SHIOAJI','YAHOO')
           AND (h.source_at AT TIME ZONE 'Asia/Taipei')::time BETWEEN TIME '09:00' AND TIME '13:30'
       )
       SELECT symbol,source_at,price,previous_close,quality,source,to_char(day,'YYYY-MM-DD') AS day_text
@@ -173,21 +183,22 @@ export class MarketStore extends EventEmitter{
         version++;
         await client.query('UPDATE market_meta SET version=$1,changed_at=NOW() WHERE singleton=TRUE',[version]);
         for(const q of accepted){
+          const volume=Number.isFinite(Number(q.volume))&&Number(q.volume)>=0?Math.floor(Number(q.volume)):null;
           const args=[q.symbol,q.name,q.currentPrice,q.previousClose,q.officialTradePrice??null,
             new Date(q.sourceQuoteAt),q.source,q.quality,q.priceType,q.isFallback,q.market,
-            q.statusMessage,new Date(q.checkedAt),version];
+            q.statusMessage,new Date(q.checkedAt),volume,version];
           await client.query('INSERT INTO market_quotes '+
-            '(symbol,name,price,previous_close,official_trade_price,source_at,source,quality,price_type,is_fallback,market,status_message,checked_at,version) '+
-            'VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) '+
+            '(symbol,name,price,previous_close,official_trade_price,source_at,source,quality,price_type,is_fallback,market,status_message,checked_at,volume,version) '+
+            'VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) '+
             'ON CONFLICT(symbol) DO UPDATE SET '+
             'name=EXCLUDED.name,price=EXCLUDED.price,previous_close=COALESCE(EXCLUDED.previous_close,market_quotes.previous_close),'+
             'official_trade_price=EXCLUDED.official_trade_price,source_at=EXCLUDED.source_at,source=EXCLUDED.source,quality=EXCLUDED.quality,'+
             'price_type=EXCLUDED.price_type,is_fallback=EXCLUDED.is_fallback,market=EXCLUDED.market,status_message=EXCLUDED.status_message,'+
-            'checked_at=EXCLUDED.checked_at,version=EXCLUDED.version',args);
+            'checked_at=EXCLUDED.checked_at,volume=EXCLUDED.volume,version=EXCLUDED.version',args);
           await client.query('INSERT INTO market_quote_history '+
-            '(symbol,name,price,previous_close,official_trade_price,source_at,source,quality,price_type,is_fallback,market,status_message,received_at) '+
-            'VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) '+
-            'ON CONFLICT(symbol,source_at,quality) DO NOTHING',args.slice(0,13));
+            '(symbol,name,price,previous_close,official_trade_price,source_at,source,quality,price_type,is_fallback,market,status_message,received_at,volume) '+
+            'VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) '+
+            'ON CONFLICT(symbol,source_at,quality) DO NOTHING',args.slice(0,14));
         }
       }
       await client.query('COMMIT');
