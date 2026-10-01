@@ -76,6 +76,13 @@ async function main(){
   assert.doesNotMatch(app,/consumeNativeWidgetForceRefreshRequest/);
   assert.doesNotMatch(app,/consumeNativeMonitorForceRefreshRequest/);
 
+  const home=read('src/screens/HomeScreen.tsx');
+  assert.match(home,/catalogBySymbol=useMemo/);
+  assert.match(home,/dividendReminders=useMemo/);
+  assert.match(home,/transactionCountBySymbol=useMemo/);
+  assert.doesNotMatch(home,/finance\.entries\.filter\(entry=>'symbol' in entry&&entry\.symbol===row\.symbol/,
+    'dashboard transaction chart must not rescan the whole ledger for every holding on every live quote render');
+
   const native=read('native/android/TfAssetNativeModule.kt');
   assert.match(native,/fun consumeMarketForceRefreshRequests\(promise:Promise\)/);
   assert.match(native,/remove\("widget_force_refresh_requested_at"\)/);
