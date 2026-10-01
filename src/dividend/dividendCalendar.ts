@@ -45,7 +45,7 @@ export function buildDividendCalendarEvents(
       // Never infer this from ex-date minus a calendar day: TWSE holidays and settlement rules matter.
       {type:'lastBuyDate' as const,date:dateFromNote(entry.note,'最後購買日')||dateFromNote(entry.note,'最後買進日')},
       {type:'exDate' as const,date:dateFromNote(entry.note,'除息日')},
-      {type:'recordDate' as const,date:dateFromNote(entry.note,'股權登記日')},
+      {type:'recordDate' as const,date:dateFromNote(entry.note,'收益分配基準日')||dateFromNote(entry.note,'股權登記日')},
       // AI-imported TWSE events may use an ex-date as the ledger date while payment is unannounced.
       // Only manual/receipt ledger entries may use their ledger date as a payment-date fallback.
       {type:'paymentDate' as const,date:dateFromNote(entry.note,'配發日')||
@@ -84,6 +84,6 @@ export function filterDividendCalendarEvents(
 export function dividendCalendarTypeLabel(type:DividendCalendarEventType){
   if(type==='lastBuyDate')return '最後購買日';
   if(type==='exDate')return '除息日';
-  if(type==='recordDate')return '股權登記日';
+  if(type==='recordDate')return '收益分配基準日';
   return '股息配發日';
 }
