@@ -39,7 +39,7 @@ export function makeApp({store,jobs,sources,navService=null}){
   const app=express();
   app.disable('x-powered-by');
   app.use(express.json({limit:'4kb'}));
-  app.get('/health/live',(_req,res)=>res.json({status:'alive',service:'tf-asset-market-center',version:'3.2.36'}));
+  app.get('/health/live',(_req,res)=>res.json({status:'alive',service:'tf-asset-market-center',version:'3.2.38'}));
   app.get('/health/ready',async(_req,res)=>{
     try{const status=await store.ready();res.status(status.redis?200:206).json(status);}
     catch(error){res.status(503).json({postgres:false,redis:!!store.redis?.isReady});}

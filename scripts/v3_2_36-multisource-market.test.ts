@@ -6,9 +6,11 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 function main(){
   const pkg=JSON.parse(read('package.json')) as {version:string;scripts:Record<string,string>};
   const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{versionCode:number}}};
-  assert.equal(pkg.version,'3.2.36');
-  assert.equal(app.expo.version,'3.2.36');
-  assert.equal(app.expo.android.versionCode,30236);
+  const [major=0,minor=0,patch=0]=pkg.version.split('.').map(Number);
+  assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=36))),
+    'multi-source market gate requires V3.2.36 or later');
+  assert.equal(app.expo.version,pkg.version);
+  assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 
   const sources=read('server/src/sources.mjs');
   assert.match(sources,/TWSE_MIS/);
