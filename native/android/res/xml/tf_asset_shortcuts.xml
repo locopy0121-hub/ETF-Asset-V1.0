@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+  <shortcut
+    android:shortcutId="add_buy"
+    android:enabled="true"
+    android:icon="@drawable/tf_shortcut_buy"
+    android:shortcutShortLabel="@string/tf_shortcut_buy_short"
+    android:shortcutLongLabel="@string/tf_shortcut_buy_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="com.tfasset.app"
+      android:targetClass="com.tfasset.app.MainActivity"
+      android:data="tfasset://shortcut/buy" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="floating_monitor"
+    android:enabled="true"
+    android:icon="@drawable/tf_shortcut_monitor"
+    android:shortcutShortLabel="@string/tf_shortcut_monitor_short"
+    android:shortcutLongLabel="@string/tf_shortcut_monitor_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="com.tfasset.app"
+      android:targetClass="com.tfasset.app.MainActivity"
+      android:data="tfasset://shortcut/monitor" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="today_pnl"
+    android:enabled="true"
+    android:icon="@drawable/tf_shortcut_pnl"
+    android:shortcutShortLabel="@string/tf_shortcut_pnl_short"
+    android:shortcutLongLabel="@string/tf_shortcut_pnl_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="com.tfasset.app"
+      android:targetClass="com.tfasset.app.MainActivity"
+      android:data="tfasset://shortcut/today-pnl" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="dividend_calendar"
+    android:enabled="true"
+    android:icon="@drawable/tf_shortcut_dividend"
+    android:shortcutShortLabel="@string/tf_shortcut_dividend_short"
+    android:shortcutLongLabel="@string/tf_shortcut_dividend_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="com.tfasset.app"
+      android:targetClass="com.tfasset.app.MainActivity"
+      android:data="tfasset://shortcut/dividend" />
+  </shortcut>
+  <shortcut
+    android:shortcutId="ai_assistant"
+    android:enabled="true"
+    android:icon="@drawable/tf_shortcut_ai"
+    android:shortcutShortLabel="@string/tf_shortcut_ai_short"
+    android:shortcutLongLabel="@string/tf_shortcut_ai_long">
+    <intent
+      android:action="android.intent.action.VIEW"
+      android:targetPackage="com.tfasset.app"
+      android:targetClass="com.tfasset.app.MainActivity"
+      android:data="tfasset://shortcut/ai" />
+  </shortcut>
+</shortcuts>
