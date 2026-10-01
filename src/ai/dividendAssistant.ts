@@ -28,12 +28,15 @@ export type HoldingDividendEvent=Readonly<{
 type TwseExRow=Readonly<{
   Date?:string;Code?:string;Name?:string;CashDividend?:string;
 }>;
+type TwseHolidayRow=Readonly<{Name?:string;Date?:string;Weekday?:string;Description?:string}>;
 
 const TWSE_EX_URL='https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL';
-const TWSE_DIVIDEND_HTML='https://www.twse.com.tw/zh/ETFortune/dividendList';
+const TWSE_EX_HTML='https://www.twse.com.tw/exchangeReport/TWT48U?response=html';
+const TWSE_DIVIDEND_HTML_URLS=['https://wwwc.twse.com.tw/zh/ETFortune/dividendList','https://www.twse.com.tw/zh/ETFortune/dividendList'] as const;
+const TWSE_HOLIDAY_URL='https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule';
 
 const clean=(value:string)=>value.replace(/<[^>]*>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim();
-const isoToday=()=>new Date().toISOString().slice(0,10);
+const isoToday=()=>{const d=new Date();return String(d.getFullYear()).padStart(4,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 const rocCompactToIso=(value:string)=>{
   const digits=value.replace(/\D/g,'');
   if(digits.length<7)return '';
@@ -46,6 +49,7 @@ const rocTextToIso=(value:string)=>{
   if(!match)return '';
   return `${Number(match[1])+1911}-${String(Number(match[2])).padStart(2,'0')}-${String(Number(match[3])).padStart(2,'0')}`;
 };
+const numericText=(value:string)=>{if(!value||/待公告|尚未公告|N\/A|--/.test(value))return '';return value.replace(/,/g,'').match(/-?\d+(?:\.\d+)?/)?.[0]??'';};
 
 type DividendHtmlRow=Readonly<{symbol:string;name:string;exDate:string;recordDate:string;paymentDate:string;perShareAmount:number}>;
 
@@ -63,46 +67,90 @@ function parseDividendHtml(html:string):DividendHtmlRow[]{
       exDate,
       recordDate:rocTextToIso(cells[3]??''),
       paymentDate:rocTextToIso(cells[4]??''),
-      perShareAmount:Number((cells[5]??'').replace(/,/g,''))||0,
+      perShareAmount:Number(numericText(cells[5]??''))||0,
     }];
   });
 }
 
 async function fetchDividendRows():Promise<DividendHtmlRow[]>{
-  const response=await fetch(TWSE_DIVIDEND_HTML,{headers:{Accept:'text/html'}});
-  if(!response.ok)throw new Error(`TWSE ETF dividend HTTP ${response.status}`);
-  return parseDividendHtml(await response.text());
+  let lastError:unknown=null;
+  for(const url of TWSE_DIVIDEND_HTML_URLS){
+    try{
+      const response=await fetch(url,{headers:{Accept:'text/html'}});
+      if(!response.ok)throw new Error('TWSE ETF dividend HTTP '+response.status);
+      const rows=parseDividendHtml(await response.text());
+      if(rows.length)return rows;
+      lastError=new Error('TWSE ETF dividend list returned no parseable rows');
+    }catch(error){lastError=error;}
+  }
+  if(lastError)throw lastError;
+  return [];
+}
+
+function parseExDividendHtml(html:string):TwseExRow[]{
+  const rows=html.match(/<tr[\s\S]*?<\/tr>/gi)??[];
+  return rows.flatMap(row=>{
+    const cells=(row.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi)??[]).map(clean);
+    if(cells.length<8)return [];
+    const code=cells[1]?.match(/[0-9A-Z]{4,8}/)?.[0]??'';
+    const date=cells[0]??'';
+    if(!code||!rocCompactToIso(date))return [];
+    return [{Date:date,Code:code,Name:cells[2]??code,CashDividend:numericText(cells[7]??'')}];
+  });
 }
 
 async function fetchExRows():Promise<TwseExRow[]>{
-  const response=await fetch(TWSE_EX_URL,{headers:{Accept:'application/json'}});
-  if(!response.ok)throw new Error(`TWSE ex-dividend HTTP ${response.status}`);
-  const rows=await response.json();
-  return Array.isArray(rows)?rows:[];
+  const [apiResult,htmlResult]=await Promise.allSettled([
+    fetch(TWSE_EX_URL,{headers:{Accept:'application/json'}}).then(async response=>{
+      if(!response.ok)throw new Error('TWSE ex-dividend HTTP '+response.status);
+      const rows=await response.json();
+      return Array.isArray(rows)?rows as TwseExRow[]:[];
+    }),
+    fetch(TWSE_EX_HTML,{headers:{Accept:'text/html'}}).then(async response=>{
+      if(!response.ok)throw new Error('TWSE ex-dividend HTML HTTP '+response.status);
+      return parseExDividendHtml(await response.text());
+    }),
+  ]);
+  const apiRows=apiResult.status==='fulfilled'?apiResult.value:[];
+  const htmlRows=htmlResult.status==='fulfilled'?htmlResult.value:[];
+  if(!apiRows.length&&!htmlRows.length)throw new Error('TWSE 除權息資料目前無法取得');
+  const merged=new Map<string,TwseExRow>();
+  for(const row of [...apiRows,...htmlRows]){
+    const code=String(row.Code??'').trim();
+    const date=rocCompactToIso(String(row.Date??''));
+    if(!code||!date)continue;
+    const key=code+'|'+date;
+    const old=merged.get(key);
+    const cash=numericText(String(row.CashDividend??''));
+    merged.set(key,{Date:String(row.Date??old?.Date??''),Code:code,Name:String(row.Name??old?.Name??code),CashDividend:cash||String(old?.CashDividend??'')});
+  }
+  return [...merged.values()];
 }
 
-function previousWeekday(date:string){
-  const d=new Date(`${date}T12:00:00+08:00`);
-  do d.setDate(d.getDate()-1); while(d.getDay()===0||d.getDay()===6);
-  return d.toISOString().slice(0,10);
+async function fetchTwseClosedDates():Promise<Set<string>>{
+  const response=await fetch(TWSE_HOLIDAY_URL,{headers:{Accept:'application/json'}});
+  if(!response.ok)throw new Error('TWSE holiday schedule HTTP '+response.status);
+  const json=await response.json();
+  const rows=Array.isArray(json)?json as TwseHolidayRow[]:[];
+  const closed=new Set<string>();
+  for(const row of rows){
+    const name=String(row.Name??'');
+    const description=String(row.Description??'');
+    if(/開始交易|最後交易/.test(name+' '+description))continue;
+    const date=rocCompactToIso(String(row.Date??''));
+    if(date)closed.add(date);
+  }
+  return closed;
 }
-function twseDateToIso(value:string){
-  const m=value.match(/(\d{2,3})\/(\d{1,2})\/(\d{1,2})/);
-  if(!m)return '';
-  return `${Number(m[1])+1911}-${String(Number(m[2])).padStart(2,'0')}-${String(Number(m[3])).padStart(2,'0')}`;
+function previousTradingDay(date:string,closedDates:ReadonlySet<string>){
+  const d=new Date(date+'T12:00:00+08:00');
+  for(let guard=0;guard<14;guard+=1){
+    d.setDate(d.getDate()-1);
+    const candidate=String(d.getFullYear()).padStart(4,'0')+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(d.getDay()!==0&&d.getDay()!==6&&!closedDates.has(candidate))return candidate;
+  }
+  return '';
 }
-async function fetchLastTradingDay(symbol:string,exDate:string){
-  try{
-    const month=exDate.slice(0,7).replace('-','')+'01';
-    const url=`https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY?response=json&date=${month}&stockNo=${encodeURIComponent(symbol)}`;
-    const response=await fetch(url,{headers:{Accept:'application/json'}});
-    if(!response.ok)return previousWeekday(exDate);
-    const json=await response.json() as {data?:unknown[][]};
-    const dates=(json.data??[]).map(row=>twseDateToIso(String(row?.[0]??''))).filter(Boolean).filter(date=>date<exDate).sort();
-    return dates.at(-1)??previousWeekday(exDate);
-  }catch{return previousWeekday(exDate);}
-}
-
 function sharesOnDate(entries:readonly CanonicalLedgerEntry[],symbol:string,date:string){
   let shares=0;
   const trades=entries
