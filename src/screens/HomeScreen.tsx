@@ -160,7 +160,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
                 layout={dashboardLayout.overview}
                 yesterdayPnl={pnlHistory.previousTradingDay?.todayPnl??null}
                 todayPnl={currentPnl?.todayPnl??null}
-                totalPnl={portfolio.totalPnl}
+                totalPnl={portfolio.totalUnrealizedProfit}
                 pnlComplete={valuationComplete}
                 onPressTotalPnl={()=>setPnlHistoryOpen(true)}
               />

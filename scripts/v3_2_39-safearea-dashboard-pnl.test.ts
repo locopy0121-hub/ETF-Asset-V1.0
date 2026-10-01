@@ -6,10 +6,10 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 function main(){
   const pkg=JSON.parse(read('package.json')) as {version:string};
   const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{versionCode:number};ios:{buildNumber:string}}};
-  assert.equal(pkg.version,'3.2.39');
-  assert.equal(app.expo.version,'3.2.39');
-  assert.equal(app.expo.android.versionCode,30239);
-  assert.equal(app.expo.ios.buildNumber,'30239');
+  assert.match(pkg.version,/^3\.2\.(?:39|[4-9]\d|\d{3,})$/);
+  assert.equal(app.expo.version,pkg.version);
+  assert.ok(app.expo.android.versionCode>=30239);
+  assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 
   const hook=read('src/finance/useDailyPnlHistory.ts');
   assert.match(hook,/const currentDate=taipeiClock\(Date\.now\(\)\)\.date/);
@@ -22,7 +22,7 @@ function main(){
   const home=read('src/screens/HomeScreen.tsx');
   assert.match(home,/yesterdayPnl=\{pnlHistory\.previousTradingDay\?\.todayPnl\?\?null\}/);
   assert.match(home,/todayPnl=\{currentPnl\?\.todayPnl\?\?null\}/);
-  assert.match(home,/totalPnl=\{portfolio\.totalPnl\}/);
+  assert.match(home,/totalPnl=\{portfolio\.totalUnrealizedProfit\}/);
   assert.doesNotMatch(home,/previousPnl=\{currentPnl\?\.previousTotalPnl/,
     'cumulative previousTotalPnl must never be shown as yesterday single-day PnL');
 
@@ -44,9 +44,9 @@ function main(){
   assert.match(chart,/SafeAreaView edges=\{\['top','bottom'\]\}/);
   assert.match(chart,/safe:\{flex:1,backgroundColor:colors\.background,paddingTop:spacing\.xs\}/);
 
-  assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='3.2.39'"));
-  assert.ok(settings.includes("VERSION='3.2.39'"));
-  assert.ok(settings.includes("BUILD='30239'"));
+  assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
+  assert.ok(settings.includes("VERSION='"+pkg.version+"'"));
+  assert.ok(settings.includes("BUILD='"+String(app.expo.android.versionCode)+"'"));
 
   for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
     assert.ok(read(core).length>0,'immutable finance core missing: '+core);
