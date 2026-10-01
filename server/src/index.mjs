@@ -60,7 +60,7 @@ const heartbeat=setInterval(()=>{
   for(const ws of allSockets)if(ws.readyState===WebSocket.OPEN)ws.ping();
 },30_000);
 server.listen(port,'0.0.0.0',()=>console.log(
-  '[market-center] v3.2.36 listening on',port,
+  '[market-center] v3.2.37 listening on',port,
   '; public endpoints never receive the private Ledger',
 ));
 jobs.start();
