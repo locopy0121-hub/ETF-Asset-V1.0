@@ -12,6 +12,11 @@ export type NativeMonitorStatus=Readonly<{
   displaySymbol:string;
 }>;
 
+export type NativeMarketForceRefreshRequests=Readonly<{
+  widgetAt:number;
+  monitorAt:number;
+}>;
+
 export type UnifiedMarketIntradayPoint=Readonly<{
   at:number;price:number;
   quality:'trade'|'backup_realtime';
@@ -51,6 +56,7 @@ type TfAssetNativeModule={
   requestWidgetRefresh:()=>Promise<boolean>;
   consumeWidgetForceRefreshRequest:()=>Promise<number>;
   consumeMonitorForceRefreshRequest:()=>Promise<number>;
+  consumeMarketForceRefreshRequests?:()=>Promise<NativeMarketForceRefreshRequests>;
   startMonitor:()=>Promise<boolean>;
   stopMonitor:()=>Promise<boolean>;
   getMonitorStatus:()=>Promise<NativeMonitorStatus>;
@@ -77,6 +83,16 @@ export async function syncNativeMonitor(config:MonitorConfig,snapshot:SharedSnap
 export async function requestNativeWidgetRefresh(){return native?native.requestWidgetRefresh():false;}
 export async function consumeNativeWidgetForceRefreshRequest(){return native?native.consumeWidgetForceRefreshRequest():0;}
 export async function consumeNativeMonitorForceRefreshRequest(){return native?native.consumeMonitorForceRefreshRequest():0;}
+export async function consumeNativeMarketForceRefreshRequests():Promise<NativeMarketForceRefreshRequests>{
+  if(!native)return {widgetAt:0,monitorAt:0};
+  if(typeof native.consumeMarketForceRefreshRequests==='function')return native.consumeMarketForceRefreshRequests();
+  // Compatibility fallback for an older native shell while JS is hot-reloaded.
+  const [widgetAt,monitorAt]=await Promise.all([
+    native.consumeWidgetForceRefreshRequest(),
+    native.consumeMonitorForceRefreshRequest(),
+  ]);
+  return {widgetAt,monitorAt};
+}
 export async function startNativeMonitor(){return native?native.startMonitor():false;}
 export async function stopNativeMonitor(){return native?native.stopMonitor():false;}
 export async function getNativeMonitorStatus(){return native?native.getMonitorStatus():null;}
