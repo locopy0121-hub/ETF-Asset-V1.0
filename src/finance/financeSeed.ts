@@ -21,6 +21,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   statusMessage?:string;
   checkedAt?:number;
   marketDataVersion?:number;
+  volume?:number|null;
   sparkline: readonly number[];
   intraday?:readonly RuntimeIntradayPoint[];
   intradayDate?:string|null;
