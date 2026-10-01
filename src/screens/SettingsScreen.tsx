@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  AppState,
   ImageBackground,
   Linking,
   PermissionsAndroid,
@@ -43,7 +44,7 @@ import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { toggleExclusivePanel } from '../settings/settingsControlBehavior';
 import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, backupDocumentPickerAvailable, saveExternalBackup, chooseExternalBackup, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, backupDocumentPickerAvailable, saveExternalBackup, chooseExternalBackup, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, ensureNativeNotificationChannels, getNativeNotificationStatus, openNativeNotificationSettings, postNativeTestNotification, NATIVE_NOTIFICATION_CHANNELS, type NativeMonitorStatus, type NativeNotificationStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
@@ -93,6 +94,7 @@ export function SettingsScreen(){
   const [importText,setImportText]=useState('');
   const [storageStats,setStorageStats]=useState({keys:0,bytes:0});
   const [notificationPermission,setNotificationPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
+  const [nativeNotificationStatus,setNativeNotificationStatus]=useState<NativeNotificationStatus|null>(null);
   const [overlayPermission,setOverlayPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
   const [nativeMonitorStatus,setNativeMonitorStatus]=useState<NativeMonitorStatus|null>(null);
 
@@ -116,14 +118,26 @@ export function SettingsScreen(){
   };
 
   useEffect(()=>{void reloadBackupMeta();void lastVerifiedExternalBackup().then(setVerifiedExternal);},[]);
+  const refreshNotificationState=async()=>{
+    if(Platform.OS!=='android'){setNotificationPermission('unsupported');setNativeNotificationStatus(null);return;}
+    try{
+      const status=await ensureNativeNotificationChannels();
+      if(status){
+        setNativeNotificationStatus(status);
+        setNotificationPermission(status.permissionGranted?'granted':'denied');
+        return;
+      }
+    }catch{}
+    if(Number(Platform.Version)<33){setNotificationPermission('granted');return;}
+    try{
+      const ok=await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      setNotificationPermission(ok?'granted':'denied');
+    }catch{setNotificationPermission('denied');}
+  };
   useEffect(()=>{
-    if(Platform.OS!=='android'||Number(Platform.Version)<33){
-      setNotificationPermission('unsupported');
-      return;
-    }
-    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
-      .then(ok=>setNotificationPermission(ok?'granted':'denied'))
-      .catch(()=>setNotificationPermission('denied'));
+    void refreshNotificationState();
+    const subscription=AppState.addEventListener('change',state=>{if(state==='active')void refreshNotificationState();});
+    return()=>subscription.remove();
   },[]);
 
   useEffect(()=>{
@@ -179,6 +193,7 @@ export function SettingsScreen(){
         {Platform.OS==='android'&&Number(Platform.Version)>=33&&notificationPermission!=='granted'?<ActionButton label="要求通知權限" onPress={async()=>{
           const result=await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
           setNotificationPermission(result===PermissionsAndroid.RESULTS.GRANTED?'granted':'denied');
+          await refreshNotificationState();
         }}/>:null}
         <ActionButton label="前往 App 系統設定" onPress={()=>void Linking.openSettings()}/>
         <Text style={styles.note}>Android 的電池最佳化與背景限制由系統頁面管理；此處不偽造無法可靠讀取的狀態。</Text>
@@ -575,8 +590,24 @@ export function SettingsScreen(){
 
   function NotificationPanel(){
     const n=settings.prefs.notifications;
+    const channelLabel=(id:string)=>{
+      if(!nativeNotificationStatus)return '尚未建立';
+      return nativeNotificationStatus.channels[id]===false?'系統已關閉':'已啟用';
+    };
     return <Panel title="通知與提醒">
       <StatusRow label="Android 通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
+      <StatusRow label="App 系統通知" value={nativeNotificationStatus?(nativeNotificationStatus.appEnabled?'已啟用':'系統已關閉'):'讀取中'}/>
+      <StatusRow label="通知頻道" value={nativeNotificationStatus?String(nativeNotificationStatus.channelCount)+' / 5 已建立':'建立中'}/>
+      <StatusRow label="股息與除息" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.dividend)}/>
+      <StatusRow label="行情與價格" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.market)}/>
+      <StatusRow label="更新與錯誤" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.updates)}/>
+      <StatusRow label="資料與備份" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.backup)}/>
+      {Platform.OS==='android'?<ActionButton label="開啟 Android 通知設定" onPress={()=>void openNativeNotificationSettings()}/>:null}
+      {notificationPermission==='granted'&&nativeNotificationStatus?.appEnabled?<ActionButton label="發送測試通知" onPress={async()=>{
+        const sent=await postNativeTestNotification(NATIVE_NOTIFICATION_CHANNELS.general).catch(()=>false);
+        Alert.alert(sent?'通知測試已送出':'通知測試失敗',sent?'請確認系統通知列是否收到 TF Asset 測試通知。':'請檢查 Android 通知總開關與通知頻道設定。');
+        await refreshNotificationState();
+      }}/>:null}
       <ToggleRow label="除息提醒" value={n.exDividend} onChange={exDividend=>settings.patchNotifications({exDividend})}/>
       <ToggleRow label="配息提醒" value={n.dividend} onChange={dividend=>settings.patchNotifications({dividend})}/>
       <Text style={styles.subTitle}>股息月曆事件顯示</Text>
@@ -591,7 +622,7 @@ export function SettingsScreen(){
       <ToggleRow label="震動" value={n.vibration} onChange={vibration=>settings.patchNotifications({vibration})}/>
       <ToggleRow label="聲音" value={n.sound} onChange={sound=>settings.patchNotifications({sound})}/>
       <Stepper label="提前提醒" value={n.leadDays} min={0} max={30} step={1} suffix=" 天" onChange={leadDays=>settings.patchNotifications({leadDays})}/>
-      {notificationPermission==='denied'?<Text style={styles.note}>偏好會保存，但 Android 通知權限尚未允許，因此通知目前不會實際送出。</Text>:null}
+      {notificationPermission==='denied'?<Text style={styles.note}>Android 通知權限尚未允許。V3.2.42 已建立 TF Asset 原生通知頻道；允許後可在系統通知頁分別控制股息、行情、更新與備份通知。</Text>:null}
     </Panel>;
   }
 
