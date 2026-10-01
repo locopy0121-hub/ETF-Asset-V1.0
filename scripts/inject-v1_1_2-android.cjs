@@ -23,6 +23,19 @@ if(!manifest.includes('android.permission.SYSTEM_ALERT_WINDOW')){
   );
 }
 
+if(!manifest.includes('android.permission.POST_NOTIFICATIONS')){
+  manifest=manifest.replace(
+    '<application',
+    '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n  <application'
+  );
+}
+if(!manifest.includes('android.permission.VIBRATE')){
+  manifest=manifest.replace(
+    '<application',
+    '<uses-permission android:name="android.permission.VIBRATE" />\n  <application'
+  );
+}
+
 if(!manifest.includes('TfAssetWidgetProvider')){
   const nativeComponents=[
     '    <receiver android:name=".TfAssetWidgetProvider" android:exported="true">',
@@ -51,7 +64,7 @@ if(!manifest.includes('android:name=".Icon01"')){
       `      android:name=".Icon${key}"`,
       `      android:enabled="${enabled}"`,
       '      android:exported="true"',
-      `      android:icon="@drawable/tf_icon_${key}"`,
+      `      android:icon="@drawable/tf_theme_icon_${key}"`,
       '      android:label="TF Asset 資產管家"',
       '      android:targetActivity=".MainActivity">',
       '      <intent-filter>',
@@ -72,5 +85,8 @@ for(const key of ['01','10']){
 }
 const shortcutMetadataCount=(manifest.match(/android:name="android\.app\.shortcuts"/g)||[]).length;
 if(shortcutMetadataCount!==10)throw new Error(`Expected shortcuts metadata on 10 launcher aliases, found ${shortcutMetadataCount}`);
+
+if(!manifest.includes('android.permission.POST_NOTIFICATIONS'))throw new Error('POST_NOTIFICATIONS permission missing');
+if(!manifest.includes('android.permission.VIBRATE'))throw new Error('VIBRATE permission missing');
 fs.writeFileSync(manifestPath,manifest);
 console.log('V1.1.2 Android native injection: PASS');
