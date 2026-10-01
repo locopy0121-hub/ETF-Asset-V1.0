@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.43",
+  "version": "3.2.44",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -279,7 +279,8 @@
     "test:v3_2_40": "npm run test:v3_2_39 && tsx scripts/v3_2_40-dashboard-cumulative-pnl.test.ts",
     "test:v3_2_41": "npm run test:v3_2_40 && tsx scripts/v3_2_41-launcher-shortcuts.test.ts",
     "test:v3_2_42": "npm run test:v3_2_41 && tsx scripts/v3_2_42-theme-notifications.test.ts",
-    "test:v3_2_43": "npm run test:v3_2_42 && tsx scripts/v3_2_43-settings-restructure.test.ts"
+    "test:v3_2_43": "npm run test:v3_2_42 && tsx scripts/v3_2_43-settings-restructure.test.ts",
+    "test:v3_2_44": "npm run test:v3_2_43 && tsx scripts/v3_2_44-dividend-add.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
