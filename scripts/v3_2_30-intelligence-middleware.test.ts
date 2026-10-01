@@ -37,10 +37,11 @@ const toolPlan=(resolved:ResolvedSecurity|null):CoreAiToolPlan=>({
 
 function fakeHistory(symbol:string){
   const rows=[];
+  const end=Date.now();
   for(let index=0;index<40;index++){
-    const day=String(index+1).padStart(2,'0');
+    const at=end-(39-index)*24*60*60*1000;
     rows.push({
-      date:index<30?'2026-08-'+day:'2026-09-'+String(index-29).padStart(2,'0'),
+      date:new Date(at).toISOString().slice(0,10),
       open:100+index,
       high:101+index,
       low:99+index,
