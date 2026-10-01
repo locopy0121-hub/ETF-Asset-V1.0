@@ -285,7 +285,13 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
 
   if(security&&hasMarketIntent(question)){
     let quote=runtime.quotes.find(row=>row.symbol.trim().toUpperCase()===security!.symbol)??null;
-    if(runtime.refreshQuote){
+    // Fast path: the Market Runtime may already hold a fresh verified SQLite quote.
+    // Do not force another network/native refresh just because the user asked AI.
+    // Pending/stale/missing rows still go through the refresh path below.
+    const existingVerification=quote
+      ?quoteVerification(quote.quality,quote.sourceQuoteAt,quote.checkedAt)
+      :'UNAVAILABLE';
+    if(runtime.refreshQuote&&existingVerification!=='VERIFIED'){
       try{quote=await runtime.refreshQuote(security.symbol)??quote;}catch{/* retain last-known-good App quote */}
     }
     if(quote&&Number(quote.currentPrice)>0){
