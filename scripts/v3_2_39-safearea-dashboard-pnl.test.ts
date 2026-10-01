@@ -22,7 +22,7 @@ function main(){
   const home=read('src/screens/HomeScreen.tsx');
   assert.match(home,/yesterdayPnl=\{pnlHistory\.previousTradingDay\?\.todayPnl\?\?null\}/);
   assert.match(home,/todayPnl=\{currentPnl\?\.todayPnl\?\?null\}/);
-  assert.match(home,/totalPnl=\{portfolio\.totalUnrealizedProfit\}/);
+  assert.match(home,/totalPnl=\{portfolio\.totalPriceUnrealizedProfit\}/);
   assert.doesNotMatch(home,/previousPnl=\{currentPnl\?\.previousTotalPnl/,
     'cumulative previousTotalPnl must never be shown as yesterday single-day PnL');
 
