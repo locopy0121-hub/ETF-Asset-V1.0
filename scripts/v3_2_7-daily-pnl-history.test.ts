@@ -42,9 +42,9 @@ assert.equal(stats.best?.todayPnl,30);
 assert.equal(stats.worst?.todayPnl,-20);
 
 const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
-assert.match(overview,/前日總損益/);
-assert.match(overview,/今日市值變動/);
-assert.match(overview,/總損益/);
+assert.match(overview,/昨日單日損益/);
+assert.match(overview,/今日單日損益/);
+assert.match(overview,/累計總損益/);
 assert.match(overview,/onPressTotalPnl/);
 assert.doesNotMatch(overview,/>＋<\/Text>/,'dashboard must not claim market-value delta is a simple accounting addition');
 assert.doesNotMatch(overview,/>＝<\/Text>/,'dashboard must not claim market-value delta directly equals total PnL');
