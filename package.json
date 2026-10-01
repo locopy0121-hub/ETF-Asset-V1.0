@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.40",
+  "version": "3.2.41",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -276,7 +276,8 @@
     "test:v3_2_36": "npm run test:v3_2_35 && tsx scripts/v3_2_36-multisource-market.test.ts",
     "test:v3_2_38": "npm run test:v3_2_36 && tsx scripts/v3_2_38-rollback-stable.test.ts",
     "test:v3_2_39": "npm run test:v3_2_36 && tsx scripts/v3_2_39-safearea-dashboard-pnl.test.ts",
-    "test:v3_2_40": "npm run test:v3_2_39 && tsx scripts/v3_2_40-dashboard-cumulative-pnl.test.ts"
+    "test:v3_2_40": "npm run test:v3_2_39 && tsx scripts/v3_2_40-dashboard-cumulative-pnl.test.ts",
+    "test:v3_2_41": "npm run test:v3_2_40 && tsx scripts/v3_2_41-launcher-shortcuts.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",
