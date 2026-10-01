@@ -26,7 +26,7 @@ const calendarEventColor=(type:DividendCalendarEventType)=>
 const shortDate=(date:string)=>date?date.slice(5).replace('-',' / '):'';
 const parseNumber=(value:string)=>{const n=Number(value.replace(/,/g,'').trim());return Number.isFinite(n)?n:0;};
 const isIsoDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T12:00:00').getTime());
-const noteDate=(note:string|undefined,labels:readonly string[])=>{for(const label of labels){const value=String(note??'').match(new RegExp(label+'\\\\s*(\\\\d{4}-\\\\d{2}-\\\\d{2})'))?.[1];if(value)return value;}return '';};
+const noteDate=(note:string|undefined,labels:readonly string[])=>{for(const label of labels){const value=String(note??'').match(new RegExp(label+'\\s*(\\d{4}-\\d{2}-\\d{2})'))?.[1];if(value)return value;}return '';};
 type DividendDatePickerTarget='payment'|'lastBuy'|'ex'|'record';
 
 export function DividendScreen() {
@@ -339,7 +339,7 @@ export function DividendScreen() {
               <View style={{flex:1}}>
                 <Text style={styles.fieldLabel}>股息配發／入帳日</Text>
                 <Pressable accessibilityRole="button" accessibilityLabel="選擇股息配發／入帳日" onPress={()=>setDatePickerTarget('payment')} style={styles.dateInput}>
-                  <Text style={styles.dateInputText}>{addPaymentDate}</Text><Text style={styles.dateInputIcon}>▣</Text>
+                  <Text style={styles.dateInputText}>{addPaymentDate}</Text><Text style={styles.dateInputIcon}>📅</Text>
                 </Pressable>
               </View>
               <View style={{flex:1}}>
@@ -391,7 +391,7 @@ export function DividendScreen() {
   </>;
 }
 function DateField({label,value,onPress}:{label:string;value:string;onPress:()=>void}){
-  return <View style={styles.formGroup}><Text style={styles.fieldLabel}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={'選擇'+label} onPress={onPress} style={styles.dateInput}><Text style={[styles.dateInputText,!value&&styles.dateInputPlaceholder]}>{value||'選擇日期'}</Text><Text style={styles.dateInputIcon}>▣</Text></Pressable></View>;
+  return <View style={styles.formGroup}><Text style={styles.fieldLabel}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={'選擇'+label} onPress={onPress} style={styles.dateInput}><Text style={[styles.dateInputText,!value&&styles.dateInputPlaceholder]}>{value||'選擇日期'}</Text><Text style={styles.dateInputIcon}>📅</Text></Pressable></View>;
 }
 function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text style={styles.legendText}>{label}</Text></View>}
 const styles=StyleSheet.create({
