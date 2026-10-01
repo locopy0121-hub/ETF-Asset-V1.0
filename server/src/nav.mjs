@@ -1,5 +1,6 @@
 import {CircuitBreaker,SourceError,CircuitOpenError} from './circuitBreaker.mjs';
 import {VALID_SYMBOL,positive,epochLikeToMs} from './parser.mjs';
+import {isZeroCostSourceAllowed,zeroCostPolicy} from './zeroCostPolicy.mjs';
 
 const MIS_ETF_NAV='https://mis.twse.com.tw/stock/data/all_etf.txt';
 
@@ -101,7 +102,7 @@ export class EtfNavService {
     },{now});
   }
   async approved(symbol,now){
-    if(!this.approvedFeedUrl)return null;
+    if(!isZeroCostSourceAllowed('ETF_NAV_APPROVED')||!this.approvedFeedUrl)return null;
     const separator=this.approvedFeedUrl.includes('?')?'&':'?';
     const body=await this.json('ETF_NAV_APPROVED',
       this.approvedFeedUrl+separator+'symbol='+encodeURIComponent(symbol),{},now);
@@ -123,6 +124,7 @@ export class EtfNavService {
       ['ETF_NAV_APPROVED',()=>this.approved(symbol,now)],
       ['TWSE_MIS_ETF_NAV',()=>this.mis(symbol,now)],
     ]){
+      if(!isZeroCostSourceAllowed(source))continue;
       if(source==='ETF_NAV_APPROVED'&&!this.approvedFeedUrl)continue;
       try{
         nav=await fn();
@@ -169,7 +171,9 @@ export class EtfNavService {
   }
   health(now=Date.now()){
     return Object.fromEntries(Object.entries(this.breakers).map(([key,value])=>[key,{
-      configured:key!=='ETF_NAV_APPROVED'||Boolean(this.approvedFeedUrl),...value.health(now),
+      configured:isZeroCostSourceAllowed(key)&&(key!=='ETF_NAV_APPROVED'||Boolean(this.approvedFeedUrl)),
+      policy:zeroCostPolicy(key),
+      ...value.health(now),
     }]));
   }
 }

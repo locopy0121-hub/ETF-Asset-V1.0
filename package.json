@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "3.2.46",
+  "version": "3.2.47",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -282,7 +282,8 @@
     "test:v3_2_43": "npm run test:v3_2_42 && tsx scripts/v3_2_43-settings-restructure.test.ts",
     "test:v3_2_44": "npm run test:v3_2_43 && tsx scripts/v3_2_44-dividend-add.test.ts",
     "test:v3_2_45": "npm run test:v3_2_43 && tsx scripts/v3_2_45-dividend-calendar-official-dates.test.ts",
-    "test:v3_2_46": "npm run test:v3_2_45 && tsx scripts/v3_2_46-purchase-pnl-stats.test.ts"
+    "test:v3_2_46": "npm run test:v3_2_45 && tsx scripts/v3_2_46-purchase-pnl-stats.test.ts",
+    "test:v3_2_47": "npm run test:v3_2_46 && tsx scripts/v3_2_47-zero-cost-data-policy.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

@@ -176,7 +176,7 @@ export function yahooQuoteFromChart(payload,symbol,market,now=Date.now()){
     currentPrice:price,previousClose:positive(meta?.previousClose??meta?.chartPreviousClose),
     officialTradePrice:null,sourceQuoteAt,quality:'backup_realtime',source:'YAHOO',
     priceType:'BACKUP_REALTIME',isFallback:true,market,
-    statusMessage:'TWSE/Fugle/Shioaji 無可用行情；採用 Yahoo Finance 備援行情',checkedAt:now,
+    statusMessage:'TWSE MIS 無可用行情；採用 Yahoo Finance 零成本備援行情',checkedAt:now,
     volume:positive(meta?.regularMarketVolume)??0,
   };
 }

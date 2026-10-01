@@ -4,6 +4,7 @@ export type ResolvedSecurity=Readonly<{
   market:'TWSE'|'TPEX'|'UNKNOWN';
   name:string;
   assetType:'STOCK'|'ETF'|'UNKNOWN';
+  figi?:string;
 }>;
 
 export type SecurityCandidate=Readonly<{
@@ -87,6 +88,49 @@ async function fetchOfficialSecurityCatalog():Promise<readonly SecurityCandidate
   return rows;
 }
 
+const openFigiCache=new Map<string,{expiresAt:number;row:ResolvedSecurity|null}>();
+const OPENFIGI_CACHE_MS=7*24*60*60*1000;
+
+export async function resolveSecurityViaOpenFigi(
+  symbol:string,
+  fetchImpl:typeof fetch=globalThis.fetch,
+):Promise<ResolvedSecurity|null>{
+  const code=symbol.trim().toUpperCase();
+  if(!/^[0-9A-Z]{4,8}$/.test(code))return null;
+  const hit=openFigiCache.get(code);
+  if(hit&&hit.expiresAt>Date.now())return hit.row;
+  try{
+    const response=await fetchImpl('https://api.openfigi.com/v3/mapping',{
+      method:'POST',
+      headers:{Accept:'application/json','Content-Type':'application/json'},
+      body:JSON.stringify([{idType:'TICKER',idValue:code,exchCode:'TT'}]),
+    });
+    if(!response.ok)throw new Error('OpenFIGI HTTP '+response.status);
+    const payload=await response.json() as Array<{data?:Array<Record<string,unknown>>}>;
+    const rows=Array.isArray(payload?.[0]?.data)?payload[0].data!:[];
+    const exact=rows.find(row=>String(row.ticker??'').trim().toUpperCase()===code)??rows[0];
+    if(!exact){
+      openFigiCache.set(code,{row:null,expiresAt:Date.now()+60_000});
+      return null;
+    }
+    const figi=String(exact.figi??'').trim();
+    const name=String(exact.name??code).trim()||code;
+    const row:ResolvedSecurity={
+      securityId:figi?'FIGI:'+figi:'TW:'+code,
+      symbol:code,
+      market:'UNKNOWN',
+      name,
+      assetType:assetTypeFromSymbol(code),
+      ...(figi?{figi}:{}),
+    };
+    openFigiCache.set(code,{row,expiresAt:Date.now()+OPENFIGI_CACHE_MS});
+    return row;
+  }catch{
+    openFigiCache.set(code,{row:null,expiresAt:Date.now()+60_000});
+    return null;
+  }
+}
+
 function looksLikeSecurityQuery(query:string){
   const text=query.trim();
   return Boolean(symbolFromText(text))
@@ -107,7 +151,9 @@ export async function resolveSecurity(
   const directSymbol=symbolFromText(raw);
   if(directSymbol){
     const exact=catalog.find(row=>row.symbol===directSymbol);
-    return exact?toResolved(exact):{
+    if(exact)return toResolved(exact);
+    const mapped=await resolveSecurityViaOpenFigi(directSymbol);
+    return mapped??{
       securityId:'TW:'+directSymbol,
       symbol:directSymbol,
       market:'UNKNOWN',

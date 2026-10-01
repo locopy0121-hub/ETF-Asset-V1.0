@@ -27,7 +27,7 @@ export const AI_INGREDIENT_CATALOG:Readonly<Record<AiIngredientKey,AiIngredientC
   SECURITY_IDENTITY:{
     key:'SECURITY_IDENTITY',label:'證券身分',scope:'SYMBOL',canAcquireExternally:true,
     defaultFreshnessMs:7*DAY,minimumStatus:'VERIFIED',
-    sourcePriority:['TWSE/TPEX official catalog','TF Asset resolver','question parser'],
+    sourcePriority:['TWSE/TPEX official catalog','OpenFIGI zero-cost fallback','TF Asset resolver','question parser'],
   },
   MARKET_QUOTE:{
     key:'MARKET_QUOTE',label:'市場行情',scope:'SYMBOL',canAcquireExternally:true,

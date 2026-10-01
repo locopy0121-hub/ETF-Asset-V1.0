@@ -23,6 +23,7 @@ import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { MAIN_PAGES } from '../domain/pageRegistry';
+import {ZERO_COST_DATA_SOURCES} from '../dataSources/zeroCostRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
@@ -51,15 +52,15 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 type PluginPanel=null|'widget'|'monitor';
 type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
-type DataPanel=null|'catalog'|'market'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
+type DataPanel=null|'catalog'|'market'|'policy'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
 type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'swipe'|'dividendCalendar';
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='3.2.46';
-const BUILD='30246';
+const VERSION='3.2.47';
+const BUILD='30247';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -200,6 +201,8 @@ export function SettingsScreen(){
       <ChildButton label="效能與診斷" summary={market.lastError?'行情有警告':'核心狀態正常'} active={systemPanel==='diagnostics'} onPress={()=>setSystemPanel(systemPanel==='diagnostics'?null:'diagnostics')}/>
       {systemPanel==='diagnostics'?<Panel title="效能與診斷">
         <StatusRow label="App 版本" value={VERSION}/>
+        <StatusRow label="API 成本政策" value="ALL FREE · NO MONEY"/>
+        <StatusRow label="零成本來源" value={String(ZERO_COST_DATA_SOURCES.length)+' 組'}/>
         <StatusRow label="Build" value={BUILD}/>
         <StatusRow label="帳務 Runtime" value={finance.hydrated?'正常':'載入中'}/>
         <StatusRow label="行情 Runtime" value={market.hydrated?'正常':'載入中'}/>
@@ -272,6 +275,16 @@ export function SettingsScreen(){
     return <View style={styles.children}>
       <ChildButton label="統一行情資料中心／即時更新" summary={'版本 '+market.marketDataVersion+' · '+marketPhaseLabel(market.phase)} active={dataPanel==='market'} onPress={()=>setDataPanel(dataPanel==='market'?null:'market')}/>
       {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings}/>:null}
+      <ChildButton label="API 成本政策" summary="ALL FREE · NO MONEY" active={dataPanel==='policy'} onPress={()=>setDataPanel(dataPanel==='policy'?null:'policy')}/>
+      {dataPanel==='policy'?<Panel title="零成本資料來源政策">
+        <StatusRow label="API 費用" value="NT$ 0"/>
+        <StatusRow label="付費 API" value="禁止"/>
+        <StatusRow label="綁信用卡" value="禁止"/>
+        <StatusRow label="自動扣款" value="禁止"/>
+        <StatusRow label="試用期依賴" value="禁止"/>
+        <StatusRow label="已註冊零成本來源" value={String(ZERO_COST_DATA_SOURCES.length)}/>
+        <Text style={styles.note}>正式資料源只允許零 API 成本來源；TWSE／TPEx 為台股主真值，OpenFIGI 僅作證券身分備援。任何方案型、計量型或可能產生費用的來源不得成為正式必要依賴。</Text>
+      </Panel>:null}
       <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
       {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
         <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
