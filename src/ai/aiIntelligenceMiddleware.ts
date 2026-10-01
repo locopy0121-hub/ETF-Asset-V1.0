@@ -308,7 +308,7 @@ async function acquireMissing(
           }
           attempts.push({
             ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',
-            status:verified?'FETCHED':'UNAVAILABLE',
+            status:'FETCHED',
             message:quote.statusMessage,
           });
         }else{
@@ -654,7 +654,11 @@ export async function buildAiEvidencePackage(input:{
   const attempts:AiAcquisitionAttempt[]=[];
   const history=await acquireMissing(plan,evidence,attempts,input.acquirer??DEFAULT_AI_INGREDIENT_ACQUIRER);
   const computed:AiMetricEvidence[]=[];
-  for(const [symbol,rows] of history)computed.push(...historyMetrics(symbol,rows,plan.metrics));
+  for(const [symbol,rows] of history){
+    const historyEvidence=findEvidence(evidence,'HISTORICAL_PRICES',symbol);
+    if(!evidenceSatisfiesIngredient('HISTORICAL_PRICES',historyEvidence))continue;
+    computed.push(...historyMetrics(symbol,rows,plan.metrics));
+  }
   const metrics=fillUnavailableMetrics(plan,evidence,computed);
   const validationIssues=validationIssuesForPlan(plan,evidence);
   const missingRequired=requiredMissing(plan,evidence);
