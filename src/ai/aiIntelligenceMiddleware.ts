@@ -731,6 +731,29 @@ function unavailableReason(evidence:AiEvidencePackage){
 }
 
 export function localAnswerFromEvidence(evidence:AiEvidencePackage):string|null{
+  if(evidence.recipeId==='MARKET_QUOTE'){
+    const symbol=evidence.symbols[0];
+    if(!symbol)return '目前沒有辨識到要查詢的證券代號。';
+    const row=evidence.ingredients.find(item=>item.ingredient==='MARKET_QUOTE'&&item.symbol===symbol);
+    const price=Number(row?.details?.price);
+    const previousClose=Number(row?.details?.previousClose);
+    if(row&&evidenceSatisfiesIngredient('MARKET_QUOTE',row)&&Number.isFinite(price)&&price>0){
+      const parts=[targetLabel(evidence,symbol)+' 目前可核實行情 NT$ '+price.toLocaleString('zh-TW')];
+      if(Number.isFinite(previousClose)&&previousClose>0){
+        const change=price-previousClose;
+        const pct=change/previousClose*100;
+        parts.push((change>=0?'+':'')+change.toFixed(2)+'（'+(pct>=0?'+':'')+pct.toFixed(2)+'%）');
+      }
+      if(row.observedAt)parts.push('成交時間 '+zhDateTime(row.observedAt));
+      parts.push('來源 '+row.source);
+      return parts.join('｜')+'。';
+    }
+    if(row?.status==='PARTIAL'){
+      return targetLabel(evidence,symbol)+' 已向官方行情來源補查，但目前沒有可核實的實際成交價；TF Asset 不會把昨收、委買或委賣價格冒充現價。';
+    }
+    return targetLabel(evidence,symbol)+' 目前沒有取得可核實的官方行情。';
+  }
+
   if(evidence.recipeId==='SECURITY_PROFILE'){
     const symbol=evidence.symbols[0];
     if(!symbol)return '目前沒有辨識到要查詢的證券代號。';
