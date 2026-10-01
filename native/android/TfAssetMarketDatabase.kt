@@ -50,7 +50,8 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       is_fallback INTEGER NOT NULL DEFAULT 0,
       market TEXT NOT NULL DEFAULT 'UNKNOWN',
       status_message TEXT NOT NULL DEFAULT '',
-      checked_at INTEGER NOT NULL
+      checked_at INTEGER NOT NULL,
+      volume INTEGER CHECK(volume>=0)
     )""")
   }
 
@@ -282,7 +283,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     val allow=symbols.toSet()
     val rows=JSONArray()
     db.rawQuery("""SELECT symbol,name,price,previous_close,official_trade_price,source_at,
-      quality,source,price_type,is_fallback,market,status_message,checked_at
+      quality,source,price_type,is_fallback,market,status_message,checked_at,volume
       FROM market_quotes ORDER BY symbol""",null).use{cursor->
       while(cursor.moveToNext()){
         val symbol=cursor.getString(0)
@@ -295,6 +296,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
           .put("source",cursor.getString(7)).put("priceType",cursor.getString(8))
           .put("isFallback",cursor.getInt(9)!=0).put("market",cursor.getString(10))
           .put("statusMessage",cursor.getString(11)).put("checkedAt",cursor.getLong(12))
+          .put("volume",if(cursor.isNull(13))JSONObject.NULL else cursor.getLong(13))
         rows.put(row)
       }
     }
@@ -461,6 +463,8 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
           put("market",market)
           put("status_message",row.optString("statusMessage",""))
           put("checked_at",checkedAt)
+          val volume=row.optDouble("volume",Double.NaN)
+          if(volume.isFinite()&&volume>=0)put("volume",volume.toLong()) else putNull("volume")
         }
         db.insertWithOnConflict("market_quotes",null,values,SQLiteDatabase.CONFLICT_REPLACE)
         insertIntraday(db,row,checkedAt)
