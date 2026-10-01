@@ -35,7 +35,5 @@ for(const route of ["case 'buy'","case 'monitor'","case 'today-pnl'","case 'divi
 assert.ok(ci.includes('tf_asset_shortcuts.xml'),'QA APK must package shortcut XML');
 assert.ok(ci.includes('tf_asset_shortcut_strings.xml'),'QA APK must package shortcut labels');
 assert.ok(ci.includes("grep -c 'android.app.shortcuts'"),'QA APK must validate alias metadata');
-assert.ok(ci.includes("grep -c '^  <shortcut
-console.log('V3.2.41 Android launcher shortcuts: PASS');
-"),'QA APK must validate shortcut count');
+assert.ok(ci.includes('tf_asset_shortcuts.xml)" = "5"'),'QA APK must validate shortcut count');
 console.log('V3.2.41 Android launcher shortcuts: PASS');
