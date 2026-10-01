@@ -3,7 +3,36 @@
  * A successful HTTP poll or second passing is never evidence of a new exchange tick.
  */
 export type TwseTimestampRow=Readonly<Record<string,unknown>>;
+export const REALTIME_QUOTE_FRESHNESS_MS=2*60*1000;
+export type RealtimeQuoteFreshness='FRESH'|'STALE'|'UNKNOWN';
+
 const text=(value:unknown)=>String(value??'').trim();
+
+export function quoteSourceLagMs(
+  sourceQuoteAt:number|null|undefined,
+  checkedAt:number|null|undefined=Date.now(),
+):number|null{
+  const source=Number(sourceQuoteAt);
+  const checked=Number(checkedAt);
+  if(!Number.isFinite(source)||source<=0||!Number.isFinite(checked)||checked<=0)return null;
+  // A tiny future skew can happen between source/server clocks. Treat it as zero lag,
+  // but reject implausible future timestamps instead of calling them fresh.
+  const lag=checked-source;
+  if(lag< -120_000)return null;
+  return Math.max(0,lag);
+}
+
+export function realtimeQuoteFreshness(
+  sourceQuoteAt:number|null|undefined,
+  checkedAt:number|null|undefined=Date.now(),
+  maxAgeMs=REALTIME_QUOTE_FRESHNESS_MS,
+):RealtimeQuoteFreshness{
+  const lag=quoteSourceLagMs(sourceQuoteAt,checkedAt);
+  if(lag===null)return 'UNKNOWN';
+  const limit=Number.isFinite(maxAgeMs)&&maxAgeMs>=0?maxAgeMs:REALTIME_QUOTE_FRESHNESS_MS;
+  return lag<=limit?'FRESH':'STALE';
+}
+
 export function parseTwseQuoteSourceAt(row:TwseTimestampRow|undefined,now=Date.now()):number|null{
   if(!row)return null;
   const date=text(row.d),time=text(row.t);

@@ -16,6 +16,7 @@ import type {
   AiMetricId,
 } from './intelligenceTypes';
 import type {DailyCandle} from '../market/twseDailyHistory';
+import {quoteSourceLagMs,realtimeQuoteFreshness} from '../market/quoteFreshness';
 
 const nowIso=()=>new Date().toISOString();
 
@@ -103,6 +104,9 @@ function toolEvidence(toolPlan:CoreAiToolPlan):AiIngredientEvidence[]{
           changePercent:data.changePercent,
           quality:data.quality,
           statusMessage:data.statusMessage,
+          checkedAt:fetchedAt,
+          ...(result.meta.freshness?{freshness:result.meta.freshness}:{}),
+          ...(result.meta.sourceLagMs!=null?{sourceLagMs:result.meta.sourceLagMs}:{}),
         }}:{}),
       });
       continue;
@@ -273,7 +277,11 @@ async function acquireMissing(
       try{
         const quote=await acquirer.fetchQuote(symbol);
         if(quote){
-          const verified=quote.price!==null&&quote.quality==='trade';
+          const freshness=quote.quality==='trade'
+            ?realtimeQuoteFreshness(quote.sourceQuoteAt,quote.checkedAt)
+            :'UNKNOWN';
+          const sourceLagMs=quoteSourceLagMs(quote.sourceQuoteAt,quote.checkedAt);
+          const verified=quote.price!==null&&quote.quality==='trade'&&freshness==='FRESH';
           upsertEvidence(evidence,{
             ingredient:'MARKET_QUOTE',
             symbol,
@@ -281,13 +289,20 @@ async function acquireMissing(
             source:quote.source,
             fetchedAt:new Date(quote.checkedAt).toISOString(),
             ...(quote.sourceQuoteAt?{observedAt:new Date(quote.sourceQuoteAt).toISOString()}:{}),
-            summary:verified?'TWSE MIS 實際成交價 '+quote.price:quote.statusMessage,
+            summary:verified
+              ?'TWSE MIS 實際成交價 '+quote.price
+              :freshness==='STALE'&&quote.price!==null
+                ?'TWSE MIS 最近可核實成交價 '+quote.price+'，但來源時間已超過即時門檻'
+                :quote.statusMessage,
             details:{
               price:quote.price,
               previousClose:quote.previousClose,
               quality:quote.quality,
               market:quote.market,
               statusMessage:quote.statusMessage,
+              checkedAt:new Date(quote.checkedAt).toISOString(),
+              freshness,
+              ...(sourceLagMs!=null?{sourceLagMs}:{}),
             },
           });
           if(quote.market!=='UNKNOWN'&&quote.name&&quote.name!==symbol){
@@ -727,6 +742,25 @@ const zhDateTime=(value:unknown)=>{
   });
 };
 
+const zhQuoteDateTime=(value:unknown)=>{
+  const text=String(value??'').trim();
+  const parsed=Date.parse(text);
+  if(!Number.isFinite(parsed))return text;
+  return new Date(parsed).toLocaleString('zh-TW',{
+    timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,
+  });
+};
+
+const quoteLagLabel=(value:unknown)=>{
+  const lag=Number(value);
+  if(!Number.isFinite(lag)||lag<0)return '';
+  const seconds=Math.floor(lag/1000);
+  const minutes=Math.floor(seconds/60);
+  const remain=seconds%60;
+  return minutes>0?minutes+' 分 '+remain+' 秒':remain+' 秒';
+};
+
 const rawSecurityMentions=(question:string)=>question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
 
 function unavailableReason(evidence:AiEvidencePackage){
@@ -748,11 +782,23 @@ export function localAnswerFromEvidence(evidence:AiEvidencePackage):string|null{
         const pct=change/previousClose*100;
         parts.push((change>=0?'+':'')+change.toFixed(2)+'（'+(pct>=0?'+':'')+pct.toFixed(2)+'%）');
       }
-      if(row.observedAt)parts.push('成交時間 '+zhDateTime(row.observedAt));
+      if(row.fetchedAt)parts.push('查詢時間 '+zhQuoteDateTime(row.fetchedAt));
+      if(row.observedAt)parts.push('最近成交 '+zhQuoteDateTime(row.observedAt));
       parts.push('來源 '+row.source);
       return parts.join('｜')+'。';
     }
     if(row?.status==='PARTIAL'){
+      const partialPrice=Number(row.details?.price);
+      const freshness=String(row.details?.freshness??'');
+      if(Number.isFinite(partialPrice)&&partialPrice>0&&freshness==='STALE'){
+        const parts=[targetLabel(evidence,symbol)+' 最近可核實成交 NT$ '+partialPrice.toLocaleString('zh-TW')];
+        if(row.fetchedAt)parts.push('查詢時間 '+zhQuoteDateTime(row.fetchedAt));
+        if(row.observedAt)parts.push('最近成交 '+zhQuoteDateTime(row.observedAt));
+        const lag=quoteLagLabel(row.details?.sourceLagMs);
+        parts.push((lag?'來源時間距本次查詢約 '+lag+'，':'')+'因此不標示為即時行情');
+        parts.push('來源 '+row.source);
+        return parts.join('｜')+'。';
+      }
       return targetLabel(evidence,symbol)+' 已向官方行情來源補查，但目前沒有可核實的實際成交價；TF Asset 不會把昨收、委買或委賣價格冒充現價。';
     }
     return targetLabel(evidence,symbol)+' 目前沒有取得可核實的官方行情。';

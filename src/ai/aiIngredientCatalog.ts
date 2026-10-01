@@ -1,3 +1,4 @@
+import {REALTIME_QUOTE_FRESHNESS_MS} from '../market/quoteFreshness';
 import type {
   AiEvidenceStatus,
   AiIngredientEvidence,
@@ -30,7 +31,7 @@ export const AI_INGREDIENT_CATALOG:Readonly<Record<AiIngredientKey,AiIngredientC
   },
   MARKET_QUOTE:{
     key:'MARKET_QUOTE',label:'市場行情',scope:'SYMBOL',canAcquireExternally:true,
-    defaultFreshnessMs:2*MINUTE,minimumStatus:'VERIFIED',
+    defaultFreshnessMs:REALTIME_QUOTE_FRESHNESS_MS,minimumStatus:'VERIFIED',
     sourcePriority:['TF Asset Market Center','TWSE MIS official trade'],
   },
   HISTORICAL_PRICES:{

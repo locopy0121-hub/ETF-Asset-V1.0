@@ -2,6 +2,7 @@ import type {ResolvedSecurity,SecurityCandidate} from '../market/securityResolve
 import {resolveSecurity} from '../market/securityResolver';
 import type {AiSessionContext} from './aiConversationTypes';
 import {calculateLedgerCashFlow,type CanonicalLedgerEntry} from '../finance/canonicalLedger';
+import {quoteSourceLagMs,realtimeQuoteFreshness,type RealtimeQuoteFreshness} from '../market/quoteFreshness';
 
 export type AiToolErrorCode=
   |'TOOL_NOT_FOUND'
@@ -19,6 +20,8 @@ export type AiToolResult<T>=Readonly<{
     fetchedAt:string;
     observedAt?:string;
     verificationStatus?:'VERIFIED'|'PENDING'|'UNAVAILABLE';
+    freshness?:RealtimeQuoteFreshness;
+    sourceLagMs?:number|null;
     calculatedAt?:string;
   }>;
   error?:Readonly<{code:AiToolErrorCode;message:string;retryable:boolean}>;
@@ -43,6 +46,7 @@ export type CoreAiQuote=Readonly<{
   currentPrice:number;
   previousClose?:number|null;
   sourceQuoteAt?:number|null;
+  checkedAt?:number|null;
   quality?:string|null;
   source?:string|null;
   statusMessage?:string|null;
@@ -156,9 +160,17 @@ export const CORE_AI_TOOL_CONTRACTS={
 } as const;
 
 const now=()=>new Date().toISOString();
-const quoteVerification=(quality:string|null|undefined):'VERIFIED'|'PENDING'|'UNAVAILABLE'=>
-  quality==='trade'||quality==='official_close'?'VERIFIED':
-  quality?'PENDING':'UNAVAILABLE';
+const quoteVerification=(
+  quality:string|null|undefined,
+  sourceQuoteAt:number|null|undefined,
+  checkedAt:number|null|undefined,
+):'VERIFIED'|'PENDING'|'UNAVAILABLE'=>{
+  if(quality==='official_close')return 'VERIFIED';
+  if(quality==='trade'){
+    return realtimeQuoteFreshness(sourceQuoteAt,checkedAt)==='FRESH'?'VERIFIED':'PENDING';
+  }
+  return quality?'PENDING':'UNAVAILABLE';
+};
 
 const knownCandidates=(runtime:CoreAiToolRuntime):SecurityCandidate[]=>{
   const rows:SecurityCandidate[]=[];
@@ -281,6 +293,13 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
       const previous=Number(quote.previousClose??0)>0?Number(quote.previousClose):null;
       const change=previous===null?null:price-previous;
       const changePercent=previous===null?null:change!/previous*100;
+      const checkedAt=Number.isFinite(Number(quote.checkedAt))&&Number(quote.checkedAt)>0
+        ?Number(quote.checkedAt)
+        :Date.now();
+      const freshness=quote.quality==='trade'||quote.quality==='backup_realtime'
+        ?realtimeQuoteFreshness(quote.sourceQuoteAt,checkedAt)
+        :'UNKNOWN';
+      const sourceLagMs=quoteSourceLagMs(quote.sourceQuoteAt,checkedAt);
       results.push(success<QuoteToolData>('get_quote',{
         security,
         price,
@@ -290,8 +309,11 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
         quality:quote.quality??null,
         statusMessage:quote.statusMessage??null,
       },'TF_ASSET_MARKET_CENTER',{
+        fetchedAt:new Date(checkedAt).toISOString(),
         ...(quote.sourceQuoteAt?{observedAt:new Date(quote.sourceQuoteAt).toISOString()}:{}),
-        verificationStatus:quoteVerification(quote.quality),
+        verificationStatus:quoteVerification(quote.quality,quote.sourceQuoteAt,checkedAt),
+        freshness,
+        sourceLagMs,
       }));
     }else{
       results.push(failure('get_quote','SERVICE_UNAVAILABLE','TF Asset 行情中心目前沒有可用的該標的行情。',true));
@@ -385,15 +407,42 @@ export async function executeCoreAiReadTools(question:string,runtime:CoreAiToolR
   };
 }
 
+const zhMarketDateTime=(value:string)=>{
+  const parsed=Date.parse(value);
+  if(!Number.isFinite(parsed))return value;
+  return new Date(parsed).toLocaleString('zh-TW',{
+    timeZone:'Asia/Taipei',
+    year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',
+    hour12:false,
+  });
+};
+const lagLabel=(lagMs:number|null|undefined)=>{
+  if(lagMs==null||!Number.isFinite(lagMs)||lagMs<0)return '';
+  const seconds=Math.floor(lagMs/1000);
+  const minutes=Math.floor(seconds/60);
+  const remain=seconds%60;
+  return minutes>0?minutes+' 分 '+remain+' 秒':remain+' 秒';
+};
+
 export function localAnswerFromCoreTools(plan:CoreAiToolPlan):string|null{
   const quote=plan.results.find(row=>row.tool==='get_quote'&&row.ok) as AiToolResult<QuoteToolData>|undefined;
   if(quote?.data){
-    const {security,price,change,changePercent}=quote.data;
+    const {security,price,change,changePercent,quality}=quote.data;
     const parts=[security.symbol+' '+security.name];
     if(price!==null)parts.push('目前可用行情 NT$ '+price.toLocaleString('zh-TW'));
     if(change!==null&&changePercent!==null)parts.push((change>=0?'+':'')+change.toFixed(2)+'（'+(changePercent>=0?'+':'')+changePercent.toFixed(2)+'%）');
-    if(quote.meta.observedAt)parts.push('行情時間 '+new Date(quote.meta.observedAt).toLocaleString('zh-TW'));
-    if(quote.meta.verificationStatus==='PENDING')parts.push('此筆為行情中心目前較低驗證層級資料，請以狀態標示為準');
+    if(quote.meta.fetchedAt)parts.push('查詢時間 '+zhMarketDateTime(quote.meta.fetchedAt));
+    if(quote.meta.observedAt){
+      const label=quality==='trade'||quality==='backup_realtime'?'最近成交':'來源時間';
+      parts.push(label+' '+zhMarketDateTime(quote.meta.observedAt));
+    }
+    if(quote.meta.freshness==='STALE'){
+      const lag=lagLabel(quote.meta.sourceLagMs);
+      parts.push((lag?'來源時間距本次查詢約 '+lag+'，':'')+'此筆不標示為即時行情');
+    }else if(quote.meta.verificationStatus==='PENDING'){
+      parts.push('此筆為行情中心目前較低驗證層級資料，請以狀態標示為準');
+    }
     return parts.join('｜')+'。';
   }
   const dividends=plan.results.find(row=>row.tool==='get_dividends'&&row.ok) as AiToolResult<DividendsToolData>|undefined;
