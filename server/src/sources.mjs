@@ -62,7 +62,7 @@ export class OfficialSources {
         res=await this.fetch(url,{
           method,body,signal:AbortSignal.timeout(timeoutMs),
           headers:{Accept:'application/json','Cache-Control':'no-cache',
-            'User-Agent':'TF-Asset-MarketCenter/3.2.36',
+            'User-Agent':'TF-Asset-MarketCenter/3.2.38',
             Referer:source==='YAHOO'?'https://finance.yahoo.com/':'https://mis.twse.com.tw/stock/index.jsp',
             ...headers},
         });
