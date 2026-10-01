@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AiQuestionBox } from '../components/AiQuestionBox';
+import { CalendarDatePickerModal } from '../components/CalendarDatePickerModal';
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
@@ -25,6 +26,8 @@ const calendarEventColor=(type:DividendCalendarEventType)=>
 const shortDate=(date:string)=>date?date.slice(5).replace('-',' / '):'';
 const parseNumber=(value:string)=>{const n=Number(value.replace(/,/g,'').trim());return Number.isFinite(n)?n:0;};
 const isIsoDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T12:00:00').getTime());
+const noteDate=(note:string|undefined,labels:readonly string[])=>{for(const label of labels){const value=String(note??'').match(new RegExp(label+'\\\\s*(\\\\d{4}-\\\\d{2}-\\\\d{2})'))?.[1];if(value)return value;}return '';};
+type DividendDatePickerTarget='payment'|'lastBuy'|'ex'|'record';
 
 export function DividendScreen() {
   const finance=useFinance();
@@ -45,6 +48,7 @@ export function DividendScreen() {
   const [addExDate,setAddExDate]=useState('');
   const [addRecordDate,setAddRecordDate]=useState('');
   const [addNote,setAddNote]=useState('');
+  const [datePickerTarget,setDatePickerTarget]=useState<DividendDatePickerTarget|null>(null);
   const dividends=useMemo(()=>finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend').sort((a,b)=>a.date.localeCompare(b.date)),[finance.entries]);
   const monthRows=dividends.filter(x=>x.date.startsWith(month));
   const monthTotal=monthRows.reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
@@ -109,6 +113,7 @@ export function DividendScreen() {
     setAddExDate('');
     setAddRecordDate('');
     setAddNote('');
+    setDatePickerTarget(null);
     setAddOpen(true);
   };
   const updateAddSymbol=(value:string)=>{
@@ -132,7 +137,7 @@ export function DividendScreen() {
     const optionalDates=[
       ['最後購買日',addLastBuyDate],
       ['除息日',addExDate],
-      ['股權登記日',addRecordDate],
+      ['收益分配基準日',addRecordDate],
     ] as const;
     const invalid=optionalDates.find(([,value])=>value.trim()&&!isIsoDate(value.trim()));
     if(invalid){
@@ -153,7 +158,7 @@ export function DividendScreen() {
       '手動股息建檔',
       addLastBuyDate.trim()?('最後購買日 '+addLastBuyDate.trim()):'',
       addExDate.trim()?('除息日 '+addExDate.trim()):'',
-      addRecordDate.trim()?('股權登記日 '+addRecordDate.trim()):'',
+      addRecordDate.trim()?('收益分配基準日 '+addRecordDate.trim()):'',
       '配發日 '+addPaymentDate,
       addNote.trim(),
     ].filter(Boolean).join('；');
@@ -162,6 +167,14 @@ export function DividendScreen() {
     setSelectedDate(addPaymentDate);
     setAddOpen(false);
     Alert.alert('新增完成',addPreview.symbol+' 股息紀錄已寫入帳務核心、股息清單與月曆。');
+  };
+  const datePickerValue=datePickerTarget==='payment'?addPaymentDate:datePickerTarget==='lastBuy'?addLastBuyDate:datePickerTarget==='ex'?addExDate:datePickerTarget==='record'?addRecordDate:today;
+  const datePickerTitle=datePickerTarget==='payment'?'選擇股息配發／入帳日':datePickerTarget==='lastBuy'?'選擇最後購買日':datePickerTarget==='ex'?'選擇除息日':'選擇收益分配基準日';
+  const updatePickedDate=(value:string)=>{
+    if(datePickerTarget==='payment')setAddPaymentDate(value);
+    else if(datePickerTarget==='lastBuy')setAddLastBuyDate(value);
+    else if(datePickerTarget==='ex')setAddExDate(value);
+    else if(datePickerTarget==='record')setAddRecordDate(value);
   };
   const askDividend=async(question:string)=>{
     const q=question.toLowerCase();
@@ -242,7 +255,7 @@ export function DividendScreen() {
             <View style={styles.legend}>
               <Legend color="#8B5CF6" label="最後購買日"/>
               <Legend color={colors.primary} label="除息日"/>
-              <Legend color={colors.warning} label="股權登記日"/>
+              <Legend color={colors.warning} label="收益分配基準日"/>
               <Legend color={colors.gain} label="股息配發日"/>
             </View>
           </FrameCard>
@@ -262,10 +275,10 @@ export function DividendScreen() {
                     <Text style={styles.eventText}>配息股數：{row.sharesHeld.toLocaleString('zh-TW')} 股</Text>
                     <Text style={styles.eventText}>每股配息：NT$ {row.perShareAmount}</Text>
                     <Text style={styles.eventText}>帳務日期：{row.date}</Text>
-                    {(['最後購買日','最後買進日','除息日','股權登記日','配發日'] as const).map(label=>{
-                      const value=String(row.note??'').match(new RegExp(label+'\\s*(\\d{4}-\\d{2}-\\d{2})'))?.[1];
-                      return <Text key={label} style={styles.eventText}>{label}：{value??'尚未取得可靠公告'}</Text>;
-                    })}
+                    <Text style={styles.eventText}>最後購買日：{noteDate(row.note,['最後購買日','最後買進日'])||'尚未取得可靠公告'}</Text>
+                    <Text style={styles.eventText}>除息日：{noteDate(row.note,['除息日'])||'尚未取得可靠公告'}</Text>
+                    <Text style={styles.eventText}>收益分配基準日：{noteDate(row.note,['收益分配基準日','股權登記日'])||'尚未取得可靠公告'}</Text>
+                    <Text style={styles.eventText}>股息配發日：{noteDate(row.note,['配發日'])||'尚未取得可靠公告'}</Text>
                     <Text style={styles.eventText}>資料來源／備註：{row.note??'尚未記錄'}</Text>
                   </View>:null}
                 </View>
@@ -325,7 +338,9 @@ export function DividendScreen() {
             <View style={styles.formTwo}>
               <View style={{flex:1}}>
                 <Text style={styles.fieldLabel}>股息配發／入帳日</Text>
-                <TextInput value={addPaymentDate} onChangeText={setAddPaymentDate} placeholder="YYYY-MM-DD" style={styles.formInput}/>
+                <Pressable accessibilityRole="button" accessibilityLabel="選擇股息配發／入帳日" onPress={()=>setDatePickerTarget('payment')} style={styles.dateInput}>
+                  <Text style={styles.dateInputText}>{addPaymentDate}</Text><Text style={styles.dateInputIcon}>▣</Text>
+                </Pressable>
               </View>
               <View style={{flex:1}}>
                 <Text style={styles.fieldLabel}>每股股息</Text>
@@ -347,9 +362,9 @@ export function DividendScreen() {
             </View>
 
             <Text style={styles.formSectionTitle}>股息事件日期（選填）</Text>
-            <View style={styles.formGroup}><Text style={styles.fieldLabel}>最後購買日</Text><TextInput value={addLastBuyDate} onChangeText={setAddLastBuyDate} placeholder="YYYY-MM-DD" style={styles.formInput}/></View>
-            <View style={styles.formGroup}><Text style={styles.fieldLabel}>除息日</Text><TextInput value={addExDate} onChangeText={setAddExDate} placeholder="YYYY-MM-DD" style={styles.formInput}/></View>
-            <View style={styles.formGroup}><Text style={styles.fieldLabel}>股權登記日</Text><TextInput value={addRecordDate} onChangeText={setAddRecordDate} placeholder="YYYY-MM-DD" style={styles.formInput}/></View>
+            <DateField label="最後購買日" value={addLastBuyDate} onPress={()=>setDatePickerTarget('lastBuy')}/>
+            <DateField label="除息日" value={addExDate} onPress={()=>setDatePickerTarget('ex')}/>
+            <DateField label="收益分配基準日" value={addRecordDate} onPress={()=>setDatePickerTarget('record')}/>
 
             <View style={styles.formGroup}>
               <Text style={styles.fieldLabel}>備註</Text>
@@ -364,8 +379,19 @@ export function DividendScreen() {
         </View>
       </View>
     </Modal>
+    <CalendarDatePickerModal
+      visible={datePickerTarget!==null}
+      value={datePickerValue}
+      title={datePickerTitle}
+      allowClear={datePickerTarget!==null&&datePickerTarget!=='payment'}
+      onChange={updatePickedDate}
+      onClose={()=>setDatePickerTarget(null)}
+    />
     <PageFrameSettingsModal visible={settingsOpen} pageKey="dividend" title="股息" frames={PAGE_FRAMES.dividend} onClose={()=>setSettingsOpen(false)}/>
   </>;
+}
+function DateField({label,value,onPress}:{label:string;value:string;onPress:()=>void}){
+  return <View style={styles.formGroup}><Text style={styles.fieldLabel}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={'選擇'+label} onPress={onPress} style={styles.dateInput}><Text style={[styles.dateInputText,!value&&styles.dateInputPlaceholder]}>{value||'選擇日期'}</Text><Text style={styles.dateInputIcon}>▣</Text></Pressable></View>;
 }
 function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text style={styles.legendText}>{label}</Text></View>}
 const styles=StyleSheet.create({
@@ -390,6 +416,10 @@ const styles=StyleSheet.create({
   formTwo:{flexDirection:'row',gap:10},
   fieldLabel:{fontSize:10,fontWeight:'900',color:colors.textSecondary},
   formInput:{minHeight:42,borderWidth:1,borderColor:colors.border,borderRadius:12,backgroundColor:colors.background,paddingHorizontal:11,paddingVertical:8,fontSize:12,color:colors.text},
+  dateInput:{minHeight:42,borderWidth:1,borderColor:colors.border,borderRadius:12,backgroundColor:colors.background,paddingHorizontal:11,paddingVertical:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},
+  dateInputText:{fontSize:12,color:colors.text,fontWeight:'700'},
+  dateInputPlaceholder:{color:colors.textSecondary,fontWeight:'600'},
+  dateInputIcon:{fontSize:16,color:colors.primary,fontWeight:'900'},
   formInputMultiline:{minHeight:78,textAlignVertical:'top'},
   autoFillHint:{fontSize:9,color:colors.primary,fontWeight:'700'},
   formHint:{fontSize:9,lineHeight:14,color:colors.textSecondary},
