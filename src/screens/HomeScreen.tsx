@@ -6,7 +6,7 @@ import { NewsReaderModal } from '../components/NewsReaderModal';
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import {DashboardAssetOverview} from '../components/dashboard/DashboardAssetOverview';
-import {DailyPnlHistoryModal} from '../components/dashboard/DailyPnlHistoryModal';
+import {PurchasePnlStatsModal} from '../components/dashboard/PurchasePnlStatsModal';
 import {DashboardProfitAnalysis} from '../components/dashboard/DashboardProfitAnalysis';
 import {DashboardProfitDetail} from '../components/dashboard/DashboardProfitDetail';
 import {DashboardQuickActions} from '../components/dashboard/DashboardQuickActions';
@@ -41,7 +41,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [selectedNews,setSelectedNews]=useState<AiNewsItem|null>(null);
-  const [pnlHistoryOpen,setPnlHistoryOpen]=useState(false);
+  const [pnlStatsOpen,setPnlStatsOpen]=useState(false);
   const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
   const maintenance=useMaintenance();
@@ -99,15 +99,15 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
   const dashboardKpis=[
     {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const,glyph:'↗'},
-    {key:'totalPnl',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'含息總損益',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const,glyph:'%'},
-    {key:'totalUnrealizedProfit',label:'未實現損益',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const,glyph:'▥'},
+    {key:'totalPnl',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'未實現＋已實現＋股息',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const,glyph:'%'},
+    {key:'totalUnrealizedProfit',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'估計清算後',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const,glyph:'▥'},
     {key:'totalMarketValue',label:'持股市值',value:valuationComplete?money(portfolio.totalMarketValue):'待核對',caption:'持股行情＋股數',glyph:'◔'},
   ];
   const dashboardProfitRows=[
     {key:'price',label:'純價差未實現',value:valuationComplete?money(portfolio.totalPriceUnrealizedProfit):'待核對',tone:portfolio.totalPriceUnrealizedProfit>=0?'gain' as const:'loss' as const},
     {key:'net',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const},
     {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const},
-    {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
+    {key:'total',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
   ];
   const transactionCountBySymbol=useMemo(()=>{
     const counts=new Map<string,number>();
@@ -160,9 +160,9 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
                 layout={dashboardLayout.overview}
                 yesterdayPnl={pnlHistory.previousTradingDay?.todayPnl??null}
                 todayPnl={currentPnl?.todayPnl??null}
-                totalPnl={portfolio.totalUnrealizedProfit}
+                totalPnl={portfolio.totalPriceUnrealizedProfit}
                 pnlComplete={valuationComplete}
-                onPressTotalPnl={()=>setPnlHistoryOpen(true)}
+                onPressTotalPnl={()=>setPnlStatsOpen(true)}
               />
             </View>
           </FrameCard>
@@ -241,10 +241,8 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
       </View>
     </PageShell>
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
-    <DailyPnlHistoryModal visible={pnlHistoryOpen} onClose={()=>setPnlHistoryOpen(false)}
-      records={pnlHistory.records} stats={pnlHistory.stats}
-      historyLoading={pnlHistory.historyLoading} historyError={pnlHistory.historyError}
-      historyStartDate={pnlHistory.historyStartDate}/>
+    <PurchasePnlStatsModal visible={pnlStatsOpen} onClose={()=>setPnlStatsOpen(false)}
+      entries={finance.entries} holdings={finance.snapshot.holdings} dailyRecords={pnlHistory.records}/>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }

@@ -214,7 +214,7 @@ export function PageLayoutToolWorkbench({
       <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
         caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
         yesterdayPnl={null} todayPnl={previewPnl?.todayPnl??null}
-        totalPnl={portfolio.totalUnrealizedProfit} pnlComplete={valuationComplete}/>
+        totalPnl={portfolio.totalPriceUnrealizedProfit} pnlComplete={valuationComplete}/>
     </View>;
     if(pageKey==='home'&&item.key==='profit-analysis')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
       <DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/>

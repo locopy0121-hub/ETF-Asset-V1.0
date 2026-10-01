@@ -39,7 +39,7 @@ export function DashboardAssetOverview({
   const cardShadow=linkedColor(card.shadowColor,card.shadowProfitColor,totalTone,colorPrefs);
   const cardGlow=linkedColor(card.glowColor,card.glowProfitColor,totalTone,colorPrefs);
 
-  const pnlSummary=pnlComplete?<View style={styles.pnlRow} accessibilityLabel={`昨日損益 ${displayPnl(yesterdayPnl)}，今日損益 ${displayPnl(todayPnl)}，累計總損益 ${signedMoney(totalPnl)}`}>
+  const pnlSummary=pnlComplete?<View style={styles.pnlRow} accessibilityLabel={`昨日損益 ${displayPnl(yesterdayPnl)}，今日損益 ${displayPnl(todayPnl)}，持股總損益 ${signedMoney(totalPnl)}`}>
     <View style={styles.pnlCell}>
       <DashboardEditableText id="overview-previous-pnl-label" label="昨日損益標題" frame={maintenance}
         style={styles.pnlLabel}>昨日損益</DashboardEditableText>
@@ -55,12 +55,12 @@ export function DashboardAssetOverview({
     </View>
     <Text style={styles.operator}>│</Text>
     <Pressable disabled={runtime.active||!onPressTotalPnl}
-      accessibilityRole="button" accessibilityLabel={`查看每日損益紀錄，累計總損益 ${signedMoney(totalPnl)}`}
+      accessibilityRole="button" accessibilityLabel={`查看持股損益統計，持股總損益 ${signedMoney(totalPnl)}`}
       onPress={onPressTotalPnl?(event=>{event.stopPropagation();onPressTotalPnl();}):undefined}
       style={({pressed})=>[styles.pnlCell,styles.totalPnlCell,!runtime.active&&onPressTotalPnl?styles.totalPnlInteractive:undefined,pressed?styles.totalPnlPressed:undefined]}>
-      <DashboardEditableText id="overview-total-pnl-label" label="累計總損益標題" frame={maintenance} tone={totalTone}
-        style={styles.pnlLabel}>累計總損益</DashboardEditableText>
-      <DashboardEditableText id="overview-total-pnl" label="累計總損益" frame={maintenance} kind="value" tone={totalTone}
+      <DashboardEditableText id="overview-total-pnl-label" label="持股總損益標題" frame={maintenance} tone={totalTone}
+        style={styles.pnlLabel}>持股總損益</DashboardEditableText>
+      <DashboardEditableText id="overview-total-pnl" label="持股總損益" frame={maintenance} kind="value" tone={totalTone}
         numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.totalPnlValue}>{signedMoney(totalPnl)}</DashboardEditableText>
     </Pressable>
   </View>:<DashboardEditableText id="overview-pnl-pending" label="損益狀態" frame={maintenance}

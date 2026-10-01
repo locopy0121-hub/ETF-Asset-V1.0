@@ -4,9 +4,11 @@ import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.45');
-assert.equal(app.expo.version,'3.2.45');
-assert.equal(app.expo.android.versionCode,30245);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.equal(major,3);assert.equal(minor,2);assert.ok(patch>=45);
+const expectedCode=major*10000+minor*100+patch;
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,expectedCode);
 
 const screen=read('src/screens/DividendScreen.tsx');
 for(const token of [
@@ -61,8 +63,8 @@ assert.ok(!assistant.includes('fetchLastTradingDay('),'future last-buy date must
 assert.ok(assistant.includes("if(/開始交易|最後交易/.test(name+' '+description))continue;"),'official holiday schedule must preserve explicit trading days');
 
 const settings=read('src/screens/SettingsScreen.tsx');
-assert.ok(settings.includes("VERSION='3.2.45'"));
-assert.ok(settings.includes("BUILD='30245'"));
+assert.ok(settings.includes("VERSION='"+pkg.version+"'"));
+assert.ok(settings.includes("BUILD='"+expectedCode+"'"));
 assert.ok(settings.includes('顯示收益分配基準日'));
 
 console.log('V3.2.45 dividend calendar picker / TWSE official-date pipeline PASS');
