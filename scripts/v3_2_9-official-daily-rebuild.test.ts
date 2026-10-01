@@ -97,7 +97,7 @@ assert.ok(historySource.includes('MAX_HISTORY_MONTHS=360'),'first-trade history 
 const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
 assert.ok(overview.includes('昨日單日損益'));
 assert.ok(overview.includes('今日單日損益'));
-assert.ok(overview.includes('累計總損益'));
+assert.ok(overview.includes('持股總損益'));
 assert.ok(!overview.includes('>＋</Text>'));
 assert.ok(!overview.includes('>＝</Text>'));
 
