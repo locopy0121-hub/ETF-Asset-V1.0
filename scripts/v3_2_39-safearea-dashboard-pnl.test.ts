@@ -27,7 +27,7 @@ function main(){
     'cumulative previousTotalPnl must never be shown as yesterday single-day PnL');
 
   const overview=read('src/components/dashboard/DashboardAssetOverview.tsx');
-  for(const label of ['昨日損益','今日損益','累計總損益'])assert.ok(overview.includes(label),'missing dashboard label '+label);
+  for(const label of ['昨日損益','今日損益','持股總損益'])assert.ok(overview.includes(label),'missing dashboard label '+label);
   assert.match(overview,/displayPnl\(yesterdayPnl\)/);
   assert.match(overview,/displayPnl\(todayPnl\)/);
 
