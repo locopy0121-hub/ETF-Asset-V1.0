@@ -214,18 +214,19 @@ async function withTimeout<T>(task:(signal:AbortSignal)=>Promise<T>,timeoutMs:nu
   finally{clearTimeout(timer);}
 }
 
-const defaultFetchQuote=(symbol:string)=>
+const defaultFetchQuote=(symbol:string):Promise<ExternalMarketQuote|null>=>
   withTimeout(async()=>{
     const probe=await fetchOfficialMarketProbe(symbol);
     const previousClose=Number(String(probe.raw.y??'').replace(/,/g,''));
+    const rawMarket=String(probe.raw.ex??'').toLowerCase();
+    const market:ExternalMarketQuote['market']=rawMarket==='tse'?'TWSE':rawMarket==='otc'?'TPEX':'UNKNOWN';
     return {
       symbol:probe.symbol,
       name:probe.name,
       price:probe.price,
       previousClose:Number.isFinite(previousClose)&&previousClose>0?previousClose:null,
-      source:'TWSE_MIS' as const,
-      market:String(probe.raw.ex??'').toLowerCase()==='tse'?'TWSE'
-        :String(probe.raw.ex??'').toLowerCase()==='otc'?'TPEX':'UNKNOWN',
+      source:'TWSE_MIS',
+      market,
       sourceQuoteAt:probe.sourceQuoteAt,
       checkedAt:probe.checkedAt,
       quality:probe.quality,
