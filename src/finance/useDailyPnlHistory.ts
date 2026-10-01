@@ -229,15 +229,27 @@ export function useDailyPnlHistory(input:{
     return upsertDailyPnlRecord(base,candidate);
   },[records,candidate,storedFingerprint,ledgerFingerprint]);
   const stats=useMemo(()=>summarizeDailyPnl(visibleRecords),[visibleRecords]);
-  const current=useMemo(()=>{
-    const currentDate=candidate?.date??taipeiClock(Date.now()).date;
-    return visibleRecords.find(row=>row.date===currentDate)??stats.latest;
-  },[candidate,visibleRecords,stats.latest]);
+  // Dashboard day fields are independent metrics. "Today" must mean the
+  // device's current Taipei calendar day; never fall back to the latest older
+  // record, otherwise a Friday close would be presented as today's PnL on a
+  // weekend or before the next session has produced a quote.
+  const currentDate=taipeiClock(Date.now()).date;
+  const current=useMemo(
+    ()=>visibleRecords.find(row=>row.date===currentDate)??null,
+    [visibleRecords,currentDate],
+  );
+  // "Yesterday" on the dashboard means the immediately preceding trading day,
+  // not previousTotalPnl (which is a cumulative accounting value).
+  const previousTradingDay=useMemo(()=>{
+    const prior=visibleRecords.filter(row=>row.date<currentDate);
+    return prior.length?prior[prior.length-1]!:null;
+  },[visibleRecords,currentDate]);
 
   return {
     hydrated:storageHydrated,
     records:visibleRecords,
     current,
+    previousTradingDay,
     latest:stats.latest,
     stats,
     historyLoading,
