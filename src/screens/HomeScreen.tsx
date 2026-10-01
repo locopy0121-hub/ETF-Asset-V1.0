@@ -158,10 +158,10 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
                 complete={valuationComplete}
                 caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'}
                 layout={dashboardLayout.overview}
-                previousPnl={currentPnl?.previousTotalPnl??0}
-                todayPnl={currentPnl?.todayPnl??0}
+                yesterdayPnl={pnlHistory.previousTradingDay?.todayPnl??null}
+                todayPnl={currentPnl?.todayPnl??null}
                 totalPnl={portfolio.totalPnl}
-                pnlComplete={valuationComplete&&currentPnl!==null}
+                pnlComplete={valuationComplete}
                 onPressTotalPnl={()=>setPnlHistoryOpen(true)}
               />
             </View>
