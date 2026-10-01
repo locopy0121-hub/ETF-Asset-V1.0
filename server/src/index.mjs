@@ -4,6 +4,7 @@ import {MarketStore} from './store.mjs';
 import {OfficialSources} from './sources.mjs';
 import {MarketJobs} from './jobs.mjs';
 import {makeApp} from './http.mjs';
+import {EtfNavService} from './nav.mjs';
 import {VALID_SYMBOL} from './parser.mjs';
 
 const port=Number(process.env.PORT||8080);
@@ -11,10 +12,11 @@ const store=new MarketStore();
 store.on('warning',message=>console.warn('[market-center]',message));
 await store.start();
 const sources=new OfficialSources();
-const jobs=new MarketJobs({store,sources,
+const navService=new EtfNavService();
+const jobs=new MarketJobs({store,sources,navService,
   staticSymbols:(process.env.MARKET_TRACKED_SYMBOLS??'').split(','),
   pollSeconds:process.env.MARKET_POLL_SECONDS});
-const server=http.createServer(makeApp({store,jobs,sources}));
+const server=http.createServer(makeApp({store,jobs,sources,navService}));
 const wss=new WebSocketServer({noServer:true,maxPayload:1024});
 const allSockets=new Set();
 server.on('upgrade',(request,socket,head)=>{
@@ -58,7 +60,7 @@ const heartbeat=setInterval(()=>{
   for(const ws of allSockets)if(ws.readyState===WebSocket.OPEN)ws.ping();
 },30_000);
 server.listen(port,'0.0.0.0',()=>console.log(
-  '[market-center] v2.3.1 listening on',port,
+  '[market-center] v3.2.36 listening on',port,
   '; public endpoints never receive the private Ledger',
 ));
 jobs.start();
