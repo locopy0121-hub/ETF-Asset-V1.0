@@ -31,6 +31,7 @@ export type ExternalMarketQuote=Readonly<{
   price:number|null;
   previousClose:number|null;
   source:'TWSE_MIS';
+  market:'TWSE'|'TPEX'|'UNKNOWN';
   sourceQuoteAt:number|null;
   checkedAt:number;
   quality:'trade'|'diagnostic';
@@ -223,6 +224,8 @@ const defaultFetchQuote=(symbol:string)=>
       price:probe.price,
       previousClose:Number.isFinite(previousClose)&&previousClose>0?previousClose:null,
       source:'TWSE_MIS' as const,
+      market:String(probe.raw.ex??'').toLowerCase()==='tse'?'TWSE'
+        :String(probe.raw.ex??'').toLowerCase()==='otc'?'TPEX':'UNKNOWN',
       sourceQuoteAt:probe.sourceQuoteAt,
       checkedAt:probe.checkedAt,
       quality:probe.quality,
