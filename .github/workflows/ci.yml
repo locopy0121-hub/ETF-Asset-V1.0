@@ -208,7 +208,48 @@ jobs:
           grep 'android:name=".Icon01"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
           grep 'android:name=".Icon10"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
           test "$(grep -c 'android.app.shortcuts' ../TFAssetNative/android/app/src/main/AndroidManifest.xml)" = "10"
-          test "$(grep -c '<shortcut' ../TFAssetNative/android/app/src/main/res/xml/tf_asset_shortcuts.xml)" = "5"
+          test "$(grep -c '^  <shortcut
+
+      - name: Install native workspace dependencies
+        working-directory: ../TFAssetNative
+        run: npm install --no-audit --no-fund
+
+      - name: Build release APK on GitHub runner
+        working-directory: ../TFAssetNative/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Collect and validate APK
+        run: |
+          APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" TF-Asset-V3.2.41-QA.apk
+          test "$(stat -c%s TF-Asset-V3.2.41-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V3.2.41-QA.apk
+          sha256sum TF-Asset-V3.2.41-QA.apk | tee TF-Asset-V3.2.41-QA.sha256
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          "$AAPT" dump badging TF-Asset-V3.2.41-QA.apk | tee TF-Asset-V3.2.41-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V3.2.41-badging.txt
+          grep "versionCode='30241'" TF-Asset-V3.2.41-badging.txt
+          grep "versionName='3.2.41'" TF-Asset-V3.2.41-badging.txt
+          file TF-Asset-V3.2.41-QA.apk
+
+      - name: Upload validated APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TF-Asset-V3.2.41-QA-APK
+          path: |
+            TF-Asset-V3.2.41-QA.apk
+            TF-Asset-V3.2.41-QA.sha256
+            TF-Asset-V3.2.41-badging.txt
+            reports/V3.2.41-full-skill-matrix.json
+          if-no-files-found: error
+          retention-days: 30
+
+
+ ../TFAssetNative/android/app/src/main/res/xml/tf_asset_shortcuts.xml)" = "5"
 
       - name: Install native workspace dependencies
         working-directory: ../TFAssetNative
