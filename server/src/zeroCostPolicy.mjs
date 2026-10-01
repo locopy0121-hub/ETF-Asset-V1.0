@@ -15,11 +15,13 @@ export const ZERO_COST_SOURCE_POLICY=Object.freeze({
   TWSE_DAILY:free('TWSE_DAILY',{official:true}),
   TPEX_DAILY:free('TPEX_DAILY',{official:true}),
   YAHOO:free('YAHOO'),
+  TWSE_MIS_ETF_NAV:free('TWSE_MIS_ETF_NAV',{official:true}),
 });
 
 export const BLOCKED_CONDITIONAL_SOURCES=Object.freeze({
   FUGLE:Object.freeze({id:'FUGLE',reason:'credentialed or plan-dependent source is excluded from zero-cost production mode'}),
   SHIOAJI:Object.freeze({id:'SHIOAJI',reason:'broker-account bridge is excluded from zero-cost production mode'}),
+  ETF_NAV_APPROVED:Object.freeze({id:'ETF_NAV_APPROVED',reason:'plan-dependent NAV feed is excluded from zero-cost production mode'}),
 });
 
 export function zeroCostPolicy(source){
