@@ -3,6 +3,7 @@ import type {AnalysisContext} from './analysisTypes';
 import type {AiToolResult,CoreAiToolPlan,QuoteToolData} from './coreAiToolRegistry';
 import {AI_METRIC_REGISTRY,extractAiQuestionSymbols,resolveAiRecipe} from './aiRecipeRegistry';
 import {DEFAULT_AI_INGREDIENT_ACQUIRER,type AiIngredientAcquirer,type ExternalNewsRow} from './aiIngredientGateway';
+import {AI_INGREDIENT_CATALOG,evidenceSatisfiesIngredient,validateIngredientEvidence,type AiIngredientValidationIssue} from './aiIngredientCatalog';
 import type {
   AiAcquisitionAttempt,
   AiEvidencePackage,
@@ -257,12 +258,77 @@ async function acquireMissing(
   acquirer:AiIngredientAcquirer,
 ):Promise<Map<string,readonly DailyCandle[]>>{
   const history=new Map<string,readonly DailyCandle[]>();
+  const quoteRequirement=plan.requirements.find(row=>row.ingredient==='MARKET_QUOTE');
+  if(quoteRequirement){
+    for(const symbol of plan.symbols){
+      const existing=findEvidence(evidence,'MARKET_QUOTE',symbol);
+      if(evidenceSatisfiesIngredient('MARKET_QUOTE',existing))continue;
+      if(!acquirer.fetchQuote){
+        attempts.push({
+          ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',
+          status:'NO_PROVIDER',message:'目前沒有外部即時行情 Provider。',
+        });
+        continue;
+      }
+      try{
+        const quote=await acquirer.fetchQuote(symbol);
+        if(quote){
+          const verified=quote.price!==null&&quote.quality==='trade';
+          upsertEvidence(evidence,{
+            ingredient:'MARKET_QUOTE',
+            symbol,
+            status:verified?'VERIFIED':'PARTIAL',
+            source:quote.source,
+            fetchedAt:new Date(quote.checkedAt).toISOString(),
+            ...(quote.sourceQuoteAt?{observedAt:new Date(quote.sourceQuoteAt).toISOString()}:{}),
+            summary:verified?'TWSE MIS 實際成交價 '+quote.price:quote.statusMessage,
+            details:{
+              price:quote.price,
+              previousClose:quote.previousClose,
+              quality:quote.quality,
+              market:quote.market,
+              statusMessage:quote.statusMessage,
+            },
+          });
+          if(quote.market!=='UNKNOWN'&&quote.name&&quote.name!==symbol){
+            upsertEvidence(evidence,{
+              ingredient:'SECURITY_IDENTITY',
+              symbol,
+              status:'VERIFIED',
+              source:'TWSE_MIS',
+              fetchedAt:new Date(quote.checkedAt).toISOString(),
+              summary:symbol+' '+quote.name+'（由 TWSE MIS 身分欄位確認）',
+              details:{
+                securityId:quote.market+':'+symbol,
+                name:quote.name,
+                market:quote.market,
+                assetType:symbol.startsWith('00')?'ETF':'STOCK',
+              },
+            });
+          }
+          attempts.push({
+            ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',
+            status:'FETCHED',
+            message:quote.statusMessage,
+          });
+        }else{
+          attempts.push({ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',status:'UNAVAILABLE',message:'官方行情沒有回傳此代號。'});
+        }
+      }catch(error){
+        attempts.push({
+          ingredient:'MARKET_QUOTE',symbol,source:'TWSE_MIS',status:'FAILED',
+          message:error instanceof Error?error.message:String(error),
+        });
+      }
+    }
+  }
+
   const mentions=plan.question.toUpperCase().match(/[0-9]{4,6}[A-Z]{0,2}/g)??[];
   const selfComparison=plan.recipe.id==='ETF_COMPARE'&&mentions.length>=2&&new Set(mentions).size===1;
   const needsHistory=!selfComparison&&plan.requirements.some(row=>row.ingredient==='HISTORICAL_PRICES');
   if(needsHistory){
     for(const symbol of plan.symbols){
-      if(evidenceUsable(findEvidence(evidence,'HISTORICAL_PRICES',symbol)))continue;
+      if(evidenceSatisfiesIngredient('HISTORICAL_PRICES',findEvidence(evidence,'HISTORICAL_PRICES',symbol)))continue;
       try{
         const rows=await acquirer.fetchHistory(symbol,12);
         if(rows.length){
@@ -299,7 +365,7 @@ async function acquireMissing(
   const needsNews=plan.requirements.some(row=>row.ingredient==='MARKET_NEWS');
   if(needsNews){
     for(const symbol of plan.symbols){
-      if(evidenceUsable(findEvidence(evidence,'MARKET_NEWS',symbol)))continue;
+      if(evidenceSatisfiesIngredient('MARKET_NEWS',findEvidence(evidence,'MARKET_NEWS',symbol)))continue;
       const name=securityNameFor(symbol,evidence);
       try{
         const rows=await acquirer.fetchNews(symbol,name);
@@ -339,7 +405,7 @@ async function acquireMissing(
   const needsProfile=plan.requirements.some(row=>row.ingredient==='SECURITY_PROFILE');
   if(needsProfile){
     for(const symbol of plan.symbols){
-      if(evidenceUsable(findEvidence(evidence,'SECURITY_PROFILE',symbol)))continue;
+      if(evidenceSatisfiesIngredient('SECURITY_PROFILE',findEvidence(evidence,'SECURITY_PROFILE',symbol)))continue;
       const name=securityNameFor(symbol,evidence);
       if(!acquirer.fetchSecurityProfile){
         attempts.push({ingredient:'SECURITY_PROFILE',symbol,source:'TF_ASSET_PROFILE_DISCOVERY',status:'NO_PROVIDER',message:'沒有可用的上市/掛牌資料 Provider'});
@@ -481,7 +547,7 @@ function missingForMetric(
 ):AiIngredientKey[]{
   return AI_METRIC_REGISTRY[metric].requiredIngredients.filter(ingredient=>{
     const row=findEvidence(evidence,ingredient,symbol);
-    return !evidenceUsable(row);
+    return !evidenceSatisfiesIngredient(ingredient,row);
   });
 }
 
@@ -533,17 +599,38 @@ function overallStatus(
   return 'VERIFIED';
 }
 
+function validationIssuesForPlan(
+  plan:AiIntelligencePlan,
+  evidence:readonly AiIngredientEvidence[],
+  now=Date.now(),
+):AiIngredientValidationIssue[]{
+  const issues:AiIngredientValidationIssue[]=[];
+  for(const requirement of plan.requirements){
+    const scope=AI_INGREDIENT_CATALOG[requirement.ingredient].scope;
+    const symbols=scope==='SYMBOL'&&plan.symbols.length?plan.symbols:[undefined];
+    for(const symbol of symbols){
+      const row=findEvidence(evidence,requirement.ingredient,symbol);
+      const found=validateIngredientEvidence(requirement,row,now);
+      for(const issue of found){
+        issues.push(symbol&&!issue.symbol?{...issue,symbol}:issue);
+      }
+    }
+  }
+  return issues;
+}
+
 function requiredMissing(
   plan:AiIntelligencePlan,
   evidence:readonly AiIngredientEvidence[],
+  now=Date.now(),
 ):AiIngredientKey[]{
   const missing:AiIngredientKey[]=[];
   for(const requirement of plan.requirements.filter(row=>row.required)){
-    const symbols=plan.symbols.length&&['SECURITY_IDENTITY','MARKET_QUOTE','HISTORICAL_PRICES','MARKET_NEWS','SECURITY_PROFILE'].includes(requirement.ingredient)
-      ?plan.symbols:[undefined];
+    const scope=AI_INGREDIENT_CATALOG[requirement.ingredient].scope;
+    const symbols=scope==='SYMBOL'&&plan.symbols.length?plan.symbols:[undefined];
     const ok=symbols.every(symbol=>{
       const row=findEvidence(evidence,requirement.ingredient,symbol);
-      return Boolean(row&&['VERIFIED','PARTIAL'].includes(row.status));
+      return validateIngredientEvidence(requirement,row,now).length===0;
     });
     if(!ok&&!missing.includes(requirement.ingredient))missing.push(requirement.ingredient);
   }
@@ -567,8 +654,13 @@ export async function buildAiEvidencePackage(input:{
   const attempts:AiAcquisitionAttempt[]=[];
   const history=await acquireMissing(plan,evidence,attempts,input.acquirer??DEFAULT_AI_INGREDIENT_ACQUIRER);
   const computed:AiMetricEvidence[]=[];
-  for(const [symbol,rows] of history)computed.push(...historyMetrics(symbol,rows,plan.metrics));
+  for(const [symbol,rows] of history){
+    const historyEvidence=findEvidence(evidence,'HISTORICAL_PRICES',symbol);
+    if(!evidenceSatisfiesIngredient('HISTORICAL_PRICES',historyEvidence))continue;
+    computed.push(...historyMetrics(symbol,rows,plan.metrics));
+  }
   const metrics=fillUnavailableMetrics(plan,evidence,computed);
+  const validationIssues=validationIssuesForPlan(plan,evidence);
   const missingRequired=requiredMissing(plan,evidence);
   return {
     generatedAt:nowIso(),
@@ -581,6 +673,7 @@ export async function buildAiEvidencePackage(input:{
     metrics,
     missingRequired,
     acquisitionAttempts:attempts,
+    validationIssues,
     rules:{
       marketFactsFromMarketSources:true,
       portfolioDataIsContextOnly:true,
@@ -642,6 +735,29 @@ function unavailableReason(evidence:AiEvidencePackage){
 }
 
 export function localAnswerFromEvidence(evidence:AiEvidencePackage):string|null{
+  if(evidence.recipeId==='MARKET_QUOTE'){
+    const symbol=evidence.symbols[0];
+    if(!symbol)return '目前沒有辨識到要查詢的證券代號。';
+    const row=evidence.ingredients.find(item=>item.ingredient==='MARKET_QUOTE'&&item.symbol===symbol);
+    const price=Number(row?.details?.price);
+    const previousClose=Number(row?.details?.previousClose);
+    if(row&&evidenceSatisfiesIngredient('MARKET_QUOTE',row)&&Number.isFinite(price)&&price>0){
+      const parts=[targetLabel(evidence,symbol)+' 目前可核實行情 NT$ '+price.toLocaleString('zh-TW')];
+      if(Number.isFinite(previousClose)&&previousClose>0){
+        const change=price-previousClose;
+        const pct=change/previousClose*100;
+        parts.push((change>=0?'+':'')+change.toFixed(2)+'（'+(pct>=0?'+':'')+pct.toFixed(2)+'%）');
+      }
+      if(row.observedAt)parts.push('成交時間 '+zhDateTime(row.observedAt));
+      parts.push('來源 '+row.source);
+      return parts.join('｜')+'。';
+    }
+    if(row?.status==='PARTIAL'){
+      return targetLabel(evidence,symbol)+' 已向官方行情來源補查，但目前沒有可核實的實際成交價；TF Asset 不會把昨收、委買或委賣價格冒充現價。';
+    }
+    return targetLabel(evidence,symbol)+' 目前沒有取得可核實的官方行情。';
+  }
+
   if(evidence.recipeId==='SECURITY_PROFILE'){
     const symbol=evidence.symbols[0];
     if(!symbol)return '目前沒有辨識到要查詢的證券代號。';

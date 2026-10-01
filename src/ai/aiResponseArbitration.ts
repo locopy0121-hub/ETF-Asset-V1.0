@@ -31,7 +31,12 @@ export function decideAiResponse(
   evidence:AiEvidencePackage,
 ):AiResponseDecision{
   const core=localAnswerFromCoreTools(toolPlan);
-  if(core){
+  const quoteResult=toolPlan.results.find(row=>row.tool==='get_quote');
+  const quoteNeedsUpgrade=Boolean(
+    quoteResult&&quoteResult.ok&&quoteResult.meta.verificationStatus!=='VERIFIED'
+    &&evidence.recipeId==='MARKET_QUOTE',
+  );
+  if(core&&!quoteNeedsUpgrade){
     return {
       route:'LOCAL_CORE',
       text:core,
@@ -45,9 +50,19 @@ export function decideAiResponse(
       return {
         route:'LOCAL_EVIDENCE',
         text:local,
-        reason:'Validated Evidence package can answer deterministically; Gemini is optional enrichment.',
+        reason:quoteNeedsUpgrade
+          ?'Core quote was lower-verification; replenished validated evidence takes precedence.'
+          :'Validated Evidence package can answer deterministically; Gemini is optional enrichment.',
       };
     }
+  }
+
+  if(core){
+    return {
+      route:'LOCAL_CORE',
+      text:core,
+      reason:'No higher-verification evidence was available; return the explicitly labelled App tool result.',
+    };
   }
 
   return {
