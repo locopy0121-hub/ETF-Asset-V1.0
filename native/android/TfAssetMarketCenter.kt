@@ -37,7 +37,7 @@ internal class TfAssetMarketCenter(private val context:Context){
       setRequestProperty("Accept","application/json")
       setRequestProperty("Cache-Control","no-cache, no-store")
       setRequestProperty("Referer","https://mis.twse.com.tw/stock/index.jsp")
-      setRequestProperty("User-Agent","TF-Asset-MarketCenter/3.2.6")
+      setRequestProperty("User-Agent","TF-Asset-MarketCenter/3.2.36")
     }
     return try{
       if(connection.responseCode!=200)throw IllegalStateException("HTTP "+connection.responseCode)
@@ -278,7 +278,7 @@ internal class TfAssetMarketCenter(private val context:Context){
       val source=row.optString("source","")
       val quality=row.optString("quality","")
       val code=row.optString("symbol","").trim().uppercase()
-      if(!symbols.contains(code)||source !in setOf("TWSE_MIS","YAHOO","TWSE_DAILY","TPEX_DAILY")||
+      if(!symbols.contains(code)||source !in setOf("TWSE_MIS","FUGLE","SHIOAJI","YAHOO","TWSE_DAILY","TPEX_DAILY")||
         quality !in setOf("trade","backup_realtime","bid_ask","previous_close","official_close"))continue
       if(!row.has("priceType"))row.put("priceType",if(quality=="trade")"REALTIME_TRADE" else "OFFICIAL_CLOSE")
       if(!row.has("isFallback"))row.put("isFallback",quality!="trade")
