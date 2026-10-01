@@ -3,6 +3,7 @@ import {
   shioajiQuoteFromPayload,VALID_SYMBOL,
 } from './parser.mjs';
 import {CircuitBreaker,SourceError,CircuitOpenError} from './circuitBreaker.mjs';
+import {isZeroCostSourceAllowed,zeroCostPolicy} from './zeroCostPolicy.mjs';
 
 const MIS='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=';
 const FUGLE='https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/';
@@ -48,6 +49,7 @@ export class OfficialSources {
   }
 
   configured(source){
+    if(!isZeroCostSourceAllowed(source))return false;
     if(source==='FUGLE')return Boolean(this.fugleApiKey);
     if(source==='SHIOAJI')return Boolean(this.shioajiBridgeUrl);
     return true;
@@ -269,7 +271,12 @@ export class OfficialSources {
 
   health(now=Date.now()){
     return Object.fromEntries(Object.entries(this.breakers).map(([source,breaker])=>[
-      source,{configured:this.configured(source),priority:SOURCE_PRIORITY[source],...breaker.health(now)},
+      source,{
+        configured:this.configured(source),
+        priority:SOURCE_PRIORITY[source],
+        policy:zeroCostPolicy(source),
+        ...breaker.health(now),
+      },
     ]));
   }
 }
