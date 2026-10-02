@@ -6,10 +6,7 @@ import {marketSourceField} from '../src/market/marketComparison';
 const read=(p:string)=>readFileSync(p,'utf8');
 
 const fallback=resolveTwsePriceDecision({z:'-',pz:'9.86',y:'9.80',b:'9.85_',a:'9.87_'});
-assert.equal(fallback?.price,9.85);
-assert.equal(fallback?.priceType,'BID_ASK');
-assert.equal(fallback?.isFallback,true);
-assert.equal(fallback?.officialTradePrice,null);
+assert.equal(fallback,null,'TWSE non-trade fields are diagnostics only; Yahoo handles trade-like fallback');
 assert.equal(resolveTwsePriceDecision({z:'-',pz:'9.86',y:'9.80'}),null,
   'pz/previous-close only must stay unresolved instead of becoming currentPrice');
 assert.equal(marketSourceField({source:'TWSE_MIS',quality:'trade'}),'z｜實際成交價');
@@ -21,7 +18,7 @@ assert.doesNotMatch(probe,/resolveTwsePriceDecision|YAHOO|BACKUP_REALTIME/,
   'official diagnostic probe must stay isolated from effective-price fallback');
 
 const serverParser=read('server/src/parser.mjs');
-for(const token of ['misNormalizedQuote','yahooQuoteFromChart','officialTradePrice','BACKUP_REALTIME','BID_ASK','PREV_CLOSE'])
+for(const token of ['misNormalizedQuote','yahooQuoteFromChart','officialTradePrice','BACKUP_REALTIME','PREV_CLOSE'])
   assert.ok(serverParser.includes(token),'server A-layer missing '+token);
 const serverSources=read('server/src/sources.mjs');
 assert.match(serverSources,/query1\.finance\.yahoo\.com\/v8\/finance\/chart/);
@@ -33,7 +30,6 @@ for(const token of ['misQuote','yahooQuote','officialTradePrice','priceType','is
   assert.ok(nativeCenter.includes(token),'native A-layer missing '+token);
 assert.match(nativeCenter,/YAHOO_URL/);
 assert.doesNotMatch(nativeCenter,/val pz=finitePositive\(row\.optString\("pz"/);
-assert.match(nativeCenter,/bid.*bid_ask/s);
 assert.match(nativeCenter,/previous_close/);
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
