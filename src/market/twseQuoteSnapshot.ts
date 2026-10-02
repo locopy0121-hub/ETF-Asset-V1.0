@@ -31,8 +31,8 @@ export function buildTwseRuntimeQuote(
     sparkline:sparkline.length?sparkline:[currentPrice],
     marketSource:'TWSE_MIS',
     quoteStatus:'LIVE',
-    quoteDate:resolveTwseQuoteDate(row)??undefined,
-    quoteTime:resolveTwseQuoteTime(row)??undefined,
+    ...(resolveTwseQuoteDate(row)==null?{}:{quoteDate:resolveTwseQuoteDate(row)!}),
+    ...(resolveTwseQuoteTime(row)==null?{}:{quoteTime:resolveTwseQuoteTime(row)!}),
     receivedAt,
     priceKind:resolved.kind,
   };
