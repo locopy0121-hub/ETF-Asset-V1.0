@@ -7,16 +7,11 @@ const now=Date.parse('2026-09-29T12:58:04+08:00');
 const base={c:'00406A',n:'主動中信台灣收益',ex:'tse',ch:'tse_00406A.tw',
   d:'20260929',t:'12:58:04',y:'9.80'};
 
-test('A layer keeps z truth separate while producing an explicit effective fallback',()=>{
-  const pz=misNormalizedQuote({...base,z:'-',pz:'9.86'},now);
-  assert.equal(pz.currentPrice,9.86);
-  assert.equal(pz.officialTradePrice,null);
-  assert.equal(pz.priceType,'BACKUP_REALTIME');
-  assert.equal(pz.quality,'backup_realtime');
-  assert.equal(pz.isFallback,true);
-  assert.equal(pz.market,'TSE');
+test('A layer keeps z truth separate and never promotes pz/previous-close to currentPrice',()=>{
+  const pzOnly=misNormalizedQuote({...base,z:'-',pz:'9.86'},now);
+  assert.equal(pzOnly,null);
 
-  const book=misNormalizedQuote({...base,z:'-',pz:'-',b:'9.85_9.84_',a:'9.87_9.88_'},now);
+  const book=misNormalizedQuote({...base,z:'-',pz:'9.86',b:'9.85_9.84_',a:'9.87_9.88_'},now);
   assert.equal(book.currentPrice,9.85);
   assert.equal(book.priceType,'BID_ASK');
   assert.equal(book.quality,'bid_ask');
