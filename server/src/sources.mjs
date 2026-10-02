@@ -16,9 +16,13 @@ const DAILY={
 const QUALITY_RANK={trade:50,backup_realtime:40,bid_ask:30,official_close:20,previous_close:10};
 const SOURCE_PRIORITY={TWSE_MIS:10,FUGLE:11,SHIOAJI:20,YAHOO:30,TWSE_DAILY:40,TPEX_DAILY:41};
 
-const choosePreferred=(current,candidate)=>{
+export const choosePreferred=(current,candidate)=>{
   if(!current)return candidate;
   const a=QUALITY_RANK[current.quality]??0,b=QUALITY_RANK[candidate.quality]??0;
+  const currentTradeLike=current.quality==='trade'||current.quality==='backup_realtime';
+  const candidateTradeLike=candidate.quality==='trade'||candidate.quality==='backup_realtime';
+  if(currentTradeLike&&candidateTradeLike&&candidate.sourceQuoteAt!==current.sourceQuoteAt)
+    return candidate.sourceQuoteAt>current.sourceQuoteAt?candidate:current;
   if(b!==a)return b>a?candidate:current;
   if(candidate.sourceQuoteAt!==current.sourceQuoteAt)
     return candidate.sourceQuoteAt>current.sourceQuoteAt?candidate:current;

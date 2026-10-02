@@ -12,9 +12,7 @@ test('A layer keeps z truth separate and never promotes pz/previous-close to cur
   assert.equal(pzOnly,null);
 
   const book=misNormalizedQuote({...base,z:'-',pz:'9.86',b:'9.85_9.84_',a:'9.87_9.88_'},now);
-  assert.equal(book.currentPrice,9.85);
-  assert.equal(book.priceType,'BID_ASK');
-  assert.equal(book.quality,'bid_ask');
+  assert.equal(book,null,'bid/ask remains diagnostic and must not become holdings currentPrice');
 
   const trade=misNormalizedQuote({...base,z:'9.86'},now);
   assert.equal(trade.currentPrice,9.86);

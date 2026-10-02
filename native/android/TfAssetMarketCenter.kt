@@ -95,8 +95,6 @@ internal class TfAssetMarketCenter(private val context:Context){
     val symbol=row.optString("c","").trim().uppercase()
     if(!CODE.matches(symbol))return null
     val z=finitePositive(row.optString("z",""))
-    val bid=firstBookPrice(row.optString("b",""))
-    val ask=firstBookPrice(row.optString("a",""))
     val prev=finitePositive(row.optString("y",""))
     val exchange=exchangeAt(row,now)
     var price:Double?=null
@@ -107,8 +105,6 @@ internal class TfAssetMarketCenter(private val context:Context){
     var message=""
     when{
       z!=null&&exchange!=null->{price=z;quality="trade";priceType="REALTIME_TRADE";fallback=false;message="TWSE MIS z 實際成交價"}
-      bid!=null&&exchange!=null->{price=bid;quality="bid_ask";priceType="BID_ASK";message="TWSE z 缺值；採用最佳買價（即時委託簿參考）"}
-      ask!=null&&exchange!=null->{price=ask;quality="bid_ask";priceType="BID_ASK";message="TWSE z 缺值；採用最佳賣價（即時委託簿參考）"}
     }
     val effective=price?:return null
     val at=sourceAt?:return null
@@ -384,10 +380,8 @@ internal class TfAssetMarketCenter(private val context:Context){
         candidates.addAll(best.values)
       }catch(error:Exception){errors.add("MIS: "+(error.message?:"unknown"))}
     }
-    // MIS may return only bid/ask. Those rows are useful references, but must
-    // not stop the realtime fallback chain. pz/y are not current-price candidates.
-    // Ask Yahoo for
-    // every symbol that still lacks trade/backup_realtime quality.
+    // MIS pz/bid/ask/y are diagnostics, not the holdings currentPrice.
+    // Ask Yahoo for every symbol that still lacks a trade-like price.
     val realtimeCovered=candidates.filter{
       qualityRank(it.optString("quality",""))>=qualityRank("backup_realtime")
     }.map{it.optString("symbol","")}.toSet()

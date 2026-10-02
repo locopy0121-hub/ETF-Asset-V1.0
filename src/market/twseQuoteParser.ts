@@ -29,15 +29,10 @@ export type TwsePriceDecision=Readonly<{
 /** Effective App price decision. Official z remains separately identifiable. */
 export function resolveTwsePriceDecision(row:TwseQuoteRow|undefined):TwsePriceDecision|null{
   if(!row)return null;
-  const z=numeric(row.z),bid=firstBookPrice(row.b),ask=firstBookPrice(row.a);
+  const z=numeric(row.z);
   if(z>0)return {price:z,quality:'trade',priceType:'REALTIME_TRADE',isFallback:false,
     officialTradePrice:z,statusMessage:'TWSE MIS z 實際成交價'};
-  if(bid>0)return {price:bid,quality:'bid_ask',priceType:'BID_ASK',isFallback:true,
-    officialTradePrice:null,statusMessage:'TWSE z 缺值；採用最佳買價（即時委託簿參考）'};
-  if(ask>0)return {price:ask,quality:'bid_ask',priceType:'BID_ASK',isFallback:true,
-    officialTradePrice:null,statusMessage:'TWSE z 缺值；採用最佳賣價（即時委託簿參考）'};
-  // pz is not promoted to a live price: it can repeat a stale/reference value.
-  // y is previousClose only and must never become currentPrice during live quote resolution.
+  // pz / bid / ask / y are diagnostics only. The main currentPrice contract is last-trade semantics.
   return null;
 }
 
@@ -62,7 +57,5 @@ export function pickBetterTwseRow(current:TwseQuoteRow|undefined,next:TwseQuoteR
 
 function quoteFreshnessScore(row:TwseQuoteRow):number{
   if(numeric(row.z)>0)return 100;
-  if(firstBookPrice(row.b)>0)return 40;
-  if(firstBookPrice(row.a)>0)return 30;
   return 0;
 }

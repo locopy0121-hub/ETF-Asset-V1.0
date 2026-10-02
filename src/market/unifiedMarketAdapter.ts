@@ -60,6 +60,7 @@ export function isTrustedMarketRow(value:unknown,now=Date.now()):value is Unifie
     &&typeof row.sourceQuoteAt==='number'&&Number.isFinite(row.sourceQuoteAt)
     &&row.sourceQuoteAt>0&&row.sourceQuoteAt<=now+120_000
     &&typeof row.quality==='string'&&QUALITIES.has(row.quality)
+    &&row.quality!=='bid_ask'
     &&typeof row.source==='string'&&SOURCES.has(row.source)
     &&!(row.source==='TWSE_MIS'&&row.quality==='backup_realtime')
     &&typeof row.priceType==='string'&&PRICE_TYPES.has(row.priceType)
