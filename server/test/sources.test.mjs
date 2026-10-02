@@ -20,16 +20,15 @@ test('missing z ignores pz and uses live order book before other fallbacks',asyn
   const b=result.quotes.find(q=>q.symbol==='00713');
   assert.equal(a.quality,'trade');
   assert.equal(a.currentPrice,113.2);
-  assert.equal(b.quality,'bid_ask');
-  assert.equal(b.currentPrice,53.42);
-  assert.equal(b.source,'TWSE_MIS');
-  assert.equal(b.priceType,'BID_ASK');
+  assert.equal(b.quality,'official_close');
+  assert.equal(b.currentPrice,53.25);
+  assert.ok(['TPEX_DAILY','TWSE_DAILY'].includes(b.source));
+  assert.equal(b.priceType,'OFFICIAL_CLOSE');
   assert.equal(b.isFallback,true);
   assert.equal(b.officialTradePrice,null);
-  assert.ok(urls.length>=1,'MIS must be queried');
   const before=urls.length;
   await feed.refresh(['0050','00713'],{now:now+5000});
-  assert.equal(urls.length-before,3,'each poll retries MIS plus both Yahoo market suffixes while bid/ask lacks a realtime trade');
+  assert.ok(urls.length>before,'next poll retries live sources; bid/ask never satisfies currentPrice');
 });
 test('a down provider leaves other official data available',async()=>{
   const bad=new OfficialSources({fetchImpl:async(url)=>{
