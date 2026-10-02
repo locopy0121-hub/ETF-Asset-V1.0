@@ -27,8 +27,9 @@ test('missing z ignores pz and uses live order book before other fallbacks',asyn
   assert.equal(b.isFallback,true);
   assert.equal(b.officialTradePrice,null);
   assert.ok(urls.length>=1,'MIS must be queried');
+  const before=urls.length;
   await feed.refresh(['0050','00713'],{now:now+5000});
-  assert.equal(urls.length,2,'next live poll only calls MIS again when all symbols are resolved');
+  assert.equal(urls.length-before,3,'each poll retries MIS plus both Yahoo market suffixes while bid/ask lacks a realtime trade');
 });
 test('a down provider leaves other official data available',async()=>{
   const bad=new OfficialSources({fetchImpl:async(url)=>{
