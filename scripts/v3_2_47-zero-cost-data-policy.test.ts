@@ -54,9 +54,10 @@ assert.ok(aiCatalog.includes('OpenFIGI zero-cost fallback'));
 
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.2.47');
-assert.equal(app.expo.version,'3.2.47');
-assert.equal(app.expo.android.versionCode,30247);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=47))));
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 
 console.log('V3.2.47 zero-cost data-source policy / OpenFIGI fallback PASS');
 }

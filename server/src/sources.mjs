@@ -4,6 +4,7 @@ import {
 } from './parser.mjs';
 import {CircuitBreaker,SourceError,CircuitOpenError} from './circuitBreaker.mjs';
 import {isZeroCostSourceAllowed,zeroCostPolicy} from './zeroCostPolicy.mjs';
+import {isSession} from './clock.mjs';
 
 const MIS='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=';
 const FUGLE='https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/';
@@ -261,7 +262,7 @@ export class OfficialSources {
     if(!list.length)return {quotes:[],errors:[],requested:[],sources:this.health(now)};
     const trades=dailyOnly?{quotes:[],errors:[]}:await this.trades(list,now);
     const live=new Map(trades.quotes.map(q=>[q.symbol,q]));
-    const needs=dailyOnly?list:list.filter(s=>!live.has(s)||live.get(s)?.quality==='previous_close');
+    const needs=dailyOnly?list:(isSession(now)?[]:list.filter(s=>!live.has(s)||live.get(s)?.quality==='previous_close'));
     const closes=needs.length?await this.closes(needs,now):{quotes:[],errors:[]};
     const combined=new Map([...live.entries()]);
     for(const q of closes.quotes)combined.set(q.symbol,choosePreferred(combined.get(q.symbol),q));

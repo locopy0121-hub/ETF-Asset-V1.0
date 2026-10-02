@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,6
+  context.applicationContext,"tf_asset_market_center_v1.db",null,7
 ){
   companion object{
     private val TAIPEI=ZoneId.of("Asia/Taipei")
@@ -158,6 +158,14 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       SELECT symbol,source_at,price,previous_close,quality,source,received_at
       FROM market_intraday_v5""")
       db.execSQL("DROP TABLE market_intraday_v5")
+    }
+    if(oldVersion<7){
+      // V7 retires MIS pz/previous-close rows that could masquerade as the live price.
+      // Keep verified trades, Yahoo backup realtime and official post-close rows.
+      db.delete("market_quotes","quality=? OR (source=? AND price_type=?)",
+        arrayOf("previous_close","TWSE_MIS","BACKUP_REALTIME"))
+      db.delete("market_intraday","source=? AND quality=?",
+        arrayOf("TWSE_MIS","backup_realtime"))
     }
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")

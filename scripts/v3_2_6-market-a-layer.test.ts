@@ -6,12 +6,12 @@ import {marketSourceField} from '../src/market/marketComparison';
 const read=(p:string)=>readFileSync(p,'utf8');
 
 const fallback=resolveTwsePriceDecision({z:'-',pz:'9.86',y:'9.80',b:'9.85_',a:'9.87_'});
-assert.equal(fallback?.price,9.86);
-assert.equal(fallback?.priceType,'BACKUP_REALTIME');
+assert.equal(fallback?.price,9.85);
+assert.equal(fallback?.priceType,'BID_ASK');
 assert.equal(fallback?.isFallback,true);
 assert.equal(fallback?.officialTradePrice,null);
-assert.equal(marketSourceField({source:'TWSE_MIS',quality:'backup_realtime',priceType:'BACKUP_REALTIME',isFallback:true}),
-  'pz｜最近成交參考（Fallback）');
+assert.equal(resolveTwsePriceDecision({z:'-',pz:'9.86',y:'9.80'}),null,
+  'pz/previous-close only must stay unresolved instead of becoming currentPrice');
 assert.equal(marketSourceField({source:'TWSE_MIS',quality:'trade'}),'z｜實際成交價');
 
 const probe=read('src/market/officialMarketProbe.ts');
@@ -32,7 +32,7 @@ const nativeCenter=read('native/android/TfAssetMarketCenter.kt');
 for(const token of ['misQuote','yahooQuote','officialTradePrice','priceType','isFallback','qualityRank'])
   assert.ok(nativeCenter.includes(token),'native A-layer missing '+token);
 assert.match(nativeCenter,/YAHOO_URL/);
-assert.match(nativeCenter,/pz.*backup_realtime/s);
+assert.doesNotMatch(nativeCenter,/val pz=finitePositive\(row\.optString\("pz"/);
 assert.match(nativeCenter,/bid.*bid_ask/s);
 assert.match(nativeCenter,/previous_close/);
 

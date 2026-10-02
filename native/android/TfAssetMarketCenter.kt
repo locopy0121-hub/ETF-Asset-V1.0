@@ -95,7 +95,6 @@ internal class TfAssetMarketCenter(private val context:Context){
     val symbol=row.optString("c","").trim().uppercase()
     if(!CODE.matches(symbol))return null
     val z=finitePositive(row.optString("z",""))
-    val pz=finitePositive(row.optString("pz",""))
     val bid=firstBookPrice(row.optString("b",""))
     val ask=firstBookPrice(row.optString("a",""))
     val prev=finitePositive(row.optString("y",""))
@@ -108,10 +107,8 @@ internal class TfAssetMarketCenter(private val context:Context){
     var message=""
     when{
       z!=null&&exchange!=null->{price=z;quality="trade";priceType="REALTIME_TRADE";fallback=false;message="TWSE MIS z 實際成交價"}
-      pz!=null&&exchange!=null->{price=pz;quality="backup_realtime";priceType="BACKUP_REALTIME";message="TWSE z 缺值；採用 pz 最近成交參考"}
-      bid!=null&&exchange!=null->{price=bid;quality="bid_ask";priceType="BID_ASK";message="TWSE z 缺值；採用最佳買價"}
-      ask!=null&&exchange!=null->{price=ask;quality="bid_ask";priceType="BID_ASK";message="TWSE z 缺值；採用最佳賣價"}
-      prev!=null->{sourceAt=previousCloseAt(row,now);if(sourceAt!=null){price=prev;quality="previous_close";priceType="PREV_CLOSE";message="TWSE z／即時欄位缺值；採用昨日收盤價"}}
+      bid!=null&&exchange!=null->{price=bid;quality="bid_ask";priceType="BID_ASK";message="TWSE z 缺值；採用最佳買價（即時委託簿參考）"}
+      ask!=null&&exchange!=null->{price=ask;quality="bid_ask";priceType="BID_ASK";message="TWSE z 缺值；採用最佳賣價（即時委託簿參考）"}
     }
     val effective=price?:return null
     val at=sourceAt?:return null
@@ -201,6 +198,12 @@ internal class TfAssetMarketCenter(private val context:Context){
     }
   }
 
+  private fun isLiveSession(now:Long):Boolean{
+    val local=Instant.ofEpochMilli(now).atZone(TAIPEI)
+    val minute=local.hour*60+local.minute
+    return local.dayOfWeek.value<6&&minute in 540..810
+  }
+
   private fun qualityRank(value:String)=when(value){
     "trade"->50
     "backup_realtime"->40
@@ -282,6 +285,10 @@ internal class TfAssetMarketCenter(private val context:Context){
       val code=row.optString("symbol","").trim().uppercase()
       if(!symbols.contains(code)||source !in setOf("TWSE_MIS","FUGLE","SHIOAJI","YAHOO","TWSE_DAILY","TPEX_DAILY")||
         quality !in setOf("trade","backup_realtime","bid_ask","previous_close","official_close"))continue
+      val priceType=row.optString("priceType","")
+      // Reject legacy MIS pz rows and close-only rows while the exchange is live.
+      if(source=="TWSE_MIS"&&quality=="backup_realtime")continue
+      if(isLiveSession(now)&&(quality=="previous_close"||quality=="official_close"))continue
       if(!row.has("priceType"))row.put("priceType",if(quality=="trade")"REALTIME_TRADE" else "OFFICIAL_CLOSE")
       if(!row.has("isFallback"))row.put("isFallback",quality!="trade")
       if(!row.has("market"))row.put("market","UNKNOWN")
@@ -377,8 +384,9 @@ internal class TfAssetMarketCenter(private val context:Context){
         candidates.addAll(best.values)
       }catch(error:Exception){errors.add("MIS: "+(error.message?:"unknown"))}
     }
-    // MIS may return only bid/ask or yesterday close. Those rows are useful
-    // references, but must not stop the realtime fallback chain. Ask Yahoo for
+    // MIS may return only bid/ask. Those rows are useful references, but must
+    // not stop the realtime fallback chain. pz/y are not current-price candidates.
+    // Ask Yahoo for
     // every symbol that still lacks trade/backup_realtime quality.
     val realtimeCovered=candidates.filter{
       qualityRank(it.optString("quality",""))>=qualityRank("backup_realtime")
@@ -390,7 +398,7 @@ internal class TfAssetMarketCenter(private val context:Context){
     }
     var covered=candidates.map{it.optString("symbol","")}.toSet()
     var missing=symbols.filterNot{covered.contains(it)}
-    if(missing.isNotEmpty()){
+    if(missing.isNotEmpty()&&!isLiveSession(now)){
       for((source,url) in listOf("TWSE_DAILY" to TWSE_DAILY,"TPEX_DAILY" to TPEX_DAILY)){
         try{
           val rows=JSONArray(fetchJson(url))

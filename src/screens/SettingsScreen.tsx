@@ -59,8 +59,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='3.2.47';
-const BUILD='30247';
+const VERSION='3.2.48';
+const BUILD='30248';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -582,9 +582,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V3.2.44 股息頁新增建檔入口與完整股息紀錄表單" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V3.2.44 更新資訊">
-        <Text style={styles.infoText}>股息頁補上獨立的「新增股息」建檔功能，可直接從持股帶入 ETF 名稱與股數，填寫配發日、每股股息、最後購買日、除息日、股權登記日與備註，儲存後同步進入 Canonical Ledger、股息清單、月曆與統計。</Text>
+      <ChildButton label="更新資訊" summary="V3.2.48 即時行情完整性修護" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V3.2.48 更新資訊">
+        <Text style={styles.infoText}>即時行情修護：TWSE MIS 的 pz 與昨收 y 不再升格為盤中現價；z 缺值時僅採即時委託簿買／賣價作明確標示的參考，並持續啟動零成本 Yahoo 備援。盤中禁止以官方前日收盤補成 LIVE，SQLite 升級會清除舊 pz／previous-close 污染資料。</Text>
       </Panel>:null}
     </View>;
   }

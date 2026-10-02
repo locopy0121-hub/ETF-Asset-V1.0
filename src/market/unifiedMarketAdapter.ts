@@ -31,6 +31,7 @@ export function normalizeUnifiedIntradaySeries(
     if(!raw||typeof raw.at!=='number'||!Number.isFinite(raw.at)||raw.at<=0||raw.at>now+120_000||raw.at<now-10*86_400_000)continue;
     if(typeof raw.price!=='number'||!Number.isFinite(raw.price)||raw.price<=0)continue;
     if(!INTRADAY_QUALITIES.has(raw.quality)||!INTRADAY_SOURCES.has(raw.source))continue;
+    if(raw.source==='TWSE_MIS'&&raw.quality==='backup_realtime')continue;
     const local=taipeiDateMinute(raw.at);
     if(local.date!==value.date||local.minute<540||local.minute>810)continue;
     byAt.set(raw.at,{at:raw.at,price:raw.price,quality:raw.quality,source:raw.source});
@@ -60,6 +61,7 @@ export function isTrustedMarketRow(value:unknown,now=Date.now()):value is Unifie
     &&row.sourceQuoteAt>0&&row.sourceQuoteAt<=now+120_000
     &&typeof row.quality==='string'&&QUALITIES.has(row.quality)
     &&typeof row.source==='string'&&SOURCES.has(row.source)
+    &&!(row.source==='TWSE_MIS'&&row.quality==='backup_realtime')
     &&typeof row.priceType==='string'&&PRICE_TYPES.has(row.priceType)
     &&typeof row.isFallback==='boolean'
     &&typeof row.market==='string'&&['TSE','OTC','UNKNOWN'].includes(row.market)
