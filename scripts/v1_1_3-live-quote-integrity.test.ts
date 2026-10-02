@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import {hasUsableTwseQuote,resolveTwseCurrentPrice} from '../src/market/twseQuoteParser';
+import {buildTwseRuntimeQuote,markRuntimeQuoteStale} from '../src/market/twseQuoteSnapshot';
+import type {RuntimeQuote} from '../src/finance/financeSeed';
+
+const old:RuntimeQuote={symbol:'0050',name:'元大台灣50',currentPrice:112.90,previousClose:112.05,liquidationTradeMode:'ROUND_LOT',dividendFrequency:2,sparkline:[112.90],marketSource:'CACHE',quoteStatus:'STALE'};
+const row={c:'0050',n:'元大台灣50',z:'-',pz:'112.90',b:'112.35_112.30_',a:'112.40_112.45_',y:'112.90',d:'20261002',t:'09:46:10'};
+assert.equal(resolveTwseCurrentPrice(row),112.35);
+assert.equal(hasUsableTwseQuote({c:'0050',z:'-',pz:'112.90',b:'',a:'',y:'112.90'}),false);
+const live=buildTwseRuntimeQuote('0050',row,old,1790905570000);
+assert.ok(live);
+assert.equal(live.currentPrice,112.35);
+assert.equal(live.previousClose,112.90);
+assert.equal(Number((live.currentPrice-live.previousClose).toFixed(2)),-0.55);
+assert.equal(Number((((live.currentPrice-live.previousClose)/live.previousClose)*100).toFixed(2)),-0.49);
+assert.equal(live.quoteStatus,'LIVE');
+assert.equal(live.marketSource,'TWSE_MIS');
+assert.equal(live.priceKind,'bid');
+assert.equal(live.quoteDate,'20261002');
+assert.equal(live.quoteTime,'09:46:10');
+assert.equal(buildTwseRuntimeQuote('0050',{c:'0050',z:'-',pz:'112.90',b:'',a:'',y:'112.90'},old,1790905570000),null);
+const stale=markRuntimeQuoteStale(old,'0050');
+assert.ok(stale);
+assert.equal(stale.currentPrice,112.90);
+assert.equal(stale.quoteStatus,'STALE');
+assert.equal(stale.marketSource,'CACHE');
+console.log('V1.1.3 LIVE QUOTE INTEGRITY: PASS');
