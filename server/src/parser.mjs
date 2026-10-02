@@ -94,21 +94,14 @@ export function misTrade(row,now=Date.now()){
 export function misNormalizedQuote(row,now=Date.now()){
   const symbol=String(row?.c??'').trim().toUpperCase();
   if(!VALID_SYMBOL.test(symbol))return null;
-  const z=positive(row?.z),bid=firstBookPrice(row?.b),
-    ask=firstBookPrice(row?.a),prev=positive(row?.y);
+  const z=positive(row?.z),prev=positive(row?.y);
   const exchangeAt=misSourceTime(row,now);
   let price=null,quality=null,priceType=null,isFallback=true,sourceQuoteAt=exchangeAt,statusMessage='';
   if(z!==null&&exchangeAt!==null){
     price=z;quality='trade';priceType='REALTIME_TRADE';isFallback=false;
     statusMessage='TWSE MIS z 實際成交價';
-  }else if(bid!==null&&exchangeAt!==null){
-    price=bid;quality='bid_ask';priceType='BID_ASK';
-    statusMessage='TWSE z 缺值；採用最佳買價';
-  }else if(ask!==null&&exchangeAt!==null){
-    price=ask;quality='bid_ask';priceType='BID_ASK';
-    statusMessage='TWSE z 缺值；採用最佳賣價（即時委託簿參考）';
   }
-  // prev remains previousClose metadata only. pz/y never become currentPrice.
+  // pz/bid/ask/y remain diagnostics/metadata only. currentPrice keeps last-trade semantics.
   if(price===null||quality===null||priceType===null||sourceQuoteAt===null)return null;
   return {
     symbol,name:String(row?.n??symbol).trim()||symbol,
