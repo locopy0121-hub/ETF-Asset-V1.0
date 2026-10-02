@@ -24,7 +24,7 @@ const picked=pickBetterTwseRow(
   {c:'0050',z:'-',pz:'112.90',b:'',a:'',y:'112.90'},
   {c:'0050',z:'-',pz:'112.90',b:'112.35_',a:'112.40_',y:'112.90'},
 );
-assert.equal(String(picked.b),'','non-trade MIS rows have equal score and must not be treated as preferred live price');
+assert.equal(resolveTwsePriceDecision(picked),null,'non-trade MIS rows may be retained diagnostically but never become currentPrice');
 
 const yahooRow={
   symbol:'0050',name:'元大台灣50',currentPrice:112.35,previousClose:112.90,
@@ -63,7 +63,7 @@ assert.match(serverSources,/isSession\(now\)\?\[\]/);
 
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-const [major,minor,patch]=String(pkg.version).split('.').map(Number);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
 assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=48))));
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
