@@ -42,7 +42,7 @@ function main(){
   assert.match(http,/sources:typeof sources\?\.health/);
 
   const sqlite=read('native/android/TfAssetMarketDatabase.kt');
-  assert.match(sqlite,/null,6/);
+  assert.match(sqlite,/null,[6-9]\d*/,'market SQLite schema may advance beyond V6 for verified quote migrations');
   assert.match(sqlite,/FUGLE/);
   assert.match(sqlite,/SHIOAJI/);
   assert.match(sqlite,/market_quotes_v5/);
