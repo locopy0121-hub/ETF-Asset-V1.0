@@ -4,6 +4,12 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   previousClose: number;
   sparkline: readonly number[];
   pinned?: boolean;
+  marketSource?: 'TWSE_MIS'|'CACHE'|'FALLBACK';
+  quoteStatus?: 'LIVE'|'STALE';
+  quoteDate?: string;
+  quoteTime?: string;
+  receivedAt?: number;
+  priceKind?: 'lastTrade'|'bid'|'ask'|'none';
 }>;
 
 export const INITIAL_CASH=750_000;
