@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,7
+  context.applicationContext,"tf_asset_market_center_v1.db",null,8
 ){
   companion object{
     private val TAIPEI=ZoneId.of("Asia/Taipei")
@@ -161,11 +161,14 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     }
     if(oldVersion<7){
       // V7 retires MIS pz/previous-close rows that could masquerade as the live price.
-      // Keep verified trades, Yahoo backup realtime and official post-close rows.
       db.delete("market_quotes","quality=? OR (source=? AND price_type=?)",
         arrayOf("previous_close","TWSE_MIS","BACKUP_REALTIME"))
       db.delete("market_intraday","source=? AND quality=?",
         arrayOf("TWSE_MIS","backup_realtime"))
+    }
+    if(oldVersion<8){
+      // V8 makes the primary holdings price trade-only: bid/ask never survives as currentPrice.
+      db.delete("market_quotes","quality=?",arrayOf("bid_ask"))
     }
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
@@ -441,11 +444,13 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
           if(at<existing.first)continue
           val newRank=qualityRank[quality]?:0
           val oldRank=qualityRank[existing.second]?:0
-          // Never let a newer indicative/fallback row replace a stronger last-known-good
-          // quote. A TWSE trade remains authoritative until another equal/higher quality
-          // row arrives; lower-quality rows may still be stored as diagnostics/intraday
-          // candidates but cannot make the App appear to go backwards.
-          if(newRank<oldRank){
+          val newTradeLike=quality=="trade"||quality=="backup_realtime"
+          val oldTradeLike=existing.second=="trade"||existing.second=="backup_realtime"
+          // Between trade-like providers, newest source timestamp wins. This prevents
+          // an older TWSE trade from pinning the UI above a newer Yahoo last-trade fallback.
+          if(at>existing.first&&newTradeLike&&oldTradeLike){
+            // accept below
+          }else if(newRank<oldRank){
             insertIntraday(db,row,checkedAt)
             continue
           }
