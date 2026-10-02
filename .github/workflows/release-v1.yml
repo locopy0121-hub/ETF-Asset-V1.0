@@ -92,7 +92,7 @@ jobs:
           cp native/android/res/layout/tf_asset_widget.xml ../TFAssetNative/android/app/src/main/res/layout/
           cp native/android/res/xml/tf_asset_widget_info.xml ../TFAssetNative/android/app/src/main/res/xml/
           cp native/android/res/drawable/tf_icon_*.xml ../TFAssetNative/android/app/src/main/res/drawable/
-          node scripts/inject-v1_1_3-android.cjs
+          node scripts/inject-v1_1_2-android.cjs
           test "$(grep -c '<activity-alias' ../TFAssetNative/android/app/src/main/AndroidManifest.xml)" = "10"
           grep 'android:name=".Icon01"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
           grep 'android:name=".Icon10"' ../TFAssetNative/android/app/src/main/AndroidManifest.xml
