@@ -1,4 +1,5 @@
 export type TwseQuoteRow=Record<string,unknown>;
+export type TwsePriceKind='lastTrade'|'bid'|'ask'|'none';
 
 const numeric=(value:unknown)=>{
   const text=String(value??'').trim().replace(/,/g,'');
@@ -18,21 +19,39 @@ const firstBookPrice=(value:unknown)=>{
 };
 
 /**
- * TWSE MIS may temporarily omit z (last trade) even while a live order book exists.
- * Never fall straight from z to yesterday's y: that makes the whole app look frozen.
- * Prefer a real last-trade field, then live top-of-book, and only then previous close.
+ * MIS z is the documented last-trade field. Some ETFs can expose z="-" while
+ * the live order book is already populated. In that case use the best bid,
+ * then best ask as a clearly tagged live proxy.
+ *
+ * Never use pz (undocumented) or y (previous close) as currentPrice.
  */
+export function resolveTwseLivePrice(row:TwseQuoteRow|undefined):Readonly<{price:number;kind:TwsePriceKind}>{
+  if(!row)return {price:0,kind:'none'};
+  const lastTrade=numeric(row.z);
+  if(lastTrade>0)return {price:lastTrade,kind:'lastTrade'};
+  const bid=firstBookPrice(row.b);
+  if(bid>0)return {price:bid,kind:'bid'};
+  const ask=firstBookPrice(row.a);
+  if(ask>0)return {price:ask,kind:'ask'};
+  return {price:0,kind:'none'};
+}
+
 export function resolveTwseCurrentPrice(row:TwseQuoteRow|undefined):number{
-  if(!row)return 0;
-  return numeric(row.z)
-    ||numeric(row.pz)
-    ||firstBookPrice(row.b)
-    ||firstBookPrice(row.a)
-    ||numeric(row.y);
+  return resolveTwseLivePrice(row).price;
 }
 
 export function resolveTwsePreviousClose(row:TwseQuoteRow|undefined):number{
   return row?numeric(row.y):0;
+}
+
+export function resolveTwseQuoteDate(row:TwseQuoteRow|undefined):string|null{
+  const raw=String(row?.d??'').trim();
+  return /^\d{8}$/.test(raw)?raw:null;
+}
+
+export function resolveTwseQuoteTime(row:TwseQuoteRow|undefined):string|null{
+  const raw=String(row?.t??'').trim();
+  return /^\d{2}:\d{2}:\d{2}$/.test(raw)?raw:null;
 }
 
 export function hasUsableTwseQuote(row:TwseQuoteRow|undefined):boolean{
@@ -47,11 +66,10 @@ export function pickBetterTwseRow(current:TwseQuoteRow|undefined,next:TwseQuoteR
 }
 
 function quoteFreshnessScore(row:TwseQuoteRow):number{
-  let score=0;
-  if(numeric(row.z)>0)score+=100;
-  if(numeric(row.pz)>0)score+=80;
-  if(firstBookPrice(row.b)>0)score+=40;
-  if(firstBookPrice(row.a)>0)score+=30;
-  if(numeric(row.y)>0)score+=10;
-  return score;
+  const resolved=resolveTwseLivePrice(row);
+  const fieldScore=resolved.kind==='lastTrade'?400:resolved.kind==='bid'?300:resolved.kind==='ask'?200:0;
+  const raw=String(row.t??'');
+  const m=raw.match(/^(\d{2}):(\d{2}):(\d{2})$/);
+  const seconds=m?(Number(m[1])*3600+Number(m[2])*60+Number(m[3])):0;
+  return fieldScore*100000+seconds;
 }

@@ -15,7 +15,8 @@ import {
 } from 'react';
 
 import { FALLBACK_QUOTES, type RuntimeQuote } from '../finance/financeSeed';
-import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwseCurrentPrice, resolveTwsePreviousClose } from './twseQuoteParser';
+import { pickBetterTwseRow } from './twseQuoteParser';
+import { buildTwseRuntimeQuote, markRuntimeQuoteStale } from './twseQuoteSnapshot';
 
 export type MarketPhase = 'live' | 'afterHours' | 'offline';
 export type MarketSource = 'TWSE';
@@ -139,51 +140,31 @@ async function fetchTwseQuotes(symbols:readonly string[],previous:readonly Runti
   if(!symbols.length)return {quotes:[...previous],updatedCount:0,unresolved:[]};
   const channels=symbols.flatMap(symbol=>[`tse_${symbol}.tw`,`otc_${symbol}.tw`]).join('|');
   const url='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch='+encodeURIComponent(channels)+'&json=1&delay=0&_='+Date.now();
-  const response=await fetch(url,{headers:{Accept:'application/json'}});
+  const response=await fetch(url,{headers:{Accept:'application/json','Cache-Control':'no-cache',Pragma:'no-cache'}});
   if(!response.ok)throw new Error('TWSE HTTP '+response.status);
-  const payload=await response.json() as {msgArray?:Array<Record<string,unknown>>};
+  const payload=await response.json() as {msgArray?:Array<Record<string,unknown>>;rtcode?:string;rtmessage?:string};
+  if(payload.rtcode&&payload.rtcode!=='0000')throw new Error('TWSE MIS '+payload.rtcode+': '+String(payload.rtmessage??'unknown error'));
   const rows=Array.isArray(payload.msgArray)?payload.msgArray:[];
   const bySymbol=new Map<string,Record<string,unknown>>();
   for(const row of rows){
     const symbol=String(row.c??'').trim();
     if(!symbol)continue;
-    const existing=bySymbol.get(symbol);
-    bySymbol.set(symbol,pickBetterTwseRow(existing,row));
+    bySymbol.set(symbol,pickBetterTwseRow(bySymbol.get(symbol),row));
   }
   const unresolved:string[]=[];
   let updatedCount=0;
+  const receivedAt=Date.now();
   const next=symbols.map(symbol=>{
     const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
-    const row=bySymbol.get(symbol);
-    if(!hasUsableTwseQuote(row)){
+    const live=buildTwseRuntimeQuote(symbol,bySymbol.get(symbol),old,receivedAt);
+    if(!live){
       unresolved.push(symbol);
-      if(old)return old;
-      const missing:RuntimeQuote={
-        symbol,
-        name:symbol,
-        currentPrice:0,
-        previousClose:0,
-        liquidationTradeMode:'ROUND_LOT',
-        dividendFrequency:4,
-        sparkline:[0],
-      };
-      return missing;
+      const stale=markRuntimeQuoteStale(old,symbol);
+      if(stale)return stale;
+      return {symbol,name:symbol,currentPrice:0,previousClose:0,liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,sparkline:[0],marketSource:'CACHE',quoteStatus:'STALE',priceKind:'none'} satisfies RuntimeQuote;
     }
     updatedCount+=1;
-    const currentPrice=resolveTwseCurrentPrice(row);
-    const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
-    const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
-    return {
-      symbol,
-      name:String(row?.n??old?.name??symbol),
-      currentPrice,
-      previousClose,
-      liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
-      dividendFrequency:old?.dividendFrequency??4,
-      ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
-      ...(old?.pinned==null?{}:{pinned:old.pinned}),
-      sparkline:sparkline.length?sparkline:[currentPrice],
-    };
+    return live;
   });
   return {quotes:next,updatedCount,unresolved};
 }
@@ -210,7 +191,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       const parsed=JSON.parse(raw) as Partial<PersistedMarketState>;
       if(parsed.schema===1){
         if(parsed.config)setConfigState({...DEFAULT_MARKET_UPDATE,...parsed.config,live:{...DEFAULT_MARKET_UPDATE.live,...parsed.config.live},afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}});
-        if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes);
+        if(Array.isArray(parsed.quotes)&&parsed.quotes.length)setQuotes(parsed.quotes.map(quote=>({...quote,marketSource:'CACHE',quoteStatus:'STALE'})));
         if(Number.isFinite(Number(parsed.lastSuccessAt)))setLastSuccessAt(Number(parsed.lastSuccessAt));
         if(Array.isArray(parsed.catalog)&&parsed.catalog.length)setCatalog(parsed.catalog);
       }
@@ -252,9 +233,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         for(let attempt=1;attempt<=attempts;attempt+=1){
           try{
             const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
-            if(result.updatedCount<=0)throw new Error('TWSE no usable live quotes');
             quotesRef.current=result.quotes;
             setQuotes(result.quotes);
+            if(result.updatedCount<=0)throw new Error('TWSE no usable live quotes');
             setLastSuccessAt(Date.now());
             setLastError(result.unresolved.length?'部分行情暫用上次資料：'+result.unresolved.join(','):null);
             return;
