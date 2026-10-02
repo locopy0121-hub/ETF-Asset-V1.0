@@ -48,8 +48,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.1.2';
-const BUILD='10102';
+const VERSION='1.1.3';
+const BUILD='10103';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -170,6 +170,7 @@ export function SettingsScreen(){
         <StatusRow label="設定 Runtime" value={settings.hydrated?'正常':'載入中'}/>
         <StatusRow label="最後行情成功" value={formatTime(market.lastSuccessAt)}/>
         <StatusRow label="行情錯誤" value={market.lastError??'無'}/>
+        {market.quotes.slice(0,8).map(quote=><StatusRow key={'market-'+quote.symbol} label={'行情 '+quote.symbol} value={`${quote.currentPrice.toFixed(2)}｜昨收 ${quote.previousClose.toFixed(2)}｜${quote.quoteStatus??'STALE'}｜${quote.priceKind??'-'}｜${quote.quoteTime??'-'}`}/>)}
         <StatusRow label="交易紀錄" value={String(finance.entries.length)}/>
         <StatusRow label="持股筆數" value={String(finance.holdings.length)}/>
         <StatusRow label="ETF 基礎資料" value={String(market.catalog.length)}/>
@@ -379,9 +380,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.1.2 A/B 編輯、Widget/Monitor、主題與 Carry-over 修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.1.2 更新資訊">
-        <Text style={styles.infoText}>新增 AI 助理與持股相關新聞自動取得，首頁市場新聞顯示代號、名稱、來源、日期與智慧摘要；首頁右上加入更新行情。總資產主值改採持股市值，不與現金合併。Monitor／Mini 修正雙擊切換回彈，並加入更新行情、縮小／放大與關閉控制。調色盤 V1.0.15 閃退修護持續保留。</Text>
+      <ChildButton label="更新資訊" summary="V1.1.3 即時行情完整性修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      {appPanel==='updates'?<Panel title="V1.1.3 更新資訊">
+        <Text style={styles.infoText}>修正盤中即時行情完整性：昨收不得再冒充即時現價，停用未文件化 pz 作為現價，MIS 無成交價時改採最佳買／賣價並標示來源；單檔更新失敗保留上次值但標記 STALE。效能與診斷新增現價、昨收、LIVE/STALE、價格來源型態與行情時間。</Text>
       </Panel>:null}
       <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
       {appPanel==='debug'?<Panel title="開發／診斷資訊">
