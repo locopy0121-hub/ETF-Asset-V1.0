@@ -14,19 +14,19 @@ const feed=new OfficialSources({dailyCacheMs:300_000,fetchImpl:async(url)=>{
     :[{SecuritiesCompanyCode:'00713',CompanyName:'元大高息低波',Date:'1150924',Close:'53.25'}];
   return {ok:true,json:async()=>data};
 }});
-test('missing z keeps official truth separate and publishes explicit pz fallback',async()=>{
+test('missing z ignores pz and uses live order book before other fallbacks',async()=>{
   const result=await feed.refresh(['0050','00713'],{now});
   const a=result.quotes.find(q=>q.symbol==='0050');
   const b=result.quotes.find(q=>q.symbol==='00713');
   assert.equal(a.quality,'trade');
   assert.equal(a.currentPrice,113.2);
-  assert.equal(b.quality,'backup_realtime');
-  assert.equal(b.currentPrice,53.44);
+  assert.equal(b.quality,'bid_ask');
+  assert.equal(b.currentPrice,53.42);
   assert.equal(b.source,'TWSE_MIS');
-  assert.equal(b.priceType,'BACKUP_REALTIME');
+  assert.equal(b.priceType,'BID_ASK');
   assert.equal(b.isFallback,true);
   assert.equal(b.officialTradePrice,null);
-  assert.equal(urls.length,1,'pz fallback avoids unnecessary daily endpoint calls');
+  assert.ok(urls.length>=1,'MIS must be queried');
   await feed.refresh(['0050','00713'],{now:now+5000});
   assert.equal(urls.length,2,'next live poll only calls MIS again when all symbols are resolved');
 });
@@ -38,4 +38,18 @@ test('a down provider leaves other official data available',async()=>{
   const result=await bad.refresh(['0050'],{now});
   assert.equal(result.quotes[0]?.quality,'official_close');
   assert.ok(result.errors.some(s=>s.includes('MIS')));
+});
+
+test('live session never promotes previous close or pz to currentPrice',async()=>{
+  const t=Date.parse('2026-10-02T09:46:10+08:00');
+  const onlyClose=new OfficialSources({fetchImpl:async(url)=>{
+    if(url.includes('getStockInfo'))return {ok:true,json:async()=>({msgArray:[
+      {c:'0050',n:'元大台灣50',d:'20261002',t:'09:46:10',z:'-',pz:'112.90',b:'',a:'',y:'112.90'},
+    ]})};
+    if(url.includes('query1.finance.yahoo.com'))throw new Error('backup unavailable');
+    throw new Error('daily endpoint must not run in live session');
+  }});
+  const result=await onlyClose.refresh(['0050'],{now:t});
+  assert.equal(result.quotes.length,0);
+  assert.ok(result.errors.some(x=>x.includes('YAHOO')));
 });
