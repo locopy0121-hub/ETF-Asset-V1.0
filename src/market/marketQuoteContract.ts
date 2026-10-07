@@ -6,7 +6,8 @@ export type MarketQuoteSource=
   |'SHIOAJI'
   |'YAHOO'
   |'TWSE_DAILY'
-  |'TPEX_DAILY';
+  |'TPEX_DAILY'
+  |'CACHE';
 
 export type MarketQuote=Readonly<{
   symbol:string;
