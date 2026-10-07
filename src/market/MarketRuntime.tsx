@@ -79,6 +79,8 @@ type MarketRuntimeValue=Readonly<{
 
 const RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime-native-saietf';
 const PREVIOUS_RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime';
+const V3_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime-v231';
+const LEGACY_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
 
 function fallbackCatalog():TaiwanSecurityInfo[]{
@@ -245,18 +247,31 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{
     let alive=true;
     void (async()=>{
-      const [runtimeRaw,previousRaw,nativeKey]=await Promise.all([
+      const [runtimeRaw,previousRaw,v3Raw,legacyRaw,nativeKey]=await Promise.all([
         AsyncStorage.getItem(RUNTIME_STORAGE_KEY).catch(()=>null),
         AsyncStorage.getItem(PREVIOUS_RUNTIME_STORAGE_KEY).catch(()=>null),
+        AsyncStorage.getItem(V3_RUNTIME_STORAGE_KEY).catch(()=>null),
+        AsyncStorage.getItem(LEGACY_RUNTIME_STORAGE_KEY).catch(()=>null),
         loadNativeFugleApiKey().catch(()=>null),
       ]);
       if(!alive)return;
       let persisted:Partial<PersistedMarketRuntime>|null=null;
-      for(const raw of [runtimeRaw,previousRaw]){
+      let migratedFromPreviousRuntime=false;
+      for(const [index,raw] of [runtimeRaw,previousRaw,v3Raw,legacyRaw].entries()){
         if(!raw)continue;
-        try{persisted=JSON.parse(raw) as Partial<PersistedMarketRuntime>;break;}catch{}
+        try{
+          persisted=JSON.parse(raw) as Partial<PersistedMarketRuntime>;
+          migratedFromPreviousRuntime=index>0;
+          break;
+        }catch{}
       }
-      if(persisted?.config)setConfigState(normalizeConfig(persisted.config));
+      if(persisted?.config){
+        const legacyLive=persisted.config.live;
+        const migratedConfig=migratedFromPreviousRuntime&&legacyLive?.refreshSeconds===5
+          ?{...persisted.config,live:{...legacyLive,refreshSeconds:1}}
+          :persisted.config;
+        setConfigState(normalizeConfig(migratedConfig));
+      }
       if(Array.isArray(persisted?.catalog)&&persisted.catalog.length){
         const next=[...persisted.catalog];catalogRef.current=next;setCatalog(next);
       }
