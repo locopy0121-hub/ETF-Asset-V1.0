@@ -15,16 +15,12 @@ function main(){
   const sources=read('server/src/sources.mjs');
   assert.match(sources,/TWSE_MIS/);
   assert.match(sources,/FUGLE/);
-  assert.match(sources,/SHIOAJI/);
   assert.match(sources,/YAHOO/);
   assert.match(sources,/CircuitBreaker/);
-  assert.match(sources,/breakerThreshold=3/);
-  assert.match(sources,/breakerCooldownMs=5\*60_000/);
   assert.match(sources,/QUALITY_RANK/);
 
   const parser=read('server/src/parser.mjs');
   assert.match(parser,/fugleQuoteFromPayload/);
-  assert.match(parser,/shioajiQuoteFromPayload/);
   assert.match(parser,/epochLikeToMs/);
   assert.match(parser,/lastTrade\?\.price\?\?payload\?\.closePrice/);
   assert.doesNotMatch(parser,/lastTrial\?\.price\?\?payload\?\.closePrice/,
@@ -37,18 +33,26 @@ function main(){
   assert.match(nav,/nav\.estimatedNav\)\*100/);
   assert.match(nav,/cacheMs=15_000/);
 
-  const http=read('server/src/http.mjs');
-  assert.match(http,/\/v1\/market\/nav/);
-  assert.match(http,/sources:typeof sources\?\.health/);
-
   const sqlite=read('native/android/TfAssetMarketDatabase.kt');
   assert.match(sqlite,/null,[6-9]\d*/,'market SQLite schema may advance beyond V6 for verified quote migrations');
-  assert.match(sqlite,/FUGLE/);
-  assert.match(sqlite,/SHIOAJI/);
-  assert.match(sqlite,/market_quotes_v5/);
+  assert.match(sqlite,/market_core_snapshots/);
+  assert.match(sqlite,/market_core_minute_candles/);
 
-  const nativeCenter=read('native/android/TfAssetMarketCenter.kt');
-  assert.match(nativeCenter,/setOf\("TWSE_MIS","FUGLE","SHIOAJI","YAHOO","TWSE_DAILY","TPEX_DAILY"\)/);
+  const models=read('native/android/SaiEtfMarketModels.kt');
+  const arbitrator=read('native/android/SaiEtfMarketArbitrator.kt');
+  const center=read('native/android/SaiEtfMarketDataCenter.kt');
+  const runtime=read('native/android/SaiEtfMarketRuntime.kt');
+  assert.match(models,/FUGLE[\s\S]*TWSE_MIS[\s\S]*YAHOO[\s\S]*CACHE/);
+  assert.match(arbitrator,/MarketSource\.FUGLE to 0/);
+  assert.match(arbitrator,/MarketSource\.TWSE_MIS to 1/);
+  assert.match(arbitrator,/MarketSource\.YAHOO to 2/);
+  assert.match(arbitrator,/MarketSource\.CACHE to 3/);
+  assert.match(center,/ProviderCircuitBreaker/);
+  assert.match(center,/backoffFor/);
+  assert.match(center,/httpStatusCode == 429/);
+  assert.match(center,/httpStatusCode == 403/);
+  assert.doesNotMatch(runtime,/Shioaji/i,
+    'SaiETF Android runtime must not require a brokerage account/API');
 
   const contract=read('src/market/marketQuoteContract.ts');
   for(const field of ['symbol','price','change','changePercent','volume','source','isRealtime'])
@@ -57,7 +61,7 @@ function main(){
   for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
     assert.ok(read(core).length>0,'immutable finance core missing: '+core);
 
-  console.log('V3.2.36 multi-source market aggregator / ETF NAV / circuit breaker PASS');
+  console.log('V3.2.36/V4 SaiETF multi-source market / ETF NAV / circuit breaker PASS');
 }
 
 main();

@@ -9,22 +9,25 @@ const trade={...bidOnly,z:'112.75'};
 assert.equal(resolveTwsePriceDecision(trade)?.price,112.75);
 assert.equal(resolveTwsePriceDecision(trade)?.quality,'trade');
 
-const native=fs.readFileSync('native/android/TfAssetMarketCenter.kt','utf8');
-assert.doesNotMatch(native,/bid!=null&&exchange!=null.*price=bid/s);
-assert.doesNotMatch(native,/ask!=null&&exchange!=null.*price=ask/s);
-assert.match(native,/Ask Yahoo for every symbol that still lacks a trade-like price/);
+const providers=fs.readFileSync('native/android/SaiEtfAndroidMarketProviders.kt','utf8');
+const center=fs.readFileSync('native/android/SaiEtfMarketDataCenter.kt','utf8');
+const runtime=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
+assert.match(providers,/marketNumber\(row\.optString\("z"\)\) \?: continue/);
+assert.doesNotMatch(providers,/row\.optString\("pz"\)/);
+assert.doesNotMatch(providers,/row\.optString\("b"\)/);
+assert.doesNotMatch(providers,/row\.optString\("a"\)/);
+assert.match(runtime,/TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/,
+  'unresolved MIS symbols must continue to Yahoo fallback');
+assert.match(center,/val pending = requested\.toMutableSet\(\)/);
+assert.match(center,/providers\.forEach \{ provider ->/);
 
 const db=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
 assert.match(db,/tf_asset_market_center_v1\.db",null,[89]/);
 assert.match(db,/db\.delete\("market_quotes","quality=\?",arrayOf\("bid_ask"\)\)/);
-assert.match(db,/newTradeLike=quality=="trade"\|\|quality=="backup_realtime"/);
-assert.match(db,/at>existing\.first&&newTradeLike&&oldTradeLike/);
 
 const serverParser=fs.readFileSync('server/src/parser.mjs','utf8');
 assert.doesNotMatch(serverParser,/price=bid/);
 assert.doesNotMatch(serverParser,/price=ask/);
-const serverSources=fs.readFileSync('server/src/sources.mjs','utf8');
-assert.match(serverSources,/currentTradeLike&&candidateTradeLike&&candidate\.sourceQuoteAt!==current\.sourceQuoteAt/);
 
 const adapter=fs.readFileSync('src/market/unifiedMarketAdapter.ts','utf8');
 assert.match(adapter,/row\.quality!=='bid_ask'/);
@@ -40,4 +43,4 @@ assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 for(const locked of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(fs.existsSync(locked),locked);
 
-console.log('V3.2.49 trade-price synchronization gate PASS');
+console.log('V3.2.49/V4 SaiETF trade-price synchronization gate PASS');

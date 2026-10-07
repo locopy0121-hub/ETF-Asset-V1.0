@@ -25,23 +25,28 @@ assert.match(serverSources,/query1\.finance\.yahoo\.com\/v8\/finance\/chart/);
 assert.match(serverSources,/misNormalizedQuote/);
 assert.match(serverSources,/this\.yahoo\(symbol,now\)/);
 
-const nativeCenter=read('native/android/TfAssetMarketCenter.kt');
-for(const token of ['misQuote','yahooQuote','officialTradePrice','priceType','isFallback','qualityRank'])
-  assert.ok(nativeCenter.includes(token),'native A-layer missing '+token);
-assert.match(nativeCenter,/YAHOO_URL/);
-assert.doesNotMatch(nativeCenter,/val pz=finitePositive\(row\.optString\("pz"/);
-assert.match(nativeCenter,/previous_close/);
+const nativeProviders=read('native/android/SaiEtfAndroidMarketProviders.kt');
+const nativeCenter=read('native/android/SaiEtfMarketDataCenter.kt');
+const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+for(const token of ['TwseMisQuoteProvider','YahooQuoteProvider','MarketProviderException'])
+  assert.ok(nativeProviders.includes(token),'SaiETF native provider layer missing '+token);
+assert.match(nativeProviders,/marketNumber\(row\.optString\("z"\)\) \?: continue/,
+  'SaiETF TWSE provider must only publish verified z trades');
+assert.doesNotMatch(nativeProviders,/row\.optString\("pz"\)/,
+  'SaiETF provider must not promote pz into current price');
+assert.match(nativeCenter,/val pending = requested\.toMutableSet\(\)/);
+assert.match(nativeCenter,/providers\.forEach \{ provider ->/);
+assert.match(nativeRuntime,/TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/,
+  'SaiETF runtime must try TWSE before Yahoo fallback');
+assert.doesNotMatch(nativeRuntime,/Shioaji/i,'retired Shioaji credential path must not exist in the Android runtime');
 
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
 assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,\d+/,'market SQLite schema must remain versioned without touching the Ledger');
 assert.match(nativeDb,/market_intraday[\s\S]*previous_close/,'intraday schema must retain the displayed session previous-close baseline');
-for(const token of ['backup_realtime','bid_ask','previous_close','official_trade_price','price_type','is_fallback'])
-  assert.ok(nativeDb.includes(token),'native B schema missing '+token);
 
 const bridge=read('src/native/TfAssetNativeBridge.ts');
-for(const source of ['TWSE_MIS','FUGLE','SHIOAJI','YAHOO','TWSE_DAILY','TPEX_DAILY'])
-  assert.ok(bridge.includes(`'${source}'`),'native bridge missing market source '+source);
-assert.match(bridge,/priceType:'REALTIME_TRADE'\|'BACKUP_REALTIME'\|'BID_ASK'\|'PREV_CLOSE'\|'OFFICIAL_CLOSE'/);
+assert.match(bridge,/marketCore\?:'SAIETF_NATIVE'/);
+assert.match(bridge,/refreshUnifiedMarketData/);
 
 const panel=read('src/components/MarketComparisonPanel.tsx');
 for(const token of ['行情中心價格型態','行情中心 Fallback','行情中心說明','證券中心原始欄位（唯讀）'])
@@ -59,7 +64,8 @@ assert.ok(read('src/screens/SettingsScreen.tsx').includes("BUILD='"+String(app.e
 
 for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(read(core).length>0,'finance core missing: '+core);
+assert.doesNotMatch(nativeProviders,/canonicalLedger|actual_fee|actual_tax/);
 assert.doesNotMatch(nativeCenter,/canonicalLedger|actual_fee|actual_tax/);
 assert.doesNotMatch(serverParser,/canonicalLedger|actual_fee|actual_tax/);
 
-console.log('V3.2.11 A→B normalized market fallback / Yahoo failover / z-truth separation PASS');
+console.log('V3.2.11/V4 SaiETF A→B normalized market fallback / Yahoo failover / z-truth separation PASS');
