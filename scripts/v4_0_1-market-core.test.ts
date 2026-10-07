@@ -41,6 +41,7 @@ const providers=fs.readFileSync('src/market/MarketProviders.ts','utf8');
 const catalog=fs.readFileSync('src/market/TaiwanSecurityCatalog.ts','utf8');
 const persistence=fs.readFileSync('src/market/MarketPersistence.ts','utf8');
 const nativeModule=fs.readFileSync('native/android/TfAssetNativeModule.kt','utf8');
+const nativeDb=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
 
 assert.doesNotMatch(runtime,/function fetchTwseQuotes|mis\.twse\.com\.tw/,'legacy direct TWSE fetch must be removed from MarketRuntime');
 assert.match(runtime,/new MarketDataCenter\(\[twse,yahoo\]\)/);
@@ -54,6 +55,12 @@ assert.match(catalog,/mopsfin_t187ap03_O/);
 assert.doesNotMatch(catalog,/\^00/,'full Taiwan catalog must not be restricted to ETF codes');
 assert.match(persistence,/persistIntervalMillis=5000/);
 assert.match(persistence,/MarketMinuteCandle/);
+assert.match(persistence,/persistNativeMarketCache/,'Android persistence must route to native SQLite');
+assert.match(nativeDb,/SQLiteOpenHelper/);
+assert.match(nativeDb,/market_quote_snapshots/);
+assert.match(nativeDb,/market_minute_candles/);
+assert.match(nativeModule,/loadMarketCache/);
+assert.match(nativeModule,/persistMarketCache/);
 assert.match(nativeModule,/AndroidKeyStore/);
 assert.match(nativeModule,/AES\/GCM\/NoPadding/);
 
