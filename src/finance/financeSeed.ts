@@ -13,7 +13,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   sourceQuoteAt?:number|null;
   quality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
   previousCloseKnown?:boolean;
-  source?:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
+  source?:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY'|'CACHE';
   priceType?:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
   isFallback?:boolean;
   officialTradePrice?:number|null;
