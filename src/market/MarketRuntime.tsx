@@ -148,12 +148,14 @@ function toRuntimeQuotes(
       :[...(old?.sparkline??[]),quote.price].filter(value=>value>0).slice(-120);
     const seed=FALLBACK_QUOTES.find(row=>row.symbol===quote.symbol);
     const name=names.get(quote.symbol)??(quote.name!==quote.symbol?quote.name:undefined)??old?.name??seed?.name??quote.symbol;
+    const latestDividendPerShare=old?.latestDividendPerShare??seed?.latestDividendPerShare;
+    const pinned=old?.pinned??seed?.pinned;
     return {
       symbol:quote.symbol,name,currentPrice:quote.price,previousClose:quote.previousClose??old?.previousClose??quote.price,
       liquidationTradeMode:old?.liquidationTradeMode??seed?.liquidationTradeMode??'ROUND_LOT',
       dividendFrequency:old?.dividendFrequency??seed?.dividendFrequency??4,
-      ...(old?.latestDividendPerShare==null&&seed?.latestDividendPerShare==null?{}:{latestDividendPerShare:old?.latestDividendPerShare??seed?.latestDividendPerShare}),
-      ...(old?.pinned==null&&seed?.pinned==null?{}:{pinned:old?.pinned??seed?.pinned}),
+      ...(latestDividendPerShare==null?{}:{latestDividendPerShare}),
+      ...(pinned==null?{}:{pinned}),
       sparkline:sparkline.length?sparkline:[quote.price],
       marketSource:quote.source,quoteStatus:quote.quality,
       quoteDate:quote.sessionDate.replaceAll('-',''),quoteTime:quoteClock(quote.sourceTimestampEpochMillis),
