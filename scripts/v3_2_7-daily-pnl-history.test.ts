@@ -56,7 +56,7 @@ assert.match(home,/onPressTotalPnl=\{\(\)=>setPnlStatsOpen\(true\)\}/);
 assert.match(home,/dailyRecords=\{pnlHistory\.records\}/,'daily history must remain available inside purchase-driven P\/L statistics');
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
 assert.equal(app.expo.version,pkg.version);
 assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
 assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));

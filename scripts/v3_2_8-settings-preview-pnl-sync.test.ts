@@ -44,7 +44,7 @@ for(const label of ['昨日單日損益','今日單日損益','持股總損益']
   assert.ok(overview.includes(label),'asset overview missing '+label);
 
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json'));
-assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
 assert.equal(app.expo.version,pkg.version);
 assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
 assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));

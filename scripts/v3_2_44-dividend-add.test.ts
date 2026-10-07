@@ -4,9 +4,10 @@ import {readFileSync} from 'node:fs';
 const read=(path:string)=>readFileSync(path,'utf8');
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
-assert.equal(pkg.version,'3.2.44');
-assert.equal(app.expo.version,'3.2.44');
-assert.equal(app.expo.android.versionCode,30244);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=44))),'V3.2.44 dividend regression must survive later versions');
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 
 const screen=read('src/screens/DividendScreen.tsx');
 for(const token of [

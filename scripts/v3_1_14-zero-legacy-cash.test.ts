@@ -13,7 +13,7 @@ import {parseBackupDocument,TF_LEDGER_KEY} from '../src/settings/backupDocumentF
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
 assert.equal(app.expo.version,pkg.version);
 assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
 assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));

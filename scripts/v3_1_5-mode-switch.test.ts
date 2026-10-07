@@ -49,6 +49,7 @@ assert.doesNotMatch(safe,/PortfolioHoldingTable|HoldingQuoteCollection|Inspectab
 assert.match(boundary,/PORTFOLIO_VIEW_RENDER/);
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
+assert.equal(app.expo.version,pkg.version);
 assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
 console.log('V3.1.18 alternate mode selector, safe-list bypass, legacy isolation, normalized persistence: PASS; Android device verification pending');

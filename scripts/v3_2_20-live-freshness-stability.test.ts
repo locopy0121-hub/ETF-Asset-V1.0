@@ -16,9 +16,10 @@ assert.match(panel,/同步判定/);
 assert.match(panel,/officialLag<=2000\?'同步':'SQLite 待追上'/);
 assert.match(panel,/setInterval\(\(\)=>setClock\(Date\.now\(\)\),1000\)/);
 
-assert.ok(pkg.version.startsWith('3.2.') && Number(pkg.version.split('.')[2])>=20,'V3.2.20 no-downgrade contract must survive later versions');
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=20))),'V3.2.20 no-downgrade contract must survive later versions');
 assert.equal(app.expo.version,pkg.version);
-const expectedCode=30200+Number(pkg.version.split('.')[2]);
+const expectedCode=major*10000+minor*100+patch;
 assert.equal(app.expo.android.versionCode,expectedCode);
 assert.equal(app.expo.ios.buildNumber,String(expectedCode));
 assert.equal(pkg.scripts['test:v3_2_20'],'npm run test:v3_2_19 && tsx scripts/v3_2_20-live-freshness-stability.test.ts');

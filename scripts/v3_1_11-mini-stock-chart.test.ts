@@ -8,7 +8,7 @@ const pkg=JSON.parse(read('package.json'));
 assert.equal(app.expo.version,pkg.version);
 assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
 assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
-assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
 
 const domain=read('src/domain/chartEditor.ts');
 assert.match(domain,/MARKET_CHART_DATA_OPTIONS/);

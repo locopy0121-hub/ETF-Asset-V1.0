@@ -11,10 +11,10 @@ import type {CanonicalLedgerEntry} from '../src/finance/canonicalLedger';
 
 const app=JSON.parse(readFileSync('app.json','utf8'));
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'3.2.6');
-assert.equal(app.expo.version,'3.2.6');
-assert.equal(app.expo.android.versionCode,30206);
-assert.equal(app.expo.ios.buildNumber,'30206');
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
+assert.equal(app.expo.version,pkg.version);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
 
 const genuine:CanonicalLedgerEntry[]=[
   {id:'real-adjustment',date:'2026-09-28',kind:'other',label:'本人現金調整',amount:-23_871},

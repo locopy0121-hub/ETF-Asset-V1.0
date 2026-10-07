@@ -6,7 +6,8 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 function main(){
   const pkg=JSON.parse(read('package.json')) as {version:string};
   const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{versionCode:number};ios:{buildNumber:string}}};
-  assert.match(pkg.version,/^3\.2\.(?:39|[4-9]\d|\d{3,})$/);
+  const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+  assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=39))),'V3.2.39 regression must survive later versions');
   assert.equal(app.expo.version,pkg.version);
   assert.ok(app.expo.android.versionCode>=30239);
   assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));

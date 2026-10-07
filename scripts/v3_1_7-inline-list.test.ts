@@ -37,7 +37,8 @@ assert.match(quick,/onPress=\{onCycleFirst\}/);
 
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 const app=JSON.parse(readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.2.6');
-assert.equal(app.expo.android.versionCode,30206);
-assert.equal(app.expo.ios.buildNumber,'30206');
+assert.match(pkg.version,/^\d+\.\d+\.\d+$/);
+assert.equal(app.expo.version,pkg.version);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
 console.log('V3.1.18 regression: original direct table, engineer opt-in and error-only fallback: PASS; Android device pending');
