@@ -52,7 +52,7 @@ assert.match(native,/if\(missing\.isNotEmpty\(\)&&!isLiveSession\(now\)\)/);
 assert.match(native,/source=="TWSE_MIS"&&quality=="backup_realtime"/);
 
 const db=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
-assert.match(db,/tf_asset_market_center_v1\.db",null,[78]/);
+assert.match(db,/tf_asset_market_center_v1\\.db\",null,[789]/);
 assert.match(db,/quality=\? OR \(source=\? AND price_type=\?\)/);
 assert.match(db,/arrayOf\("previous_close","TWSE_MIS","BACKUP_REALTIME"\)/);
 
