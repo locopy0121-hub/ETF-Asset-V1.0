@@ -170,10 +170,11 @@ function appendNativeIntraday(
     const old=prior.get(row.symbol);
     const liveQuality=row.quality==='trade'||row.quality==='backup_realtime';
     const liveSource=row.source==='FUGLE'||row.source==='TWSE_MIS'||row.source==='YAHOO';
-    if(!liveQuality||!liveSource||row.sourceQuoteAt<=0)return row;
+    const sourceQuoteAt=typeof row.sourceQuoteAt==='number'&&Number.isFinite(row.sourceQuoteAt)?row.sourceQuoteAt:0;
+    if(!liveQuality||!liveSource||sourceQuoteAt<=0)return row;
     const base=old?.intradayDate===sessionDate?[...(old.intraday??[])]:[];
     const point:RuntimeIntradayPoint={
-      at:row.sourceQuoteAt,
+      at:sourceQuoteAt,
       price:row.currentPrice,
       quality:row.quality==='trade'?'trade':'backup_realtime',
       source:row.source,
