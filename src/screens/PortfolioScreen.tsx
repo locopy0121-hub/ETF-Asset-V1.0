@@ -112,7 +112,7 @@ function HoldingTable({rows,onOpenHolding}:{rows:HoldingQuote[];onOpenHolding:(r
   return <View style={styles.tableOuter}>
     <View style={styles.tableSplit}>
       <View style={styles.fixedColumn}>
-        <View style={[styles.fixedHeader,{height:38}]}><Text style={styles.tableHeadText}>ETF代號｜名稱</Text></View>
+        <View style={[styles.fixedHeader,{height:38}]}><Text style={styles.tableHeadText}>代號｜名稱</Text></View>
         {rows.map(row=><Pressable key={row.symbol} onPress={()=>onOpenHolding(row)} style={[styles.fixedRow,{height:rowHeight}]}>
           <Text style={styles.symbolStrong}>{row.symbol}</Text>
           <Text numberOfLines={1} style={styles.nameSmall}>{row.name}</Text>
