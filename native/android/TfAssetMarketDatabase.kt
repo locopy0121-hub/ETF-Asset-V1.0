@@ -133,7 +133,6 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     createIntradayTable(db)
     createResearchTables(db)
     createMarketCoreTables(db)
-    if(oldVersion<9)createMarketCoreTables(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
@@ -200,6 +199,7 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       // V8 makes the primary holdings price trade-only: bid/ask never survives as currentPrice.
       db.delete("market_quotes","quality=?",arrayOf("bid_ask"))
     }
+    if(oldVersion<9)createMarketCoreTables(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
