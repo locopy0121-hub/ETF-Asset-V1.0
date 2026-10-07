@@ -4,7 +4,7 @@ TF Asset **V4.0.1** 以 Canonical Finance Core 為帳務 SSOT，並將 SaiETF MA
 
 ## V4.0.1 核心架構
 
-- **金融核心鎖定**：V3.7.8 Canonical Finance Core 與歷史費稅規則不由行情中心重算。
+- **金融核心鎖定**：Canonical Finance Core 與既有費稅規則不由行情中心重算；V4.0.1 僅重建行情與證券資料層。
 - **單一行情中心**：Fugle WebSocket → TWSE MIS → Yahoo → 同交易日快取。
 - **行情仲裁**：交易日 → sequence → source timestamp → quality → fallback level → source priority → received-at。
 - **Provider 保護**：HEALTHY / DEGRADED / COOLDOWN / RECOVERING，含 403 / 429 cooldown 與 bounded backoff。
