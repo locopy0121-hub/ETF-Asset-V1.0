@@ -163,13 +163,15 @@ class TwseMisQuoteProvider : MarketQuoteProvider {
 
                 val price = marketNumber(row.optString("z")) ?: continue
                 val previousClose = marketNumber(row.optString("y"))
-                val timestamp = row.optString("tlong").toLongOrNull()
-                    ?.takeIf { it > 0L }
-                    ?: System.currentTimeMillis()
+                val timestamp = parseMisSourceTimestamp(row) ?: continue
 
                 result[symbol] = MarketQuote(
                     symbol = symbol,
                     name = localizedName,
+                    exchange = if (row.optString("ex") == "otc") "TPEX" else "TWSE",
+                    market = if (row.optString("ex") == "otc") "OTC" else "TSE",
+                    receivedAtEpochMillis = System.currentTimeMillis(),
+                    volume = row.optString("v").toLongOrNull(),
                     price = price,
                     previousClose = previousClose,
                     open = marketNumber(row.optString("o")),
@@ -230,14 +232,17 @@ class YahooQuoteProvider : MarketQuoteProvider {
             ).firstOrNull { it.isFinite() && it > 0.0 }
 
             val epochSeconds = meta.optLong("regularMarketTime", 0L)
-            val epochMillis = if (epochSeconds > 0L) {
-                epochSeconds * 1_000L
-            } else {
-                System.currentTimeMillis()
-            }
+            if (epochSeconds <= 0L) continue
+            val epochMillis = epochSeconds * 1_000L
+            if (epochMillis > System.currentTimeMillis() + 120_000L) continue
 
             return MarketQuote(
                 symbol = symbol,
+                exchange = if (suffix == "TWO") "TPEX" else "TWSE",
+                market = if (suffix == "TWO") "OTC" else "TSE",
+                receivedAtEpochMillis = System.currentTimeMillis(),
+                fallbackLevel = 2,
+                volume = meta.optLong("regularMarketVolume", 0L),
                 name = localizedName?.trim()
                     ?.takeIf { it.isNotBlank() }
                     ?: symbol,

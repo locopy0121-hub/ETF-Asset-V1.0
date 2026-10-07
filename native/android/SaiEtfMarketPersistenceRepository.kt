@@ -151,33 +151,8 @@ class MarketPersistenceRepository(context: Context) {
         val result = linkedMapOf<String, MarketQuote>()
         for (index in 0 until rows.length()) {
             val row = rows.optJSONObject(index) ?: continue
-            val symbol = row.optString("symbol").trim().uppercase()
-            val price = row.optDouble("price", Double.NaN)
-            val sourceAt = row.optLong("sourceTimestampEpochMillis", 0L)
-            if (symbol.isBlank() || !price.isFinite() || price <= 0.0 || sourceAt <= 0L) continue
-            result[symbol] = MarketQuote(
-                symbol = symbol,
-                name = row.optString("name", symbol),
-                exchange = row.optString("exchange").takeIf { it.isNotBlank() },
-                market = row.optString("market").takeIf { it.isNotBlank() },
-                price = price,
-                previousClose = row.optDouble("previousClose", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
-                open = row.optDouble("open", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
-                high = row.optDouble("high", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
-                low = row.optDouble("low", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
-                asOfEpochMillis = sourceAt,
-                source = runCatching { MarketSource.valueOf(row.optString("source")) }.getOrDefault(MarketSource.CACHE),
-                quality = runCatching { QuoteQuality.valueOf(row.optString("quality")) }.getOrDefault(QuoteQuality.OFFLINE),
-                volume = if (row.isNull("volume")) null else row.optLong("volume"),
-                bid = row.optDouble("bid", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
-                ask = row.optDouble("ask", Double.NaN).takeIf { it.isFinite() && it > 0.0 },
-                sourceTimestampEpochMillis = sourceAt,
-                receivedAtEpochMillis = row.optLong("receivedAtEpochMillis", sourceAt),
-                sessionDate = row.optString("sessionDate").takeIf { it.isNotBlank() },
-                fallbackLevel = row.optInt("fallbackLevel", 3),
-                sequence = if (row.isNull("sequence")) null else row.optLong("sequence"),
-                isClose = row.optBoolean("isClose", false),
-            )
+            val quote = persistedMarketQuote(row) ?: continue
+            result[quote.symbol] = quote
         }
         return result
     }

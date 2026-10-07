@@ -216,6 +216,24 @@ class MarketDataCenter(
         return true
     }
 
+    /** Restore only bounded, original-provider snapshots; never synthesize a fresh clock. */
+    fun restorePersistedQuotes(
+        quotes: Collection<MarketQuote>,
+        nowEpochMillis: Long = System.currentTimeMillis(),
+    ) {
+        val date = taipeiDate(nowEpochMillis)
+        val restored = quotes.mapNotNull { raw ->
+            val at = raw.sourceTimestampEpochMillis
+            if (raw.source == MarketSource.CACHE || raw.isTrial || !raw.price.isFinite() || raw.price <= 0.0 ||
+                at <= 0L || at > nowEpochMillis + 120_000L || nowEpochMillis - at > maxOfflineCacheAgeMillis) {
+                return@mapNotNull null
+            }
+            raw.copy(quality = qualityFor(at, nowEpochMillis, date))
+        }
+        synchronized(cache) { restored.forEach { cache[it.symbol] = it } }
+        hotStore.publish(restored)
+    }
+
     fun providerHealthSnapshot(nowEpochMillis: Long): List<ProviderHealth> =
         providers.map { provider ->
             val runtime = providerRuntime.getOrPut(provider.source) { ProviderRuntime() }

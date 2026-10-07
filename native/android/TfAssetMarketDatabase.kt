@@ -1,5 +1,7 @@
 package com.tfasset.app
 
+import com.tfasset.app.saietf.marketQuoteToRuntimeRow
+import com.tfasset.app.saietf.persistedMarketQuote
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -538,34 +540,8 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     val rows=JSONArray()
     for(i in 0 until source.length()){
       val quote=source.optJSONObject(i)?:continue
-      val price=quote.optDouble("price",Double.NaN)
-      val at=quote.optLong("sourceTimestampEpochMillis",0L)
-      if(!price.isFinite()||price<=0.0||at<=0L)continue
-      val provider=quote.optString("source","CACHE")
-      val coreQuality=quote.optString("quality","STALE")
-      val priceKind=quote.optString("priceKind","none")
-      val runtimeQuality=when{
-        coreQuality=="LIVE"&&(provider=="FUGLE"||(provider=="TWSE_MIS"&&priceKind=="lastTrade"))->"trade"
-        coreQuality=="LIVE"||coreQuality=="DELAYED"->"backup_realtime"
-        else->"official_close"
-      }
-      val row=JSONObject()
-        .put("symbol",quote.optString("symbol",""))
-        .put("name",quote.optString("name",quote.optString("symbol","")))
-        .put("currentPrice",price)
-        .put("previousClose",quote.opt("previousClose")?:JSONObject.NULL)
-        .put("sourceQuoteAt",at)
-        .put("checkedAt",quote.optLong("receivedAtEpochMillis",at))
-        .put("quality",runtimeQuality)
-        .put("source",provider)
-        .put("priceType",when(runtimeQuality){"trade"->"REALTIME_TRADE";"backup_realtime"->"BACKUP_REALTIME";else->"OFFICIAL_CLOSE"})
-        .put("isFallback",runtimeQuality!="trade")
-        .put("officialTradePrice",if(runtimeQuality=="trade")price else JSONObject.NULL)
-        .put("marketSource",provider)
-        .put("quoteStatus",coreQuality)
-        .put("sessionDate",quote.optString("sessionDate",""))
-        .put("fallbackLevel",quote.optInt("fallbackLevel",3))
-        .put("priceKind",priceKind)
+      val decoded=persistedMarketQuote(quote)?:continue
+      val row=marketQuoteToRuntimeRow(decoded)
       rows.put(row)
     }
     return JSONObject()

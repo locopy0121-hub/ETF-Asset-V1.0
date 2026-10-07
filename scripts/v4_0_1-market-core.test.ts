@@ -24,9 +24,9 @@ const portfolioScreen=read('src/screens/PortfolioScreen.tsx');
 const pkg=JSON.parse(read('package.json')) as {version:string};
 const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{versionCode:number}}};
 
-assert.equal(pkg.version,'4.0.1');
-assert.equal(app.expo.version,'4.0.1');
-assert.equal(app.expo.android.versionCode,40001);
+assert.ok(/^4\.0\.\d+$/.test(pkg.version));
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,40000+Number(pkg.version.split('.')[2]));
 
 // JS is now an adapter/consumer only. It must not instantiate another quote engine.
 assert.match(runtime,/refreshUnifiedMarketData/);

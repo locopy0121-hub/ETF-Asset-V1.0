@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -286,7 +286,8 @@
     "test:v3_2_47": "npm run test:v3_2_46 && tsx scripts/v3_2_47-zero-cost-data-policy.test.ts",
     "test:v3_2_48": "npm run test:v3_2_47 && tsx scripts/v3_2_48-live-quote-integrity.test.ts",
     "test:v3_2_49": "npm run test:v3_2_48 && tsx scripts/v3_2_49-trade-price-sync.test.ts",
-    "test:v4_0_1": "npm run test:v3_2_49 && tsx scripts/v4_0_1-market-core.test.ts"
+    "test:v4_0_1": "npm run test:v3_2_49 && tsx scripts/v4_0_1-market-core.test.ts",
+    "test:v4_0_2": "npm run test:v4_0_1 && tsx scripts/v4_0_2-native-bridge-contract.test.ts && tsx scripts/v4_0_2-cache-restore-contract.test.ts && tsx scripts/v4_0_2-source-clock-contract.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

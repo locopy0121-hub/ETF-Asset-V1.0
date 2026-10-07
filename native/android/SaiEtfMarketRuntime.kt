@@ -33,6 +33,10 @@ class SaiEtfMarketRuntime(context: Context) {
             YahooQuoteProvider(),
         ),
     )
+    init {
+        center.restorePersistedQuotes(persistence.persistedQuotes().values)
+    }
+
     private val persistenceController = MarketPersistenceController(
         scope = scope,
         marketDataCenter = center,
@@ -58,7 +62,7 @@ class SaiEtfMarketRuntime(context: Context) {
         return true
     }
 
-    fun refresh(requested: Collection<String>): JSONObject {
+    @Synchronized fun refresh(requested: Collection<String>): JSONObject {
         val symbols = requested
             .map { it.trim().uppercase(Locale.US) }
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }
@@ -78,30 +82,15 @@ class SaiEtfMarketRuntime(context: Context) {
         return snapshot(symbols, batch)
     }
 
-    fun snapshot(requested: Collection<String> = emptyList()): JSONObject =
+    @Synchronized fun snapshot(requested: Collection<String> = emptyList()): JSONObject =
         snapshot(requested.map { it.trim().uppercase(Locale.US) }.filter { it.isNotBlank() }.toSet(), null)
 
     private fun snapshot(symbols: Set<String>, batch: MarketBatch? = null): JSONObject {
         val live = center.memoryQuotes(symbols)
-        if (live.isEmpty()) {
-            val persisted = persistence.runtimeSnapshot()
-            if (symbols.isEmpty()) return persisted.put("marketCore", "SAIETF_NATIVE")
-            val source = persisted.optJSONArray("quotes") ?: JSONArray()
-            val rows = JSONArray()
-            for (i in 0 until source.length()) {
-                val row = source.optJSONObject(i) ?: continue
-                if (row.optString("symbol") in symbols) rows.put(row)
-            }
-            return JSONObject(persisted.toString())
-                .put("quotes", rows)
-                .put("requestedCount", symbols.size)
-                .put("coveredCount", rows.length())
-                .put("marketCore", "SAIETF_NATIVE")
-        }
 
         val rows = JSONArray()
-        live.values.sortedBy { it.symbol }.forEach { rows.put(runtimeRow(it)) }
-        val missing = batch?.unresolvedSymbols ?: (symbols - live.keys)
+        live.values.sortedBy { it.symbol }.forEach { rows.put(marketQuoteToRuntimeRow(it)) }
+        val missing = symbols - (batch?.quotes?.keys ?: live.keys)
         val health = JSONArray()
         val allHealth = listOf(streamingController.health()) +
             (batch?.providerHealth ?: center.providerHealthSnapshot(System.currentTimeMillis()))
@@ -117,41 +106,7 @@ class SaiEtfMarketRuntime(context: Context) {
             .put("queriedAt", System.currentTimeMillis())
             .put("providerHealth", health)
             .put("marketCore", "SAIETF_NATIVE")
-    }
-
-    private fun runtimeRow(quote: MarketQuote): JSONObject {
-        val trade = quote.quality == QuoteQuality.LIVE &&
-            (quote.source == MarketSource.FUGLE || quote.source == MarketSource.TWSE_MIS)
-        val backup = quote.quality == QuoteQuality.LIVE || quote.quality == QuoteQuality.DELAYED
-        val quality = when {
-            trade -> "trade"
-            backup -> "backup_realtime"
-            else -> "official_close"
-        }
-        val market = when {
-            quote.market.orEmpty().contains("OTC", true) || quote.exchange.orEmpty().contains("TPEX", true) -> "OTC"
-            quote.market.orEmpty().contains("TSE", true) || quote.exchange.orEmpty().contains("TWSE", true) -> "TSE"
-            else -> "UNKNOWN"
-        }
-        return JSONObject()
-            .put("symbol", quote.symbol)
-            .put("name", quote.name)
-            .put("currentPrice", quote.price)
-            .put("previousClose", quote.previousClose ?: JSONObject.NULL)
-            .put("officialTradePrice", if (trade) quote.price else JSONObject.NULL)
-            .put("sourceQuoteAt", quote.sourceTimestampEpochMillis)
-            .put("quality", quality)
-            .put("source", quote.source.name)
-            .put("priceType", if (trade) "REALTIME_TRADE" else if (backup) "BACKUP_REALTIME" else "OFFICIAL_CLOSE")
-            .put("isFallback", !trade)
-            .put("market", market)
-            .put("statusMessage", "SaiETF MarketDataCenter · ${quote.source.name} · ${quote.quality.name}")
-            .put("checkedAt", quote.receivedAtEpochMillis)
-            .put("volume", quote.volume ?: JSONObject.NULL)
-            .put("sessionDate", quote.sessionDate ?: taipeiDate(quote.sourceTimestampEpochMillis))
-            .put("fallbackLevel", quote.fallbackLevel)
-            .put("sequence", quote.sequence ?: JSONObject.NULL)
-            .put("quoteStatus", quote.quality.name)
+            .put("intraday", persistence.runtimeSnapshot().optJSONObject("intraday") ?: JSONObject())
     }
 
     private fun healthRow(health: ProviderHealth): JSONObject =
