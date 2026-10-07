@@ -239,15 +239,19 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
 
   @ReactMethod fun refreshUnifiedMarketData(symbolsJson:String,promise:Promise){
-    val requested=runCatching{
+    // V4 compatibility bridge only. Network ownership lives in JS MarketDataCenter;
+    // native callers request a refresh and immediately receive the shared SQLite cache.
+    runCatching{
       val array=org.json.JSONArray(symbolsJson)
-      (0 until array.length()).map{array.optString(it,"")}
+      (0 until array.length()).map{array.optString(it,"").trim().uppercase()}
+        .filter{it.matches(Regex("[0-9A-Z]{4,10}"))}
     }.getOrElse{
-      promise.reject("MARKET_SYMBOLS","ETF 追蹤清單格式錯誤",it);return
+      promise.reject("MARKET_SYMBOLS","台股追蹤清單格式錯誤",it);return
     }
     Thread{
       try{
-        val result=TfAssetMarketCenter(reactContext).refresh(requested)
+        prefs.edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis()).apply()
+        val result=marketDb.marketCoreRuntimeSnapshot()
         promise.resolve(result.toString())
         refreshWidget()
         reactContext.sendBroadcast(Intent(reactContext,TfAssetOverlayService::class.java)
@@ -272,7 +276,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
 
   @ReactMethod fun readUnifiedMarketData(promise:Promise){
     Thread{
-      try{promise.resolve(TfAssetMarketCenter(reactContext).snapshot().toString())}
+      try{promise.resolve(marketDb.marketCoreRuntimeSnapshot().toString())}
       catch(error:Exception){promise.reject("MARKET_READ",error)}
     }.start()
   }
