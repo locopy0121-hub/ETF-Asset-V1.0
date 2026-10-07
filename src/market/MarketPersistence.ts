@@ -1,4 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  clearNativeMarketCache,loadNativeMarketCache,nativeRuntimeAvailable,persistNativeMarketCache,
+} from '../native/TfAssetNativeBridge';
 import type {MarketDataCenter,MarketQuote} from './MarketCore';
 
 export type MarketMinuteCandle=Readonly<{
@@ -21,11 +24,13 @@ type PersistedMarketCache=Readonly<{
   persistedAtEpochMillis:number;
 }>;
 
-const STORAGE_KEY='@tf-asset/v4-market-persistence';
+const STORAGE_KEY='@tf-asset/v4-market-persistence-fallback';
 const MINUTE_MILLIS=60000;
 const MAX_CANDLE_ROWS=12000;
 
 export class MarketPersistenceRepository{
+  private state:PersistedMarketCache|null|undefined;
+
   async loadSnapshots():Promise<MarketQuote[]>{
     const state=await this.load();return state?.snapshots?[...state.snapshots]:[];
   }
@@ -54,16 +59,36 @@ export class MarketPersistenceRepository{
     }
     const candleRows=[...candles.values()].sort((a,b)=>b.bucketEpochMillis-a.bucketEpochMillis).slice(0,MAX_CANDLE_ROWS);
     const next:PersistedMarketCache={schema:4,snapshots:[...snapshots.values()],candles:candleRows,persistedAtEpochMillis};
-    await AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(next));
+    this.state=next;
+    const serialized=JSON.stringify(next);
+    if(nativeRuntimeAvailable){
+      const ok=await persistNativeMarketCache(serialized);
+      if(!ok)throw new Error('Android SQLite market persistence failed');
+      return;
+    }
+    await AsyncStorage.setItem(STORAGE_KEY,serialized);
   }
-  async clear():Promise<void>{await AsyncStorage.removeItem(STORAGE_KEY);}
+  async clear():Promise<void>{
+    this.state=null;
+    if(nativeRuntimeAvailable){await clearNativeMarketCache();return;}
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  }
   private async load():Promise<PersistedMarketCache|null>{
+    if(this.state!==undefined)return this.state;
     try{
-      const raw=await AsyncStorage.getItem(STORAGE_KEY);if(!raw)return null;
+      const raw=nativeRuntimeAvailable
+        ?await loadNativeMarketCache()
+        :await AsyncStorage.getItem(STORAGE_KEY);
+      if(!raw){this.state=null;return null;}
       const parsed=JSON.parse(raw) as Partial<PersistedMarketCache>;
-      if(parsed.schema!==4||!Array.isArray(parsed.snapshots)||!Array.isArray(parsed.candles))return null;
-      return parsed as PersistedMarketCache;
-    }catch{return null;}
+      if(parsed.schema!==4||!Array.isArray(parsed.snapshots)||!Array.isArray(parsed.candles)){
+        this.state=null;return null;
+      }
+      this.state=parsed as PersistedMarketCache;
+      return this.state;
+    }catch{
+      this.state=null;return null;
+    }
   }
 }
 
@@ -88,4 +113,4 @@ export class MarketPersistenceController{
   }
 }
 
-export {STORAGE_KEY as MARKET_PERSISTENCE_STORAGE_KEY};
+export {STORAGE_KEY as MARKET_PERSISTENCE_FALLBACK_STORAGE_KEY};
