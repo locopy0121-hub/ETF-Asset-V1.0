@@ -25,6 +25,9 @@ type TfAssetNativeModule={
   openOverlaySettings:()=>Promise<boolean>;
   pickThemeBackground:()=>Promise<string|null>;
   setAppIcon:(iconKey:string)=>Promise<boolean>;
+  saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
+  loadFugleApiKey:()=>Promise<string|null>;
+  clearFugleApiKey:()=>Promise<boolean>;
 };
 
 const native=NativeModules.TfAssetNative as TfAssetNativeModule|undefined;
@@ -48,3 +51,6 @@ export async function canDrawOverlays(){return native?native.canDrawOverlays():f
 export async function openOverlaySettings(){return native?native.openOverlaySettings():false;}
 export async function pickNativeThemeBackground(){return native?native.pickThemeBackground():null;}
 export async function setNativeAppIcon(iconKey:string){return native?native.setAppIcon(iconKey):false;}
+export async function saveNativeFugleApiKey(apiKey:string){return native?native.saveFugleApiKey(apiKey):false;}
+export async function loadNativeFugleApiKey(){return native?native.loadFugleApiKey():null;}
+export async function clearNativeFugleApiKey(){return native?native.clearFugleApiKey():false;}
