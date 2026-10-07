@@ -57,10 +57,14 @@ async function main(){
   assert.equal((staleQuote?.data as {price?:number})?.price,65.2);
 
   const market=read('src/market/MarketRuntime.tsx');
-  assert.match(market,/const refreshMeta=await refreshUnifiedMarketData\(symbolsRef\.current\);\s*const state=refreshMeta;/,
-    'native market refresh result must be consumed directly');
-  assert.doesNotMatch(market,/refreshUnifiedMarketData\(symbolsRef\.current\);\s*const state=await loadUnifiedMarketData\(\)/,
-    '1-second native refresh must not immediately re-read the same SQLite snapshot');
+  assert.match(market,/const batch=await center\.refresh\(\{/,
+    'V4 MarketDataCenter refresh result must be consumed directly');
+  assert.match(market,/if\(batch\.quotes\.size>0\)/,
+    'direct MarketDataCenter batch must drive runtime quote publication metadata');
+  assert.doesNotMatch(market,/refreshUnifiedMarketData\(/,
+    'V4 runtime must not reintroduce the retired native refresh path');
+  assert.doesNotMatch(market,/loadUnifiedMarketData\(/,
+    '1-second V4 refresh must not immediately re-read the same native SQLite snapshot');
 
   const history=read('src/finance/useDailyPnlHistory.ts');
   assert.match(history,/marketDataVersionRef=useRef\(input\.marketDataVersion\)/);
