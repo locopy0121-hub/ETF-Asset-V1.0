@@ -1,3 +1,4 @@
+import {portfolioFrameTone} from '../theme/financialTone';
 import {useEffect,useMemo,useState} from 'react';
 import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
@@ -251,6 +252,7 @@ export function PageLayoutToolWorkbench({
           </Pressable>:
           <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
             <FrameCard title={item.title} editorStyle={itemConfig}
+              tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
               onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
                 previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
               {previewContentFor(item)}

@@ -1,3 +1,4 @@
+import {portfolioFrameTone} from '../theme/financialTone';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -151,7 +152,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
       <LayoutTargetProvider targets={effectiveDisplay.layoutTargets??{}}>
       <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={[
         {key:'asset-dashboard',element:
-          <FrameCard title="資產總覽">
+          <FrameCard title="資產總覽" tone={portfolioFrameTone('home','asset-dashboard',portfolio,valuationComplete)}>
             <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
               <DashboardAssetOverview
                 amount={money(portfolio.totalMarketValue)}
@@ -168,14 +169,14 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
           </FrameCard>
         },
         {key:'profit-analysis',element:
-          <FrameCard title="損益分析">
+          <FrameCard title="損益分析" tone={portfolioFrameTone('home','profit-analysis',portfolio,valuationComplete)}>
             <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
               <DashboardProfitAnalysis items={dashboardKpis} layout={dashboardLayout.profitAnalysis}/>
             </View>
           </FrameCard>
         },
         {key:'pnl-detail',element:
-          <FrameCard title="損益明細">
+          <FrameCard title="損益明細" tone={portfolioFrameTone('home','pnl-detail',portfolio,valuationComplete)}>
             <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
               <DashboardProfitDetail rows={dashboardProfitRows} layout={dashboardLayout.profitDetail} onMore={()=>onNavigate('portfolio')}/>
             </View>
@@ -204,7 +205,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
           </FrameCard>
         },
         {key:'holding-quotes',element:
-          <FrameCard title="持股行情模塊">
+          <FrameCard title="持股行情模塊" tone={portfolioFrameTone('home','holding-quotes',portfolio,valuationComplete)}>
             <PortfolioQuickBar firstMode={homeFirstMode} activeMode={quoteStyle} firstHint="切換純行情與精簡"
               sortLabel={currentSort.label} onCycleFirst={cycleHomeFirst}
               onSelect={setQuoteStyle} onCycleSort={cycleHomeSort}/>

@@ -1,3 +1,4 @@
+import {portfolioFrameTone} from '../theme/financialTone';
 import {useSystemColors} from '../theme/useSystemColors';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -144,7 +145,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
     >
       <PageEditorStack pageKey="portfolio" frames={[
         {key:'holding-dashboard',element:
-          <FrameCard title="持股分析儀表板">
+          <FrameCard title="持股分析儀表板" tone={portfolioFrameTone('portfolio','holding-dashboard',portfolio,valuationComplete)}>
             <View style={styles.metrics}>
               <MetricTile label="總市值" value={valuationComplete?money(portfolio.totalMarketValue):"估值待核對"} caption="NT$"/>
               <MetricTile label="純成交成本" value={money(portfolio.totalTradeCost)} caption="不含費"/>
@@ -159,7 +160,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
           </FrameCard>
         },
         {key:'holding-view',element:
-          <FrameCard title="持股檢視">
+          <FrameCard title="持股檢視" tone={portfolioFrameTone('portfolio','holding-view',portfolio,valuationComplete)}>
             <PortfolioQuickBar firstMode={firstMode} activeMode={activeQuickMode}
               sortLabel={currentSort.label} onCycleFirst={cycleFirst}
               onSelect={applyQuickMode} onCycleSort={cycleSort}/>

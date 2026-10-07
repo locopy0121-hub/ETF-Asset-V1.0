@@ -1,3 +1,4 @@
+import {financialTone} from '../theme/financialTone';
 import {useSystemColors} from '../theme/useSystemColors';
 import { useEffect, useState } from 'react';
 import { OfficialCandleChart } from '../components/OfficialCandleChart';
@@ -99,7 +100,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
         <MetricTile label="目前市值" value={holding.quoteVerified===false?'待核對':money(holding.marketValue)} caption="NT$"/>
       </View>
     </FrameCard>},
-      {key:'holding-detail-pnl',element:<FrameCard title="損益拆解">
+      {key:'holding-detail-pnl',element:<FrameCard title="損益拆解" tone={financialTone(holding.pricePnl,holding.quoteVerified!==false)}>
       <View style={styles.metrics}>
         <MetricTile label="純價差損益" value={holding.quoteVerified===false?'待核對':money(holding.pricePnl)} caption="毛市值－純成交成本" tone={holding.pricePnl>=0?'gain':'loss'}/>
         <MetricTile label="淨清算未實現" value={holding.quoteVerified===false?'待核對':money(holding.pnl)} caption={(holding.roi>=0?'+':'')+holding.roi.toFixed(2)+'%'} tone={holding.pnl>=0?'gain':'loss'}/>
@@ -107,7 +108,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
         <MetricTile label="含息總損益" value={holding.quoteVerified===false?'待核對':money(holding.comprehensivePnl)} caption="Canonical" tone={holding.comprehensivePnl>=0?'gain':'loss'}/>
       </View>
     </FrameCard>},
-      {key:'holding-detail-dividend',element:<FrameCard title="股息">
+      {key:'holding-detail-dividend',element:<FrameCard title="股息" tone={financialTone(holding.cumulativeDividend)}>
       <View style={styles.metrics}><MetricTile label="累積淨股息" value={money(holding.cumulativeDividend)} caption="NT$" tone="gain"/><MetricTile label="持股占比" value={finance.valuationComplete?holding.weight.toFixed(1)+'%':'待核對'} caption="目前組合"/></View>
     </FrameCard>},
       {key:'holding-detail-history',element:<FrameCard title="交易與股息紀錄">
