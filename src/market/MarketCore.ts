@@ -28,7 +28,7 @@ export type MarketQuote=Readonly<{
   sequence?:number|undefined;
   isTrial?:boolean|undefined;
   isClose?:boolean|undefined;
-  priceKind?:'lastTrade'|'bid'|'ask'|'regularMarketPrice'|undefined;
+  priceKind?:'lastTrade'|'bid'|'ask'|'regularMarketPrice'|'none'|undefined;
 }>;
 
 export type MarketProviderPolicy=Readonly<{
