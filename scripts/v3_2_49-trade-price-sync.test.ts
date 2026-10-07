@@ -10,27 +10,26 @@ assert.equal(resolveTwsePriceDecision(trade)?.price,112.75);
 assert.equal(resolveTwsePriceDecision(trade)?.quality,'trade');
 
 const providers=fs.readFileSync('native/android/SaiEtfAndroidMarketProviders.kt','utf8');
-const center=fs.readFileSync('native/android/SaiEtfMarketDataCenter.kt','utf8');
+const arbitrator=fs.readFileSync('native/android/SaiEtfMarketArbitrator.kt','utf8');
 const runtime=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
-assert.match(providers,/marketNumber\(row\.optString\("z"\)\) \?: continue/);
+assert.match(providers,/val price = marketNumber\(row\.optString\("z"\)\) \?: continue/,
+  'SaiETF TWSE provider must publish only actual z trades');
 assert.doesNotMatch(providers,/row\.optString\("pz"\)/);
 assert.doesNotMatch(providers,/row\.optString\("b"\)/);
 assert.doesNotMatch(providers,/row\.optString\("a"\)/);
-assert.match(runtime,/TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/,
-  'unresolved MIS symbols must continue to Yahoo fallback');
-assert.match(center,/val pending = requested\.toMutableSet\(\)/);
-assert.match(center,/providers\.forEach \{ provider ->/);
+assert.match(providers,/class YahooQuoteProvider/,'Yahoo must remain the polling fallback when TWSE has no z trade');
+assert.match(runtime,/TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/);
+assert.match(arbitrator,/REJECT_OLDER_SESSION/);
+assert.match(arbitrator,/REJECT_OLDER_TIMESTAMP/);
+assert.match(arbitrator,/REJECT_OUT_OF_ORDER_SEQUENCE/);
 
 const db=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
-assert.match(db,/tf_asset_market_center_v1\.db",null,[89]/);
+assert.match(db,/tf_asset_market_center_v1\.db",null,9/);
 assert.match(db,/db\.delete\("market_quotes","quality=\?",arrayOf\("bid_ask"\)\)/);
-
-const serverParser=fs.readFileSync('server/src/parser.mjs','utf8');
-assert.doesNotMatch(serverParser,/price=bid/);
-assert.doesNotMatch(serverParser,/price=ask/);
 
 const adapter=fs.readFileSync('src/market/unifiedMarketAdapter.ts','utf8');
 assert.match(adapter,/row\.quality!=='bid_ask'/);
+assert.match(adapter,/row\.source==='TWSE_MIS'&&row\.quality==='backup_realtime'/);
 
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
@@ -43,4 +42,4 @@ assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 for(const locked of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(fs.existsSync(locked),locked);
 
-console.log('V3.2.49/V4 SaiETF trade-price synchronization gate PASS');
+console.log('V3.2.49 SaiETF native trade-price synchronization gate PASS');

@@ -12,47 +12,34 @@ function main(){
   assert.equal(app.expo.version,pkg.version);
   assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 
-  const sources=read('server/src/sources.mjs');
-  assert.match(sources,/TWSE_MIS/);
-  assert.match(sources,/FUGLE/);
-  assert.match(sources,/YAHOO/);
-  assert.match(sources,/CircuitBreaker/);
-  assert.match(sources,/QUALITY_RANK/);
+  const models=read('native/android/SaiEtfMarketModels.kt');
+  const arbitrator=read('native/android/SaiEtfMarketArbitrator.kt');
+  const breaker=read('native/android/SaiEtfProviderCircuitBreaker.kt');
+  const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+  const fugle=read('native/android/SaiEtfFugleWebSocketProvider.kt');
+  const providers=read('native/android/SaiEtfAndroidMarketProviders.kt');
 
-  const parser=read('server/src/parser.mjs');
-  assert.match(parser,/fugleQuoteFromPayload/);
-  assert.match(parser,/epochLikeToMs/);
-  assert.match(parser,/lastTrade\?\.price\?\?payload\?\.closePrice/);
-  assert.doesNotMatch(parser,/lastTrial\?\.price\?\?payload\?\.closePrice/,
-    'trial price must never be promoted ahead of an actual Fugle trade');
+  assert.match(models,/FUGLE[\s\S]*TWSE_MIS[\s\S]*YAHOO[\s\S]*CACHE/);
+  assert.doesNotMatch(models,/SHIOAJI/,'retired Shioaji must not be an active SaiETF provider in TF Asset V4');
+  assert.match(arbitrator,/MarketSource\.FUGLE to 0/);
+  assert.match(arbitrator,/MarketSource\.TWSE_MIS to 1/);
+  assert.match(arbitrator,/MarketSource\.YAHOO to 2/);
+  assert.match(arbitrator,/MarketSource\.CACHE to 3/);
+  assert.match(breaker,/class ProviderCircuitBreaker/);
+  assert.match(breaker,/failureThreshold: Int = 2/);
+  assert.match(breaker,/RECOVERING/);
+  assert.match(nativeRuntime,/TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/);
+  assert.match(nativeRuntime,/FugleWebSocketProvider/);
+  assert.match(fugle,/wss:\/\/api\.fugle\.tw\/marketdata\/v1\.0\/stock\/streaming/);
+  assert.match(providers,/mis\.twse\.com\.tw/);
+  assert.match(providers,/query1\.finance\.yahoo\.com/);
 
+  // ETF NAV analysis remains available, but quote execution ownership is native SaiETF Market Core.
   const nav=read('server/src/nav.mjs');
   assert.match(nav,/TWSE_MIS_ETF_NAV/);
   assert.match(nav,/premiumDiscountPercent/);
   assert.match(nav,/marketPrice-nav\.estimatedNav/);
   assert.match(nav,/nav\.estimatedNav\)\*100/);
-  assert.match(nav,/cacheMs=15_000/);
-
-  const sqlite=read('native/android/TfAssetMarketDatabase.kt');
-  assert.match(sqlite,/null,[6-9]\d*/,'market SQLite schema may advance beyond V6 for verified quote migrations');
-  assert.match(sqlite,/market_core_snapshots/);
-  assert.match(sqlite,/market_core_minute_candles/);
-
-  const models=read('native/android/SaiEtfMarketModels.kt');
-  const arbitrator=read('native/android/SaiEtfMarketArbitrator.kt');
-  const center=read('native/android/SaiEtfMarketDataCenter.kt');
-  const runtime=read('native/android/SaiEtfMarketRuntime.kt');
-  assert.match(models,/FUGLE[\s\S]*TWSE_MIS[\s\S]*YAHOO[\s\S]*CACHE/);
-  assert.match(arbitrator,/MarketSource\.FUGLE to 0/);
-  assert.match(arbitrator,/MarketSource\.TWSE_MIS to 1/);
-  assert.match(arbitrator,/MarketSource\.YAHOO to 2/);
-  assert.match(arbitrator,/MarketSource\.CACHE to 3/);
-  assert.match(center,/ProviderCircuitBreaker/);
-  assert.match(center,/backoffFor/);
-  assert.match(center,/httpStatusCode == 429/);
-  assert.match(center,/httpStatusCode == 403/);
-  assert.doesNotMatch(runtime,/Shioaji/i,
-    'SaiETF Android runtime must not require a brokerage account/API');
 
   const contract=read('src/market/marketQuoteContract.ts');
   for(const field of ['symbol','price','change','changePercent','volume','source','isRealtime'])
@@ -61,7 +48,7 @@ function main(){
   for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
     assert.ok(read(core).length>0,'immutable finance core missing: '+core);
 
-  console.log('V3.2.36/V4 SaiETF multi-source market / ETF NAV / circuit breaker PASS');
+  console.log('V3.2.36 SaiETF native multi-source market / ETF NAV / circuit breaker PASS');
 }
 
 main();
