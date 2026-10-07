@@ -104,27 +104,30 @@ assert.match(marketViews,/export function marketValuationQuoteFor/,
 const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
 assert.match(nativeDb,/tf_asset_market_center_v1\.db\",null,\d+/,'native market DB must remain versioned');
 for(const token of [
-  'market_intraday',
-  'previous_close REAL',
-  'intradayCoverage',
-  "quality IN ('trade','backup_realtime')",
-  "source IN ('TWSE_MIS','FUGLE','SHIOAJI','YAHOO')",
-  'intradaySnapshot',
-  'activeTradingDay',
-  'val currentDay=activeTradingDay(now)',
-  'val viewDay=currentDay?:latestDay?:continue',
-]) assert.ok(nativeDb.includes(token),'native intraday DB missing '+token);
-assert.ok(!nativeDb.includes("quality IN ('trade','backup_realtime','bid_ask')"),'bid/ask must never be recorded as an actual trade path');
+  'market_core_snapshots',
+  'market_core_minute_candles',
+  'persistMarketCoreCache',
+  'loadMarketCoreCache',
+]) assert.ok(nativeDb.includes(token),'SaiETF native persistence DB missing '+token);
 
-const nativeCenter=read('native/android/TfAssetMarketCenter.kt');
+const nativePersistence=read('native/android/SaiEtfMarketPersistenceRepository.kt');
 for(const token of [
-  'yahooIntraday',
-  'backfillIntraday',
-  '?interval=1m&range=1d',
-  '&intraday=1',
-  'incompleteAfterClose',
-  'previousClose',
-]) assert.ok(nativeCenter.includes(token),'native intraday market center missing '+token);
+  'bucketEpochMillis',
+  'runtimeSnapshot',
+  'latestSessionBySymbol',
+  'intraday',
+  'FUGLE',
+  'TWSE_MIS',
+  'YAHOO',
+]) assert.ok(nativePersistence.includes(token),'SaiETF intraday persistence adapter missing '+token);
+assert.doesNotMatch(nativePersistence,/Ledger|ledger/,'market persistence must remain isolated from TF Asset accounting');
+
+const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+assert.match(nativeRuntime,/MarketDataCenter\(/);
+assert.match(nativeRuntime,/MarketPersistenceController/);
+assert.match(nativeRuntime,/FugleStreamingController/);
+assert.match(nativeRuntime,/currentTaipeiDate = taipeiDate\(now\)/,
+  'native refresh must arbitrate quotes against the current Taipei trading session');
 
 const bridge=read('src/native/TfAssetNativeBridge.ts');
 assert.match(bridge,/UnifiedMarketIntradayPoint/);
