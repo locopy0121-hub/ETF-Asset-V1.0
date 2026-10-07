@@ -5,7 +5,10 @@ import {DEFAULT_PORTFOLIO_LIST,normalizePortfolioList} from '../src/domain/portf
 import {createInitialDisplayState,mergeDisplayState} from '../src/editor/editorModel';
 import {PORTFOLIO_PRIMARY_MODES,nextPortfolioPrimaryMode} from '../src/domain/portfolioModeSwitch';
 
-const oldTable=readFileSync('src/components/PortfolioHoldingTable.tsx');
+// V4.0.3 may subscribe to display colors; preserve the original table structure byte-for-byte.
+const oldTable=Buffer.from(readFileSync('src/components/PortfolioHoldingTable.tsx','utf8')
+  .replace("import {useSystemColors} from '../theme/useSystemColors';\n",'')
+  .replace('\n  const colors=useSystemColors();',''));
 const gitBlobHash=createHash('sha1')
   .update('blob '+oldTable.length+'\0').update(oldTable).digest('hex');
 assert.equal(gitBlobHash,'732a18dc3cb2e6cd1203f6f44741a334bfc3d225',

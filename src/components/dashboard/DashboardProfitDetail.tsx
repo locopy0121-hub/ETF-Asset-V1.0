@@ -1,3 +1,4 @@
+import {useSystemColors} from '../../theme/useSystemColors';
 import {Pressable,StyleSheet,View} from 'react-native';
 import type {DashboardLayoutConfig} from '../../domain/dashboardLayout';
 import type {FrameMaintenanceContext} from '../../maintenance/inspectionModel';
@@ -11,6 +12,7 @@ export type DashboardProfitRow=Readonly<{
 export function DashboardProfitDetail({rows,layout,onMore,maintenance}:{
   rows:readonly DashboardProfitRow[];layout:DashboardLayoutConfig['profitDetail'];onMore?:()=>void;maintenance?:FrameMaintenanceContext;
 }){
+  const colors=useSystemColors();
   const byKey=new Map(rows.map(row=>[row.key,row]));
   const ordered=layout.order.map(key=>byKey.get(key)).filter((row):row is DashboardProfitRow=>Boolean(row));
   const shown=ordered.slice(0,layout.itemCount);

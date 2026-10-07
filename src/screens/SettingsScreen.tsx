@@ -59,8 +59,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='4.0.2';
-const BUILD='40002';
+const VERSION='4.0.3';
+const BUILD='40003';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -707,7 +707,7 @@ export function SettingsScreen(){
   function ProfitColorPanel(){
     const d=settings.prefs.display;
     return <Panel title="損益顏色">
-      <ChoiceRow label="正負對應" options={[{key:'red-up-green-down',label:'獲利色＝上漲'},{key:'green-up-red-down',label:'獲利色＝下跌'}]} value={d.profitColorMode} onChange={profitColorMode=>settings.patchDisplay({profitColorMode:profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down'})}/>
+      <ChoiceRow label="正負對應" options={[{key:'red-up-green-down',label:'正值用獲利色'},{key:'green-up-red-down',label:'正值用虧損色'}]} value={d.profitColorMode} onChange={profitColorMode=>settings.patchDisplay({profitColorMode:profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down'})}/>
       <Text style={styles.note}>所有顏色改由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
       <ColorPalettePicker label="獲利 / 上漲色" value={d.gainColor} onChange={gainColor=>settings.patchDisplay({gainColor})}/>
       <ColorPalettePicker label="虧損 / 下跌色" value={d.lossColor} onChange={lossColor=>settings.patchDisplay({lossColor})}/>
@@ -909,7 +909,7 @@ function MarketPanel({
       <Stepper label="盤後更新頻率" value={config.afterHours.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒"
         disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,afterHours:{...config.afterHours,refreshSeconds}})}/>
     </View>
-    <Text style={styles.note}>V4.0.2 行情網路入口只由 MarketDataCenter 管理；Memory Hot Store 為盤中 SSOT，SQLite 僅做持久化。首頁、庫存、圖表、Finance、Widget 與 Monitor 不再各自建立第二條行情抓取路徑。</Text>
+    <Text style={styles.note}>V4.0.3 行情網路入口只由 MarketDataCenter 管理；Memory Hot Store 為盤中 SSOT，SQLite 僅做持久化。首頁、庫存、圖表、Finance、Widget 與 Monitor 不再各自建立第二條行情抓取路徑。</Text>
   </Panel>;
 }
 

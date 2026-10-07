@@ -1,3 +1,4 @@
+import {useSystemColors} from '../../theme/useSystemColors';
 import {useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import type {DashboardLayoutConfig} from '../../domain/dashboardLayout';
@@ -22,6 +23,8 @@ export function DashboardAssetOverview({
   amount:string;caption:string;complete?:boolean;layout:DashboardLayoutConfig['overview'];maintenance?:FrameMaintenanceContext;
   yesterdayPnl?:number|null;todayPnl?:number|null;totalPnl?:number;pnlComplete?:boolean;onPressTotalPnl?:()=>void;
 }){
+  const colors=useSystemColors();
+  const pnlColor=(value:number|null)=>value===null?colors.textSecondary:value>0?colors.gain:value<0?colors.loss:colors.flat;
   const runtime=useLayoutRuntime();
   const [cardSize,setCardSize]=useState<{width:number;height:number}|null>(null);
   const colorPrefs=useSettingsRuntime().prefs.display;
@@ -44,14 +47,14 @@ export function DashboardAssetOverview({
       <DashboardEditableText id="overview-previous-pnl-label" label="昨日損益標題" frame={maintenance}
         style={styles.pnlLabel}>昨日損益</DashboardEditableText>
       <DashboardEditableText id="overview-previous-pnl" label="昨日單日損益" frame={maintenance} kind="value" tone={yesterdayTone}
-        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.pnlValue}>{displayPnl(yesterdayPnl)}</DashboardEditableText>
+        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.pnlValue,{color:pnlColor(yesterdayPnl)}]}>{displayPnl(yesterdayPnl)}</DashboardEditableText>
     </View>
     <Text style={styles.operator}>│</Text>
     <View style={styles.pnlCell}>
       <DashboardEditableText id="overview-today-pnl-label" label="今日損益標題" frame={maintenance}
         style={styles.pnlLabel}>今日損益</DashboardEditableText>
       <DashboardEditableText id="overview-today-pnl" label="今日單日損益" frame={maintenance} kind="value" tone={todayTone}
-        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.pnlValue}>{displayPnl(todayPnl)}</DashboardEditableText>
+        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.pnlValue,{color:pnlColor(todayPnl)}]}>{displayPnl(todayPnl)}</DashboardEditableText>
     </View>
     <Text style={styles.operator}>│</Text>
     <Pressable disabled={runtime.active||!onPressTotalPnl}
@@ -61,7 +64,7 @@ export function DashboardAssetOverview({
       <DashboardEditableText id="overview-total-pnl-label" label="持股總損益標題" frame={maintenance} tone={totalTone}
         style={styles.pnlLabel}>持股總損益</DashboardEditableText>
       <DashboardEditableText id="overview-total-pnl" label="持股總損益" frame={maintenance} kind="value" tone={totalTone}
-        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.totalPnlValue}>{signedMoney(totalPnl)}</DashboardEditableText>
+        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.totalPnlValue,{color:pnlColor(totalPnl)}]}>{signedMoney(totalPnl)}</DashboardEditableText>
     </Pressable>
   </View>:<DashboardEditableText id="overview-pnl-pending" label="損益狀態" frame={maintenance}
     style={styles.pnlPending}>損益待核對</DashboardEditableText>;

@@ -327,7 +327,7 @@ function resolveWallBackground(field:HoldingWallFieldConfig,item:HoldingQuote,ch
   if(!field.useProfitBackground)return field.backgroundColor;
   const value=field.field==='pnl'||field.field==='roi'||field.field==='marketValue'?item.pnl:change;
   if(!Number.isFinite(value)||(field.field!=='pnl'&&field.field!=='roi'&&field.field!=='marketValue'&&!(item.previousClose>0)))return field.backgroundColor;
-  return value>0?system.gainColor:value<0?system.lossColor:system.neutralColor;
+  return linkedColor(field.backgroundColor??system.neutralColor,true,value>0?'gain':value<0?'loss':'neutral',system);
 }
 function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:null;

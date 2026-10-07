@@ -1,3 +1,4 @@
+import {useSystemColors} from '../theme/useSystemColors';
 import { useEffect, useState } from 'react';
 import { OfficialCandleChart } from '../components/OfficialCandleChart';
 import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
@@ -22,6 +23,7 @@ const monthsByRange:Record<HoldingChartRange,number>={'1月':1,'3月':3,'6月':6
 const HOLDING_DETAIL_FRAMES=PAGE_FRAMES.portfolio.filter(frame=>frame.key.startsWith('holding-detail-'));
 
 export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:HoldingQuote;onBack:()=>void}){
+  const colors=useSystemColors();
   const finance=useFinance();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const chartEditor=usePageEditor('portfolio');

@@ -1,3 +1,4 @@
+import {useSystemColors} from '../theme/useSystemColors';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -267,7 +268,8 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   </Modal>;
 }
 function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
-function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'}){return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss}]}>{value}</Text></View>}
+function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'}){
+  const colors=useSystemColors();return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss}]}>{value}</Text></View>}
 
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},

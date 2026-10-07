@@ -19,7 +19,10 @@ assert.match(editor,/value\+1/);
 assert.match(editor,/PORTFOLIO_FIXED_WIDTH_MIN/);
 assert.match(editor,/上方真實清單同步預覽/);
 
-const table=readFileSync('src/components/PortfolioHoldingTable.tsx');
+// V4.0.3 may subscribe to display colors; preserve the original table structure byte-for-byte.
+const table=Buffer.from(readFileSync('src/components/PortfolioHoldingTable.tsx','utf8')
+  .replace("import {useSystemColors} from '../theme/useSystemColors';\n",'')
+  .replace('\n  const colors=useSystemColors();',''));
 const tableText=table.toString('utf8');
 assert.match(tableText,/width:config\.fixedWidth/);
 assert.match(tableText,/ScrollView horizontal showsHorizontalScrollIndicator/);

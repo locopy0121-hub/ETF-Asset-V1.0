@@ -1,7 +1,9 @@
+import {useSystemColors} from '../theme/useSystemColors';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '../theme/tokens';
 
 export function ValueRow({label,value,subvalue,tone='default'}:{label:string;value:string;subvalue?:string;tone?:'default'|'gain'|'loss'}){
+  const colors=useSystemColors();
   const c=tone==='gain'?colors.gain:tone==='loss'?colors.loss:colors.text;
   return <View style={styles.row}>
     <Text style={styles.label}>{label}</Text>

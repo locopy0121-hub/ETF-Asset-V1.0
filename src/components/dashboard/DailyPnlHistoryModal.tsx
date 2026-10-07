@@ -1,3 +1,4 @@
+import {useSystemColors} from '../../theme/useSystemColors';
 import {useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {summarizeDailyPnl,type DailyPnlRecord,type DailyPnlStats} from '../../finance/dailyPnlHistory';
@@ -5,7 +6,6 @@ import {colors,radius,spacing} from '../../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const signed=(value:number)=>`${value>0?'+':''}${money(value)}`;
-const tone=(value:number)=>value>0?colors.gain:value<0?colors.loss:colors.flat;
 const CHART_HEIGHT=196;
 const CHART_PADDING_X=12;
 const PAGE_SIZE=30;
@@ -54,6 +54,8 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
   historyError?:string|null;
   historyStartDate?:string|null;
 }){
+  const colors=useSystemColors();
+  const tone=(value:number)=>value>0?colors.gain:value<0?colors.loss:colors.flat;
   const [range,setRange]=useState<HistoryRange>('30');
   const [metric,setMetric]=useState<TrendMetric>('asset');
   const [ascending,setAscending]=useState(false);

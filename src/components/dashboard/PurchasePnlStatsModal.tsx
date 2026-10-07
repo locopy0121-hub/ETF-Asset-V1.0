@@ -1,3 +1,4 @@
+import {useSystemColors} from '../../theme/useSystemColors';
 import {useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 
@@ -11,7 +12,6 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const signed=(value:number)=>`${value>0?'+':''}${money(value)}`;
 const pct=(value:number)=>`${value>0?'+':''}${value.toFixed(2)}%`;
 const shares=(value:number)=>Number.isInteger(value)?value.toLocaleString('zh-TW'):value.toLocaleString('zh-TW',{maximumFractionDigits:4});
-const tone=(value:number)=>value>0?colors.gain:value<0?colors.loss:colors.flat;
 
 type Tab='symbol'|'purchase'|'daily';
 type Filter='all'|'open'|'closed';
@@ -38,6 +38,8 @@ function LotMetric({label,value,valueColor}:{label:string;value:string;valueColo
 }
 
 function PurchaseCard({row}:{row:PurchaseLotPnlStat}){
+  const colors=useSystemColors();
+  const tone=(value:number)=>value>0?colors.gain:value<0?colors.loss:colors.flat;
   return <View style={styles.purchaseCard}>
     <View style={styles.purchaseHead}>
       <View style={{flex:1}}>
@@ -72,6 +74,8 @@ export function PurchasePnlStatsModal({
   holdings:CanonicalLedgerSnapshot['holdings'];
   dailyRecords:readonly DailyPnlRecord[];
 }){
+  const colors=useSystemColors();
+  const tone=(value:number)=>value>0?colors.gain:value<0?colors.loss:colors.flat;
   const [tab,setTab]=useState<Tab>('symbol');
   const [filter,setFilter]=useState<Filter>('all');
   const [sort,setSort]=useState<SortMode>('date');

@@ -66,10 +66,10 @@ export function portfolioColumnValue(row:HoldingQuote,key:PortfolioColumnKey):{v
   if(key==='tradeAvg')return {value:row.tradeAvg.toFixed(2),tone:'default',numeric:row.tradeAvg};
   if(key==='costAvg')return {value:row.costAvg.toFixed(2),tone:'default',numeric:row.costAvg};
   if(key==='marketValue')return {value:'NT$ '+money(row.marketValue),tone:'default',numeric:row.marketValue};
-  if(key==='pnl')return {value:'NT$ '+money(row.pnl),tone:row.pnl>=0?'gain':'loss',numeric:row.pnl};
-  if(key==='roi')return {value:(row.roi>=0?'+':'')+row.roi.toFixed(2)+'%',tone:row.roi>=0?'gain':'loss',numeric:row.roi};
+  if(key==='pnl')return {value:'NT$ '+money(row.pnl),tone:row.pnl>0?'gain':row.pnl<0?'loss':'flat',numeric:row.pnl};
+  if(key==='roi')return {value:(row.roi>=0?'+':'')+row.roi.toFixed(2)+'%',tone:row.roi>0?'gain':row.roi<0?'loss':'flat',numeric:row.roi};
   if(key==='cumulativeDividend')return {value:'NT$ '+money(row.cumulativeDividend),tone:'default',numeric:row.cumulativeDividend};
   if(key==='weight')return {value:row.weight.toFixed(1)+'%',tone:'default',numeric:row.weight};
-  if(key==='realizedPnl')return {value:'NT$ '+money(row.realizedPnl),tone:row.realizedPnl>=0?'gain':'loss',numeric:row.realizedPnl};
-  return {value:'NT$ '+money(row.comprehensivePnl),tone:row.comprehensivePnl>=0?'gain':'loss',numeric:row.comprehensivePnl};
+  if(key==='realizedPnl')return {value:'NT$ '+money(row.realizedPnl),tone:row.realizedPnl>0?'gain':row.realizedPnl<0?'loss':'flat',numeric:row.realizedPnl};
+  return {value:'NT$ '+money(row.comprehensivePnl),tone:row.comprehensivePnl>0?'gain':row.comprehensivePnl<0?'loss':'flat',numeric:row.comprehensivePnl};
 }

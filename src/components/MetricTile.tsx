@@ -12,6 +12,7 @@ import {metricSwipeExceeded,nextMetricTapEmphasis,type MetricTouchPoint} from '.
 import {metricThresholdMatches} from '../maintenance/metricThreshold';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
+import {resolveSystemProfitColors} from '../settings/systemColorPalette';
 
 export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone,previewTap=false}:{
   label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
@@ -29,8 +30,8 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   const settings=useSettingsRuntime();
   const nativeTones=resolveNativeMetricTones(tone,editorStyle?.profitToneOverride,simulationTone);
   const actualTone=nativeTones.linked;
-  const colorPrefs=settings.prefs.display;
-  const toneColor=nativeTones.fallback==='gain'?theme.palette.gain:nativeTones.fallback==='loss'?theme.palette.loss:theme.palette.text;
+  const colorPrefs=resolveSystemProfitColors(settings.prefs.display);
+  const toneColor=nativeTones.fallback==='gain'?colorPrefs.gainColor:nativeTones.fallback==='loss'?colorPrefs.lossColor:theme.palette.text;
   const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'||simulationTone?toneColor:editorStyle?.textColor??theme.palette.text;
   const effectiveTextColor=editorStyle?.textProfitColor===true?
     linkedColor(editorStyle.textColor??theme.palette.text,true,actualTone,colorPrefs):

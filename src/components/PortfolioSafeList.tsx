@@ -1,3 +1,4 @@
+import {useSystemColors} from '../theme/useSystemColors';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import type {HoldingQuote} from '../domain/uiModels';
 import {colors,radius} from '../theme/tokens';
@@ -6,6 +7,7 @@ import {colors,radius} from '../theme/tokens';
 export function PortfolioSafeList({rows,onOpenHolding}:{
   rows:readonly HoldingQuote[];onOpenHolding:(row:HoldingQuote)=>void;
 }){
+  const colors=useSystemColors();
   return <View style={styles.root}>
     {rows.length===0?<Text style={styles.empty}>目前沒有持股</Text>:rows.map(row=>{
       const hasQuote=row.quoteVerified!==false&&Number.isFinite(row.price);
@@ -18,7 +20,7 @@ export function PortfolioSafeList({rows,onOpenHolding}:{
         </View>
         <View style={styles.numbers}>
           <Text style={styles.price}>{hasQuote?row.price.toFixed(2):'行情待取得'}</Text>
-          <Text style={[styles.pnl,pnl!==null&&{color:pnl>=0?colors.gain:colors.loss}]}>
+          <Text style={[styles.pnl,pnl!==null&&{color:pnl>0?colors.gain:pnl<0?colors.loss:colors.flat}]}>
             {pnl===null?'損益待核對':'損益 NT$ '+Math.round(pnl).toLocaleString('zh-TW')}
           </Text>
         </View>

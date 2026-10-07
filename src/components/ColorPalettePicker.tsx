@@ -93,7 +93,7 @@ export function ColorPalettePicker({
     }
   },[value,expanded]);
 
-  const systemColors=useMemo(()=>buildSystemColorChoices(settings.prefs.display),[settings.prefs.display.gainColor,settings.prefs.display.lossColor,settings.prefs.display.neutralColor]);
+  const systemColors=useMemo(()=>buildSystemColorChoices(settings.prefs.display),[settings.prefs.display.profitColorMode,settings.prefs.display.gainColor,settings.prefs.display.lossColor,settings.prefs.display.neutralColor]);
   const hsv=useMemo(()=>hexToHsv(draft),[draft]);
   const wheelRows=useMemo(()=>Array.from({length:WHEEL_STEPS},(_,row)=>
     Array.from({length:WHEEL_STEPS},(_,col)=>{

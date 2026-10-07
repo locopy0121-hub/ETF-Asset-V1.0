@@ -1,3 +1,4 @@
+import {useSystemColors} from '../theme/useSystemColors';
 import {useEffect,useRef} from 'react';
 import {Animated,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
@@ -43,6 +44,7 @@ export function PortfolioHoldingTable({rows,onOpenHolding,config=DEFAULT_PORTFOL
   </View>;
 }
 function PortfolioNumberCell({row,config,refreshToken}:{row:HoldingQuote;config:PortfolioColumnConfig;refreshToken?:string|number|null|undefined}){
+  const colors=useSystemColors();
   const shown=portfolioColumnValue(row,config.key),effect=config.effect;
   const opacity=useRef(new Animated.Value(1)).current;
   const shift=useRef(new Animated.Value(0)).current;

@@ -1,3 +1,4 @@
+import {useSystemColors} from '../theme/useSystemColors';
 import {useMemo,useRef,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import type {DailyCandle} from '../market/twseDailyHistory';
@@ -45,6 +46,7 @@ export function OfficialCandleChart({
   crosshairDefault?:boolean;
   costLineEnabled?:boolean;
 }){
+  const colors=useSystemColors();
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
   const [crosshairEnabled,setCrosshairEnabled]=useState(crosshairDefault);
   const scrollX=useRef(0);

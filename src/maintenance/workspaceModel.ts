@@ -1,3 +1,4 @@
+import {resolveSystemProfitColors,type SystemProfitColors} from '../settings/systemColorPalette';
 // Spatial engineering model. ALL dimensions are React Native dp, not raw screen pixels.
 // This module has no React or finance dependencies and is regression-testable.
 export type WorkspaceOrigin='top-left'|'center';
@@ -87,7 +88,8 @@ export function snapDraggedRect(rect:PositionedRect,config:WorkspaceConfig,space
 }
 // All color tools use the existing picker; flags reference current global display settings.
 export type FinancialTone='gain'|'loss'|'neutral';
-export function linkedColor(custom:string,enabled:boolean|undefined,tone:FinancialTone,palette:{gainColor:string;lossColor:string;neutralColor:string}){
+export function linkedColor(custom:string,enabled:boolean|undefined,tone:FinancialTone,palette:SystemProfitColors){
   if(enabled!==true)return custom;
-  return tone==='gain'?palette.gainColor:tone==='loss'?palette.lossColor:palette.neutralColor;
+  const colors=resolveSystemProfitColors(palette);
+  return tone==='gain'?colors.gainColor:tone==='loss'?colors.lossColor:colors.neutralColor;
 }
