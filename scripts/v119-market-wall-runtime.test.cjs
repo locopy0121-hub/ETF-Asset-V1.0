@@ -11,8 +11,8 @@ for(const mode of ['list','grid2','grid3','horizontal','paged2'])assert.ok(home.
 assert.match(collection,/rows\.map\(/,'collection must render every row');
 assert.match(finance,/ensureLedgerQuoteCoverage\(entries,market\.quotes\)/,'finance snapshot must consume current market quotes');
 assert.match(finance,/\[snapshot,market\.quotes\]/,'holding cards must recompute when market quotes change');
-assert.match(market,/setQuotes\(result\.quotes\)/,'successful refresh must publish quotes');
-assert.match(market,/setLastSuccessAt\(Date\.now\(\)\)/,'successful refresh must publish refresh time');
-assert.match(market,/updatedCount<=0/,'refresh must reject empty quote responses instead of pretending success');
+assert.match(market,/center\.subscribe\(snapshot=>/,'market quotes must publish from the MarketDataCenter hot-store subscription');
+assert.match(market,/if\(batch\.quotes\.size>0\)setLastSuccessAt\(Date\.now\(\)\)/,'successful refresh must publish refresh time only when usable quotes exist');
+assert.match(market,/batch\.quotes\.size===0/,'refresh must reject empty quote responses instead of pretending success');
 assert.match(market,/refreshPromiseRef/,'refresh must dedupe concurrent refreshes');
 console.log('V1.0.19 market wall runtime linkage gate: PASS');
