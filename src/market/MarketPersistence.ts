@@ -44,6 +44,10 @@ export class MarketPersistenceRepository{
     const snapshots=new Map<string,MarketQuote>((previous?.snapshots??[]).map(row=>[row.symbol,row] as const));
     const candles=new Map<string,MarketMinuteCandle>((previous?.candles??[]).map(row=>[`${row.symbol}|${row.bucketEpochMillis}`,row] as const));
     for(const quote of quotes){
+      if(quote.source==='CACHE'){
+        if(!snapshots.has(quote.symbol))snapshots.set(quote.symbol,quote);
+        continue;
+      }
       snapshots.set(quote.symbol,quote);
       if(!(quote.sourceTimestampEpochMillis>0)||!quote.sessionDate)continue;
       const bucket=quote.sourceTimestampEpochMillis-quote.sourceTimestampEpochMillis%MINUTE_MILLIS;

@@ -85,9 +85,17 @@ assert.ok(!nativeDb.includes('DELETE FROM market_intraday'),
   'session rollover must retain historical intraday rows instead of deleting yesterday');
 
 const runtime=read('src/market/MarketRuntime.tsx');
-assert.match(runtime,/marketIntradaySessionDateChanged\(quotesRef\.current,next\)/);
-assert.match(runtime,/state\.version>currentVersion\|\|sessionDateChanged/,
-  'session rollover must apply even when the quote version did not advance');
+const persistence=read('src/market/MarketPersistence.ts');
+assert.match(persistence,/loadCandles\(symbol:string,sessionDate:string\)/,
+  'V4 persistence must expose session-scoped minute candles for restart hydration');
+assert.match(runtime,/persistence\.loadCandles\(quote\.symbol,quote\.sessionDate\)/,
+  'V4 runtime must hydrate all already persisted points for the active persisted session');
+assert.match(runtime,/persistedPointsBySymbol\.get\(row\.symbol\)/);
+assert.match(runtime,/resetRuntimeIntradaySession\(current,sessionDate\)/,
+  'market-open rollover must reset yesterday intraday data before the first valid tick');
+assert.match(runtime,/if\(currentPhase==='live'\)/);
+assert.match(persistence,/if\(quote\.source==='CACHE'\)/,
+  'rehydrated CACHE snapshots must not manufacture duplicate minute candles');
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));

@@ -87,6 +87,17 @@ function fallbackCatalog():TaiwanSecurityInfo[]{
   }));
 }
 const sameStrings=(a:readonly string[],b:readonly string[])=>a.length===b.length&&a.every((value,index)=>value===b[index]);
+const persistedPointSource=(source:string):RuntimeIntradayPoint['source']=>
+  source==='FUGLE'||source==='TWSE_MIS'||source==='YAHOO'||source==='SHIOAJI'?source:'YAHOO';
+function resetRuntimeIntradaySession(rows:readonly RuntimeQuote[],sessionDate:string):readonly RuntimeQuote[]{
+  let changed=false;
+  const next=rows.map(row=>{
+    if(row.intradayDate===sessionDate)return row;
+    changed=true;
+    return {...row,intraday:[],intradayDate:sessionDate,intradayPreviousClose:row.previousClose};
+  });
+  return changed?next:rows;
+}
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
 const hhmm=(value:string)=>{
   const [hRaw='0',mRaw='0']=String(value||'00:00').split(':');
@@ -302,6 +313,16 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       fugleKeyRef.current=nativeKey?.trim()||null;setFugleConfigured(!!fugleKeyRef.current);
       const persistence=new MarketPersistenceRepository();persistenceRef.current=persistence;
       const persistedQuotes=await persistence.loadSnapshots();
+      const persistedPointsBySymbol=new Map<string,RuntimeIntradayPoint[]>();
+      await Promise.all(persistedQuotes.map(async quote=>{
+        if(!quote.sessionDate)return;
+        const candles=await persistence.loadCandles(quote.symbol,quote.sessionDate);
+        if(!candles.length)return;
+        persistedPointsBySymbol.set(quote.symbol,candles.map(row=>{
+          const source=persistedPointSource(row.source);
+          return {at:row.bucketEpochMillis,price:row.close,quality:source==='YAHOO'?'backup_realtime':'trade',source};
+        }));
+      }));
       if(!alive)return;
 
       const twse=new TwseMisQuoteProvider();
@@ -319,7 +340,14 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       const initial=center.memoryQuotes();
       if(initial.size){
         const version=marketDataVersionRef.current+1;marketDataVersionRef.current=version;setMarketDataVersion(version);
-        const next=toRuntimeQuotes(initial,[],catalogRef.current,version);quotesRef.current=next;setQuotes(next);
+        const next=toRuntimeQuotes(initial,[],catalogRef.current,version).map(row=>{
+          const points=persistedPointsBySymbol.get(row.symbol);
+          const snapshot=initial.get(row.symbol);
+          if(!points?.length||!snapshot)return row;
+          return {...row,intraday:points,intradayDate:snapshot.sessionDate,
+            intradayPreviousClose:snapshot.previousClose??row.previousClose};
+        });
+        quotesRef.current=next;setQuotes(next);
       }
       persistenceControllerRef.current=new MarketPersistenceController(center,persistence);
 
@@ -451,9 +479,17 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       const currentPhase=resolveMarketPhase(configRef.current);
       setPhase(current=>current===currentPhase?current:currentPhase);
       if(disposed||AppState.currentState!=='active')return;
+      const now=Date.now();
+      if(currentPhase==='live'){
+        const sessionDate=taipeiDate(now);
+        setQuotes(current=>{
+          const next=resetRuntimeIntradaySession(current,sessionDate);
+          if(next!==current)quotesRef.current=next;
+          return next;
+        });
+      }
       const seconds=marketRefreshSeconds(configRef.current,currentPhase);
       if(seconds<=0){lastPhase=currentPhase;nextDueAt=0;return;}
-      const now=Date.now();
       if(currentPhase!==lastPhase){lastPhase=currentPhase;nextDueAt=0;}
       if(now<nextDueAt)return;
       nextDueAt=now+seconds*1000;
