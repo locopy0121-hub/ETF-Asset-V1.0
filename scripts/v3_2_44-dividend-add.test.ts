@@ -47,7 +47,7 @@ for(const label of ['最後購買日','除息日','股權登記日','配發日']
   assert.ok(calendar.includes(label),'calendar parser contract missing: '+label);
 
 const settings=read('src/screens/SettingsScreen.tsx');
-assert.ok(settings.includes("VERSION='3.2.44'"));
+assert.ok(settings.includes("VERSION='"+pkg.version+"'"));
 assert.ok(settings.includes("BUILD='30244'"));
 
 console.log('V3.2.44 Dividend page manual add / ledger-calendar synchronization PASS');
