@@ -77,13 +77,26 @@ class MarketPersistenceRepository(context: Context) {
         val cache = JSONObject(database.loadMarketCoreCache())
         val snapshots = cache.optJSONArray("snapshots") ?: JSONArray()
         val previousCloseBySymbol = linkedMapOf<String, Double>()
+        val snapshotBySymbol = linkedMapOf<String, JSONObject>()
         for (index in 0 until snapshots.length()) {
             val row = snapshots.optJSONObject(index) ?: continue
             val symbol = row.optString("symbol").trim().uppercase()
+            if (symbol.isBlank()) continue
+            snapshotBySymbol[symbol] = row
             val previousClose = row.optDouble("previousClose", Double.NaN)
-            if (symbol.isNotBlank() && previousClose.isFinite() && previousClose > 0.0) {
+            if (previousClose.isFinite() && previousClose > 0.0) {
                 previousCloseBySymbol[symbol] = previousClose
             }
+        }
+
+        val runtimeQuotes = result.optJSONArray("quotes") ?: JSONArray()
+        for (index in 0 until runtimeQuotes.length()) {
+            val row = runtimeQuotes.optJSONObject(index) ?: continue
+            val persisted = snapshotBySymbol[row.optString("symbol").trim().uppercase()] ?: continue
+            row.put("sessionDate", persisted.optString("sessionDate"))
+                .put("fallbackLevel", persisted.optInt("fallbackLevel", 3))
+                .put("sequence", if (persisted.isNull("sequence")) JSONObject.NULL else persisted.optLong("sequence"))
+                .put("quoteStatus", persisted.optString("quality", "STALE"))
         }
 
         val candles = cache.optJSONArray("candles") ?: JSONArray()

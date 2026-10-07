@@ -148,6 +148,10 @@ class SaiEtfMarketRuntime(context: Context) {
             .put("statusMessage", "SaiETF MarketDataCenter · ${quote.source.name} · ${quote.quality.name}")
             .put("checkedAt", quote.receivedAtEpochMillis)
             .put("volume", quote.volume ?: JSONObject.NULL)
+            .put("sessionDate", quote.sessionDate ?: taipeiDate(quote.sourceTimestampEpochMillis))
+            .put("fallbackLevel", quote.fallbackLevel)
+            .put("sequence", quote.sequence ?: JSONObject.NULL)
+            .put("quoteStatus", quote.quality.name)
     }
 
     private fun healthRow(health: ProviderHealth): JSONObject =

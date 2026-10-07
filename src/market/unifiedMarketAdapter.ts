@@ -100,6 +100,12 @@ export function marketRowsToRuntimeQuotes(
       isFallback:row.isFallback,market:row.market,statusMessage:row.statusMessage,
       checkedAt:row.checkedAt,
       volume:typeof row.volume==='number'&&Number.isFinite(row.volume)&&row.volume>=0?row.volume:null,
+      sessionDate:typeof row.sessionDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(row.sessionDate)
+        ?row.sessionDate:old?.sessionDate,
+      fallbackLevel:typeof row.fallbackLevel==='number'&&Number.isFinite(row.fallbackLevel)
+        ?row.fallbackLevel:old?.fallbackLevel,
+      ...(typeof row.sequence==='number'&&Number.isFinite(row.sequence)?{sequence:row.sequence}:{}),
+      quoteStatus:row.quoteStatus??old?.quoteStatus,
       previousCloseKnown:row.previousClose!==null||(old?.previousCloseKnown===true),
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',

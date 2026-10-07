@@ -174,7 +174,7 @@ function appendNativeIntraday(
     const liveSource=row.source==='FUGLE'||row.source==='TWSE_MIS'||row.source==='YAHOO';
     const rawSourceQuoteAt=row.sourceQuoteAt;
     const sourceQuoteAt=typeof rawSourceQuoteAt==='number'&&Number.isFinite(rawSourceQuoteAt)?rawSourceQuoteAt:0;
-    if(!liveQuality||!liveSource||sourceQuoteAt<=0)return row;
+    if(!liveQuality||!liveSource||sourceQuoteAt<=0||row.sessionDate!==sessionDate)return row;
     const base=old?.intradayDate===sessionDate?[...(old.intraday??[])]:[];
     const point:RuntimeIntradayPoint={
       at:sourceQuoteAt,

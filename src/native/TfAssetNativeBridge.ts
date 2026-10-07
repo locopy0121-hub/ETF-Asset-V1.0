@@ -50,6 +50,10 @@ export type UnifiedMarketRow=Readonly<{
   priceType:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
   isFallback:boolean;market:'TSE'|'OTC'|'UNKNOWN';statusMessage:string;checkedAt:number;
   volume?:number|null;
+  sessionDate?:string;
+  fallbackLevel?:number;
+  sequence?:number|null;
+  quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE';
 }>;
 export type NativeMarketProviderHealth=Readonly<{
   source:'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE';
