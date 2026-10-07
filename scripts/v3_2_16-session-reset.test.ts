@@ -85,17 +85,20 @@ assert.ok(!nativeDb.includes('DELETE FROM market_intraday'),
   'session rollover must retain historical intraday rows instead of deleting yesterday');
 
 const runtime=read('src/market/MarketRuntime.tsx');
-const persistence=read('src/market/MarketPersistence.ts');
-assert.match(persistence,/loadCandles\(symbol:string,sessionDate:string\)/,
-  'V4 persistence must expose session-scoped minute candles for restart hydration');
-assert.match(runtime,/persistence\.loadCandles\(quote\.symbol,quote\.sessionDate\)/,
-  'V4 runtime must hydrate all already persisted points for the active persisted session');
-assert.match(runtime,/persistedPointsBySymbol\.get\(row\.symbol\)/);
+const nativePersistence=read('native/android/SaiEtfMarketPersistenceRepository.kt');
+const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+assert.match(nativePersistence,/val candles = cache\.optJSONArray\("candles"\) \?: JSONArray\(\)/,
+  'native SaiETF persistence must expose persisted minute candles for restart hydration');
+assert.match(nativePersistence,/latestSessionBySymbol/);
+assert.match(nativePersistence,/result\.put\("intraday", intraday\)/,
+  'cold-start native snapshot must include the latest persisted intraday session');
+assert.match(runtime,/const snapshot=await loadUnifiedMarketData\(\)/,
+  'React runtime must hydrate native persisted intraday on startup');
 assert.match(runtime,/resetRuntimeIntradaySession\(current,sessionDate\)/,
   'market-open rollover must reset yesterday intraday data before the first valid tick');
 assert.match(runtime,/if\(currentPhase==='live'\)/);
-assert.match(persistence,/if\(quote\.source==='CACHE'\)/,
-  'rehydrated CACHE snapshots must not manufacture duplicate minute candles');
+assert.match(nativeRuntime,/persistence\.runtimeSnapshot\(\)/,
+  'native runtime must fall back to the durable market-only snapshot when memory is empty');
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));

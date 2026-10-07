@@ -81,6 +81,8 @@ const RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime-native-saietf';
 const PREVIOUS_RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime';
 const V3_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime-v231';
 const LEGACY_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime';
+const V3_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime-v231';
+const LEGACY_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
 
 function fallbackCatalog():TaiwanSecurityInfo[]{

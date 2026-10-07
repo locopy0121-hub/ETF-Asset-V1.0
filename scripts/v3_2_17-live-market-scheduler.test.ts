@@ -14,7 +14,7 @@ assert.match(settings,/label="盤中更新頻率"[\s\S]*?min=\{1\}[\s\S]*?step=\
 
 assert.match(runtime,/void refresh\(\{silent:true\}\);[\s\S]*?\},\[hydrated,trackedSymbols,refresh\]\);/,
   'App 啟動／追蹤標的完成 hydration 後必須立即取得行情');
-assert.match(runtime,/if\(next==='active'\)\{[\s\S]*?refreshOnForeground\)void refresh\(\{force:true,silent:true\}\)/,
+assert.match(runtime,/if\(next==='active'&&configRef\.current\.refreshOnForeground\)void refresh\(\{force:true,silent:true\}\)/,
   'App 回到前景時必須立即強制刷新');
 
 assert.match(runtime,/const tick=\(\)=>\{[\s\S]*?resolveMarketPhase\(configRef\.current\)[\s\S]*?marketRefreshSeconds\(configRef\.current,currentPhase\)/,

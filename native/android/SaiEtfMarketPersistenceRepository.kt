@@ -72,7 +72,65 @@ class MarketPersistenceRepository(context: Context) {
         )
     }
 
-    fun runtimeSnapshot(): JSONObject = database.marketCoreRuntimeSnapshot()
+    fun runtimeSnapshot(): JSONObject {
+        val result = database.marketCoreRuntimeSnapshot()
+        val cache = JSONObject(database.loadMarketCoreCache())
+        val snapshots = cache.optJSONArray("snapshots") ?: JSONArray()
+        val previousCloseBySymbol = linkedMapOf<String, Double>()
+        for (index in 0 until snapshots.length()) {
+            val row = snapshots.optJSONObject(index) ?: continue
+            val symbol = row.optString("symbol").trim().uppercase()
+            val previousClose = row.optDouble("previousClose", Double.NaN)
+            if (symbol.isNotBlank() && previousClose.isFinite() && previousClose > 0.0) {
+                previousCloseBySymbol[symbol] = previousClose
+            }
+        }
+
+        val candles = cache.optJSONArray("candles") ?: JSONArray()
+        val latestSessionBySymbol = linkedMapOf<String, String>()
+        for (index in 0 until candles.length()) {
+            val row = candles.optJSONObject(index) ?: continue
+            val symbol = row.optString("symbol").trim().uppercase()
+            val sessionDate = row.optString("sessionDate").trim()
+            if (symbol.isBlank() || sessionDate.isBlank()) continue
+            val current = latestSessionBySymbol[symbol]
+            if (current == null || sessionDate > current) latestSessionBySymbol[symbol] = sessionDate
+        }
+
+        val pointsBySymbol = linkedMapOf<String, JSONArray>()
+        for (index in 0 until candles.length()) {
+            val row = candles.optJSONObject(index) ?: continue
+            val symbol = row.optString("symbol").trim().uppercase()
+            val sessionDate = row.optString("sessionDate").trim()
+            if (symbol.isBlank() || sessionDate != latestSessionBySymbol[symbol]) continue
+            val at = row.optLong("bucketEpochMillis", 0L)
+            val close = row.optDouble("close", Double.NaN)
+            val source = row.optString("source").trim().uppercase()
+            if (at <= 0L || !close.isFinite() || close <= 0.0) continue
+            if (source !in setOf("FUGLE", "TWSE_MIS", "YAHOO")) continue
+            val quality = if (source == "YAHOO") "backup_realtime" else "trade"
+            pointsBySymbol.getOrPut(symbol) { JSONArray() }.put(
+                JSONObject()
+                    .put("at", at)
+                    .put("price", close)
+                    .put("quality", quality)
+                    .put("source", source),
+            )
+        }
+
+        val intraday = JSONObject()
+        pointsBySymbol.forEach { (symbol, points) ->
+            intraday.put(
+                symbol,
+                JSONObject()
+                    .put("date", latestSessionBySymbol[symbol])
+                    .put("previousClose", previousCloseBySymbol[symbol] ?: JSONObject.NULL)
+                    .put("points", points),
+            )
+        }
+        result.put("intraday", intraday)
+        return result
+    }
 
     fun persistedQuotes(): Map<String, MarketQuote> {
         val root = JSONObject(database.loadMarketCoreCache())
