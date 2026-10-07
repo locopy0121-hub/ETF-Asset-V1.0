@@ -1,143 +1,113 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {AppState,type AppStateStatus} from 'react-native';
 import {
-  AppState,
-  type AppStateStatus,
-} from 'react-native';
-import {
-  createContext,
-  type PropsWithChildren,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+  createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState,
 } from 'react';
 
-import { FALLBACK_QUOTES, type RuntimeIntradayPoint, type RuntimeQuote } from '../finance/financeSeed';
-import { hasUsableTwseQuote, pickBetterTwseRow, resolveTwsePriceDecision, resolveTwsePreviousClose } from './twseQuoteParser';
-import {isNewSourceTick,parseTwseQuoteSourceAt} from './quoteFreshness';
-import {unifiedMarketCenterAvailable,loadUnifiedMarketData,refreshUnifiedMarketData,setNativeMarketBackendUrl} from '../native/TfAssetNativeBridge';
-import {marketIntradaySessionDateChanged,marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
-import { mergeEtfCatalog, parseOfficialEtfRow, shouldRefreshEtfCatalog, type EtfCatalogItem } from './etfMetadata';
-import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
-export type { EtfCatalogItem } from './etfMetadata';
+import {FALLBACK_QUOTES,type RuntimeIntradayPoint,type RuntimeQuote} from '../finance/financeSeed';
+import {
+  clearNativeFugleApiKey,loadNativeFugleApiKey,nativeRuntimeAvailable,saveNativeFugleApiKey,
+} from '../native/TfAssetNativeBridge';
+import {
+  MarketDataCenter,taipeiDate,type MarketQuote,type ProviderHealth,
+} from './MarketCore';
+import {FugleWebSocketProvider} from './FugleWebSocketProvider';
+import {MarketPersistenceController,MarketPersistenceRepository} from './MarketPersistence';
+import {TwseMisQuoteProvider,YahooQuoteProvider} from './MarketProviders';
+import {
+  fetchTaiwanSecurityCatalog,type TaiwanSecurityInfo,
+} from './TaiwanSecurityCatalog';
 
-export type MarketPhase = 'live' | 'afterHours' | 'offline';
-export type MarketSource = 'TWSE';
+export type MarketPhase='live'|'afterHours'|'offline';
+export type MarketRefreshResult='updated'|'unchanged'|'error';
+export type MarketUpdateSource='AUTO';
+export type EtfCatalogItem=TaiwanSecurityInfo;
 
-export type MarketUpdateConfig = Readonly<{
-  source: MarketSource;
-  /** Empty until an actual HTTPS backend is deployed and verified. */
+export type MarketUpdateConfig=Readonly<{
+  source:MarketUpdateSource;
   backendUrl?:string;
-  scheduleEnabled: boolean;
-  refreshOnForeground: boolean;
-  stopAll: boolean;
-  live: Readonly<{ enabled: boolean; start: string; end: string; refreshSeconds: number }>;
-  afterHours: Readonly<{ enabled: boolean; start: string; end: string; refreshSeconds: number }>;
+  scheduleEnabled:boolean;
+  refreshOnForeground:boolean;
+  stopAll:boolean;
+  live:Readonly<{enabled:boolean;start:string;end:string;refreshSeconds:number}>;
+  afterHours:Readonly<{enabled:boolean;start:string;end:string;refreshSeconds:number}>;
 }>;
 
-export const DEFAULT_MARKET_UPDATE: MarketUpdateConfig = {
-  source: 'TWSE',
-  backendUrl:'',
-  scheduleEnabled: true,
-  refreshOnForeground: true,
-  stopAll: false,
-  live: { enabled: true, start: '09:00', end: '13:30', refreshSeconds: 1 },
-  afterHours: { enabled: true, start: '13:31', end: '18:00', refreshSeconds: 60 },
+export const DEFAULT_MARKET_UPDATE:MarketUpdateConfig={
+  source:'AUTO',
+  scheduleEnabled:true,
+  refreshOnForeground:true,
+  stopAll:false,
+  live:{enabled:true,start:'09:00',end:'13:30',refreshSeconds:1},
+  afterHours:{enabled:true,start:'13:31',end:'18:00',refreshSeconds:60},
 };
 
-type PersistedMarketState = {
-  schema: 1;
-  config: MarketUpdateConfig;
-  quotes: RuntimeQuote[];
-  lastSuccessAt: number | null;
-  /** Legacy receipt timestamps are not trusted when migrating to version 2. */
-  quoteClockVersion?:2;
-  catalog?: EtfCatalogItem[];
-  catalogFetchedAt?: number | null; // Last refresh attempt; metadataVerifiedAt tracks successful official rows.
-};
+type PersistedMarketRuntime=Readonly<{
+  schema:4;
+  config:MarketUpdateConfig;
+  catalog:readonly TaiwanSecurityInfo[];
+  lastSuccessAt:number|null;
+}>;
 
-export type MarketRefreshResult='updated'|'unchanged'|'error';
-
-type MarketRuntimeValue = {
-  hydrated: boolean;
-  config: MarketUpdateConfig;
-  quotes: readonly RuntimeQuote[];
-  phase: MarketPhase;
-  refreshing: boolean;
-  lastSuccessAt: number | null;
-  lastError: string | null;
-  catalog: readonly EtfCatalogItem[];
-  catalogRefreshing: boolean;
-  /** One SQLite commit version, shared across all React screens, Widget and Monitor. */
+type MarketRuntimeValue=Readonly<{
+  hydrated:boolean;
+  config:MarketUpdateConfig;
+  quotes:readonly RuntimeQuote[];
+  phase:MarketPhase;
+  refreshing:boolean;
+  lastSuccessAt:number|null;
+  lastError:string|null;
+  catalog:readonly TaiwanSecurityInfo[];
+  catalogRefreshing:boolean;
+  /** Monotonic Market Core publication version consumed by Finance/UI/Widget. */
   marketDataVersion:number;
+  /** V3.2.49 compatibility alias for unresolved Market Core symbols. */
   missingSymbols:readonly string[];
-  setConfig: (next: MarketUpdateConfig) => void;
-  refresh: (options?:{ force?: boolean; silent?: boolean }) => Promise<MarketRefreshResult>;
-  refreshCatalog: () => Promise<void>;
-  setTrackedSymbols: (symbols: readonly string[]) => void;
-};
+  providerHealth:readonly ProviderHealth[];
+  unresolvedSymbols:readonly string[];
+  fugleConfigured:boolean;
+  setConfig:(next:MarketUpdateConfig)=>void;
+  refresh:(options?:{force?:boolean;silent?:boolean})=>Promise<MarketRefreshResult>;
+  refreshCatalog:()=>Promise<void>;
+  setTrackedSymbols:(symbols:readonly string[])=>void;
+  saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
+  clearFugleApiKey:()=>Promise<boolean>;
+}>;
 
+const RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime';
+const PRE_V4_STORAGE_KEY='@tf-asset/market-runtime-v231';
 const LEGACY_STORAGE_KEY='@tf-asset/market-runtime';
-const STORAGE_KEY='@tf-asset/market-runtime-v231';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
-const FALLBACK_CATALOG:EtfCatalogItem[]=mergeEtfCatalog(
-  FALLBACK_QUOTES.map(x=>({symbol:x.symbol,name:x.name,market:'fallback'})),[],[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES,
-);
-const EMPTY_PERSISTED_QUOTES:RuntimeQuote[]=[];
 
-
+function fallbackCatalog():TaiwanSecurityInfo[]{
+  return FALLBACK_QUOTES.map(row=>({
+    symbol:row.symbol,name:row.name,companyName:null,market:'TWSE',industry:null,
+    paidInCapitalTwd:null,issuedCommonShares:null,englishShortName:null,phone:null,website:null,
+    listingDate:null,parValueText:null,chairman:null,generalManager:null,address:null,source:'bootstrap-only',
+  }));
+}
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
-const sameStrings=(a:readonly string[],b:readonly string[])=>
-  a.length===b.length&&a.every((value,index)=>value===b[index]);
 const hhmm=(value:string)=>{
-  const parts=String(value||'00:00').split(':').map(Number);
-  const h=parts[0]??0;
-  const m=parts[1]??0;
+  const [hRaw='0',mRaw='0']=String(value||'00:00').split(':');
+  const h=Number(hRaw),m=Number(mRaw);
   return Math.max(0,Math.min(1439,(Number.isFinite(h)?h:0)*60+(Number.isFinite(m)?m:0)));
 };
 const inWindow=(now:number,start:string,end:string)=>{
-  const a=hhmm(start),b=hhmm(end);
-  return a<=b?now>=a&&now<=b:now>=a||now<=b;
+  const a=hhmm(start),b=hhmm(end);return a<=b?now>=a&&now<=b:now>=a||now<=b;
 };
 function taipeiClock(){
   try{
     const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
-    const get=(type:string)=>parts.find(p=>p.type===type)?.value??'';
-    const weekday=get('weekday');
-    const day=weekday==='Sat'?6:weekday==='Sun'?0:1;
-    const hour=Number(get('hour'))||0;
-    const minute=Number(get('minute'))||0;
-    return {weekend:day===0||day===6,minutes:hour*60+minute};
+    const get=(type:string)=>parts.find(part=>part.type===type)?.value??'';
+    const weekday=get('weekday'),hour=Number(get('hour'))||0,minute=Number(get('minute'))||0;
+    return {weekend:weekday==='Sat'||weekday==='Sun',minutes:hour*60+minute};
   }catch{
-    const d=new Date();
-    return {weekend:d.getDay()===0||d.getDay()===6,minutes:d.getHours()*60+d.getMinutes()};
+    const d=new Date();return {weekend:d.getDay()===0||d.getDay()===6,minutes:d.getHours()*60+d.getMinutes()};
   }
 }
-function taipeiDateMinuteAt(at:number){
-  try{
-    const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(at));
-    const get=(type:string)=>parts.find(p=>p.type===type)?.value??'';
-    return {date:`${get('year')}-${get('month')}-${get('day')}`,minute:(Number(get('hour'))||0)*60+(Number(get('minute'))||0)};
-  }catch{
-    const shifted=new Date(at+8*60*60*1000);
-    return {date:shifted.toISOString().slice(0,10),minute:shifted.getUTCHours()*60+shifted.getUTCMinutes()};
-  }
-}
-function appendIntraday(old:RuntimeQuote|undefined,point:RuntimeIntradayPoint){
-  const local=taipeiDateMinuteAt(point.at);
-  if(local.minute<540||local.minute>810)return {date:old?.intradayDate??null,points:[...(old?.intraday??[])]};
-  const base=old?.intradayDate===local.date?[...(old.intraday??[])]:[];
-  const byAt=new Map(base.map(item=>[item.at,item]));
-  byAt.set(point.at,point);
-  return {date:local.date,points:[...byAt.values()].sort((a,b)=>a.at-b.at).slice(-4000)};
-}
-
 export function resolveMarketPhase(config:MarketUpdateConfig):MarketPhase{
   if(config.stopAll||!config.scheduleEnabled)return 'offline';
-  const clock=taipeiClock();
-  if(clock.weekend)return 'offline';
+  const clock=taipeiClock();if(clock.weekend)return 'offline';
   if(config.live.enabled&&inWindow(clock.minutes,config.live.start,config.live.end))return 'live';
   if(config.afterHours.enabled&&inWindow(clock.minutes,config.afterHours.start,config.afterHours.end))return 'afterHours';
   return 'offline';
@@ -145,447 +115,329 @@ export function resolveMarketPhase(config:MarketUpdateConfig):MarketPhase{
 export function marketRefreshSeconds(config:MarketUpdateConfig,phase:MarketPhase){
   return phase==='live'?clampSeconds(config.live.refreshSeconds):phase==='afterHours'?clampSeconds(config.afterHours.refreshSeconds):0;
 }
-async function fetchEtfCatalog(previous:readonly EtfCatalogItem[]):Promise<EtfCatalogItem[]>{
-  const rows:EtfCatalogItem[]=[];
-  const official:NonNullable<ReturnType<typeof parseOfficialEtfRow>>[]=[];
-  const push=(symbol:unknown,name:unknown,market:'TWSE'|'TPEx')=>{
-    const code=String(symbol??'').trim().toUpperCase();
-    const label=String(name??'').trim();
-    if(!/^00[0-9A-Z]{2,6}$/.test(code)||!label)return;
-    rows.push({symbol:code,name:label,market});
+function normalizeConfig(input:Partial<MarketUpdateConfig>|null|undefined):MarketUpdateConfig{
+  return {
+    source:'AUTO',
+    ...(input?.backendUrl?{backendUrl:String(input.backendUrl).trim().replace(/\/$/,'')}:{}),
+    scheduleEnabled:input?.scheduleEnabled??DEFAULT_MARKET_UPDATE.scheduleEnabled,
+    refreshOnForeground:input?.refreshOnForeground??DEFAULT_MARKET_UPDATE.refreshOnForeground,
+    stopAll:input?.stopAll??DEFAULT_MARKET_UPDATE.stopAll,
+    live:{
+      enabled:input?.live?.enabled??DEFAULT_MARKET_UPDATE.live.enabled,
+      start:input?.live?.start??DEFAULT_MARKET_UPDATE.live.start,
+      end:input?.live?.end??DEFAULT_MARKET_UPDATE.live.end,
+      refreshSeconds:clampSeconds(input?.live?.refreshSeconds??DEFAULT_MARKET_UPDATE.live.refreshSeconds),
+    },
+    afterHours:{
+      enabled:input?.afterHours?.enabled??DEFAULT_MARKET_UPDATE.afterHours.enabled,
+      start:input?.afterHours?.start??DEFAULT_MARKET_UPDATE.afterHours.start,
+      end:input?.afterHours?.end??DEFAULT_MARKET_UPDATE.afterHours.end,
+      refreshSeconds:clampSeconds(input?.afterHours?.refreshSeconds??DEFAULT_MARKET_UPDATE.afterHours.refreshSeconds),
+    },
   };
-  const requests=[
-    fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',{headers:{Accept:'application/json'}})
-      .then(async response=>{
-        if(!response.ok)throw new Error('TWSE catalog HTTP '+response.status);
-        const data=await response.json() as Array<Record<string,unknown>>;
-        for(const row of Array.isArray(data)?data:[]) push(row.Code??row.code,row.Name??row.name,'TWSE');
-      }),
-    fetch('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes',{headers:{Accept:'application/json'}})
-      .then(async response=>{
-        if(!response.ok)throw new Error('TPEx catalog HTTP '+response.status);
-        const data=await response.json() as Array<Record<string,unknown>>;
-        for(const row of Array.isArray(data)?data:[]) push(
-          row.SecuritiesCompanyCode??row.Code??row.code??row.SecuritiesCode,
-          row.CompanyName??row.Name??row.name??row.SecuritiesCompanyName,
-          'TPEx',
-        );
-      }),
-  ];
-  await Promise.allSettled(requests);
-  // Only record taxonomy and payout cadence when an official feed actually provides them.
-  // Unavailable or unrecognized fields stay unknown instead of guessing from the ETF name.
-  try{
-    const response=await fetch('https://openapi.twse.com.tw/v1/opendata/t187ap47_L',{headers:{Accept:'application/json'}});
-    if(response.ok){
-      const data=await response.json() as Array<Record<string,unknown>>;
-      for(const raw of Array.isArray(data)?data:[]){
-        const parsed=parseOfficialEtfRow(raw,Date.now());
-        const etfType=parsed?.etfType;
-        const dividendType=parsed?.dividendType;
-        if(!etfType&&!dividendType)continue;
-        if(parsed)official.push(parsed);
-      }
-    }
-  }catch{ /* The catalog remains usable; missing taxonomy must remain explicitly unknown. */ }
-  // Join metadata by symbol independently of quote rows, preserving last-known-good values.
-  return mergeEtfCatalog(FALLBACK_CATALOG,previous,rows,official,VERIFIED_ISSUER_DIVIDEND_POLICIES);
 }
-
-async function fetchTwseQuotes(symbols:readonly string[],previous:readonly RuntimeQuote[],now=Date.now()):Promise<{quotes:RuntimeQuote[];updatedCount:number;usableCount:number;newestSourceAt:number|null;unresolved:string[]}>{
-  if(!symbols.length)return {quotes:[...previous],updatedCount:0,usableCount:0,newestSourceAt:null,unresolved:[]};
-  const channels=symbols.flatMap(symbol=>[`tse_${symbol}.tw`,`otc_${symbol}.tw`]).join('|');
-  const url='https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch='+encodeURIComponent(channels)+'&json=1&delay=0&_='+Date.now();
-  const response=await fetch(url,{headers:{Accept:'application/json'}});
-  if(!response.ok)throw new Error('TWSE HTTP '+response.status);
-  const payload=await response.json() as {msgArray?:Array<Record<string,unknown>>};
-  const rows=Array.isArray(payload.msgArray)?payload.msgArray:[];
-  const bySymbol=new Map<string,Record<string,unknown>>();
-  for(const row of rows){
-    const symbol=String(row.c??'').trim();
-    if(!symbol)continue;
-    const existing=bySymbol.get(symbol);
-    bySymbol.set(symbol,pickBetterTwseRow(existing,row));
-  }
-  const unresolved:string[]=[];
-  let updatedCount=0,usableCount=0;
-  let newestSourceAt:number|null=null;
-  const next:RuntimeQuote[]=symbols.map((symbol):RuntimeQuote=>{
-    const old=previous.find(x=>x.symbol===symbol)??FALLBACK_QUOTES.find(x=>x.symbol===symbol);
-    const row=bySymbol.get(symbol);
-    if(!hasUsableTwseQuote(row)){
-      unresolved.push(symbol);
-      if(old)return old;
-      const missing:RuntimeQuote={
-        symbol,
-        name:symbol,
-        currentPrice:0,
-        previousClose:0,
-        liquidationTradeMode:'ROUND_LOT',
-        dividendFrequency:4,
-        sparkline:[0],
-      };
-      return missing;
-    }
-    // A cached MIS row is NOT a new quote just because HTTP returned 200.
-    const sourceQuoteAt=parseTwseQuoteSourceAt(row,now);
-    if(sourceQuoteAt===null){
-      unresolved.push(symbol+'(來源時間缺失)');
-      const missing:RuntimeQuote={symbol,name:symbol,currentPrice:0,previousClose:0,
-        liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,sparkline:[0]};
-      return old??missing;
-    }
-    usableCount+=1;
-    if(!isNewSourceTick(sourceQuoteAt,old?.sourceQuoteAt))return old!;
-    updatedCount+=1;
-    newestSourceAt=Math.max(newestSourceAt??0,sourceQuoteAt);
-    const decision=resolveTwsePriceDecision(row);
-    if(!decision)return old!;
-    const currentPrice=decision.price;
-    const previousClose=resolveTwsePreviousClose(row)||old?.previousClose||currentPrice;
-    const sparkline=[...(old?.sparkline??[]),currentPrice].filter(x=>x>0).slice(-30);
-    const intraday=(decision.quality==='trade'||decision.quality==='backup_realtime')
-      ?appendIntraday(old,{at:sourceQuoteAt,price:currentPrice,quality:decision.quality,source:'TWSE_MIS'})
-      :{date:old?.intradayDate??null,points:[...(old?.intraday??[])]};
+function quoteClock(epochMillis:number):string{
+  try{
+    return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(epochMillis));
+  }catch{return '';}
+}
+function runtimeQuality(quote:MarketQuote):NonNullable<RuntimeQuote['quality']>{
+  if(quote.priceKind==='bid'||quote.priceKind==='ask')return 'bid_ask';
+  if(quote.quality==='LIVE'&&(quote.priceKind==='lastTrade'||quote.source==='FUGLE'||quote.source==='TWSE_MIS'))return 'trade';
+  if(quote.quality==='LIVE'||quote.quality==='DELAYED')return 'backup_realtime';
+  return 'official_close';
+}
+function runtimePriceType(quote:MarketQuote):NonNullable<RuntimeQuote['priceType']>{
+  if(quote.priceKind==='bid'||quote.priceKind==='ask')return 'BID_ASK';
+  if(runtimeQuality(quote)==='trade')return 'REALTIME_TRADE';
+  if(runtimeQuality(quote)==='backup_realtime')return 'BACKUP_REALTIME';
+  return 'OFFICIAL_CLOSE';
+}
+function runtimeMarket(quote:MarketQuote):NonNullable<RuntimeQuote['market']>{
+  const value=String(quote.market??quote.exchange??'').toUpperCase();
+  if(value.includes('OTC')||value.includes('TPEX'))return 'OTC';
+  if(value.includes('TSE')||value.includes('TWSE'))return 'TSE';
+  return 'UNKNOWN';
+}
+function appendRuntimeIntraday(old:RuntimeQuote|undefined,quote:MarketQuote,quality:NonNullable<RuntimeQuote['quality']>){
+  const source=quote.source;
+  if((quality!=='trade'&&quality!=='backup_realtime')||source==='CACHE')return {
+    date:old?.intradayDate??null,previousClose:old?.intradayPreviousClose??null,points:[...(old?.intraday??[])],
+  };
+  const date=quote.sessionDate;
+  const base=old?.intradayDate===date?[...(old.intraday??[])]:[];
+  const point:RuntimeIntradayPoint={
+    at:quote.sourceTimestampEpochMillis,price:quote.price,
+    quality:quality==='trade'?'trade':'backup_realtime',
+    source,
+  };
+  const byAt=new Map(base.map(row=>[row.at,row] as const));byAt.set(point.at,point);
+  return {
+    date,previousClose:quote.previousClose??old?.intradayPreviousClose??null,
+    points:[...byAt.values()].sort((a,b)=>a.at-b.at).slice(-4000),
+  };
+}
+function toRuntimeQuotes(
+  snapshot:ReadonlyMap<string,MarketQuote>,
+  previous:readonly RuntimeQuote[],
+  catalog:readonly TaiwanSecurityInfo[],
+  marketDataVersion:number,
+):RuntimeQuote[]{
+  const oldMap=new Map(previous.map(row=>[row.symbol,row] as const));
+  const names=new Map(catalog.map(row=>[row.symbol,row.name] as const));
+  return [...snapshot.values()].sort((a,b)=>a.symbol.localeCompare(b.symbol,'en')).map(quote=>{
+    const old=oldMap.get(quote.symbol);
+    const quality=runtimeQuality(quote);
+    const intraday=appendRuntimeIntraday(old,quote,quality);
+    const sameTick=old?.sourceQuoteAt===quote.sourceTimestampEpochMillis;
+    const sparkline=sameTick
+      ?[...(old?.sparkline??[quote.price])]
+      :[...(old?.sparkline??[]),quote.price].filter(value=>value>0).slice(-120);
+    const seed=FALLBACK_QUOTES.find(row=>row.symbol===quote.symbol);
+    const name=names.get(quote.symbol)??(quote.name!==quote.symbol?quote.name:undefined)??old?.name??seed?.name??quote.symbol;
+    const latestDividendPerShare=old?.latestDividendPerShare??seed?.latestDividendPerShare;
+    const pinned=old?.pinned??seed?.pinned;
+    const previousClose=quote.previousClose??old?.previousClose??quote.price;
     return {
-      symbol,
-      name:String(row?.n??old?.name??symbol),
-      currentPrice,
-      previousClose,
-      sourceQuoteAt,
-      quality:decision.quality,source:'TWSE_MIS',priceType:decision.priceType,
-      isFallback:decision.isFallback,officialTradePrice:decision.officialTradePrice,
-      market:String(row?.ex??'').toLowerCase()==='otc'?'OTC':String(row?.ex??'').toLowerCase()==='tse'?'TSE':'UNKNOWN',
-      statusMessage:decision.statusMessage,checkedAt:now,
-      liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
-      dividendFrequency:old?.dividendFrequency??4,
-      ...(old?.latestDividendPerShare==null?{}:{latestDividendPerShare:old.latestDividendPerShare}),
-      ...(old?.pinned==null?{}:{pinned:old.pinned}),
-      sparkline:sparkline.length?sparkline:[currentPrice],
+      symbol:quote.symbol,name,currentPrice:quote.price,previousClose,
+      liquidationTradeMode:old?.liquidationTradeMode??seed?.liquidationTradeMode??'ROUND_LOT',
+      dividendFrequency:old?.dividendFrequency??seed?.dividendFrequency??4,
+      ...(latestDividendPerShare==null?{}:{latestDividendPerShare}),
+      ...(pinned==null?{}:{pinned}),
+      sourceQuoteAt:quote.sourceTimestampEpochMillis,
+      quality,
+      previousCloseKnown:Number.isFinite(previousClose)&&previousClose>0,
+      source:quote.source,
+      priceType:runtimePriceType(quote),
+      isFallback:quality!=='trade',
+      officialTradePrice:quality==='trade'?quote.price:null,
+      market:runtimeMarket(quote),
+      statusMessage:`${quote.source} · ${quote.quality} · ${quote.priceKind??'price'}`,
+      checkedAt:quote.receivedAtEpochMillis,
+      marketDataVersion,
+      volume:quote.volume??null,
+      sparkline:sparkline.length?sparkline:[quote.price],
       intraday:intraday.points,
       intradayDate:intraday.date,
-      intradayPreviousClose:intraday.date===old?.intradayDate
-        ?(old?.intradayPreviousClose??previousClose)
-        :previousClose,
+      intradayPreviousClose:intraday.previousClose,
     };
   });
-  return {quotes:next,updatedCount,usableCount,newestSourceAt,unresolved};
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
-  const [phase,setPhase]=useState<MarketPhase>(()=>resolveMarketPhase(DEFAULT_MARKET_UPDATE));
-  const [quotes,setQuotes]=useState<RuntimeQuote[]>(()=>[]);
-  const [marketDataVersion,setMarketDataVersion]=useState(0);
-  const marketVersionRef=useRef(0);
-  const [missingSymbols,setMissingSymbols]=useState<string[]>([]);
-  const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>(()=>FALLBACK_QUOTES.map(x=>x.symbol));
+  const [quotes,setQuotes]=useState<RuntimeQuote[]>([]);
+  const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>([]);
   const [hydrated,setHydrated]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [lastSuccessAt,setLastSuccessAt]=useState<number|null>(null);
-  // lastSuccessAt is now the latest verified exchange source tick, never Date.now().
   const [lastError,setLastError]=useState<string|null>(null);
-  const [catalog,setCatalog]=useState<EtfCatalogItem[]>(FALLBACK_CATALOG);
-  const [catalogFetchedAt,setCatalogFetchedAt]=useState<number|null>(null);
+  const [catalog,setCatalog]=useState<TaiwanSecurityInfo[]>(fallbackCatalog);
   const [catalogRefreshing,setCatalogRefreshing]=useState(false);
-  const catalogRef=useRef<EtfCatalogItem[]>(FALLBACK_CATALOG);
-  const catalogFetchedAtRef=useRef<number|null>(null);
-  const catalogRefreshingRef=useRef(false);
-  const refreshingRef=useRef(false);
+  const [providerHealth,setProviderHealth]=useState<ProviderHealth[]>([]);
+  const [unresolvedSymbols,setUnresolvedSymbols]=useState<string[]>([]);
+  const [fugleConfigured,setFugleConfigured]=useState(false);
+  const [marketDataVersion,setMarketDataVersion]=useState(0);
+
+  const configRef=useRef(config),quotesRef=useRef<RuntimeQuote[]>([]),symbolsRef=useRef<string[]>([]);
+  const catalogRef=useRef<TaiwanSecurityInfo[]>(fallbackCatalog());
+  const fugleKeyRef=useRef<string|null>(null);
+  const centerRef=useRef<MarketDataCenter|null>(null);
+  const fugleRef=useRef<FugleWebSocketProvider|null>(null);
+  const persistenceRef=useRef<MarketPersistenceRepository|null>(null);
+  const persistenceControllerRef=useRef<MarketPersistenceController|null>(null);
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
-  const refreshVisibleRef=useRef(false);
-  const quotesRef=useRef<RuntimeQuote[]>([]);
-  const symbolsRef=useRef<string[]>(FALLBACK_QUOTES.map(x=>x.symbol));
+  const marketDataVersionRef=useRef(0);
+  const centerUnsubscribeRef=useRef<(()=>void)|null>(null);
+  const fugleUnsubscribeRef=useRef<(()=>void)|null>(null);
+
+  useEffect(()=>{configRef.current=config;},[config]);
+  useEffect(()=>{quotesRef.current=quotes;},[quotes]);
+  useEffect(()=>{symbolsRef.current=trackedSymbols;},[trackedSymbols]);
+  useEffect(()=>{catalogRef.current=catalog;},[catalog]);
 
   useEffect(()=>{
     let alive=true;
-    (async()=>{
-      const current=await AsyncStorage.getItem(STORAGE_KEY);
-      const legacy=current??await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
+    void (async()=>{
+      const [runtimeRaw,preV4Raw,legacyRaw,nativeKey]=await Promise.all([
+        AsyncStorage.getItem(RUNTIME_STORAGE_KEY).catch(()=>null),
+        AsyncStorage.getItem(PRE_V4_STORAGE_KEY).catch(()=>null),
+        AsyncStorage.getItem(LEGACY_STORAGE_KEY).catch(()=>null),
+        loadNativeFugleApiKey().catch(()=>null),
+      ]);
       if(!alive)return;
-      if(legacy){
-        const parsed=JSON.parse(legacy) as Partial<PersistedMarketState>;
-        if(parsed.schema===1){
-          if(parsed.config){
-            const legacyLive={...DEFAULT_MARKET_UPDATE.live,...parsed.config.live};
-            // V3.2.17 changed the historical factory default from 5s to 1s.
-            // Migrate only that exact legacy default; preserve every other user choice.
-            const migratedLive=legacyLive.refreshSeconds===5?{...legacyLive,refreshSeconds:1}:legacyLive;
-            const next={...DEFAULT_MARKET_UPDATE,...parsed.config,
-              live:migratedLive,
-              afterHours:{...DEFAULT_MARKET_UPDATE.afterHours,...parsed.config.afterHours}};
-            // The persisted user-approved server URL is applied before the
-            // first native read/refresh. Ledger migration is not involved.
-            if(unifiedMarketCenterAvailable)await setNativeMarketBackendUrl(next.backendUrl??'');
-            setConfigState(next);
-          }
-          if(Array.isArray(parsed.catalog)&&parsed.catalog.length){
-            const restored=mergeEtfCatalog(FALLBACK_CATALOG,parsed.catalog,[],[],VERIFIED_ISSUER_DIVIDEND_POLICIES);
-            catalogRef.current=restored;
-            setCatalog(restored);
-          }
-          if(typeof parsed.catalogFetchedAt==='number'&&Number.isFinite(parsed.catalogFetchedAt)){
-            setCatalogFetchedAt(parsed.catalogFetchedAt);
-          }
-          // V2.1.20 used some indicative book/seed prices. Never migrate that
-          // unproven price cache into the new verified SQLite database.
-          if(!unifiedMarketCenterAvailable&&Array.isArray(parsed.quotes)){
-            const safe=parsed.quotes.filter(row=>row.currentPrice>0&&typeof row.sourceQuoteAt==='number'
-              &&row.sourceQuoteAt>0&&row.sourceQuoteAt<Date.now()+120_000
-              &&row.sourceQuoteAt>Date.now()-31*86_400_000);
-            quotesRef.current=safe;
-            setQuotes(safe);
-          }
+      let persisted:Partial<PersistedMarketRuntime>|null=null;
+      if(runtimeRaw){try{persisted=JSON.parse(runtimeRaw) as Partial<PersistedMarketRuntime>;}catch{}}
+      if(persisted?.schema===4){
+        setConfigState(normalizeConfig(persisted.config));
+        if(Array.isArray(persisted.catalog)&&persisted.catalog.length){
+          const next=[...persisted.catalog];setCatalog(next);catalogRef.current=next;
         }
+        if(Number.isFinite(Number(persisted.lastSuccessAt)))setLastSuccessAt(Number(persisted.lastSuccessAt));
+      }else if(preV4Raw||legacyRaw){
+        try{
+          const legacy=JSON.parse(preV4Raw??legacyRaw??'{}') as {config?:Partial<MarketUpdateConfig>;lastSuccessAt?:number};
+          if(legacy.config)setConfigState(normalizeConfig(legacy.config));
+          if(Number.isFinite(Number(legacy.lastSuccessAt)))setLastSuccessAt(Number(legacy.lastSuccessAt));
+        }catch{}
       }
-      if(unifiedMarketCenterAvailable){
-        const snapshot=await loadUnifiedMarketData();
+
+      fugleKeyRef.current=nativeKey?.trim()||null;setFugleConfigured(!!fugleKeyRef.current);
+      const persistence=new MarketPersistenceRepository();persistenceRef.current=persistence;
+      const persistedQuotes=await persistence.loadSnapshots();
+      if(!alive)return;
+
+      const twse=new TwseMisQuoteProvider();
+      const yahoo=new YahooQuoteProvider(symbol=>catalogRef.current.find(row=>row.symbol===symbol)?.name);
+      const center=new MarketDataCenter([twse,yahoo]);centerRef.current=center;
+      if(persistedQuotes.length)center.seedCache(persistedQuotes,true);
+
+      centerUnsubscribeRef.current=center.subscribe(snapshot=>{
         if(!alive)return;
-        const restored=marketRowsToRuntimeQuotes(snapshot,quotesRef.current);
-        quotesRef.current=restored;
-        setQuotes(restored);
-        marketVersionRef.current=snapshot.version;
-        setMarketDataVersion(snapshot.version);
-        const latest=restored.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
-        if(latest>0)setLastSuccessAt(latest);
+        const version=marketDataVersionRef.current+1;marketDataVersionRef.current=version;setMarketDataVersion(version);
+        setQuotes(current=>{
+          const next=toRuntimeQuotes(snapshot,current,catalogRef.current,version);quotesRef.current=next;return next;
+        });
+      });
+      const initial=center.memoryQuotes();
+      if(initial.size){
+        const version=marketDataVersionRef.current+1;marketDataVersionRef.current=version;setMarketDataVersion(version);
+        const next=toRuntimeQuotes(initial,[],catalogRef.current,version);quotesRef.current=next;setQuotes(next);
       }
-    })().catch(error=>{if(alive)setLastError('行情資料中心載入失敗：'+String(error));})
-      .finally(()=>{if(alive)setHydrated(true);});
-    return()=>{alive=false;};
+      persistenceControllerRef.current=new MarketPersistenceController(center,persistence);
+
+      const fugle=new FugleWebSocketProvider(()=>fugleKeyRef.current);fugleRef.current=fugle;
+      fugleUnsubscribeRef.current=fugle.onEvent(event=>{
+        if(!alive)return;
+        if(event.type==='quote')center.acceptStreamingQuote(event.quote);
+        setProviderHealth(current=>{
+          const without=current.filter(row=>row.source!=='FUGLE');
+          return [event.type==='health'?event.health:fugle.health(Date.now()),...without];
+        });
+      });
+      setProviderHealth([fugle.health(Date.now()),...center.providerHealthSnapshot(Date.now())]);
+      setHydrated(true);
+    })();
+    return()=>{
+      alive=false;
+      centerUnsubscribeRef.current?.();centerUnsubscribeRef.current=null;
+      fugleUnsubscribeRef.current?.();fugleUnsubscribeRef.current=null;
+      void persistenceControllerRef.current?.flushNow();
+      persistenceControllerRef.current?.dispose();persistenceControllerRef.current=null;
+      fugleRef.current?.dispose();fugleRef.current=null;centerRef.current=null;
+    };
   },[]);
 
-  useEffect(()=>{ catalogRef.current=catalog; },[catalog]);
-  useEffect(()=>{ catalogFetchedAtRef.current=catalogFetchedAt; },[catalogFetchedAt]);
-  useEffect(()=>{ quotesRef.current=quotes; },[quotes]);
-  useEffect(()=>{ symbolsRef.current=trackedSymbols; },[trackedSymbols]);
-
-  const persistedQuotes=unifiedMarketCenterAvailable?EMPTY_PERSISTED_QUOTES:quotes;
-  const persistedLastSuccessAt=unifiedMarketCenterAvailable?null:lastSuccessAt;
   useEffect(()=>{
     if(!hydrated)return;
-    // Native quotes live in SQLite. Do not serialize the full ETF catalog on every scheduled quote tick.
-    const payload:PersistedMarketState={
-      schema:1,quoteClockVersion:2,config,quotes:persistedQuotes,
-      lastSuccessAt:persistedLastSuccessAt,catalog,catalogFetchedAt,
-    };
-    AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,config,persistedQuotes,persistedLastSuccessAt,catalog,catalogFetchedAt]);
+    const payload:PersistedMarketRuntime={schema:4,config,catalog,lastSuccessAt};
+    AsyncStorage.setItem(RUNTIME_STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
+  },[hydrated,config,catalog,lastSuccessAt]);
 
-  const setConfig=useCallback((next:MarketUpdateConfig)=>{
-    setConfigState({
-      ...next,
-      live:{...next.live,refreshSeconds:clampSeconds(next.live.refreshSeconds)},
-      afterHours:{...next.afterHours,refreshSeconds:clampSeconds(next.afterHours.refreshSeconds)},
-    });
-  },[]);
-
+  const setConfig=useCallback((next:MarketUpdateConfig)=>setConfigState(normalizeConfig(next)),[]);
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
-    const normalized=symbols.map(x=>x.trim().toUpperCase()).filter(Boolean);
-    // Follow the current holdings/watchlist rather than keeping sold securities forever.
-    const next=normalized.length?Array.from(new Set(normalized)):FALLBACK_QUOTES.map(x=>x.symbol);
-    setTrackedSymbolsState(current=>current.length===next.length&&current.every((code,i)=>code===next[i])?current:next);
+    const normalized=symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean);
+    setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])).sort());
   },[]);
 
-  const refresh=useCallback((options?:{force?:boolean;silent?:boolean}):Promise<MarketRefreshResult>=>{
-    const announce=options?.silent!==true;
-    if(refreshPromiseRef.current){
-      // A manual refresh may join a silent timer/background refresh. Promote
-      // that shared operation to visible UI state instead of starting duplicate work.
-      if(announce&&!refreshVisibleRef.current){
-        refreshVisibleRef.current=true;
-        setRefreshing(true);
-        setLastError(null);
-      }
-      return refreshPromiseRef.current;
-    }
-    refreshVisibleRef.current=announce;
-    const task=(async():Promise<MarketRefreshResult>=>{
-      refreshingRef.current=true;
-      if(announce)setRefreshing(true);
-      if(announce)setLastError(null);
-      let lastFailure:unknown=null;
+  const phase=resolveMarketPhase(config);
+
+  const refresh=useCallback((options?:{force?:boolean;silent?:boolean})=>{
+    if(refreshPromiseRef.current)return refreshPromiseRef.current;
+    const task:Promise<MarketRefreshResult>=(async()=>{
+      const center=centerRef.current;if(!center)return 'unchanged';
+      setRefreshing(true);if(!options?.silent)setLastError(null);
+      const now=Date.now(),date=taipeiDate(now);
       try{
-        const attempts=options?.force?3:2;
-        for(let attempt=1;attempt<=attempts;attempt+=1){
-          try{
-            if(unifiedMarketCenterAvailable){
-              // Native refresh commits SQLite and already returns the authoritative
-              // post-transaction snapshot. Re-reading the same SQLite snapshot through
-              // a second native bridge call on every 1-second tick doubled DB/JSON work
-              // and caused avoidable UI pressure. Consume the returned snapshot directly.
-              const refreshMeta=await refreshUnifiedMarketData(symbolsRef.current);
-              const state=refreshMeta;
-              const next=marketRowsToRuntimeQuotes(state,quotesRef.current);
-              const currentVersion=marketVersionRef.current;
-              const sessionDateChanged=marketIntradaySessionDateChanged(quotesRef.current,next);
-              const nextMissing=Array.isArray(refreshMeta.missing)?refreshMeta.missing:[];
-              setMissingSymbols(current=>sameStrings(current,nextMissing)?current:nextMissing);
-              // A 09:00 session rollover can change the intraday view without
-              // accepting a newer quote row, so it must not be gated only by
-              // the SQLite quote version.
-              if(state.version>currentVersion||sessionDateChanged){
-                quotesRef.current=next;
-                setQuotes(next);
-                if(state.version>currentVersion){
-                  marketVersionRef.current=state.version;
-                  setMarketDataVersion(state.version);
-                  const newest=next.reduce((max,row)=>Math.max(max,row.sourceQuoteAt??0),0);
-                  if(newest>0)setLastSuccessAt(current=>Math.max(current??0,newest));
-                }
-              }
-              if(next.length===0){
-                setLastError('交易所尚無可核實行情；原始帳務資料不受影響');
-                return 'error';
-              }
-              const missing=Array.isArray(refreshMeta.missing)?refreshMeta.missing:[];
-              const errors=Array.isArray(refreshMeta.errors)?refreshMeta.errors:[];
-              setLastError(missing.length?'行情中心尚缺 '+missing.join('、'):(errors.length?errors[0]??null:null));
-              return (refreshMeta.updatedCount&&refreshMeta.updatedCount>0)||sessionDateChanged?'updated':'unchanged';
-            }
-            const result=await fetchTwseQuotes(symbolsRef.current,quotesRef.current);
-            if(result.usableCount<=0)throw new Error('TWSE 無可靠報價時間或可用行情');
-            if(result.updatedCount===0){
-              // No source time advanced: do not alter finance, cached quotes, or 'last updated'.
-              setLastError('行情來源尚無新資料（維持前次更新時間）');
-              return 'unchanged';
-            }
-            quotesRef.current=result.quotes;
-            setQuotes(result.quotes);
-            if(result.newestSourceAt!==null)setLastSuccessAt(current=>Math.max(current??0,result.newestSourceAt!));
-            setLastError(result.unresolved.length?'部分行情暫用上次資料：'+result.unresolved.join(','):null);
-            return 'updated';
-          }catch(error){
-            lastFailure=error;
-            if(attempt<attempts)await new Promise(resolve=>setTimeout(resolve,options?.force?350:650));
-          }
+        if(options?.force&&fugleRef.current&&fugleKeyRef.current)await fugleRef.current.replaceSubscriptions(new Set(symbolsRef.current));
+        const batch=await center.refresh({
+          symbols:new Set(symbolsRef.current),nowEpochMillis:now,currentTaipeiDate:date,tradingSessionActive:resolveMarketPhase(configRef.current)==='live',
+        });
+        const health=[...(fugleRef.current?[fugleRef.current.health(Date.now())]:[]),...batch.providerHealth];
+        setProviderHealth(health);
+        const unresolved=[...batch.unresolvedSymbols].sort();setUnresolvedSymbols(unresolved);
+        if(batch.quotes.size>0)setLastSuccessAt(Date.now());
+        if(!options?.silent){
+          if(unresolved.length)setLastError('未解析行情：'+unresolved.join(', '));
+          else if(symbolsRef.current.length>0&&batch.quotes.size===0)setLastError('目前沒有可核實的本交易日行情，保留已標記品質的快取。');
         }
-        throw lastFailure instanceof Error?lastFailure:new Error(String(lastFailure??'TWSE refresh failed'));
+        return batch.quotes.size>0?'updated':'unchanged';
       }catch(error){
-        setLastError(error instanceof Error?error.message:String(error));
+        if(!options?.silent)setLastError(error instanceof Error?error.message:String(error));
         return 'error';
-      }finally{
-        refreshingRef.current=false;
-        if(refreshVisibleRef.current)setRefreshing(false);
-        refreshVisibleRef.current=false;
-      }
+      }finally{setRefreshing(false);}
     })();
     refreshPromiseRef.current=task.finally(()=>{refreshPromiseRef.current=null;});
     return refreshPromiseRef.current;
   },[]);
 
   const refreshCatalog=useCallback(async()=>{
-    if(catalogRefreshingRef.current)return;
-    catalogRefreshingRef.current=true;
     setCatalogRefreshing(true);
     try{
-      const next=await fetchEtfCatalog(catalogRef.current);
+      const next=await fetchTaiwanSecurityCatalog();
       if(next.length){catalogRef.current=next;setCatalog(next);}
-    }finally{
-      // Throttle unsuccessful attempts too; retained rows keep their original verification times.
-      setCatalogFetchedAt(Date.now());
-      catalogRefreshingRef.current=false;
-      setCatalogRefreshing(false);
-    }
+    }catch(error){
+      setLastError(error instanceof Error?error.message:String(error));
+    }finally{setCatalogRefreshing(false);}
   },[]);
 
-  // One backend event broadcasts the changed market version; native retrieves
-  // and commits the authoritative server snapshot into the shared SQLite DB.
-  // Android background may suspend this socket: no false 'live' status.
-  useEffect(()=>{
-    if(!hydrated||!unifiedMarketCenterAvailable)return;
-    void setNativeMarketBackendUrl(config.backendUrl??'').then(()=>refresh({force:true,silent:true}))
-      .catch(error=>setLastError('行情中心網址設定失敗：'+String(error)));
-  },[hydrated,config.backendUrl,refresh]);
-
-  useEffect(()=>{
-    const endpoint=config.backendUrl?.trim()??'';
-    if(!hydrated||!endpoint.startsWith('https://')||!trackedSymbols.length)return;
-    let socket:WebSocket|null=null;
-    let closed=false;
-    const open=()=>{
-      if(closed||AppState.currentState!=='active')return;
-      try{
-        socket=new WebSocket(endpoint.replace(/^https:/,'wss:')+
-          '/v1/market/events?symbols='+encodeURIComponent(trackedSymbols.join(',')));
-        socket.onmessage=(event)=>{
-          try{
-            const incoming=JSON.parse(String(event.data)) as {type?:string;symbols?:string[]};
-            if(incoming.type==='market_changed'&&incoming.symbols?.some(symbol=>trackedSymbols.includes(symbol)))
-              void refresh({force:true,silent:true});
-          }catch{}
-        };
-      }catch(error){setLastError('行情中心推送暫時無法連線');}
-    };
-    open();
-    const sub=AppState.addEventListener('change',next=>{
-      if(next==='active')open();
-      else{socket?.close();socket=null;}
-    });
-    return()=>{closed=true;sub.remove();socket?.close();};
-  },[hydrated,config.backendUrl,trackedSymbols,refresh]);
-
-  useEffect(()=>{
-    setPhase(resolveMarketPhase(config));
-  },[config]);
-
-  useEffect(()=>{
-    if(hydrated&&shouldRefreshEtfCatalog(catalogFetchedAt))void refreshCatalog();
-  },[hydrated,catalogFetchedAt,refreshCatalog]);
+  const saveFugleApiKey=useCallback(async(apiKey:string)=>{
+    if(!nativeRuntimeAvailable)return false;
+    const normalized=apiKey.trim();if(!normalized)return false;
+    const saved=await saveNativeFugleApiKey(normalized);
+    if(saved){
+      fugleKeyRef.current=normalized;setFugleConfigured(true);fugleRef.current?.onCredentialChanged();
+      await fugleRef.current?.replaceSubscriptions(new Set(symbolsRef.current));
+    }
+    return saved;
+  },[]);
+  const clearFugleApiKey=useCallback(async()=>{
+    if(!nativeRuntimeAvailable)return false;
+    const cleared=await clearNativeFugleApiKey();
+    if(cleared){fugleKeyRef.current=null;setFugleConfigured(false);fugleRef.current?.onCredentialChanged();}
+    return cleared;
+  },[]);
 
   useEffect(()=>{
     if(!hydrated)return;
-    const sub=AppState.addEventListener('change',next=>{
-      if(next==='active'&&shouldRefreshEtfCatalog(catalogFetchedAtRef.current))void refreshCatalog();
-    });
-    return()=>sub.remove();
-  },[hydrated,refreshCatalog]);
-
-  useEffect(()=>{
-    if(!hydrated)return;
-    void refresh({silent:true});
+    void fugleRef.current?.replaceSubscriptions(new Set(trackedSymbols));
+    void refresh();
   },[hydrated,trackedSymbols,refresh]);
 
   useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
-    let disposed=false;
-    let lastPhase:MarketPhase|null=null;
-    let nextDueAt=0;
-    const tick=()=>{
-      const currentPhase=resolveMarketPhase(config);
-      setPhase(current=>current===currentPhase?current:currentPhase);
-      if(disposed||AppState.currentState!=='active')return;
-      const seconds=marketRefreshSeconds(config,currentPhase);
-      if(seconds<=0){
-        lastPhase=currentPhase;
-        nextDueAt=0;
-        return;
-      }
-      const now=Date.now();
-      if(currentPhase!==lastPhase){
-        lastPhase=currentPhase;
-        nextDueAt=0;
-      }
-      if(now<nextDueAt)return;
-      nextDueAt=now+seconds*1000;
-      void refresh({silent:true});
-    };
-    tick();
-    // One-second scheduler heartbeat guarantees a 09:00 phase transition is
-    // noticed even when the App stays open across the market boundary. Network
-    // refresh cadence still follows the configured phase interval.
-    const timer=setInterval(tick,1000);
-    return()=>{disposed=true;clearInterval(timer);};
-  },[hydrated,config,refresh]);
+    const seconds=marketRefreshSeconds(config,phase);if(seconds<=0)return;
+    const timer=setInterval(()=>{void refresh();},seconds*1000);return()=>clearInterval(timer);
+  },[hydrated,config,phase,refresh]);
 
   useEffect(()=>{
-    if(!config.refreshOnForeground)return;
-    const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{if(next==='active')void refresh({force:true,silent:true});});
+    if(!hydrated)return;
+    const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
+      if(next==='active'){
+        void fugleRef.current?.replaceSubscriptions(new Set(symbolsRef.current));
+        if(configRef.current.refreshOnForeground)void refresh({force:true});
+      }else{
+        void persistenceControllerRef.current?.flushNow();
+        void fugleRef.current?.disconnect();
+      }
+    });
     return()=>sub.remove();
-  },[config.refreshOnForeground,refresh]);
+  },[hydrated,refresh]);
+
+  useEffect(()=>{
+    if(hydrated&&(catalog.length<=FALLBACK_QUOTES.length||catalog.every(row=>row.source==='bootstrap-only')))void refreshCatalog();
+  },[hydrated,catalog.length,refreshCatalog]);
 
   const value=useMemo<MarketRuntimeValue>(()=>({
-    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols,
-  }),[hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,missingSymbols,setConfig,refresh,refreshCatalog,setTrackedSymbols]);
+    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
+    marketDataVersion,missingSymbols:unresolvedSymbols,
+    providerHealth,unresolvedSymbols,fugleConfigured,setConfig,refresh,refreshCatalog,setTrackedSymbols,
+    saveFugleApiKey,clearFugleApiKey,
+  }),[
+    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,marketDataVersion,
+    providerHealth,unresolvedSymbols,fugleConfigured,setConfig,refresh,refreshCatalog,setTrackedSymbols,
+    saveFugleApiKey,clearFugleApiKey,
+  ]);
 
   return <MarketRuntimeContext.Provider value={value}>{children}</MarketRuntimeContext.Provider>;
 }
