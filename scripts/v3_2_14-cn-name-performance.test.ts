@@ -29,17 +29,29 @@ assert.match(finance,/catalogNameBySymbol\.get\(summary\.etfCode\)/);
 assert.match(finance,/ledgerNameBySymbol\.get\(summary\.etfCode\)/,
   'the actual persisted ledger label must remain ahead of an English feed fallback');
 
-// Performance contract: native market polling must not stringify the full catalog
-// on every scheduled quote tick, and scheduled/background refreshes stay silent.
-assert.match(market,/const persistedQuotes=await persistence\.loadSnapshots\(\)/,
-  'SQLite/native persistence must hydrate MarketDataCenter snapshots once during runtime startup');
-assert.match(market,/persistenceControllerRef\.current=new MarketPersistenceController\(center,persistence\)/,
-  'quote persistence must be owned by the MarketDataCenter persistence controller');
-assert.match(market,/const payload:PersistedMarketRuntime=\{schema:4,config,catalog,lastSuccessAt\}/);
+// Performance contract: the imported SaiETF native runtime owns polling,
+// MemoryMarketStore, streaming and persistence. React only hydrates/requests
+// snapshots through one bridge and keeps scheduled refreshes silent.
+const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+const nativePersistence=read('native/android/SaiEtfMarketPersistenceRepository.kt');
+const nativePersistenceController=read('native/android/SaiEtfMarketPersistenceController.kt');
+
+assert.match(market,/const snapshot=await loadUnifiedMarketData\(\)/,
+  'React startup must hydrate the imported native SaiETF runtime exactly once');
+assert.match(nativeRuntime,/private val persistence = MarketPersistenceRepository\(appContext\)/,
+  'native SaiETF runtime must own market persistence');
+assert.match(nativeRuntime,/private val persistenceController = MarketPersistenceController\(/,
+  'native SaiETF runtime must own the persistence controller');
+assert.match(nativePersistence,/fun runtimeSnapshot\(\): JSONObject = database\.marketCoreRuntimeSnapshot\(\)/,
+  'cold-start fallback must read the market-only SQLite snapshot');
+assert.match(nativePersistenceController,/PERSIST_INTERVAL_MILLIS = 5_000L/,
+  'native persistence must remain throttled instead of writing every tick');
+
+assert.match(market,/const payload:PersistedMarketRuntime=\{schema:5,config,catalog,lastSuccessAt\}/);
 assert.match(market,/\[hydrated,config,catalog,lastSuccessAt\]/);
 assert.doesNotMatch(market,/\[hydrated,config,quotes,lastSuccessAt,catalog\]/,
   'scheduled quote ticks must not stringify the full quote set or catalog payload');
-assert.match(market,/setUnresolvedSymbols\(current=>sameStrings\(current,unresolved\)\?current:unresolved\)/,
+assert.match(market,/setUnresolvedSymbols\(current=>sameStrings\(current,missing\)\?current:missing\)/,
   'unchanged missing-symbol arrays must not force context rerenders');
 assert.match(market,/if\(disposed\|\|AppState\.currentState!=='active'\)return;/,
   'scheduled market polling must stay silent and idle while the app is inactive');
