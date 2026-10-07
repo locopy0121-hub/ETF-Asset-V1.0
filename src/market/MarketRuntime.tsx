@@ -81,8 +81,6 @@ const RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime-native-saietf';
 const PREVIOUS_RUNTIME_STORAGE_KEY='@tf-asset/v4-market-runtime';
 const V3_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime-v231';
 const LEGACY_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime';
-const V3_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime-v231';
-const LEGACY_RUNTIME_STORAGE_KEY='@tf-asset/market-runtime';
 const MarketRuntimeContext=createContext<MarketRuntimeValue|null>(null);
 
 function fallbackCatalog():TaiwanSecurityInfo[]{
@@ -258,18 +256,18 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       ]);
       if(!alive)return;
       let persisted:Partial<PersistedMarketRuntime>|null=null;
-      let migratedFromPreviousRuntime=false;
+      let migratedFromLegacy=false;
       for(const [index,raw] of [runtimeRaw,previousRaw,v3Raw,legacyRaw].entries()){
         if(!raw)continue;
         try{
           persisted=JSON.parse(raw) as Partial<PersistedMarketRuntime>;
-          migratedFromPreviousRuntime=index>0;
+          migratedFromLegacy=index>0;
           break;
         }catch{}
       }
       if(persisted?.config){
         const legacyLive=persisted.config.live;
-        const migratedConfig=migratedFromPreviousRuntime&&legacyLive?.refreshSeconds===5
+        const migratedConfig=migratedFromLegacy&&legacyLive?.refreshSeconds===5
           ?{...persisted.config,live:{...legacyLive,refreshSeconds:1}}
           :persisted.config;
         setConfigState(normalizeConfig(migratedConfig));
