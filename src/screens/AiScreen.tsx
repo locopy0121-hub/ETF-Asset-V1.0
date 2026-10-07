@@ -1,11 +1,11 @@
 import {useState} from 'react';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {Alert,Pressable,StyleSheet,Text,View} from 'react-native';
 
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {type AiAssistantAction} from '../ai/aiAssistant';
 import type {AiSessionContext} from '../ai/aiConversationTypes';
 import {answerWithGemini} from '../ai/geminiAssistant';
-import {dividendEventToLedger} from '../ai/dividendAssistant';
+import {dividendEventToPlan} from '../ai/dividendAssistant';
 import {AiQuestionBox} from '../components/AiQuestionBox';
 import {FrameCard} from '../components/FrameCard';
 import {PageEditorStack} from '../components/PageEditorStack';
@@ -23,7 +23,7 @@ export function AiScreen(){
   const editor=usePageEditor('ai');
   const [settingsOpen,setSettingsOpen]=useState(false);
   const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session,finance.sharedSnapshot.asset);
-  const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
+  const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend'){const error=finance.applyDividendPlan({type:'import',plan:dividendEventToPlan(action.event)});if(error)Alert.alert('未儲存股息預告',error);else Alert.alert('已儲存股息預告','請到股息頁核對日期與符合配息股數，確認實際收到款項後再入帳。');};};
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AiQuestionBox } from '../components/AiQuestionBox';
@@ -10,14 +10,16 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import {buildDividendCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents,type DividendCalendarEventType} from '../dividend/dividendCalendar';
+import {buildDividendCalendarEvents,buildDividendPlanCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents,type DividendCalendarEventType} from '../dividend/dividendCalendar';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
-import {dividendEventToLedger} from '../ai/dividendAssistant';
+import {dividendEventToPlan} from '../ai/dividendAssistant';
 import { calculateLedgerCashFlow, type DividendLedgerEntry } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { colors, spacing } from '../theme/tokens';
+
+import {isIsoCalendarDate as isIsoDate,validateDividendDates,validateDividendPlan,dividendAutofill,dividendEligibleShares,dividendPlanStatus,dividendPlanToLedger,type DividendPlan} from '../dividend/dividendPlans';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const nowIso=()=>deviceLocalCalendarDate();
@@ -25,7 +27,6 @@ const calendarEventColor=(type:DividendCalendarEventType)=>
   type==='lastBuyDate'?'#8B5CF6':type==='exDate'?colors.primary:type==='recordDate'?colors.warning:colors.gain;
 const shortDate=(date:string)=>date?date.slice(5).replace('-',' / '):'';
 const parseNumber=(value:string)=>{const n=Number(value.replace(/,/g,'').trim());return Number.isFinite(n)?n:0;};
-const isIsoDate=(value:string)=>/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T12:00:00').getTime());
 const noteDate=(note:string|undefined,labels:readonly string[])=>{for(const label of labels){const value=String(note??'').match(new RegExp(label+'\\s*(\\d{4}-\\d{2}-\\d{2})'))?.[1];if(value)return value;}return '';};
 type DividendDatePickerTarget='payment'|'lastBuy'|'ex'|'record';
 
@@ -39,11 +40,14 @@ export function DividendScreen() {
   const [selectedDate,setSelectedDate]=useState(today);
   const [selectedDividendId,setSelectedDividendId]=useState<string|null>(null);
   const [addOpen,setAddOpen]=useState(false);
+  const [addMode,setAddMode]=useState<'receipt'|'forecast'>('receipt');
+  const [editPlanId,setEditPlanId]=useState<string|null>(null);
   const [addSymbol,setAddSymbol]=useState('');
   const [addName,setAddName]=useState('');
   const [addPaymentDate,setAddPaymentDate]=useState(today);
   const [addPerShare,setAddPerShare]=useState('');
   const [addShares,setAddShares]=useState('');
+  const [sharesAuto,setSharesAuto]=useState(true);
   const [addLastBuyDate,setAddLastBuyDate]=useState('');
   const [addExDate,setAddExDate]=useState('');
   const [addRecordDate,setAddRecordDate]=useState('');
@@ -56,9 +60,9 @@ export function DividendScreen() {
   const annual=dividends.filter(x=>x.date.startsWith(year)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
   const monthlyAverage=annual/12;
   const calendarEvents=useMemo(()=>filterDividendCalendarEvents(
-    buildDividendCalendarEvents(dividends,today),
+    [...buildDividendCalendarEvents(dividends,today),...buildDividendPlanCalendarEvents(finance.dividendPlans,dividends)],
     aiSettings.prefs.dividendCalendar,
-  ),[dividends,today,aiSettings.prefs.dividendCalendar]);
+  ),[dividends,today,aiSettings.prefs.dividendCalendar,finance.dividendPlans]);
   const monthEvents=calendarEvents.filter(event=>event.date.startsWith(month));
   const events=useMemo(()=>{
     const map=new Map<number,typeof monthEvents>();
@@ -100,9 +104,29 @@ export function DividendScreen() {
         sharesHeld:addSharesValue,
       }
       :null;
+  const draftPlan:DividendPlan={id:editPlanId??'preview',symbol:addSymbol.trim().toUpperCase(),name:addName.trim(),status:'forecast',paymentDate:addPaymentDate,lastBuyDate:addLastBuyDate,exDate:addExDate,recordDate:addRecordDate,perShareAmount:addPerShare.trim()?addPerShareValue:null,sharesHeld:addShares.trim()?addSharesValue:null,note:addNote.trim()};
+  const dateError=validateDividendDates(draftPlan);
+  const formError=addMode==='forecast'?validateDividendPlan(draftPlan):dateError;
+  const canSave=addMode==='forecast'?!formError:Boolean(addPreview)&&!formError;
+  const monthPlans=finance.dividendPlans.filter(plan=>dividendPlanStatus(plan,finance.entries)!=='paid'&&(plan.paymentDate||plan.exDate||plan.recordDate||plan.lastBuyDate).startsWith(month));
+  const applyPlan=(action:Parameters<typeof finance.applyDividendPlan>[0])=>{
+    const error=finance.applyDividendPlan(action);if(error)Alert.alert('未完成',error);
+    return !error;
+  };
+  const editPlan=(plan:DividendPlan)=>{
+    setEditPlanId(plan.id);setSharesAuto(false);setAddMode('forecast');setAddSymbol(plan.symbol);setAddName(plan.name);
+    setAddPaymentDate(plan.paymentDate);setAddPerShare(plan.perShareAmount===null?'':String(plan.perShareAmount));setAddShares(plan.sharesHeld===null?'':String(plan.sharesHeld));
+    setAddLastBuyDate(plan.lastBuyDate);setAddExDate(plan.exDate);setAddRecordDate(plan.recordDate);setAddNote(plan.note);setAddOpen(true);
+  };
+  const postPlan=(plan:DividendPlan)=>Alert.alert('確認實際收到股息',plan.symbol+' 淨入帳 NT$ '+money(calculateLedgerCashFlow(dividendPlanToLedger(plan)))+'。請核對已收款及符合配息股數，再寫入正式帳務。',[
+    {text:'取消',style:'cancel'},{text:'確認入帳',onPress:()=>applyPlan({type:'post',id:plan.id})},
+  ]);
+  const eligibleShares=useMemo(()=>dividendEligibleShares(finance.entries,addSymbol,addLastBuyDate,addExDate,today),[finance.entries,addSymbol,addLastBuyDate,addExDate,today]);
+  useEffect(()=>{if(sharesAuto&&eligibleShares!==null)setAddShares(String(eligibleShares));},[sharesAuto,eligibleShares]);
   const addGross=addPreview?Math.floor(addPreview.perShareAmount*addPreview.sharesHeld):0;
   const addNet=addPreview?calculateLedgerCashFlow(addPreview):0;
   const openAddDividend=(symbol?:string)=>{
+    setAddMode('receipt');setEditPlanId(null);setSharesAuto(true);
     const holding=finance.holdings.find(row=>row.symbol===(symbol??finance.holdings[0]?.symbol));
     setAddSymbol(holding?.symbol??'');
     setAddName(holding?.name??'');
@@ -119,13 +143,23 @@ export function DividendScreen() {
   const updateAddSymbol=(value:string)=>{
     const symbol=value.toUpperCase().replace(/\s/g,'');
     setAddSymbol(symbol);
-    const holding=finance.holdings.find(row=>row.symbol===symbol);
-    if(holding){
-      setAddName(holding.name);
-      setAddShares(String(holding.shares));
-    }
+    if(symbol===addSymbol)return;
+    const autofill=dividendAutofill(symbol,finance.holdings);
+    const previous=finance.entries.slice().reverse().find(row=>'symbol' in row&&row.symbol===symbol);
+    setAddName(autofill.name||(previous&&'name' in previous?previous.name:''));setAddShares(autofill.shares);setSharesAuto(true);
+    // Every distribution belongs to one security; none of its previous metadata carries over.
+    setAddPerShare('');setAddPaymentDate(addMode==='forecast'?'':today);setAddLastBuyDate('');setAddExDate('');setAddRecordDate('');setAddNote('');
+
   };
   const saveDividend=()=>{
+    if(formError){Alert.alert('請核對股息資料',formError);return;}
+    if(addMode==='forecast'){
+      const plan={...draftPlan,id:editPlanId??('manual-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8))};
+      if(!applyPlan({type:'save',plan}))return;
+      const date=plan.paymentDate||plan.exDate||plan.recordDate||plan.lastBuyDate;
+      setMonth(date.slice(0,7));setSelectedDate(date);setAddOpen(false);
+      Alert.alert('預告已保存','事件已加入月曆與股息清單，尚未增加現金；確認資料後可手動入帳。');return;
+    }
     if(!addPreview){
       Alert.alert('資料未完整','請確認 ETF 代號、名稱、配發日、每股股息與符合配息股數。');
       return;
@@ -162,7 +196,7 @@ export function DividendScreen() {
       '配發日 '+addPaymentDate,
       addNote.trim(),
     ].filter(Boolean).join('；');
-    finance.addDividend({...addPreview,id:'dividend-manual-'+Date.now(),note});
+    if(!finance.addDividend({...addPreview,id:'dividend-manual-'+Date.now(),note}))return;
     setMonth(addPaymentDate.slice(0,7));
     setSelectedDate(addPaymentDate);
     setAddOpen(false);
@@ -171,7 +205,7 @@ export function DividendScreen() {
   const datePickerValue=datePickerTarget==='payment'?addPaymentDate:datePickerTarget==='lastBuy'?addLastBuyDate:datePickerTarget==='ex'?addExDate:datePickerTarget==='record'?addRecordDate:today;
   const datePickerTitle=datePickerTarget==='payment'?'選擇股息配發／入帳日':datePickerTarget==='lastBuy'?'選擇最後購買日':datePickerTarget==='ex'?'選擇除息日':'選擇收益分配基準日';
   const updatePickedDate=(value:string)=>{
-    if(datePickerTarget==='payment')setAddPaymentDate(value);
+    if(datePickerTarget==='payment'){setAddPaymentDate(value);if(value>today||!value)setAddMode('forecast');}
     else if(datePickerTarget==='lastBuy')setAddLastBuyDate(value);
     else if(datePickerTarget==='ex')setAddExDate(value);
     else if(datePickerTarget==='record')setAddRecordDate(value);
@@ -183,7 +217,7 @@ export function DividendScreen() {
     if(q.includes('最高')||q.includes('最多')){const max=Math.max(...monthTotals);const idx=monthTotals.indexOf(max);return {intent:'dividend' as const,text:year+' 年目前最高月份為 '+(idx+1)+' 月，淨股息 NT$ '+money(max)+'。'};}
     return answerAiQuestion(question,finance.holdings,finance.snapshot.portfolio,aiNews.items,finance.entries);
   };
-  const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
+  const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend'){const error=finance.applyDividendPlan({type:'import',plan:dividendEventToPlan(action.event)});if(error)Alert.alert('未儲存股息預告',error);else Alert.alert('已儲存股息預告','請到股息頁核對日期與符合配息股數，確認實際收到款項後再入帳。');};};
 
   return <>
     <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel="新增股息" onPress={()=>openAddDividend()} style={styles.addHeaderButton}><Text style={styles.addHeaderButtonText}>＋ 新增</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
@@ -262,9 +296,21 @@ export function DividendScreen() {
         },
         {key:'dividend-list',element:
           <FrameCard title="股息清單">
+            {finance.dividendPlanError?<Text style={styles.formWarning}>{finance.dividendPlanError}</Text>:null}
+            {monthPlans.map(plan=><View key={plan.id} style={styles.planCard}>
+              <Text style={styles.stockName}>{plan.symbol} · {plan.name}</Text>
+              <Text style={styles.eventText}>{plan.status==='confirmed'?'已確定／待入帳':'預告'} · 配發日 {plan.paymentDate||'待公告'}</Text>
+              <Text style={styles.eventText}>每股 {plan.perShareAmount??'待公告'} · 符合配息 {plan.sharesHeld??'待核對'} 股</Text>
+              <Text style={styles.formHint}>最後購買日 {plan.lastBuyDate||'待公告'}｜除息日 {plan.exDate||'待公告'}｜基準日 {plan.recordDate||'待公告'}</Text>
+              <View style={styles.planActions}>
+                <Pressable accessibilityLabel={'編輯股息預告 '+plan.symbol} onPress={()=>editPlan(plan)} style={styles.planButton}><Text>編輯</Text></Pressable>
+                {plan.status==='forecast'?<Pressable accessibilityLabel={'確認股息預告 '+plan.symbol} onPress={()=>applyPlan({type:'confirm',id:plan.id})} style={styles.planButton}><Text>確認資料</Text></Pressable>:<Pressable accessibilityLabel={'入帳股息 '+plan.symbol} disabled={!plan.paymentDate||plan.paymentDate>today} onPress={()=>postPlan(plan)} style={[styles.planButton,(!plan.paymentDate||plan.paymentDate>today)&&{opacity:.4}]}><Text>實際入帳</Text></Pressable>}
+                <Pressable accessibilityLabel={'刪除股息預告 '+plan.symbol} onPress={()=>Alert.alert('刪除預告','此操作不會更動正式帳務。',[{text:'取消',style:'cancel'},{text:'刪除',style:'destructive',onPress:()=>applyPlan({type:'delete',id:plan.id})}])} style={styles.planButton}><Text>刪除</Text></Pressable>
+              </View>
+            </View>)}
             {monthRows.length?monthRows.map(row=>{
               const amount=calculateLedgerCashFlow(row);
-              const status=row.date<today?'已入帳':row.date===today?'待入帳':'預估';
+              const status=row.date>today?'已入帳（未來日期需核對）':'已入帳';
               return <Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看 ${row.symbol} 股息資訊`} onPress={()=>setSelectedDividendId(current=>current===row.id?null:row.id)} style={styles.dividendRow}>
                 <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
                 <View style={{flex:1}}>
@@ -284,10 +330,10 @@ export function DividendScreen() {
                 </View>
                 <View style={{alignItems:'flex-end'}}>
                   <Text style={styles.dividendAmount}>NT$ {money(amount)}</Text>
-                  <Text style={[styles.status,{color:status==='已入帳'?colors.gain:status==='待入帳'?colors.warning:colors.primary}]}>{status}</Text>
+                  <Text style={[styles.status,{color:status==='已入帳'?colors.gain:colors.warning}]}>{status}</Text>
                 </View>
               </Pressable>;
-            }):<Text style={styles.empty}>本月尚無股息紀錄</Text>}
+            }):<Text style={styles.empty}>{monthPlans.length?'本月尚無正式入帳紀錄':'本月尚無股息紀錄'}</Text>}
           </FrameCard>
         },
         {key:'annual-trend',element:
@@ -309,11 +355,15 @@ export function DividendScreen() {
           <View style={styles.modalHeader}>
             <View style={{flex:1}}>
               <Text style={styles.modalTitle}>新增股息</Text>
-              <Text style={styles.modalSubtitle}>實際入帳後寫入 Canonical Ledger，並同步股息清單、月曆與統計</Text>
+              <Text style={styles.modalSubtitle}>{editPlanId?'編輯後需重新確認資料':'預告先保存事件；實際收到股息後才增加現金'}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="關閉新增股息" onPress={()=>setAddOpen(false)} style={styles.modalClose}><Text style={styles.modalCloseText}>×</Text></Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.planActions}>
+              <Pressable accessibilityLabel="登錄股息預告" onPress={()=>setAddMode('forecast')} style={[styles.planButton,addMode==='forecast'&&styles.modeSelected]}><Text>登錄預告</Text></Pressable>
+              {!editPlanId?<Pressable accessibilityLabel="建立實際股息入帳" onPress={()=>setAddMode('receipt')} style={[styles.planButton,addMode==='receipt'&&styles.modeSelected]}><Text>實際入帳</Text></Pressable>:null}
+            </View>
             {finance.holdings.length?<View>
               <Text style={styles.fieldLabel}>快速選擇目前持股</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.holdingChips}>
@@ -350,8 +400,8 @@ export function DividendScreen() {
 
             <View style={styles.formGroup}>
               <Text style={styles.fieldLabel}>符合配息股數</Text>
-              <TextInput value={addShares} onChangeText={setAddShares} keyboardType="decimal-pad" placeholder="0" style={styles.formInput}/>
-              <Text style={styles.formHint}>目前持股只作為快速帶入，可依實際除息資格自行修正。</Text>
+              <TextInput value={addShares} onChangeText={value=>{setSharesAuto(false);setAddShares(value);}} keyboardType="decimal-pad" placeholder="0" style={styles.formInput}/>
+              <Text style={styles.formHint}>{sharesAuto&&eligibleShares!==null?'已依公告日期與原帳本帶入 '+eligibleShares+' 股，請核對實際配息資格。':'目前持股僅供快速帶入；尚未到資格日期或資料不足時需另行核對，可手動修正。'}</Text>
             </View>
 
             <View style={styles.previewCard}>
@@ -371,10 +421,11 @@ export function DividendScreen() {
               <TextInput value={addNote} onChangeText={setAddNote} placeholder="資料來源、入帳備註等" multiline style={[styles.formInput,styles.formInputMultiline]}/>
             </View>
 
-            <Pressable disabled={!addPreview} onPress={saveDividend} style={[styles.saveDividendButton,!addPreview&&styles.saveDividendButtonDisabled]}>
-              <Text style={styles.saveDividendButtonText}>確認新增股息紀錄</Text>
+            {formError?<Text style={styles.formWarning}>{formError}</Text>:null}
+            <Pressable disabled={!canSave} onPress={saveDividend} style={[styles.saveDividendButton,!canSave&&styles.saveDividendButtonDisabled]}>
+              <Text style={styles.saveDividendButtonText}>{addMode==='forecast'?(editPlanId?'儲存預告修改':'儲存股息預告'):'確認新增股息紀錄'}</Text>
             </Pressable>
-            <Text style={styles.formWarning}>未來配發日不直接寫入現金帳務；實際入帳後再建立紀錄，避免預估股息提前灌入現金與總資產。</Text>
+            <Text style={styles.formWarning}>未來配發日不直接寫入現金帳務；可先登錄預告，確認資料並實際收到股息後再入帳。</Text>
           </ScrollView>
         </View>
       </View>
@@ -383,7 +434,7 @@ export function DividendScreen() {
       visible={datePickerTarget!==null}
       value={datePickerValue}
       title={datePickerTitle}
-      allowClear={datePickerTarget!==null&&datePickerTarget!=='payment'}
+      allowClear={datePickerTarget!==null&&(datePickerTarget!=='payment'||addMode==='forecast')}
       onChange={updatePickedDate}
       onClose={()=>setDatePickerTarget(null)}
     />
@@ -395,6 +446,10 @@ function DateField({label,value,onPress}:{label:string;value:string;onPress:()=>
 }
 function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text style={styles.legendText}>{label}</Text></View>}
 const styles=StyleSheet.create({
+  planCard:{padding:12,borderWidth:1,borderColor:colors.border,borderRadius:12,marginBottom:10,gap:5},
+  planActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginVertical:8},
+  planButton:{paddingHorizontal:12,paddingVertical:9,borderRadius:9,backgroundColor:colors.surfaceMuted},
+  modeSelected:{borderWidth:1,borderColor:colors.primary},
   headerActions:{flexDirection:'row',alignItems:'center',gap:8},
   addHeaderButton:{minHeight:36,paddingHorizontal:12,borderRadius:12,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center'},
   addHeaderButtonText:{fontSize:11,fontWeight:'900',color:'#FFFFFF'},

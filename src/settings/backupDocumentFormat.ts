@@ -1,3 +1,4 @@
+import {restoreDividendPlans} from '../dividend/dividendPlans';
 /** TF Asset backup document v2: actual settings + ledger + separate historic snapshots.
  * Never accept an empty payload as a "successful complete backup".
  */
@@ -36,6 +37,7 @@ export function parseBackupDocument(text:string):{
     ||typeof ledger.initialCash!=='number'||!Number.isFinite(ledger.initialCash)){
     throw new Error('帳務 Ledger 結構不完整，已拒絕匯入');
   }
+  restoreDividendPlans(ledger.dividendPlans);
   const ids=new Set<string>();
   for(const entry of ledger.entries){
     if(!entry||typeof entry!=='object'||typeof entry.id!=='string'||!entry.id

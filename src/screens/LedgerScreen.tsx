@@ -118,7 +118,7 @@ export function LedgerScreen() {
       });
     }else if(kind==='dividend'){
       if(!dividendPreview)return;
-      finance.addDividend({...dividendPreview.entry,id});
+      if(!finance.addDividend({...dividendPreview.entry,id}))return;
     }else{
       const amount=parseNumber(otherAmount);
       if(amount===0)return;

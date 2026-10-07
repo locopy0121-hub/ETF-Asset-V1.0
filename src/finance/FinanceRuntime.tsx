@@ -1,9 +1,10 @@
-import {AppState} from 'react-native';
+import {Alert,AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createContext,
   type PropsWithChildren,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -28,6 +29,9 @@ import { isGeneratedLegacyReversal, migrateLegacyOpeningCash } from './cashAudit
 import { buildSharedSnapshot } from './sharedSnapshotAdapter';
 import { ensureLedgerQuoteCoverage } from './runtimeQuoteCoverage';
 
+import {reduceDividendPlans,restoreDividendPlans,hasDividendReceipt,validDividendReceipt,type DividendPlanState,type DividendPlanAction,type DividendPlan} from '../dividend/dividendPlans';
+import {deviceLocalCalendarDate} from '../dividend/dividendCalendar';
+
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=4;
 const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullable<HoldingQuote['quoteQuality']>=>{
@@ -49,6 +53,7 @@ type PersistedFinanceState = {
   initialCash: number;
   entries: CanonicalLedgerEntry[];
   cashConfigured?: boolean;
+  dividendPlans?:unknown;
 };
 
 type FinanceContextValue = {
@@ -62,7 +67,10 @@ type FinanceContextValue = {
   holdings: HoldingQuote[];
   valuationComplete:boolean;
   addTrade: (input: Parameters<typeof freezeTradeEntry>[0]) => void;
-  addDividend: (entry: DividendLedgerEntry) => void;
+  addDividend: (entry: DividendLedgerEntry) => boolean;
+  dividendPlans:readonly DividendPlan[];
+  dividendPlanError:string|null;
+  applyDividendPlan:(action:DividendPlanAction)=>string|undefined;
   addOther: (entry: OtherCashLedgerEntry) => void;
   deleteEntry: (id: string) => void;
   resetFinance: () => void;
@@ -74,7 +82,12 @@ const FinanceContext=createContext<FinanceContextValue|null>(null);
 export function FinanceProvider({children}:PropsWithChildren){
   const market=useMarketRuntime();
   const [initialCash,setInitialCash]=useState(INITIAL_CASH);
-  const [entries,setEntries]=useState<CanonicalLedgerEntry[]>(()=>[...SEED_LEDGER]);
+  const [ledgerState,setLedgerState]=useState<DividendPlanState>(()=>({entries:[...SEED_LEDGER],dividendPlans:[]}));
+  const {entries,dividendPlans}=ledgerState;
+  const [invalidDividendPlans,setInvalidDividendPlans]=useState<unknown>(undefined);
+  const setEntries=useCallback((update:CanonicalLedgerEntry[]|((current:CanonicalLedgerEntry[])=>CanonicalLedgerEntry[]))=>{
+    setLedgerState(current=>({...current,entries:typeof update==='function'?update(current.entries):update}));
+  },[]);
   const [cashConfigured,setCashConfigured]=useState(false);
   const [hydrated,setHydrated]=useState(false);
   const [valuationNow,setValuationNow]=useState(Date.now);
@@ -110,7 +123,9 @@ export function FinanceProvider({children}:PropsWithChildren){
                 entry.kind==='other'&&!isGeneratedLegacyReversal(entry)
               );
               const restoredCashConfigured=parsedCashConfigured||explicitCashAdjustment;
-              setEntries(normalized.entries);
+              let plans:DividendPlan[]=[];
+              try{plans=restoreDividendPlans(parsed.dividendPlans);}catch{setInvalidDividendPlans(parsed.dividendPlans);}
+              setLedgerState({entries:normalized.entries,dividendPlans:plans});
               setInitialCash(normalized.initialCash);
               setCashConfigured(restoredCashConfigured);
             }
@@ -124,9 +139,9 @@ export function FinanceProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedFinanceState={schema:SCHEMA,initialCash,entries,cashConfigured};
+    const payload:PersistedFinanceState={schema:SCHEMA,initialCash,entries,cashConfigured,dividendPlans:invalidDividendPlans!==undefined?invalidDividendPlans:dividendPlans};
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,initialCash,entries,cashConfigured]);
+  },[hydrated,initialCash,entries,cashConfigured,dividendPlans,invalidDividendPlans]);
 
   useEffect(()=>{
     market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
@@ -230,7 +245,25 @@ export function FinanceProvider({children}:PropsWithChildren){
       const candidate=[...current,freezeTradeEntry(input)];
       return validateLedgerSequence(candidate).length===0?candidate:current;
     }),
-    addDividend:entry=>setEntries(current=>[...current,entry]),
+    dividendPlans,
+    dividendPlanError:invalidDividendPlans!==undefined?'股息預告資料格式異常，原始內容已保留；請還原有效備份後重新啟動。':null,
+    applyDividendPlan:action=>{
+      if(!hydrated)return '帳務讀取中，請稍候';
+      if(invalidDividendPlans!==undefined)return '股息預告資料格式異常，請先還原有效備份';
+      const today=deviceLocalCalendarDate();
+      const result=reduceDividendPlans(ledgerState,action,today);
+      if(result.error)return result.error;
+      setLedgerState(current=>reduceDividendPlans(current,action,today).state);
+      return undefined;
+    },
+    addDividend:entry=>{
+      if(!hydrated||!validDividendReceipt(entry,deviceLocalCalendarDate())||hasDividendReceipt(entries,entry)){
+        Alert.alert('未入帳','請核對有效配發日、正整數股數與每股股息；未來或重複股息不可直接入帳。');
+        return false;
+      }
+      setEntries(current=>hasDividendReceipt(current,entry)?current:[...current,entry]);
+      return true;
+    },
     addOther:entry=>{setCashConfigured(true);setEntries(current=>[...current,entry]);},
     deleteEntry:id=>setEntries(current=>{
       const candidate=current.filter(entry=>entry.id!==id);
@@ -239,14 +272,16 @@ export function FinanceProvider({children}:PropsWithChildren){
     resetFinance:()=>{
       setCashConfigured(false);
       setInitialCash(INITIAL_CASH);
-      setEntries([...SEED_LEDGER]);
+      setLedgerState({entries:[...SEED_LEDGER],dividendPlans:[]});
+      setInvalidDividendPlans(undefined);
     },
     clearFinance:()=>{
       setCashConfigured(false);
       setInitialCash(0);
-      setEntries([]);
+      setLedgerState({entries:[],dividendPlans:[]});
+      setInvalidDividendPlans(undefined);
     },
-  }),[hydrated,initialCash,cashConfigured,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes]);
+  }),[hydrated,initialCash,cashConfigured,entries,snapshot,sharedSnapshot,holdings,valuationComplete,market.quotes,ledgerState,dividendPlans,invalidDividendPlans, setEntries]);
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
 }

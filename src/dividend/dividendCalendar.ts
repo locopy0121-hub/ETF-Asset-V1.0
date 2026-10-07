@@ -1,7 +1,8 @@
+import {dividendPlanStatus,isIsoCalendarDate,type DividendPlan} from './dividendPlans';
 import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 
 export type DividendCalendarEventType='lastBuyDate'|'exDate'|'recordDate'|'paymentDate';
-export type DividendCalendarStatus=''|'已完成'|'今日'|'預定';
+export type DividendCalendarStatus=''|'已完成'|'今日'|'預定'|'預告'|'已確定';
 export type DividendCalendarPrefs=Readonly<{
   showLastBuyDate?:boolean;
   showExDate:boolean;
@@ -52,7 +53,7 @@ export function buildDividendCalendarEvents(
         (String(entry.note??'').includes('TWSE 配息事件')?'':entry.date)},
     ];
     for(const item of declared){
-      if(!item.date)continue;
+      if(!isIsoCalendarDate(item.date))continue;
       events.push({
         id:entry.id+'-'+item.type,
         ledgerId:entry.id,
@@ -86,4 +87,16 @@ export function dividendCalendarTypeLabel(type:DividendCalendarEventType){
   if(type==='exDate')return '除息日';
   if(type==='recordDate')return '收益分配基準日';
   return '股息配發日';
+}
+
+/** Draft events have dates but no cash impact; posted plans use their ledger events only. */
+export function buildDividendPlanCalendarEvents(plans:readonly DividendPlan[],entries:readonly DividendLedgerEntry[]):DividendCalendarEvent[]{
+  return plans.flatMap(plan=>{
+    if(dividendPlanStatus(plan,entries)==='paid')return [];
+    const dates:readonly [DividendCalendarEventType,string][]=[['lastBuyDate',plan.lastBuyDate],['exDate',plan.exDate],['recordDate',plan.recordDate],['paymentDate',plan.paymentDate]];
+    return dates.filter(([,date])=>isIsoCalendarDate(date)).map(([type,date])=>({
+      id:'plan-'+plan.id+'-'+type,ledgerId:'plan-'+plan.id,symbol:plan.symbol,name:plan.name,date,type,
+      status:plan.status==='confirmed'?'已確定' as const:'預告' as const,
+    }));
+  }).sort((a,b)=>a.date.localeCompare(b.date)||TYPE_ORDER[a.type]-TYPE_ORDER[b.type]||a.symbol.localeCompare(b.symbol));
 }

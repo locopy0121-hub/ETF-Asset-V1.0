@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Alert, PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import { type AiAssistantAction } from '../ai/aiAssistant';
 import type {AiSessionContext} from '../ai/aiConversationTypes';
 import { answerWithGemini } from '../ai/geminiAssistant';
-import { dividendEventToLedger } from '../ai/dividendAssistant';
+import { dividendEventToPlan } from '../ai/dividendAssistant';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { deriveAiUiState } from '../settings/settingsControlBehavior';
@@ -77,7 +77,7 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
   }),[safePosition.x,safePosition.y,maxX,maxY,mode]);
 
   const ask=(question:string,session:AiSessionContext)=>answerWithGemini(question,finance.holdings,finance.snapshot.portfolio,ai.items,finance.entries,finance.quotes,session,finance.sharedSnapshot.asset);
-  const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend')finance.addDividend(dividendEventToLedger(action.event));};
+  const runAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend'){const error=finance.applyDividendPlan({type:'import',plan:dividendEventToPlan(action.event)});if(error)Alert.alert('未儲存股息預告',error);else Alert.alert('已儲存股息預告','請到股息頁核對日期與符合配息股數，確認實際收到款項後再入帳。');};};
 
   if(!deriveAiUiState(aiSettings.prefs.ai,'home').showFloatingAi)return null;
 

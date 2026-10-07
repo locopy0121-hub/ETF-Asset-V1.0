@@ -1,3 +1,4 @@
+import type {DividendPlan} from '../dividend/dividendPlans';
 import type {CanonicalLedgerEntry,DividendLedgerEntry} from '../finance/canonicalLedger';
 
 export type HoldingForDividend=Readonly<{
@@ -224,6 +225,14 @@ export async function refreshHoldingDividendEvents(
     }
   }
   return output.sort((a,b)=>a.exDate.localeCompare(b.exDate)||a.symbol.localeCompare(b.symbol));
+}
+
+/** External announcements are forecasts; receipt and entitlement require user review. */
+export function dividendEventToPlan(event:HoldingDividendEvent):DividendPlan{
+  return {id:'ai-'+event.id,symbol:event.symbol,name:event.name,status:'forecast',
+    paymentDate:event.paymentDate,lastBuyDate:'',exDate:event.exDate,recordDate:event.recordDate,
+    perShareAmount:event.perShareAmount>0?event.perShareAmount:null,sharesHeld:null,
+    note:'TWSE 配息公告；符合配息股數與實際收款請核對'};
 }
 
 export function dividendEventToLedger(event:HoldingDividendEvent):DividendLedgerEntry{
