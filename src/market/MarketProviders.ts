@@ -8,7 +8,7 @@ import {
 } from './MarketCore';
 import {
   pickBetterTwseRow,
-  resolveTwseLivePrice,
+  resolveTwsePriceDecision,
   resolveTwsePreviousClose,
   resolveTwseQuoteDate,
   resolveTwseQuoteTime,
@@ -74,7 +74,7 @@ export class TwseMisQuoteProvider implements MarketQuoteProvider{
       }
       const receivedAt=Date.now();
       for(const [symbol,row] of bySymbol){
-        const resolved=resolveTwseLivePrice(row);if(!(resolved.price>0))continue;
+        const decision=resolveTwsePriceDecision(row);if(!decision)continue;
         const sourceTime=twseDateTimeMillis(row,receivedAt);
         const previousClose=resolveTwsePreviousClose(row)||undefined;
         const bid=firstBookPrice(row.b),ask=firstBookPrice(row.a);
@@ -82,12 +82,12 @@ export class TwseMisQuoteProvider implements MarketQuoteProvider{
           symbol,name:String(row.n??symbol).trim()||symbol,
           exchange:String(row.ex??'').trim()||undefined,
           market:String(row.m??'').trim()||undefined,
-          price:resolved.price,previousClose,
+          price:decision.price,previousClose,
           open:positiveNumber(row.o),high:positiveNumber(row.h),low:positiveNumber(row.l),
           volume:positiveNumber(row.v),bid,ask,
           source:'TWSE_MIS',quality:'LIVE',
           sourceTimestampEpochMillis:sourceTime,receivedAtEpochMillis:receivedAt,
-          sessionDate:taipeiDate(sourceTime),fallbackLevel:1,priceKind:resolved.kind,
+          sessionDate:taipeiDate(sourceTime),fallbackLevel:1,priceKind:'lastTrade',
         });
       }
     }
