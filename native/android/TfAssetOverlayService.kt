@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -25,6 +27,16 @@ import kotlin.math.roundToInt
 
 class TfAssetOverlayService:Service(){
   companion object{const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH"}
+  private val expiryHandler=Handler(Looper.getMainLooper())
+  private val expiryRefresh=Runnable{if(root!=null)render()}
+  private fun scheduleExpiry(){
+    expiryHandler.removeCallbacks(expiryRefresh)
+    val raw=runCatching{JSONObject(prefs().getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+    val now=System.currentTimeMillis()
+    val until=TfAssetMarketPresentation.nextExpiry(raw,now)?:return
+    // Short rechecks also handle wall-clock changes while the floating view is visible.
+    expiryHandler.postDelayed(expiryRefresh,(until-now).coerceIn(1L,30_000L))
+  }
   private lateinit var wm:WindowManager
   private var root:LinearLayout?=null
   private var params:WindowManager.LayoutParams?=null
@@ -48,6 +60,7 @@ class TfAssetOverlayService:Service(){
     ensureView();applyConfiguredLayoutIfChanged(cfg);render();return START_STICKY
   }
   override fun onDestroy(){
+    expiryHandler.removeCallbacks(expiryRefresh)
     root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
     writeRuntimeStatus(false,null)
     super.onDestroy()
@@ -187,6 +200,7 @@ class TfAssetOverlayService:Service(){
 
   private fun render(){
     val r=root?:return
+    scheduleExpiry()
     val cfg=readConfig()
     animationsEnabled=(cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)
     val snap=readSnapshot()

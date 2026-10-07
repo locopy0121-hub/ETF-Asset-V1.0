@@ -27,17 +27,18 @@ for(const token of ['value.overview.order','value.profitAnalysis.order','value.p
   must(workbench.includes(token),'missing dashboard order editor '+token);
 
 // Problem 3: quote, intraday chart and valuation are independent market-center views.
+const valuationContext={now:Date.parse('2026-10-07T15:00:00+08:00')};
 const base:any={
-  symbol:'0050',name:'0050',currentPrice:200,previousClose:198,sourceQuoteAt:Date.now()-60_000,
+  symbol:'0050',name:'0050',currentPrice:200,previousClose:198,sourceQuoteAt:valuationContext.now-60_000,
   quality:'previous_close',source:'TWSE_DAILY',priceType:'PREV_CLOSE',isFallback:true,market:'TSE',
   statusMessage:'close',checkedAt:Date.now(),liquidationTradeMode:'ROUND_LOT',dividendFrequency:4,
   sparkline:[198,200],intraday:[],intradayDate:null,intradayPreviousClose:null,
 };
 must(marketQuoteSnapshotFor([base],'0050')?.currentPrice===200,'quote wall view lost valid snapshot');
 must(marketIntradaySeriesFor([base],'0050').points.length===0,'intraday should remain independently empty');
-must(marketValuationQuoteFor([base],'0050')?.currentPrice===200,'previous close must remain valid for valuation outside market hours');
-must(Boolean(marketValuationQuoteFor([{...base,quality:'backup_realtime'}],'0050')),'verified backup realtime must remain usable for valuation');
-must(Boolean(marketValuationQuoteFor([{...base,quality:'bid_ask'}],'0050')),'verified bid/ask indication must remain usable as explicit reference valuation');
+must(marketValuationQuoteFor([base],'0050',valuationContext)?.currentPrice===200,'previous close must remain valid for valuation outside market hours');
+must(Boolean(marketValuationQuoteFor([{...base,quality:'backup_realtime'}],'0050',valuationContext)),'verified backup realtime must remain usable for valuation');
+must(!marketValuationQuoteFor([{...base,quality:'bid_ask'}],'0050',valuationContext),'retired bid/ask provenance cannot verify portfolio valuation');
 must(finance.includes('marketValuationQuoteFromRow'),'FinanceRuntime is not reading the indexed valuation view');
 must(finance.includes('marketQuoteSnapshotFromRow')&&finance.includes('marketIntradaySeriesFromRow'),
   'FinanceRuntime must project quote and intraday views independently before consumers render them');

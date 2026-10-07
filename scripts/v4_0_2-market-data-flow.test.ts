@@ -8,7 +8,7 @@ import type {UnifiedMarketSnapshot} from '../src/native/TfAssetNativeBridge';
 const fixture=JSON.parse(fs.readFileSync(process.argv[2]??'/tmp/tf-native-bridge-fixture.json','utf8')) as UnifiedMarketSnapshot&{queriedAt:number};
 const quotes=marketRowsToRuntimeQuotes(fixture,[],fixture.queriedAt);
 assert.equal(quotes.length,9,'every native verified price must reach the App');
-assert.ok(marketValuationComplete(quotes,fixture.quotes.map(row=>row.symbol)));
+assert.ok(marketValuationComplete(quotes,fixture.quotes.map(row=>row.symbol),{now:fixture.queriedAt}));
 for(const row of fixture.quotes){
   const quote=quotes.find(item=>item.symbol===row.symbol)!;
   assert.equal(quote.currentPrice,row.currentPrice,'App and center must match exactly');

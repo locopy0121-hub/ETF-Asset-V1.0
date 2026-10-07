@@ -1,6 +1,6 @@
 import type {RuntimeQuote} from '../finance/financeSeed';
 
-const VALUATION_QUALITIES=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
+const VALUATION_QUALITIES=new Set(['trade','backup_realtime','previous_close','official_close']);
 const EMPTY_INTRADAY:NonNullable<RuntimeQuote['intraday']>=[];
 
 const sourceTimeValid=(row:RuntimeQuote|undefined)=>
@@ -24,9 +24,38 @@ export function marketIntradaySeriesFromRow(row:RuntimeQuote|undefined){
   };
 }
 
-export function marketValuationQuoteFromRow(row:RuntimeQuote|undefined):RuntimeQuote|undefined{
-  if(!row||!Number.isFinite(row.currentPrice)||row.currentPrice<=0||!sourceTimeValid(row))return undefined;
-  return typeof row.quality==='string'&&VALUATION_QUALITIES.has(row.quality)?row:undefined;
+export type ValuationContext={now?:number;unresolvedSymbols?:readonly string[]};
+const DAY=86_400_000;
+const taipeiDate=(at:number)=>new Date(at+8*3_600_000).toISOString().slice(0,10);
+
+/** Weekday session guard; an exchange holiday calendar is a separate task. */
+export function valuationSessionActive(now:number){
+  const local=new Date(now+8*3_600_000);
+  const minutes=local.getUTCHours()*60+local.getUTCMinutes();
+  return local.getUTCDay()>0&&local.getUTCDay()<6&&minutes>=540&&minutes<810;
+}
+
+export function valuationValidUntil(row:RuntimeQuote,now:number){
+  const local=new Date(now+8*3_600_000);
+  let open=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate(),1);
+  if(open<=now)open+=DAY;
+  while([0,6].includes(new Date(open+8*3_600_000).getUTCDay()))open+=DAY;
+  return Math.min((row.sourceQuoteAt??0)+7*DAY,open);
+}
+
+export function marketValuationQuoteFromRow(row:RuntimeQuote|undefined,context:ValuationContext={}):RuntimeQuote|undefined{
+  const now=context.now??Date.now();
+  if(!Number.isFinite(now)||!row||!Number.isFinite(row.currentPrice)||row.currentPrice<=0||!sourceTimeValid(row))return undefined;
+  const at=row.sourceQuoteAt!;
+  if(at>now+120_000||now-at>7*DAY)return undefined;
+  if(typeof row.quality!=='string'||!VALUATION_QUALITIES.has(row.quality))return undefined;
+  if(row.sessionDate&&row.sessionDate!==taipeiDate(at))return undefined;
+  if(valuationSessionActive(now)){
+    if(context.unresolvedSymbols?.includes(row.symbol))return undefined;
+    if(taipeiDate(at)!==taipeiDate(now)||!['trade','backup_realtime'].includes(row.quality))return undefined;
+    if(row.quoteStatus==='STALE'||row.quoteStatus==='OFFLINE')return undefined;
+  }
+  return row;
 }
 
 /**
@@ -47,15 +76,15 @@ export function marketIntradaySeriesFor(rows:readonly RuntimeQuote[],symbol:stri
 }
 
 /**
- * Portfolio valuation view. A verified trade, backup real-time quote, bid/ask indicative quote, previous
- * close, or official close may value holdings. Missing 09:00-13:30 intraday
+ * Portfolio valuation view. A session-valid trade, backup real-time quote, previous
+ * close, or official close may value holdings outside the session. Missing 09:00-13:30 intraday
  * points must never invalidate this view.
  */
-export function marketValuationQuoteFor(rows:readonly RuntimeQuote[],symbol:string):RuntimeQuote|undefined{
-  return marketValuationQuoteFromRow(rows.find(item=>item.symbol===symbol));
+export function marketValuationQuoteFor(rows:readonly RuntimeQuote[],symbol:string,context:ValuationContext={}):RuntimeQuote|undefined{
+  return marketValuationQuoteFromRow(rows.find(item=>item.symbol===symbol),context);
 }
 
-export function marketValuationComplete(rows:readonly RuntimeQuote[],symbols:readonly string[]){
+export function marketValuationComplete(rows:readonly RuntimeQuote[],symbols:readonly string[],context:ValuationContext={}){
   const bySymbol=new Map(rows.map(row=>[row.symbol,row]));
-  return symbols.every(symbol=>Boolean(marketValuationQuoteFromRow(bySymbol.get(symbol))));
+  return symbols.every(symbol=>Boolean(marketValuationQuoteFromRow(bySymbol.get(symbol),context)));
 }

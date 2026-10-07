@@ -1,6 +1,8 @@
 package com.tfasset.app
 
 import android.app.PendingIntent
+import android.app.AlarmManager
+import android.os.Build
 import android.content.ComponentName
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -34,8 +36,23 @@ import java.time.format.ResolverStyle
 
 class TfAssetWidgetProvider : AppWidgetProvider() {
   companion object{
+    const val ACTION_EXPIRE="com.tfasset.app.WIDGET_VALUATION_EXPIRE"
     const val ACTION_FORCE_REFRESH="com.tfasset.app.WIDGET_FORCE_REFRESH"
     @Volatile private var refreshing=false
+  }
+  private fun scheduleExpiry(context:Context,raw:JSONObject){
+    val alarm=context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    val pending=PendingIntent.getBroadcast(context,404,Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_EXPIRE),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    alarm.cancel(pending)
+    val until=TfAssetMarketPresentation.nextExpiry(raw,System.currentTimeMillis())?:return
+    // No exact-alarm permission is requested; Android may defer this in idle mode.
+    if(Build.VERSION.SDK_INT<31||alarm.canScheduleExactAlarms())alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,until,pending)
+    else alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,until,pending)
+  }
+  override fun onDisabled(context:Context){
+    val pending=PendingIntent.getBroadcast(context,404,Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_EXPIRE),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending)
+    super.onDisabled(context)
   }
   override fun onUpdate(context:Context,manager:AppWidgetManager,ids:IntArray){ ids.forEach { manager.updateAppWidget(it,buildViews(context,it,manager)) } }
   override fun onAppWidgetOptionsChanged(context:Context,manager:AppWidgetManager,appWidgetId:Int,newOptions:android.os.Bundle){
@@ -62,6 +79,11 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
 
   override fun onReceive(context:Context,intent:Intent){
     super.onReceive(context,intent)
+    if(intent.action==ACTION_EXPIRE){
+      val manager=AppWidgetManager.getInstance(context)
+      onUpdate(context,manager,manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java)))
+      return
+    }
     if(intent.action!=ACTION_FORCE_REFRESH)return
     synchronized(TfAssetWidgetProvider::class.java){
       if(refreshing)return
@@ -154,6 +176,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val prefs=context.getSharedPreferences("tf_asset_native",0)
     val config=runCatching{JSONObject(prefs.getString("widget_config","{}")?:"{}")}.getOrElse{JSONObject()}
     val snapshot=runCatching{JSONObject(prefs.getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+    scheduleExpiry(context,snapshot)
     val style=config.optJSONObject("style")?:JSONObject()
     // All native surfaces use the exact same SQLite/version presentation adapter.
     val displayed=TfAssetMarketPresentation.decorate(context,snapshot)

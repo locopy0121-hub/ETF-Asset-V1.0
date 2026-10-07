@@ -15,3 +15,8 @@ compile_cp="$compiler_dir/json.jar:$compiler_dir/kotlinc/lib/kotlinx-coroutines-
   scripts/native/V402MarketBridgeTest.kt -classpath "$compile_cp" -include-runtime -d "$compiler_dir/bridge-test.jar"
 java -cp "$compiler_dir/bridge-test.jar:$compile_cp" V402MarketBridgeTestKt
 node --import tsx scripts/v4_0_2-market-data-flow.test.ts
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/TfAssetMarketPresentation.kt scripts/native/V404AndroidStubs.kt \
+  scripts/native/V404DatabaseStub.kt scripts/native/V404PresentationTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/presentation-test.jar"
+java -cp "$compiler_dir/presentation-test.jar:$compile_cp" com.tfasset.app.V404PresentationTestKt

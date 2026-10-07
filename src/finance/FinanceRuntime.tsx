@@ -1,3 +1,4 @@
+import {AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createContext,
@@ -11,7 +12,7 @@ import {
 import type { SharedSnapshot } from '../domain/snapshot';
 import type { HoldingQuote } from '../domain/uiModels';
 import { useMarketRuntime } from '../market/MarketRuntime';
-import {marketIntradaySeriesFromRow,marketQuoteSnapshotFromRow,marketValuationQuoteFromRow} from '../market/marketCenterViews';
+import {marketIntradaySeriesFromRow,marketQuoteSnapshotFromRow,marketValuationQuoteFromRow,valuationSessionActive,valuationValidUntil} from '../market/marketCenterViews';
 import {resolveEtfDisplayName} from '../market/etfDisplayName';
 import {
   calculateCanonicalLedgerSnapshot,
@@ -76,6 +77,13 @@ export function FinanceProvider({children}:PropsWithChildren){
   const [entries,setEntries]=useState<CanonicalLedgerEntry[]>(()=>[...SEED_LEDGER]);
   const [cashConfigured,setCashConfigured]=useState(false);
   const [hydrated,setHydrated]=useState(false);
+  const [valuationNow,setValuationNow]=useState(Date.now);
+  useEffect(()=>{
+    const timer=setInterval(()=>setValuationNow(Date.now()),30_000);
+    const listener=AppState.addEventListener('change',state=>{if(state==='active')setValuationNow(Date.now());});
+    return()=>{clearInterval(timer);listener.remove();};
+  },[]);
+  const valuationContext=useMemo(()=>({now:valuationNow,unresolvedSymbols:market.unresolvedSymbols}),[valuationNow,market.unresolvedSymbols]);
 
   useEffect(()=>{
     let alive=true;
@@ -143,8 +151,8 @@ export function FinanceProvider({children}:PropsWithChildren){
   },[entries]);
 
   const valuationQuotes=useMemo(
-    ()=>market.quotes.filter(row=>marketValuationQuoteFromRow(row)===row),
-    [market.quotes],
+    ()=>market.quotes.filter(row=>marketValuationQuoteFromRow(row,valuationContext)===row),
+    [market.quotes,valuationContext],
   );
   const canonicalQuotes=useMemo(
     ()=>ensureLedgerQuoteCoverage(entries,valuationQuotes),
@@ -157,10 +165,10 @@ export function FinanceProvider({children}:PropsWithChildren){
     quotes:canonicalQuotes,
   }),[initialCash,entries,canonicalQuotes]);
 
-  const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map(summary=>{
+  const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map<HoldingQuote>(summary=>{
     const rawQuote=quoteBySymbol.get(summary.etfCode);
     const quote=marketQuoteSnapshotFromRow(rawQuote);
-    const valuationQuote=marketValuationQuoteFromRow(rawQuote);
+    const valuationQuote=marketValuationQuoteFromRow(rawQuote,valuationContext);
     const intraday=marketIntradaySeriesFromRow(rawQuote);
     const verified=Boolean(valuationQuote);
     const previousClose=valuationQuote?.previousClose&&valuationQuote.previousClose>0?
@@ -174,6 +182,9 @@ export function FinanceProvider({children}:PropsWithChildren){
         quote?.name,
       ),
       quoteVerified:verified,
+      valuationStatus:verified?(valuationSessionActive(valuationNow)?'current_session':'reference'):'unavailable',
+      valuationValidUntil:valuationQuote?valuationValidUntil(valuationQuote,valuationNow):null,
+      quoteStatus:valuationQuote?.quoteStatus,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
       marketDataVersion:market.marketDataVersion,
@@ -199,7 +210,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       intradayPreviousClose:intraday.previousClose,
     };
   }).filter(x=>x.shares>0),[
-    snapshot,quoteBySymbol,catalogNameBySymbol,ledgerNameBySymbol,market.marketDataVersion,
+    snapshot,quoteBySymbol,catalogNameBySymbol,ledgerNameBySymbol,market.marketDataVersion,valuationContext,valuationNow,
   ]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);
 

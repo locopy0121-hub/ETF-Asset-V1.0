@@ -108,6 +108,9 @@ export type HoldingQuote = {
   symbol: string;
   name: string;
   quoteVerified?: boolean;
+  valuationStatus?:'current_session'|'reference'|'unavailable'|undefined;
+  valuationValidUntil?:number|null|undefined;
+  quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE'|undefined;
   quoteQuality?: 'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close'|'unavailable';
   quoteSourceAt?: number|null;
   marketDataVersion?:number;

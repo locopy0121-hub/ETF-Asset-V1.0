@@ -42,6 +42,8 @@ export function buildSharedSnapshot(input:{
       const changePercent=row.previousClose>0?change/row.previousClose*100:0;
       return {
         id:row.symbol,
+        valuationStatus:row.valuationStatus,
+        valuationValidUntil:row.valuationValidUntil,
         symbol:row.symbol,
         name:row.name,
         price:row.quoteVerified===false?null:row.price,
