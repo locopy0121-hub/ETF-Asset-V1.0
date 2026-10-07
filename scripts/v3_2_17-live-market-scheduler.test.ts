@@ -5,7 +5,7 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 const runtime=read('src/market/MarketRuntime.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 
-assert.match(runtime,/live:\s*\{ enabled: true, start: '09:00', end: '13:30', refreshSeconds: 1 \}/,
+assert.match(runtime,/live:\s*\{\s*enabled:\s*true,\s*start:\s*'09:00',\s*end:\s*'13:30',\s*refreshSeconds:\s*1\s*\}/,
   '盤中預設更新頻率必須是 1 秒');
 assert.match(runtime,/const clampSeconds=\(value:number\)=>Math\.max\(1,/,
   '行情更新頻率不得低於 1 秒');
@@ -14,11 +14,11 @@ assert.match(settings,/label="盤中更新頻率"[\s\S]*?min=\{1\}[\s\S]*?step=\
 
 assert.match(runtime,/void refresh\(\{silent:true\}\);[\s\S]*?\},\[hydrated,trackedSymbols,refresh\]\);/,
   'App 啟動／追蹤標的完成 hydration 後必須立即取得行情');
-assert.match(runtime,/if\(next==='active'\)void refresh\(\{force:true,silent:true\}\)/,
+assert.match(runtime,/if\(next==='active'\)\{[\s\S]*?refreshOnForeground\)void refresh\(\{force:true,silent:true\}\)/,
   'App 回到前景時必須立即強制刷新');
 
-assert.match(runtime,/const tick=\(\)=>\{[\s\S]*?resolveMarketPhase\(config\)[\s\S]*?marketRefreshSeconds\(config,currentPhase\)/,
-  '排程器每次 tick 都必須重新判斷目前交易時段');
+assert.match(runtime,/const tick=\(\)=>\{[\s\S]*?resolveMarketPhase\(configRef\.current\)[\s\S]*?marketRefreshSeconds\(configRef\.current,currentPhase\)/,
+  '排程器每次 tick 都必須以最新設定重新判斷目前交易時段');
 assert.match(runtime,/const timer=setInterval\(tick,1000\)/,
   '排程 heartbeat 必須每秒檢查，避免 App 跨 09:00 還停留在舊 phase');
 assert.ok(!runtime.includes('marketRefreshSeconds(config,phase);'),
