@@ -40,7 +40,7 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
   return <>
     <PageShell
       title="持股分析"
-      subtitle="V3.7.8 Canonical Portfolio"
+      subtitle="Canonical Portfolio"
       actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
     >
       <PageEditorStack pageKey="portfolio" frames={[
@@ -156,7 +156,7 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.modalBackdrop}><View style={styles.calculator}>
       <View style={styles.modalTop}><View><Text style={styles.modalKicker}>庫存工具</Text><Text style={styles.modalTitle}>持股試算</Text></View><Pressable onPress={onClose}><Text style={styles.done}>完成</Text></Pressable></View>
-      <Text style={styles.modalHint}>試算直接呼叫 V3.7.8 Canonical Core；不寫入 Ledger。</Text>
+      <Text style={styles.modalHint}>試算直接呼叫 Canonical Finance Core；不寫入 Ledger。</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolChoices}>
         {finance.holdings.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}
