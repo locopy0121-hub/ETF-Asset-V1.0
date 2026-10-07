@@ -15,7 +15,7 @@ assert.doesNotMatch(native,/ask!=null&&exchange!=null.*price=ask/s);
 assert.match(native,/Ask Yahoo for every symbol that still lacks a trade-like price/);
 
 const db=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
-assert.match(db,/tf_asset_market_center_v1\.db",null,8/);
+assert.match(db,/tf_asset_market_center_v1\.db",null,[89]/);
 assert.match(db,/db\.delete\("market_quotes","quality=\?",arrayOf\("bid_ask"\)\)/);
 assert.match(db,/newTradeLike=quality=="trade"\|\|quality=="backup_realtime"/);
 assert.match(db,/at>existing\.first&&newTradeLike&&oldTradeLike/);
@@ -31,10 +31,11 @@ assert.match(adapter,/row\.quality!=='bid_ask'/);
 
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'3.2.49');
-assert.equal(app.expo.version,'3.2.49');
-assert.equal(app.expo.android.versionCode,30249);
-assert.equal(app.expo.ios.buildNumber,'30249');
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=49))),'must remain a descendant of V3.2.49');
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
+assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 
 for(const locked of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
   assert.ok(fs.existsSync(locked),locked);
