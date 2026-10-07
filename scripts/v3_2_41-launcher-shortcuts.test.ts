@@ -11,9 +11,10 @@ const appSource=read('App.tsx');
 const ci=read('.github/workflows/ci.yml');
 
 const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
-assert.equal(major,3);
-assert.equal(minor,2);
-assert.ok(patch>=41,'launcher shortcuts require V3.2.41+');
+assert.ok(
+  major>3||(major===3&&(minor>2||(minor===2&&patch>=41))),
+  'launcher shortcuts require V3.2.41 or any later version',
+);
 const expectedCode=major*10000+minor*100+patch;
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,expectedCode);

@@ -1,5 +1,7 @@
 package com.tfasset.app
 
+import com.tfasset.app.saietf.SaiEtfMarketRuntime
+
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -37,6 +39,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
   private val marketDb by lazy { TfAssetMarketDatabase(reactContext) }
+  private val saietfMarket by lazy { SaiEtfMarketRuntime(reactContext) }
   // Store only exception class and code location. Never store trades, balances or exception messages.
   private fun installCrashJournal(){
     synchronized(TfAssetNativeModule::class.java){
@@ -184,42 +187,26 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   @ReactMethod fun saveFugleApiKey(apiKey:String,promise:Promise){
     val normalized=apiKey.trim()
     if(normalized.isBlank()){ clearFugleApiKey(promise); return }
-    runCatching{
-      val key=getOrCreateFugleKey()
-      val cipher=Cipher.getInstance("AES/GCM/NoPadding")
-      cipher.init(Cipher.ENCRYPT_MODE,key)
-      val ciphertext=cipher.doFinal(normalized.toByteArray(Charsets.UTF_8))
-      prefs.edit()
-        .putString(FUGLE_KEY_PREF,Base64.encodeToString(ciphertext,Base64.NO_WRAP))
-        .putString(FUGLE_IV_PREF,Base64.encodeToString(cipher.iv,Base64.NO_WRAP))
-        .apply()
-      true
-    }.onSuccess{promise.resolve(it)}.onFailure{promise.reject("FUGLE_KEY_SAVE_FAILED",it)}
+    runCatching{ saietfMarket.saveFugleKey(normalized) }
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("FUGLE_KEY_SAVE_FAILED",it)}
   }
 
   @ReactMethod fun loadFugleApiKey(promise:Promise){
-    val encrypted=prefs.getString(FUGLE_KEY_PREF,null)
-    val iv=prefs.getString(FUGLE_IV_PREF,null)
-    if(encrypted.isNullOrBlank()||iv.isNullOrBlank()){promise.resolve(null);return}
-    runCatching{
-      val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
-      val key=store.getKey(FUGLE_KEY_ALIAS,null) as? SecretKey ?: return@runCatching null
-      val cipher=Cipher.getInstance("AES/GCM/NoPadding")
-      cipher.init(Cipher.DECRYPT_MODE,key,GCMParameterSpec(128,Base64.decode(iv,Base64.NO_WRAP)))
-      String(cipher.doFinal(Base64.decode(encrypted,Base64.NO_WRAP)),Charsets.UTF_8)
-    }.onSuccess{promise.resolve(it)}.onFailure{
-      prefs.edit().remove(FUGLE_KEY_PREF).remove(FUGLE_IV_PREF).apply()
-      promise.resolve(null)
-    }
+    runCatching{ saietfMarket.loadFugleKey() }
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("FUGLE_KEY_LOAD_FAILED",it)}
   }
 
   @ReactMethod fun clearFugleApiKey(promise:Promise){
     runCatching{
+      val cleared=saietfMarket.clearFugleKey()
       prefs.edit().remove(FUGLE_KEY_PREF).remove(FUGLE_IV_PREF).apply()
       val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
       if(store.containsAlias(FUGLE_KEY_ALIAS))store.deleteEntry(FUGLE_KEY_ALIAS)
-      true
-    }.onSuccess{promise.resolve(it)}.onFailure{promise.reject("FUGLE_KEY_CLEAR_FAILED",it)}
+      cleared
+    }.onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("FUGLE_KEY_CLEAR_FAILED",it)}
   }
 
   private fun getOrCreateFugleKey():SecretKey{
@@ -239,9 +226,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
 
   @ReactMethod fun refreshUnifiedMarketData(symbolsJson:String,promise:Promise){
-    // V4 compatibility bridge only. Network ownership lives in JS MarketDataCenter;
-    // native callers request a refresh and immediately receive the shared SQLite cache.
-    runCatching{
+    val symbols=runCatching{
       val array=org.json.JSONArray(symbolsJson)
       (0 until array.length()).map{array.optString(it,"").trim().uppercase()}
         .filter{it.matches(Regex("[0-9A-Z]{4,10}"))}
@@ -250,8 +235,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     }
     Thread{
       try{
-        prefs.edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis()).apply()
-        val result=marketDb.marketCoreRuntimeSnapshot()
+        val result=saietfMarket.refresh(symbols)
         promise.resolve(result.toString())
         refreshWidget()
         reactContext.sendBroadcast(Intent(reactContext,TfAssetOverlayService::class.java)
@@ -276,7 +260,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
 
   @ReactMethod fun readUnifiedMarketData(promise:Promise){
     Thread{
-      try{promise.resolve(marketDb.marketCoreRuntimeSnapshot().toString())}
+      try{promise.resolve(saietfMarket.snapshot().toString())}
       catch(error:Exception){promise.reject("MARKET_READ",error)}
     }.start()
   }

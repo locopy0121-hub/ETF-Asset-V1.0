@@ -239,8 +239,8 @@ jobs:
           test -n "$AAPT"
           "$AAPT" dump badging TF-Asset-V4.0.1-QA.apk | tee TF-Asset-V4.0.1-badging.txt
           grep "package: name='com.tfasset.app'" TF-Asset-V4.0.1-badging.txt
-          grep "versionCode='30249'" TF-Asset-V4.0.1-badging.txt
-          grep "versionName='3.2.49'" TF-Asset-V4.0.1-badging.txt
+          grep "versionCode='40001'" TF-Asset-V4.0.1-badging.txt
+          grep "versionName='4.0.1'" TF-Asset-V4.0.1-badging.txt
           file TF-Asset-V4.0.1-QA.apk
 
       - name: Upload validated APK artifact

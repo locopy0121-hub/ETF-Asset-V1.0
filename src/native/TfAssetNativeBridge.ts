@@ -51,11 +51,22 @@ export type UnifiedMarketRow=Readonly<{
   isFallback:boolean;market:'TSE'|'OTC'|'UNKNOWN';statusMessage:string;checkedAt:number;
   volume?:number|null;
 }>;
+export type NativeMarketProviderHealth=Readonly<{
+  source:'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE';
+  availability:'READY'|'THROTTLED'|'COOLDOWN';
+  consecutiveFailures:number;
+  lastAttemptEpochMillis:number|null;
+  lastSuccessEpochMillis:number|null;
+  nextAllowedEpochMillis:number;
+  circuitState:'HEALTHY'|'DEGRADED'|'COOLDOWN'|'RECOVERING';
+}>;
 export type UnifiedMarketSnapshot=Readonly<{
   version:number;quotes:UnifiedMarketRow[];
   intraday?:Record<string,UnifiedMarketIntradaySeries>;
   updatedCount?:number;coveredCount?:number;requestedCount?:number;missing?:string[];
   errors?:string[];queriedAt?:number;conflictCount?:number;
+  providerHealth?:readonly NativeMarketProviderHealth[];
+  marketCore?:'SAIETF_NATIVE';
 }>;
 type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
