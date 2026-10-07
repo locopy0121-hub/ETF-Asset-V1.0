@@ -18,7 +18,7 @@
 
 | ID | 項目 | 目前狀態 |
 |---|---|---|
-| P1-01 | FrameCard 各效果的真實損益色 tone | V4.0.6 已修；本地回歸與審查通過，QA 建置與裝置驗證待完成 |
+| P1-01 | FrameCard 各效果的真實損益色 tone | V4.0.6 已修；本地／CI 回歸、審查與 QA APK 通過，待裝置驗證 |
 | P1-02 | 零值與不可用狀態的剩餘顏色分支 | 部分由 V4.0.3 已修；詳情／情境待修 |
 | P1-03 | 全域／主題／模板／固定覆寫優先序及原生外觀作用範圍 | 待修 |
 | P1-04 | 行情狀態、來源時間、參考價與延遲標示 | V4.0.4 持股牆／原生已修；其他頁待統一 |
@@ -68,3 +68,6 @@ V4.0.4 Actions [#3206](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/
 
 
 V4.0.5 Actions [#3207](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37700763942) 三項工作全部成功；[QA APK](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37700763942/artifacts/11517079350)。日期／代號帶入／歷史資格股數／預告確認實收／AI 公告分離／備份回歸見 [發佈紀錄](../releases/V4.0.5-DIVIDEND-WORKFLOW.md)。
+
+
+V4.0.6 Actions [#3208](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37702820605) 三項工作全部成功；[QA APK](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37702820605/artifacts/11518318746)。FrameCard 金融 tone、12 色彩入口、固定色及現有實際頁預覽映射見 [發佈紀錄](../releases/V4.0.6-FRAME-PROFIT-COLORS.md)。
