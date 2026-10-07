@@ -61,6 +61,12 @@ type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   readUnifiedMarketData:()=>Promise<string>;
   setMarketBackendUrl:(url:string)=>Promise<boolean>;
+  saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
+  loadFugleApiKey:()=>Promise<string|null>;
+  clearFugleApiKey:()=>Promise<boolean>;
+  loadMarketCoreCache:()=>Promise<string>;
+  persistMarketCoreCache:(payloadJson:string)=>Promise<boolean>;
+  clearMarketCoreCache:()=>Promise<boolean>;
   queryLocalEtfComponents:(symbol:string,topN:number)=>Promise<string>;
   queryLocalEtfMeta:(symbol:string)=>Promise<string>;
   replaceLocalEtfResearch:(payloadJson:string)=>Promise<string>;
@@ -152,6 +158,31 @@ export async function refreshUnifiedMarketData(symbols:readonly string[]):Promis
 export async function setNativeMarketBackendUrl(url:string){
   if(!unifiedMarketCenterAvailable||!native)return false;
   return native.setMarketBackendUrl(url);
+}
+
+export async function saveNativeFugleApiKey(apiKey:string){
+  if(!nativeRuntimeAvailable||!native)return false;
+  return native.saveFugleApiKey(apiKey.trim());
+}
+export async function loadNativeFugleApiKey(){
+  if(!nativeRuntimeAvailable||!native)return null;
+  return native.loadFugleApiKey();
+}
+export async function clearNativeFugleApiKey(){
+  if(!nativeRuntimeAvailable||!native)return false;
+  return native.clearFugleApiKey();
+}
+export async function loadNativeMarketCache(){
+  if(!nativeRuntimeAvailable||!native)return '';
+  return native.loadMarketCoreCache();
+}
+export async function persistNativeMarketCache(payloadJson:string){
+  if(!nativeRuntimeAvailable||!native)return false;
+  return native.persistMarketCoreCache(payloadJson);
+}
+export async function clearNativeMarketCache(){
+  if(!nativeRuntimeAvailable||!native)return false;
+  return native.clearMarketCoreCache();
 }
 
 export type LocalEtfComponent=Readonly<{
