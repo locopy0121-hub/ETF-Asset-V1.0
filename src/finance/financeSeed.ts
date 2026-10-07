@@ -27,6 +27,21 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   intradayDate?:string|null;
   intradayPreviousClose?:number|null;
   pinned?: boolean;
+  /** SaiETF Market Core metadata; accounting formulas do not consume these fields. */
+  marketSource?:'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE'|'FALLBACK';
+  quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE';
+  quoteDate?:string;
+  quoteTime?:string;
+  receivedAt?:number;
+  sourceTimestamp?:number;
+  sessionDate?:string;
+  fallbackLevel?:number;
+  sequence?:number;
+  exchange?:string;
+  bid?:number;
+  ask?:number;
+  isClose?:boolean;
+  priceKind?:'lastTrade'|'bid'|'ask'|'regularMarketPrice'|'none';
 }>;
 
 // New accounts start with zero opening cash; persisted unconfigured opening cash is normalized to zero during hydration.
