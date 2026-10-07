@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
@@ -12,8 +12,6 @@ import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { freezeTradeEntry, calculateLedgerCashFlow, type CanonicalLedgerEntry, type DividendLedgerEntry, type LedgerKind } from '../finance/canonicalLedger';
 import { useBrokerSettingsRuntime } from '../finance/BrokerSettingsRuntime';
 import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
-import { auditCashSources } from '../finance/cashAudit';
-import { clampLedgerPage, ledgerPageCount, ledgerPageSlice, LEDGER_PAGE_SIZES, type LedgerPageSize } from '../finance/ledgerPagination';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
@@ -42,9 +40,6 @@ export function LedgerScreen() {
   const [note,setNote]=useState('');
   const [confirmOpen,setConfirmOpen]=useState(false);
   const [dateOpen,setDateOpen]=useState(false);
-  const [selectedEntry,setSelectedEntry]=useState<CanonicalLedgerEntry|null>(null);
-  const [ledgerPageSize,setLedgerPageSize]=useState<LedgerPageSize>(20);
-  const [ledgerPage,setLedgerPage]=useState(1);
 
   const tradeMode=tradePlan==='ROUND_LOT'?'ROUND_LOT':'ODD_LOT';
   const selectedBrokerProfile=tradePlan==='RECURRING'?brokerSettings.recurringProfile:brokerSettings.activeProfile;
@@ -60,11 +55,13 @@ export function LedgerScreen() {
     return Array.from(new Set(rows)).slice(0,8);
   },[finance.entries]);
   const symbolSuggestions=useMemo(()=>{
-    if(!normalizedSymbol||catalogItem)return [];
+    const query=symbol.trim();
+    if(!query||catalogItem)return [];
+    const upper=query.toUpperCase();
     return market.catalog
-      .filter(item=>item.symbol.startsWith(normalizedSymbol))
-      .slice(0,8);
-  },[market.catalog,normalizedSymbol,catalogItem]);
+      .filter(item=>item.symbol.startsWith(upper)||item.name.includes(query)||(item.companyName?.includes(query)??false))
+      .slice(0,12);
+  },[market.catalog,symbol,normalizedSymbol,catalogItem]);
   const tradePreview=useMemo(()=>{
     if((kind!=='buy'&&kind!=='sell')||!instrument)return null;
     const p=parseNumber(price),s=parseNumber(shares);
@@ -134,14 +131,9 @@ export function LedgerScreen() {
   const monthNet=monthEntries.reduce((s,e)=>s+calculateLedgerCashFlow(e),0);
 
   const ordered=[...finance.entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  const cashSources=auditCashSources(finance.initialCash,finance.entries);
-  const ledgerTotalPages=ledgerPageCount(ordered.length,ledgerPageSize);
-  const ledgerCurrentPage=clampLedgerPage(ledgerPage,ordered.length,ledgerPageSize);
-  const ledgerRows=ledgerPageSlice(ordered,ledgerCurrentPage,ledgerPageSize);
-  useEffect(()=>{setLedgerPage(current=>clampLedgerPage(current,ordered.length,ledgerPageSize));},[ordered.length,ledgerPageSize]);
 
   return <>
-    <PageShell pageKey="ledger" title="帳務中心" subtitle="Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageShell title="帳務中心" subtitle="V3.7.8 Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
       <PageEditorStack pageKey="ledger" frames={[
         {key:'quick-entry',element:
           <FrameCard title="快速建檔">
@@ -152,20 +144,21 @@ export function LedgerScreen() {
             />
             <View style={styles.form}>
               {kind!=='other'?<View style={styles.symbolFieldBlock}>
-                <Text style={styles.fieldLabel}>ETF代號</Text>
+                <Text style={styles.fieldLabel}>台股代號／名稱</Text>
                 <TextInput
                   style={styles.input}
                   value={symbol}
                   onChangeText={text=>setSymbol(text.toUpperCase().replace(/\s/g,''))}
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  placeholder="例如 0050"
+                  placeholder="例如 2330、0050 或台積電"
                   placeholderTextColor="#98A5B8"
                 />
                 {instrument?<View style={styles.selectedInstrument}>
                   <Text style={styles.selectedInstrumentCode}>{instrument.symbol}</Text>
                   <Text style={styles.selectedInstrumentName} numberOfLines={1}>{instrument.name}</Text>
-                </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的 ETF 名稱</Text>:null}
+                  {catalogItem?<Text style={styles.symbolName}>{catalogItem.market}{catalogItem.industry?' · '+catalogItem.industry:''}</Text>:null}
+                </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的台股證券</Text>:null}
                 {recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
                   {recentSymbols.map(code=><Pressable key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
                     <Text style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
@@ -199,7 +192,7 @@ export function LedgerScreen() {
                 {kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
                 {sellExceedsHolding?<Text style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
                 {tradePreview?<View style={styles.previewCard}>
-                  <Text style={styles.previewTitle}>入帳預覽</Text>
+                  <Text style={styles.previewTitle}>V3.7.8 入帳預覽</Text>
                   <PreviewRow label="成交金額" value={money(tradePreview.amount)}/>
                   <PreviewRow label="公式手續費" value={money(tradePreview.calculatedFee)}/>
                   <PreviewRow label={fee.trim()?'實際手續費（已覆寫）':'實際手續費（公式固化）'} value={money(tradePreview.actualFee)} strong/>
@@ -213,7 +206,7 @@ export function LedgerScreen() {
 
               {kind==='dividend'?<>
                 <NumericField label="符合配息股數" value={dividendShares} onChange={setDividendShares} placeholder="0"/>
-                {dividendPreview?<View style={styles.previewCard}><Text style={styles.previewTitle}>股息預覽</Text><PreviewRow label="淨入帳股息" value={money(dividendPreview.net)} strong/></View>:null}
+                {dividendPreview?<View style={styles.previewCard}><Text style={styles.previewTitle}>V3.7.8 股息預覽</Text><PreviewRow label="淨入帳股息" value={money(dividendPreview.net)} strong/></View>:null}
               </>:null}
 
               <View><Text style={styles.fieldLabel}>備註</Text><TextInput style={styles.input} value={note} onChangeText={setNote} placeholder={kind==='other'?'例如：現金校正':'選填'} placeholderTextColor="#98A5B8"/></View>
@@ -224,26 +217,7 @@ export function LedgerScreen() {
         },
         {key:'ledger-list',element:
           <FrameCard title="交易紀錄">
-            <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>現金來源：期初金額不屬於交易</Text>
-              <PreviewRow label="期初現金" value={'NT$ '+money(cashSources.opening)}/>
-              <PreviewRow label="交易／股息／調整淨流量（非現金餘額）" value={'NT$ '+money(cashSources.netMovement)}/>
-              <PreviewRow label="其中其他現金調整" value={'NT$ '+money(cashSources.otherNet)}/>
-              <PreviewRow label="目前現金" value={finance.cashConfigured?'NT$ '+money(cashSources.cashBalance):'未設定'} strong/>
-              {!finance.cashConfigured?<Text style={styles.validationError}>尚未建立明確的現金來源；買進、賣出與股息仍可逐筆對帳，但不得把交易淨流量當成可用現金。</Text>:null}
-            </View>
-            <View style={styles.paginationTop}>
-              <View style={styles.pageSizeGroup}>
-                <Text style={styles.paginationLabel}>每頁</Text>
-                {LEDGER_PAGE_SIZES.map(size=><Pressable key={size} accessibilityRole="button" accessibilityLabel={`每頁顯示 ${size} 筆`}
-                  onPress={()=>{setLedgerPageSize(size);setLedgerPage(1);}}
-                  style={[styles.pageSizeButton,ledgerPageSize===size&&styles.pageSizeButtonActive]}>
-                  <Text style={[styles.pageSizeText,ledgerPageSize===size&&styles.pageSizeTextActive]}>{size}</Text>
-                </Pressable>)}
-              </View>
-              <Text style={styles.pageCount}>共 {ordered.length} 筆 · 第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
-            </View>
-            {ledgerRows.map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
+            {ordered.slice(0,20).map(row=><View key={row.id} style={styles.tableRow}>
               <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
               <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
               <View style={{flex:1}}>
@@ -251,21 +225,8 @@ export function LedgerScreen() {
                 {'symbol' in row?<Text style={styles.symbolName} numberOfLines={1}>{row.name}</Text>:null}
                 {row.kind==='buy'||row.kind==='sell'?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
               </View>
-              <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Text style={styles.detailsHint}>點擊查看 ›</Text></View>
-            </Pressable>)}
-            <View style={styles.paginationBottom}>
-              <Pressable disabled={ledgerCurrentPage<=1} accessibilityRole="button" accessibilityLabel="交易紀錄上一頁"
-                onPress={()=>setLedgerPage(page=>Math.max(1,page-1))}
-                style={[styles.pageNavButton,ledgerCurrentPage<=1&&styles.pageNavDisabled]}>
-                <Text style={styles.pageNavText}>‹ 上一頁</Text>
-              </Pressable>
-              <Text style={styles.pageCount}>第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
-              <Pressable disabled={ledgerCurrentPage>=ledgerTotalPages} accessibilityRole="button" accessibilityLabel="交易紀錄下一頁"
-                onPress={()=>setLedgerPage(page=>Math.min(ledgerTotalPages,page+1))}
-                style={[styles.pageNavButton,ledgerCurrentPage>=ledgerTotalPages&&styles.pageNavDisabled]}>
-                <Text style={styles.pageNavText}>下一頁 ›</Text>
-              </Pressable>
-            </View>
+              <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Pressable onPress={()=>finance.deleteEntry(row.id)}><Text style={styles.delete}>刪除</Text></Pressable></View>
+            </View>)}
           </FrameCard>
         },
         {key:'monthly-summary',element:
@@ -284,35 +245,9 @@ export function LedgerScreen() {
 
     <PageFrameSettingsModal visible={settingsOpen} pageKey="ledger" title="紀錄" frames={PAGE_FRAMES.ledger} onClose={()=>setSettingsOpen(false)}/>
     <DatePickerModal visible={dateOpen} value={date} onChange={setDate} onClose={()=>setDateOpen(false)}/>
-    <Modal visible={!!selectedEntry} transparent animationType="fade" onRequestClose={()=>setSelectedEntry(null)}>
-      <View style={styles.backdrop}><View style={styles.detailModal}>
-        <Text style={styles.modalTitle}>交易完整明細</Text>
-        {selectedEntry?<ScrollView contentContainerStyle={styles.detailRows}>
-          <PreviewRow label="交易類型" value={kindLabel(selectedEntry.kind)}/>
-          <PreviewRow label="日期" value={selectedEntry.date}/>
-          <PreviewRow label="標的" value={'symbol' in selectedEntry?`${selectedEntry.symbol} ${selectedEntry.name}`:selectedEntry.label}/>
-          {(selectedEntry.kind==='buy'||selectedEntry.kind==='sell')?<>
-            <PreviewRow label="成交股數" value={`${selectedEntry.shares.toLocaleString('zh-TW')} 股`}/>
-            <PreviewRow label="成交單價" value={`NT$ ${selectedEntry.price}`}/>
-            <PreviewRow label="純成交金額" value={`NT$ ${money(selectedEntry.amount)}`}/>
-            <PreviewRow label="實際手續費（歷史固化）" value={`NT$ ${money(selectedEntry.actualFee)}`}/>
-            {selectedEntry.kind==='sell'?<PreviewRow label="實際證交稅（歷史固化）" value={`NT$ ${money(selectedEntry.actualTax)}`}/>:null}
-          </>:selectedEntry.kind==='dividend'?<>
-            <PreviewRow label="每股股息" value={`NT$ ${selectedEntry.perShareAmount}`}/>
-            <PreviewRow label="配息股數" value={`${selectedEntry.sharesHeld.toLocaleString('zh-TW')} 股`}/>
-          </>:<PreviewRow label="現金調整" value={`NT$ ${money(selectedEntry.amount)}`}/>}
-          <PreviewRow label="現金流" value={`NT$ ${money(calculateLedgerCashFlow(selectedEntry))}`} strong/>
-          {'note' in selectedEntry&&selectedEntry.note?<Text style={styles.coreNote}>備註：{selectedEntry.note}</Text>:null}
-        </ScrollView>:null}
-        <View style={styles.confirmButtons}>
-          <Pressable style={styles.secondaryButton} onPress={()=>setSelectedEntry(null)}><Text style={styles.secondaryText}>關閉</Text></Pressable>
-          <Pressable style={styles.secondaryButton} onPress={()=>{const row=selectedEntry;if(!row)return;Alert.alert('刪除交易紀錄？','此操作會改變帳務、持股與現金，且無法復原。',[{text:'取消',style:'cancel'},{text:'確認刪除',style:'destructive',onPress:()=>{finance.deleteEntry(row.id);setSelectedEntry(null);}}]);}}><Text style={styles.delete}>刪除（再次確認）</Text></Pressable>
-        </View>
-      </View></View>
-    </Modal>
     <ConfirmModal visible={confirmOpen} title={`確認${kindLabel(kind)}入帳`} onCancel={()=>setConfirmOpen(false)} onConfirm={commitEntry}>
       <Text style={styles.confirmText}>日期：{date}</Text>
-      {kind!=='other'&&quote?<Text style={styles.confirmText}>標的：{quote.symbol} {quote.name}</Text>:null}
+      {kind!=='other'&&instrument?<Text style={styles.confirmText}>標的：{instrument.symbol} {instrument.name}</Text>:null}
       {tradePreview?<>
         <Text style={styles.confirmText}>成交：{money(tradePreview.amount)}</Text>
         <Text style={styles.confirmText}>實際手續費：{money(tradePreview.actualFee)}</Text>
@@ -478,18 +413,6 @@ const styles=StyleSheet.create({
   previewLabel:{fontSize:10,color:colors.textSecondary},
   previewValue:{fontSize:11,fontWeight:'800',color:colors.text},
   previewStrong:{color:colors.primary,fontWeight:'900'},
-  paginationTop:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap',paddingTop:4,paddingBottom:6},
-  pageSizeGroup:{flexDirection:'row',alignItems:'center',gap:6},
-  paginationLabel:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
-  pageSizeButton:{minWidth:34,paddingHorizontal:9,paddingVertical:6,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border,alignItems:'center'},
-  pageSizeButtonActive:{backgroundColor:colors.primary,borderColor:colors.primary},
-  pageSizeText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},
-  pageSizeTextActive:{color:'#FFF'},
-  pageCount:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
-  paginationBottom:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,paddingTop:12},
-  pageNavButton:{minWidth:92,paddingHorizontal:12,paddingVertical:9,borderRadius:radius.md,backgroundColor:colors.surfaceMuted,alignItems:'center'},
-  pageNavDisabled:{opacity:.35},
-  pageNavText:{fontSize:10,fontWeight:'900',color:colors.primary},
   tableRow:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:11,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   cell:{fontSize:11,color:colors.text},
   kindCell:{width:38,fontSize:11,fontWeight:'900'},
@@ -498,10 +421,7 @@ const styles=StyleSheet.create({
   rowRight:{alignItems:'flex-end'},
   amount:{fontSize:11,fontWeight:'900',color:colors.text},
   fee:{fontSize:9,color:colors.textSecondary,marginTop:2},
-  delete:{fontSize:11,color:colors.loss,fontWeight:'800',marginTop:4},
-  detailsHint:{fontSize:10,color:colors.primary,fontWeight:'800',marginTop:4},
-  detailModal:{width:'100%',maxWidth:440,maxHeight:'85%',backgroundColor:colors.surface,borderRadius:22,padding:20,gap:16},
-  detailRows:{gap:12,paddingVertical:4},
+  delete:{fontSize:9,color:colors.loss,fontWeight:'800',marginTop:4},
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   monthLabel:{fontSize:11,fontWeight:'900',color:colors.textSecondary},
   backdrop:{flex:1,backgroundColor:'rgba(12,18,27,.45)',alignItems:'center',justifyContent:'center',padding:24},
