@@ -57,14 +57,24 @@ async function main(){
   assert.equal((staleQuote?.data as {price?:number})?.price,65.2);
 
   const market=read('src/market/MarketRuntime.tsx');
-  assert.match(market,/const batch=await center\.refresh\(\{/,
-    'V4 MarketDataCenter refresh result must be consumed directly');
-  assert.match(market,/if\(batch\.quotes\.size>0\)/,
-    'direct MarketDataCenter batch must drive runtime quote publication metadata');
-  assert.doesNotMatch(market,/refreshUnifiedMarketData\(/,
-    'V4 runtime must not reintroduce the retired native refresh path');
-  assert.doesNotMatch(market,/loadUnifiedMarketData\(/,
-    '1-second V4 refresh must not immediately re-read the same native SQLite snapshot');
+  const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+  const nativeModule=read('native/android/TfAssetNativeModule.kt');
+  assert.match(market,/refreshUnifiedMarketData\(symbolsRef\.current\)/,
+    'React runtime must use the imported SaiETF native market core');
+  assert.match(market,/loadUnifiedMarketData\(\)/,
+    'cold-start hydration must come from the native SaiETF core snapshot');
+  assert.match(market,/refreshPromiseRef\.current/,
+    '1-second scheduler and manual refresh must coalesce overlapping bridge requests');
+  assert.doesNotMatch(market,/new MarketDataCenter\(/,
+    'React runtime must not instantiate a duplicate quote engine');
+  assert.doesNotMatch(market,/new FugleWebSocketProvider\(/,
+    'React runtime must not instantiate a duplicate Fugle stream');
+  assert.match(nativeRuntime,/private val center = MarketDataCenter\(/);
+  assert.match(nativeRuntime,/streamingController\.updateSymbols\(symbols\)/);
+  assert.match(nativeRuntime,/val batch = center\.refresh\(/);
+  assert.match(nativeRuntime,/persistenceController\.flushNow\(\)/);
+  assert.match(nativeModule,/saietfMarket\.refresh\(symbols\)/,
+    'native bridge must route refreshes to the imported SaiETF runtime');
 
   const history=read('src/finance/useDailyPnlHistory.ts');
   assert.match(history,/marketDataVersionRef=useRef\(input\.marketDataVersion\)/);
