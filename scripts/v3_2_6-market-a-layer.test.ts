@@ -48,7 +48,8 @@ for(const token of ['行情中心價格型態','行情中心 Fallback','行情�
   assert.ok(panel.includes(token),'diagnostic provenance UI missing '+token);
 
 const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
-assert.match(pkg.version,/^3\.2\.[1-9]\d*$/);
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=1))),'must remain a descendant of V3.2.x market architecture');
 assert.equal(app.expo.version,pkg.version);
 assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
 assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
