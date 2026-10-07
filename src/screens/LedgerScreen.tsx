@@ -55,11 +55,13 @@ export function LedgerScreen() {
     return Array.from(new Set(rows)).slice(0,8);
   },[finance.entries]);
   const symbolSuggestions=useMemo(()=>{
-    if(!normalizedSymbol||catalogItem)return [];
+    const query=symbol.trim();
+    if(!query||catalogItem)return [];
+    const upper=query.toUpperCase();
     return market.catalog
-      .filter(item=>item.symbol.startsWith(normalizedSymbol))
-      .slice(0,8);
-  },[market.catalog,normalizedSymbol,catalogItem]);
+      .filter(item=>item.symbol.startsWith(upper)||item.name.includes(query)||(item.companyName?.includes(query)??false))
+      .slice(0,12);
+  },[market.catalog,symbol,normalizedSymbol,catalogItem]);
   const tradePreview=useMemo(()=>{
     if((kind!=='buy'&&kind!=='sell')||!instrument)return null;
     const p=parseNumber(price),s=parseNumber(shares);
@@ -142,20 +144,21 @@ export function LedgerScreen() {
             />
             <View style={styles.form}>
               {kind!=='other'?<View style={styles.symbolFieldBlock}>
-                <Text style={styles.fieldLabel}>ETF代號</Text>
+                <Text style={styles.fieldLabel}>台股代號／名稱</Text>
                 <TextInput
                   style={styles.input}
                   value={symbol}
                   onChangeText={text=>setSymbol(text.toUpperCase().replace(/\s/g,''))}
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  placeholder="例如 0050"
+                  placeholder="例如 2330、0050 或台積電"
                   placeholderTextColor="#98A5B8"
                 />
                 {instrument?<View style={styles.selectedInstrument}>
                   <Text style={styles.selectedInstrumentCode}>{instrument.symbol}</Text>
                   <Text style={styles.selectedInstrumentName} numberOfLines={1}>{instrument.name}</Text>
-                </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的 ETF 名稱</Text>:null}
+                  {catalogItem?<Text style={styles.symbolName}>{catalogItem.market}{catalogItem.industry?' · '+catalogItem.industry:''}</Text>:null}
+                </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的台股證券</Text>:null}
                 {recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
                   {recentSymbols.map(code=><Pressable key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
                     <Text style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
@@ -244,7 +247,7 @@ export function LedgerScreen() {
     <DatePickerModal visible={dateOpen} value={date} onChange={setDate} onClose={()=>setDateOpen(false)}/>
     <ConfirmModal visible={confirmOpen} title={`確認${kindLabel(kind)}入帳`} onCancel={()=>setConfirmOpen(false)} onConfirm={commitEntry}>
       <Text style={styles.confirmText}>日期：{date}</Text>
-      {kind!=='other'&&quote?<Text style={styles.confirmText}>標的：{quote.symbol} {quote.name}</Text>:null}
+      {kind!=='other'&&instrument?<Text style={styles.confirmText}>標的：{instrument.symbol} {instrument.name}</Text>:null}
       {tradePreview?<>
         <Text style={styles.confirmText}>成交：{money(tradePreview.amount)}</Text>
         <Text style={styles.confirmText}>實際手續費：{money(tradePreview.actualFee)}</Text>
