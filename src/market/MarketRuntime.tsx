@@ -305,7 +305,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       }else if(preV4Raw||legacyRaw){
         try{
           const legacy=JSON.parse(preV4Raw??legacyRaw??'{}') as {config?:Partial<MarketUpdateConfig>;lastSuccessAt?:number};
-          if(legacy.config)setConfigState(normalizeConfig(legacy.config));
+          const legacyLive=legacy.config?.live;
+          const migratedLegacyConfig=legacy.config?{
+            ...legacy.config,
+            ...(legacyLive?{live:legacyLive.refreshSeconds===5?{...legacyLive,refreshSeconds:1}:legacyLive}:{}),
+          }:undefined;
+          if(migratedLegacyConfig)setConfigState(normalizeConfig(migratedLegacyConfig));
           if(Number.isFinite(Number(legacy.lastSuccessAt)))setLastSuccessAt(Number(legacy.lastSuccessAt));
         }catch{}
       }
