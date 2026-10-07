@@ -240,6 +240,7 @@ function toRuntimeQuotes(
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
+  const [phase,setPhase]=useState<MarketPhase>(()=>resolveMarketPhase(DEFAULT_MARKET_UPDATE));
   const [quotes,setQuotes]=useState<RuntimeQuote[]>([]);
   const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>([]);
   const [hydrated,setHydrated]=useState(false);
@@ -261,6 +262,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const persistenceRef=useRef<MarketPersistenceRepository|null>(null);
   const persistenceControllerRef=useRef<MarketPersistenceController|null>(null);
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
+  const refreshVisibleRef=useRef(false);
   const marketDataVersionRef=useRef(0);
   const centerUnsubscribeRef=useRef<(()=>void)|null>(null);
   const fugleUnsubscribeRef=useRef<(()=>void)|null>(null);
@@ -354,23 +356,37 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])).sort());
   },[]);
 
-  const phase=resolveMarketPhase(config);
-
-  const refresh=useCallback((options?:{force?:boolean;silent?:boolean})=>{
-    if(refreshPromiseRef.current)return refreshPromiseRef.current;
+  const refresh=useCallback((options?:{force?:boolean;silent?:boolean}):Promise<MarketRefreshResult>=>{
+    const announce=options?.silent!==true;
+    if(refreshPromiseRef.current){
+      // A manual refresh joining the 1-second scheduler reuses the same request
+      // and promotes that shared operation to visible UI state.
+      if(announce&&!refreshVisibleRef.current){
+        refreshVisibleRef.current=true;
+        setRefreshing(true);
+        setLastError(null);
+      }
+      return refreshPromiseRef.current;
+    }
+    refreshVisibleRef.current=announce;
     const task:Promise<MarketRefreshResult>=(async()=>{
       const center=centerRef.current;if(!center)return 'unchanged';
-      setRefreshing(true);if(!options?.silent)setLastError(null);
+      if(announce)setRefreshing(true);
+      if(announce)setLastError(null);
       const now=Date.now(),date=taipeiDate(now);
       try{
         if(options?.force&&fugleRef.current&&fugleKeyRef.current)await fugleRef.current.replaceSubscriptions(new Set(symbolsRef.current));
         const batch=await center.refresh({
-          symbols:new Set(symbolsRef.current),nowEpochMillis:now,currentTaipeiDate:date,tradingSessionActive:resolveMarketPhase(configRef.current)==='live',
+          symbols:new Set(symbolsRef.current),nowEpochMillis:now,currentTaipeiDate:date,
+          tradingSessionActive:resolveMarketPhase(configRef.current)==='live',
         });
         const health=[...(fugleRef.current?[fugleRef.current.health(Date.now())]:[]),...batch.providerHealth];
         setProviderHealth(health);
         const unresolved=[...batch.unresolvedSymbols].sort();setUnresolvedSymbols(unresolved);
-        if(batch.quotes.size>0)setLastSuccessAt(Date.now());
+        if(batch.quotes.size>0){
+          const newest=[...batch.quotes.values()].reduce((max,row)=>Math.max(max,row.sourceTimestampEpochMillis),0);
+          if(newest>0)setLastSuccessAt(current=>Math.max(current??0,newest));
+        }
         if(!options?.silent){
           if(unresolved.length)setLastError('未解析行情：'+unresolved.join(', '));
           else if(symbolsRef.current.length>0&&batch.quotes.size===0)setLastError('目前沒有可核實的本交易日行情，保留已標記品質的快取。');
@@ -379,7 +395,10 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       }catch(error){
         if(!options?.silent)setLastError(error instanceof Error?error.message:String(error));
         return 'error';
-      }finally{setRefreshing(false);}
+      }finally{
+        if(refreshVisibleRef.current)setRefreshing(false);
+        refreshVisibleRef.current=false;
+      }
     })();
     refreshPromiseRef.current=task.finally(()=>{refreshPromiseRef.current=null;});
     return refreshPromiseRef.current;
@@ -415,21 +434,41 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{
     if(!hydrated)return;
     void fugleRef.current?.replaceSubscriptions(new Set(trackedSymbols));
-    void refresh();
+    void refresh({silent:true});
   },[hydrated,trackedSymbols,refresh]);
 
   useEffect(()=>{
+    setPhase(resolveMarketPhase(config));
+  },[config]);
+
+  useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
-    const seconds=marketRefreshSeconds(config,phase);if(seconds<=0)return;
-    const timer=setInterval(()=>{void refresh();},seconds*1000);return()=>clearInterval(timer);
-  },[hydrated,config,phase,refresh]);
+    let disposed=false;
+    let lastPhase:MarketPhase|null=null;
+    let nextDueAt=0;
+    const tick=()=>{
+      const currentPhase=resolveMarketPhase(configRef.current);
+      setPhase(current=>current===currentPhase?current:currentPhase);
+      if(disposed||AppState.currentState!=='active')return;
+      const seconds=marketRefreshSeconds(configRef.current,currentPhase);
+      if(seconds<=0){lastPhase=currentPhase;nextDueAt=0;return;}
+      const now=Date.now();
+      if(currentPhase!==lastPhase){lastPhase=currentPhase;nextDueAt=0;}
+      if(now<nextDueAt)return;
+      nextDueAt=now+seconds*1000;
+      void refresh({silent:true});
+    };
+    tick();
+    const timer=setInterval(tick,1000);
+    return()=>{disposed=true;clearInterval(timer);};
+  },[hydrated,config,refresh]);
 
   useEffect(()=>{
     if(!hydrated)return;
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
       if(next==='active'){
         void fugleRef.current?.replaceSubscriptions(new Set(symbolsRef.current));
-        if(configRef.current.refreshOnForeground)void refresh({force:true});
+        if(configRef.current.refreshOnForeground)void refresh({force:true,silent:true});
       }else{
         void persistenceControllerRef.current?.flushNow();
         void fugleRef.current?.disconnect();
