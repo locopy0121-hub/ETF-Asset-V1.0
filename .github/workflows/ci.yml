@@ -1,8 +1,8 @@
-name: TF Asset V3.2.49 CI / QA APK
+name: TF Asset V4.0.1 CI / QA APK
 
 on:
   push:
-    branches: [main, 'go-v3.0.*', 'go-v3.1.*', 'go-v3.2.*']
+    branches: [main, 'go-v3.0.*', 'go-v3.1.*', 'go-v3.2.*', 'v4.0.*']
   pull_request:
     branches: [main, 'go-v3.0.*', 'go-v3.1.*', 'go-v3.2.*']
 
@@ -23,14 +23,14 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
-      - name: V3.2.49 ledger pagination regression
+      - name: V4.0.1 inherited ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
-      - name: V3.2.49 dashboard content editing regression
+      - name: V4.0.1 inherited dashboard content editing regression
         run: npx tsx scripts/v3_1_17-dashboard-content.test.ts
-      - name: V3.2.49 holding detail editor / Android safe-area regression
+      - name: V4.0.1 inherited holding detail editor / Android safe-area regression
         run: npx tsx scripts/v3_1_18-holding-detail-safearea.test.ts
-      - name: V3.2.49 aggregate gates
-        run: npm run test:v3_2_49
+      - name: V4.0.1 full inherited + Market Core gates
+        run: npm run test:v4_0_1
       - name: Generate declared skill coverage matrix
         run: npx tsx scripts/v3_2_49-skill-report.ts
       - name: Upload mandatory complete skill coverage report
@@ -41,19 +41,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: V3.2.49 controls source smoke
+      - name: V4.0.1 inherited controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V3.2.49 controls runtime behavior
+      - name: V4.0.1 inherited controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V3.2.49 AI holdings behavior
+      - name: V4.0.1 inherited AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V3.2.49 dividend calendar behavior
+      - name: V4.0.1 inherited dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V3.2.49 system profit colors
+      - name: V4.0.1 inherited system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V3.2.49 user-visible version and integration smoke
+      - name: V4.0.1 inherited integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V3.2.49 release identity and UX controls
+      - name: V4.0.1 inherited UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -61,7 +61,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V3.2.49 Node/Redis/PostgreSQL integration
+    name: V4.0.1 Node/Redis/PostgreSQL inherited integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -97,10 +97,10 @@ jobs:
         run: npm run check
 
   qa-apk:
-    name: V3.2.49 QA APK / native integration
+    name: V4.0.1 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
-    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.'))
+    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.'))
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -123,17 +123,17 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V3.2.49 identity
+      - name: Freeze V4.0.1 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "3.2.49"
-          test "$(node -p "require('./app.json').expo.version")" = "3.2.49"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "30249"
+          test "$(node -p "require('./package.json').version")" = "4.0.1"
+          test "$(node -p "require('./app.json').expo.version")" = "4.0.1"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40001"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V3.2.49 Hard Gates
+      - name: V4.0.1 Hard Gates
         run: npm run test:v3_2_49
 
       - name: Generate declared skill coverage matrix for APK evidence
@@ -169,8 +169,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 30249');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "3.2.49"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 40001');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.1"');
           fs.writeFileSync(gradle,g);
 
           const strings='../TFAssetNative/android/app/src/main/res/values/strings.xml';
@@ -230,26 +230,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V3.2.49-QA.apk
-          test "$(stat -c%s TF-Asset-V3.2.49-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V3.2.49-QA.apk
-          sha256sum TF-Asset-V3.2.49-QA.apk | tee TF-Asset-V3.2.49-QA.sha256
+          cp "$APK_PATH" TF-Asset-V4.0.1-QA.apk
+          test "$(stat -c%s TF-Asset-V4.0.1-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V4.0.1-QA.apk
+          sha256sum TF-Asset-V4.0.1-QA.apk | tee TF-Asset-V4.0.1-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V3.2.49-QA.apk | tee TF-Asset-V3.2.49-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V3.2.49-badging.txt
-          grep "versionCode='30249'" TF-Asset-V3.2.49-badging.txt
-          grep "versionName='3.2.49'" TF-Asset-V3.2.49-badging.txt
-          file TF-Asset-V3.2.49-QA.apk
+          "$AAPT" dump badging TF-Asset-V4.0.1-QA.apk | tee TF-Asset-V4.0.1-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.1-badging.txt
+          grep "versionCode='30249'" TF-Asset-V4.0.1-badging.txt
+          grep "versionName='3.2.49'" TF-Asset-V4.0.1-badging.txt
+          file TF-Asset-V4.0.1-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V3.2.49-QA-APK
+          name: TF-Asset-V4.0.1-QA-APK
           path: |
-            TF-Asset-V3.2.49-QA.apk
-            TF-Asset-V3.2.49-QA.sha256
-            TF-Asset-V3.2.49-badging.txt
+            TF-Asset-V4.0.1-QA.apk
+            TF-Asset-V4.0.1-QA.sha256
+            TF-Asset-V4.0.1-badging.txt
             reports/V3.2.49-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
