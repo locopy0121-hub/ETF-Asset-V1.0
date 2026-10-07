@@ -39,7 +39,8 @@ assert.ok(!screen.includes("appPanel==='debug'"),'runtime diagnostics must not b
 assert.ok(screen.includes("displayPanel==='titles'"),'page titles/header text must live under interface/theme');
 assert.ok(screen.includes("displayPanel==='dividendCalendar'"),'dividend calendar display must live under interface/theme');
 assert.ok(screen.includes("displayPanel==='swipe'"),'page swipe settings must live under interface/theme');
-assert.ok(screen.includes('行情資料中心（唯一行情入口）'),'market center must remain the canonical single entry');
+assert.ok(screen.includes('SaiETF Market Core｜唯一行情中心'),'SaiETF native Market Core must be the canonical single entry');
+assert.ok(screen.includes('V4.0.1 行情網路入口只由 MarketDataCenter 管理'),'settings must declare one MarketDataCenter network entry');
 assert.ok(screen.includes('ETF 分類與配息標籤'),'ETF data labels must not imply notification ownership');
 
 const notificationStart=screen.indexOf('function NotificationPanel(){');
