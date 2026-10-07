@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  AppState,
   ImageBackground,
   Linking,
   PermissionsAndroid,
@@ -15,12 +16,18 @@ import {
 } from 'react-native';
 
 import { ColorPalettePicker } from '../components/ColorPalettePicker';
+import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
+import {DiagnosticLogPanel} from '../components/DiagnosticLogPanel';
+import {MarketComparisonPanel} from '../components/MarketComparisonPanel';
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import { MAIN_PAGES } from '../domain/pageRegistry';
+import {ZERO_COST_DATA_SOURCES} from '../dataSources/zeroCostRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
+import { auditCashSources } from '../finance/cashAudit';
 import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
 import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import {
@@ -31,22 +38,26 @@ import {
   listLocalBackups,
   restoreLocalBackup,
   type BackupRecord,
+  inspectTfAssetBackup,recordVerifiedExternalBackup,lastVerifiedExternalBackup,
+  type VerifiedExternalBackup,
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
+import { toggleExclusivePanel } from '../settings/settingsControlBehavior';
 import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
-import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, type NativeMonitorStatus } from '../native/TfAssetNativeBridge';
+import { canDrawOverlays, getNativeMonitorStatus, nativeRuntimeAvailable, openOverlaySettings, pickNativeThemeBackground, backupDocumentPickerAvailable, saveExternalBackup, chooseExternalBackup, requestNativeWidgetRefresh, startNativeMonitor, stopNativeMonitor, ensureNativeNotificationChannels, getNativeNotificationStatus, openNativeNotificationSettings, postNativeTestNotification, NATIVE_NOTIFICATION_CHANNELS, type NativeMonitorStatus, type NativeNotificationStatus } from '../native/TfAssetNativeBridge';
 import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'market'|'permissions'|'diagnostics'|'notifications';
-type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core';
-type DataPanel=null|'catalog'|'summary'|'integrity'|'repair';
+type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';
+type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
+type DataPanel=null|'catalog'|'market'|'policy'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
 type MonitorPanel=null|'widget'|'main'|'mini'|'template'|'colors'|'refresh';
-type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
-type AppPanel=null|'reset'|'version'|'updates'|'debug';
-type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
+type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'swipe'|'dividendCalendar';
+type AppPanel=null|'reset'|'version'|'updates';
+type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
 const VERSION='4.0.1';
 const BUILD='40001';
@@ -65,6 +76,9 @@ export function SettingsScreen(){
   const [systemPanel,setSystemPanel]=useState<SystemPanel>(null);
   const [accountingPanel,setAccountingPanel]=useState<AccountingPanel>(null);
   const [dataPanel,setDataPanel]=useState<DataPanel>(null);
+  const [marketEditorTarget,setMarketEditorTarget]=useState<'home'|'portfolio'|null>(null);
+  const [marketEditorTab,setMarketEditorTab]=useState<'wall'|'badges'>('wall');
+  const openMarketEditor=(page:'home'|'portfolio',tab:'wall'|'badges')=>{setMarketEditorTab(tab);setMarketEditorTarget(page);};
   const [backupPanel,setBackupPanel]=useState<BackupPanel>(null);
   const [monitorPanel,setMonitorPanel]=useState<MonitorPanel>(null);
   const [displayPanel,setDisplayPanel]=useState<DisplayPanel>(null);
@@ -72,10 +86,16 @@ export function SettingsScreen(){
   const [legalPanel,setLegalPanel]=useState<LegalPanel>(null);
   const [backups,setBackups]=useState<BackupRecord[]>([]);
   const [backupStatus,setBackupStatus]=useState('');
+  const [backupBusy,setBackupBusy]=useState(false);
+  const [verifiedExternal,setVerifiedExternal]=useState<VerifiedExternalBackup|null>(null);
+  const [chosenDocument,setChosenDocument]=useState<null|{
+    name:string;text:string;entries:number;keys:number;exportedAt:string;
+  }>(null);
   const [exportText,setExportText]=useState('');
   const [importText,setImportText]=useState('');
   const [storageStats,setStorageStats]=useState({keys:0,bytes:0});
   const [notificationPermission,setNotificationPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
+  const [nativeNotificationStatus,setNativeNotificationStatus]=useState<NativeNotificationStatus|null>(null);
   const [overlayPermission,setOverlayPermission]=useState<'granted'|'denied'|'unsupported'>('unsupported');
   const [nativeMonitorStatus,setNativeMonitorStatus]=useState<NativeMonitorStatus|null>(null);
 
@@ -98,15 +118,27 @@ export function SettingsScreen(){
     setStorageStats(stats);
   };
 
-  useEffect(()=>{void reloadBackupMeta();},[]);
+  useEffect(()=>{void reloadBackupMeta();void lastVerifiedExternalBackup().then(setVerifiedExternal);},[]);
+  const refreshNotificationState=async()=>{
+    if(Platform.OS!=='android'){setNotificationPermission('unsupported');setNativeNotificationStatus(null);return;}
+    try{
+      const status=await ensureNativeNotificationChannels();
+      if(status){
+        setNativeNotificationStatus(status);
+        setNotificationPermission(status.permissionGranted?'granted':'denied');
+        return;
+      }
+    }catch{}
+    if(Number(Platform.Version)<33){setNotificationPermission('granted');return;}
+    try{
+      const ok=await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      setNotificationPermission(ok?'granted':'denied');
+    }catch{setNotificationPermission('denied');}
+  };
   useEffect(()=>{
-    if(Platform.OS!=='android'||Number(Platform.Version)<33){
-      setNotificationPermission('unsupported');
-      return;
-    }
-    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
-      .then(ok=>setNotificationPermission(ok?'granted':'denied'))
-      .catch(()=>setNotificationPermission('denied'));
+    void refreshNotificationState();
+    const subscription=AppState.addEventListener('change',state=>{if(state==='active')void refreshNotificationState();});
+    return()=>subscription.remove();
   },[]);
 
   useEffect(()=>{
@@ -139,6 +171,8 @@ export function SettingsScreen(){
     if(key==='backup')return backupSection();
     if(key==='monitor')return monitorSection();
     if(key==='display')return displaySection();
+    if(key==='notifications')return notificationSection();
+    if(key==='ai')return aiSection();
     if(key==='app')return appSection();
     if(key==='legal')return legalSection();
     return null;
@@ -146,8 +180,11 @@ export function SettingsScreen(){
 
   function systemSection(){
     return <View style={styles.children}>
-      <ChildButton label="市場更新" summary={marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} fugleConfigured={market.fugleConfigured} providerHealth={market.providerHealth} onSaveFugleApiKey={market.saveFugleApiKey} onClearFugleApiKey={market.clearFugleApiKey}/>:null}
+      <ChildButton label="駐點維護工程師｜全局總開關" summary={settings.prefs.engineerEnabled?'已啟用｜各區域活動扳手可呼叫':'已關閉｜日常畫面乾淨'} active={systemPanel==='engineer'} onPress={()=>setSystemPanel(systemPanel==='engineer'?null:'engineer')}/>
+      {systemPanel==='engineer'?<Panel title="全 App 工程師進駐">
+        <ToggleRow label="顯示各模塊／框架／元件活動扳手" value={settings.prefs.engineerEnabled} onChange={settings.patchEngineerEnabled}/>
+        <Text style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
+      </Panel>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -156,6 +193,7 @@ export function SettingsScreen(){
         {Platform.OS==='android'&&Number(Platform.Version)>=33&&notificationPermission!=='granted'?<ActionButton label="要求通知權限" onPress={async()=>{
           const result=await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
           setNotificationPermission(result===PermissionsAndroid.RESULTS.GRANTED?'granted':'denied');
+          await refreshNotificationState();
         }}/>:null}
         <ActionButton label="前往 App 系統設定" onPress={()=>void Linking.openSettings()}/>
         <Text style={styles.note}>Android 的電池最佳化與背景限制由系統頁面管理；此處不偽造無法可靠讀取的狀態。</Text>
@@ -163,22 +201,28 @@ export function SettingsScreen(){
       <ChildButton label="效能與診斷" summary={market.lastError?'行情有警告':'核心狀態正常'} active={systemPanel==='diagnostics'} onPress={()=>setSystemPanel(systemPanel==='diagnostics'?null:'diagnostics')}/>
       {systemPanel==='diagnostics'?<Panel title="效能與診斷">
         <StatusRow label="App 版本" value={VERSION}/>
+        <StatusRow label="API 成本政策" value="ALL FREE · NO MONEY"/>
+        <StatusRow label="零成本來源" value={String(ZERO_COST_DATA_SOURCES.length)+' 組'}/>
         <StatusRow label="Build" value={BUILD}/>
         <StatusRow label="帳務 Runtime" value={finance.hydrated?'正常':'載入中'}/>
         <StatusRow label="行情 Runtime" value={market.hydrated?'正常':'載入中'}/>
+        <StatusRow label="統一行情資料庫版本" value={String(market.marketDataVersion)}/>
+        <StatusRow label="缺少的 ETF" value={market.missingSymbols.join("、")||"無"}/>
         <StatusRow label="券商 Runtime" value={broker.hydrated?'正常':'載入中'}/>
         <StatusRow label="設定 Runtime" value={settings.hydrated?'正常':'載入中'}/>
         <StatusRow label="最後行情成功" value={formatTime(market.lastSuccessAt)}/>
         <StatusRow label="行情錯誤" value={market.lastError??'無'}/>
-        {market.quotes.slice(0,8).map(quote=><StatusRow key={'market-'+quote.symbol} label={'行情 '+quote.symbol} value={`${quote.currentPrice.toFixed(2)}｜昨收 ${quote.previousClose.toFixed(2)}｜${quote.quoteStatus??'STALE'}｜${quote.priceKind??'-'}｜${quote.quoteTime??'-'}`}/>)}
         <StatusRow label="交易紀錄" value={String(finance.entries.length)}/>
         <StatusRow label="持股筆數" value={String(finance.holdings.length)}/>
-        <StatusRow label="台股證券資料" value={String(market.catalog.length)}/>
+        <StatusRow label="ETF 基礎資料" value={String(market.catalog.length)}/>
+        <StatusRow label="Monitor Mode" value={monitor.config.mode}/>
+        <StatusRow label="Stored TF Asset keys" value={String(storageStats.keys)}/>
       </Panel>:null}
-      <ChildButton label="通知與提醒" summary="除息、配息、行情、失敗、備份" active={systemPanel==='notifications'} onPress={()=>setSystemPanel(systemPanel==='notifications'?null:'notifications')}/>
-      {systemPanel==='notifications'?<NotificationPanel/>:null}
+      <ChildButton label="錯誤紀錄 Log" summary="閃退、操作路徑、錯誤堆疊與匯出" active={systemPanel==='logs'} onPress={()=>setSystemPanel(systemPanel==='logs'?null:'logs')}/>
+      {systemPanel==='logs'?<Panel title="錯誤診斷中心"><DiagnosticLogPanel/></Panel>:null}
     </View>;
   }
+
 
   function accountingSection(){
     const p=broker.activeProfile;
@@ -198,6 +242,24 @@ export function SettingsScreen(){
         <ChoiceRow label="預設交易類型" options={[{key:'buy',label:'買進'},{key:'sell',label:'賣出'}]} value={settings.prefs.tradeDefaults.tradeKind} onChange={tradeKind=>settings.patchTradeDefaults({tradeKind:tradeKind==='sell'?'sell':'buy'})}/>
         <Text style={styles.note}>只影響之後新開啟的交易表單，不改歷史紀錄。</Text>
       </Panel>:null}
+      <ChildButton label="現金來源／期初現金核對" summary={'期初 NT$ '+Math.round(finance.initialCash).toLocaleString('zh-TW')+' · 逐項對帳'} active={accountingPanel==='cash'} onPress={()=>setAccountingPanel(accountingPanel==='cash'?null:'cash')}/>
+      {accountingPanel==='cash'?<Panel title="現金來源對帳（金融核心只讀）">
+        {!finance.hydrated?<Text style={styles.note}>帳務資料讀取中。</Text>:(()=>{
+          const audit=auditCashSources(finance.initialCash,finance.entries);
+          const fmt=(value:number)=>'NT$ '+Math.round(value).toLocaleString('zh-TW');
+          return <>
+            <StatusRow label="期初現金（非交易紀錄）" value={fmt(audit.opening)}/>
+            <StatusRow label="買進現金支出" value={fmt(audit.buyOutflow)}/>
+            <StatusRow label="賣出淨流入" value={fmt(audit.sellInflow)}/>
+            <StatusRow label="已入帳股息" value={fmt(audit.dividendInflow)}/>
+            <StatusRow label="其他現金調整淨額" value={fmt(audit.otherNet)}/>
+            <StatusRow label="交易／股息／調整淨流量" value={fmt(audit.netMovement)}/>
+            <StatusRow label="現金餘額" value={finance.cashConfigured?fmt(audit.cashBalance):'未設定'}/>
+            {!finance.cashConfigured?<Text style={styles.dangerText}>目前沒有明確的現金來源。交易淨流量只用於對帳，不代表可用現金；不再把從 0 起算的買進支出顯示成負的現金餘額。</Text>:null}
+            <Text style={styles.note}>未建立明確現金來源時，期初現金固定為 NT$ 0。買進、賣出、股息與其他調整仍保留逐筆對帳，但不會自動建立任何期初資金或系統沖回。</Text>
+          </>;
+        })()}
+      </Panel>:null}
       <ChildButton label="帳務核心狀態" summary="Canonical · 歷史費稅鎖定" active={accountingPanel==='core'} onPress={()=>setAccountingPanel(accountingPanel==='core'?null:'core')}/>
       {accountingPanel==='core'?<Panel title="帳務核心狀態">
         <StatusRow label="金融核心" value="Canonical Finance Core"/>
@@ -211,11 +273,40 @@ export function SettingsScreen(){
 
   function dataSection(){
     return <View style={styles.children}>
-      <ChildButton label="台股證券資料" summary={market.catalog.length+' 筆'} active={dataPanel==='catalog'} onPress={()=>setDataPanel(dataPanel==='catalog'?null:'catalog')}/>
-      {dataPanel==='catalog'?<Panel title="台股證券資料">
+      <ChildButton label="統一行情資料中心／即時更新" summary={'版本 '+market.marketDataVersion+' · '+marketPhaseLabel(market.phase)} active={dataPanel==='market'} onPress={()=>setDataPanel(dataPanel==='market'?null:'market')}/>
+      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings} fugleConfigured={market.fugleConfigured} providerHealth={market.providerHealth} onSaveFugleApiKey={market.saveFugleApiKey} onClearFugleApiKey={market.clearFugleApiKey}/>:null}
+      <ChildButton label="API 成本政策" summary="ALL FREE · NO MONEY" active={dataPanel==='policy'} onPress={()=>setDataPanel(dataPanel==='policy'?null:'policy')}/>
+      {dataPanel==='policy'?<Panel title="零成本資料來源政策">
+        <StatusRow label="API 費用" value="NT$ 0"/>
+        <StatusRow label="付費 API" value="禁止"/>
+        <StatusRow label="綁信用卡" value="禁止"/>
+        <StatusRow label="自動扣款" value="禁止"/>
+        <StatusRow label="試用期依賴" value="禁止"/>
+        <StatusRow label="已註冊零成本來源" value={String(ZERO_COST_DATA_SOURCES.length)}/>
+        <Text style={styles.note}>正式資料源只允許零 API 成本來源；TWSE／TPEx 為台股主真值，OpenFIGI 僅作證券身分備援。任何方案型、計量型或可能產生費用的來源不得成為正式必要依賴。</Text>
+      </Panel>:null}
+      <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
+      {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
+        <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
+        <ActionButton label="編輯首頁行情牆" onPress={()=>openMarketEditor('home','wall')}/>
+        <ActionButton label="編輯庫存行情牆" onPress={()=>openMarketEditor('portfolio','wall')}/>
+      </Panel>:null}
+      <ChildButton label="ETF 分類與配息標籤" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
+      {dataPanel==='badges'?<Panel title="ETF 智慧標籤 A/B">
+        <Text style={styles.note}>僅變更畫面標籤；官方分類與配息原始資料保持不變，未知資料仍標示待確認。</Text>
+        <ActionButton label="編輯首頁標籤" onPress={()=>openMarketEditor('home','badges')}/>
+        <ActionButton label="編輯庫存標籤" onPress={()=>openMarketEditor('portfolio','badges')}/>
+      </Panel>:null}
+      <ChildButton label="行情卡片資訊顯示" summary={settings.prefs.marketCard.showQuoteMetadata?'顯示來源時間與版本':'精簡模式 · 隱藏來源時間與版本'} active={dataPanel==='metadata'} onPress={()=>setDataPanel(dataPanel==='metadata'?null:'metadata')}/>
+      {dataPanel==='metadata'?<Panel title="行情卡片資訊">
+        <ToggleRow label="顯示來源時間與資料版本" value={settings.prefs.marketCard.showQuoteMetadata} onChange={showQuoteMetadata=>settings.patchMarketCard({showQuoteMetadata})}/>
+        <Text style={styles.note}>預設隱藏價格上方的冗長資訊；無法取得行情時仍保留警示。真正來源更新時間與資料中心診斷保持可查，不用畫面跳秒冒充新報價。</Text>
+      </Panel>:null}
+      <ChildButton label="ETF 基礎資料" summary={market.catalog.length+' 筆'} active={dataPanel==='catalog'} onPress={()=>setDataPanel(dataPanel==='catalog'?null:'catalog')}/>
+      {dataPanel==='catalog'?<Panel title="ETF 基礎資料">
         <StatusRow label="資料來源" value="TWSE + TPEx"/>
-        <StatusRow label="台股證券筆數" value={String(market.catalog.length)}/>
-        <ActionButton label={market.catalogRefreshing?'更新中…':'立即更新 台股證券資料'} disabled={market.catalogRefreshing} onPress={()=>void market.refreshCatalog()}/>
+        <StatusRow label="ETF 資料筆數" value={String(market.catalog.length)}/>
+        <ActionButton label={market.catalogRefreshing?'更新中…':'立即更新 ETF 基礎資料'} disabled={market.catalogRefreshing} onPress={()=>void market.refreshCatalog()}/>
         <Text style={styles.note}>記帳搜尋、代號提示與名稱解析共用 Market Runtime 的 台股證券 Catalog。</Text>
       </Panel>:null}
       <ChildButton label="資料概況" summary={finance.entries.length+' 筆交易 · '+finance.holdings.length+' 檔持股'} active={dataPanel==='summary'} onPress={()=>setDataPanel(dataPanel==='summary'?null:'summary')}/>
@@ -238,57 +329,133 @@ export function SettingsScreen(){
       <ChildButton label="資料修復" summary="安全重建，不改歷史費稅" active={dataPanel==='repair'} onPress={()=>setDataPanel(dataPanel==='repair'?null:'repair')}/>
       {dataPanel==='repair'?<Panel title="資料修復">
         <Text style={styles.note}>目前可安全執行的修復為重新更新 台股證券 Catalog 與行情；持股投影會由 Canonical Ledger 自動重建，不直接改寫歷史交易。</Text>
-        <ActionButton label="重建 台股證券資料" onPress={()=>void market.refreshCatalog()}/>
+        <ActionButton label="重建台股證券基礎資料" onPress={()=>void market.refreshCatalog()}/>
         <ActionButton label="重新取得行情" onPress={()=>void market.refresh()}/>
       </Panel>:null}
     </View>;
   }
 
+  async function saveBackupFile(){
+    if(backupBusy||!finance.hydrated)return;
+    setBackupBusy(true);
+    try{
+      const document=await exportTfAssetData(); // blocks incomplete/missing Ledger
+      const suggested='TF-Asset-V2.3.6-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+      const receipt=await saveExternalBackup(document,suggested);
+      if(!receipt){setBackupStatus('已取消外部存檔；沒有建立新的備份檔。');return;}
+      const verified=await recordVerifiedExternalBackup(receipt,document);
+      setVerifiedExternal(verified);
+      setBackupStatus('外部檔案已寫入並逐位元組讀回驗證：'+verified.fileName+
+        '｜帳務筆數 '+verified.ledgerEntries+'。建議再用檔案管理器確認。');
+      await reloadBackupMeta();
+    }catch(error){Alert.alert('外部備份失敗',error instanceof Error?error.message:String(error));}
+    finally{setBackupBusy(false);}
+  }
+
+  async function chooseBackupFile(){
+    if(backupBusy)return;
+    setBackupBusy(true);
+    try{
+      const opened=await chooseExternalBackup();
+      if(!opened)return;
+      const inspected=inspectTfAssetBackup(opened.text);
+      setChosenDocument({name:opened.fileName,text:opened.text,
+        entries:inspected.ledgerEntries,keys:inspected.keys,exportedAt:inspected.exportedAt});
+      setBackupStatus('已完成檔案格式及帳務結構驗證；尚未匯入。');
+    }catch(error){Alert.alert('備份檔驗證失敗',error instanceof Error?error.message:String(error));}
+    finally{setBackupBusy(false);}
+  }
+
+  function confirmExternalImport(){
+    if(!chosenDocument)return;
+    const selected=chosenDocument;
+    Alert.alert('最後確認還原',selected.name+'｜'+selected.entries+' 筆帳務紀錄。\n還原前會備份目前的資料，確認後寫入；若目前有較新的紀錄請先另存外部備份。',[
+      {text:'取消',style:'cancel'},
+      {text:'確認還原',onPress:()=>void (async()=>{
+        setBackupBusy(true);
+        try{
+          const count=await importTfAssetData(selected.text);
+          setBackupStatus('已還原 '+count+' 個資料區；請完全關閉並重新開啟 App 驗證帳務筆數。切勿解除安裝。');
+          setChosenDocument(null);
+          await reloadBackupMeta();
+        }catch(error){Alert.alert('還原中止',error instanceof Error?error.message:String(error));}
+        finally{setBackupBusy(false);}
+      })()},
+    ]);
+  }
+
   function backupSection(){
     return <View style={styles.children}>
-      <ChildButton label="立即備份" summary={backups[0]?formatDate(backups[0].createdAt):'尚無本機備份'} active={backupPanel==='create'} onPress={()=>setBackupPanel(backupPanel==='create'?null:'create')}/>
-      {backupPanel==='create'?<Panel title="立即備份">
-        <StatusRow label="本機備份數" value={String(backups.length)}/>
-        <StatusRow label="最後備份" value={backups[0]?formatDate(backups[0].createdAt):'尚無'}/>
-        <ActionButton label="建立完整本機備份" onPress={async()=>{
-          const row=await createLocalBackup();
-          setBackupStatus('備份完成：'+formatDate(row.createdAt));
-          await reloadBackupMeta();
-        }}/>
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
-      </Panel>:null}
-      <ChildButton label="匯出資料" summary="TF Asset JSON" active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
-      {backupPanel==='export'?<Panel title="匯出資料">
-        <ActionButton label="產生匯出內容" onPress={async()=>setExportText(await exportTfAssetData())}/>
+      <Text style={styles.dangerText}>重要：App 內備份和 SQLite 都屬於 App 私有資料；解除安裝／清除資料會一起消失。外部 JSON 必須另存至手機目錄或雲端磁碟。</Text>
+      <StatusRow label="最近一次外部存檔紀錄" value={verifiedExternal?
+        verifiedExternal.fileName+'｜'+formatDate(verifiedExternal.createdAt):
+        '尚無；不得把本機備份當成外部備份'}/>
+      <StatusRow label="最近外部備份帳務筆數" value={verifiedExternal?String(verifiedExternal.ledgerEntries):'尚無'}/>
+      <ChildButton label="選擇目錄建立外部備份" summary="Android 系統檔案視窗｜寫入＋讀回校驗"
+        active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
+      {backupPanel==='export'?<Panel title="真正的外部 JSON 檔案">
+        <Text style={styles.note}>將包含完整 Ledger、設定和本機備份歷史。只有 Android 回傳寫入及讀回校驗成功才記錄外部存檔。</Text>
+        <ActionButton label={backupBusy?'備份中…':'選擇手機／雲端目錄並建立備份'}
+          disabled={!backupDocumentPickerAvailable||backupBusy||!finance.hydrated}
+          onPress={()=>void saveBackupFile()}/>
+        {!backupDocumentPickerAvailable?<Text style={styles.dangerText}>本環境缺少 Android 外部檔案選擇器，不可宣稱已備份。</Text>:null}
+        <ActionButton label="備用：產生 JSON 文字自行保存" disabled={backupBusy||!finance.hydrated}
+          onPress={()=>void exportTfAssetData().then(setExportText).catch(error=>Alert.alert('產生 JSON 失敗',String(error)))}/>
         {exportText?<TextInput style={[styles.input,styles.multiline]} multiline value={exportText} onChangeText={setExportText}/>:null}
-        <Text style={styles.note}>匯出內容可全選複製保存；不包含其他 App 的資料。</Text>
+        <Text style={styles.note}>儲存紀錄只能證明當時成功寫入，不能保證檔案之後沒有被刪除，請在檔案管理器檢查。</Text>
       </Panel>:null}
-      <ChildButton label="匯入資料" summary="先驗證再寫入" active={backupPanel==='import'} onPress={()=>setBackupPanel(backupPanel==='import'?null:'import')}/>
-      {backupPanel==='import'?<Panel title="匯入資料">
-        <TextInput style={[styles.input,styles.multiline]} multiline placeholder="貼上 TF Asset 匯出的 JSON" value={importText} onChangeText={setImportText}/>
-        <ActionButton label="驗證並匯入" disabled={!importText.trim()} onPress={async()=>{
-          try{
-            const count=await importTfAssetData(importText);
-            setBackupStatus('匯入完成 '+count+' 個資料區；重新啟動 App 後載入。');
-            await reloadBackupMeta();
-          }catch(error){Alert.alert('匯入失敗',error instanceof Error?error.message:String(error));}
+      <ChildButton label="建立 App 內暫存備份" summary={backups.length+' 份｜卸載時全數遺失'}
+        active={backupPanel==='create'} onPress={()=>setBackupPanel(backupPanel==='create'?null:'create')}/>
+      {backupPanel==='create'?<Panel title="本機暫存">
+        <ActionButton label="建立本機備份（非外部檔案）" disabled={!finance.hydrated||backupBusy} onPress={()=>void createLocalBackup().then(row=>{
+          setBackupStatus('本機暫存完成：'+formatDate(row.createdAt)+'；仍須外部存檔。');void reloadBackupMeta();
+        }).catch(error=>Alert.alert('本機暫存失敗',String(error)))}/>
+        <StatusRow label="本機備份數" value={String(backups.length)}/>
+      </Panel>:null}
+      <ChildButton label="選檔驗證後還原" summary="不自動覆寫，顯示帳務筆數後最後確認"
+        active={backupPanel==='import'} onPress={()=>setBackupPanel(backupPanel==='import'?null:'import')}/>
+      {backupPanel==='import'?<Panel title="外部檔案還原">
+        <ActionButton label={backupBusy?'驗證中…':'選擇 JSON 備份檔案'} disabled={!backupDocumentPickerAvailable||backupBusy}
+          onPress={()=>void chooseBackupFile()}/>
+        <TextInput style={[styles.input,styles.multiline]} multiline placeholder="或貼上舊版 TF Asset JSON"
+          value={importText} onChangeText={setImportText}/>
+        <ActionButton label="驗證貼上的 JSON" disabled={!importText.trim()||backupBusy} onPress={()=>{
+          try{const info=inspectTfAssetBackup(importText);
+            setChosenDocument({name:'貼上文字',text:importText,entries:info.ledgerEntries,
+              keys:info.keys,exportedAt:info.exportedAt});}
+          catch(error){Alert.alert('格式驗證失敗',String(error));}
         }}/>
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
+        {chosenDocument?<View style={styles.formula}>
+          <StatusRow label="所選備份" value={chosenDocument.name}/>
+          <StatusRow label="帳務交易筆數" value={String(chosenDocument.entries)}/>
+          <StatusRow label="資料區數" value={String(chosenDocument.keys)}/>
+          <StatusRow label="備份建立時間" value={formatDate(chosenDocument.exportedAt)}/>
+          <ActionButton label="最後確認並還原" disabled={backupBusy} onPress={confirmExternalImport}/>
+        </View>:null}
       </Panel>:null}
-      <ChildButton label="還原備份" summary={backups.length+' 份可用'} active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
-      {backupPanel==='restore'?<Panel title="還原備份">
-        {backups.length===0?<Text style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable key={row.id} style={styles.restoreRow} onPress={()=>Alert.alert('確認還原','還原前會先建立目前狀態的安全備份。',[{text:'取消',style:'cancel'},{text:'還原',onPress:()=>void restoreLocalBackup(row.id).then(()=>{setBackupStatus('還原完成；重新啟動 App 後載入。');void reloadBackupMeta();})}])}>
-          <View style={{flex:1}}><Text style={styles.rowTitle}>{formatDate(row.createdAt)}</Text><Text style={styles.note}>{row.keys} 個資料區 · {formatBytes(row.bytes)} · v{row.appVersion}</Text></View><Text style={styles.chevron}>›</Text>
+      <ChildButton label="還原 App 內備份" summary={backups.length+' 份（非外部存檔）'}
+        active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
+      {backupPanel==='restore'?<Panel title="本機備份還原">
+        {backups.length===0?<Text style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable
+          key={row.id} style={styles.restoreRow} onPress={()=>Alert.alert('確認本機還原',
+          '所選備份 '+formatDate(row.createdAt)+'。還原前會先儲存目前帳務；建議先外部存檔。',[
+          {text:'取消',style:'cancel'},
+          {text:'還原',onPress:()=>void restoreLocalBackup(row.id).then(()=>{
+            setBackupStatus('本機備份還原完成；完全關閉再重啟 App 查核。');void reloadBackupMeta();
+          }).catch(error=>Alert.alert('還原失敗',String(error)))},
+        ])}>
+          <View style={{flex:1}}><Text style={styles.rowTitle}>{formatDate(row.createdAt)}</Text>
+          <Text style={styles.note}>{row.keys} 個資料區 · {formatBytes(row.bytes)} · v{row.appVersion}</Text></View>
+          <Text style={styles.chevron}>›</Text>
         </Pressable>)}
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
       </Panel>:null}
-      <ChildButton label="清除帳務資料" summary="危險操作 · 只清 Ledger" danger active={backupPanel==='clear'} onPress={()=>setBackupPanel(backupPanel==='clear'?null:'clear')}/>
-      {backupPanel==='clear'?<Panel title="清除帳務資料">
-        <Text style={styles.dangerText}>會清除：期初現金、買進／賣出／股息／其他 Ledger，以及由它們投影出的持股。</Text>
-        <Text style={styles.note}>不會清除：券商設定、行情設定、台股證券 Catalog、顯示設定與 Monitor 設定。</Text>
-        <ActionButton danger label="建立安全備份後清除帳務" onPress={()=>Alert.alert('第一次確認','將清除全部帳務資料，但保留其他設定。',[{text:'取消',style:'cancel'},{text:'繼續',style:'destructive',onPress:()=>Alert.alert('最後確認','此操作會讓 Ledger 變成空白、期初現金變為 0。',[{text:'取消',style:'cancel'},{text:'確認清除',style:'destructive',onPress:()=>void createLocalBackup().then(()=>{finance.clearFinance();setBackupStatus('帳務資料已清除，安全備份已建立。');void reloadBackupMeta();})}])}])}/>
-        {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
+      <ChildButton label="清除帳務資料" summary="資料安全鎖：本輪暫停危險清除"
+        danger active={backupPanel==='clear'} onPress={()=>setBackupPanel(backupPanel==='clear'?null:'clear')}/>
+      {backupPanel==='clear'?<Panel title="帳務刪除保護">
+        <Text style={styles.dangerText}>V2.3.1 開發階段禁用清除帳務。外部檔案的最近存檔紀錄不能證明它仍存在、也不能證明包含最新交易。</Text>
+        <ActionButton label="先建立外部 JSON 備份" onPress={()=>setBackupPanel('export')}/>
       </Panel>:null}
+      {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
     </View>;
   }
 
@@ -297,7 +464,7 @@ export function SettingsScreen(){
       <Text style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
       <ChildButton label="Widget（mobile 桌面）" summary={widget.config.enabled?'已啟用 · '+widget.config.size:'未啟用'} active={monitorPanel==='widget'} onPress={()=>setMonitorPanel(monitorPanel==='widget'?null:'widget')}/>
       {monitorPanel==='widget'?<View style={{gap:8}}>
-        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot}/>
+        <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot} onRefresh={async()=>{await market.refresh({force:true});await requestNativeWidgetRefresh();}}/>
         <Panel title="手機桌面 Widget 執行狀態">
           <StatusRow label="Android 原生橋接" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
           <ActionButton label="立即刷新手機桌面 Widget" disabled={!nativeRuntimeAvailable} onPress={()=>void requestNativeWidgetRefresh()}/>
@@ -348,7 +515,15 @@ export function SettingsScreen(){
   function displaySection(){
     const d=settings.prefs.display;
     return <View style={styles.children}>
-      <ChildButton label="主題與背景" summary={theme.palette.label+' · 背景 '+(theme.prefs.customBackgroundUri?'自訂':String(theme.prefs.backgroundIndex+1))} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
+      <ChildButton label="各頁標題／頂部表頭文字" summary="首頁／紀錄／庫存／股息／AI／設定" active={displayPanel==='titles'} onPress={()=>setDisplayPanel(displayPanel==='titles'?null:'titles')}/>
+      {displayPanel==='titles'?<Panel title="頁面標題與表頭文字">
+        <Text style={styles.note}>此處統一管理各頁表頭文字；框架位置、尺寸與元件排版仍由各頁排版工具管理，避免重複入口。</Text>
+        {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
+          <Text style={styles.rowTitle}>{page.label}</Text>
+          <TextInput accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
+        </View>)}
+      </Panel>:null}
+      <ChildButton label="主題、背景與 App Icon" summary={theme.palette.label+' · 背景 '+(theme.prefs.customBackgroundUri?'自訂':String(theme.prefs.backgroundIndex+1))} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
       {displayPanel==='theme'?<ThemePanel/>:null}
       <ChildButton label="字體與顯示大小" summary={Math.round(d.fontScale*100)+'%'} active={displayPanel==='font'} onPress={()=>setDisplayPanel(displayPanel==='font'?null:'font')}/>
       {displayPanel==='font'?<Panel title="字體與顯示大小"><Stepper label="字體比例" value={Math.round(d.fontScale*100)} min={80} max={140} step={5} suffix="%" onChange={v=>settings.patchDisplay({fontScale:v/100})}/></Panel>:null}
@@ -361,36 +536,55 @@ export function SettingsScreen(){
       {displayPanel==='percent'?<Panel title="百分比格式"><ChoiceRow label="小數位" options={[0,1,2].map(x=>({key:String(x),label:x+' 位'}))} value={String(d.percentDecimals)} onChange={x=>settings.patchDisplay({percentDecimals:x==='0'?0:x==='1'?1:2})}/></Panel>:null}
       <ChildButton label="日期格式" summary={d.dateFormat} active={displayPanel==='date'} onPress={()=>setDisplayPanel(displayPanel==='date'?null:'date')}/>
       {displayPanel==='date'?<Panel title="日期格式"><ChoiceRow label="日期格式" options={[{key:'YYYY-MM-DD',label:'2026-09-21'},{key:'YYYY/MM/DD',label:'2026/09/21'}]} value={d.dateFormat} onChange={dateFormat=>settings.patchDisplay({dateFormat:dateFormat==='YYYY/MM/DD'?'YYYY/MM/DD':'YYYY-MM-DD'})}/></Panel>:null}
+      <ChildButton label="股息月曆顯示" summary="最後購買日、除息日、登記日、配發日與狀態" active={displayPanel==='dividendCalendar'} onPress={()=>setDisplayPanel(displayPanel==='dividendCalendar'?null:'dividendCalendar')}/>
+      {displayPanel==='dividendCalendar'?<Panel title="股息月曆顯示">
+        <Text style={styles.note}>這裡只控制月曆上顯示哪些事件，不會改變通知提醒是否啟用。</Text>
+        <ToggleRow label="顯示最後購買日" value={settings.prefs.dividendCalendar.showLastBuyDate!==false} onChange={showLastBuyDate=>settings.patchDividendCalendar({showLastBuyDate})}/>
+        <ToggleRow label="顯示除息日" value={settings.prefs.dividendCalendar.showExDate} onChange={showExDate=>settings.patchDividendCalendar({showExDate})}/>
+        <ToggleRow label="顯示收益分配基準日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
+        <ToggleRow label="顯示股息配發日" value={settings.prefs.dividendCalendar.showPaymentDate} onChange={showPaymentDate=>settings.patchDividendCalendar({showPaymentDate})}/>
+        <ToggleRow label="顯示事件狀態" value={settings.prefs.dividendCalendar.showStatus} onChange={showStatus=>settings.patchDividendCalendar({showStatus})}/>
+      </Panel>:null}
+      <ChildButton label="頁面左右滑動" summary={settings.prefs.navigation.swipeEnabled?'已啟用':'已關閉'} active={displayPanel==='swipe'} onPress={()=>setDisplayPanel(displayPanel==='swipe'?null:'swipe')}/>
+      {displayPanel==='swipe'?<Panel title="頁面左右滑動">
+        <Switch value={settings.prefs.navigation.swipeEnabled} onValueChange={swipeEnabled=>settings.patchNavigation({swipeEnabled})}/>
+        <Stepper label="切換靈敏度（距離）" value={settings.prefs.navigation.swipeThreshold} min={50} max={150} step={10} suffix=" px" onChange={swipeThreshold=>settings.patchNavigation({swipeThreshold})}/>
+        <Text style={styles.rowTitle}>僅從螢幕左右邊緣滑動（降低與橫向行情表、圖表衝突）</Text>
+        <Switch value={settings.prefs.navigation.swipeEdgeOnly} onValueChange={swipeEdgeOnly=>settings.patchNavigation({swipeEdgeOnly})}/>
+        <Text style={styles.note}>關閉時維持原全畫面左右滑動；開啟後只接受距左右邊緣 32 px 內起始的手勢。垂直捲動優先。</Text>
+      </Panel>:null}
       <ChildButton label="損益顏色" summary={d.profitColorMode==='red-up-green-down'?'紅漲綠跌':'綠漲紅跌'} active={displayPanel==='pnl'} onPress={()=>setDisplayPanel(displayPanel==='pnl'?null:'pnl')}/>
       {displayPanel==='pnl'?<ProfitColorPanel/>:null}
     </View>;
   }
 
+  function aiSection(){
+    return <View style={styles.children}>
+      <Panel title="AI 助理控制">
+        <ToggleRow label="啟用 AI 助理" value={settings.prefs.ai.enabled} onChange={enabled=>settings.patchAi({enabled})}/>
+        <ToggleRow label="顯示 AI 浮動按鈕／視窗" value={settings.prefs.ai.floatingButton} disabled={!settings.prefs.ai.enabled} onChange={floatingButton=>settings.patchAi({floatingButton})}/>
+        <Text style={styles.note}>關閉浮動按鈕後，仍可從 AI 頁使用助理；關閉 AI 助理則隱藏 AI 頁與浮動視窗。</Text>
+      </Panel>
+    </View>;
+  }
+
   function appSection(){
     return <View style={styles.children}>
-      <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(appPanel==='reset'?null:'reset')}/>
+      <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'reset'))}/>
       {appPanel==='reset'?<Panel title="還原預設設定">
         <Text style={styles.note}>只重設通知、顯示格式與交易預設值，不刪除交易、股息、持股與帳務資料。</Text>
         <ActionButton label="還原 App Preferences" onPress={()=>Alert.alert('確認重設','帳務資料不會被刪除。',[{text:'取消',style:'cancel'},{text:'重設',onPress:settings.resetPreferences}])}/>
       </Panel>:null}
-      <ChildButton label="版本資訊" summary={'v'+VERSION+' · '+BUILD} active={appPanel==='version'} onPress={()=>setAppPanel(appPanel==='version'?null:'version')}/>
+      <ChildButton label="版本資訊" summary={'v'+VERSION+' · '+BUILD} active={appPanel==='version'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'version'))}/>
       {appPanel==='version'?<Panel title="版本資訊">
         <StatusRow label="App" value="TF Asset｜資產管家"/>
         <StatusRow label="Version" value={VERSION}/>
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V4.0.1 SaiETF 行情中心完整移植" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
-      {appPanel==='updates'?<Panel title="V1.1.3 更新資訊">
-        <Text style={styles.infoText}>修正盤中即時行情完整性：昨收不得再冒充即時現價，停用未文件化 pz 作為現價，MIS 無成交價時改採最佳買／賣價並標示來源；單檔更新失敗保留上次值但標記 STALE。效能與診斷新增現價、昨收、LIVE/STALE、價格來源型態與行情時間。</Text>
-      </Panel>:null}
-      <ChildButton label="開發／診斷資訊" summary="Runtime 狀態" active={appPanel==='debug'} onPress={()=>setAppPanel(appPanel==='debug'?null:'debug')}/>
-      {appPanel==='debug'?<Panel title="開發／診斷資訊">
-        <StatusRow label="Market Phase" value={market.phase}/>
-        <StatusRow label="Market Source" value={market.config.source}/>
-        <StatusRow label="Broker Profile ID" value={broker.activeProfileId}/>
-        <StatusRow label="Monitor Mode" value={monitor.config.mode}/>
-        <StatusRow label="Stored TF Asset keys" value={String(storageStats.keys)}/>
+      <ChildButton label="更新資訊" summary="V3.2.49 成交價同步修護" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V3.2.49 更新資訊">
+        <Text style={styles.infoText}>成交價同步修護：持股主卡 currentPrice 僅接受成交型價格。TWSE MIS 僅採 z；pz、bid、ask、y 不再進入主價格、損益與市值。z 缺值時改由零成本 Yahoo backup realtime 接手；TWSE trade 與 Yahoo backup realtime 同為成交型來源時，以較新的 source timestamp 為準，同時間才由來源品質決勝。SQLite V8 清除舊 bid/ask 主價。</Text>
       </Panel>:null}
     </View>;
   }
@@ -400,18 +594,40 @@ export function SettingsScreen(){
       <ChildButton label="免責聲明" summary="投資資訊不構成建議" active={legalPanel==='disclaimer'} onPress={()=>setLegalPanel(legalPanel==='disclaimer'?null:'disclaimer')}/>
       {legalPanel==='disclaimer'?<Panel title="免責聲明"><Text style={styles.infoText}>TF Asset 用於個人資產紀錄、行情整理與試算。App 所呈現之行情、損益、殖利率與試算結果僅供資訊與紀錄用途，不構成投資建議或獲利保證。</Text></Panel>:null}
       <ChildButton label="行情資料聲明" summary="TWSE / TPEx · 可能延遲" active={legalPanel==='market'} onPress={()=>setLegalPanel(legalPanel==='market'?null:'market')}/>
-      {legalPanel==='market'?<Panel title="行情資料聲明"><Text style={styles.infoText}>行情依序使用已授權 Fugle 串流、TWSE MIS、Yahoo 與已標記品質的本機快取，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
+      {legalPanel==='market'?<Panel title="行情資料聲明"><Text style={styles.infoText}>行情來自公開市場資料來源，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
       <ChildButton label="試算聲明" summary="假設結果非保證報酬" active={legalPanel==='calculator'} onPress={()=>setLegalPanel(legalPanel==='calculator'?null:'calculator')}/>
       {legalPanel==='calculator'?<Panel title="試算聲明"><Text style={styles.infoText}>所有情境試算均依輸入條件計算，不代表未來實際市場價格、配息或報酬。</Text></Panel>:null}
+      <ChildButton label="資料與隱私說明" summary="本機資料、外部行情與 AI 資料使用邊界" active={legalPanel==='privacy'} onPress={()=>setLegalPanel(legalPanel==='privacy'?null:'privacy')}/>
+      {legalPanel==='privacy'?<Panel title="資料與隱私說明"><Text style={styles.infoText}>交易、持股、股息與設定以 App 資料層為主要來源；需要外部行情、新聞或 AI 資料時，僅依功能需要取得對應內容。備份與匯出由使用者主動操作，不把設定頁顯示狀態當成雲端備份證明。</Text></Panel>:null}
       <ChildButton label="關於 TF Asset" summary={'Version '+VERSION} active={legalPanel==='about'} onPress={()=>setLegalPanel(legalPanel==='about'?null:'about')}/>
       {legalPanel==='about'?<Panel title="關於 TF Asset"><StatusRow label="名稱" value="TF Asset｜資產管家"/><StatusRow label="版本" value={VERSION}/><StatusRow label="核心原則" value="Single Source of Truth"/></Panel>:null}
     </View>;
   }
 
+  function notificationSection(){
+    return <View style={styles.children}><NotificationPanel/></View>;
+  }
+
   function NotificationPanel(){
     const n=settings.prefs.notifications;
+    const channelLabel=(id:string)=>{
+      if(!nativeNotificationStatus)return '尚未建立';
+      return nativeNotificationStatus.channels[id]===false?'系統已關閉':'已啟用';
+    };
     return <Panel title="通知與提醒">
       <StatusRow label="Android 通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
+      <StatusRow label="App 系統通知" value={nativeNotificationStatus?(nativeNotificationStatus.appEnabled?'已啟用':'系統已關閉'):'讀取中'}/>
+      <StatusRow label="通知頻道" value={nativeNotificationStatus?String(nativeNotificationStatus.channelCount)+' / 5 已建立':'建立中'}/>
+      <StatusRow label="股息與除息" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.dividend)}/>
+      <StatusRow label="行情與價格" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.market)}/>
+      <StatusRow label="更新與錯誤" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.updates)}/>
+      <StatusRow label="資料與備份" value={channelLabel(NATIVE_NOTIFICATION_CHANNELS.backup)}/>
+      {Platform.OS==='android'?<ActionButton label="開啟 Android 通知設定" onPress={()=>void openNativeNotificationSettings()}/>:null}
+      {notificationPermission==='granted'&&nativeNotificationStatus?.appEnabled?<ActionButton label="發送測試通知" onPress={async()=>{
+        const sent=await postNativeTestNotification(NATIVE_NOTIFICATION_CHANNELS.general).catch(()=>false);
+        Alert.alert(sent?'通知測試已送出':'通知測試失敗',sent?'請確認系統通知列是否收到 TF Asset 測試通知。':'請檢查 Android 通知總開關與通知頻道設定。');
+        await refreshNotificationState();
+      }}/>:null}
       <ToggleRow label="除息提醒" value={n.exDividend} onChange={exDividend=>settings.patchNotifications({exDividend})}/>
       <ToggleRow label="配息提醒" value={n.dividend} onChange={dividend=>settings.patchNotifications({dividend})}/>
       <ToggleRow label="行情異常提醒" value={n.marketAlert} onChange={marketAlert=>settings.patchNotifications({marketAlert})}/>
@@ -420,7 +636,7 @@ export function SettingsScreen(){
       <ToggleRow label="震動" value={n.vibration} onChange={vibration=>settings.patchNotifications({vibration})}/>
       <ToggleRow label="聲音" value={n.sound} onChange={sound=>settings.patchNotifications({sound})}/>
       <Stepper label="提前提醒" value={n.leadDays} min={0} max={30} step={1} suffix=" 天" onChange={leadDays=>settings.patchNotifications({leadDays})}/>
-      {notificationPermission==='denied'?<Text style={styles.note}>偏好會保存，但 Android 通知權限尚未允許，因此通知目前不會實際送出。</Text>:null}
+      {notificationPermission==='denied'?<Text style={styles.note}>Android 通知權限尚未允許。允許後可在系統通知頁分別控制股息、行情、更新與備份通知。</Text>:null}
     </Panel>;
   }
 
@@ -500,11 +716,11 @@ export function SettingsScreen(){
     </Panel>;
   }
 
-  return <View style={[styles.root,{backgroundColor:'transparent'}]}>
+  return <SafeAreaView edges={['top']} style={[styles.root,{backgroundColor:'transparent'}]}>
     <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
       <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
-      <Text style={[styles.title,{color:theme.palette.text}]}>控制中心</Text>
-      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、資料、主題與顯示設定集中管理</Text>
+      <Text style={[styles.title,{color:theme.palette.text}]}>{settings.prefs.pageTitles.settings||'控制中心'}</Text>
+      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、行情資料、介面、通知與 App 管理集中設定</Text>
     </View>
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       {PAGE_FRAMES.settings.map((frame,index)=>{
@@ -523,7 +739,21 @@ export function SettingsScreen(){
       })}
       <View style={{height:24}}/>
     </ScrollView>
-  </View>;
+    {marketEditorTarget?<PageFrameSettingsModal
+      key={marketEditorTarget+marketEditorTab}
+      visible={true}
+      pageKey={marketEditorTarget}
+      title={marketEditorTarget==='home'?'首頁行情牆':'庫存行情牆'}
+      frames={PAGE_FRAMES[marketEditorTarget]}
+      initialContentTab={marketEditorTab}
+      onClose={()=>setMarketEditorTarget(null)}
+      previewQuote={finance.holdings[0]?{
+        ...finance.holdings[0],
+        etfType:market.catalog.find(item=>item.symbol===finance.holdings[0]?.symbol)?.etfType??null,
+        dividendType:market.catalog.find(item=>item.symbol===finance.holdings[0]?.symbol)?.dividendType??null,
+      }:undefined}
+    />:null}
+  </SafeAreaView>;
 }
 
 
@@ -624,38 +854,62 @@ type MarketPanelProps={
   onRefresh:()=>void;
   lastSuccessAt:number|null;
   lastError:string|null;
+  marketDataVersion:number;
+  missingSymbols:readonly string[];
+  quoteCount:number;
+  quotes:ReturnType<typeof useMarketRuntime>['quotes'];
+  holdings:ReturnType<typeof useFinance>['holdings'];
   fugleConfigured:boolean;
   providerHealth:readonly {source:string;availability:string;circuitState:string;lastSuccessEpochMillis:number|null}[];
   onSaveFugleApiKey:(apiKey:string)=>Promise<boolean>;
   onClearFugleApiKey:()=>Promise<boolean>;
 };
 
-function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,fugleConfigured,providerHealth,onSaveFugleApiKey,onClearFugleApiKey}:MarketPanelProps){
+function MarketPanel({
+  config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount,
+  quotes,holdings,fugleConfigured,providerHealth,onSaveFugleApiKey,onClearFugleApiKey,
+}:MarketPanelProps){
   const [fugleKey,setFugleKey]=useState('');
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
-  return <Panel title="市場更新">
+  return <Panel title="SaiETF Market Core｜唯一行情中心">
     <StatusRow label="行情路由" value="Fugle → TWSE MIS → Yahoo → Cache"/>
+    <StatusRow label="Market Core 資料版本" value={String(marketDataVersion)}/>
+    <StatusRow label="目前行情筆數" value={String(quoteCount)}/>
+    <StatusRow label="待取得代號" value={missingSymbols.join('、')||'無'}/>
     <StatusRow label="Fugle API Key" value={fugleConfigured?'Android Keystore 已設定':'未設定 · 自動使用 HTTP 備援'}/>
-    <TextInput secureTextEntry autoCapitalize="none" autoCorrect={false} style={styles.input} placeholder="輸入 Fugle API Key（安全儲存）" value={fugleKey} onChangeText={setFugleKey}/>
-    <ActionButton label="儲存 Fugle API Key" disabled={!fugleKey.trim()} onPress={()=>void onSaveFugleApiKey(fugleKey).then(ok=>{if(ok)setFugleKey('');})}/>
+    <TextInput secureTextEntry autoCapitalize="none" autoCorrect={false} style={styles.input}
+      placeholder="輸入 Fugle API Key（Android Keystore 安全儲存）" value={fugleKey} onChangeText={setFugleKey}/>
+    <ActionButton label="儲存 Fugle API Key" disabled={!fugleKey.trim()}
+      onPress={()=>void onSaveFugleApiKey(fugleKey).then(ok=>{if(ok)setFugleKey('');})}/>
     {fugleConfigured?<ActionButton label="清除 Fugle API Key" onPress={()=>void onClearFugleApiKey()}/>:null}
-    {providerHealth.map(row=><StatusRow key={row.source} label={row.source} value={row.availability+' · '+row.circuitState+' · '+formatTime(row.lastSuccessEpochMillis)}/>)}
-    <StatusRow label="最近成功" value={formatTime(lastSuccessAt)}/>
+    {providerHealth.map(row=><StatusRow key={row.source} label={'Provider '+row.source}
+      value={row.availability+' · '+row.circuitState+' · '+formatTime(row.lastSuccessEpochMillis)}/>)}
+    <StatusRow label="最近成功行情時間" value={formatTime(lastSuccessAt)}/>
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
     <ActionButton label={refreshing?'更新中…':'立即更新行情'} disabled={refreshing} onPress={onRefresh}/>
+    <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}/>
     <ToggleRow label="啟用市場更新排程" value={config.scheduleEnabled} onChange={scheduleEnabled=>patch({scheduleEnabled})}/>
     <ToggleRow label="回到前景立即刷新" value={config.refreshOnForeground} onChange={refreshOnForeground=>patch({refreshOnForeground})}/>
     <ToggleRow label="停止全部自動更新" value={config.stopAll} onChange={stopAll=>patch({stopAll})}/>
     <View style={[styles.scheduleBox,config.stopAll&&styles.disabledBox]}>
-      <ToggleRow label="盤中排程" value={config.live.enabled} disabled={config.stopAll} onChange={enabled=>onChange({...config,live:{...config.live,enabled}})}/>
-      <TimeFields start={config.live.start} end={config.live.end} disabled={config.stopAll} onStart={start=>onChange({...config,live:{...config.live,start}})} onEnd={end=>onChange({...config,live:{...config.live,end}})}/>
-      <Stepper label="盤中更新頻率" value={config.live.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒" disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,live:{...config.live,refreshSeconds}})}/>
+      <ToggleRow label="盤中排程" value={config.live.enabled} disabled={config.stopAll}
+        onChange={enabled=>onChange({...config,live:{...config.live,enabled}})}/>
+      <TimeFields start={config.live.start} end={config.live.end} disabled={config.stopAll}
+        onStart={start=>onChange({...config,live:{...config.live,start}})}
+        onEnd={end=>onChange({...config,live:{...config.live,end}})}/>
+      <Stepper label="盤中更新頻率" value={config.live.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒"
+        disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,live:{...config.live,refreshSeconds}})}/>
     </View>
     <View style={[styles.scheduleBox,config.stopAll&&styles.disabledBox]}>
-      <ToggleRow label="盤後排程" value={config.afterHours.enabled} disabled={config.stopAll} onChange={enabled=>onChange({...config,afterHours:{...config.afterHours,enabled}})}/>
-      <TimeFields start={config.afterHours.start} end={config.afterHours.end} disabled={config.stopAll} onStart={start=>onChange({...config,afterHours:{...config.afterHours,start}})} onEnd={end=>onChange({...config,afterHours:{...config.afterHours,end}})}/>
-      <Stepper label="盤後更新頻率" value={config.afterHours.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒" disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,afterHours:{...config.afterHours,refreshSeconds}})}/>
+      <ToggleRow label="盤後排程" value={config.afterHours.enabled} disabled={config.stopAll}
+        onChange={enabled=>onChange({...config,afterHours:{...config.afterHours,enabled}})}/>
+      <TimeFields start={config.afterHours.start} end={config.afterHours.end} disabled={config.stopAll}
+        onStart={start=>onChange({...config,afterHours:{...config.afterHours,start}})}
+        onEnd={end=>onChange({...config,afterHours:{...config.afterHours,end}})}/>
+      <Stepper label="盤後更新頻率" value={config.afterHours.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒"
+        disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,afterHours:{...config.afterHours,refreshSeconds}})}/>
     </View>
+    <Text style={styles.note}>V4.0.1 行情網路入口只由 MarketDataCenter 管理；Memory Hot Store 為盤中 SSOT，SQLite 僅做持久化。首頁、庫存、圖表、Finance、Widget 與 Monitor 不再各自建立第二條行情抓取路徑。</Text>
   </Panel>;
 }
 
