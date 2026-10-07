@@ -2,6 +2,7 @@ const fs=require('fs');
 const assert=require('assert');
 
 const market=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
+const marketCore=fs.readFileSync('src/market/MarketCore.ts','utf8');
 const widgetDomain=fs.readFileSync('src/widget/widgetDomain.ts','utf8');
 const widgetRuntime=fs.readFileSync('src/widget/WidgetSettingsRuntime.tsx','utf8');
 const widgetPanel=fs.readFileSync('src/components/widget/WidgetControlPanel.tsx','utf8');
@@ -16,7 +17,8 @@ const bridge=fs.readFileSync('src/native/TfAssetNativeBridge.ts','utf8');
 const app=fs.readFileSync('App.tsx','utf8');
 const layout=fs.readFileSync('native/android/res/layout/tf_asset_widget.xml','utf8');
 
-for(const token of ['updatedCount','unresolved','refreshPromiseRef','force:true','部分行情暫用上次資料']) assert.ok(market.includes(token),'market refresh contract missing '+token);
+for(const token of ['unresolvedSymbols','refreshPromiseRef','force:true','batch.quotes.size===0']) assert.ok(market.includes(token),'market runtime refresh contract missing '+token);
+for(const token of ['MarketDataCenter','MemoryMarketStore','unresolvedSymbols','sourcesTried']) assert.ok(marketCore.includes(token),'market core refresh contract missing '+token);
 
 for(const token of ['quote-wall','profitColorFields','wallColumns','forceRefreshOnTap']) assert.ok(widgetDomain.includes(token),'Widget domain missing '+token);
 for(const token of ['profitColorFields','wallColumns','forceRefreshOnTap']) assert.ok(widgetRuntime.includes(token),'Widget runtime persistence missing '+token);
