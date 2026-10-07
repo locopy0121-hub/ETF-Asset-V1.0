@@ -30,6 +30,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     private const val FUGLE_IV_PREF="fugle_api_key_iv"
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
+  private val marketDb by lazy { TfAssetMarketDatabase(reactContext) }
   private var themePickerPromise:Promise?=null
 
   private val activityListener=object:BaseActivityEventListener(){
@@ -134,6 +135,28 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       }
       prefs.edit().putString("app_icon_key",iconKey).apply()
     }.onSuccess{promise.resolve(true)}.onFailure{promise.reject("ICON_SWITCH_FAILED",it)}
+  }
+
+  @ReactMethod fun loadMarketCache(promise:Promise){
+    runCatching{marketDb.load().toString()}
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_CACHE_LOAD_FAILED",it)}
+  }
+
+  @ReactMethod fun persistMarketCache(payloadJson:String,promise:Promise){
+    runCatching{
+      marketDb.persist(org.json.JSONObject(payloadJson))
+      true
+    }.onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_CACHE_PERSIST_FAILED",it)}
+  }
+
+  @ReactMethod fun clearMarketCache(promise:Promise){
+    runCatching{
+      marketDb.clearAll()
+      true
+    }.onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_CACHE_CLEAR_FAILED",it)}
   }
 
   @ReactMethod fun saveFugleApiKey(apiKey:String,promise:Promise){
