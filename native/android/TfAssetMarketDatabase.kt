@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
  * provenance is recorded; bid/ask and previous-close fallbacks are never drawn as trades.
  */
 internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
-  context.applicationContext,"tf_asset_market_center_v1.db",null,8
+  context.applicationContext,"tf_asset_market_center_v1.db",null,9
 ){
   companion object{
     private val TAIPEI=ZoneId.of("Asia/Taipei")
@@ -100,10 +100,40 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
     )""")
   }
 
+
+  private fun createMarketCoreTables(db:SQLiteDatabase){
+    db.execSQL("""CREATE TABLE IF NOT EXISTS market_core_snapshots(
+      symbol TEXT PRIMARY KEY NOT NULL,
+      session_date TEXT NOT NULL,
+      source TEXT NOT NULL,
+      quality TEXT NOT NULL,
+      source_timestamp_ms INTEGER NOT NULL,
+      received_at_ms INTEGER NOT NULL,
+      persisted_at_ms INTEGER NOT NULL,
+      payload_json TEXT NOT NULL
+    )""")
+    db.execSQL("""CREATE TABLE IF NOT EXISTS market_core_minute_candles(
+      symbol TEXT NOT NULL,
+      session_date TEXT NOT NULL,
+      bucket_epoch_ms INTEGER NOT NULL,
+      open REAL NOT NULL,
+      high REAL NOT NULL,
+      low REAL NOT NULL,
+      close REAL NOT NULL,
+      volume INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      updated_at_ms INTEGER NOT NULL,
+      PRIMARY KEY(symbol,bucket_epoch_ms)
+    )""")
+    db.execSQL("CREATE INDEX IF NOT EXISTS market_core_candles_symbol_session ON market_core_minute_candles(symbol,session_date,bucket_epoch_ms)")
+  }
+
   override fun onCreate(db:SQLiteDatabase){
     createQuoteTable(db)
     createIntradayTable(db)
     createResearchTables(db)
+    createMarketCoreTables(db)
+    if(oldVersion<9)createMarketCoreTables(db)
     db.execSQL("CREATE TABLE IF NOT EXISTS market_meta(key TEXT PRIMARY KEY,val INTEGER NOT NULL)")
     db.execSQL("INSERT OR IGNORE INTO market_meta(key,val) VALUES('version',0)")
   }
@@ -419,6 +449,99 @@ internal class TfAssetMarketDatabase(context:Context):SQLiteOpenHelper(
       .put("datasetVersion",datasetVersion).put("importedAt",importedAt)
   }
 
+
+
+  @Synchronized fun persistMarketCoreCache(payloadJson:String):Boolean{
+    val root=JSONObject(payloadJson)
+    require(root.optInt("schema",-1)==4){"Unsupported market-core cache schema"}
+    val snapshots=root.optJSONArray("snapshots")?:JSONArray()
+    val candles=root.optJSONArray("candles")?:JSONArray()
+    val persistedAt=root.optLong("persistedAtEpochMillis",System.currentTimeMillis())
+    val db=writableDatabase
+    db.beginTransaction()
+    try{
+      for(i in 0 until snapshots.length()){
+        val row=snapshots.optJSONObject(i)?:continue
+        val symbol=row.optString("symbol","").trim().uppercase()
+        val sessionDate=row.optString("sessionDate","").trim()
+        val source=row.optString("source","").trim()
+        val quality=row.optString("quality","").trim()
+        val sourceAt=row.optLong("sourceTimestampEpochMillis",0L)
+        val receivedAt=row.optLong("receivedAtEpochMillis",0L)
+        if(!symbol.matches(Regex("[0-9A-Z]{4,10}"))||sessionDate.isBlank()||sourceAt<=0L||receivedAt<=0L)continue
+        val values=ContentValues().apply{
+          put("symbol",symbol);put("session_date",sessionDate);put("source",source);put("quality",quality)
+          put("source_timestamp_ms",sourceAt);put("received_at_ms",receivedAt);put("persisted_at_ms",persistedAt)
+          put("payload_json",row.toString())
+        }
+        db.insertWithOnConflict("market_core_snapshots",null,values,SQLiteDatabase.CONFLICT_REPLACE)
+      }
+      for(i in 0 until candles.length()){
+        val row=candles.optJSONObject(i)?:continue
+        val symbol=row.optString("symbol","").trim().uppercase()
+        val sessionDate=row.optString("sessionDate","").trim()
+        val bucket=row.optLong("bucketEpochMillis",0L)
+        val open=row.optDouble("open",Double.NaN);val high=row.optDouble("high",Double.NaN)
+        val low=row.optDouble("low",Double.NaN);val close=row.optDouble("close",Double.NaN)
+        if(!symbol.matches(Regex("[0-9A-Z]{4,10}"))||sessionDate.isBlank()||bucket<=0L||
+          !open.isFinite()||!high.isFinite()||!low.isFinite()||!close.isFinite()||
+          open<=0.0||high<=0.0||low<=0.0||close<=0.0)continue
+        val values=ContentValues().apply{
+          put("symbol",symbol);put("session_date",sessionDate);put("bucket_epoch_ms",bucket)
+          put("open",open);put("high",high);put("low",low);put("close",close)
+          put("volume",row.optLong("volume",0L).coerceAtLeast(0L))
+          put("source",row.optString("source",""));put("updated_at_ms",row.optLong("updatedAtEpochMillis",persistedAt))
+        }
+        db.insertWithOnConflict("market_core_minute_candles",null,values,SQLiteDatabase.CONFLICT_REPLACE)
+      }
+      db.execSQL("""DELETE FROM market_core_minute_candles
+        WHERE rowid IN (
+          SELECT rowid FROM market_core_minute_candles
+          ORDER BY bucket_epoch_ms DESC
+          LIMIT -1 OFFSET 12000
+        )""")
+      db.setTransactionSuccessful()
+    }finally{db.endTransaction()}
+    return true
+  }
+
+  @Synchronized fun loadMarketCoreCache():String{
+    val db=readableDatabase
+    val snapshots=JSONArray()
+    var persistedAt=0L
+    db.rawQuery("""SELECT payload_json,persisted_at_ms FROM market_core_snapshots
+      ORDER BY symbol""",null).use{cursor->
+      while(cursor.moveToNext()){
+        runCatching{snapshots.put(JSONObject(cursor.getString(0)))}
+        persistedAt=maxOf(persistedAt,cursor.getLong(1))
+      }
+    }
+    val candles=JSONArray()
+    db.rawQuery("""SELECT symbol,session_date,bucket_epoch_ms,open,high,low,close,volume,source,updated_at_ms
+      FROM market_core_minute_candles ORDER BY bucket_epoch_ms ASC""",null).use{cursor->
+      while(cursor.moveToNext()){
+        candles.put(JSONObject()
+          .put("symbol",cursor.getString(0)).put("sessionDate",cursor.getString(1))
+          .put("bucketEpochMillis",cursor.getLong(2)).put("open",cursor.getDouble(3))
+          .put("high",cursor.getDouble(4)).put("low",cursor.getDouble(5)).put("close",cursor.getDouble(6))
+          .put("volume",cursor.getLong(7)).put("source",cursor.getString(8))
+          .put("updatedAtEpochMillis",cursor.getLong(9)))
+      }
+    }
+    return JSONObject().put("schema",4).put("snapshots",snapshots).put("candles",candles)
+      .put("persistedAtEpochMillis",persistedAt).toString()
+  }
+
+  @Synchronized fun clearMarketCoreCache():Boolean{
+    val db=writableDatabase
+    db.beginTransaction()
+    try{
+      db.delete("market_core_snapshots",null,null)
+      db.delete("market_core_minute_candles",null,null)
+      db.setTransactionSuccessful()
+    }finally{db.endTransaction()}
+    return true
+  }
 
   @Synchronized fun upsertVerified(candidates:List<JSONObject>,checkedAt:Long):JSONObject{
     val db=writableDatabase
