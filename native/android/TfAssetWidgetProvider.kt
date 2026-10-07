@@ -85,20 +85,17 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         val symbols=orderedHoldings(oldSnapshot,config).map{it.optString("symbol","")}
           .filter{it.matches(Regex("[0-9A-Za-z]{4,8}"))}.distinct()
         if(symbols.isEmpty())throw IllegalStateException("目前無持股代號")
-        // Widget has NO second API implementation. It calls exactly the same native
-        // official fetcher + SQLite transactional store as MarketRuntime/React.
-        val state=TfAssetMarketCenter(context).refresh(symbols)
+        // V4 has one quote SSOT. Widget never performs a second HTTP fetch:
+        // it raises a force-refresh request for the active App MarketDataCenter and
+        // renders the same persisted market_core_snapshots SQLite cache.
+        val state=TfAssetMarketDatabase(context).marketCoreRuntimeSnapshot()
         val rows=state.optJSONArray("quotes")?:JSONArray()
-        val status=if(state.optInt("updatedCount",0)>0)
-          "行情中心 v"+state.optLong("version")+"｜更新"+state.optInt("updatedCount")+"檔"
-          else "行情中心 v"+state.optLong("version")+"｜無新行情"
-        val missing=state.optJSONArray("missing")?:JSONArray()
-        val detail=if(missing.length()>0)
-          "｜待取得 "+(0 until minOf(3,missing.length())).joinToString(","){missing.optString(it)}
-          else ""
         val newest=(0 until rows.length()).mapNotNull{rows.optJSONObject(it)?.optLong("sourceQuoteAt",0L)}
           .maxOrNull()?:0L
-        val edit=prefs.edit().putString("widget_refresh_status",status+detail+"｜財務按 App 快照同步")
+        val status=if(newest>0L)
+          "已送出更新要求｜Market Core "+exchangeClock(newest)
+          else "已送出更新要求｜Market Core 尚無行情"
+        val edit=prefs.edit().putString("widget_refresh_status",status+"｜財務按 App 快照同步")
         if(newest>0L)edit.putLong("wall_market_source_at",newest)
         edit.apply()
       }catch(error:Exception){
