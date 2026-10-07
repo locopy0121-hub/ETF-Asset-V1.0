@@ -31,11 +31,15 @@ assert.match(finance,/ledgerNameBySymbol\.get\(summary\.etfCode\)/,
 
 // Performance contract: native market polling must not stringify the full catalog
 // on every scheduled quote tick, and scheduled/background refreshes stay silent.
-assert.match(market,/const persistedQuotes=unifiedMarketCenterAvailable\?EMPTY_PERSISTED_QUOTES:quotes/);
-assert.match(market,/const persistedLastSuccessAt=unifiedMarketCenterAvailable\?null:lastSuccessAt/);
-assert.match(market,/\[hydrated,config,persistedQuotes,persistedLastSuccessAt,catalog,catalogFetchedAt\]/);
-assert.doesNotMatch(market,/\[hydrated,config,quotes,lastSuccessAt,catalog,catalogFetchedAt\]/);
-assert.match(market,/setMissingSymbols\(current=>sameStrings\(current,nextMissing\)\?current:nextMissing\)/,
+assert.match(market,/const persistedQuotes=await persistence\.loadSnapshots\(\)/,
+  'SQLite/native persistence must hydrate MarketDataCenter snapshots once during runtime startup');
+assert.match(market,/persistenceControllerRef\.current=new MarketPersistenceController\(center,persistence\)/,
+  'quote persistence must be owned by the MarketDataCenter persistence controller');
+assert.match(market,/const payload:PersistedMarketRuntime=\{schema:4,config,catalog,lastSuccessAt\}/);
+assert.match(market,/\[hydrated,config,catalog,lastSuccessAt\]/);
+assert.doesNotMatch(market,/\[hydrated,config,quotes,lastSuccessAt,catalog\]/,
+  'scheduled quote ticks must not stringify the full quote set or catalog payload');
+assert.match(market,/setUnresolvedSymbols\(current=>sameStrings\(current,unresolved\)\?current:unresolved\)/,
   'unchanged missing-symbol arrays must not force context rerenders');
 assert.match(market,/if\(disposed\|\|AppState\.currentState!=='active'\)return;/,
   'scheduled market polling must stay silent and idle while the app is inactive');

@@ -86,6 +86,7 @@ function fallbackCatalog():TaiwanSecurityInfo[]{
     listingDate:null,parValueText:null,chairman:null,generalManager:null,address:null,source:'bootstrap-only',
   }));
 }
+const sameStrings=(a:readonly string[],b:readonly string[])=>a.length===b.length&&a.every((value,index)=>value===b[index]);
 const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
 const hhmm=(value:string)=>{
   const [hRaw='0',mRaw='0']=String(value||'00:00').split(':');
@@ -382,7 +383,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         });
         const health=[...(fugleRef.current?[fugleRef.current.health(Date.now())]:[]),...batch.providerHealth];
         setProviderHealth(health);
-        const unresolved=[...batch.unresolvedSymbols].sort();setUnresolvedSymbols(unresolved);
+        const unresolved=[...batch.unresolvedSymbols].sort();setUnresolvedSymbols(current=>sameStrings(current,unresolved)?current:unresolved);
         if(batch.quotes.size>0){
           const newest=[...batch.quotes.values()].reduce((max,row)=>Math.max(max,row.sourceTimestampEpochMillis),0);
           if(newest>0)setLastSuccessAt(current=>Math.max(current??0,newest));
