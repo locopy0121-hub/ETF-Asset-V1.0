@@ -13,15 +13,14 @@ import kotlin.math.abs
  */
 internal object TfAssetMarketPresentation{
   fun decorate(context:Context,raw:JSONObject):JSONObject{
-    val market=TfAssetMarketCenter(context).snapshot()
+    val market=TfAssetMarketDatabase(context).marketCoreRuntimeSnapshot()
     val version=market.optLong("version",0L)
     val marketRows=market.optJSONArray("quotes")?:JSONArray()
     val quoteBySymbol=(0 until marketRows.length()).mapNotNull{marketRows.optJSONObject(it)}
       .associateBy{it.optString("symbol","")}
     val decorated=JSONObject(raw.toString())
     val holdings=raw.optJSONArray("holdings")?:JSONArray()
-    val synchronized=raw.optLong("marketDataVersion",-1L)==version &&
-      raw.optBoolean("valuationComplete",false) &&
+    val synchronized=raw.optBoolean("valuationComplete",false) &&
       (0 until holdings.length()).all{i->
         val row=holdings.optJSONObject(i)?:return@all false
         val quote=quoteBySymbol[row.optString("symbol","")]?:return@all false
@@ -31,7 +30,8 @@ internal object TfAssetMarketPresentation{
           .toEpochMilli()==quote.optLong("sourceQuoteAt")}.getOrDefault(false)
         samePrice&&sameSource
       }
-    decorated.put("marketDataVersion",version)
+    decorated.put("marketDataVersion",raw.optLong("marketDataVersion",0L))
+      .put("marketCachePersistedAt",version)
       .put("marketSynchronized",synchronized)
     val asset=JSONObject((raw.optJSONObject("asset")?:JSONObject()).toString())
     if(!synchronized){
@@ -58,7 +58,11 @@ internal object TfAssetMarketPresentation{
         row.put("change",if(close.isFinite()&&close>0)price-close else JSONObject.NULL)
         row.put("changePercent",if(close.isFinite()&&close>0)(price-close)/close*100 else JSONObject.NULL)
         row.put("updatedAt",Instant.ofEpochMilli(at).toString())
-        val label=if(quote.optString("quality","")=="trade")"成交" else "官方收盤參考"
+        val label=when(quote.optString("quality","")){
+          "trade"->"成交"
+          "backup_realtime"->"備援行情"
+          else->"快取／收盤參考"
+        }
         row.put("marketStatus",label+(if(now-at>86_400_000L)"（歷史）" else ""))
         row.put("marketQuality",quote.optString("quality",""))
       }
