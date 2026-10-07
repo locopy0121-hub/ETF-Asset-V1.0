@@ -100,7 +100,7 @@ jobs:
     name: V4.0.1 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
-    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.'))
+    if: (github.event_name == 'push' && startsWith(github.ref_name, 'v4.0.')) || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.')))
     needs: [quality, backend-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 90
