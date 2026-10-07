@@ -7,6 +7,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import android.provider.OpenableColumns
 import java.io.ByteArrayOutputStream
 import com.facebook.react.bridge.Arguments
@@ -22,9 +30,13 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     private const val CREATE_BACKUP_DOCUMENT=4909
     private const val OPEN_BACKUP_DOCUMENT=4910
     private const val MAX_BACKUP_BYTES=32*1024*1024
+    private const val FUGLE_KEY_ALIAS="tfasset-fugle-api-key-v1"
+    private const val FUGLE_KEY_PREF="fugle_api_key_ciphertext"
+    private const val FUGLE_IV_PREF="fugle_api_key_iv"
     @Volatile private var crashJournalInstalled=false
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
+  private val marketDb by lazy { TfAssetMarketDatabase(reactContext) }
   // Store only exception class and code location. Never store trades, balances or exception messages.
   private fun installCrashJournal(){
     synchronized(TfAssetNativeModule::class.java){
@@ -151,6 +163,81 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
    * App and Widget both use the SAME official fetcher and SQLite repository.
    * Network/disk work stays off the UI and React Native bridge threads.
    */
+  @ReactMethod fun loadMarketCoreCache(promise:Promise){
+    runCatching{marketDb.loadMarketCoreCache()}
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_CORE_CACHE_LOAD_FAILED",it)}
+  }
+
+  @ReactMethod fun persistMarketCoreCache(payloadJson:String,promise:Promise){
+    runCatching{marketDb.persistMarketCoreCache(payloadJson)}
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_CORE_CACHE_PERSIST_FAILED",it)}
+  }
+
+  @ReactMethod fun clearMarketCoreCache(promise:Promise){
+    runCatching{marketDb.clearMarketCoreCache()}
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_CORE_CACHE_CLEAR_FAILED",it)}
+  }
+
+  @ReactMethod fun saveFugleApiKey(apiKey:String,promise:Promise){
+    val normalized=apiKey.trim()
+    if(normalized.isBlank()){ clearFugleApiKey(promise); return }
+    runCatching{
+      val key=getOrCreateFugleKey()
+      val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+      cipher.init(Cipher.ENCRYPT_MODE,key)
+      val ciphertext=cipher.doFinal(normalized.toByteArray(Charsets.UTF_8))
+      prefs.edit()
+        .putString(FUGLE_KEY_PREF,Base64.encodeToString(ciphertext,Base64.NO_WRAP))
+        .putString(FUGLE_IV_PREF,Base64.encodeToString(cipher.iv,Base64.NO_WRAP))
+        .apply()
+      true
+    }.onSuccess{promise.resolve(it)}.onFailure{promise.reject("FUGLE_KEY_SAVE_FAILED",it)}
+  }
+
+  @ReactMethod fun loadFugleApiKey(promise:Promise){
+    val encrypted=prefs.getString(FUGLE_KEY_PREF,null)
+    val iv=prefs.getString(FUGLE_IV_PREF,null)
+    if(encrypted.isNullOrBlank()||iv.isNullOrBlank()){promise.resolve(null);return}
+    runCatching{
+      val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
+      val key=store.getKey(FUGLE_KEY_ALIAS,null) as? SecretKey ?: return@runCatching null
+      val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+      cipher.init(Cipher.DECRYPT_MODE,key,GCMParameterSpec(128,Base64.decode(iv,Base64.NO_WRAP)))
+      String(cipher.doFinal(Base64.decode(encrypted,Base64.NO_WRAP)),Charsets.UTF_8)
+    }.onSuccess{promise.resolve(it)}.onFailure{
+      prefs.edit().remove(FUGLE_KEY_PREF).remove(FUGLE_IV_PREF).apply()
+      promise.resolve(null)
+    }
+  }
+
+  @ReactMethod fun clearFugleApiKey(promise:Promise){
+    runCatching{
+      prefs.edit().remove(FUGLE_KEY_PREF).remove(FUGLE_IV_PREF).apply()
+      val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
+      if(store.containsAlias(FUGLE_KEY_ALIAS))store.deleteEntry(FUGLE_KEY_ALIAS)
+      true
+    }.onSuccess{promise.resolve(it)}.onFailure{promise.reject("FUGLE_KEY_CLEAR_FAILED",it)}
+  }
+
+  private fun getOrCreateFugleKey():SecretKey{
+    val store=KeyStore.getInstance("AndroidKeyStore").apply{load(null)}
+    (store.getKey(FUGLE_KEY_ALIAS,null) as? SecretKey)?.let{return it}
+    val generator=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore")
+    generator.init(
+      KeyGenParameterSpec.Builder(
+        FUGLE_KEY_ALIAS,
+        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+      ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+       .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+       .setKeySize(256)
+       .build(),
+    )
+    return generator.generateKey()
+  }
+
   @ReactMethod fun refreshUnifiedMarketData(symbolsJson:String,promise:Promise){
     val requested=runCatching{
       val array=org.json.JSONArray(symbolsJson)
