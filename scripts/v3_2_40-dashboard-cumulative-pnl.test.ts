@@ -8,9 +8,8 @@ const app=JSON.parse(read('app.json'));
 const versionParts=String(pkg.version).split('.').map(Number);
 assert.equal(versionParts.length,3);
 const [major=0,minor=0,patch=0]=versionParts;
-assert.equal(major,3);
-assert.equal(minor,2);
-assert.ok(patch>=40,'dashboard cumulative PnL contract requires V3.2.40+');
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=40))),
+  'dashboard cumulative PnL contract requires V3.2.40 or any later version');
 const expectedCode=major*10000+minor*100+patch;
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,expectedCode);
