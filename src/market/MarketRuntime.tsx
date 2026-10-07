@@ -89,7 +89,7 @@ function fallbackCatalog():TaiwanSecurityInfo[]{
 const sameStrings=(a:readonly string[],b:readonly string[])=>a.length===b.length&&a.every((value,index)=>value===b[index]);
 const persistedPointSource=(source:string):RuntimeIntradayPoint['source']=>
   source==='FUGLE'||source==='TWSE_MIS'||source==='YAHOO'||source==='SHIOAJI'?source:'YAHOO';
-function resetRuntimeIntradaySession(rows:readonly RuntimeQuote[],sessionDate:string):readonly RuntimeQuote[]{
+function resetRuntimeIntradaySession(rows:RuntimeQuote[],sessionDate:string):RuntimeQuote[]{
   let changed=false;
   const next=rows.map(row=>{
     if(row.intradayDate===sessionDate)return row;
