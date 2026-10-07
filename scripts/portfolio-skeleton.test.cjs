@@ -3,9 +3,9 @@ const assert=require('assert');
 
 const src=fs.readFileSync('src/screens/PortfolioScreen.tsx','utf8');
 
-assert.match(src,/fixedColumn/,'portfolio must have fixed ETF identity column');
+assert.match(src,/fixedColumn/,'portfolio must have fixed security identity column');
 assert.match(src,/ScrollView horizontal/,'numeric columns must scroll independently');
-assert.match(src,/ETF代號｜名稱/,'first column label must be ETF code + name');
+assert.match(src,/代號｜名稱/,'first column label must be Taiwan security code + name');
 for(const label of ['股數','即時','純均價','含費均價','損益','報酬率']) {
   assert.ok(src.includes(label),'missing portfolio column '+label);
 }

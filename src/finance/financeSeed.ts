@@ -3,13 +3,23 @@ import { freezeTradeEntry, type CanonicalLedgerEntry, type MarketQuoteInput } fr
 export type RuntimeQuote = MarketQuoteInput & Readonly<{
   previousClose: number;
   sparkline: readonly number[];
-  pinned?: boolean;
-  marketSource?: 'TWSE_MIS'|'CACHE'|'FALLBACK';
-  quoteStatus?: 'LIVE'|'STALE';
-  quoteDate?: string;
-  quoteTime?: string;
-  receivedAt?: number;
-  priceKind?: 'lastTrade'|'bid'|'ask'|'none';
+  pinned?: boolean|undefined;
+  marketSource?: 'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE'|'FALLBACK'|undefined;
+  quoteStatus?: 'LIVE'|'DELAYED'|'STALE'|'OFFLINE'|undefined;
+  quoteDate?: string|undefined;
+  quoteTime?: string|undefined;
+  receivedAt?: number|undefined;
+  sourceTimestamp?: number|undefined;
+  sessionDate?: string|undefined;
+  fallbackLevel?: number|undefined;
+  sequence?: number|undefined;
+  exchange?: string|undefined;
+  market?: string|undefined;
+  volume?: number|undefined;
+  bid?: number|undefined;
+  ask?: number|undefined;
+  isClose?: boolean|undefined;
+  priceKind?: 'lastTrade'|'bid'|'ask'|'regularMarketPrice'|'none'|undefined;
 }>;
 
 export const INITIAL_CASH=750_000;

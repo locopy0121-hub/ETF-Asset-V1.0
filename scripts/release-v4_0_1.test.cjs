@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const app=JSON.parse(fs.readFileSync('app.json','utf8'));
+const ci=fs.readFileSync('.github/workflows/ci.yml','utf8');
+const release=fs.readFileSync('.github/workflows/release-v1.yml','utf8');
+const settings=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
+
+assert.equal(pkg.version,'4.0.1');
+assert.equal(app.expo.version,'4.0.1');
+assert.equal(app.expo.android.versionCode,40001);
+assert.equal(app.expo.ios.buildNumber,'40001');
+assert.match(ci,/test:v4_0_1/);
+assert.match(release,/TF Asset V4\.0\.1 GitHub APK/);
+assert.match(release,/versionCode 40001/);
+assert.match(release,/versionName "4\.0\.1"/);
+assert.match(release,/TF-Asset-V4\.0\.1-github\.apk/);
+assert.match(settings,/const VERSION='4\.0\.1'/);
+assert.match(settings,/const BUILD='40001'/);
+console.log('TF ASSET V4.0.1 RELEASE IDENTITY: PASS');

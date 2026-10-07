@@ -48,8 +48,8 @@ type DisplayPanel=null|'theme'|'font'|'amount'|'percent'|'date'|'pnl';
 type AppPanel=null|'reset'|'version'|'updates'|'debug';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'about';
 
-const VERSION='1.1.3';
-const BUILD='10103';
+const VERSION='4.0.1';
+const BUILD='40001';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -147,7 +147,7 @@ export function SettingsScreen(){
   function systemSection(){
     return <View style={styles.children}>
       <ChildButton label="市場更新" summary={marketPhaseLabel(market.phase)} active={systemPanel==='market'} onPress={()=>setSystemPanel(systemPanel==='market'?null:'market')}/>
-      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError}/>:null}
+      {systemPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh()} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} fugleConfigured={market.fugleConfigured} providerHealth={market.providerHealth} onSaveFugleApiKey={market.saveFugleApiKey} onClearFugleApiKey={market.clearFugleApiKey}/>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
         <StatusRow label="通知權限" value={notificationPermission==='granted'?'已允許':notificationPermission==='denied'?'未允許':'依系統版本'}/>
@@ -173,7 +173,7 @@ export function SettingsScreen(){
         {market.quotes.slice(0,8).map(quote=><StatusRow key={'market-'+quote.symbol} label={'行情 '+quote.symbol} value={`${quote.currentPrice.toFixed(2)}｜昨收 ${quote.previousClose.toFixed(2)}｜${quote.quoteStatus??'STALE'}｜${quote.priceKind??'-'}｜${quote.quoteTime??'-'}`}/>)}
         <StatusRow label="交易紀錄" value={String(finance.entries.length)}/>
         <StatusRow label="持股筆數" value={String(finance.holdings.length)}/>
-        <StatusRow label="ETF 基礎資料" value={String(market.catalog.length)}/>
+        <StatusRow label="台股證券資料" value={String(market.catalog.length)}/>
       </Panel>:null}
       <ChildButton label="通知與提醒" summary="除息、配息、行情、失敗、備份" active={systemPanel==='notifications'} onPress={()=>setSystemPanel(systemPanel==='notifications'?null:'notifications')}/>
       {systemPanel==='notifications'?<NotificationPanel/>:null}
@@ -211,19 +211,19 @@ export function SettingsScreen(){
 
   function dataSection(){
     return <View style={styles.children}>
-      <ChildButton label="ETF 基礎資料" summary={market.catalog.length+' 筆'} active={dataPanel==='catalog'} onPress={()=>setDataPanel(dataPanel==='catalog'?null:'catalog')}/>
-      {dataPanel==='catalog'?<Panel title="ETF 基礎資料">
+      <ChildButton label="台股證券資料" summary={market.catalog.length+' 筆'} active={dataPanel==='catalog'} onPress={()=>setDataPanel(dataPanel==='catalog'?null:'catalog')}/>
+      {dataPanel==='catalog'?<Panel title="台股證券資料">
         <StatusRow label="資料來源" value="TWSE + TPEx"/>
-        <StatusRow label="ETF 資料筆數" value={String(market.catalog.length)}/>
-        <ActionButton label={market.catalogRefreshing?'更新中…':'立即更新 ETF 基礎資料'} disabled={market.catalogRefreshing} onPress={()=>void market.refreshCatalog()}/>
-        <Text style={styles.note}>記帳搜尋、代號提示與名稱解析共用 Market Runtime 的 ETF Catalog。</Text>
+        <StatusRow label="台股證券筆數" value={String(market.catalog.length)}/>
+        <ActionButton label={market.catalogRefreshing?'更新中…':'立即更新 台股證券資料'} disabled={market.catalogRefreshing} onPress={()=>void market.refreshCatalog()}/>
+        <Text style={styles.note}>記帳搜尋、代號提示與名稱解析共用 Market Runtime 的 台股證券 Catalog。</Text>
       </Panel>:null}
       <ChildButton label="資料概況" summary={finance.entries.length+' 筆交易 · '+finance.holdings.length+' 檔持股'} active={dataPanel==='summary'} onPress={()=>setDataPanel(dataPanel==='summary'?null:'summary')}/>
       {dataPanel==='summary'?<Panel title="資料概況">
         <StatusRow label="交易紀錄" value={String(finance.entries.length)}/>
         <StatusRow label="目前持股" value={String(finance.holdings.length)}/>
         <StatusRow label="行情標的" value={String(market.quotes.length)}/>
-        <StatusRow label="ETF Catalog" value={String(market.catalog.length)}/>
+        <StatusRow label="台股證券 Catalog" value={String(market.catalog.length)}/>
         <StatusRow label="TF Asset 儲存鍵" value={String(storageStats.keys)}/>
         <StatusRow label="估算儲存大小" value={formatBytes(storageStats.bytes)}/>
         <ActionButton label="重新掃描資料概況" onPress={()=>void reloadBackupMeta()}/>
@@ -237,8 +237,8 @@ export function SettingsScreen(){
       </Panel>:null}
       <ChildButton label="資料修復" summary="安全重建，不改歷史費稅" active={dataPanel==='repair'} onPress={()=>setDataPanel(dataPanel==='repair'?null:'repair')}/>
       {dataPanel==='repair'?<Panel title="資料修復">
-        <Text style={styles.note}>目前可安全執行的修復為重新更新 ETF Catalog 與行情；持股投影會由 Canonical Ledger 自動重建，不直接改寫歷史交易。</Text>
-        <ActionButton label="重建 ETF 基礎資料" onPress={()=>void market.refreshCatalog()}/>
+        <Text style={styles.note}>目前可安全執行的修復為重新更新 台股證券 Catalog 與行情；持股投影會由 Canonical Ledger 自動重建，不直接改寫歷史交易。</Text>
+        <ActionButton label="重建 台股證券資料" onPress={()=>void market.refreshCatalog()}/>
         <ActionButton label="重新取得行情" onPress={()=>void market.refresh()}/>
       </Panel>:null}
     </View>;
@@ -285,7 +285,7 @@ export function SettingsScreen(){
       <ChildButton label="清除帳務資料" summary="危險操作 · 只清 Ledger" danger active={backupPanel==='clear'} onPress={()=>setBackupPanel(backupPanel==='clear'?null:'clear')}/>
       {backupPanel==='clear'?<Panel title="清除帳務資料">
         <Text style={styles.dangerText}>會清除：期初現金、買進／賣出／股息／其他 Ledger，以及由它們投影出的持股。</Text>
-        <Text style={styles.note}>不會清除：券商設定、行情設定、ETF Catalog、顯示設定與 Monitor 設定。</Text>
+        <Text style={styles.note}>不會清除：券商設定、行情設定、台股證券 Catalog、顯示設定與 Monitor 設定。</Text>
         <ActionButton danger label="建立安全備份後清除帳務" onPress={()=>Alert.alert('第一次確認','將清除全部帳務資料，但保留其他設定。',[{text:'取消',style:'cancel'},{text:'繼續',style:'destructive',onPress:()=>Alert.alert('最後確認','此操作會讓 Ledger 變成空白、期初現金變為 0。',[{text:'取消',style:'cancel'},{text:'確認清除',style:'destructive',onPress:()=>void createLocalBackup().then(()=>{finance.clearFinance();setBackupStatus('帳務資料已清除，安全備份已建立。');void reloadBackupMeta();})}])}])}/>
         {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
       </Panel>:null}
@@ -380,7 +380,7 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V1.1.3 即時行情完整性修護" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
+      <ChildButton label="更新資訊" summary="V4.0.1 SaiETF 行情中心完整移植" active={appPanel==='updates'} onPress={()=>setAppPanel(appPanel==='updates'?null:'updates')}/>
       {appPanel==='updates'?<Panel title="V1.1.3 更新資訊">
         <Text style={styles.infoText}>修正盤中即時行情完整性：昨收不得再冒充即時現價，停用未文件化 pz 作為現價，MIS 無成交價時改採最佳買／賣價並標示來源；單檔更新失敗保留上次值但標記 STALE。效能與診斷新增現價、昨收、LIVE/STALE、價格來源型態與行情時間。</Text>
       </Panel>:null}
@@ -400,7 +400,7 @@ export function SettingsScreen(){
       <ChildButton label="免責聲明" summary="投資資訊不構成建議" active={legalPanel==='disclaimer'} onPress={()=>setLegalPanel(legalPanel==='disclaimer'?null:'disclaimer')}/>
       {legalPanel==='disclaimer'?<Panel title="免責聲明"><Text style={styles.infoText}>TF Asset 用於個人資產紀錄、行情整理與試算。App 所呈現之行情、損益、殖利率與試算結果僅供資訊與紀錄用途，不構成投資建議或獲利保證。</Text></Panel>:null}
       <ChildButton label="行情資料聲明" summary="TWSE / TPEx · 可能延遲" active={legalPanel==='market'} onPress={()=>setLegalPanel(legalPanel==='market'?null:'market')}/>
-      {legalPanel==='market'?<Panel title="行情資料聲明"><Text style={styles.infoText}>行情來自公開市場資料來源，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
+      {legalPanel==='market'?<Panel title="行情資料聲明"><Text style={styles.infoText}>行情依序使用已授權 Fugle 串流、TWSE MIS、Yahoo 與已標記品質的本機快取，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
       <ChildButton label="試算聲明" summary="假設結果非保證報酬" active={legalPanel==='calculator'} onPress={()=>setLegalPanel(legalPanel==='calculator'?null:'calculator')}/>
       {legalPanel==='calculator'?<Panel title="試算聲明"><Text style={styles.infoText}>所有情境試算均依輸入條件計算，不代表未來實際市場價格、配息或報酬。</Text></Panel>:null}
       <ChildButton label="關於 TF Asset" summary={'Version '+VERSION} active={legalPanel==='about'} onPress={()=>setLegalPanel(legalPanel==='about'?null:'about')}/>
@@ -624,12 +624,22 @@ type MarketPanelProps={
   onRefresh:()=>void;
   lastSuccessAt:number|null;
   lastError:string|null;
+  fugleConfigured:boolean;
+  providerHealth:readonly {source:string;availability:string;circuitState:string;lastSuccessEpochMillis:number|null}[];
+  onSaveFugleApiKey:(apiKey:string)=>Promise<boolean>;
+  onClearFugleApiKey:()=>Promise<boolean>;
 };
 
-function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError}:MarketPanelProps){
+function MarketPanel({config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,fugleConfigured,providerHealth,onSaveFugleApiKey,onClearFugleApiKey}:MarketPanelProps){
+  const [fugleKey,setFugleKey]=useState('');
   const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
   return <Panel title="市場更新">
-    <StatusRow label="行情來源" value={config.source}/>
+    <StatusRow label="行情路由" value="Fugle → TWSE MIS → Yahoo → Cache"/>
+    <StatusRow label="Fugle API Key" value={fugleConfigured?'Android Keystore 已設定':'未設定 · 自動使用 HTTP 備援'}/>
+    <TextInput secureTextEntry autoCapitalize="none" autoCorrect={false} style={styles.input} placeholder="輸入 Fugle API Key（安全儲存）" value={fugleKey} onChangeText={setFugleKey}/>
+    <ActionButton label="儲存 Fugle API Key" disabled={!fugleKey.trim()} onPress={()=>void onSaveFugleApiKey(fugleKey).then(ok=>{if(ok)setFugleKey('');})}/>
+    {fugleConfigured?<ActionButton label="清除 Fugle API Key" onPress={()=>void onClearFugleApiKey()}/>:null}
+    {providerHealth.map(row=><StatusRow key={row.source} label={row.source} value={row.availability+' · '+row.circuitState+' · '+formatTime(row.lastSuccessEpochMillis)}/>)}
     <StatusRow label="最近成功" value={formatTime(lastSuccessAt)}/>
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
     <ActionButton label={refreshing?'更新中…':'立即更新行情'} disabled={refreshing} onPress={onRefresh}/>
