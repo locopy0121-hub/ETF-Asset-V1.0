@@ -3,10 +3,10 @@ import type {UnifiedMarketIntradaySeries,UnifiedMarketRow,UnifiedMarketSnapshot}
 
 export type QuoteProvenance='trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
 const QUALITIES=new Set(['trade','backup_realtime','bid_ask','previous_close','official_close']);
-const SOURCES=new Set(['TWSE_MIS','FUGLE','SHIOAJI','YAHOO','TWSE_DAILY','TPEX_DAILY']);
+const SOURCES=new Set(['TWSE_MIS','FUGLE','YAHOO','TWSE_DAILY','TPEX_DAILY']);
 const PRICE_TYPES=new Set(['REALTIME_TRADE','BACKUP_REALTIME','BID_ASK','PREV_CLOSE','OFFICIAL_CLOSE']);
 const INTRADAY_QUALITIES=new Set(['trade','backup_realtime']);
-const INTRADAY_SOURCES=new Set(['TWSE_MIS','FUGLE','SHIOAJI','YAHOO']);
+const INTRADAY_SOURCES=new Set(['TWSE_MIS','FUGLE','YAHOO']);
 
 function taipeiDateMinute(at:number){
   try{

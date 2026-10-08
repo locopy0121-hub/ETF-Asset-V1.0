@@ -66,6 +66,35 @@ fun main() {
     nextSession.restorePersistedQuotes(quotes,now)
     val next=nextSession.refresh(symbols.toSet(),now+86400000L,"2026-10-08",true)
     check(next.quotes.isEmpty() && next.unresolvedSymbols.size==9) { "Old cache must not pretend to be today's live quote" }
+    // A slow fallback symbol must not hold back other symbols' live memory updates.
+    val fallbackStarted=java.util.concurrent.CountDownLatch(1)
+    val releaseFallback=java.util.concurrent.CountDownLatch(1)
+    val fast=object:MarketQuoteProvider {
+        override val source=MarketSource.TWSE_MIS
+        override fun fetch(symbols:Set<String>)=mapOf("0050" to quotes[1].copy(
+            price=116.0,asOfEpochMillis=now,sourceTimestampEpochMillis=now,sessionDate="2026-10-07"))
+    }
+    val slow=object:MarketQuoteProvider {
+        override val source=MarketSource.YAHOO
+        override fun fetch(symbols:Set<String>):Map<String,MarketQuote> {
+            fallbackStarted.countDown()
+            check(releaseFallback.await(5,java.util.concurrent.TimeUnit.SECONDS))
+            return emptyMap()
+        }
+    }
+    val incremental=MarketDataCenter(listOf(fast,slow))
+    val worker=Thread { incremental.refresh(setOf("0050","009816"),now,"2026-10-07",true) }
+    worker.start()
+    try {
+        check(fallbackStarted.await(2,java.util.concurrent.TimeUnit.SECONDS))
+        check(incremental.memoryQuotes()["0050"]?.price==116.0) { "Fast live quote blocked behind slow fallback" }
+        // Simulate a Fugle tick arriving while the provider batch is still running.
+        check(incremental.acceptStreamingQuote(quotes[1].copy(source=MarketSource.FUGLE,
+            price=117.0,asOfEpochMillis=now+1000,sourceTimestampEpochMillis=now+1000,
+            sessionDate="2026-10-07"),now+1000,"2026-10-07"))
+    } finally { releaseFallback.countDown();worker.join(3000) }
+    check(incremental.memoryQuotes()["0050"]?.price==117.0) { "End-of-batch publish rolled back newer stream tick" }
+    println("Native incremental live publish / slow fallback isolation / streaming rollback guard: PASS")
     val fixture=JSONObject().put("version",1).put("queriedAt",now).put("quotes",rows)
     java.io.File(argsPath()).writeText(fixture.toString())
     println("Native quote provenance, cold/warm contract, source clock, nine-symbol restoration: PASS")

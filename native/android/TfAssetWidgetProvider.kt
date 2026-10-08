@@ -25,9 +25,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.ceil
 import kotlin.math.roundToInt
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -58,18 +55,6 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
   override fun onAppWidgetOptionsChanged(context:Context,manager:AppWidgetManager,appWidgetId:Int,newOptions:android.os.Bundle){
     manager.updateAppWidget(appWidgetId,buildViews(context,appWidgetId,manager))
   }
-  /** TWSE MIS supplies the trade-date d and exchange-time t; HTTP receipt time is never a quote tick. */
-  private fun sourceQuoteAt(row:JSONObject,now:Long):Long?{
-    val d=row.optString("d","").trim()
-    val t=row.optString("t","").trim()
-    if(!Regex("^\\d{8}$").matches(d)||!Regex("^\\d{2}:\\d{2}:\\d{2}$").matches(t))return null
-    val parsed=runCatching{
-      LocalDateTime.parse("$d $t",DateTimeFormatter.ofPattern("uuuuMMdd HH:mm:ss").withResolverStyle(ResolverStyle.STRICT))
-        .atZone(ZoneId.of("Asia/Taipei")).toInstant().toEpochMilli()
-    }.getOrNull()?:return null
-    return parsed.takeIf{it>0L&&it<=now+120_000L&&it>=now-31L*86_400_000L}
-  }
-
   private fun parsedTimestamp(value:String):Long=
     runCatching{Instant.parse(value).toEpochMilli()}.getOrDefault(0L)
 

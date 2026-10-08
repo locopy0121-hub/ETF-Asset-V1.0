@@ -35,7 +35,12 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     engineer.session.page===frame.page&&engineer.session.frameKey===frame.frameKey;
   const selected=engineer.selection?.page===target.page&&engineer.selection.frameKey===target.frameKey&&engineer.selection.id===target.id;
   const editing=engineer.session?.scope==='target'&&engineer.session.target?.page===target.page&&engineer.session.target.frameKey===target.frameKey&&engineer.session.target.id===target.id;
-  const storedOverride=engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind);
+  // Page-layout edits and maintenance edits share the same live target. Apply
+  // persisted page properties first, then the more specific maintenance override.
+  const storedOverride={
+    ...(frame.displayConfig?.layoutTargets?.[target.id]??{}),
+    ...engineer.getTargetOverride(target.page,target.frameKey,target.id,target.kind),
+  };
   // Currency prefixes stay inside their money composite. Legacy absolute XY/size overrides are ignored.
   const override=target.kind==='prefix'?withoutAbsolutePrefixGeometry(storedOverride):storedOverride;
   const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?

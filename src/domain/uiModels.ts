@@ -97,7 +97,7 @@ export type HoldingIntradayPoint=Readonly<{
   at:number;
   price:number;
   quality:'trade'|'backup_realtime';
-  source:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO';
+  source:'TWSE_MIS'|'FUGLE'|'YAHOO';
 }>;
 
 export type HoldingQuote = {

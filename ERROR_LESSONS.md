@@ -565,3 +565,10 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - 0與行情不可用不能用 >=0 算盈利。金融來源需明確；一般文字由父框架繼承、指標用自己的數值、行情卡用日變動，資料不足停止判盈虧。
 - 已解析的卡片固定色／手動tone不能被主要或次要文字flag二次判色；傳遞明確視覺覆寫時須停止底層再判色，非色彩覆寫保留原字段規則。
 - 不以重複反轉色盤臆測根因；先跑實際renderer，V4.0.6 baseline red → 新版green。UI整檔hash可在已授權修護時更新，帳務核心與未修改版型鎖定不可變動。
+
+## V4.0.8 預覽套用與 SaiETF 即時行情唯一來源
+
+- 預覽正確不代表實際頁正確；必須驗證「draft → displayConfig 儲存 → restart → 實際 renderer」完整路徑。不同覆寫儲存區要明確合併並定義優先序。
+- 1 秒排程不等於畫面每秒同步。若 Memory Hot Store 的讀取被整批 provider fallback 或 runtime 大鎖阻塞，已有新行情仍會顯示待核對。
+- Provider 應逐筆發布已接受行情；批次結束時不可用較舊集合覆蓋期間到達的 streaming tick。JS 也要用來源查詢時間拒絕晚到舊 snapshot。
+- 完整移植必須刪除舊執行入口與旁路，不只把 SaiETF 類別放進專案。App 只接受 SaiETF broker-free 來源契約，Widget／Monitor 不自行抓第二份行情。

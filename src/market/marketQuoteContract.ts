@@ -3,7 +3,7 @@ import type {RuntimeQuote} from '../finance/financeSeed';
 export type MarketQuoteSource=
   |'TWSE_MIS'
   |'FUGLE'
-  |'SHIOAJI'
+
   |'YAHOO'
   |'TWSE_DAILY'
   |'TPEX_DAILY'

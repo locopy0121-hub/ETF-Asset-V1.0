@@ -34,7 +34,7 @@ export const NATIVE_NOTIFICATION_CHANNELS={
 export type UnifiedMarketIntradayPoint=Readonly<{
   at:number;price:number;
   quality:'trade'|'backup_realtime';
-  source:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO';
+  source:'TWSE_MIS'|'FUGLE'|'YAHOO';
 }>;
 export type UnifiedMarketIntradaySeries=Readonly<{
   date:string;
@@ -46,7 +46,7 @@ export type UnifiedMarketRow=Readonly<{
   symbol:string;name:string;currentPrice:number;previousClose:number|null;officialTradePrice:number|null;
   sourceQuoteAt:number;
   quality:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
-  source:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
+  source:'TWSE_MIS'|'FUGLE'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY';
   priceType:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
   isFallback:boolean;market:'TSE'|'OTC'|'UNKNOWN';statusMessage:string;checkedAt:number;
   volume?:number|null;
@@ -74,14 +74,10 @@ export type UnifiedMarketSnapshot=Readonly<{
 }>;
 type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
-  readUnifiedMarketData:()=>Promise<string>;
-  setMarketBackendUrl:(url:string)=>Promise<boolean>;
+  readUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
   loadFugleApiKey:()=>Promise<string|null>;
   clearFugleApiKey:()=>Promise<boolean>;
-  loadMarketCoreCache:()=>Promise<string>;
-  persistMarketCoreCache:(payloadJson:string)=>Promise<boolean>;
-  clearMarketCoreCache:()=>Promise<boolean>;
   queryLocalEtfComponents:(symbol:string,topN:number)=>Promise<string>;
   queryLocalEtfMeta:(symbol:string)=>Promise<string>;
   replaceLocalEtfResearch:(payloadJson:string)=>Promise<string>;
@@ -159,9 +155,9 @@ export async function postNativeTestNotification(channelId=NATIVE_NOTIFICATION_C
 export const unifiedMarketCenterAvailable=Platform.OS==='android'
   &&typeof native?.refreshUnifiedMarketData==='function'
   &&typeof native?.readUnifiedMarketData==='function';
-export async function loadUnifiedMarketData():Promise<UnifiedMarketSnapshot>{
+export async function loadUnifiedMarketData(symbols:readonly string[]=[]):Promise<UnifiedMarketSnapshot>{
   if(!unifiedMarketCenterAvailable||!native)throw new Error('Android 行情資料中心尚未安裝');
-  const raw=await native.readUnifiedMarketData();
+  const raw=await native.readUnifiedMarketData(JSON.stringify(symbols));
   return JSON.parse(raw) as UnifiedMarketSnapshot;
 }
 export async function refreshUnifiedMarketData(symbols:readonly string[]):Promise<UnifiedMarketSnapshot>{
@@ -170,10 +166,7 @@ export async function refreshUnifiedMarketData(symbols:readonly string[]):Promis
   return JSON.parse(raw) as UnifiedMarketSnapshot;
 }
 
-export async function setNativeMarketBackendUrl(url:string){
-  if(!unifiedMarketCenterAvailable||!native)return false;
-  return native.setMarketBackendUrl(url);
-}
+
 
 export async function saveNativeFugleApiKey(apiKey:string){
   if(!nativeRuntimeAvailable||!native)return false;
@@ -187,19 +180,6 @@ export async function clearNativeFugleApiKey(){
   if(!nativeRuntimeAvailable||!native)return false;
   return native.clearFugleApiKey();
 }
-export async function loadNativeMarketCache(){
-  if(!nativeRuntimeAvailable||!native)return '';
-  return native.loadMarketCoreCache();
-}
-export async function persistNativeMarketCache(payloadJson:string){
-  if(!nativeRuntimeAvailable||!native)return false;
-  return native.persistMarketCoreCache(payloadJson);
-}
-export async function clearNativeMarketCache(){
-  if(!nativeRuntimeAvailable||!native)return false;
-  return native.clearMarketCoreCache();
-}
-
 export type LocalEtfComponent=Readonly<{
   stockSymbol:string;
   stockName:string;

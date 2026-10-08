@@ -81,7 +81,7 @@ assert.doesNotMatch(persistence,/Ledger|ledger/,'market persistence must never t
 
 assert.match(nativeModule,/SaiEtfMarketRuntime/);
 assert.match(nativeModule,/saietfMarket\.refresh\(symbols\)/);
-assert.match(nativeModule,/saietfMarket\.snapshot\(\)/);
+assert.match(nativeModule,/saietfMarket\.snapshot\(symbols\)/);
 assert.match(nativeModule,/saietfMarket\.saveFugleKey/);
 assert.match(bridge,/marketCore\?:'SAIETF_NATIVE'/);
 

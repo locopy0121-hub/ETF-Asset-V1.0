@@ -36,6 +36,8 @@ class SaiEtfMarketRuntime(context: Context) {
     init {
         center.restorePersistedQuotes(persistence.persistedQuotes().values)
     }
+    @Volatile private var latestProviderHealth: List<ProviderHealth> =
+        center.providerHealthSnapshot(System.currentTimeMillis())
 
     private val persistenceController = MarketPersistenceController(
         scope = scope,
@@ -77,12 +79,13 @@ class SaiEtfMarketRuntime(context: Context) {
             currentTaipeiDate = taipeiDate(now),
             tradingSessionActive = isLiveSession(now),
         )
+        latestProviderHealth = batch.providerHealth
         version.incrementAndGet()
         scope.launch { persistenceController.flushNow() }
         return snapshot(symbols, batch)
     }
 
-    @Synchronized fun snapshot(requested: Collection<String> = emptyList()): JSONObject =
+    fun snapshot(requested: Collection<String> = emptyList()): JSONObject =
         snapshot(requested.map { it.trim().uppercase(Locale.US) }.filter { it.isNotBlank() }.toSet(), null)
 
     private fun snapshot(symbols: Set<String>, batch: MarketBatch? = null): JSONObject {
@@ -90,10 +93,10 @@ class SaiEtfMarketRuntime(context: Context) {
 
         val rows = JSONArray()
         live.values.sortedBy { it.symbol }.forEach { rows.put(marketQuoteToRuntimeRow(it)) }
-        val missing = symbols - (batch?.quotes?.keys ?: live.keys)
+        val missing = symbols - live.keys
         val health = JSONArray()
         val allHealth = listOf(streamingController.health()) +
-            (batch?.providerHealth ?: center.providerHealthSnapshot(System.currentTimeMillis()))
+            (batch?.providerHealth ?: latestProviderHealth)
         allHealth.forEach { health.put(healthRow(it)) }
 
         return JSONObject()

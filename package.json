@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.7",
+  "version": "4.0.8",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -292,7 +292,8 @@
     "test:v4_0_4": "npm run test:v4_0_3 && tsx scripts/v4_0_4-valuation-validity.test.ts",
     "test:v4_0_5": "npm run test:v4_0_4 && tsx scripts/v4_0_5-dividend-workflow.test.ts && node scripts/v4_0_5-dividend-runtime.test.cjs",
     "test:v4_0_6": "npm run test:v4_0_5 && tsx scripts/v4_0_6-frame-tone.test.ts && node scripts/v4_0_6-frame-profit-render.test.cjs",
-    "test:v4_0_7": "npm run test:v4_0_6 && node scripts/v4_0_7-text-profit-render.test.cjs"
+    "test:v4_0_7": "npm run test:v4_0_6 && node scripts/v4_0_7-text-profit-render.test.cjs",
+    "test:v4_0_8": "npm run test:v4_0_7 && node scripts/v4_0_8-layout-apply.test.cjs && node scripts/v4_0_8-live-runtime.test.cjs && tsx scripts/v4_0_8-saietf-only.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.21",

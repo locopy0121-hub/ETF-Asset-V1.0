@@ -30,7 +30,6 @@ type ProviderHealth=Readonly<{
 
 export type MarketUpdateConfig=Readonly<{
   source:MarketUpdateSource;
-  backendUrl?:string;
   scheduleEnabled:boolean;
   refreshOnForeground:boolean;
   stopAll:boolean;
@@ -135,7 +134,6 @@ export function marketRefreshSeconds(config:MarketUpdateConfig,phase:MarketPhase
 function normalizeConfig(input:Partial<MarketUpdateConfig>|null|undefined):MarketUpdateConfig{
   return {
     source:'AUTO',
-    ...(input?.backendUrl?{backendUrl:String(input.backendUrl).trim().replace(/\/$/,'')}:{}),
     scheduleEnabled:input?.scheduleEnabled??DEFAULT_MARKET_UPDATE.scheduleEnabled,
     refreshOnForeground:input?.refreshOnForeground??DEFAULT_MARKET_UPDATE.refreshOnForeground,
     stopAll:input?.stopAll??DEFAULT_MARKET_UPDATE.stopAll,
@@ -221,6 +219,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const catalogRef=useRef<TaiwanSecurityInfo[]>(fallbackCatalog());
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
   const refreshVisibleRef=useRef(false);
+  const latestSnapshotAtRef=useRef(0);
 
   useEffect(()=>{configRef.current=config;},[config]);
   useEffect(()=>{quotesRef.current=quotes;},[quotes]);
@@ -228,6 +227,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{catalogRef.current=catalog;},[catalog]);
 
   const applySnapshot=useCallback((snapshot:UnifiedMarketSnapshot)=>{
+    const snapshotAt=Number(snapshot.queriedAt)||0;
+    if(snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
+    latestSnapshotAtRef.current=Math.max(latestSnapshotAtRef.current,snapshotAt);
     const version=Number.isFinite(snapshot.version)?snapshot.version:Date.now();
     setMarketDataVersion(version);
     const missing=Array.isArray(snapshot.missing)?[...snapshot.missing].sort():[];
@@ -296,8 +298,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   const setConfig=useCallback((next:MarketUpdateConfig)=>setConfigState(normalizeConfig(next)),[]);
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
-    const normalized=symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean);
-    setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])).sort());
+    const normalized=Array.from(new Set(symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean))).sort();
+    setTrackedSymbolsState(current=>sameStrings(current,normalized)?current:normalized);
   },[]);
 
   const refresh=useCallback((options?:{force?:boolean;silent?:boolean}):Promise<MarketRefreshResult>=>{
@@ -359,6 +361,22 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[hydrated,trackedSymbols,refresh]);
 
   useEffect(()=>{setPhase(resolveMarketPhase(config));},[config]);
+
+  // Consume SaiETF's memory SSOT independently of slow HTTP fallback batches.
+  // This read never starts a second provider request and never invents a price.
+  useEffect(()=>{
+    if(!hydrated||!nativeRuntimeAvailable||config.stopAll||!config.scheduleEnabled)return;
+    let disposed=false,reading=false;
+    const read=()=>{
+      if(disposed||reading||AppState.currentState!=='active')return;
+      reading=true;
+      void loadUnifiedMarketData(symbolsRef.current).then(snapshot=>{if(!disposed)applySnapshot(snapshot);})
+        .catch(()=>{}).finally(()=>{reading=false;});
+    };
+    read();
+    const timer=setInterval(read,1000);
+    return()=>{disposed=true;clearInterval(timer);};
+  },[hydrated,config.stopAll,config.scheduleEnabled,applySnapshot]);
 
   useEffect(()=>{
     if(!hydrated||config.stopAll||!config.scheduleEnabled)return;

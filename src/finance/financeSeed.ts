@@ -4,7 +4,7 @@ export type RuntimeIntradayPoint=Readonly<{
   at:number;
   price:number;
   quality:'trade'|'backup_realtime';
-  source:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO';
+  source:'TWSE_MIS'|'FUGLE'|'YAHOO';
 }>;
 
 export type RuntimeQuote = MarketQuoteInput & Readonly<{
@@ -13,7 +13,7 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   sourceQuoteAt?:number|null;
   quality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
   previousCloseKnown?:boolean;
-  source?:'TWSE_MIS'|'FUGLE'|'SHIOAJI'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY'|'CACHE';
+  source?:'TWSE_MIS'|'FUGLE'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY'|'CACHE';
   priceType?:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
   isFallback?:boolean;
   officialTradePrice?:number|null;
