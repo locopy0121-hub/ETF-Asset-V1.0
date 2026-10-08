@@ -4,7 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {colors,spacing} from '../theme/tokens';
 import type {MainPageKey} from '../domain/pageRegistry';
-import {usePageEditor} from '../editor/pageEditor';
+import {makePageConfig,usePageEditor} from '../editor/pageEditor';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
@@ -57,7 +57,9 @@ export function PageShell({title,pageKey,subtitle,actions,children,headerFrameKe
   const displayedTitle=pageKey&&headerFrameKey==='page-header'?resolvePageTitle(pageKey,title,settings.prefs.pageTitles):title;
   const saved=pageKey?editor.config[headerFrameKey]:undefined;
   const active=Boolean(pageKey&&engineer.session?.page===pageKey&&engineer.session.frameKey===headerFrameKey);
-  const headerConfig=active?engineer.session!.draft:saved;
+  // Old or incomplete saved editor state must never crash page navigation.
+  const headerConfig=(active?engineer.session!.draft:saved)??
+    makePageConfig(pageKey??'home')[headerFrameKey]??makePageConfig('home')['page-header']!;
   const fx=normalizeFrameEffects(headerConfig?.effects);
   const background=linkedColor(headerConfig?.backgroundColor??theme.palette.surface,
     headerConfig?.backgroundProfitColor,'neutral',settings.prefs.display);

@@ -1,3 +1,11 @@
+## 2026-10-09｜V4.0.15 設定底部導航閃退（V4.0.16 熱修）
+
+根因：V4.0.15 新增控制中心 page-header 並由 PageShell 繪製，但 normalizeEditorConfig 仍以舊 PAGE_FRAMES 正規化，讀取使用者既有編輯設定後丟失新增表頭，render 進入 PageHeaderVisual 時因 undefined 而閃退。
+
+修護規則：設定頁屬受保護區域，禁止修改現有分類、框架 UI、功能與使用者儲存資料。修復只調整共用 editorModel 正規化使用 EDITOR_FRAMES，PageShell 加上安全表頭 fallback；設定頁檔案僅同步版本顯示常數。
+回歸必須涵蓋舊版存檔缺少 page-header、重啟載入後恢復 header、原設定的隱藏與配色不被覆寫、再次正規化穩定，以及底部設定路由存在。
+GitHub Actions 綠燈僅表示程式碼與 APK 建置完成；未執行真機點擊與 logcat 前不可宣稱實機已驗收。
+
 # 2026-09-29｜行情 z 缺值不可等同「沒有行情」
 
 - TWSE MIS HTTP 200 且 z='-' 只表示該列沒有可核實的最新成交 z，不代表整個行情不可用。

@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.15",
+  "version": "4.0.16",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_15 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_16 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -300,7 +300,8 @@
     "test:v4_0_13": "npm run test:v4_0_12 && node --import tsx scripts/v4_0_13-etf-constituents.test.ts && node --import tsx scripts/v4_0_13-etf-update-policy.test.ts && node --import tsx scripts/v4_0_13-etf-fetch.test.ts",
     "test:v4_0_12": "npm run test:v4_0_11 && node scripts/v4_0_12-after-hours-contract.test.cjs && bash scripts/test-native-market-bridge.sh",
     "test:v4_0_14": "npm run test:v4_0_13 && node scripts/v4_0_14-news-reader.test.cjs",
-    "test:v4_0_15": "npm run test:v4_0_14 && node scripts/v4_0_15-display.test.cjs && node scripts/v4_0_15-editable-native.test.cjs && node --import tsx scripts/v4_0_15-editor-scope.test.ts"
+    "test:v4_0_15": "npm run test:v4_0_14 && node scripts/v4_0_15-display.test.cjs && node scripts/v4_0_15-editable-native.test.cjs && node --import tsx scripts/v4_0_15-editor-scope.test.ts",
+    "test:v4_0_16": "npm run test:v4_0_15 && node --import tsx scripts/v4_0_16-settings-navigation.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

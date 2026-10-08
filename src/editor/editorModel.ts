@@ -1,4 +1,3 @@
-import { PAGE_FRAMES } from '../domain/frameRegistry';
 import {EDITOR_FRAMES} from '../domain/editorFrameRegistry';
 import {normalizePortfolioViewMode,normalizePortfolioLayoutMode} from '../domain/portfolioModeSwitch';
 import {sortPreset} from '../domain/holdingSort';
@@ -325,7 +324,9 @@ export function normalizeEditorConfig(
 ): Record<string, FrameEditorConfig> {
   const defaults = makePageConfig(page);
   const normalized: Record<string, FrameEditorConfig> = {};
-  PAGE_FRAMES[page].forEach((frame, index) => {
+  // Normalization must use the same registry as initialization: persisted
+  // settings from older versions otherwise lose their page-header on hydration.
+  EDITOR_FRAMES[page].forEach((frame, index) => {
     const fallback=defaults[frame.key]!;
     const candidate = draft[frame.key] ?? fallback;
     normalized[frame.key] = {
