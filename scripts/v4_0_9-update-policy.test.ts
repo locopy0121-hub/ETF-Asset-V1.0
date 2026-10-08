@@ -6,7 +6,7 @@ const finance=read('src/finance/FinanceRuntime.tsx');
 const native=read('native/android/SaiEtfMarketRuntime.kt');
 const bridge=read('native/android/TfAssetNativeModule.kt');
 const settings=read('src/screens/SettingsScreen.tsx');
-assert.match(runtime,/return phase==='live'\?1:30/,'SaiETF 1s live / 30s otherwise');
+assert.doesNotMatch(runtime,/marketRefreshSeconds|setInterval\(tick,1000\)/,'SaiETF event policy has no legacy fixed cadence');
 assert.doesNotMatch(runtime,/config\.stopAll|config\.scheduleEnabled|config\.live|config\.afterHours|refreshOnForeground/,'retired scheduler cannot override SaiETF');
 assert.match(runtime,/subscribeUnifiedMarketData\(applySnapshot\)/,'memory ticks push directly to RN');
 assert.match(finance,/setTrackedSymbols\(snapshot\.holdings\.map\(holding=>holding\.etfCode\)\)/,'only current positions subscribe');

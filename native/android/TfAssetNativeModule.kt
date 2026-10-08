@@ -6,6 +6,10 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import android.os.Build
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
@@ -36,6 +40,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     private const val FUGLE_KEY_ALIAS="tfasset-fugle-api-key-v1"
     private const val FUGLE_KEY_PREF="fugle_api_key_ciphertext"
     private const val FUGLE_IV_PREF="fugle_api_key_iv"
+    const val ACTION_MARKET_REFRESH_REQUESTED="com.tfasset.app.MARKET_REFRESH_REQUESTED"
     @Volatile private var crashJournalInstalled=false
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
@@ -44,6 +49,13 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
       .emit("SaiEtfMarketSnapshot",payload) }
   } }
+  private val refreshRequestReceiver=object:BroadcastReceiver(){
+    override fun onReceive(context:Context?,intent:Intent?){
+      if(intent?.action!=ACTION_MARKET_REFRESH_REQUESTED)return
+      runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        .emit("SaiEtfMarketRefreshRequested",null) }
+    }
+  }
   // Store only exception class and code location. Never store trades, balances or exception messages.
   private fun installCrashJournal(){
     synchronized(TfAssetNativeModule::class.java){
@@ -149,7 +161,20 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       if(index>=0&&cursor.moveToFirst())cursor.getString(index) else null
     }?:uri.lastPathSegment?:"TF-Asset-Backup.json"
   }
-  init{reactContext.addActivityEventListener(activityListener);installCrashJournal();TfAssetNotificationCenter.ensureChannels(reactContext)}
+  init{
+    reactContext.addActivityEventListener(activityListener)
+    val filter=IntentFilter(ACTION_MARKET_REFRESH_REQUESTED)
+    if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(refreshRequestReceiver,filter,Context.RECEIVER_NOT_EXPORTED)
+    else {
+      @Suppress("DEPRECATION")
+      reactContext.registerReceiver(refreshRequestReceiver,filter)
+    }
+    installCrashJournal();TfAssetNotificationCenter.ensureChannels(reactContext)
+  }
+  override fun invalidate(){
+    runCatching{reactContext.unregisterReceiver(refreshRequestReceiver)}
+    super.invalidate()
+  }
   override fun getName() = "TfAssetNative"
 
   @ReactMethod fun readPendingCrashJournal(promise:Promise){

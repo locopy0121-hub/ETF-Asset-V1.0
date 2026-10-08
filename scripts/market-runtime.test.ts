@@ -8,7 +8,7 @@ const nativeRuntime=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf
 const nativeCenter=fs.readFileSync('native/android/SaiEtfMarketDataCenter.kt','utf8');
 const nativeProviders=fs.readFileSync('native/android/SaiEtfAndroidMarketProviders.kt','utf8');
 
-assert.match(source,/return phase==='live'\?1:30/,'SaiETF cadence: 1 second live, 30 seconds otherwise');
+assert.doesNotMatch(source,/marketRefreshSeconds/,'SaiETF events replace JS fixed cadence');
 assert.doesNotMatch(source,/config\.live|config\.afterHours|config\.stopAll/,'retired TF scheduler cannot override SaiETF');
 assert.match(source,/quotesRef/,'market refresh must use quote ref to keep callback stable');
 assert.match(source,/symbolsRef/,'market refresh must use symbol ref to keep callback stable');
@@ -17,7 +17,7 @@ assert.match(source,/return refreshPromiseRef\.current;/,'joined refresh callers
 assert.match(source,/refreshVisibleRef/,'a manual caller joining silent refresh must promote visible refresh state');
 assert.match(source,/AsyncStorage/,'market catalog and last source time must persist');
 assert.match(source,/AppState\.addEventListener/,'foreground refresh must be wired');
-assert.match(source,/setInterval\(tick,1000\)/,'market scheduler must heartbeat every second and re-evaluate market phase');
+assert.match(source,/subscribeUnifiedMarketData\(applySnapshot\)/,'market must receive native memory events');
 
 // V4 execution ownership: React Native is a consumer/adapter only.
 assert.match(source,/refreshUnifiedMarketData/,'JS runtime must refresh through the native market bridge');

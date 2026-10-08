@@ -7,11 +7,13 @@ import kotlinx.coroutines.launch
 import tw.saietf.core.market.MarketDataCenter
 import tw.saietf.core.market.MarketEvent
 import tw.saietf.core.market.ProviderHealth
+import tw.saietf.core.market.ProviderCircuitState
 
 internal class FugleStreamingController(
     private val scope: CoroutineScope,
     private val provider: FugleWebSocketProvider,
     private val marketDataCenter: MarketDataCenter,
+    private val onProviderDegraded: (ProviderHealth) -> Unit = {},
 ) {
     init {
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
@@ -21,7 +23,10 @@ internal class FugleStreamingController(
                         marketDataCenter.acceptStreamingQuote(event.quote)
                     }
 
-                    is MarketEvent.ProviderState -> Unit
+                    is MarketEvent.ProviderState -> {
+                        if(event.health.circuitState != ProviderCircuitState.HEALTHY)
+                            onProviderDegraded(event.health)
+                    }
                 }
             }
         }

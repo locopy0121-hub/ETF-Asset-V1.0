@@ -5,7 +5,7 @@ const read=(path:string)=>fs.readFileSync(path,'utf8');
 const runtime=read('src/market/MarketRuntime.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 
-assert.match(runtime,/return phase==='live'\?1:30/,'SaiETF 盤中每秒，非盤中每 30 秒');
+assert.doesNotMatch(runtime,/marketRefreshSeconds/,'SaiETF 原生事件取代舊固定秒數定律');
 assert.doesNotMatch(settings,/label="盤中更新頻率"/,'舊的自訂時段規則已退役');
 
 assert.match(runtime,/void refresh\(\{silent:true\}\);[\s\S]*?\},\[hydrated,trackedSymbols,refresh\]\);/,
@@ -13,16 +13,9 @@ assert.match(runtime,/void refresh\(\{silent:true\}\);[\s\S]*?\},\[hydrated,trac
 assert.match(runtime,/if\(next==='active'\)\{[\s\S]*?updateNativeMarketSymbols\(symbolsRef\.current\)[\s\S]*?void refresh\(\{force:true,silent:true\}\)/,
   'App 回到前景時必須立即強制刷新');
 
-assert.match(runtime,/const tick=\(\)=>\{[\s\S]*?resolveMarketPhase\(\)[\s\S]*?marketRefreshSeconds\(currentPhase\)/,
-  '排程器每次 tick 都必須以最新設定重新判斷目前交易時段');
-assert.match(runtime,/const timer=setInterval\(tick,1000\)/,
-  '排程 heartbeat 必須每秒檢查，避免 App 跨 09:00 還停留在舊 phase');
-assert.ok(!runtime.includes('marketRefreshSeconds(config,phase);'),
-  '不可再用 render 當下 phase 建立固定 timer，否則跨盤中邊界會漏啟動');
-assert.match(runtime,/setPhase\(current=>current===currentPhase\?current:currentPhase\)/,
-  '行情中心顯示狀態只在 phase 真正切換時更新，避免每秒無效重繪');
-assert.match(runtime,/if\(now<nextDueAt\)return;[\s\S]*?nextDueAt=now\+seconds\*1000/,
-  '一秒 heartbeat 不得讓非盤中 30 秒節流失效');
+assert.match(runtime,/subscribeUnifiedMarketData\(applySnapshot\)/,'原生行情事件直接通知 App');
+assert.match(runtime,/setPhase\(snapshot\.phase\)/,'交易時段由 SaiETF 原生中心決定');
+assert.doesNotMatch(runtime,/setInterval\(tick,1000\)/,'不再使用 JS 固定秒數 heartbeat');
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));

@@ -16,8 +16,11 @@ import kotlin.math.abs
 internal object TfAssetMarketPresentation{
   internal fun nextExpiry(raw:JSONObject,now:Long):Long?{
     val holdings=raw.optJSONArray("holdings")?:return null
-    return (0 until holdings.length()).mapNotNull{holdings.optJSONObject(it)?.optLong("valuationValidUntil",0L)}
-      .filter{it>now}.minOrNull()
+    return (0 until holdings.length()).flatMap{i->
+      val row=holdings.optJSONObject(i)?:return@flatMap emptyList<Long>()
+      val freshness=runCatching{Instant.parse(row.optString("updatedAt","")).toEpochMilli()+30_000L}.getOrNull()
+      listOfNotNull(freshness,row.optLong("valuationValidUntil",0L))
+    }.filter{it>now}.minOrNull()
   }
 
   fun decorate(context:Context,raw:JSONObject):JSONObject{
@@ -91,7 +94,9 @@ internal object TfAssetMarketPresentation{
           "backup_realtime"->"備援行情"
           else->"快取／收盤參考"
         }
-        row.put("marketStatus",if(!active)"盤外參考價" else label+(if(quote.optString("quoteStatus")=="DELAYED")"（延遲）" else ""))
+        val delayed=quote.optString("quoteStatus")=="DELAYED" ||
+          (active && at>0L && now-at>30_000L)
+        row.put("marketStatus",if(!active)"盤外參考價" else label+(if(delayed)"（延遲）" else ""))
         row.put("marketQuality",quote.optString("quality",""))
       }
       if(!synchronized||!rowUsable){

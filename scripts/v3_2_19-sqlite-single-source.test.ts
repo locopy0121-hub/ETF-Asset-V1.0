@@ -42,8 +42,8 @@ assert.match(nativeDb,/db\.beginTransaction\(\)[\s\S]*?market_core_snapshots[\s\
 assert.match(nativeDb,/fun loadMarketCoreCache\(\):String/);
 
 assert.match(settings,/SaiETF Market Core｜唯一行情中心/);
-assert.match(settings,/Memory Hot Store 為盤中 SSOT，SQLite 僅做持久化/);
-assert.match(settings,/首頁、庫存、圖表、Finance、Widget 與 Monitor 不再各自建立第二條行情抓取路徑/);
+assert.match(settings,/Memory Hot Store 為行情入口，SQLite 僅做持久化/);
+assert.match(settings,/新報價直接推送至首頁、持股損益、Widget、Monitor 與 Mini/);
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));

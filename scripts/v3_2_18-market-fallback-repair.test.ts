@@ -22,8 +22,8 @@ assert.match(runtime,/V3_RUNTIME_STORAGE_KEY='@tf-asset\/market-runtime-v231'/,
   'V3 runtime settings must still be discoverable during V4 migration');
 assert.match(runtime,/LEGACY_RUNTIME_STORAGE_KEY='@tf-asset\/market-runtime'/);
 assert.doesNotMatch(runtime,/migratedFromLegacy|legacyLive|refreshSeconds:5/);
-assert.match(runtime,/return phase==='live'\?1:30/,
-  'legacy 5-second default cannot override SaiETF 1-second live rule');
+assert.doesNotMatch(runtime,/marketRefreshSeconds/,
+  'legacy update interval cannot override SaiETF event-driven updates');
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));
@@ -32,4 +32,4 @@ assert.ok(Number(app.expo.android.versionCode)>=30218,'V3.2.18 fallback regressi
 assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode),'iOS/Android build identities must stay aligned');
 assert.equal(pkg.scripts['test:v3_2_18'],'npm run test:v3_2_17 && tsx scripts/v3_2_18-market-fallback-repair.test.ts');
 
-console.log('V3.2.18 SaiETF native Fugle -> TWSE MIS -> Yahoo fallback + 1s migration PASS');
+console.log('SaiETF native Fugle -> TWSE MIS -> Yahoo fallback / event policy PASS');

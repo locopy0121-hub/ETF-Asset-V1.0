@@ -35,7 +35,7 @@ class TfAssetOverlayService:Service(){
     val now=System.currentTimeMillis()
     val until=TfAssetMarketPresentation.nextExpiry(raw,now)?:return
     // Short rechecks also handle wall-clock changes while the floating view is visible.
-    expiryHandler.postDelayed(expiryRefresh,(until-now).coerceIn(1L,30_000L))
+    expiryHandler.postDelayed(expiryRefresh,(until-now).coerceAtLeast(1L))
   }
   private lateinit var wm:WindowManager
   private var root:LinearLayout?=null
@@ -223,7 +223,11 @@ class TfAssetOverlayService:Service(){
     fun control(label:String,onClick:()->Unit):TextView=TextView(this).apply{
       this.text=label;setTextColor(text);textSize=10f;setPadding(12,7,12,7);setOnClickListener{onClick()}
     }
-    row.addView(control("↻ 更新行情"){prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply();render()})
+    row.addView(control("↻ 更新行情"){
+      prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply()
+      sendBroadcast(Intent(TfAssetNativeModule.ACTION_MARKET_REFRESH_REQUESTED).setPackage(packageName))
+      render()
+    })
     row.addView(control(if(mode=="mini")"□ 放大" else "— 縮小"){toggleMode()})
     row.addView(control("× 關閉"){prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
     root.addView(row,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))

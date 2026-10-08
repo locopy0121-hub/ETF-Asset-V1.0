@@ -96,7 +96,8 @@ assert.match(runtime,/const snapshot=await loadUnifiedMarketData\(\)/,
   'React runtime must hydrate native persisted intraday on startup');
 assert.match(runtime,/resetRuntimeIntradaySession\(current,sessionDate\)/,
   'market-open rollover must reset yesterday intraday data before the first valid tick');
-assert.match(runtime,/if\(currentPhase==='live'\)/);
+assert.match(runtime,/snapshot\.phase==='live'\?resetRuntimeIntradaySession/,
+  'SaiETF native session phase resets the intraday series on the next event');
 assert.match(nativeRuntime,/persistence\.runtimeSnapshot\(\)/,
   'native runtime must fall back to the durable market-only snapshot when memory is empty');
 

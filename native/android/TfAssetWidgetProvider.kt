@@ -84,6 +84,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     }
     val prefs=context.getSharedPreferences("tf_asset_native",0)
     prefs.edit().putLong("widget_force_refresh_requested_at",System.currentTimeMillis()).apply()
+    context.sendBroadcast(Intent(TfAssetNativeModule.ACTION_MARKET_REFRESH_REQUESTED).setPackage(context.packageName))
     val pending=goAsync()
     Thread{
       try{
@@ -100,8 +101,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
         val newest=(0 until rows.length()).mapNotNull{rows.optJSONObject(it)?.optLong("sourceQuoteAt",0L)}
           .maxOrNull()?:0L
         val status=if(newest>0L)
-          "已送出更新要求｜Market Core "+exchangeClock(newest)
-          else "已送出更新要求｜Market Core 尚無行情"
+          "等待 App 同步｜上次行情 "+exchangeClock(newest)
+          else "等待 App 同步｜Market Core 尚無行情"
         val edit=prefs.edit().putString("widget_refresh_status",status+"｜財務按 App 快照同步")
         if(newest>0L)edit.putLong("wall_market_source_at",newest)
         edit.apply()

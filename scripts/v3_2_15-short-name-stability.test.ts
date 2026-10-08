@@ -46,8 +46,8 @@ assert.doesNotMatch(finance,/marketValuationQuoteFor\(market\.quotes,row\.symbol
 assert.doesNotMatch(home,/marketIntradaySeriesFor\(market\.quotes/,
   'home must consume the already projected finance holdings instead of cloning intraday data again');
 assert.match(market,/refreshVisibleRef/);
-assert.match(market,/AppState\.currentState!=='active'/,
-  'scheduled quote polling must stay idle while the app is inactive');
+assert.doesNotMatch(market,/setInterval\(read,1000\)|setInterval\(tick,1000\)/,
+  'event-driven quotes must not schedule inactive polling');
 assert.match(history,/30_000/,
   'live PnL persistence must be throttled instead of writing every scheduled quote tick');
 assert.match(history,/pendingPersistRef=useRef<PersistedHistory\|null>\(null\)/,

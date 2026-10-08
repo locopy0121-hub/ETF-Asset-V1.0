@@ -6,6 +6,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +27,8 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
     private val taipeiZone = ZoneId.of("Asia/Taipei")
     private val version = AtomicLong(System.currentTimeMillis())
     @Volatile private var trackedSymbols: Set<String> = emptySet()
+    @Volatile private var paused = false
+    private val fallbackInFlight = AtomicBoolean(false)
     private val keyStore = FugleApiKeyStore(appContext)
     private val persistence = MarketPersistenceRepository(appContext)
     private val fugle = FugleWebSocketProvider(apiKeyProvider = keyStore::load)
@@ -50,6 +53,15 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         scope = scope,
         provider = fugle,
         marketDataCenter = center,
+        onProviderDegraded = { _ ->
+            if (!paused && trackedSymbols.isNotEmpty() && isLiveSession(System.currentTimeMillis())
+                && fallbackInFlight.compareAndSet(false, true)) {
+                scope.launch {
+                    try { refresh(trackedSymbols) }
+                    finally { fallbackInFlight.set(false) }
+                }
+            }
+        },
     )
     init {
         scope.launch {
@@ -79,10 +91,12 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         val symbols = requested.map { it.trim().uppercase(Locale.US) }
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }.toSet()
         trackedSymbols = symbols
+        paused = false
         streamingController.updateSymbols(symbols)
     }
 
     fun pause() {
+        paused = true
         streamingController.pause()
         scope.launch { persistenceController.flushNow() }
     }
@@ -131,6 +145,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             .put("queriedAt", System.currentTimeMillis())
             .put("providerHealth", health)
             .put("marketCore", "SAIETF_NATIVE")
+            .put("phase", if (isLiveSession(System.currentTimeMillis())) "live" else "afterHours")
             .also { if (includeIntraday) it.put("intraday", persistence.runtimeSnapshot().optJSONObject("intraday") ?: JSONObject()) }
     }
 

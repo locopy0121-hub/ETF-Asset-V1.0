@@ -68,34 +68,16 @@ function fallbackCatalog():TaiwanSecurityInfo[]{
   }));
 }
 const sameStrings=(a:readonly string[],b:readonly string[])=>a.length===b.length&&a.every((value,index)=>value===b[index]);
-function taipeiClock(){
+function taipeiDate(){
   try{
     const parts=new Intl.DateTimeFormat('en-US',{
-      timeZone:'Asia/Taipei',weekday:'short',year:'numeric',month:'2-digit',day:'2-digit',
-      hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',
+      timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
     }).formatToParts(new Date());
     const get=(type:string)=>parts.find(part=>part.type===type)?.value??'';
-    const weekday=get('weekday'),hour=Number(get('hour'))||0,minute=Number(get('minute'))||0,second=Number(get('second'))||0;
-    return {
-      weekend:weekday==='Sat'||weekday==='Sun',
-      minutes:hour*60+minute+second/60,
-      date:`${get('year')}-${get('month')}-${get('day')}`,
-    };
+    return `${get('year')}-${get('month')}-${get('day')}`;
   }catch{
-    const d=new Date();
-    return {
-      weekend:d.getDay()===0||d.getDay()===6,
-      minutes:d.getHours()*60+d.getMinutes()+d.getSeconds()/60,
-      date:d.toISOString().slice(0,10),
-    };
+    return new Date(Date.now()+8*60*60*1000).toISOString().slice(0,10);
   }
-}
-export function resolveMarketPhase():MarketPhase{
-  const clock=taipeiClock();
-  return !clock.weekend&&clock.minutes>=540&&clock.minutes<=810?'live':'afterHours';
-}
-export function marketRefreshSeconds(phase:MarketPhase){
-  return phase==='live'?1:30;
 }
 function resetRuntimeIntradaySession(rows:RuntimeQuote[],sessionDate:string):RuntimeQuote[]{
   let changed=false;
@@ -146,7 +128,7 @@ function parseProviderHealth(snapshot:UnifiedMarketSnapshot):ProviderHealth[]{
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
-  const [phase,setPhase]=useState<MarketPhase>(resolveMarketPhase);
+  const [phase,setPhase]=useState<MarketPhase>('offline');
   const [quotes,setQuotes]=useState<RuntimeQuote[]>([]);
   const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>([]);
   const [hydrated,setHydrated]=useState(false);
@@ -177,14 +159,17 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     if(version<latestSnapshotVersionRef.current||snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
     latestSnapshotVersionRef.current=Math.max(latestSnapshotVersionRef.current,version);
     latestSnapshotAtRef.current=Math.max(latestSnapshotAtRef.current,snapshotAt);
+    if(snapshot.phase==='live'||snapshot.phase==='afterHours'||snapshot.phase==='offline')setPhase(snapshot.phase);
     setMarketDataVersion(version);
     const missing=Array.isArray(snapshot.missing)?[...snapshot.missing].sort():[];
     setUnresolvedSymbols(current=>sameStrings(current,missing)?current:missing);
     setProviderHealth(parseProviderHealth(snapshot));
     setQuotes(current=>{
-      const normalized=marketRowsToRuntimeQuotes(snapshot,current);
+      const sessionDate=taipeiDate();
+      const sessionRows=snapshot.phase==='live'?resetRuntimeIntradaySession(current,sessionDate):current;
+      const normalized=marketRowsToRuntimeQuotes(snapshot,sessionRows);
       const named=applyCatalogNames(normalized,catalogRef.current);
-      const next=appendNativeIntraday(current,named,taipeiClock().date);
+      const next=appendNativeIntraday(sessionRows,named,sessionDate);
       quotesRef.current=next;
       return next;
     });
@@ -300,53 +285,11 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     void refresh({silent:true});
   },[hydrated,trackedSymbols,refresh]);
 
-  // SaiETF Memory Hot Store pushes Fugle ticks immediately. Polling below is
-  // also retained for initial state, persisted chart data and bridge recovery.
+  // SaiETF Memory Hot Store pushes every accepted quote into this single consumer.
   useEffect(()=>{
     if(!hydrated||!nativeRuntimeAvailable)return;
     return subscribeUnifiedMarketData(applySnapshot);
   },[hydrated,applySnapshot]);
-
-  useEffect(()=>{
-    if(!hydrated||!nativeRuntimeAvailable)return;
-    let disposed=false,reading=false;
-    const read=()=>{
-      if(disposed||reading||AppState.currentState!=='active')return;
-      reading=true;
-      void loadUnifiedMarketData(symbolsRef.current).then(snapshot=>{if(!disposed)applySnapshot(snapshot);})
-        .catch(()=>{}).finally(()=>{reading=false;});
-    };
-    read();
-    const timer=setInterval(read,1000);
-    return()=>{disposed=true;clearInterval(timer);};
-  },[hydrated,applySnapshot]);
-
-  useEffect(()=>{
-    if(!hydrated)return;
-    let disposed=false,lastPhase:MarketPhase|null=null,nextDueAt=0;
-    const tick=()=>{
-      const currentPhase=resolveMarketPhase();
-      setPhase(current=>current===currentPhase?current:currentPhase);
-      if(disposed||AppState.currentState!=='active')return;
-      const now=Date.now();
-      if(currentPhase==='live'){
-        const sessionDate=taipeiClock().date;
-        setQuotes(current=>{
-          const next=resetRuntimeIntradaySession(current,sessionDate);
-          if(next!==current)quotesRef.current=next;
-          return next;
-        });
-      }
-      const seconds=marketRefreshSeconds(currentPhase);
-      if(currentPhase!==lastPhase){lastPhase=currentPhase;nextDueAt=0;}
-      if(now<nextDueAt)return;
-      nextDueAt=now+seconds*1000;
-      void refresh({silent:true});
-    };
-    tick();
-    const timer=setInterval(tick,1000);
-    return()=>{disposed=true;clearInterval(timer);};
-  },[hydrated,refresh]);
 
   useEffect(()=>{
     if(!hydrated)return;

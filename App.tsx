@@ -33,7 +33,7 @@ import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsCon
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
-import { consumeNativeMarketForceRefreshRequests, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
+import { consumeNativeMarketForceRefreshRequests, subscribeNativeMarketRefreshRequests, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 type NativeSurfaceSyncJob<TConfig>=Readonly<{config:TConfig;snapshot:SharedSnapshot}>;
 
@@ -202,8 +202,8 @@ function AppBody(){
 
   useEffect(()=>{
     if(!market.hydrated)return;
-    // One bridge poll consumes both Widget and Monitor requests. Keep the
-    // 1-second responsiveness contract without doing two JS<->Native calls.
+    // Native buttons emit an event; foreground recovery consumes requests that
+    // arrived while the JS runtime was unavailable.
     let alive=true;
     let inFlight=false;
     const poll=async()=>{
@@ -218,9 +218,9 @@ function AppBody(){
       }finally{inFlight=false;}
     };
     void poll();
-    const timer=setInterval(()=>{void poll();},1000);
+    const unsubscribe=subscribeNativeMarketRefreshRequests(()=>{void poll();});
     const foreground=AppState.addEventListener('change',state=>{if(state==='active')void poll();});
-    return()=>{alive=false;clearInterval(timer);foreground.remove();};
+    return()=>{alive=false;unsubscribe();foreground.remove();};
   },[market.hydrated,market.refresh,monitorSettings.config.enabled]);
 
   useEffect(()=>{

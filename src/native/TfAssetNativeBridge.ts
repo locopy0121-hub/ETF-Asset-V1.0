@@ -66,6 +66,7 @@ export type NativeMarketProviderHealth=Readonly<{
 }>;
 export type UnifiedMarketSnapshot=Readonly<{
   version:number;quotes:UnifiedMarketRow[];
+  phase?:'live'|'afterHours'|'offline';
   intraday?:Record<string,UnifiedMarketIntradaySeries>;
   updatedCount?:number;coveredCount?:number;requestedCount?:number;missing?:string[];
   errors?:string[];queriedAt?:number;conflictCount?:number;
@@ -181,6 +182,11 @@ export async function updateNativeMarketSymbols(symbols:readonly string[]):Promi
 export async function pauseNativeMarketStreaming():Promise<boolean>{
   if(!unifiedMarketCenterAvailable||!native)return false;
   return native.pauseUnifiedMarketData();
+}
+export function subscribeNativeMarketRefreshRequests(onRequest:()=>void):()=>void{
+  if(!unifiedMarketCenterAvailable)return ()=>{};
+  const listener=DeviceEventEmitter.addListener('SaiEtfMarketRefreshRequested',onRequest);
+  return ()=>listener.remove();
 }
 
 

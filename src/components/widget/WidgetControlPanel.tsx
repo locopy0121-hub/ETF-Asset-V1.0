@@ -127,7 +127,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
         <Text style={{color:'#FFFFFF',fontWeight:'800'}}>{refreshing?'行情更新中…':'↻ 點擊更新行情'}</Text>
       </Pressable>
       {refreshError?<Text style={{color:'#EF4444'}}>更新失敗：{refreshError}</Text>:null}
-      <Text style={styles.note}>刷新秒數＝前景查詢間隔，不是畫面假跳秒。只有證交所回傳較新的報價時間，才更新 Widget 的行情時間；若未變更、來源缺時間或連線失敗，保留上次成功資料。Android 背景排程受系統限制，桌面可點擊實際網路刷新。</Text>
+      <Text style={styles.note}>Widget 接收 SaiETF 行情事件與 App 財務快照；手動更新會要求行情中心同步。只有來源回傳較新的報價時間，才更新行情時間。Android 背景執行可能延後桌面重繪，請以畫面上的來源時間與狀態判斷是否為最新資料。</Text>
       <Text style={styles.note}>已核實報價時間：{previewSnapshot?.holdings.map(row=>row.updatedAt).filter((time):time is string=>!!time).sort().at(-1)?.replace(/^(.+)$/,(iso)=>new Date(iso).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}))??'尚未取得'}</Text>
       {previewSnapshot?<Text style={styles.note}>預覽持股 {sortedRows.length} 筆；目前顯示 {wallPreviewRows.length} 筆，超出預覽列數需在桌面 Widget 繼續檢查。</Text>:null}
       {value.template==='quote-wall'

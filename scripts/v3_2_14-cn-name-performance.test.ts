@@ -33,7 +33,7 @@ assert.match(finance,/ledgerNameBySymbol\.get\(summary\.etfCode\)/,
 // V4 performance contract: React Native consumes the SaiETF native core.
 // High-frequency quotes are not serialized into AsyncStorage on every tick.
 assert.match(market,/loadUnifiedMarketData\(\)/,'cold start must hydrate through the native SaiETF market bridge');
-assert.match(market,/refreshUnifiedMarketData\(symbolsRef\.current\)/,'scheduled refresh must use the native SaiETF market bridge');
+assert.match(market,/refreshUnifiedMarketData\(symbolsRef\.current\)/,'on-demand refresh must use the native SaiETF market bridge');
 assert.doesNotMatch(market,/new MarketDataCenter\(/,'React runtime must not own a duplicate quote engine');
 assert.match(nativeRuntime,/MarketPersistenceController/,'native SaiETF core must own market persistence');
 assert.match(persistenceController,/PERSIST_INTERVAL_MILLIS = 5_000L/,
@@ -44,9 +44,9 @@ assert.doesNotMatch(market,/\[hydrated,config,quotes,lastSuccessAt,catalog\]/,
   'scheduled quote ticks must not stringify the live quote set');
 assert.match(market,/setUnresolvedSymbols\(current=>sameStrings\(current,missing\)\?current:missing\)/,
   'unchanged missing-symbol arrays must not force context rerenders');
-assert.match(market,/if\(disposed\|\|AppState\.currentState!=='active'\)return;/,
-  'scheduled market polling must stay idle while the app is inactive');
-assert.match(market,/void refresh\(\{silent:true\}\);/,'scheduled market polling must remain silent');
+assert.doesNotMatch(market,/setInterval\(read,1000\)|setInterval\(tick,1000\)/,
+  'market data must be pushed without background JS polling');
+assert.match(market,/void refresh\(\{silent:true\}\);/,'startup data fill remains silent');
 assert.match(market,/refresh\(\{force:true,silent:true\}\)/,'foreground synchronization should be silent');
 assert.match(home,/market\.refresh\(\{force:true\}\)/,'manual Update Quotes button must remain visible to the user');
 

@@ -9,7 +9,7 @@ const native=read('native/android/SaiEtfMarketRuntime.kt');
 const center=read('native/android/SaiEtfMarketDataCenter.kt');
 const adapter=read('src/market/unifiedMarketAdapter.ts');
 const widget=read('native/android/TfAssetWidgetProvider.kt');
-assert.match(runtime,/loadUnifiedMarketData\(symbolsRef\.current\)/);
+assert.match(runtime,/loadUnifiedMarketData\(\)/);
 assert.match(runtime,/refreshUnifiedMarketData\(symbolsRef\.current\)/);
 assert.match(runtime,/latestSnapshotAtRef/);
 assert.match(runtime,/setTrackedSymbolsState\(current=>sameStrings\(current,normalized\)\?current:normalized\)/,'removed holdings must be unsubscribed');

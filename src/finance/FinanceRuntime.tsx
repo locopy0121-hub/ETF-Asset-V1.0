@@ -91,11 +91,24 @@ export function FinanceProvider({children}:PropsWithChildren){
   const [cashConfigured,setCashConfigured]=useState(false);
   const [hydrated,setHydrated]=useState(false);
   const [valuationNow,setValuationNow]=useState(Date.now);
+  useEffect(()=>{setValuationNow(Date.now());},[market.marketDataVersion]);
   useEffect(()=>{
-    const timer=setInterval(()=>setValuationNow(Date.now()),30_000);
     const listener=AppState.addEventListener('change',state=>{if(state==='active')setValuationNow(Date.now());});
-    return()=>{clearInterval(timer);listener.remove();};
+    return()=>listener.remove();
   },[]);
+  useEffect(()=>{
+    if(AppState.currentState!=='active')return;
+    const now=Date.now();
+    const future=market.quotes.flatMap(row=>{
+      if(!row.sourceQuoteAt||row.currentPrice<=0)return [];
+      const freshness=row.sourceQuoteAt+30_000;
+      const validity=valuationValidUntil(row,now);
+      return [freshness,validity].filter(at=>at>now);
+    });
+    if(future.length===0)return;
+    const timer=setTimeout(()=>setValuationNow(Date.now()),Math.max(1,Math.min(...future)-now));
+    return()=>clearTimeout(timer);
+  },[market.quotes,valuationNow]);
   const valuationContext=useMemo(()=>({now:valuationNow,unresolvedSymbols:market.unresolvedSymbols}),[valuationNow,market.unresolvedSymbols]);
 
   useEffect(()=>{
@@ -199,7 +212,8 @@ export function FinanceProvider({children}:PropsWithChildren){
       quoteVerified:verified,
       valuationStatus:verified?(valuationSessionActive(valuationNow)?'current_session':'reference'):'unavailable',
       valuationValidUntil:valuationQuote?valuationValidUntil(valuationQuote,valuationNow):null,
-      quoteStatus:valuationQuote?.quoteStatus,
+      quoteStatus:valuationQuote?.quoteStatus==='LIVE'&&valuationNow-(valuationQuote.sourceQuoteAt??0)>30_000
+        ?'DELAYED':valuationQuote?.quoteStatus,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
       marketDataVersion:market.marketDataVersion,
