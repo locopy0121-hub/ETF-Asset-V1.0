@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.13",
+  "version": "4.0.14",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v3_2_38 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_14 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -298,23 +298,26 @@
     "test:v4_0_10": "npm run test:v4_0_9 && node scripts/v4_0_10-global-event.test.cjs",
     "test:v4_0_11": "npm run test:v4_0_9 && node scripts/v4_0_10-global-event.test.cjs",
     "test:v4_0_13": "npm run test:v4_0_12 && node --import tsx scripts/v4_0_13-etf-constituents.test.ts && node --import tsx scripts/v4_0_13-etf-update-policy.test.ts && node --import tsx scripts/v4_0_13-etf-fetch.test.ts",
-    "test:v4_0_12": "npm run test:v4_0_11 && node scripts/v4_0_12-after-hours-contract.test.cjs && bash scripts/test-native-market-bridge.sh"
+    "test:v4_0_12": "npm run test:v4_0_11 && node scripts/v4_0_12-after-hours-contract.test.cjs && bash scripts/test-native-market-bridge.sh",
+    "test:v4_0_14": "npm run test:v4_0_13 && node scripts/v4_0_14-news-reader.test.cjs"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.21",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "react-native-svg": "15.15.4"
+    "react-native-svg": "15.15.4",
+    "react-native-webview": "13.16.1"
   },
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "@types/react": "~19.2.2",
     "expo-doctor": "^1.17.0",
-    "typescript": "~6.0.3",
+    "react-test-renderer": "19.2.3",
     "tsx": "^4.20.5",
-    "@types/node": "^22.15.3"
+    "typescript": "~6.0.3"
   },
   "engines": {
     "node": ">=22.13.0"
