@@ -19,7 +19,7 @@
 | ID | 項目 | 目前狀態 |
 |---|---|---|
 | P1-01 | FrameCard 各效果的真實損益色 tone | V4.0.6 已修；本地／CI 回歸、審查與 QA APK 通過，待裝置驗證 |
-| P1-02 | 零值與不可用狀態的剩餘顏色分支 | V4.0.7 補文字／詳情／情境、零值與行情缺失判色；本地回歸通過，QA／裝置待驗 |
+| P1-02 | 零值與不可用狀態的剩餘顏色分支 | V4.0.7 補文字／詳情／情境、零值與行情缺失判色；本地／CI 回歸、審查與 QA APK 通過，待裝置驗證 |
 | P1-03 | 全域／主題／模板／固定覆寫優先序及原生外觀作用範圍 | V4.0.7 修文字／個別持股卡覆寫；其他主題模板與原生作用範圍待修 |
 | P1-04 | 行情狀態、來源時間、參考價與延遲標示 | V4.0.4 持股牆／原生已修；其他頁待統一 |
 | P1-05 | 交易所休市日曆 | 待修；目前仍採平日交易時段 |
@@ -71,3 +71,9 @@ V4.0.5 Actions [#3207](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/
 
 
 V4.0.6 Actions [#3208](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37702820605) 三項工作全部成功；[QA APK](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37702820605/artifacts/11518318746)。FrameCard 金融 tone、12 色彩入口、固定色及現有實際頁預覽映射見 [發佈紀錄](../releases/V4.0.6-FRAME-PROFIT-COLORS.md)。
+
+## V4.0.7 文字損益色
+
+一般文字繼承實際金融狀態，修護儀表板、首頁／庫存／詳情、設定預覽、行情牆主要／次要與精簡卡的文字接線。個別卡片固定色及手動狀態覆寫不再被底層重新判色；零值與待核對資料使用中性色。
+
+[Actions #3209](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37706510334) 三個工作全部成功；[V4.0.7 QA APK](https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/37706510334/artifacts/11519928875)。完整證據及裝置驗收情境見 [發佈紀錄](../releases/V4.0.7-TEXT-PROFIT-COLORS.md)。P1-03 其他主題／模板／原生作用範圍仍待修，整體清單尚未全部完成。
