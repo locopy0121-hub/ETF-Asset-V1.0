@@ -1,3 +1,7 @@
+## 2026-10-09｜受保護「系統設定／控制中心」主頁，不得納入 V4.0.15 編輯器改造
+
+已依使用者明確規則撤回 V4.0.15 對 SettingsScreen 的 PageShell／PageEditorStack 及 EditableNative 變更，完整回復 V4.0.14 設定主頁（僅顯示版本資訊更新）。五個設定頁直接子面板也按 V4.0.14 回復，避免新增 wrapper 改變設定內容與操作。新增回歸 Gate 比對 Git blob baseline，後續不得破壞保護規則。先前只加 header fallback 不能符合此保護要求，故採正式還原。
+
 ## 2026-10-09｜V4.0.15 設定底部導航閃退（V4.0.16 熱修）
 
 根因：V4.0.15 新增控制中心 page-header 並由 PageShell 繪製，但 normalizeEditorConfig 仍以舊 PAGE_FRAMES 正規化，讀取使用者既有編輯設定後丟失新增表頭，render 進入 PageHeaderVisual 時因 undefined 而閃退。

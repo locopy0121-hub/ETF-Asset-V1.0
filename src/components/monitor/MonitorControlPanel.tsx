@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import {StyleSheet,View} from 'react-native';
-import {Pressable,Text,TextInput} from '../EditableNative';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,
   type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger,type ItemVisualOverride,
@@ -51,28 +50,28 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   const wallRows=chunk(previewRows,wallLayout.columns);
 
   return <View style={styles.card}>
-    <View style={styles.header}><View style={{flex:1}}><Text editorId="native:MonitorControlPanel:title:1" editorReadOnly={false} style={styles.title}>即時監控器編輯器</Text><Text editorId="native:MonitorControlPanel:sub:2" editorReadOnly={false} style={styles.sub}>Normal / Mini 物理隔離；A 選項目，B 只編輯目前單項，上一個 B 自動收合。</Text></View><Pressable editorId="native:MonitorControlPanel:pill:3" onPress={()=>patch({enabled:!value.enabled})} style={[styles.pill,value.enabled&&styles.pillActive]}><Text editorId="native:MonitorControlPanel:pillText:4" editorReadOnly={true} style={[styles.pillText,value.enabled&&styles.pillTextActive]}>{value.enabled?'已啟用':'未啟用'}</Text></Pressable></View>
+    <View style={styles.header}><View style={{flex:1}}><Text style={styles.title}>即時監控器編輯器</Text><Text style={styles.sub}>Normal / Mini 物理隔離；A 選項目，B 只編輯目前單項，上一個 B 自動收合。</Text></View><Pressable onPress={()=>patch({enabled:!value.enabled})} style={[styles.pill,value.enabled&&styles.pillActive]}><Text style={[styles.pillText,value.enabled&&styles.pillTextActive]}>{value.enabled?'已啟用':'未啟用'}</Text></Pressable></View>
 
     <Section title="模式與即時預覽">
       <Choice choices={['normal','mini'] as const} value={value.mode} label={x=>x==='normal'?'Normal':'Mini'} onChange={(mode:MonitorMode)=>onChange(setMonitorMode(value,mode))}/>
       {value.mode==='normal'?<Choice choices={['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'] as const} value={value.template} label={(x:MonitorTemplate)=>x==='portfolio'?'投資組合':x==='quotes'?'行情列':x==='compact'?'極簡':x==='single'?'單檔大行情':x==='dual'?'雙檔行情':x==='advanced'?'進階資訊':x==='market-wall'?'行情牆':x==='heatmap'?'漲跌熱圖':x==='pnl-wall'?'損益牆':x==='weight-wall'?'資產權重牆':x==='ticker'?'跑馬行情':'純文字終端'} onChange={template=>patch({template})}/>:null}
-      {value.mode==='mini'?<Pressable editorId="native:MonitorControlPanel:action:5" onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text editorId="native:MonitorControlPanel:actionText:6" editorReadOnly={false} style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
+      {value.mode==='mini'?<Pressable onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
       <MonitorPreview value={value} snapshot={previewSnapshot} rows={previewRows} wallRows={wallRows}/>
     </Section>
 
     {value.mode==='normal'&&value.template!=='market-wall'?<Section title="Normal A 顯示項目（母） → B 單項細部">
-      <Text editorId="native:MonitorControlPanel:note:7" editorReadOnly={false} style={styles.note}>所有 Normal 模板都有 A/B；A 控制顯示與順序，點 A 才展開該欄位的 B。</Text>
+      <Text style={styles.note}>所有 Normal 模板都有 A/B；A 控制顯示與順序，點 A 才展開該欄位的 B。</Text>
       {MONITOR_FIELDS.map(field=>{
         const item=monitorItem(value,field),active=value.fields.includes(field),selected=editingKey==='normal:'+field;
         return <View key={field} style={styles.miniColumnCard}>
           <View style={styles.orderRow}>
-            <Pressable editorId="native:MonitorControlPanel:choice:8" onPress={()=>setEditingKey(selected?null:'normal:'+field)} style={[styles.choice,selected&&styles.choiceActive]}><Text editorId="native:MonitorControlPanel:choiceText:9" editorReadOnly={false} style={[styles.choiceText,selected&&styles.choiceTextActive]}>{item.label}</Text></Pressable>
+            <Pressable onPress={()=>setEditingKey(selected?null:'normal:'+field)} style={[styles.choice,selected&&styles.choiceActive]}><Text style={[styles.choiceText,selected&&styles.choiceTextActive]}>{item.label}</Text></Pressable>
             <Visibility active={active} onPress={()=>toggleNormalField(field)}/>
             {active?<><Mini label="↑" onPress={()=>moveNormalField(field,-1)}/><Mini label="↓" onPress={()=>moveNormalField(field,1)}/></>:null}
           </View>
           {selected?<View style={styles.bPanel}>
-            <Text editorId="native:MonitorControlPanel:bTitle:10" editorReadOnly={true} style={styles.bTitle}>B 單項細部：{MONITOR_FIELD_LABELS[field]}</Text>
-            <TextInput editorId="native:MonitorControlPanel:input:11" value={item.label} onChangeText={label=>onChange(updateNormalItem(value,field,{label:label.slice(0,16)}))} style={styles.input}/>
+            <Text style={styles.bTitle}>B 單項細部：{MONITOR_FIELD_LABELS[field]}</Text>
+            <TextInput value={item.label} onChangeText={label=>onChange(updateNormalItem(value,field,{label:label.slice(0,16)}))} style={styles.input}/>
             <ItemVisualEditor visual={item.visual} baseStyle={value.normalStyle} onChange={p=>patchNormalVisual(field,p)} onEffect={p=>patchNormalEffect(field,p)}/>
           </View>:null}
         </View>;
@@ -80,7 +79,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
     </Section>:null}
 
     {value.mode==='mini'?<Section title="Mini A 項目列（母）">
-      <Text editorId="native:MonitorControlPanel:note:12" editorReadOnly={false} style={styles.note}>A 只控制項目列本身，不直接修改 B 欄位。</Text>
+      <Text style={styles.note}>A 只控制項目列本身，不直接修改 B 欄位。</Text>
       <Toggle label="顯示項目列" value={value.miniHeader.visible} onChange={visible=>onChange(updateMiniHeader(value,{visible}))}/>
       <Step label="項目列高度" value={value.miniHeader.height} min={22} max={56} step={2} suffix=" px" onChange={height=>onChange(updateMiniHeader(value,{height}))}/>
       <Step label="項目列字體" value={Math.round(value.miniHeader.fontScale*100)} min={70} max={160} step={5} suffix="%" onChange={n=>onChange(updateMiniHeader(value,{fontScale:n/100}))}/>
@@ -92,20 +91,20 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
     </Section>:null}
 
     {value.mode==='mini'?<Section title="Mini B 欄位（子）">
-      <Text editorId="native:MonitorControlPanel:note:13" editorReadOnly={false} style={styles.note}>一次只展開一個 B；資料列共用同一套 B 結構。</Text>
-      <Text editorId="native:MonitorControlPanel:note:14" editorReadOnly={false} style={styles.note}>Mini 列數不設限；超出固定高度時以捲動顯示，不截斷持股。</Text>
+      <Text style={styles.note}>一次只展開一個 B；資料列共用同一套 B 結構。</Text>
+      <Text style={styles.note}>Mini 列數不設限；超出固定高度時以捲動顯示，不截斷持股。</Text>
       {value.miniColumns.map((column,index)=>{
         const selected=editingKey==='mini:'+column.field;
         return <View key={column.field} style={styles.miniColumnCard}>
           <View style={styles.orderRow}>
-            <Pressable editorId="native:MonitorControlPanel:choice:15" onPress={()=>setEditingKey(selected?null:'mini:'+column.field)} style={[styles.choice,selected&&styles.choiceActive]}><Text editorId="native:MonitorControlPanel:choiceText:16" editorReadOnly={false} style={[styles.choiceText,selected&&styles.choiceTextActive]}>{column.label}</Text></Pressable>
+            <Pressable onPress={()=>setEditingKey(selected?null:'mini:'+column.field)} style={[styles.choice,selected&&styles.choiceActive]}><Text style={[styles.choiceText,selected&&styles.choiceTextActive]}>{column.label}</Text></Pressable>
             <Visibility active={column.enabled} onPress={()=>onChange(updateMiniColumn(value,column.field,{enabled:!column.enabled}))}/>
             <Mini label="↑" onPress={()=>onChange(moveMiniColumn(value,column.field,-1))}/><Mini label="↓" onPress={()=>onChange(moveMiniColumn(value,column.field,1))}/>
           </View>
-          <Text editorId="native:MonitorControlPanel:positionHint:17" editorReadOnly={true} style={styles.positionHint}>第 {index+1} 欄 · 寬度 {column.widthPercent}% · {column.align==='left'?'靠左':column.align==='center'?'置中':'靠右'}</Text>
+          <Text style={styles.positionHint}>第 {index+1} 欄 · 寬度 {column.widthPercent}% · {column.align==='left'?'靠左':column.align==='center'?'置中':'靠右'}</Text>
           {selected?<View style={styles.bPanel}>
-            <Text editorId="native:MonitorControlPanel:bTitle:18" editorReadOnly={false} style={styles.bTitle}>B 單項細部</Text>
-            <TextInput editorId="native:MonitorControlPanel:input:19" value={column.label} onChangeText={label=>onChange(updateMiniColumn(value,column.field,{label:label.slice(0,12)}))} style={styles.input}/>
+            <Text style={styles.bTitle}>B 單項細部</Text>
+            <TextInput value={column.label} onChangeText={label=>onChange(updateMiniColumn(value,column.field,{label:label.slice(0,12)}))} style={styles.input}/>
             <Step label="欄寬" value={column.widthPercent} min={10} max={60} step={2} suffix="%" onChange={widthPercent=>onChange(updateMiniColumn(value,column.field,{widthPercent}))}/>
             <Step label="字體" value={Math.round(column.fontScale*100)} min={70} max={200} step={5} suffix="%" onChange={n=>onChange(updateMiniColumn(value,column.field,{fontScale:n/100}))}/>
             <Choice choices={['left','center','right'] as const} value={column.align} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={align=>onChange(updateMiniColumn(value,column.field,{align}))}/>
@@ -131,13 +130,13 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
         const selected=editingKey==='status:'+item.field;
         return <View key={item.field} style={styles.miniColumnCard}>
           <View style={styles.orderRow}>
-            <Pressable editorId="native:MonitorControlPanel:choice:20" onPress={()=>setEditingKey(selected?null:'status:'+item.field)} style={[styles.choice,selected&&styles.choiceActive]}><Text editorId="native:MonitorControlPanel:choiceText:21" editorReadOnly={false} style={[styles.choiceText,selected&&styles.choiceTextActive]}>{item.label}</Text></Pressable>
+            <Pressable onPress={()=>setEditingKey(selected?null:'status:'+item.field)} style={[styles.choice,selected&&styles.choiceActive]}><Text style={[styles.choiceText,selected&&styles.choiceTextActive]}>{item.label}</Text></Pressable>
             <Visibility active={item.enabled} onPress={()=>onChange(updateMiniStatusItem(value,item.field,{enabled:!item.enabled}))}/>
             <Mini label="↑" onPress={()=>onChange(moveMiniStatusItem(value,item.field,-1))}/><Mini label="↓" onPress={()=>onChange(moveMiniStatusItem(value,item.field,1))}/>
           </View>
-          <Text editorId="native:MonitorControlPanel:positionHint:22" editorReadOnly={true} style={styles.positionHint}>第 {index+1} 項</Text>
+          <Text style={styles.positionHint}>第 {index+1} 項</Text>
           {selected?<View style={styles.bPanel}>
-            <TextInput editorId="native:MonitorControlPanel:input:23" value={item.label} onChangeText={label=>onChange(updateMiniStatusItem(value,item.field,{label:label.slice(0,12)}))} style={styles.input}/>
+            <TextInput value={item.label} onChangeText={label=>onChange(updateMiniStatusItem(value,item.field,{label:label.slice(0,12)}))} style={styles.input}/>
             <Step label="單項字體" value={Math.round(item.fontScale*100)} min={70} max={200} step={5} suffix="%" onChange={n=>onChange(updateMiniStatusItem(value,item.field,{fontScale:n/100}))}/>
             <Choice choices={['left','center','right'] as const} value={item.align} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={align=>onChange(updateMiniStatusItem(value,item.field,{align}))}/>
             <Toggle label="套用損益色" value={item.useProfitColor} onChange={useProfitColor=>onChange(updateMiniStatusItem(value,item.field,{useProfitColor}))}/>
@@ -152,14 +151,14 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
     </Section>:null}
 
     {value.mode==='normal'&&value.template==='market-wall'?<Section title="主體行情牆框架">
-      <Text editorId="native:MonitorControlPanel:note:24" editorReadOnly={false} style={styles.note}>框架只控制行情卡排列；卡片內 A/B 由下一區獨立編輯。</Text>
+      <Text style={styles.note}>框架只控制行情卡排列；卡片內 A/B 由下一區獨立編輯。</Text>
       <Step label="並排欄數" value={wallLayout.columns} min={1} max={4} step={1} suffix=" 欄" onChange={columns=>onChange(updateMonitorWallLayout(value,{columns}))}/>
       <Step label="水平間距" value={wallLayout.columnGap} min={0} max={32} step={2} suffix=" px" onChange={columnGap=>onChange(updateMonitorWallLayout(value,{columnGap}))}/>
       <Step label="垂直間距" value={wallLayout.rowGap} min={0} max={32} step={2} suffix=" px" onChange={rowGap=>onChange(updateMonitorWallLayout(value,{rowGap}))}/>
     </Section>:null}
 
     {value.mode==='normal'&&value.template==='market-wall'?<Section title="主體行情牆 A/B 編輯">
-      <Text editorId="native:MonitorControlPanel:note:25" editorReadOnly={false} style={styles.note}>A 控制標題列；B 每個欄位有自己的字體、顏色、背景、對齊、行距與特效。</Text>
+      <Text style={styles.note}>A 控制標題列；B 每個欄位有自己的字體、顏色、背景、對齊、行距與特效。</Text>
       <Toggle label="A 標題列顯示" value={wall.header.visible} onChange={visible=>patchWallHeader({visible})}/>
       <Step label="A 標題列字體" value={Math.round(wall.header.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchWallHeader({fontScale:n/100})}/>
       <ColorPalettePicker label="A 標題列背景" value={wall.header.backgroundColor} onChange={backgroundColor=>patchWallHeader({backgroundColor})}/>
@@ -169,13 +168,13 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
         const selected=editingKey==='wall:'+field.field;
         return <View key={field.field} style={styles.miniColumnCard}>
           <View style={styles.orderRow}>
-            <Pressable editorId="native:MonitorControlPanel:choice:26" onPress={()=>setEditingKey(selected?null:'wall:'+field.field)} style={[styles.choice,selected&&styles.choiceActive]}><Text editorId="native:MonitorControlPanel:choiceText:27" editorReadOnly={false} style={[styles.choiceText,selected&&styles.choiceTextActive]}>{field.label}</Text></Pressable>
+            <Pressable onPress={()=>setEditingKey(selected?null:'wall:'+field.field)} style={[styles.choice,selected&&styles.choiceActive]}><Text style={[styles.choiceText,selected&&styles.choiceTextActive]}>{field.label}</Text></Pressable>
             <Visibility active={field.enabled} onPress={()=>patchWallField(field.field,{enabled:!field.enabled})}/>
             <Mini label="↑" onPress={()=>moveWallField(field.field,-1)}/><Mini label="↓" onPress={()=>moveWallField(field.field,1)}/>
           </View>
-          <Text editorId="native:MonitorControlPanel:positionHint:28" editorReadOnly={true} style={styles.positionHint}>B 第 {index+1} 欄</Text>
+          <Text style={styles.positionHint}>B 第 {index+1} 欄</Text>
           {selected?<View style={styles.bPanel}>
-            <TextInput editorId="native:MonitorControlPanel:input:29" value={field.label} onChangeText={label=>patchWallField(field.field,{label:label.slice(0,12)})} style={styles.input}/>
+            <TextInput value={field.label} onChangeText={label=>patchWallField(field.field,{label:label.slice(0,12)})} style={styles.input}/>
             <Step label="字體" value={Math.round(field.fontScale*100)} min={70} max={200} step={5} suffix="%" onChange={n=>patchWallField(field.field,{fontScale:n/100})}/>
             <Choice choices={['left','center','right'] as const} value={field.align} label={x=>x==='left'?'靠左':x==='center'?'置中':'靠右'} onChange={align=>patchWallField(field.field,{align})}/>
             <Toggle label="套用損益色" value={field.useProfitColor} onChange={useProfitColor=>patchWallField(field.field,{useProfitColor})}/>
@@ -194,13 +193,13 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Step label="高度" value={layout.height} min={value.mode==='mini'?120:56} max={value.mode==='mini'?800:1600} step={10} suffix=" px" onChange={height=>patchLayout({height})}/>
       <Step label="X" value={layout.x} min={-2000} max={2000} step={8} suffix="" onChange={x=>patchLayout({x})}/>
       <Step label="Y" value={layout.y} min={-2000} max={2000} step={8} suffix="" onChange={y=>patchLayout({y})}/>
-      <Pressable editorId="native:MonitorControlPanel:action:30" onPress={()=>patchLayout({x:16,y:120})} style={styles.action}><Text editorId="native:MonitorControlPanel:actionText:31" editorReadOnly={false} style={styles.actionText}>重設目前模式位置</Text></Pressable>
+      <Pressable onPress={()=>patchLayout({x:16,y:120})} style={styles.action}><Text style={styles.actionText}>重設目前模式位置</Text></Pressable>
     </Section>
 
     <Section title="ETF 排序">
       <Choice choices={sorts} value={value.sort.key} label={x=>sortLabels[x]} onChange={key=>patchSort({key})}/>
       {value.sort.key!=='manual'?<Choice choices={['asc','desc'] as const} value={value.sort.direction} label={x=>x==='asc'?'小→大':'大→小'} onChange={direction=>patchSort({direction})}/>:null}
-      <View style={styles.row}>{availableSymbols.map(row=><Pressable editorId="native:MonitorControlPanel:choice:32" key={row.symbol} onPress={()=>toggleSymbol(row.symbol)} style={[styles.choice,value.selectedSymbols.includes(row.symbol)&&styles.choiceActive]}><Text editorId="native:MonitorControlPanel:choiceText:33" editorReadOnly={true} style={[styles.choiceText,value.selectedSymbols.includes(row.symbol)&&styles.choiceTextActive]}>{row.symbol}</Text></Pressable>)}</View>
+      <View style={styles.row}>{availableSymbols.map(row=><Pressable key={row.symbol} onPress={()=>toggleSymbol(row.symbol)} style={[styles.choice,value.selectedSymbols.includes(row.symbol)&&styles.choiceActive]}><Text style={[styles.choiceText,value.selectedSymbols.includes(row.symbol)&&styles.choiceTextActive]}>{row.symbol}</Text></Pressable>)}</View>
     </Section>
 
     <Section title="全域字體與版面">
@@ -213,7 +212,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
     </Section>
 
     <Section title="全域顏色、透明度與外觀">
-      <Text editorId="native:MonitorControlPanel:note:34" editorReadOnly={false} style={styles.note}>B 未覆寫時繼承這裡；顏色全部使用調色盤。</Text>
+      <Text style={styles.note}>B 未覆寫時繼承這裡；顏色全部使用調色盤。</Text>
       <ColorPalettePicker label="背景" value={style.backgroundColor} onChange={backgroundColor=>patchStyle({backgroundColor})}/>
       <ColorPalettePicker label="文字" value={style.textColor} onChange={textColor=>patchStyle({textColor})}/>
       <ColorPalettePicker label="次要文字" value={style.secondaryTextColor} onChange={secondaryTextColor=>patchStyle({secondaryTextColor})}/>
@@ -234,11 +233,11 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Effect label="上漲" value={value.effects.gain} onChange={gain=>patchEffects({gain})}/>
       <Effect label="下跌" value={value.effects.loss} onChange={loss=>patchEffects({loss})}/>
       <Effect label="警報" value={value.effects.alert} onChange={alert=>patchEffects({alert})}/>
-      <Text editorId="native:MonitorControlPanel:label:35" editorReadOnly={false} style={styles.label}>漲跌幅警報門檻（%）</Text>
-      <TextInput editorId="native:MonitorControlPanel:input:36" keyboardType="decimal-pad" value={value.alertChangePct==null?'':String(value.alertChangePct)} onChangeText={t=>patch({alertChangePct:t.trim()===''?null:Math.max(0,Number(t)||0)})} style={styles.input}/>
+      <Text style={styles.label}>漲跌幅警報門檻（%）</Text>
+      <TextInput keyboardType="decimal-pad" value={value.alertChangePct==null?'':String(value.alertChangePct)} onChangeText={t=>patch({alertChangePct:t.trim()===''?null:Math.max(0,Number(t)||0)})} style={styles.input}/>
     </Section>
 
-    <Text editorId="native:MonitorControlPanel:note:37" editorReadOnly={false} style={styles.note}>Monitor 只讀 Shared Snapshot；A/B 只改顯示契約，Normal / Mini Layout 與設定資料互不覆寫。</Text>
+    <Text style={styles.note}>Monitor 只讀 Shared Snapshot；A/B 只改顯示契約，Normal / Mini Layout 與設定資料互不覆寫。</Text>
   </View>;
 }
 
@@ -249,12 +248,12 @@ function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snap
     const cols=enabledMiniColumns(value),statusItems=enabledMiniStatusItems(value);
     return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
       {value.miniHeader.visible?<View style={[styles.miniTableRow,{minHeight:value.miniHeader.height,backgroundColor:value.miniHeader.backgroundColor,borderBottomColor:value.miniHeader.borderColor,borderBottomWidth:value.miniHeader.borderWidth}]}>
-        {cols.map(column=><View key={column.field} style={{flex:column.widthPercent}}><Text editorId="native:MonitorControlPanel:text:38" editorReadOnly={false} style={{color:value.miniHeader.textColor,fontSize:11*value.miniHeader.fontScale,fontWeight:'900',textAlign:column.align}}>{column.label}</Text></View>)}
+        {cols.map(column=><View key={column.field} style={{flex:column.widthPercent}}><Text style={{color:value.miniHeader.textColor,fontSize:11*value.miniHeader.fontScale,fontWeight:'900',textAlign:column.align}}>{column.label}</Text></View>)}
       </View>:null}
-      {rows.map(row=><View key={row.symbol} style={styles.miniTableRow}>{cols.map(column=><View key={column.field} style={{flex:column.widthPercent,backgroundColor:column.backgroundColor??'transparent',paddingVertical:column.paddingY,marginTop:column.lineGap??style.rowGap}}><Text editorId="native:MonitorControlPanel:text:39" editorReadOnly={true} numberOfLines={1} style={{color:column.useProfitColor?profitTone(fieldNumeric(row,column.field,totalMarketValue),style):(column.textColor??style.textColor),fontSize:11*style.fontScale*column.fontScale,fontWeight:'800',textAlign:column.align}}>{miniCellText(row,column.field,totalMarketValue)}</Text></View>)}</View>)}
-      {!rows.length?<Text editorId="native:MonitorControlPanel:note:40" editorReadOnly={false} style={styles.note}>尚無持股資料</Text>:null}
+      {rows.map(row=><View key={row.symbol} style={styles.miniTableRow}>{cols.map(column=><View key={column.field} style={{flex:column.widthPercent,backgroundColor:column.backgroundColor??'transparent',paddingVertical:column.paddingY,marginTop:column.lineGap??style.rowGap}}><Text numberOfLines={1} style={{color:column.useProfitColor?profitTone(fieldNumeric(row,column.field,totalMarketValue),style):(column.textColor??style.textColor),fontSize:11*style.fontScale*column.fontScale,fontWeight:'800',textAlign:column.align}}>{miniCellText(row,column.field,totalMarketValue)}</Text></View>)}</View>)}
+      {!rows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
       {value.miniStatusBar.visible&&statusItems.length?<View style={[styles.miniStatusPreview,{minHeight:value.miniStatusBar.height,backgroundColor:value.miniStatusBar.backgroundColor,borderTopColor:value.miniStatusBar.borderColor,borderTopWidth:value.miniStatusBar.borderWidth}]}>
-        {chunk(statusItems,value.miniStatusBar.columns).map((statusRow,rowIndex)=><View key={'status-'+rowIndex} style={styles.miniStatusRow}>{statusRow.map(item=><Text editorId="native:MonitorControlPanel:text:41" editorReadOnly={true} key={item.field} numberOfLines={1} style={{flex:1,color:item.useProfitColor?profitTone(miniStatusNumeric(snapshot,item),style):(item.textColor??value.miniStatusBar.textColor),backgroundColor:item.backgroundColor??'transparent',fontSize:9*value.miniStatusBar.fontScale*item.fontScale,fontWeight:'800',textAlign:item.align,paddingVertical:item.paddingY,marginTop:item.lineGap??0}}>{item.label} {miniStatusPreviewText(snapshot,item.field,rows.length)}</Text>)}</View>)}
+        {chunk(statusItems,value.miniStatusBar.columns).map((statusRow,rowIndex)=><View key={'status-'+rowIndex} style={styles.miniStatusRow}>{statusRow.map(item=><Text key={item.field} numberOfLines={1} style={{flex:1,color:item.useProfitColor?profitTone(miniStatusNumeric(snapshot,item),style):(item.textColor??value.miniStatusBar.textColor),backgroundColor:item.backgroundColor??'transparent',fontSize:9*value.miniStatusBar.fontScale*item.fontScale,fontWeight:'800',textAlign:item.align,paddingVertical:item.paddingY,marginTop:item.lineGap??0}}>{item.label} {miniStatusPreviewText(snapshot,item.field,rows.length)}</Text>)}</View>)}
       </View>:null}
     </View>;
   }
@@ -263,15 +262,15 @@ function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snap
     return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:value.normalWallLayout.rowGap}]}>
       {wallRows.map((row,rowIndex)=><View key={'wall-row-'+rowIndex} style={{flexDirection:'row',gap:value.normalWallLayout.columnGap}}>
         {row.map(holding=><View key={holding.symbol} style={{flex:1,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding}}>
-          {wall.fields.filter(field=>field.enabled).map((field,index)=><Text editorId="native:MonitorControlPanel:text:42" editorReadOnly={true} key={field.field} numberOfLines={1} style={{fontSize:10*style.fontScale*field.fontScale,fontWeight:'800',color:field.useProfitColor?wallProfitTone(fieldNumeric(holding,field.field),wall.style):(field.textColor??wall.style.textColor),backgroundColor:field.backgroundColor??'transparent',textAlign:field.align,marginTop:index===0?0:(field.lineGap??wall.style.rowGap),paddingVertical:field.paddingY}}>{wallFieldText(holding,field.field,field.label)}</Text>)}
+          {wall.fields.filter(field=>field.enabled).map((field,index)=><Text key={field.field} numberOfLines={1} style={{fontSize:10*style.fontScale*field.fontScale,fontWeight:'800',color:field.useProfitColor?wallProfitTone(fieldNumeric(holding,field.field),wall.style):(field.textColor??wall.style.textColor),backgroundColor:field.backgroundColor??'transparent',textAlign:field.align,marginTop:index===0?0:(field.lineGap??wall.style.rowGap),paddingVertical:field.paddingY}}>{wallFieldText(holding,field.field,field.label)}</Text>)}
         </View>)}
       </View>)}
-      {!rows.length?<Text editorId="native:MonitorControlPanel:note:43" editorReadOnly={false} style={styles.note}>尚無持股資料</Text>:null}
+      {!rows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
     </View>;
   }
   const holding=rows[0];
   return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
-    {holding?value.fields.map((field,index)=>{const item=monitorItem(value,field);const numeric=fieldNumeric(holding,field,totalMarketValue);return <Text editorId="native:MonitorControlPanel:text:44" editorReadOnly={true} key={field} numberOfLines={1} style={{fontSize:11*style.fontScale*item.visual.fontScale,fontWeight:'800',color:item.visual.useProfitColor?profitTone(numeric,style):(item.visual.textColor??style.textColor),backgroundColor:item.visual.backgroundColor??'transparent',textAlign:item.visual.textAlign??style.textAlign,marginTop:index===0?0:(item.visual.lineGap??style.rowGap),paddingVertical:item.visual.paddingY}}>{monitorFieldText(holding,field,item.label,totalMarketValue)}</Text>;}) : <Text editorId="native:MonitorControlPanel:note:45" editorReadOnly={false} style={styles.note}>尚無持股資料</Text>}
+    {holding?value.fields.map((field,index)=>{const item=monitorItem(value,field);const numeric=fieldNumeric(holding,field,totalMarketValue);return <Text key={field} numberOfLines={1} style={{fontSize:11*style.fontScale*item.visual.fontScale,fontWeight:'800',color:item.visual.useProfitColor?profitTone(numeric,style):(item.visual.textColor??style.textColor),backgroundColor:item.visual.backgroundColor??'transparent',textAlign:item.visual.textAlign??style.textAlign,marginTop:index===0?0:(item.visual.lineGap??style.rowGap),paddingVertical:item.visual.paddingY}}>{monitorFieldText(holding,field,item.label,totalMarketValue)}</Text>;}) : <Text style={styles.note}>尚無持股資料</Text>}
   </View>;
 }
 
@@ -289,14 +288,14 @@ function ItemVisualEditor({visual,baseStyle,onChange,onEffect}:{visual:ItemVisua
 }
 function NullableColor({label,value,fallback,onChange}:{label:string;value:string|null;fallback:string;onChange:(value:string|null)=>void}){return <View style={{gap:6}}><Toggle label={'自訂'+label} value={value!=null} onChange={enabled=>onChange(enabled?fallback:null)}/>{value?<ColorPalettePicker label={label} value={value} onChange={onChange}/>:null}</View>;}
 function NullableGap({value,fallback,onChange}:{value:number|null;fallback:number;onChange:(value:number|null)=>void}){return <View style={{gap:6}}><Toggle label="自訂行距" value={value!=null} onChange={enabled=>onChange(enabled?fallback:null)}/>{value!=null?<Step label="單項行距" value={value} min={0} max={32} step={1} suffix=" px" onChange={onChange}/>:null}</View>;}
-function EffectEditor({value,onChange}:{value:ItemEffectConfig;onChange:(p:Partial<ItemEffectConfig>)=>void}){return <View style={styles.effectBox}><Text editorId="native:MonitorControlPanel:label:46" editorReadOnly={false} style={styles.label}>單項特效</Text><Choice choices={ITEM_EFFECT_KINDS} value={value.kind} label={x=>itemEffectLabels[x]} onChange={kind=>onChange({kind})}/>{value.kind!=='none'?<><Text editorId="native:MonitorControlPanel:label:47" editorReadOnly={false} style={styles.label}>觸發條件</Text><Choice choices={ITEM_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/><Text editorId="native:MonitorControlPanel:label:48" editorReadOnly={false} style={styles.label}>速度</Text><Choice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={x=>speedLabels[x]} onChange={speed=>onChange({speed})}/><Text editorId="native:MonitorControlPanel:label:49" editorReadOnly={false} style={styles.label}>強度</Text><Choice choices={ITEM_EFFECT_INTENSITIES} value={value.intensity} label={x=>intensityLabels[x]} onChange={intensity=>onChange({intensity})}/></>:null}</View>;}
-function Visibility({active,onPress}:{active:boolean;onPress:()=>void}){return <Pressable editorId="native:MonitorControlPanel:visibility:50" onPress={onPress} style={[styles.visibility,active&&styles.visibilityOn]}><Text editorId="native:MonitorControlPanel:visibilityText:51" editorReadOnly={true} style={[styles.visibilityText,active&&styles.visibilityTextOn]}>{active?'顯示':'隱藏'}</Text></Pressable>;}
-function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text editorId="native:MonitorControlPanel:sectionTitle:52" editorReadOnly={false} style={styles.sectionTitle}>{title}</Text>{children}</View>;}
-function Choice<T extends string>({choices,value,label,onChange}:{choices:readonly T[];value:T;label:(x:T)=>string;onChange:(x:T)=>void}){return <View style={styles.row}>{choices.map(x=><Pressable editorId="native:MonitorControlPanel:choice:53" key={x} onPress={()=>onChange(x)} style={[styles.choice,value===x&&styles.choiceActive]}><Text editorId="native:MonitorControlPanel:choiceText:54" editorReadOnly={true} style={[styles.choiceText,value===x&&styles.choiceTextActive]}>{label(x)}</Text></Pressable>)}</View>;}
-function Mini({label,onPress}:{label:string;onPress:()=>void}){return <Pressable editorId="native:MonitorControlPanel:mini:55" onPress={onPress} style={styles.mini}><Text editorId="native:MonitorControlPanel:miniText:56" editorReadOnly={false} style={styles.miniText}>{label}</Text></Pressable>;}
-function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(x:number)=>void}){return <View style={styles.step}><Text editorId="native:MonitorControlPanel:stepLabel:57" editorReadOnly={false} style={styles.stepLabel}>{label}</Text><Mini label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text editorId="native:MonitorControlPanel:stepValue:58" editorReadOnly={true} style={styles.stepValue}>{value}{suffix}</Text><Mini label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
-function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(x:boolean)=>void}){return <Pressable editorId="native:MonitorControlPanel:toggle:59" onPress={()=>onChange(!value)} style={styles.toggle}><Text editorId="native:MonitorControlPanel:stepLabel:60" editorReadOnly={false} style={styles.stepLabel}>{label}</Text><Text editorId="native:MonitorControlPanel:state:61" editorReadOnly={true} style={[styles.state,value&&styles.stateOn]}>{value?'開':'關'}</Text></Pressable>;}
-function Effect({label,value,onChange}:{label:string;value:MonitorEffect;onChange:(x:MonitorEffect)=>void}){return <View><Text editorId="native:MonitorControlPanel:label:62" editorReadOnly={false} style={styles.label}>{label}</Text><Choice choices={effects} value={value} label={x=>effectLabels[x]} onChange={onChange}/></View>;}
+function EffectEditor({value,onChange}:{value:ItemEffectConfig;onChange:(p:Partial<ItemEffectConfig>)=>void}){return <View style={styles.effectBox}><Text style={styles.label}>單項特效</Text><Choice choices={ITEM_EFFECT_KINDS} value={value.kind} label={x=>itemEffectLabels[x]} onChange={kind=>onChange({kind})}/>{value.kind!=='none'?<><Text style={styles.label}>觸發條件</Text><Choice choices={ITEM_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/><Text style={styles.label}>速度</Text><Choice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={x=>speedLabels[x]} onChange={speed=>onChange({speed})}/><Text style={styles.label}>強度</Text><Choice choices={ITEM_EFFECT_INTENSITIES} value={value.intensity} label={x=>intensityLabels[x]} onChange={intensity=>onChange({intensity})}/></>:null}</View>;}
+function Visibility({active,onPress}:{active:boolean;onPress:()=>void}){return <Pressable onPress={onPress} style={[styles.visibility,active&&styles.visibilityOn]}><Text style={[styles.visibilityText,active&&styles.visibilityTextOn]}>{active?'顯示':'隱藏'}</Text></Pressable>;}
+function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;}
+function Choice<T extends string>({choices,value,label,onChange}:{choices:readonly T[];value:T;label:(x:T)=>string;onChange:(x:T)=>void}){return <View style={styles.row}>{choices.map(x=><Pressable key={x} onPress={()=>onChange(x)} style={[styles.choice,value===x&&styles.choiceActive]}><Text style={[styles.choiceText,value===x&&styles.choiceTextActive]}>{label(x)}</Text></Pressable>)}</View>;}
+function Mini({label,onPress}:{label:string;onPress:()=>void}){return <Pressable onPress={onPress} style={styles.mini}><Text style={styles.miniText}>{label}</Text></Pressable>;}
+function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(x:number)=>void}){return <View style={styles.step}><Text style={styles.stepLabel}>{label}</Text><Mini label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.stepValue}>{value}{suffix}</Text><Mini label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
+function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(x:boolean)=>void}){return <Pressable onPress={()=>onChange(!value)} style={styles.toggle}><Text style={styles.stepLabel}>{label}</Text><Text style={[styles.state,value&&styles.stateOn]}>{value?'開':'關'}</Text></Pressable>;}
+function Effect({label,value,onChange}:{label:string;value:MonitorEffect;onChange:(x:MonitorEffect)=>void}){return <View><Text style={styles.label}>{label}</Text><Choice choices={effects} value={value} label={x=>effectLabels[x]} onChange={onChange}/></View>;}
 
 const styles=StyleSheet.create({
  card:{backgroundColor:colors.surfaceMuted,borderRadius:radius.lg,padding:spacing.md,borderWidth:1,borderColor:colors.border,gap:10},

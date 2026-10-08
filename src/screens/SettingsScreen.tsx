@@ -1,11 +1,20 @@
-import {PageShell} from '../components/PageShell';
-import {PageEditorStack} from '../components/PageEditorStack';
-import {FrameCard} from '../components/FrameCard';
-import {PageGearButton} from '../components/PageGearButton';
 import { useEffect, useMemo, useState } from 'react';
 import {EtfHoldingsApiSettings} from '../components/EtfHoldingsApiSettings';
-import {Alert,AppState,ImageBackground,Linking,PermissionsAndroid,Platform,ScrollView,StyleSheet,Switch,View} from 'react-native';
-import {Pressable,Text,TextInput} from '../components/EditableNative';
+import {
+  Alert,
+  AppState,
+  ImageBackground,
+  Linking,
+  PermissionsAndroid,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { ColorPalettePicker } from '../components/ColorPalettePicker';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
@@ -14,7 +23,6 @@ import {MarketComparisonPanel} from '../components/MarketComparisonPanel';
 import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import {EDITOR_FRAMES} from '../domain/editorFrameRegistry';
 import { MAIN_PAGES } from '../domain/pageRegistry';
 import {ZERO_COST_DATA_SOURCES} from '../dataSources/zeroCostRegistry';
 import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/BrokerSettingsRuntime';
@@ -65,7 +73,6 @@ export function SettingsScreen(){
   const widget=useWidgetSettingsRuntime();
 
   const [top,setTop]=useState<string|null>(null);
-  const [layoutOpen,setLayoutOpen]=useState(false);
   const [pluginPanel,setPluginPanel]=useState<PluginPanel>(null);
   const [systemPanel,setSystemPanel]=useState<SystemPanel>(null);
   const [accountingPanel,setAccountingPanel]=useState<AccountingPanel>(null);
@@ -177,7 +184,7 @@ export function SettingsScreen(){
       <ChildButton label="駐點維護工程師｜全局總開關" summary={settings.prefs.engineerEnabled?'已啟用｜各區域活動扳手可呼叫':'已關閉｜日常畫面乾淨'} active={systemPanel==='engineer'} onPress={()=>setSystemPanel(systemPanel==='engineer'?null:'engineer')}/>
       {systemPanel==='engineer'?<Panel title="全 App 工程師進駐">
         <ToggleRow label="顯示各模塊／框架／元件活動扳手" value={settings.prefs.engineerEnabled} onChange={settings.patchEngineerEnabled}/>
-        <Text editorId="native:SettingsScreen:note:1" editorReadOnly={false} style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
+        <Text style={styles.note}>每位工程師固定常駐於所屬頁面設定之下；透過當前區域右上角扳手按需呼叫。工作區上方直接顯示真實畫面的暫存修改，下方獨立滑動 AB 全技能工具。取消即還原，儲存套用才正式寫入。關閉此總開關不會清除已套用配置。</Text>
       </Panel>:null}
       <ChildButton label="背景執行與權限" summary={notificationPermission==='granted'?'通知已允許':'檢查系統權限'} active={systemPanel==='permissions'} onPress={()=>setSystemPanel(systemPanel==='permissions'?null:'permissions')}/>
       {systemPanel==='permissions'?<Panel title="背景執行與權限">
@@ -190,7 +197,7 @@ export function SettingsScreen(){
           await refreshNotificationState();
         }}/>:null}
         <ActionButton label="前往 App 系統設定" onPress={()=>void Linking.openSettings()}/>
-        <Text editorId="native:SettingsScreen:note:2" editorReadOnly={false} style={styles.note}>Android 的電池最佳化與背景限制由系統頁面管理；此處不偽造無法可靠讀取的狀態。</Text>
+        <Text style={styles.note}>Android 的電池最佳化與背景限制由系統頁面管理；此處不偽造無法可靠讀取的狀態。</Text>
       </Panel>:null}
       <ChildButton label="效能與診斷" summary={market.lastError?'行情有警告':'核心狀態正常'} active={systemPanel==='diagnostics'} onPress={()=>setSystemPanel(systemPanel==='diagnostics'?null:'diagnostics')}/>
       {systemPanel==='diagnostics'?<Panel title="效能與診斷">
@@ -223,22 +230,22 @@ export function SettingsScreen(){
     return <View style={styles.children}>
       <ChildButton label="帳務運算公式" summary={FINANCE_FORMULA_CATALOG.length+' 項 · 唯讀'} active={accountingPanel==='formulas'} onPress={()=>setAccountingPanel(accountingPanel==='formulas'?null:'formulas')}/>
       {accountingPanel==='formulas'?<Panel title="Canonical Finance Core 運算公式">
-        <Text editorId="native:SettingsScreen:note:3" editorReadOnly={false} style={styles.note}>此清單只顯示金融核心規則，不在設定頁修改公式。</Text>
-        {FINANCE_FORMULA_CATALOG.map(item=><View key={item.key} style={styles.formula}><Text editorId="native:SettingsScreen:formulaTitle:4" editorReadOnly={true} style={styles.formulaTitle}>{item.title}</Text><Text editorId="native:SettingsScreen:formulaText:5" editorReadOnly={true} style={styles.formulaText}>{item.formula}</Text>{item.note?<Text editorId="native:SettingsScreen:note:6" editorReadOnly={true} style={styles.note}>{item.note}</Text>:null}</View>)}
+        <Text style={styles.note}>此清單只顯示金融核心規則，不在設定頁修改公式。</Text>
+        {FINANCE_FORMULA_CATALOG.map(item=><View key={item.key} style={styles.formula}><Text style={styles.formulaTitle}>{item.title}</Text><Text style={styles.formulaText}>{item.formula}</Text>{item.note?<Text style={styles.note}>{item.note}</Text>:null}</View>)}
       </Panel>:null}
       <ChildButton label="券商與費率" summary={p.name} active={accountingPanel==='broker'} onPress={()=>setAccountingPanel(accountingPanel==='broker'?null:'broker')}/>
       {accountingPanel==='broker'?<BrokerFeeSettingsPanel/>:null}
       <ChildButton label="交易預設值" summary={settings.prefs.tradeDefaults.accountLabel} active={accountingPanel==='defaults'} onPress={()=>setAccountingPanel(accountingPanel==='defaults'?null:'defaults')}/>
       {accountingPanel==='defaults'?<Panel title="交易預設值">
         <ChoiceRow label="預設券商" options={broker.profiles.map(x=>({key:x.id,label:x.name}))} value={settings.prefs.tradeDefaults.brokerProfileId} onChange={brokerProfileId=>settings.patchTradeDefaults({brokerProfileId})}/>
-        <Text editorId="native:SettingsScreen:fieldLabel:7" editorReadOnly={false} style={styles.fieldLabel}>預設帳戶</Text>
-        <TextInput editorId="native:SettingsScreen:input:8" style={styles.input} value={settings.prefs.tradeDefaults.accountLabel} onChangeText={accountLabel=>settings.patchTradeDefaults({accountLabel})}/>
+        <Text style={styles.fieldLabel}>預設帳戶</Text>
+        <TextInput style={styles.input} value={settings.prefs.tradeDefaults.accountLabel} onChangeText={accountLabel=>settings.patchTradeDefaults({accountLabel})}/>
         <ChoiceRow label="預設交易類型" options={[{key:'buy',label:'買進'},{key:'sell',label:'賣出'}]} value={settings.prefs.tradeDefaults.tradeKind} onChange={tradeKind=>settings.patchTradeDefaults({tradeKind:tradeKind==='sell'?'sell':'buy'})}/>
-        <Text editorId="native:SettingsScreen:note:9" editorReadOnly={false} style={styles.note}>只影響之後新開啟的交易表單，不改歷史紀錄。</Text>
+        <Text style={styles.note}>只影響之後新開啟的交易表單，不改歷史紀錄。</Text>
       </Panel>:null}
       <ChildButton label="現金來源／期初現金核對" summary={'期初 NT$ '+Math.round(finance.initialCash).toLocaleString('zh-TW')+' · 逐項對帳'} active={accountingPanel==='cash'} onPress={()=>setAccountingPanel(accountingPanel==='cash'?null:'cash')}/>
       {accountingPanel==='cash'?<Panel title="現金來源對帳（金融核心只讀）">
-        {!finance.hydrated?<Text editorId="native:SettingsScreen:note:10" editorReadOnly={false} style={styles.note}>帳務資料讀取中。</Text>:(()=>{
+        {!finance.hydrated?<Text style={styles.note}>帳務資料讀取中。</Text>:(()=>{
           const audit=auditCashSources(finance.initialCash,finance.entries);
           const fmt=(value:number)=>'NT$ '+Math.round(value).toLocaleString('zh-TW');
           return <>
@@ -249,8 +256,8 @@ export function SettingsScreen(){
             <StatusRow label="其他現金調整淨額" value={fmt(audit.otherNet)}/>
             <StatusRow label="交易／股息／調整淨流量" value={fmt(audit.netMovement)}/>
             <StatusRow label="現金餘額" value={finance.cashConfigured?fmt(audit.cashBalance):'未設定'}/>
-            {!finance.cashConfigured?<Text editorId="native:SettingsScreen:dangerText:11" editorReadOnly={false} style={styles.dangerText}>目前沒有明確的現金來源。交易淨流量只用於對帳，不代表可用現金；不再把從 0 起算的買進支出顯示成負的現金餘額。</Text>:null}
-            <Text editorId="native:SettingsScreen:note:12" editorReadOnly={false} style={styles.note}>未建立明確現金來源時，期初現金固定為 NT$ 0。買進、賣出、股息與其他調整仍保留逐筆對帳，但不會自動建立任何期初資金或系統沖回。</Text>
+            {!finance.cashConfigured?<Text style={styles.dangerText}>目前沒有明確的現金來源。交易淨流量只用於對帳，不代表可用現金；不再把從 0 起算的買進支出顯示成負的現金餘額。</Text>:null}
+            <Text style={styles.note}>未建立明確現金來源時，期初現金固定為 NT$ 0。買進、賣出、股息與其他調整仍保留逐筆對帳，但不會自動建立任何期初資金或系統沖回。</Text>
           </>;
         })()}
       </Panel>:null}
@@ -277,31 +284,31 @@ export function SettingsScreen(){
         <StatusRow label="自動扣款" value="禁止"/>
         <StatusRow label="試用期依賴" value="禁止"/>
         <StatusRow label="已註冊零成本來源" value={String(ZERO_COST_DATA_SOURCES.length)}/>
-        <Text editorId="native:SettingsScreen:note:13" editorReadOnly={false} style={styles.note}>正式資料源只允許零 API 成本來源；TWSE／TPEx 為台股主真值，OpenFIGI 僅作證券身分備援。任何方案型、計量型或可能產生費用的來源不得成為正式必要依賴。</Text>
+        <Text style={styles.note}>正式資料源只允許零 API 成本來源；TWSE／TPEx 為台股主真值，OpenFIGI 僅作證券身分備援。任何方案型、計量型或可能產生費用的來源不得成為正式必要依賴。</Text>
       </Panel>:null}
       <ChildButton label="行情牆專用 A/B 進階編輯" summary="間距、色盤、跑馬燈、特效及完整單卡預覽" active={dataPanel==='wall'} onPress={()=>setDataPanel(dataPanel==='wall'?null:'wall')}/>
       {dataPanel==='wall'?<Panel title="行情牆 A/B 編輯">
-        <Text editorId="native:SettingsScreen:note:14" editorReadOnly={false} style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
+        <Text style={styles.note}>沿用既有 A 母層／B 單項編輯與草稿套用；首頁及庫存版面各自儲存，此入口僅管理行情牆。</Text>
         <ActionButton label="編輯首頁行情牆" onPress={()=>openMarketEditor('home','wall')}/>
         <ActionButton label="編輯庫存行情牆" onPress={()=>openMarketEditor('portfolio','wall')}/>
       </Panel>:null}
       <ChildButton label="ETF 分類與配息標籤" summary="市值／高股息；月配／季配／半年配／年配／不配息" active={dataPanel==='badges'} onPress={()=>setDataPanel(dataPanel==='badges'?null:'badges')}/>
       {dataPanel==='badges'?<Panel title="ETF 智慧標籤 A/B">
-        <Text editorId="native:SettingsScreen:note:15" editorReadOnly={false} style={styles.note}>僅變更畫面標籤；官方分類與配息原始資料保持不變，未知資料仍標示待確認。</Text>
+        <Text style={styles.note}>僅變更畫面標籤；官方分類與配息原始資料保持不變，未知資料仍標示待確認。</Text>
         <ActionButton label="編輯首頁標籤" onPress={()=>openMarketEditor('home','badges')}/>
         <ActionButton label="編輯庫存標籤" onPress={()=>openMarketEditor('portfolio','badges')}/>
       </Panel>:null}
       <ChildButton label="行情卡片資訊顯示" summary={settings.prefs.marketCard.showQuoteMetadata?'顯示來源時間與版本':'精簡模式 · 隱藏來源時間與版本'} active={dataPanel==='metadata'} onPress={()=>setDataPanel(dataPanel==='metadata'?null:'metadata')}/>
       {dataPanel==='metadata'?<Panel title="行情卡片資訊">
         <ToggleRow label="顯示來源時間與資料版本" value={settings.prefs.marketCard.showQuoteMetadata} onChange={showQuoteMetadata=>settings.patchMarketCard({showQuoteMetadata})}/>
-        <Text editorId="native:SettingsScreen:note:16" editorReadOnly={false} style={styles.note}>預設隱藏價格上方的冗長資訊；無法取得行情時仍保留警示。真正來源更新時間與資料中心診斷保持可查，不用畫面跳秒冒充新報價。</Text>
+        <Text style={styles.note}>預設隱藏價格上方的冗長資訊；無法取得行情時仍保留警示。真正來源更新時間與資料中心診斷保持可查，不用畫面跳秒冒充新報價。</Text>
       </Panel>:null}
       <ChildButton label="ETF 基礎資料" summary={market.catalog.length+' 筆'} active={dataPanel==='catalog'} onPress={()=>setDataPanel(dataPanel==='catalog'?null:'catalog')}/>
       {dataPanel==='catalog'?<Panel title="ETF 基礎資料">
         <StatusRow label="資料來源" value="TWSE + TPEx"/>
         <StatusRow label="ETF 資料筆數" value={String(market.catalog.length)}/>
         <ActionButton label={market.catalogRefreshing?'更新中…':'立即更新 ETF 基礎資料'} disabled={market.catalogRefreshing} onPress={()=>void market.refreshCatalog()}/>
-        <Text editorId="native:SettingsScreen:note:17" editorReadOnly={false} style={styles.note}>記帳搜尋、代號提示與名稱解析共用 Market Runtime 的 台股證券 Catalog。</Text>
+        <Text style={styles.note}>記帳搜尋、代號提示與名稱解析共用 Market Runtime 的 台股證券 Catalog。</Text>
       </Panel>:null}
       <ChildButton label="資料概況" summary={finance.entries.length+' 筆交易 · '+finance.holdings.length+' 檔持股'} active={dataPanel==='summary'} onPress={()=>setDataPanel(dataPanel==='summary'?null:'summary')}/>
       {dataPanel==='summary'?<Panel title="資料概況">
@@ -322,7 +329,7 @@ export function SettingsScreen(){
       </Panel>:null}
       <ChildButton label="資料修復" summary="安全重建，不改歷史費稅" active={dataPanel==='repair'} onPress={()=>setDataPanel(dataPanel==='repair'?null:'repair')}/>
       {dataPanel==='repair'?<Panel title="資料修復">
-        <Text editorId="native:SettingsScreen:note:18" editorReadOnly={false} style={styles.note}>目前可安全執行的修復為重新更新 台股證券 Catalog 與行情；持股投影會由 Canonical Ledger 自動重建，不直接改寫歷史交易。</Text>
+        <Text style={styles.note}>目前可安全執行的修復為重新更新 台股證券 Catalog 與行情；持股投影會由 Canonical Ledger 自動重建，不直接改寫歷史交易。</Text>
         <ActionButton label="重建台股證券基礎資料" onPress={()=>void market.refreshCatalog()}/>
         <ActionButton label="重新取得行情" onPress={()=>void market.refresh()}/>
       </Panel>:null}
@@ -380,7 +387,7 @@ export function SettingsScreen(){
 
   function backupSection(){
     return <View style={styles.children}>
-      <Text editorId="native:SettingsScreen:dangerText:19" editorReadOnly={false} style={styles.dangerText}>重要：App 內備份和 SQLite 都屬於 App 私有資料；解除安裝／清除資料會一起消失。外部 JSON 必須另存至手機目錄或雲端磁碟。</Text>
+      <Text style={styles.dangerText}>重要：App 內備份和 SQLite 都屬於 App 私有資料；解除安裝／清除資料會一起消失。外部 JSON 必須另存至手機目錄或雲端磁碟。</Text>
       <StatusRow label="最近一次外部存檔紀錄" value={verifiedExternal?
         verifiedExternal.fileName+'｜'+formatDate(verifiedExternal.createdAt):
         '尚無；不得把本機備份當成外部備份'}/>
@@ -388,15 +395,15 @@ export function SettingsScreen(){
       <ChildButton label="選擇目錄建立外部備份" summary="Android 系統檔案視窗｜寫入＋讀回校驗"
         active={backupPanel==='export'} onPress={()=>setBackupPanel(backupPanel==='export'?null:'export')}/>
       {backupPanel==='export'?<Panel title="真正的外部 JSON 檔案">
-        <Text editorId="native:SettingsScreen:note:20" editorReadOnly={false} style={styles.note}>將包含完整 Ledger、設定和本機備份歷史。只有 Android 回傳寫入及讀回校驗成功才記錄外部存檔。</Text>
+        <Text style={styles.note}>將包含完整 Ledger、設定和本機備份歷史。只有 Android 回傳寫入及讀回校驗成功才記錄外部存檔。</Text>
         <ActionButton label={backupBusy?'備份中…':'選擇手機／雲端目錄並建立備份'}
           disabled={!backupDocumentPickerAvailable||backupBusy||!finance.hydrated}
           onPress={()=>void saveBackupFile()}/>
-        {!backupDocumentPickerAvailable?<Text editorId="native:SettingsScreen:dangerText:21" editorReadOnly={false} style={styles.dangerText}>本環境缺少 Android 外部檔案選擇器，不可宣稱已備份。</Text>:null}
+        {!backupDocumentPickerAvailable?<Text style={styles.dangerText}>本環境缺少 Android 外部檔案選擇器，不可宣稱已備份。</Text>:null}
         <ActionButton label="備用：產生 JSON 文字自行保存" disabled={backupBusy||!finance.hydrated}
           onPress={()=>void exportTfAssetData().then(setExportText).catch(error=>Alert.alert('產生 JSON 失敗',String(error)))}/>
-        {exportText?<TextInput editorId="native:SettingsScreen:input:22" style={[styles.input,styles.multiline]} multiline value={exportText} onChangeText={setExportText}/>:null}
-        <Text editorId="native:SettingsScreen:note:23" editorReadOnly={false} style={styles.note}>儲存紀錄只能證明當時成功寫入，不能保證檔案之後沒有被刪除，請在檔案管理器檢查。</Text>
+        {exportText?<TextInput style={[styles.input,styles.multiline]} multiline value={exportText} onChangeText={setExportText}/>:null}
+        <Text style={styles.note}>儲存紀錄只能證明當時成功寫入，不能保證檔案之後沒有被刪除，請在檔案管理器檢查。</Text>
       </Panel>:null}
       <ChildButton label="建立 App 內暫存備份" summary={backups.length+' 份｜卸載時全數遺失'}
         active={backupPanel==='create'} onPress={()=>setBackupPanel(backupPanel==='create'?null:'create')}/>
@@ -411,7 +418,7 @@ export function SettingsScreen(){
       {backupPanel==='import'?<Panel title="外部檔案還原">
         <ActionButton label={backupBusy?'驗證中…':'選擇 JSON 備份檔案'} disabled={!backupDocumentPickerAvailable||backupBusy}
           onPress={()=>void chooseBackupFile()}/>
-        <TextInput editorId="native:SettingsScreen:input:24" style={[styles.input,styles.multiline]} multiline placeholder="或貼上舊版 TF Asset JSON"
+        <TextInput style={[styles.input,styles.multiline]} multiline placeholder="或貼上舊版 TF Asset JSON"
           value={importText} onChangeText={setImportText}/>
         <ActionButton label="驗證貼上的 JSON" disabled={!importText.trim()||backupBusy} onPress={()=>{
           try{const info=inspectTfAssetBackup(importText);
@@ -430,7 +437,7 @@ export function SettingsScreen(){
       <ChildButton label="還原 App 內備份" summary={backups.length+' 份（非外部存檔）'}
         active={backupPanel==='restore'} onPress={()=>setBackupPanel(backupPanel==='restore'?null:'restore')}/>
       {backupPanel==='restore'?<Panel title="本機備份還原">
-        {backups.length===0?<Text editorId="native:SettingsScreen:note:25" editorReadOnly={false} style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable editorId="native:SettingsScreen:restoreRow:26"
+        {backups.length===0?<Text style={styles.note}>目前沒有本機備份。</Text>:backups.map(row=><Pressable
           key={row.id} style={styles.restoreRow} onPress={()=>Alert.alert('確認本機還原',
           '所選備份 '+formatDate(row.createdAt)+'。還原前會先儲存目前帳務；建議先外部存檔。',[
           {text:'取消',style:'cancel'},
@@ -438,31 +445,31 @@ export function SettingsScreen(){
             setBackupStatus('本機備份還原完成；完全關閉再重啟 App 查核。');void reloadBackupMeta();
           }).catch(error=>Alert.alert('還原失敗',String(error)))},
         ])}>
-          <View style={{flex:1}}><Text editorId="native:SettingsScreen:rowTitle:27" editorReadOnly={true} style={styles.rowTitle}>{formatDate(row.createdAt)}</Text>
-          <Text editorId="native:SettingsScreen:note:28" editorReadOnly={true} style={styles.note}>{row.keys} 個資料區 · {formatBytes(row.bytes)} · v{row.appVersion}</Text></View>
-          <Text editorId="native:SettingsScreen:chevron:29" editorReadOnly={false} style={styles.chevron}>›</Text>
+          <View style={{flex:1}}><Text style={styles.rowTitle}>{formatDate(row.createdAt)}</Text>
+          <Text style={styles.note}>{row.keys} 個資料區 · {formatBytes(row.bytes)} · v{row.appVersion}</Text></View>
+          <Text style={styles.chevron}>›</Text>
         </Pressable>)}
       </Panel>:null}
       <ChildButton label="清除帳務資料" summary="資料安全鎖：本輪暫停危險清除"
         danger active={backupPanel==='clear'} onPress={()=>setBackupPanel(backupPanel==='clear'?null:'clear')}/>
       {backupPanel==='clear'?<Panel title="帳務刪除保護">
-        <Text editorId="native:SettingsScreen:dangerText:30" editorReadOnly={false} style={styles.dangerText}>V2.3.1 開發階段禁用清除帳務。外部檔案的最近存檔紀錄不能證明它仍存在、也不能證明包含最新交易。</Text>
+        <Text style={styles.dangerText}>V2.3.1 開發階段禁用清除帳務。外部檔案的最近存檔紀錄不能證明它仍存在、也不能證明包含最新交易。</Text>
         <ActionButton label="先建立外部 JSON 備份" onPress={()=>setBackupPanel('export')}/>
       </Panel>:null}
-      {backupStatus?<Text editorId="native:SettingsScreen:success:31" editorReadOnly={true} style={styles.success}>{backupStatus}</Text>:null}
+      {backupStatus?<Text style={styles.success}>{backupStatus}</Text>:null}
     </View>;
   }
 
   function monitorSection(){
     return <View style={styles.children}>
-      <Text editorId="native:SettingsScreen:hiddenContractText:32" editorReadOnly={false} style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
+      <Text style={styles.hiddenContractText}>Floating Monitor（浮動即時視窗）</Text>
       <ChildButton label="Widget（mobile 桌面）" summary={widget.config.enabled?'已啟用 · '+widget.config.size:'未啟用'} active={monitorPanel==='widget'} onPress={()=>setMonitorPanel(monitorPanel==='widget'?null:'widget')}/>
       {monitorPanel==='widget'?<View style={{gap:8}}>
         <WidgetControlPanel value={widget.config} onChange={widget.setConfig} availableSymbols={finance.holdings.map(x=>({symbol:x.symbol,name:x.name}))} previewSnapshot={finance.sharedSnapshot} onRefresh={async()=>{await market.refresh({force:true});await requestNativeWidgetRefresh();}}/>
         <Panel title="手機桌面 Widget 執行狀態">
           <StatusRow label="Android 原生橋接" value={nativeRuntimeAvailable?'可用':'此平台不支援'}/>
           <ActionButton label="立即刷新手機桌面 Widget" disabled={!nativeRuntimeAvailable} onPress={()=>void requestNativeWidgetRefresh()}/>
-          <Text editorId="native:SettingsScreen:note:33" editorReadOnly={false} style={styles.note}>Widget 需由 Android 桌面長按 → 小工具 → TF Asset 加入桌面；啟用設定不會偽裝成已加入桌面。</Text>
+          <Text style={styles.note}>Widget 需由 Android 桌面長按 → 小工具 → TF Asset 加入桌面；啟用設定不會偽裝成已加入桌面。</Text>
         </Panel>
       </View>:null}
       <ChildButton label="監控器總設定" summary={nativeMonitorStatus?nativeMonitorStateLabel(nativeMonitorStatus):monitor.config.enabled?'設定已啟用 · 狀態讀取中':'未啟用'} active={monitorPanel==='main'} onPress={()=>setMonitorPanel(monitorPanel==='main'?null:'main')}/>
@@ -480,7 +487,7 @@ export function SettingsScreen(){
           {overlayPermission!=='granted'?<ActionButton label="前往允許懸浮窗權限" disabled={!nativeRuntimeAvailable} onPress={()=>void openOverlaySettings()}/>:null}
           <ActionButton label="立即啟動 Monitor" disabled={!nativeRuntimeAvailable||overlayPermission!=='granted'} onPress={()=>void startNativeMonitor()}/>
           <ActionButton label="停止 Monitor" disabled={!nativeRuntimeAvailable} onPress={()=>void stopNativeMonitor()}/>
-          <Text editorId="native:SettingsScreen:note:34" editorReadOnly={false} style={styles.note}>此區顯示 Android Floating Service 的實際狀態，不再用設定 enabled 冒充執行中。</Text>
+          <Text style={styles.note}>此區顯示 Android Floating Service 的實際狀態，不再用設定 enabled 冒充執行中。</Text>
         </Panel>
       </View>:null}
       <ChildButton label="Mini 模式" summary={nativeMonitorStatus?.running?`實際 ${nativeMonitorStatus.mode==='mini'?'Mini':'Normal'}`:monitor.config.mode==='mini'?'設定 Mini':'設定 Normal'} active={monitorPanel==='mini'} onPress={()=>setMonitorPanel(monitorPanel==='mini'?null:'mini')}/>
@@ -488,7 +495,7 @@ export function SettingsScreen(){
         <StatusRow label="設定模式" value={monitor.config.mode==='mini'?'Mini':'Normal'}/>
         <StatusRow label="Native 實際模式" value={nativeMonitorStatus?.mode==='mini'?'Mini':nativeMonitorStatus?.mode==='normal'?'Normal':'--'}/>
         <StatusRow label="Mini 尺寸" value={monitor.config.miniLayout.width+' × '+monitor.config.miniLayout.height}/>
-        <Text editorId="native:SettingsScreen:note:35" editorReadOnly={false} style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。Mini 固定採清單顯示，列數不設上限；內容超過可視高度時由浮窗內部垂直滑動。下方狀態列已納入 Mini 編輯器，可調項目、順序、欄數、字體與配色。</Text>
+        <Text style={styles.note}>Normal 與 Mini Layout 物理隔離，Mini 調整不覆蓋 Normal。Mini 固定採清單顯示，列數不設上限；內容超過可視高度時由浮窗內部垂直滑動。下方狀態列已納入 Mini 編輯器，可調項目、順序、欄數、字體與配色。</Text>
       </Panel>:null}
       <ChildButton label="共用模板" summary={monitor.config.template} active={monitorPanel==='template'} onPress={()=>setMonitorPanel(monitorPanel==='template'?null:'template')}/>
       {monitorPanel==='template'?<Panel title="共用模板">
@@ -501,7 +508,7 @@ export function SettingsScreen(){
         <ToggleRow label="顯示呼吸燈" value={monitor.config.showBreathingLight} onChange={showBreathingLight=>monitor.setConfig({...monitor.config,showBreathingLight})}/>
         <StatusRow label="行情刷新基準" value={marketPhaseLabel(market.phase)}/>
         <StatusRow label="最後行情更新" value={formatTime(market.lastSuccessAt)}/>
-        <Text editorId="native:SettingsScreen:note:36" editorReadOnly={false} style={styles.note}>Monitor 只讀 Shared Snapshot，刷新頻率沿用 Market Runtime，不建立第二套行情引擎。</Text>
+        <Text style={styles.note}>Monitor 只讀 Shared Snapshot，刷新頻率沿用 Market Runtime，不建立第二套行情引擎。</Text>
       </Panel>:null}
     </View>;
   }
@@ -511,10 +518,10 @@ export function SettingsScreen(){
     return <View style={styles.children}>
       <ChildButton label="各頁標題／頂部表頭文字" summary="首頁／紀錄／庫存／股息／AI／設定" active={displayPanel==='titles'} onPress={()=>setDisplayPanel(displayPanel==='titles'?null:'titles')}/>
       {displayPanel==='titles'?<Panel title="頁面標題與表頭文字">
-        <Text editorId="native:SettingsScreen:note:37" editorReadOnly={false} style={styles.note}>此處統一管理各頁表頭文字；框架位置、尺寸與元件排版仍由各頁排版工具管理，避免重複入口。</Text>
+        <Text style={styles.note}>此處統一管理各頁表頭文字；框架位置、尺寸與元件排版仍由各頁排版工具管理，避免重複入口。</Text>
         {MAIN_PAGES.map(page=><View key={page.key} style={{gap:4,paddingVertical:6}}>
-          <Text editorId="native:SettingsScreen:rowTitle:38" editorReadOnly={false} style={styles.rowTitle}>{page.label}</Text>
-          <TextInput editorId="native:SettingsScreen:input:39" accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
+          <Text style={styles.rowTitle}>{page.label}</Text>
+          <TextInput accessibilityLabel={page.label+'頁面標題'} defaultValue={settings.prefs.pageTitles[page.key]??page.title} onEndEditing={event=>settings.patchPageTitle(page.key,event.nativeEvent.text)} maxLength={48} style={styles.input}/>
         </View>)}
       </Panel>:null}
       <ChildButton label="主題、背景與 App Icon" summary={theme.palette.label+' · 背景 '+(theme.prefs.customBackgroundUri?'自訂':String(theme.prefs.backgroundIndex+1))} active={displayPanel==='theme'} onPress={()=>setDisplayPanel(displayPanel==='theme'?null:'theme')}/>
@@ -532,7 +539,7 @@ export function SettingsScreen(){
       {displayPanel==='date'?<Panel title="日期格式"><ChoiceRow label="日期格式" options={[{key:'YYYY-MM-DD',label:'2026-09-21'},{key:'YYYY/MM/DD',label:'2026/09/21'}]} value={d.dateFormat} onChange={dateFormat=>settings.patchDisplay({dateFormat:dateFormat==='YYYY/MM/DD'?'YYYY/MM/DD':'YYYY-MM-DD'})}/></Panel>:null}
       <ChildButton label="股息月曆顯示" summary="最後購買日、除息日、登記日、配發日與狀態" active={displayPanel==='dividendCalendar'} onPress={()=>setDisplayPanel(displayPanel==='dividendCalendar'?null:'dividendCalendar')}/>
       {displayPanel==='dividendCalendar'?<Panel title="股息月曆顯示">
-        <Text editorId="native:SettingsScreen:note:40" editorReadOnly={false} style={styles.note}>這裡只控制月曆上顯示哪些事件，不會改變通知提醒是否啟用。</Text>
+        <Text style={styles.note}>這裡只控制月曆上顯示哪些事件，不會改變通知提醒是否啟用。</Text>
         <ToggleRow label="顯示最後購買日" value={settings.prefs.dividendCalendar.showLastBuyDate!==false} onChange={showLastBuyDate=>settings.patchDividendCalendar({showLastBuyDate})}/>
         <ToggleRow label="顯示除息日" value={settings.prefs.dividendCalendar.showExDate} onChange={showExDate=>settings.patchDividendCalendar({showExDate})}/>
         <ToggleRow label="顯示收益分配基準日" value={settings.prefs.dividendCalendar.showRecordDate} onChange={showRecordDate=>settings.patchDividendCalendar({showRecordDate})}/>
@@ -543,9 +550,9 @@ export function SettingsScreen(){
       {displayPanel==='swipe'?<Panel title="頁面左右滑動">
         <Switch value={settings.prefs.navigation.swipeEnabled} onValueChange={swipeEnabled=>settings.patchNavigation({swipeEnabled})}/>
         <Stepper label="切換靈敏度（距離）" value={settings.prefs.navigation.swipeThreshold} min={50} max={150} step={10} suffix=" px" onChange={swipeThreshold=>settings.patchNavigation({swipeThreshold})}/>
-        <Text editorId="native:SettingsScreen:rowTitle:41" editorReadOnly={false} style={styles.rowTitle}>僅從螢幕左右邊緣滑動（降低與橫向行情表、圖表衝突）</Text>
+        <Text style={styles.rowTitle}>僅從螢幕左右邊緣滑動（降低與橫向行情表、圖表衝突）</Text>
         <Switch value={settings.prefs.navigation.swipeEdgeOnly} onValueChange={swipeEdgeOnly=>settings.patchNavigation({swipeEdgeOnly})}/>
-        <Text editorId="native:SettingsScreen:note:42" editorReadOnly={false} style={styles.note}>關閉時維持原全畫面左右滑動；開啟後只接受距左右邊緣 32 px 內起始的手勢。垂直捲動優先。</Text>
+        <Text style={styles.note}>關閉時維持原全畫面左右滑動；開啟後只接受距左右邊緣 32 px 內起始的手勢。垂直捲動優先。</Text>
       </Panel>:null}
       <ChildButton label="損益顏色" summary={d.profitColorMode==='red-up-green-down'?'紅漲綠跌':'綠漲紅跌'} active={displayPanel==='pnl'} onPress={()=>setDisplayPanel(displayPanel==='pnl'?null:'pnl')}/>
       {displayPanel==='pnl'?<ProfitColorPanel/>:null}
@@ -557,7 +564,7 @@ export function SettingsScreen(){
       <Panel title="AI 助理控制">
         <ToggleRow label="啟用 AI 助理" value={settings.prefs.ai.enabled} onChange={enabled=>settings.patchAi({enabled})}/>
         <ToggleRow label="顯示 AI 浮動按鈕／視窗" value={settings.prefs.ai.floatingButton} disabled={!settings.prefs.ai.enabled} onChange={floatingButton=>settings.patchAi({floatingButton})}/>
-        <Text editorId="native:SettingsScreen:note:43" editorReadOnly={false} style={styles.note}>關閉浮動按鈕後，仍可從 AI 頁使用助理；關閉 AI 助理則隱藏 AI 頁與浮動視窗。</Text>
+        <Text style={styles.note}>關閉浮動按鈕後，仍可從 AI 頁使用助理；關閉 AI 助理則隱藏 AI 頁與浮動視窗。</Text>
       </Panel>
     </View>;
   }
@@ -566,7 +573,7 @@ export function SettingsScreen(){
     return <View style={styles.children}>
       <ChildButton label="還原預設設定" summary="只重設 Preferences" active={appPanel==='reset'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'reset'))}/>
       {appPanel==='reset'?<Panel title="還原預設設定">
-        <Text editorId="native:SettingsScreen:note:44" editorReadOnly={false} style={styles.note}>只重設通知、顯示格式與交易預設值，不刪除交易、股息、持股與帳務資料。</Text>
+        <Text style={styles.note}>只重設通知、顯示格式與交易預設值，不刪除交易、股息、持股與帳務資料。</Text>
         <ActionButton label="還原 App Preferences" onPress={()=>Alert.alert('確認重設','帳務資料不會被刪除。',[{text:'取消',style:'cancel'},{text:'重設',onPress:settings.resetPreferences}])}/>
       </Panel>:null}
       <ChildButton label="版本資訊" summary={'v'+VERSION+' · '+BUILD} active={appPanel==='version'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'version'))}/>
@@ -576,9 +583,9 @@ export function SettingsScreen(){
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V4.0.15 設定編輯接線" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V4.0.15 更新資訊">
-        <Text editorId="native:SettingsScreen:infoText:45" editorReadOnly={false} style={styles.infoText}>成交價同步修護：持股主卡 currentPrice 僅接受成交型價格。TWSE MIS 僅採 z；pz、bid、ask、y 不再進入主價格、損益與市值。z 缺值時改由零成本 Yahoo backup realtime 接手；TWSE trade 與 Yahoo backup realtime 同為成交型來源時，以較新的 source timestamp 為準，同時間才由來源品質決勝。SQLite V8 清除舊 bid/ask 主價。</Text>
+      <ChildButton label="更新資訊" summary="V3.2.49 成交價同步修護" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title="V3.2.49 更新資訊">
+        <Text style={styles.infoText}>成交價同步修護：持股主卡 currentPrice 僅接受成交型價格。TWSE MIS 僅採 z；pz、bid、ask、y 不再進入主價格、損益與市值。z 缺值時改由零成本 Yahoo backup realtime 接手；TWSE trade 與 Yahoo backup realtime 同為成交型來源時，以較新的 source timestamp 為準，同時間才由來源品質決勝。SQLite V8 清除舊 bid/ask 主價。</Text>
       </Panel>:null}
     </View>;
   }
@@ -586,13 +593,13 @@ export function SettingsScreen(){
   function legalSection(){
     return <View style={styles.children}>
       <ChildButton label="免責聲明" summary="投資資訊不構成建議" active={legalPanel==='disclaimer'} onPress={()=>setLegalPanel(legalPanel==='disclaimer'?null:'disclaimer')}/>
-      {legalPanel==='disclaimer'?<Panel title="免責聲明"><Text editorId="native:SettingsScreen:infoText:46" editorReadOnly={false} style={styles.infoText}>TF Asset 用於個人資產紀錄、行情整理與試算。App 所呈現之行情、損益、殖利率與試算結果僅供資訊與紀錄用途，不構成投資建議或獲利保證。</Text></Panel>:null}
+      {legalPanel==='disclaimer'?<Panel title="免責聲明"><Text style={styles.infoText}>TF Asset 用於個人資產紀錄、行情整理與試算。App 所呈現之行情、損益、殖利率與試算結果僅供資訊與紀錄用途，不構成投資建議或獲利保證。</Text></Panel>:null}
       <ChildButton label="行情資料聲明" summary="TWSE / TPEx · 可能延遲" active={legalPanel==='market'} onPress={()=>setLegalPanel(legalPanel==='market'?null:'market')}/>
-      {legalPanel==='market'?<Panel title="行情資料聲明"><Text editorId="native:SettingsScreen:infoText:47" editorReadOnly={false} style={styles.infoText}>行情來自公開市場資料來源，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
+      {legalPanel==='market'?<Panel title="行情資料聲明"><Text style={styles.infoText}>行情來自公開市場資料來源，可能因網路、來源服務、休市、盤後或裝置背景限制而延遲。帳務核心不把行情延遲視為歷史交易資料。</Text></Panel>:null}
       <ChildButton label="試算聲明" summary="假設結果非保證報酬" active={legalPanel==='calculator'} onPress={()=>setLegalPanel(legalPanel==='calculator'?null:'calculator')}/>
-      {legalPanel==='calculator'?<Panel title="試算聲明"><Text editorId="native:SettingsScreen:infoText:48" editorReadOnly={false} style={styles.infoText}>所有情境試算均依輸入條件計算，不代表未來實際市場價格、配息或報酬。</Text></Panel>:null}
+      {legalPanel==='calculator'?<Panel title="試算聲明"><Text style={styles.infoText}>所有情境試算均依輸入條件計算，不代表未來實際市場價格、配息或報酬。</Text></Panel>:null}
       <ChildButton label="資料與隱私說明" summary="本機資料、外部行情與 AI 資料使用邊界" active={legalPanel==='privacy'} onPress={()=>setLegalPanel(legalPanel==='privacy'?null:'privacy')}/>
-      {legalPanel==='privacy'?<Panel title="資料與隱私說明"><Text editorId="native:SettingsScreen:infoText:49" editorReadOnly={false} style={styles.infoText}>交易、持股、股息與設定以 App 資料層為主要來源；需要外部行情、新聞或 AI 資料時，僅依功能需要取得對應內容。備份與匯出由使用者主動操作，不把設定頁顯示狀態當成雲端備份證明。</Text></Panel>:null}
+      {legalPanel==='privacy'?<Panel title="資料與隱私說明"><Text style={styles.infoText}>交易、持股、股息與設定以 App 資料層為主要來源；需要外部行情、新聞或 AI 資料時，僅依功能需要取得對應內容。備份與匯出由使用者主動操作，不把設定頁顯示狀態當成雲端備份證明。</Text></Panel>:null}
       <ChildButton label="關於 TF Asset" summary={'Version '+VERSION} active={legalPanel==='about'} onPress={()=>setLegalPanel(legalPanel==='about'?null:'about')}/>
       {legalPanel==='about'?<Panel title="關於 TF Asset"><StatusRow label="名稱" value="TF Asset｜資產管家"/><StatusRow label="版本" value={VERSION}/><StatusRow label="核心原則" value="Single Source of Truth"/></Panel>:null}
     </View>;
@@ -630,7 +637,7 @@ export function SettingsScreen(){
       <ToggleRow label="震動" value={n.vibration} onChange={vibration=>settings.patchNotifications({vibration})}/>
       <ToggleRow label="聲音" value={n.sound} onChange={sound=>settings.patchNotifications({sound})}/>
       <Stepper label="提前提醒" value={n.leadDays} min={0} max={30} step={1} suffix=" 天" onChange={leadDays=>settings.patchNotifications({leadDays})}/>
-      {notificationPermission==='denied'?<Text editorId="native:SettingsScreen:note:50" editorReadOnly={false} style={styles.note}>Android 通知權限尚未允許。允許後可在系統通知頁分別控制股息、行情、更新與備份通知。</Text>:null}
+      {notificationPermission==='denied'?<Text style={styles.note}>Android 通知權限尚未允許。允許後可在系統通知頁分別控制股息、行情、更新與備份通知。</Text>:null}
     </Panel>;
   }
 
@@ -645,33 +652,33 @@ export function SettingsScreen(){
       theme.patch({iconKey});
     };
     return <Panel title="視覺主題與背景">
-      <Text editorId="native:SettingsScreen:note:51" editorReadOnly={false} style={styles.note}>主題是全域視覺基底；Widget／Monitor／各 B 單項已自訂的顏色不會被這裡直接洗掉。</Text>
+      <Text style={styles.note}>主題是全域視覺基底；Widget／Monitor／各 B 單項已自訂的顏色不會被這裡直接洗掉。</Text>
 
-      <Text editorId="native:SettingsScreen:subTitle:52" editorReadOnly={false} style={styles.subTitle}>10 組主題</Text>
+      <Text style={styles.subTitle}>10 組主題</Text>
       <View style={styles.themeGrid}>
         {THEME_PRESETS.map(preset=>{
           const active=theme.prefs.themeKey===preset.key;
-          return <Pressable editorId="native:SettingsScreen:themeCard:53" key={preset.key} onPress={()=>theme.selectTheme(preset.key)} style={[styles.themeCard,{backgroundColor:preset.surface,borderColor:active?preset.primary:preset.border},active&&styles.themeCardActive]}>
+          return <Pressable key={preset.key} onPress={()=>theme.selectTheme(preset.key)} style={[styles.themeCard,{backgroundColor:preset.surface,borderColor:active?preset.primary:preset.border},active&&styles.themeCardActive]}>
             <View style={[styles.themeSwatch,{backgroundColor:preset.primary}]}/>
-            <Text editorId="native:SettingsScreen:themeName:54" editorReadOnly={false} style={[styles.themeName,{color:preset.text}]}>{preset.label}</Text>
-            <Text editorId="native:SettingsScreen:themeMeta:55" editorReadOnly={true} style={[styles.themeMeta,{color:preset.textSecondary}]}>{active?'使用中':'套用'}</Text>
+            <Text style={[styles.themeName,{color:preset.text}]}>{preset.label}</Text>
+            <Text style={[styles.themeMeta,{color:preset.textSecondary}]}>{active?'使用中':'套用'}</Text>
           </Pressable>;
         })}
       </View>
 
-      <Text editorId="native:SettingsScreen:subTitle:56" editorReadOnly={false} style={styles.subTitle}>10 張內建背景</Text>
+      <Text style={styles.subTitle}>10 張內建背景</Text>
       <View style={styles.backgroundGrid}>
         {THEME_BACKGROUNDS.map((uri,index)=>{
           const active=!theme.prefs.customBackgroundUri&&theme.prefs.backgroundIndex===index;
-          return <Pressable editorId="native:SettingsScreen:backgroundChoice:57" key={index} onPress={()=>theme.selectBackground(index)} style={[styles.backgroundChoice,active&&{borderColor:theme.palette.primary,borderWidth:2}]}>
-            <ImageBackground source={{uri}} style={styles.backgroundThumb} imageStyle={styles.backgroundThumbImage}><Text editorId="native:SettingsScreen:backgroundIndex:58" editorReadOnly={true} style={styles.backgroundIndex}>{index+1}</Text></ImageBackground>
+          return <Pressable key={index} onPress={()=>theme.selectBackground(index)} style={[styles.backgroundChoice,active&&{borderColor:theme.palette.primary,borderWidth:2}]}>
+            <ImageBackground source={{uri}} style={styles.backgroundThumb} imageStyle={styles.backgroundThumbImage}><Text style={styles.backgroundIndex}>{index+1}</Text></ImageBackground>
           </Pressable>;
         })}
       </View>
 
       <ActionButton label="選擇自訂背景圖片" disabled={!nativeRuntimeAvailable} onPress={()=>void chooseCustomBackground()}/>
       {theme.prefs.customBackgroundUri?<ActionButton label="改回內建背景" onPress={()=>theme.patch({customBackgroundUri:null})}/>:null}
-      {!nativeRuntimeAvailable?<Text editorId="native:SettingsScreen:note:59" editorReadOnly={false} style={styles.note}>自訂圖片與 App Icon 切換需 Android 原生 Runtime；一般主題與內建背景仍可使用。</Text>:null}
+      {!nativeRuntimeAvailable?<Text style={styles.note}>自訂圖片與 App Icon 切換需 Android 原生 Runtime；一般主題與內建背景仍可使用。</Text>:null}
 
       <ChoiceRow label="背景顯示方式" options={[{key:'fitWidth',label:'適寬'},{key:'fitHeight',label:'適高'},{key:'fill',label:'填滿'}]} value={theme.prefs.backgroundMode} onChange={mode=>theme.patch({backgroundMode:(mode==='fitWidth'||mode==='fitHeight'?mode:'fill') as ThemeBackgroundMode})}/>
       <Stepper label="背景透明度" value={Math.round(theme.prefs.backgroundOpacity*100)} min={0} max={100} step={5} suffix="%" onChange={value=>theme.patch({backgroundOpacity:value/100})}/>
@@ -679,20 +686,20 @@ export function SettingsScreen(){
       <ColorPalettePicker label="背景遮罩顏色" value={theme.prefs.maskColor} onChange={maskColor=>theme.patch({maskColor})}/>
       <Stepper label="背景遮罩" value={Math.round(theme.prefs.maskOpacity*100)} min={0} max={90} step={5} suffix="%" onChange={value=>theme.patch({maskOpacity:value/100})}/>
 
-      <Text editorId="native:SettingsScreen:subTitle:60" editorReadOnly={false} style={styles.subTitle}>10 組 App Icon</Text>
+      <Text style={styles.subTitle}>10 組 App Icon</Text>
       <View style={styles.iconGrid}>
         {APP_ICON_KEYS.map((iconKey,index)=>{
           const preset=THEME_PRESETS[index]!;
           const active=theme.prefs.iconKey===iconKey;
-          return <Pressable editorId="native:SettingsScreen:iconChoice:61" key={iconKey} onPress={()=>chooseIcon(iconKey)} style={[styles.iconChoice,{borderColor:active?theme.palette.primary:preset.border},active&&styles.iconChoiceActive]}><ImageBackground source={{uri:APP_ICON_PREVIEWS[index]}} style={styles.iconPreview} imageStyle={styles.iconPreviewImage}><Text editorId="native:SettingsScreen:iconLabel:62" editorReadOnly={true} style={styles.iconLabel}>{index+1}</Text></ImageBackground></Pressable>;
+          return <Pressable key={iconKey} onPress={()=>chooseIcon(iconKey)} style={[styles.iconChoice,{borderColor:active?theme.palette.primary:preset.border},active&&styles.iconChoiceActive]}><ImageBackground source={{uri:APP_ICON_PREVIEWS[index]}} style={styles.iconPreview} imageStyle={styles.iconPreviewImage}><Text style={styles.iconLabel}>{index+1}</Text></ImageBackground></Pressable>;
         })}
       </View>
 
-      <Text editorId="native:SettingsScreen:subTitle:63" editorReadOnly={false} style={styles.subTitle}>5 組自訂主題</Text>
+      <Text style={styles.subTitle}>5 組自訂主題</Text>
       {theme.prefs.customSlots.map((slot,index)=><View key={index} style={styles.customThemeRow}>
-        <View style={{flex:1}}><Text editorId="native:SettingsScreen:rowTitle:64" editorReadOnly={true} style={styles.rowTitle}>自訂主題 {index+1}</Text><Text editorId="native:SettingsScreen:note:65" editorReadOnly={true} style={styles.note}>{slot?((THEME_PRESETS.find(x=>x.key===slot.themeKey)?.label??slot.themeKey)+' · 背景 '+(slot.customBackgroundUri?'自訂':slot.backgroundIndex+1)):'尚未儲存'}</Text></View>
-        <Pressable editorId="native:SettingsScreen:smallAction:66" style={styles.smallAction} onPress={()=>theme.saveSlot(index)}><Text editorId="native:SettingsScreen:smallActionText:67" editorReadOnly={false} style={styles.smallActionText}>儲存</Text></Pressable>
-        {slot?<><Pressable editorId="native:SettingsScreen:smallAction:68" style={styles.smallAction} onPress={()=>theme.applySlot(index)}><Text editorId="native:SettingsScreen:smallActionText:69" editorReadOnly={false} style={styles.smallActionText}>套用</Text></Pressable><Pressable editorId="native:SettingsScreen:smallAction:70" style={styles.smallAction} onPress={()=>theme.clearSlot(index)}><Text editorId="native:SettingsScreen:smallActionText:71" editorReadOnly={false} style={styles.smallActionText}>清除</Text></Pressable></>:null}
+        <View style={{flex:1}}><Text style={styles.rowTitle}>自訂主題 {index+1}</Text><Text style={styles.note}>{slot?((THEME_PRESETS.find(x=>x.key===slot.themeKey)?.label??slot.themeKey)+' · 背景 '+(slot.customBackgroundUri?'自訂':slot.backgroundIndex+1)):'尚未儲存'}</Text></View>
+        <Pressable style={styles.smallAction} onPress={()=>theme.saveSlot(index)}><Text style={styles.smallActionText}>儲存</Text></Pressable>
+        {slot?<><Pressable style={styles.smallAction} onPress={()=>theme.applySlot(index)}><Text style={styles.smallActionText}>套用</Text></Pressable><Pressable style={styles.smallAction} onPress={()=>theme.clearSlot(index)}><Text style={styles.smallActionText}>清除</Text></Pressable></>:null}
       </View>)}
       <ActionButton label="還原主題預設值" onPress={theme.reset}/>
     </Panel>;
@@ -702,29 +709,37 @@ export function SettingsScreen(){
     const d=settings.prefs.display;
     return <Panel title="損益顏色">
       <ChoiceRow label="正負對應" options={[{key:'red-up-green-down',label:'正值用獲利色'},{key:'green-up-red-down',label:'正值用虧損色'}]} value={d.profitColorMode} onChange={profitColorMode=>settings.patchDisplay({profitColorMode:profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down'})}/>
-      <Text editorId="native:SettingsScreen:note:72" editorReadOnly={false} style={styles.note}>所有顏色改由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
+      <Text style={styles.note}>所有顏色改由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
       <ColorPalettePicker label="獲利 / 上漲色" value={d.gainColor} onChange={gainColor=>settings.patchDisplay({gainColor})}/>
       <ColorPalettePicker label="虧損 / 下跌色" value={d.lossColor} onChange={lossColor=>settings.patchDisplay({lossColor})}/>
       <ColorPalettePicker label="平盤 / 中性色" value={d.neutralColor} onChange={neutralColor=>settings.patchDisplay({neutralColor})}/>
-      <Text editorId="native:SettingsScreen:note:73" editorReadOnly={false} style={styles.note}>設定集中保存；各顯示 Consumer 應使用同一損益色來源，不自行硬編碼。</Text>
+      <Text style={styles.note}>設定集中保存；各顯示 Consumer 應使用同一損益色來源，不自行硬編碼。</Text>
     </Panel>;
   }
 
-  return <>
-    <PageShell pageKey="settings" title="控制中心" subtitle="系統、帳務、行情資料、介面、通知與 App 管理集中設定"
-      actions={<PageGearButton onPress={()=>setLayoutOpen(true)}/> }>
-      <PageEditorStack pageKey="settings" frames={PAGE_FRAMES.settings.filter(frame=>frame.key!=='page-header').map(frame=>({
-        key:frame.key,
-        element:<FrameCard title={frame.title} action={<Pressable accessibilityRole="button"
-          accessibilityLabel={(top===frame.key?'收合':'展開')+frame.title} onPress={()=>toggleTop(frame.key)}>
-          <Text>{top===frame.key?'收合 ⌄':'展開 ›'}</Text>
-        </Pressable>}>
-          <Pressable onPress={()=>toggleTop(frame.key)}><Text>{frame.description}</Text></Pressable>
-          {top===frame.key?panelForTop(frame.key):null}
-        </FrameCard>,
-      }))}/>
-    </PageShell>
-    <PageFrameSettingsModal visible={layoutOpen} pageKey="settings" title="控制中心" frames={EDITOR_FRAMES.settings} onClose={()=>setLayoutOpen(false)}/>
+  return <SafeAreaView edges={['top']} style={[styles.root,{backgroundColor:'transparent'}]}>
+    <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
+      <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
+      <Text style={[styles.title,{color:theme.palette.text}]}>{settings.prefs.pageTitles.settings||'控制中心'}</Text>
+      <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>系統、帳務、行情資料、介面、通知與 App 管理集中設定</Text>
+    </View>
+    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      {PAGE_FRAMES.settings.map((frame,index)=>{
+        const open=top===frame.key;
+        return <View key={frame.key} style={[styles.section,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
+          <Pressable style={styles.topRow} onPress={()=>toggleTop(frame.key)}>
+            <View style={[styles.index,{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.indexText,{color:theme.palette.primary}]}>{index+1}</Text></View>
+            <View style={{flex:1}}>
+              <Text style={[styles.sectionTitle,{color:theme.palette.text}]}>{frame.title}</Text>
+              <Text style={[styles.sectionDesc,{color:theme.palette.textSecondary}]}>{frame.description}</Text>
+            </View>
+            <Text style={styles.chevron}>{open?'⌄':'›'}</Text>
+          </Pressable>
+          {open?panelForTop(frame.key):null}
+        </View>;
+      })}
+      <View style={{height:24}}/>
+    </ScrollView>
     {marketEditorTarget?<PageFrameSettingsModal
       key={marketEditorTarget+marketEditorTab}
       visible={true}
@@ -739,7 +754,7 @@ export function SettingsScreen(){
         dividendType:market.catalog.find(item=>item.symbol===finance.holdings[0]?.symbol)?.dividendType??null,
       }:undefined}
     />:null}
-  </>;
+  </SafeAreaView>;
 }
 
 
@@ -801,14 +816,14 @@ function BrokerFeeSettingsPanel(){
   };
 
   return <Panel title="券商與手續費設定">
-    <Text editorId="native:SettingsScreen:note:82" editorReadOnly={false} style={styles.note}>設定只影響之後的公式預估；歷史已固化的實際手續費／實際證交稅不回算。所有金額欄位允許 0 元。</Text>
+    <Text style={styles.note}>設定只影響之後的公式預估；歷史已固化的實際手續費／實際證交稅不回算。所有金額欄位允許 0 元。</Text>
     <ChoiceRow label="券商 Profile" options={runtime.profiles.map(x=>({key:x.id,label:x.name}))} value={runtime.activeProfileId} onChange={runtime.setActiveProfileId}/>
-    <Text editorId="native:SettingsScreen:subTitle:83" editorReadOnly={false} style={styles.subTitle}>一般交易</Text>
+    <Text style={styles.subTitle}>一般交易</Text>
     <SettingNumberRow label="公定手續費率" suffix="%" value={draft.commissionRatePct} onChange={commissionRatePct=>setDraft(current=>({...current,commissionRatePct}))}/>
     <SettingNumberRow label="電子下單折扣率" suffix="%" value={draft.commissionDiscountPct} onChange={commissionDiscountPct=>setDraft(current=>({...current,commissionDiscountPct}))}/>
     <SettingNumberRow label="整股最低手續費" suffix="元" value={draft.minimumRoundLot} onChange={minimumRoundLot=>setDraft(current=>({...current,minimumRoundLot}))}/>
     <SettingNumberRow label="零股最低手續費" suffix="元" value={draft.minimumOddLot} onChange={minimumOddLot=>setDraft(current=>({...current,minimumOddLot}))}/>
-    <Text editorId="native:SettingsScreen:subTitle:84" editorReadOnly={false} style={styles.subTitle}>定期定額</Text>
+    <Text style={styles.subTitle}>定期定額</Text>
     <ChoiceRow label="計費模式" options={[{key:'fixed',label:'固定單筆'},{key:'variable',label:'非固定'}]} value={draft.recurringMode} onChange={recurringMode=>setDraft(current=>({...current,recurringMode:recurringMode==='variable'?'variable':'fixed'}))}/>
     {draft.recurringMode==='fixed'
       ?<SettingNumberRow label="固定單筆手續費" suffix="元" value={draft.recurringFixedFee} onChange={recurringFixedFee=>setDraft(current=>({...current,recurringFixedFee}))}/>
@@ -816,20 +831,20 @@ function BrokerFeeSettingsPanel(){
         <SettingNumberRow label="定期定額折扣率" suffix="%" value={draft.recurringDiscountPct} onChange={recurringDiscountPct=>setDraft(current=>({...current,recurringDiscountPct}))}/>
         <SettingNumberRow label="定期定額最低手續費" suffix="元" value={draft.recurringMinimumFee} onChange={recurringMinimumFee=>setDraft(current=>({...current,recurringMinimumFee}))}/>
       </>}
-    <Text editorId="native:SettingsScreen:subTitle:85" editorReadOnly={false} style={styles.subTitle}>證交稅規則</Text>
+    <Text style={styles.subTitle}>證交稅規則</Text>
     <StatusRow label="ETF" value="0.1%"/>
     <StatusRow label="一般股票" value="0.3%"/>
     <View style={styles.actionRow}>
-      <Pressable editorId="native:SettingsScreen:resetAction:86" style={styles.resetAction} onPress={()=>runtime.resetProfile(runtime.activeProfile.id)}><Text editorId="native:SettingsScreen:resetActionText:87" editorReadOnly={false} style={styles.resetActionText}>重設</Text></Pressable>
-      <Pressable editorId="native:SettingsScreen:saveAction:88" style={styles.saveAction} onPress={save}><Text editorId="native:SettingsScreen:saveActionText:89" editorReadOnly={false} style={styles.saveActionText}>更新設定</Text></Pressable>
+      <Pressable style={styles.resetAction} onPress={()=>runtime.resetProfile(runtime.activeProfile.id)}><Text style={styles.resetActionText}>重設</Text></Pressable>
+      <Pressable style={styles.saveAction} onPress={save}><Text style={styles.saveActionText}>更新設定</Text></Pressable>
     </View>
   </Panel>;
 }
 
 function SettingNumberRow({label,suffix,value,onChange}:{label:string;suffix:string;value:string;onChange:(value:string)=>void}){
   return <View style={styles.statusRow}>
-    <Text editorId="native:SettingsScreen:statusLabel:90" editorReadOnly={false} style={styles.statusLabel}>{label}</Text>
-    <View style={styles.numberEditor}><TextInput editorId="native:SettingsScreen:settingNumberInput:91" keyboardType="decimal-pad" value={value} onChangeText={onChange} style={styles.settingNumberInput}/><Text editorId="native:SettingsScreen:note:92" editorReadOnly={true} style={styles.note}>{suffix}</Text></View>
+    <Text style={styles.statusLabel}>{label}</Text>
+    <View style={styles.numberEditor}><TextInput keyboardType="decimal-pad" value={value} onChangeText={onChange} style={styles.settingNumberInput}/><Text style={styles.note}>{suffix}</Text></View>
   </View>;
 }
 
@@ -860,7 +875,7 @@ function MarketPanel({
     <StatusRow label="目前行情筆數" value={String(quoteCount)}/>
     <StatusRow label="待取得代號" value={missingSymbols.join('、')||'無'}/>
     <StatusRow label="Fugle API Key" value={fugleConfigured?'Android Keystore 已設定':'未設定 · 自動使用 HTTP 備援'}/>
-    <TextInput editorId="native:SettingsScreen:input:93" secureTextEntry autoCapitalize="none" autoCorrect={false} style={styles.input}
+    <TextInput secureTextEntry autoCapitalize="none" autoCorrect={false} style={styles.input}
       placeholder="輸入 Fugle API Key（Android Keystore 安全儲存）" value={fugleKey} onChangeText={setFugleKey}/>
     <ActionButton label="儲存 Fugle API Key" disabled={!fugleKey.trim()}
       onPress={()=>void onSaveFugleApiKey(fugleKey).then(ok=>{if(ok)setFugleKey('');})}/>
@@ -873,43 +888,43 @@ function MarketPanel({
     <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}/>
     <EtfHoldingsApiSettings/>
     <StatusRow label="SaiETF 行情更新" value="Fugle 成交即推送 · 來源失效時備援 · 回前景立即同步"/>
-    <Text editorId="native:SettingsScreen:note:94" editorReadOnly={false} style={styles.note}>V4.0.15 行情網路入口只由 MarketDataCenter 管理。盤中優先套用 Fugle LIVE 成交；盤後保留已驗證的收盤成交，Yahoo 備援不得以較晚時間覆蓋可信來源。Memory Hot Store 為行情入口，SQLite 僅做持久化；新報價直接推送至首頁、持股損益、Widget、Monitor 與 Mini。背景桌面更新受 Android 限制，請核對來源時間與有效狀態。Fugle API Key 須在本 App 設定。</Text>
+    <Text style={styles.note}>V4.0.14 行情網路入口只由 MarketDataCenter 管理。盤中優先套用 Fugle LIVE 成交；盤後保留已驗證的收盤成交，Yahoo 備援不得以較晚時間覆蓋可信來源。Memory Hot Store 為行情入口，SQLite 僅做持久化；新報價直接推送至首頁、持股損益、Widget、Monitor 與 Mini。背景桌面更新受 Android 限制，請核對來源時間與有效狀態。Fugle API Key 須在本 App 設定。</Text>
   </Panel>;
 }
 
 function Panel({title,children}:{title:string;children:React.ReactNode}){
-  return <View style={styles.panel}><Text editorId="native:SettingsScreen:panelTitle:95" editorReadOnly={false} style={styles.panelTitle}>{title}</Text>{children}</View>;
+  return <View style={styles.panel}><Text style={styles.panelTitle}>{title}</Text>{children}</View>;
 }
 
 function ChildButton({label,summary,active,onPress,danger=false}:{label:string;summary:string;active:boolean;onPress:()=>void;danger?:boolean}){
-  return <Pressable editorId="native:SettingsScreen:childRow:96" style={[styles.childRow,active&&styles.childActive]} onPress={onPress}>
-    <View style={{flex:1}}><Text editorId="native:SettingsScreen:rowTitle:97" editorReadOnly={false} style={[styles.rowTitle,danger&&styles.dangerText]}>{label}</Text><Text editorId="native:SettingsScreen:note:98" editorReadOnly={true} style={styles.note}>{summary}</Text></View>
-    <Text editorId="native:SettingsScreen:chevron:99" editorReadOnly={true} style={styles.chevron}>{active?'⌄':'›'}</Text>
+  return <Pressable style={[styles.childRow,active&&styles.childActive]} onPress={onPress}>
+    <View style={{flex:1}}><Text style={[styles.rowTitle,danger&&styles.dangerText]}>{label}</Text><Text style={styles.note}>{summary}</Text></View>
+    <Text style={styles.chevron}>{active?'⌄':'›'}</Text>
   </Pressable>;
 }
 
 function StatusRow({label,value}:{label:string;value:string}){
-  return <View style={styles.statusRow}><Text editorId="native:SettingsScreen:statusLabel:100" editorReadOnly={false} style={styles.statusLabel}>{label}</Text><Text editorId="native:SettingsScreen:statusValue:101" editorReadOnly={true} style={styles.statusValue}>{value}</Text></View>;
+  return <View style={styles.statusRow}><Text style={styles.statusLabel}>{label}</Text><Text style={styles.statusValue}>{value}</Text></View>;
 }
 
 function ToggleRow({label,value,onChange,disabled=false}:{label:string;value:boolean;onChange:(value:boolean)=>void;disabled?:boolean}){
-  return <View style={[styles.toggleRow,disabled&&styles.disabledBox]}><Text editorId="native:SettingsScreen:rowTitle:102" editorReadOnly={false} style={styles.rowTitle}>{label}</Text><Switch value={value} disabled={disabled} onValueChange={onChange}/></View>;
+  return <View style={[styles.toggleRow,disabled&&styles.disabledBox]}><Text style={styles.rowTitle}>{label}</Text><Switch value={value} disabled={disabled} onValueChange={onChange}/></View>;
 }
 
 function ActionButton({label,onPress,disabled=false,danger=false}:{label:string;onPress:()=>void;disabled?:boolean;danger?:boolean}){
-  return <Pressable editorId="native:SettingsScreen:action:103" disabled={disabled} onPress={onPress} style={[styles.action,disabled&&styles.actionDisabled,danger&&styles.actionDanger]}><Text editorId="native:SettingsScreen:actionText:104" editorReadOnly={false} style={styles.actionText}>{label}</Text></Pressable>;
+  return <Pressable disabled={disabled} onPress={onPress} style={[styles.action,disabled&&styles.actionDisabled,danger&&styles.actionDanger]}><Text style={styles.actionText}>{label}</Text></Pressable>;
 }
 
 function NumberField({label,value,onChange}:{label:string;value:number;onChange:(value:number)=>void}){
-  return <View><Text editorId="native:SettingsScreen:fieldLabel:105" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><TextInput editorId="native:SettingsScreen:input:106" keyboardType="decimal-pad" style={styles.input} value={String(value)} onChangeText={text=>{const n=Number(text);if(Number.isFinite(n))onChange(n);}}/></View>;
+  return <View><Text style={styles.fieldLabel}>{label}</Text><TextInput keyboardType="decimal-pad" style={styles.input} value={String(value)} onChangeText={text=>{const n=Number(text);if(Number.isFinite(n))onChange(n);}}/></View>;
 }
 
 function ChoiceRow({label,options,value,onChange}:{label:string;options:readonly {key:string;label:string}[];value:string;onChange:(key:string)=>void}){
-  return <View><Text editorId="native:SettingsScreen:fieldLabel:107" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><View style={styles.choiceWrap}>{options.map(option=><Pressable editorId="native:SettingsScreen:choice:108" key={option.key} onPress={()=>onChange(option.key)} style={[styles.choice,value===option.key&&styles.choiceActive]}><Text editorId="native:SettingsScreen:choiceText:109" editorReadOnly={false} style={[styles.choiceText,value===option.key&&styles.choiceTextActive]}>{option.label}</Text></Pressable>)}</View></View>;
+  return <View><Text style={styles.fieldLabel}>{label}</Text><View style={styles.choiceWrap}>{options.map(option=><Pressable key={option.key} onPress={()=>onChange(option.key)} style={[styles.choice,value===option.key&&styles.choiceActive]}><Text style={[styles.choiceText,value===option.key&&styles.choiceTextActive]}>{option.label}</Text></Pressable>)}</View></View>;
 }
 
 function Stepper({label,value,min,max,step,suffix,onChange,disabled=false}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(value:number)=>void;disabled?:boolean}){
-  return <View><Text editorId="native:SettingsScreen:fieldLabel:110" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><View style={styles.stepRow}><Pressable editorId="native:SettingsScreen:stepButton:111" disabled={disabled||value<=min} style={styles.stepButton} onPress={()=>onChange(Math.max(min,value-step))}><Text editorId="native:SettingsScreen:stepText:112" editorReadOnly={false} style={styles.stepText}>−</Text></Pressable><Text editorId="native:SettingsScreen:stepValue:113" editorReadOnly={true} style={styles.stepValue}>{value}{suffix}</Text><Pressable editorId="native:SettingsScreen:stepButton:114" disabled={disabled||value>=max} style={styles.stepButton} onPress={()=>onChange(Math.min(max,value+step))}><Text editorId="native:SettingsScreen:stepText:115" editorReadOnly={false} style={styles.stepText}>＋</Text></Pressable></View></View>;
+  return <View><Text style={styles.fieldLabel}>{label}</Text><View style={styles.stepRow}><Pressable disabled={disabled||value<=min} style={styles.stepButton} onPress={()=>onChange(Math.max(min,value-step))}><Text style={styles.stepText}>−</Text></Pressable><Text style={styles.stepValue}>{value}{suffix}</Text><Pressable disabled={disabled||value>=max} style={styles.stepButton} onPress={()=>onChange(Math.min(max,value+step))}><Text style={styles.stepText}>＋</Text></Pressable></View></View>;
 }
 
 function formatTime(value:number|null){

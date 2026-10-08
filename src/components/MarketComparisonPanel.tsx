@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Alert,ScrollView,StyleSheet,View} from 'react-native';
-import {Pressable,Text,TextInput} from './EditableNative';
+import {Alert,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 import type {HoldingQuote} from '../domain/uiModels';
@@ -157,20 +156,20 @@ export function MarketComparisonPanel({
   return <View style={styles.root}>
     <View style={styles.head}>
       <View style={{flex:1}}>
-        <Text editorId="native:MarketComparisonPanel:title:1" editorReadOnly={false} style={styles.title}>行情比對／診斷</Text>
-        <Text editorId="native:MarketComparisonPanel:note:2" editorReadOnly={false} style={styles.note}>唯讀誤差診斷：只讀三方目前數值，不回寫行情中心、App 行情、SQLite、快取或帳務。</Text>
+        <Text style={styles.title}>行情比對／診斷</Text>
+        <Text style={styles.note}>唯讀誤差診斷：只讀三方目前數值，不回寫行情中心、App 行情、SQLite、快取或帳務。</Text>
       </View>
-      <Text editorId="native:MarketComparisonPanel:version:3" editorReadOnly={true} style={styles.version}>v{marketDataVersion}</Text>
+      <Text style={styles.version}>v{marketDataVersion}</Text>
     </View>
 
-    <Text editorId="native:MarketComparisonPanel:label:4" editorReadOnly={false} style={styles.label}>代號行情</Text>
-    <TextInput editorId="native:MarketComparisonPanel:input:5" accessibilityLabel="行情比對代號" value={symbol}
+    <Text style={styles.label}>代號行情</Text>
+    <TextInput accessibilityLabel="行情比對代號" value={symbol}
       onChangeText={value=>setSymbol(value.toUpperCase().replace(/[^0-9A-Z]/g,'').slice(0,8))}
       autoCapitalize="characters" autoCorrect={false} placeholder="0056" style={styles.input}/>
     {symbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-      {symbols.slice(0,12).map(code=><Pressable editorId="native:MarketComparisonPanel:chip:6" key={code} onPress={()=>setSymbol(code)}
+      {symbols.slice(0,12).map(code=><Pressable key={code} onPress={()=>setSymbol(code)}
         style={[styles.chip,normalized===code&&styles.chipActive]}>
-        <Text editorId="native:MarketComparisonPanel:chipText:7" editorReadOnly={true} style={[styles.chipText,normalized===code&&styles.chipTextActive]}>{code}</Text>
+        <Text style={[styles.chipText,normalized===code&&styles.chipTextActive]}>{code}</Text>
       </Pressable>)}
     </ScrollView>:null}
 
@@ -191,7 +190,7 @@ export function MarketComparisonPanel({
       <CompareRow label="App ↔ 證券中心" value={formatDiff(priceDifference(appPrice,officialPrice))}/>
       <CompareRow label="行情中心 ↔ 證券中心" value={formatDiff(priceDifference(centerPrice,officialPrice))}/>
       <CompareRow label="App ↔ 行情中心" value={formatDiff(priceDifference(appPrice,centerPrice))}/>
-      <Text editorId="native:MarketComparisonPanel:diagnosis:8" editorReadOnly={true} style={styles.diagnosis}>判定：{marketComparisonDiagnosisLabel(diagnosis)}</Text>
+      <Text style={styles.diagnosis}>判定：{marketComparisonDiagnosisLabel(diagnosis)}</Text>
     </View>
 
     <View style={styles.metaBox}>
@@ -215,8 +214,8 @@ export function MarketComparisonPanel({
     </View>
 
     {official?<View style={styles.rawBox}>
-      <Text editorId="native:MarketComparisonPanel:rawTitle:9" editorReadOnly={false} style={styles.rawTitle}>證券中心原始欄位（唯讀）</Text>
-      <Text editorId="native:MarketComparisonPanel:rawNote:10" editorReadOnly={false} style={styles.rawNote}>z 缺值時僅顯示原始資料供查核；y／o／h／l／v／pz／b／a 不會被拿來替代官方比對價，也不會回寫 App 行情。</Text>
+      <Text style={styles.rawTitle}>證券中心原始欄位（唯讀）</Text>
+      <Text style={styles.rawNote}>z 缺值時僅顯示原始資料供查核；y／o／h／l／v／pz／b／a 不會被拿來替代官方比對價，也不會回寫 App 行情。</Text>
       <CompareRow label="z｜實際成交價" value={formatRaw(official.raw.z)}/>
       <CompareRow label="pz｜最近一筆成交參考" value={formatRaw(official.raw.pz)}/>
       <CompareRow label="y｜昨收" value={formatRaw(official.raw.y)}/>
@@ -231,23 +230,23 @@ export function MarketComparisonPanel({
     </View>:null}
 
     <View style={styles.actions}>
-      <Pressable editorId="native:MarketComparisonPanel:action:11" disabled={probeLoading} onPress={()=>void readOfficial()} style={[styles.action,probeLoading&&styles.disabled]}>
-        <Text editorId="native:MarketComparisonPanel:actionText:12" editorReadOnly={true} style={styles.actionText}>{probeLoading?'讀取中…':'重新讀取官方行情'}</Text>
+      <Pressable disabled={probeLoading} onPress={()=>void readOfficial()} style={[styles.action,probeLoading&&styles.disabled]}>
+        <Text style={styles.actionText}>{probeLoading?'讀取中…':'重新讀取官方行情'}</Text>
       </Pressable>
-      <Pressable editorId="native:MarketComparisonPanel:action:13" onPress={addLog} style={styles.action}><Text editorId="native:MarketComparisonPanel:actionText:14" editorReadOnly={false} style={styles.actionText}>加入比對紀錄</Text></Pressable>
+      <Pressable onPress={addLog} style={styles.action}><Text style={styles.actionText}>加入比對紀錄</Text></Pressable>
     </View>
 
     {logs.length?<View style={styles.logs}>
       <View style={styles.logHead}>
-        <Text editorId="native:MarketComparisonPanel:logTitle:15" editorReadOnly={true} style={styles.logTitle}>最近比對紀錄（{logs.length}/50）</Text>
-        <Pressable editorId="native:MarketComparisonPanel:pressable:16" onPress={()=>Alert.alert('清除行情比對紀錄','只會刪除診斷紀錄，不影響行情或帳務。',[
+        <Text style={styles.logTitle}>最近比對紀錄（{logs.length}/50）</Text>
+        <Pressable onPress={()=>Alert.alert('清除行情比對紀錄','只會刪除診斷紀錄，不影響行情或帳務。',[
           {text:'取消',style:'cancel'},
           {text:'清除',style:'destructive',onPress:()=>setLogs([])},
-        ])}><Text editorId="native:MarketComparisonPanel:clear:17" editorReadOnly={false} style={styles.clear}>清除</Text></Pressable>
+        ])}><Text style={styles.clear}>清除</Text></Pressable>
       </View>
       {logs.slice(0,10).map(log=><View key={log.id} style={styles.logRow}>
-        <Text editorId="native:MarketComparisonPanel:logMain:18" editorReadOnly={true} style={styles.logMain}>{log.symbol}｜官方 {formatPrice(log.officialPrice)}｜中心 {formatPrice(log.centerPrice)}｜App {formatPrice(log.appPrice)}</Text>
-        <Text editorId="native:MarketComparisonPanel:logMeta:19" editorReadOnly={true} style={styles.logMeta}>{formatTime(log.createdAt)}｜官方 {formatTime(log.officialSourceAt)}｜中心 {formatTime(log.centerSourceQuoteAt)}｜#{log.marketDataVersion}｜{log.diagnosis}</Text>
+        <Text style={styles.logMain}>{log.symbol}｜官方 {formatPrice(log.officialPrice)}｜中心 {formatPrice(log.centerPrice)}｜App {formatPrice(log.appPrice)}</Text>
+        <Text style={styles.logMeta}>{formatTime(log.createdAt)}｜官方 {formatTime(log.officialSourceAt)}｜中心 {formatTime(log.centerSourceQuoteAt)}｜#{log.marketDataVersion}｜{log.diagnosis}</Text>
       </View>)}
     </View>:null}
   </View>;
@@ -271,8 +270,8 @@ function formatTime(value:number|null|undefined){
 
 function CompareRow({label,value,note}:{label:string;value:string;note?:string}){
   return <View style={styles.compareRow}>
-    <Text editorId="native:MarketComparisonPanel:compareLabel:20" editorReadOnly={false} style={styles.compareLabel}>{label}</Text>
-    <View style={styles.compareRight}><Text editorId="native:MarketComparisonPanel:compareValue:21" editorReadOnly={true} style={styles.compareValue}>{value}</Text>{note?<Text editorId="native:MarketComparisonPanel:compareNote:22" editorReadOnly={true} style={styles.compareNote}>{note}</Text>:null}</View>
+    <Text style={styles.compareLabel}>{label}</Text>
+    <View style={styles.compareRight}><Text style={styles.compareValue}>{value}</Text>{note?<Text style={styles.compareNote}>{note}</Text>:null}</View>
   </View>;
 }
 
