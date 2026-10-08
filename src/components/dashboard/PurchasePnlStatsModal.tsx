@@ -1,6 +1,8 @@
+import {EditorSurface} from '../EditorSurface';
 import {useSystemColors} from '../../theme/useSystemColors';
 import {useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {Modal,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text} from '../EditableNative';
 
 import type {CanonicalLedgerEntry,CanonicalLedgerSnapshot} from '../../finance/canonicalLedger';
 import type {DailyPnlRecord} from '../../finance/dailyPnlHistory';
@@ -25,15 +27,15 @@ const TABS:readonly {key:Tab;label:string}[]=[
 
 function Stat({label,value,valueColor}:{label:string;value:string;valueColor?:string}){
   return <View style={styles.stat}>
-    <Text style={styles.statLabel}>{label}</Text>
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.statValue,valueColor?{color:valueColor}:undefined]}>{value}</Text>
+    <Text editorId="native:PurchasePnlStatsModal:statLabel:1" editorReadOnly={false} style={styles.statLabel}>{label}</Text>
+    <Text editorId="native:PurchasePnlStatsModal:statValue:2" editorReadOnly={true} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.statValue,valueColor?{color:valueColor}:undefined]}>{value}</Text>
   </View>;
 }
 
 function LotMetric({label,value,valueColor}:{label:string;value:string;valueColor?:string}){
   return <View style={styles.lotMetric}>
-    <Text style={styles.metricLabel}>{label}</Text>
-    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.metricValue,valueColor?{color:valueColor}:undefined]}>{value}</Text>
+    <Text editorId="native:PurchasePnlStatsModal:metricLabel:3" editorReadOnly={false} style={styles.metricLabel}>{label}</Text>
+    <Text editorId="native:PurchasePnlStatsModal:metricValue:4" editorReadOnly={true} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72} style={[styles.metricValue,valueColor?{color:valueColor}:undefined]}>{value}</Text>
   </View>;
 }
 
@@ -43,11 +45,11 @@ function PurchaseCard({row}:{row:PurchaseLotPnlStat}){
   return <View style={styles.purchaseCard}>
     <View style={styles.purchaseHead}>
       <View style={{flex:1}}>
-        <Text style={styles.symbolText}>{row.symbol}　{row.name}</Text>
-        <Text style={styles.dateText}>{row.date} · 買進 NT$ {row.buyPrice.toLocaleString('zh-TW',{maximumFractionDigits:4})}</Text>
+        <Text editorId="native:PurchasePnlStatsModal:symbolText:5" editorReadOnly={true} style={styles.symbolText}>{row.symbol}　{row.name}</Text>
+        <Text editorId="native:PurchasePnlStatsModal:dateText:6" editorReadOnly={true} style={styles.dateText}>{row.date} · 買進 NT$ {row.buyPrice.toLocaleString('zh-TW',{maximumFractionDigits:4})}</Text>
       </View>
       <View style={[styles.statusBadge,row.status==='open'?styles.statusOpen:styles.statusClosed]}>
-        <Text style={[styles.statusText,row.status==='open'?styles.statusOpenText:styles.statusClosedText]}>{row.status==='open'?'持有中':'已結清'}</Text>
+        <Text editorId="native:PurchasePnlStatsModal:statusText:7" editorReadOnly={true} style={[styles.statusText,row.status==='open'?styles.statusOpenText:styles.statusClosedText]}>{row.status==='open'?'持有中':'已結清'}</Text>
       </View>
     </View>
     <View style={styles.metricGrid}>
@@ -97,23 +99,23 @@ export function PurchasePnlStatsModal({
   const chooseTab=(next:Tab)=>{setTab(next);setPage(0);};
   const chooseFilter=(next:Filter)=>{setFilter(next);setPage(0);};
 
-  return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+  return <Modal visible={visible} animationType="slide" onRequestClose={onClose}><EditorSurface pageKey="home" frameKey="purchase-pnl-modal" title="購買損益統計" visible={visible}>
     <View style={styles.root}>
       <View style={styles.header}>
         <View style={{flex:1}}>
-          <Text style={styles.title}>持股損益統計</Text>
-          <Text style={styles.subtitle}>以購買紀錄拆解目前持股總損益；股息、已實現損益與預估清算費用不併入。</Text>
+          <Text editorId="native:PurchasePnlStatsModal:title:8" editorReadOnly={false} style={styles.title}>持股損益統計</Text>
+          <Text editorId="native:PurchasePnlStatsModal:subtitle:9" editorReadOnly={false} style={styles.subtitle}>以購買紀錄拆解目前持股總損益；股息、已實現損益與預估清算費用不併入。</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="關閉持股損益統計" onPress={onClose} style={styles.close}>
-          <Text style={styles.closeText}>關閉</Text>
+        <Pressable editorId="native:PurchasePnlStatsModal:close:10" accessibilityRole="button" accessibilityLabel="關閉持股損益統計" onPress={onClose} style={styles.close}>
+          <Text editorId="native:PurchasePnlStatsModal:closeText:11" editorReadOnly={false} style={styles.closeText}>關閉</Text>
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.formula}>
-          <Text style={styles.formulaTitle}>持股總損益公式</Text>
-          <Text style={styles.formulaText}>目前持股市值 {money(stats.totalMarketValue)} − 目前持股成本 {money(stats.totalHoldingCost)} = {signed(stats.holdingPnl)}</Text>
-          <Text style={styles.formulaNote}>此處的「持股成本」採金融核心目前持倉的買進成交金額成本；股息與賣出已實現損益另列，不加入這個數字。</Text>
+          <Text editorId="native:PurchasePnlStatsModal:formulaTitle:12" editorReadOnly={false} style={styles.formulaTitle}>持股總損益公式</Text>
+          <Text editorId="native:PurchasePnlStatsModal:formulaText:13" editorReadOnly={true} style={styles.formulaText}>目前持股市值 {money(stats.totalMarketValue)} − 目前持股成本 {money(stats.totalHoldingCost)} = {signed(stats.holdingPnl)}</Text>
+          <Text editorId="native:PurchasePnlStatsModal:formulaNote:14" editorReadOnly={false} style={styles.formulaNote}>此處的「持股成本」採金融核心目前持倉的買進成交金額成本；股息與賣出已實現損益另列，不加入這個數字。</Text>
         </View>
 
         <View style={styles.statsGrid}>
@@ -124,20 +126,20 @@ export function PurchasePnlStatsModal({
         </View>
 
         <View style={styles.tabRow}>
-          {TABS.map(item=><Pressable key={item.key} onPress={()=>chooseTab(item.key)} style={[styles.tab,tab===item.key&&styles.tabActive]}>
-            <Text style={[styles.tabText,tab===item.key&&styles.tabTextActive]}>{item.label}</Text>
+          {TABS.map(item=><Pressable editorId="native:PurchasePnlStatsModal:tab:15" key={item.key} onPress={()=>chooseTab(item.key)} style={[styles.tab,tab===item.key&&styles.tabActive]}>
+            <Text editorId="native:PurchasePnlStatsModal:tabText:16" editorReadOnly={false} style={[styles.tabText,tab===item.key&&styles.tabTextActive]}>{item.label}</Text>
           </Pressable>)}
         </View>
 
         {tab==='symbol'?<View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>依 ETF 彙總</Text>
-            <Text style={styles.sectionMeta}>{stats.symbols.length} 檔持股 · {stats.openPurchaseCount} 筆有效購買紀錄</Text>
+            <Text editorId="native:PurchasePnlStatsModal:sectionTitle:17" editorReadOnly={false} style={styles.sectionTitle}>依 ETF 彙總</Text>
+            <Text editorId="native:PurchasePnlStatsModal:sectionMeta:18" editorReadOnly={true} style={styles.sectionMeta}>{stats.symbols.length} 檔持股 · {stats.openPurchaseCount} 筆有效購買紀錄</Text>
           </View>
           {stats.symbols.map(row=><View key={row.symbol} style={styles.symbolCard}>
             <View style={styles.purchaseHead}>
-              <View style={{flex:1}}><Text style={styles.symbolText}>{row.symbol}　{row.name}</Text><Text style={styles.dateText}>{shares(row.shares)} 股 · 現價 NT$ {row.currentPrice.toLocaleString('zh-TW',{maximumFractionDigits:4})}</Text></View>
-              <Text style={[styles.symbolPnl,{color:tone(row.holdingPnl)}]}>{signed(row.holdingPnl)}</Text>
+              <View style={{flex:1}}><Text editorId="native:PurchasePnlStatsModal:symbolText:19" editorReadOnly={true} style={styles.symbolText}>{row.symbol}　{row.name}</Text><Text editorId="native:PurchasePnlStatsModal:dateText:20" editorReadOnly={true} style={styles.dateText}>{shares(row.shares)} 股 · 現價 NT$ {row.currentPrice.toLocaleString('zh-TW',{maximumFractionDigits:4})}</Text></View>
+              <Text editorId="native:PurchasePnlStatsModal:symbolPnl:21" editorReadOnly={true} style={[styles.symbolPnl,{color:tone(row.holdingPnl)}]}>{signed(row.holdingPnl)}</Text>
             </View>
             <View style={styles.metricGrid}>
               <LotMetric label="持股成本" value={'NT$ '+money(row.holdingCost)}/>
@@ -146,50 +148,50 @@ export function PurchasePnlStatsModal({
               <LotMetric label="購買紀錄" value={row.openPurchaseCount+' / '+row.purchaseCount+' 筆'}/>
             </View>
           </View>)}
-          {!stats.symbols.length?<Text style={styles.empty}>目前沒有持有中的標的。</Text>:null}
+          {!stats.symbols.length?<Text editorId="native:PurchasePnlStatsModal:empty:22" editorReadOnly={false} style={styles.empty}>目前沒有持有中的標的。</Text>:null}
         </View>:null}
 
         {tab==='purchase'?<View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>購買紀錄統計</Text>
-            <Text style={styles.sectionMeta}>共 {filteredLots.length} 筆</Text>
+            <Text editorId="native:PurchasePnlStatsModal:sectionTitle:23" editorReadOnly={false} style={styles.sectionTitle}>購買紀錄統計</Text>
+            <Text editorId="native:PurchasePnlStatsModal:sectionMeta:24" editorReadOnly={true} style={styles.sectionMeta}>共 {filteredLots.length} 筆</Text>
           </View>
           <View style={styles.controlRow}>
-            {([{key:'all',label:'全部'},{key:'open',label:'持有中'},{key:'closed',label:'已結清'}] as const).map(item=><Pressable key={item.key} onPress={()=>chooseFilter(item.key)}
-              style={[styles.chip,filter===item.key&&styles.chipActive]}><Text style={[styles.chipText,filter===item.key&&styles.chipTextActive]}>{item.label}</Text></Pressable>)}
+            {([{key:'all',label:'全部'},{key:'open',label:'持有中'},{key:'closed',label:'已結清'}] as const).map(item=><Pressable editorId="native:PurchasePnlStatsModal:chip:25" key={item.key} onPress={()=>chooseFilter(item.key)}
+              style={[styles.chip,filter===item.key&&styles.chipActive]}><Text editorId="native:PurchasePnlStatsModal:chipText:26" editorReadOnly={false} style={[styles.chipText,filter===item.key&&styles.chipTextActive]}>{item.label}</Text></Pressable>)}
           </View>
           <View style={styles.controlRow}>
-            {([{key:'date',label:'日期'},{key:'pnl',label:'損益'},{key:'symbol',label:'代號'}] as const).map(item=><Pressable key={item.key} onPress={()=>{setSort(item.key);setPage(0);}}
-              style={[styles.chip,sort===item.key&&styles.chipActive]}><Text style={[styles.chipText,sort===item.key&&styles.chipTextActive]}>排序：{item.label}</Text></Pressable>)}
+            {([{key:'date',label:'日期'},{key:'pnl',label:'損益'},{key:'symbol',label:'代號'}] as const).map(item=><Pressable editorId="native:PurchasePnlStatsModal:chip:27" key={item.key} onPress={()=>{setSort(item.key);setPage(0);}}
+              style={[styles.chip,sort===item.key&&styles.chipActive]}><Text editorId="native:PurchasePnlStatsModal:chipText:28" editorReadOnly={false} style={[styles.chipText,sort===item.key&&styles.chipTextActive]}>排序：{item.label}</Text></Pressable>)}
           </View>
           {pageLots.map(row=><PurchaseCard key={row.id} row={row}/>)}
-          {!pageLots.length?<Text style={styles.empty}>目前沒有符合條件的購買紀錄。</Text>:null}
+          {!pageLots.length?<Text editorId="native:PurchasePnlStatsModal:empty:29" editorReadOnly={false} style={styles.empty}>目前沒有符合條件的購買紀錄。</Text>:null}
           {pageCount>1?<View style={styles.pagination}>
-            <Pressable disabled={safePage===0} onPress={()=>setPage(current=>Math.max(0,current-1))} style={[styles.pageButton,safePage===0&&styles.pageButtonDisabled]}><Text style={styles.pageButtonText}>上一頁</Text></Pressable>
-            <Text style={styles.pageInfo}>{safePage+1} / {pageCount}</Text>
-            <Pressable disabled={safePage>=pageCount-1} onPress={()=>setPage(current=>Math.min(pageCount-1,current+1))} style={[styles.pageButton,safePage>=pageCount-1&&styles.pageButtonDisabled]}><Text style={styles.pageButtonText}>下一頁</Text></Pressable>
+            <Pressable editorId="native:PurchasePnlStatsModal:pageButton:30" disabled={safePage===0} onPress={()=>setPage(current=>Math.max(0,current-1))} style={[styles.pageButton,safePage===0&&styles.pageButtonDisabled]}><Text editorId="native:PurchasePnlStatsModal:pageButtonText:31" editorReadOnly={false} style={styles.pageButtonText}>上一頁</Text></Pressable>
+            <Text editorId="native:PurchasePnlStatsModal:pageInfo:32" editorReadOnly={true} style={styles.pageInfo}>{safePage+1} / {pageCount}</Text>
+            <Pressable editorId="native:PurchasePnlStatsModal:pageButton:33" disabled={safePage>=pageCount-1} onPress={()=>setPage(current=>Math.min(pageCount-1,current+1))} style={[styles.pageButton,safePage>=pageCount-1&&styles.pageButtonDisabled]}><Text editorId="native:PurchasePnlStatsModal:pageButtonText:34" editorReadOnly={false} style={styles.pageButtonText}>下一頁</Text></Pressable>
           </View>:null}
           <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>移動平均成本一致性</Text>
-            <Text style={styles.noticeText}>金融核心賣出採「移動平均含費成本釋放」。為了逐筆回看購買紀錄，剩餘股數與成本依當時仍有效的買進紀錄同比例分攤；這是統計呈現，不會改寫交易帳務或金融核心。</Text>
+            <Text editorId="native:PurchasePnlStatsModal:noticeTitle:35" editorReadOnly={false} style={styles.noticeTitle}>移動平均成本一致性</Text>
+            <Text editorId="native:PurchasePnlStatsModal:noticeText:36" editorReadOnly={false} style={styles.noticeText}>金融核心賣出採「移動平均含費成本釋放」。為了逐筆回看購買紀錄，剩餘股數與成本依當時仍有效的買進紀錄同比例分攤；這是統計呈現，不會改寫交易帳務或金融核心。</Text>
           </View>
         </View>:null}
 
         {tab==='daily'?<View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>每日市值走勢紀錄</Text>
-            <Text style={styles.sectionMeta}>保留最近 {dailyRows.length} 筆</Text>
+            <Text editorId="native:PurchasePnlStatsModal:sectionTitle:37" editorReadOnly={false} style={styles.sectionTitle}>每日市值走勢紀錄</Text>
+            <Text editorId="native:PurchasePnlStatsModal:sectionMeta:38" editorReadOnly={true} style={styles.sectionMeta}>保留最近 {dailyRows.length} 筆</Text>
           </View>
-          <Text style={styles.dailyNote}>每日紀錄用來回溯市場變化，不拿來反推「持股總損益」。持股總損益永遠以目前市值減目前持股成本為準。</Text>
+          <Text editorId="native:PurchasePnlStatsModal:dailyNote:39" editorReadOnly={false} style={styles.dailyNote}>每日紀錄用來回溯市場變化，不拿來反推「持股總損益」。持股總損益永遠以目前市值減目前持股成本為準。</Text>
           {dailyRows.map(row=><View key={row.date} style={styles.dailyRow}>
-            <View><Text style={styles.dailyDate}>{row.date}</Text><Text style={styles.dailyBasis}>{row.basis==='official-history'?'正式收盤':'即時／前收基準'}{row.final?' · 已結束':''}</Text></View>
-            <View style={styles.dailyRight}><Text style={styles.dailyMarket}>市值 {money(row.totalMarketValue)}</Text><Text style={[styles.dailyPnl,{color:tone(row.todayPnl)}]}>{signed(row.todayPnl)}</Text></View>
+            <View><Text editorId="native:PurchasePnlStatsModal:dailyDate:40" editorReadOnly={true} style={styles.dailyDate}>{row.date}</Text><Text editorId="native:PurchasePnlStatsModal:dailyBasis:41" editorReadOnly={true} style={styles.dailyBasis}>{row.basis==='official-history'?'正式收盤':'即時／前收基準'}{row.final?' · 已結束':''}</Text></View>
+            <View style={styles.dailyRight}><Text editorId="native:PurchasePnlStatsModal:dailyMarket:42" editorReadOnly={true} style={styles.dailyMarket}>市值 {money(row.totalMarketValue)}</Text><Text editorId="native:PurchasePnlStatsModal:dailyPnl:43" editorReadOnly={true} style={[styles.dailyPnl,{color:tone(row.todayPnl)}]}>{signed(row.todayPnl)}</Text></View>
           </View>)}
-          {!dailyRows.length?<Text style={styles.empty}>尚無每日行情紀錄。</Text>:null}
+          {!dailyRows.length?<Text editorId="native:PurchasePnlStatsModal:empty:44" editorReadOnly={false} style={styles.empty}>尚無每日行情紀錄。</Text>:null}
         </View>:null}
       </ScrollView>
     </View>
-  </Modal>;
+  </EditorSurface></Modal>;
 }
 
 const styles=StyleSheet.create({

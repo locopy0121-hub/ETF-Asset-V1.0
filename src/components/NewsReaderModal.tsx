@@ -1,5 +1,7 @@
+import {EditorSurface} from './EditorSurface';
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {ActivityIndicator,Linking,Modal,Pressable,StyleSheet,Text,View} from 'react-native';
+import {ActivityIndicator,Linking,Modal,StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import {SafeAreaProvider,SafeAreaView} from 'react-native-safe-area-context';
 import {WebView} from 'react-native-webview';
 
@@ -90,25 +92,25 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
     try{await Linking.openURL(url);}
     catch{setExternalError('無法開啟外部瀏覽器，請稍後重試。');}
   };
-  return <Modal visible animationType="slide" onRequestClose={back}>
+  return <Modal visible animationType="slide" onRequestClose={back}><EditorSurface pageKey="home" frameKey="news-reader" title="新聞閱讀器" visible={true}>
     <SafeAreaProvider>
       <SafeAreaView edges={['top','bottom','left','right']} style={[styles.root,{backgroundColor:palette.background}]}>
         <View style={[styles.header,{backgroundColor:palette.surface,borderBottomColor:palette.border}]}>
           <View style={styles.heading}>
-            <Text style={[styles.kicker,{color:palette.primary}]}>App 內新聞閱讀</Text>
-            <Text numberOfLines={1} style={[styles.symbol,{color:palette.text}]}>{item.symbol} {item.name}</Text>
-            <Text numberOfLines={1} style={[styles.source,{color:palette.textSecondary}]}>{item.source}</Text>
+            <Text editorId="native:NewsReaderModal:kicker:1" editorReadOnly={false} style={[styles.kicker,{color:palette.primary}]}>App 內新聞閱讀</Text>
+            <Text editorId="native:NewsReaderModal:symbol:2" editorReadOnly={true} numberOfLines={1} style={[styles.symbol,{color:palette.text}]}>{item.symbol} {item.name}</Text>
+            <Text editorId="native:NewsReaderModal:source:3" editorReadOnly={true} numberOfLines={1} style={[styles.source,{color:palette.textSecondary}]}>{item.source}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="關閉新聞" onPress={onClose} style={[styles.close,{backgroundColor:palette.surfaceMuted}]}>
-            <Text style={[styles.closeText,{color:palette.textSecondary}]}>×</Text>
+          <Pressable editorId="native:NewsReaderModal:close:4" accessibilityRole="button" accessibilityLabel="關閉新聞" onPress={onClose} style={[styles.close,{backgroundColor:palette.surfaceMuted}]}>
+            <Text editorId="native:NewsReaderModal:closeText:5" editorReadOnly={false} style={[styles.closeText,{color:palette.textSecondary}]}>×</Text>
           </Pressable>
         </View>
         <View style={[styles.toolbar,{backgroundColor:palette.surface,borderBottomColor:palette.border}]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="返回上一頁" onPress={back} style={styles.tool}><Text style={{color:palette.primary}}>‹ 返回</Text></Pressable>
-          {uri?<Pressable accessibilityRole="button" accessibilityLabel="重新整理新聞" onPress={retry} style={styles.tool}><Text style={{color:palette.primary}}>重新整理</Text></Pressable>:null}
-          {uri?<Pressable accessibilityRole="button" accessibilityLabel="使用外部瀏覽器查看完整原文" onPress={()=>void openExternal()} style={styles.tool}><Text style={{color:palette.textSecondary}}>外部開啟 ↗</Text></Pressable>:null}
+          <Pressable editorId="native:NewsReaderModal:tool:6" accessibilityRole="button" accessibilityLabel="返回上一頁" onPress={back} style={styles.tool}><Text editorId="native:NewsReaderModal:text:7" editorReadOnly={false} style={{color:palette.primary}}>‹ 返回</Text></Pressable>
+          {uri?<Pressable editorId="native:NewsReaderModal:tool:8" accessibilityRole="button" accessibilityLabel="重新整理新聞" onPress={retry} style={styles.tool}><Text editorId="native:NewsReaderModal:text:9" editorReadOnly={false} style={{color:palette.primary}}>重新整理</Text></Pressable>:null}
+          {uri?<Pressable editorId="native:NewsReaderModal:tool:10" accessibilityRole="button" accessibilityLabel="使用外部瀏覽器查看完整原文" onPress={()=>void openExternal()} style={styles.tool}><Text editorId="native:NewsReaderModal:text:11" editorReadOnly={false} style={{color:palette.textSecondary}}>外部開啟 ↗</Text></Pressable>:null}
         </View>
-        {externalError?<Text accessibilityRole="alert" style={[styles.notice,{color:palette.textSecondary}]}>{externalError}</Text>:null}
+        {externalError?<Text editorId="native:NewsReaderModal:notice:12" editorReadOnly={true} accessibilityRole="alert" style={[styles.notice,{color:palette.textSecondary}]}>{externalError}</Text>:null}
         {loading?<View accessibilityRole="progressbar" accessibilityValue={{min:0,max:100,now:Math.round(progress*100)}} style={[styles.progressTrack,{backgroundColor:palette.border}]}><View style={{height:3,width:`${Math.max(3,progress*100)}%`,backgroundColor:palette.primary}}/></View>:null}
         <View style={styles.browserArea}>
           {uri&&!terminated?<WebView
@@ -147,16 +149,16 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
             onContentProcessDidTerminate={rendererTerminated}
             renderError={()=> <View/>}
           />:null}
-          {loading?<View pointerEvents="none" style={[styles.loading,{backgroundColor:palette.surface}]}><ActivityIndicator color={palette.primary}/><Text style={{color:palette.textSecondary}}>正在載入新聞原文…</Text></View>:null}
+          {loading?<View pointerEvents="none" style={[styles.loading,{backgroundColor:palette.surface}]}><ActivityIndicator color={palette.primary}/><Text editorId="native:NewsReaderModal:text:13" editorReadOnly={false} style={{color:palette.textSecondary}}>正在載入新聞原文…</Text></View>:null}
           {error?<View style={[styles.error,{backgroundColor:palette.background}]}>
-            <Text style={[styles.articleTitle,{color:palette.text}]}>{item.title}</Text>
-            <Text accessibilityRole="alert" style={[styles.errorText,{color:palette.textSecondary}]}>{error}</Text>
-            {uri?<Pressable accessibilityRole="button" accessibilityLabel="重試載入新聞" onPress={retry} style={[styles.retry,{backgroundColor:palette.surfaceMuted}]}><Text style={{color:palette.primary}}>重試</Text></Pressable>:null}
+            <Text editorId="native:NewsReaderModal:articleTitle:14" editorReadOnly={true} style={[styles.articleTitle,{color:palette.text}]}>{item.title}</Text>
+            <Text editorId="native:NewsReaderModal:errorText:15" editorReadOnly={true} accessibilityRole="alert" style={[styles.errorText,{color:palette.textSecondary}]}>{error}</Text>
+            {uri?<Pressable editorId="native:NewsReaderModal:retry:16" accessibilityRole="button" accessibilityLabel="重試載入新聞" onPress={retry} style={[styles.retry,{backgroundColor:palette.surfaceMuted}]}><Text editorId="native:NewsReaderModal:text:17" editorReadOnly={false} style={{color:palette.primary}}>重試</Text></Pressable>:null}
           </View>:null}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
-  </Modal>;
+  </EditorSurface></Modal>;
 }
 
 const styles=StyleSheet.create({

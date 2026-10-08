@@ -283,6 +283,22 @@ export function PageLayoutToolWorkbench({
     <View style={styles.head}><View style={{flex:1}}><Text style={styles.title}>排版工具</Text>
       <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料。點到哪個物件，虛線框就鎖定該物件，下方只顯示已實裝的工具。</Text></View></View>
 
+    <Text style={styles.title}>全部框架清單</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+      {orderedFrames.map(item=><Pressable key={'frame-list:'+item.key}
+        accessibilityRole="button" accessibilityLabel={'編輯框架 '+item.title}
+        accessibilityState={{selected:frameKey===item.key}}
+        onPress={()=>selectFrameDirect(item)}
+        style={[styles.kindChip,frameKey===item.key&&styles.kindChipActive]}>
+        <Text style={[styles.kindText,frameKey===item.key&&styles.kindTextActive]}>
+          {item.title}{draft[item.key]?.visible===false?'（已隱藏）':''}
+        </Text>
+      </Pressable>)}
+    </ScrollView>
+    {!hasRealPreview(pageKey,frame.key)?<Text style={styles.hint}>
+      此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
+    </Text>:null}
+
     <View style={styles.previewShell}>
       <View style={styles.previewTop}>
         <Text style={styles.previewTitle}>實際頁面編輯區</Text>

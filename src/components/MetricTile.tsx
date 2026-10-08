@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
-import {Pressable,StyleSheet,Text} from 'react-native';
+import {Pressable,StyleSheet} from 'react-native';
+import {Text} from './EditableNative';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
 import type {TargetOverride} from '../maintenance/inspectionModel';

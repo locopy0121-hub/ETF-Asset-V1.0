@@ -26,6 +26,8 @@ import {spacing} from '../theme/tokens';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {applyConditionalAppearance,activeConditionalRule} from '../maintenance/conditionalVisual';
 import {formatDisplayNumber} from '../maintenance/numberDisplay';
+import {FrameEditingProvider} from '../editor/FrameEditingContext';
+import {Text as EditableText} from './EditableNative';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -108,8 +110,8 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
       };
       return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>{()=>child}</InspectableTarget>;
     }
-    if(child.type===Text){
-      const props=child.props as ComponentProps<typeof Text>;
+    if(child.type===Text||child.type===EditableText){
+      const props=child.props as ComponentProps<typeof Text>&{editorReadOnly?:boolean;editorSkip?:boolean};
       const content=typeof props.children==='string'||typeof props.children==='number'?String(props.children):null;
       if(content&&content.trim().length>=2){
         const raw=StyleSheet.flatten(props.style) as TextStyle|undefined;
@@ -117,7 +119,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         const bg=typeof raw?.backgroundColor==='string'&&/^#[0-9a-f]{6}$/i.test(raw.backgroundColor)?raw.backgroundColor:'#FFFFFF';
         const size=typeof raw?.fontSize==='number'?raw.fontSize:13;
         const isPrefix=content.trim()==='NT$'&&frame.page==='home'&&frame.frameKey==='asset-dashboard';
-        const isDataValue=/NT\$\s*[-+]?\s*[\d,]+(?:\.\d+)?|^[+-]?[\d,]+(?:\.\d+)?%?$/.test(content)
+        const isDataValue=props.editorReadOnly===true||/NT\$\s*[-+]?\s*[\d,]+(?:\.\d+)?|^[+-]?[\d,]+(?:\.\d+)?%?$/.test(content)
           ||!!raw?.fontVariant?.includes('tabular-nums');
         const target:InspectedTarget={
           profitTone:frameTone,id:'text:'+nodeId,kind:isDataValue?'value':'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
@@ -139,7 +141,8 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
           base:{...target.base,prefixText:content,prefixGap:8}}:target;
         return <InspectableTarget key={child.key??nodeId} target={actualTarget} frame={frame}>
           {(appearance,customized,override,render)=>{const rule=activeConditionalRule(override.conditionalStyles,render.displayTone);
-            return cloneElement(child as ReactElement<ComponentProps<typeof Text>>,{
+            return cloneElement(child as ReactElement<ComponentProps<typeof Text>&{editorSkip?:boolean}>,{
+            ...(child.type===EditableText?{editorSkip:true}:{}),
             ...props,children:customized&&!isDataValue?(isPrefix?
               (override.prefixText!==undefined?appearance.prefixText:content):
               (appearance.labelText||appearance.captionText||content)):
@@ -220,16 +223,16 @@ export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;fra
       })}:{}),
       workHidden:active&&session?.scope==='frame'&&!session.draft.visible,
       action:<View style={{flexDirection:'row',gap:6,alignItems:'center'}}>
-        {originalAction}
+        <FrameEditingProvider frame={frame}>{originalAction}</FrameEditingProvider>
         {engineer.enabled?<Pressable accessibilityRole="button" accessibilityLabel={'呼叫'+item.element.props.title+'維護工程師'} onPress={()=>open()} style={{minWidth:36,minHeight:36,justifyContent:'center',alignItems:'center',borderWidth:1,borderRadius:18,borderColor:theme.palette.primary}}>
           <Text style={{fontSize:17}}>🔧</Text>
         </Pressable>:null}
       </View>,
-      children:<>{decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
+      children:<FrameEditingProvider frame={frame}>{decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
         {instances.length?<InstalledFrameComponents instances={instances} frame={frame} enabled={engineer.enabled}
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
           onWrench={id=>open(id)}/>:null}
-      </>,
+      </FrameEditingProvider>,
     })}
     </WorkspaceSurface>;
   })}</View>;

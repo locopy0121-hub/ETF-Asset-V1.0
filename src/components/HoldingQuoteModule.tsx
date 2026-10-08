@@ -1,5 +1,6 @@
 import {financialTone} from '../theme/financialTone';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import {Animated,Pressable,StyleSheet,View} from 'react-native';
+import {Text} from './EditableNative';
 import { type ReactNode, useEffect, useRef } from 'react';
 
 import {

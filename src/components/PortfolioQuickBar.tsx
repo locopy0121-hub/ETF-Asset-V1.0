@@ -1,4 +1,5 @@
-import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import type {PortfolioPrimaryMode,PortfolioQuickMode} from '../domain/portfolioModeSwitch';
 import {colors,radius} from '../theme/tokens';
 
@@ -32,13 +33,13 @@ export function PortfolioQuickBar({firstMode,activeMode,sortLabel,onCycleFirst,o
 function QuickButton({label,glyph,selected,onPress,hint,status}:{
   label:string;glyph:string;selected:boolean;onPress:()=>void;hint?:string;status?:string;
 }){
-  return <Pressable accessibilityRole="button" accessibilityLabel={label}
+  return <Pressable editorId="native:PortfolioQuickBar:key:1" accessibilityRole="button" accessibilityLabel={label}
     accessibilityHint={hint} accessibilityState={{selected}}
     hitSlop={3} onPress={onPress} style={[styles.key,selected&&styles.selected]}>
-    <Text allowFontScaling={false} style={[styles.glyph,selected&&styles.selectedText]}>{glyph}</Text>
-    <Text numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false}
+    <Text editorId="native:PortfolioQuickBar:glyph:2" editorReadOnly={true} allowFontScaling={false} style={[styles.glyph,selected&&styles.selectedText]}>{glyph}</Text>
+    <Text editorId="native:PortfolioQuickBar:label:3" editorReadOnly={false} numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false}
       style={[styles.label,selected&&styles.selectedText]}>{label}</Text>
-    {status?<Text numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false}
+    {status?<Text editorId="native:PortfolioQuickBar:status:4" editorReadOnly={true} numberOfLines={1} adjustsFontSizeToFit allowFontScaling={false}
       style={styles.status}>{status}</Text>:null}
   </Pressable>;
 }

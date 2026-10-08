@@ -1,5 +1,6 @@
 import {useMemo} from 'react';
-import {StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import {StyleSheet,useWindowDimensions,View} from 'react-native';
+import {Text} from './EditableNative';
 import Svg, {Circle} from 'react-native-svg';
 import type {HoldingQuote} from '../domain/uiModels';
 
@@ -31,11 +32,11 @@ export function PortfolioAllocationDonut({rows,totalMarketValue,valuationComplet
   let offset=0;
   const chartSize=compact?156:SIZE;
   return <View style={styles.panel}>
-    <Text style={styles.count}>{rows.length} 檔 ETF</Text>
+    <Text editorId="native:PortfolioAllocationDonut:count:1" editorReadOnly={true} style={styles.count}>{rows.length} 檔 ETF</Text>
     {!valuationComplete?
-      <Text style={styles.message}>部分持股尚缺官方行情；資產占比暫不顯示，帳務成本仍保留。</Text>
+      <Text editorId="native:PortfolioAllocationDonut:message:2" editorReadOnly={false} style={styles.message}>部分持股尚缺官方行情；資產占比暫不顯示，帳務成本仍保留。</Text>
       :allocations.length===0?
-        <Text style={styles.message}>尚無可顯示的持股市值。</Text>
+        <Text editorId="native:PortfolioAllocationDonut:message:3" editorReadOnly={false} style={styles.message}>尚無可顯示的持股市值。</Text>
         :<View style={[styles.layout]}>
           <View style={[styles.chart,{width:chartSize,height:chartSize}]} accessibilityLabel="持股市值資產配置環形圖">
             <Svg width={chartSize} height={chartSize} viewBox={`0 0 ${SIZE} ${SIZE}`}>
@@ -52,15 +53,15 @@ export function PortfolioAllocationDonut({rows,totalMarketValue,valuationComplet
               })}
             </Svg>
             <View pointerEvents="none" style={[styles.center,{left:compact?17:39,right:compact?17:39,top:compact?45:65,bottom:compact?45:65}]}>
-              <Text style={[styles.centerCaption,compact&&{fontSize:9}]}>持股總市值</Text>
-              <Text adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.65} style={[styles.total,compact&&{fontSize:15}]}>{amount(totalMarketValue)}</Text>
+              <Text editorId="native:PortfolioAllocationDonut:centerCaption:4" editorReadOnly={false} style={[styles.centerCaption,compact&&{fontSize:9}]}>持股總市值</Text>
+              <Text editorId="native:PortfolioAllocationDonut:total:5" editorReadOnly={true} adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.65} style={[styles.total,compact&&{fontSize:15}]}>{amount(totalMarketValue)}</Text>
             </View>
           </View>
           <View style={styles.legend}>
             {allocations.map(item=><View key={item.symbol} style={styles.legendRow}>
               <View style={[styles.dot,{backgroundColor:item.color}]}/>
-              <Text style={styles.symbol} numberOfLines={1}>{item.symbol}</Text>
-              <Text style={styles.percent}>{(item.ratio*100).toFixed(1)}%</Text>
+              <Text editorId="native:PortfolioAllocationDonut:symbol:6" editorReadOnly={true} style={styles.symbol} numberOfLines={1}>{item.symbol}</Text>
+              <Text editorId="native:PortfolioAllocationDonut:percent:7" editorReadOnly={true} style={styles.percent}>{(item.ratio*100).toFixed(1)}%</Text>
             </View>)}
           </View>
         </View>}

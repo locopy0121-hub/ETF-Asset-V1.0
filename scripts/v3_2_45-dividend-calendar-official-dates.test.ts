@@ -10,7 +10,7 @@ const expectedCode=major*10000+minor*100+patch;
 assert.equal(app.expo.version,pkg.version);
 assert.equal(app.expo.android.versionCode,expectedCode);
 
-const screen=read('src/screens/DividendScreen.tsx');
+const screen=read('src/screens/DividendScreen.tsx').replace(/ editorId="[^"]*"| editorReadOnly=\{(?:true|false)\}/g,'');
 for(const token of [
   'accessibilityLabel="新增股息"',
   '<Text style={styles.modalTitle}>新增股息</Text>',

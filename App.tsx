@@ -1,5 +1,8 @@
+import {acceptsEditorSession} from './src/domain/editorSessionScope';
+import {EditorSurface} from './src/components/EditorSurface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, InteractionManager, Linking, Pressable, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {ActivityIndicator,AppState,BackHandler,InteractionManager,Linking,StatusBar,StyleSheet,useWindowDimensions,View} from 'react-native';
+import {Pressable,Text} from './src/components/EditableNative';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
@@ -180,8 +183,7 @@ function AppBody(){
   },[active,detail,chartHolding,aiUi.showAiTab,aiUi.showFloatingAi,floatingAiOpen,maintenance.session]);
   useEffect(()=>{
     if(!maintenance.session)return;
-    const expectedPage=detail?'portfolio':active;
-    if(maintenance.session.page!==expectedPage||chartHolding)maintenance.cancel();
+    if(!acceptsEditorSession(maintenance.session,active,Boolean(detail),Boolean(chartHolding)))maintenance.cancel();
   },[active,detail,chartHolding,maintenance.session]);
 
   const aiHoldingKey=useMemo(()=>finance.holdings.map(x=>`${x.symbol}|${x.name}`).sort().join('||'),[finance.holdings]);
@@ -268,8 +270,8 @@ function AppBody(){
     return <View style={[styles.loading,{backgroundColor:theme.palette.background}]}>
       <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
       <ActivityIndicator size="large" color={theme.palette.primary}/>
-      <Text style={[styles.loadingTitle,{color:theme.palette.text}]}>TF Asset</Text>
-      <Text style={[styles.loadingText,{color:theme.palette.textSecondary}]}>正在載入帳務、行情、主題與版面設定…</Text>
+      <Text editorId="native:App:loadingTitle:1" editorReadOnly={false} style={[styles.loadingTitle,{color:theme.palette.text}]}>TF Asset</Text>
+      <Text editorId="native:App:loadingText:2" editorReadOnly={false} style={[styles.loadingText,{color:theme.palette.textSecondary}]}>正在載入帳務、行情、主題與版面設定…</Text>
     </View>;
   }
 
@@ -280,23 +282,25 @@ function AppBody(){
       <View style={{flex:1}} onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} onTouchCancel={()=>{swipeStart.current=null;}}>{screen}</View>
       {maintenance.session?<MaintenanceWorkbench/>:null}
     </View>
-    {aiUi.showFloatingAi&&!maintenance.session&&!chartHolding?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
-    {!detail&&!chartHolding&&!maintenance.session?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
+    {aiUi.showFloatingAi&&(!maintenance.session||maintenance.session.frameKey==='floating-ai')&&!chartHolding?<GlobalFloatingAi collapseSignal={aiCollapseSignal} onExpandedChange={setFloatingAiOpen}/>:null}
+    {!detail&&!chartHolding&&(!maintenance.session||maintenance.session.frameKey==='app-navigation')?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
+      <EditorSurface pageKey="home" frameKey="app-navigation" title="底部導覽列" fill={false} inlineWorkbench={false}>
       <View style={styles.nav}>
         {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;
-          return <Pressable
+          return <Pressable editorId="native:App:navItem:5"
             key={page.key}
             accessibilityRole="tab"
             accessibilityState={{selected}}
             onPress={()=>navigatePage(page.key)}
             style={styles.navItem}
           >
-            <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>
-            <Text style={[styles.navText,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{page.label}</Text>
+            <View style={[styles.navIcon,selected&&{backgroundColor:theme.palette.surfaceMuted}]}><Text editorId="native:App:navGlyph:6" editorReadOnly={true} style={[styles.navGlyph,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{glyph(page.key)}</Text></View>
+            <Text editorId="native:App:navText:7" editorReadOnly={false} style={[styles.navText,{color:selected?theme.palette.primary:theme.palette.textSecondary}]}>{page.label}</Text>
           </Pressable>;
         })}
       </View>
+      </EditorSurface>
     </SafeAreaView>:null}
   </View>;
 }

@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 let overrides={},maintenanceOverrides={};
 let display={profitColorMode:'red-up-green-down',gainColor:'#123456',lossColor:'#654321',neutralColor:'#ABCDEF'};
 const React=require('react');
-const react={...React,useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{},useMemo:f=>f()};
+const react={...React,useId:()=>':fixture:',useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{},useMemo:f=>f()};
 const flatten=s=>Array.isArray(s)?Object.assign({},...s.map(flatten)):s||{};
 const rn={PanResponder:{create:()=>({panHandlers:{}})},Text:'Text',View:'View',Pressable:'Pressable',ScrollView:'ScrollView',useWindowDimensions:()=>({width:360,height:800}),StyleSheet:{create:x=>x,flatten,hairlineWidth:1,absoluteFill:{}},Animated:{Text:'Text',View:'View',Value:class{stopAnimation(){} setValue(){}},timing:()=>({}),sequence:()=>({start(){},stop(){}}),loop:x=>x}};
 const cache=new Map();
@@ -13,6 +13,8 @@ function load(file){
   if(id==='react')return react;
   if(id==='react/jsx-runtime')return require(id);
   if(id==='react-native')return rn;
+  if(id.endsWith('/EditableNative'))return {Text:rn.Text,TextInput:rn.TextInput,Pressable:rn.Pressable};
+  if(id.endsWith('/FrameEditingContext'))return {FrameEditingProvider:({children})=>children};
   if(id.endsWith('/MaintenanceRuntime'))return {useMaintenance:()=>({enabled:false,session:null,selection:null,getTargetOverride:(_p,_f,id)=>maintenanceOverrides[id]??{}})};
   if(id.endsWith('/MaintenanceWorkbench'))return {InstalledFrameComponents:()=>null};
   if(id.endsWith('/WorkspaceSurface'))return {WorkspaceSurface:({children})=>children,useWorkspace:()=>null};

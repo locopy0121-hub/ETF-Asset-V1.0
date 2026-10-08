@@ -583,3 +583,11 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Monitor / Mini / Widget 顯示同一 immutable canonical 投影；持久化只負責恢復。不可在 presentation 混入另一個來源版本重新算漲跌或損益。
 - 單檔缺少行情只隱藏該檔金融欄位，總資產完整性與逐檔可用性分別判定。
 - 原生 ISO UTC 字串不能 substring 作手機時間；需解析為 Instant，再轉 Asia/Taipei。
+
+## V4.0.15 設定編輯必須有實際消費者
+- 註冊框架清單不等於正式頁面已接入：控制中心、專業圖表、獨立業務視窗與全域元件需要各自渲染作用域。
+- App 的 session 取消條件需辨識全域與圖表範圍；只看目前主頁會立即取消合法的圖表或全域編輯。
+- 動態代號、名稱、金額與輸入值必須唯讀。共用靜態標籤 ID 需包含非財務標籤識別，防止一列修改覆寫不同選項。
+- Native Modal 上方需有自己的工作台；Activity 底下的工作台不可穿透 Modal。
+- 原生文字表面與 standalone 框架都需實際渲染背景、邊框與透明度，不能只儲存設定。
+- 舊來源 smoke 可改為等價新接線檢查；財務核心與凍結表格 hash 不放寬，適配 import / metadata 正規化後仍須比對原 blob。

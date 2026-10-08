@@ -24,8 +24,10 @@ includes(shell,"engineer.getWorkspace(pageKey,headerFrameKey)","detail header mu
 includes(shell,"frameKey:frame.frameKey","header text inspector must follow the selected header frame");
 
 const app=read('App.tsx');
-includes(app,"const expectedPage=detail?'portfolio':active;","detail maintenance session must remain active");
-includes(app,"maintenance.session.page!==expectedPage||chartHolding","chart page remains isolated from detail maintenance");
+includes(app,"acceptsEditorSession(maintenance.session,active,Boolean(detail),Boolean(chartHolding))","actual detail/chart/global scopes must use the shared session rule");
+const scope=read('src/domain/editorSessionScope.ts');
+includes(scope,"hasDetail?'portfolio':active","detail maintenance session must remain active");
+includes(scope,"if(hasChart)return session.page==='portfolio'&&session.frameKey.startsWith('chart-')","chart page must keep its own maintenance scope");
 
 const config=JSON.parse(read('app.json'));
 const pkg=JSON.parse(read('package.json'));

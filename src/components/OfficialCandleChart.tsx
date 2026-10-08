@@ -1,6 +1,7 @@
 import {useSystemColors} from '../theme/useSystemColors';
 import {useMemo,useRef,useState} from 'react';
-import {Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {Pressable,ScrollView,StyleSheet,View} from 'react-native';
+import {Text} from './EditableNative';
 import type {DailyCandle} from '../market/twseDailyHistory';
 import type {ChartDataKey,NativeChartStyle} from '../domain/chartEditor';
 import {colors} from '../theme/tokens';

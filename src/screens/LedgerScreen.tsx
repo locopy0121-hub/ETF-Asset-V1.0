@@ -1,5 +1,8 @@
+import {EditorSurface} from '../components/EditorSurface';
+import {useDisplayFormat} from '../settings/useDisplayFormat';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {Alert,Modal,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text,TextInput} from '../components/EditableNative';
 
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
@@ -19,11 +22,11 @@ import { colors, radius, spacing } from '../theme/tokens';
 
 type EntryKind=LedgerKind;
 type TradePlan='ROUND_LOT'|'ODD_LOT'|'RECURRING';
-const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const parseNumber=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFinite(n)?n:0;};
 const today=()=>new Date().toISOString().slice(0,10);
 
 export function LedgerScreen() {
+  const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
   const market=useMarketRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
@@ -154,8 +157,8 @@ export function LedgerScreen() {
             />
             <View style={styles.form}>
               {kind!=='other'?<View style={styles.symbolFieldBlock}>
-                <Text style={styles.fieldLabel}>台股代號／名稱</Text>
-                <TextInput
+                <Text editorId="native:LedgerScreen:fieldLabel:1" editorReadOnly={false} style={styles.fieldLabel}>台股代號／名稱</Text>
+                <TextInput editorId="native:LedgerScreen:input:2"
                   style={styles.input}
                   value={symbol}
                   onChangeText={text=>setSymbol(text.toUpperCase().replace(/\s/g,''))}
@@ -165,44 +168,44 @@ export function LedgerScreen() {
                   placeholderTextColor="#98A5B8"
                 />
                 {instrument?<View style={styles.selectedInstrument}>
-                  <Text style={styles.selectedInstrumentCode}>{instrument.symbol}</Text>
-                  <Text style={styles.selectedInstrumentName} numberOfLines={1}>{instrument.name}</Text>
-                  {catalogItem?<Text style={styles.symbolName}>{catalogItem.market}{catalogItem.industry?' · '+catalogItem.industry:''}</Text>:null}
-                </View>:normalizedSymbol?<Text style={styles.symbolNotFound}>尚未找到符合的台股證券</Text>:null}
+                  <Text editorId="native:LedgerScreen:selectedInstrumentCode:3" editorReadOnly={true} style={styles.selectedInstrumentCode}>{instrument.symbol}</Text>
+                  <Text editorId="native:LedgerScreen:selectedInstrumentName:4" editorReadOnly={true} style={styles.selectedInstrumentName} numberOfLines={1}>{instrument.name}</Text>
+                  {catalogItem?<Text editorId="native:LedgerScreen:symbolName:5" editorReadOnly={true} style={styles.symbolName}>{catalogItem.market}{catalogItem.industry?' · '+catalogItem.industry:''}</Text>:null}
+                </View>:normalizedSymbol?<Text editorId="native:LedgerScreen:symbolNotFound:6" editorReadOnly={false} style={styles.symbolNotFound}>尚未找到符合的台股證券</Text>:null}
                 {recentSymbols.length?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolRow}>
-                  {recentSymbols.map(code=><Pressable key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
-                    <Text style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
+                  {recentSymbols.map(code=><Pressable editorId="native:LedgerScreen:symbolChip:7" key={code} onPress={()=>setSymbol(code)} style={[styles.symbolChip,normalizedSymbol===code&&styles.symbolChipActive]}>
+                    <Text editorId="native:LedgerScreen:symbolChipText:8" editorReadOnly={true} style={[styles.symbolChipText,normalizedSymbol===code&&styles.symbolChipTextActive]}>{code}</Text>
                   </Pressable>)}
                 </ScrollView>:null}
                 {symbolSuggestions.length?<View style={styles.suggestionList}>
-                  {symbolSuggestions.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={styles.suggestionRow}>
-                    <Text style={styles.suggestionSymbol}>{item.symbol}</Text>
-                    <Text style={styles.suggestionName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.suggestionArrow}>›</Text>
+                  {symbolSuggestions.map(item=><Pressable editorId="native:LedgerScreen:suggestionRow:9" key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={styles.suggestionRow}>
+                    <Text editorId="native:LedgerScreen:suggestionSymbol:10" editorReadOnly={true} style={styles.suggestionSymbol}>{item.symbol}</Text>
+                    <Text editorId="native:LedgerScreen:suggestionName:11" editorReadOnly={true} style={styles.suggestionName} numberOfLines={1}>{item.name}</Text>
+                    <Text editorId="native:LedgerScreen:suggestionArrow:12" editorReadOnly={false} style={styles.suggestionArrow}>›</Text>
                   </Pressable>)}
                 </View>:null}
               </View>:null}
 
               <View style={styles.two}>
-                <View style={{flex:1}}><Text style={styles.fieldLabel}>日期</Text><Pressable style={styles.input} onPress={()=>setDateOpen(true)}><Text style={styles.inputText}>{date}</Text></Pressable></View>
+                <View style={{flex:1}}><Text editorId="native:LedgerScreen:fieldLabel:13" editorReadOnly={false} style={styles.fieldLabel}>日期</Text><Pressable editorId="native:LedgerScreen:input:14" style={styles.input} onPress={()=>setDateOpen(true)}><Text editorId="native:LedgerScreen:inputText:15" editorReadOnly={true} style={styles.inputText}>{date}</Text></Pressable></View>
                 {(kind==='buy'||kind==='sell')?<NumericField label="成交價格" value={price} onChange={setPrice} placeholder="0"/>:null}
                 {kind==='dividend'?<NumericField label="每股股息" value={dividendPerShare} onChange={setDividendPerShare} placeholder="0"/>:null}
                 {kind==='other'?<NumericField label="現金調整" value={otherAmount} onChange={setOtherAmount} placeholder="正數收入／負數支出" signed/>:null}
               </View>
 
               {(kind==='buy'||kind==='sell')?<>
-                <Text style={styles.fieldLabel}>交易模式</Text>
+                <Text editorId="native:LedgerScreen:fieldLabel:16" editorReadOnly={false} style={styles.fieldLabel}>交易模式</Text>
                 <SegmentedControl
                   items={[{key:'ODD_LOT',label:'零股'},{key:'ROUND_LOT',label:'整股'},{key:'RECURRING',label:'定期定額'}] as const}
                   value={tradePlan}
                   onChange={setTradePlan}
                 />
-                <Text style={styles.tradePlanHint}>目前券商：{brokerSettings.activeProfile.name}{tradePlan==='RECURRING'?' · '+(brokerSettings.recurring.mode==='fixed'?'固定 '+brokerSettings.recurring.fixedFee+' 元':'非固定，最低 '+brokerSettings.recurring.minimumFee+' 元'):''}</Text>
+                <Text editorId="native:LedgerScreen:tradePlanHint:17" editorReadOnly={true} style={styles.tradePlanHint}>目前券商：{brokerSettings.activeProfile.name}{tradePlan==='RECURRING'?' · '+(brokerSettings.recurring.mode==='fixed'?'固定 '+brokerSettings.recurring.fixedFee+' 元':'非固定，最低 '+brokerSettings.recurring.minimumFee+' 元'):''}</Text>
                 <View style={styles.two}><NumericField label="股數" value={shares} onChange={setShares} placeholder="0"/><NumericField label="實際手續費" value={fee} onChange={setFee} placeholder={tradePreview?String(tradePreview.calculatedFee):'自動估算'}/></View>
                 {kind==='sell'?<NumericField label="實際證交稅" value={tax} onChange={setTax} placeholder={tradePreview?String(tradePreview.calculatedTax):'自動估算'}/>:null}
-                {sellExceedsHolding?<Text style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
+                {sellExceedsHolding?<Text editorId="native:LedgerScreen:validationError:18" editorReadOnly={true} style={styles.validationError}>賣出股數不可大於目前持有股數 {money(currentHolding?.shares??0)} 股。</Text>:null}
                 {tradePreview?<View style={styles.previewCard}>
-                  <Text style={styles.previewTitle}>入帳預覽</Text>
+                  <Text editorId="native:LedgerScreen:previewTitle:19" editorReadOnly={false} style={styles.previewTitle}>入帳預覽</Text>
                   <PreviewRow label="成交金額" value={money(tradePreview.amount)}/>
                   <PreviewRow label="公式手續費" value={money(tradePreview.calculatedFee)}/>
                   <PreviewRow label={fee.trim()?'實際手續費（已覆寫）':'實際手續費（公式固化）'} value={money(tradePreview.actualFee)} strong/>
@@ -216,64 +219,64 @@ export function LedgerScreen() {
 
               {kind==='dividend'?<>
                 <NumericField label="符合配息股數" value={dividendShares} onChange={setDividendShares} placeholder="0"/>
-                {dividendPreview?<View style={styles.previewCard}><Text style={styles.previewTitle}>股息預覽</Text><PreviewRow label="淨入帳股息" value={money(dividendPreview.net)} strong/></View>:null}
+                {dividendPreview?<View style={styles.previewCard}><Text editorId="native:LedgerScreen:previewTitle:20" editorReadOnly={false} style={styles.previewTitle}>股息預覽</Text><PreviewRow label="淨入帳股息" value={money(dividendPreview.net)} strong/></View>:null}
               </>:null}
 
-              <View><Text style={styles.fieldLabel}>備註</Text><TextInput style={styles.input} value={note} onChangeText={setNote} placeholder={kind==='other'?'例如：現金校正':'選填'} placeholderTextColor="#98A5B8"/></View>
-              <Pressable disabled={!canSubmit} style={[styles.primary,!canSubmit&&styles.disabled]} onPress={()=>setConfirmOpen(true)}><Text style={styles.primaryText}>確認{kindLabel(kind)}紀錄</Text></Pressable>
-              <Text style={styles.coreNote}>公式預估只供核對；正式入帳後「實際手續費／實際證交稅」固化成歷史真值。Portfolio、首頁、詳情只讀 Canonical Finance Core。</Text>
+              <View><Text editorId="native:LedgerScreen:fieldLabel:21" editorReadOnly={false} style={styles.fieldLabel}>備註</Text><TextInput editorId="native:LedgerScreen:input:22" style={styles.input} value={note} onChangeText={setNote} placeholder={kind==='other'?'例如：現金校正':'選填'} placeholderTextColor="#98A5B8"/></View>
+              <Pressable editorId="native:LedgerScreen:primary:23" disabled={!canSubmit} style={[styles.primary,!canSubmit&&styles.disabled]} onPress={()=>setConfirmOpen(true)}><Text editorId="native:LedgerScreen:primaryText:24" editorReadOnly={true} style={styles.primaryText}>確認{kindLabel(kind)}紀錄</Text></Pressable>
+              <Text editorId="native:LedgerScreen:coreNote:25" editorReadOnly={false} style={styles.coreNote}>公式預估只供核對；正式入帳後「實際手續費／實際證交稅」固化成歷史真值。Portfolio、首頁、詳情只讀 Canonical Finance Core。</Text>
             </View>
           </FrameCard>
         },
         {key:'ledger-list',element:
           <FrameCard title="交易紀錄">
             <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>現金來源：期初金額不屬於交易</Text>
+              <Text editorId="native:LedgerScreen:previewTitle:26" editorReadOnly={false} style={styles.previewTitle}>現金來源：期初金額不屬於交易</Text>
               <PreviewRow label="期初現金" value={'NT$ '+money(cashSources.opening)}/>
               <PreviewRow label="交易／股息／調整淨流量（非現金餘額）" value={'NT$ '+money(cashSources.netMovement)}/>
               <PreviewRow label="其中其他現金調整" value={'NT$ '+money(cashSources.otherNet)}/>
               <PreviewRow label="目前現金" value={finance.cashConfigured?'NT$ '+money(cashSources.cashBalance):'未設定'} strong/>
-              {!finance.cashConfigured?<Text style={styles.validationError}>尚未建立明確的現金來源；買進、賣出與股息仍可逐筆對帳，但不得把交易淨流量當成可用現金。</Text>:null}
+              {!finance.cashConfigured?<Text editorId="native:LedgerScreen:validationError:27" editorReadOnly={false} style={styles.validationError}>尚未建立明確的現金來源；買進、賣出與股息仍可逐筆對帳，但不得把交易淨流量當成可用現金。</Text>:null}
             </View>
             <View style={styles.paginationTop}>
               <View style={styles.pageSizeGroup}>
-                <Text style={styles.paginationLabel}>每頁</Text>
-                {LEDGER_PAGE_SIZES.map(size=><Pressable key={size} accessibilityRole="button" accessibilityLabel={`每頁顯示 ${size} 筆`}
+                <Text editorId="native:LedgerScreen:paginationLabel:28" editorReadOnly={false} style={styles.paginationLabel}>每頁</Text>
+                {LEDGER_PAGE_SIZES.map(size=><Pressable editorId="native:LedgerScreen:pageSizeButton:29" key={size} accessibilityRole="button" accessibilityLabel={`每頁顯示 ${size} 筆`}
                   onPress={()=>{setLedgerPageSize(size);setLedgerPage(1);}}
                   style={[styles.pageSizeButton,ledgerPageSize===size&&styles.pageSizeButtonActive]}>
-                  <Text style={[styles.pageSizeText,ledgerPageSize===size&&styles.pageSizeTextActive]}>{size}</Text>
+                  <Text editorId="native:LedgerScreen:pageSizeText:30" editorReadOnly={true} style={[styles.pageSizeText,ledgerPageSize===size&&styles.pageSizeTextActive]}>{size}</Text>
                 </Pressable>)}
               </View>
-              <Text style={styles.pageCount}>共 {ordered.length} 筆 · 第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
+              <Text editorId="native:LedgerScreen:pageCount:31" editorReadOnly={true} style={styles.pageCount}>共 {ordered.length} 筆 · 第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
             </View>
-            {ledgerRows.map(row=><Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
-              <View style={{width:66}}><Text style={styles.cell}>{row.date.slice(5)}</Text><Text style={styles.fee}>{row.date.slice(0,4)}</Text></View>
-              <Text style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
+            {ledgerRows.map(row=><Pressable editorId="native:LedgerScreen:tableRow:32" key={row.id} accessibilityRole="button" accessibilityLabel={`查看${kindLabel(row.kind)}明細 ${'symbol' in row?row.symbol:row.label}`} onPress={()=>setSelectedEntry(row)} style={styles.tableRow}>
+              <View style={{width:66}}><Text editorId="native:LedgerScreen:cell:33" editorReadOnly={true} style={styles.cell}>{row.date.slice(5)}</Text><Text editorId="native:LedgerScreen:fee:34" editorReadOnly={true} style={styles.fee}>{row.date.slice(0,4)}</Text></View>
+              <Text editorId="native:LedgerScreen:kindCell:35" editorReadOnly={true} style={[styles.kindCell,{color:kindTone(row)}]}>{kindLabel(row.kind)}</Text>
               <View style={{flex:1}}>
-                <Text style={styles.symbolStrong}>{'symbol' in row?row.symbol:row.label}</Text>
-                {'symbol' in row?<Text style={styles.symbolName} numberOfLines={1}>{row.name}</Text>:null}
-                {row.kind==='buy'||row.kind==='sell'?<Text style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
+                <Text editorId="native:LedgerScreen:symbolStrong:36" editorReadOnly={false} style={styles.symbolStrong}>{'symbol' in row?row.symbol:row.label}</Text>
+                {'symbol' in row?<Text editorId="native:LedgerScreen:symbolName:37" editorReadOnly={true} style={styles.symbolName} numberOfLines={1}>{row.name}</Text>:null}
+                {row.kind==='buy'||row.kind==='sell'?<Text editorId="native:LedgerScreen:fee:38" editorReadOnly={true} style={styles.fee}>費/稅 {row.actualFee}/{row.actualTax}</Text>:null}
               </View>
-              <View style={styles.rowRight}><Text style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Text style={styles.detailsHint}>點擊查看 ›</Text></View>
+              <View style={styles.rowRight}><Text editorId="native:LedgerScreen:amount:39" editorReadOnly={true} style={styles.amount}>NT$ {money(ledgerDisplayAmount(row))}</Text><Text editorId="native:LedgerScreen:detailsHint:40" editorReadOnly={false} style={styles.detailsHint}>點擊查看 ›</Text></View>
             </Pressable>)}
             <View style={styles.paginationBottom}>
-              <Pressable disabled={ledgerCurrentPage<=1} accessibilityRole="button" accessibilityLabel="交易紀錄上一頁"
+              <Pressable editorId="native:LedgerScreen:pageNavButton:41" disabled={ledgerCurrentPage<=1} accessibilityRole="button" accessibilityLabel="交易紀錄上一頁"
                 onPress={()=>setLedgerPage(page=>Math.max(1,page-1))}
                 style={[styles.pageNavButton,ledgerCurrentPage<=1&&styles.pageNavDisabled]}>
-                <Text style={styles.pageNavText}>‹ 上一頁</Text>
+                <Text editorId="native:LedgerScreen:pageNavText:42" editorReadOnly={false} style={styles.pageNavText}>‹ 上一頁</Text>
               </Pressable>
-              <Text style={styles.pageCount}>第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
-              <Pressable disabled={ledgerCurrentPage>=ledgerTotalPages} accessibilityRole="button" accessibilityLabel="交易紀錄下一頁"
+              <Text editorId="native:LedgerScreen:pageCount:43" editorReadOnly={true} style={styles.pageCount}>第 {ledgerCurrentPage}/{ledgerTotalPages} 頁</Text>
+              <Pressable editorId="native:LedgerScreen:pageNavButton:44" disabled={ledgerCurrentPage>=ledgerTotalPages} accessibilityRole="button" accessibilityLabel="交易紀錄下一頁"
                 onPress={()=>setLedgerPage(page=>Math.min(ledgerTotalPages,page+1))}
                 style={[styles.pageNavButton,ledgerCurrentPage>=ledgerTotalPages&&styles.pageNavDisabled]}>
-                <Text style={styles.pageNavText}>下一頁 ›</Text>
+                <Text editorId="native:LedgerScreen:pageNavText:45" editorReadOnly={false} style={styles.pageNavText}>下一頁 ›</Text>
               </Pressable>
             </View>
           </FrameCard>
         },
         {key:'monthly-summary',element:
           <FrameCard title="月度摘要">
-            <Text style={styles.monthLabel}>{month}</Text>
+            <Text editorId="native:LedgerScreen:monthLabel:46" editorReadOnly={true} style={styles.monthLabel}>{month}</Text>
             <View style={styles.metrics}>
               <MetricTile label="本月買進" value={money(monthBuy)} caption="現金支出"/>
               <MetricTile label="本月賣出" value={money(monthSell)} caption="淨流入"/>
@@ -287,12 +290,12 @@ export function LedgerScreen() {
 
     <PageFrameSettingsModal visible={settingsOpen} pageKey="ledger" title="紀錄" frames={PAGE_FRAMES.ledger} onClose={()=>setSettingsOpen(false)}/>
     <DatePickerModal visible={dateOpen} value={date} onChange={setDate} onClose={()=>setDateOpen(false)}/>
-    <Modal visible={!!selectedEntry} transparent animationType="fade" onRequestClose={()=>setSelectedEntry(null)}>
+    <Modal visible={!!selectedEntry} transparent animationType="fade" onRequestClose={()=>setSelectedEntry(null)}><EditorSurface pageKey="ledger" frameKey="trade-detail-modal" title="交易完整明細" visible={!!selectedEntry}>
       <View style={styles.backdrop}><View style={styles.detailModal}>
-        <Text style={styles.modalTitle}>交易完整明細</Text>
+        <Text editorId="native:LedgerScreen:modalTitle:47" editorReadOnly={false} style={styles.modalTitle}>交易完整明細</Text>
         {selectedEntry?<ScrollView contentContainerStyle={styles.detailRows}>
           <PreviewRow label="交易類型" value={kindLabel(selectedEntry.kind)}/>
-          <PreviewRow label="日期" value={selectedEntry.date}/>
+          <PreviewRow label="日期" value={displayDate(selectedEntry.date)}/>
           <PreviewRow label="標的" value={'symbol' in selectedEntry?`${selectedEntry.symbol} ${selectedEntry.name}`:selectedEntry.label}/>
           {(selectedEntry.kind==='buy'||selectedEntry.kind==='sell')?<>
             <PreviewRow label="成交股數" value={`${selectedEntry.shares.toLocaleString('zh-TW')} 股`}/>
@@ -305,33 +308,33 @@ export function LedgerScreen() {
             <PreviewRow label="配息股數" value={`${selectedEntry.sharesHeld.toLocaleString('zh-TW')} 股`}/>
           </>:<PreviewRow label="現金調整" value={`NT$ ${money(selectedEntry.amount)}`}/>}
           <PreviewRow label="現金流" value={`NT$ ${money(calculateLedgerCashFlow(selectedEntry))}`} strong/>
-          {'note' in selectedEntry&&selectedEntry.note?<Text style={styles.coreNote}>備註：{selectedEntry.note}</Text>:null}
+          {'note' in selectedEntry&&selectedEntry.note?<Text editorId="native:LedgerScreen:coreNote:48" editorReadOnly={true} style={styles.coreNote}>備註：{selectedEntry.note}</Text>:null}
         </ScrollView>:null}
         <View style={styles.confirmButtons}>
-          <Pressable style={styles.secondaryButton} onPress={()=>setSelectedEntry(null)}><Text style={styles.secondaryText}>關閉</Text></Pressable>
-          <Pressable style={styles.secondaryButton} onPress={()=>{const row=selectedEntry;if(!row)return;Alert.alert('刪除交易紀錄？','此操作會改變帳務、持股與現金，且無法復原。',[{text:'取消',style:'cancel'},{text:'確認刪除',style:'destructive',onPress:()=>{finance.deleteEntry(row.id);setSelectedEntry(null);}}]);}}><Text style={styles.delete}>刪除（再次確認）</Text></Pressable>
+          <Pressable editorId="native:LedgerScreen:secondaryButton:49" style={styles.secondaryButton} onPress={()=>setSelectedEntry(null)}><Text editorId="native:LedgerScreen:secondaryText:50" editorReadOnly={false} style={styles.secondaryText}>關閉</Text></Pressable>
+          <Pressable editorId="native:LedgerScreen:secondaryButton:51" style={styles.secondaryButton} onPress={()=>{const row=selectedEntry;if(!row)return;Alert.alert('刪除交易紀錄？','此操作會改變帳務、持股與現金，且無法復原。',[{text:'取消',style:'cancel'},{text:'確認刪除',style:'destructive',onPress:()=>{finance.deleteEntry(row.id);setSelectedEntry(null);}}]);}}><Text editorId="native:LedgerScreen:delete:52" editorReadOnly={false} style={styles.delete}>刪除（再次確認）</Text></Pressable>
         </View>
       </View></View>
-    </Modal>
+    </EditorSurface></Modal>
     <ConfirmModal visible={confirmOpen} title={`確認${kindLabel(kind)}入帳`} onCancel={()=>setConfirmOpen(false)} onConfirm={commitEntry}>
-      <Text style={styles.confirmText}>日期：{date}</Text>
-      {kind!=='other'&&quote?<Text style={styles.confirmText}>標的：{quote.symbol} {quote.name}</Text>:null}
+      <Text editorId="native:LedgerScreen:confirmText:53" editorReadOnly={true} style={styles.confirmText}>日期：{date}</Text>
+      {kind!=='other'&&quote?<Text editorId="native:LedgerScreen:confirmText:54" editorReadOnly={true} style={styles.confirmText}>標的：{quote.symbol} {quote.name}</Text>:null}
       {tradePreview?<>
-        <Text style={styles.confirmText}>成交：{money(tradePreview.amount)}</Text>
-        <Text style={styles.confirmText}>實際手續費：{money(tradePreview.actualFee)}</Text>
-        {kind==='sell'?<Text style={styles.confirmText}>實際證交稅：{money(tradePreview.actualTax)}</Text>:null}
-        <Text style={styles.confirmStrong}>{kind==='buy'?'現金支出':'現金流入'}：NT$ {money(Math.abs(calculateLedgerCashFlow(tradePreview)))}</Text>
+        <Text editorId="native:LedgerScreen:confirmText:55" editorReadOnly={true} style={styles.confirmText}>成交：{money(tradePreview.amount)}</Text>
+        <Text editorId="native:LedgerScreen:confirmText:56" editorReadOnly={true} style={styles.confirmText}>實際手續費：{money(tradePreview.actualFee)}</Text>
+        {kind==='sell'?<Text editorId="native:LedgerScreen:confirmText:57" editorReadOnly={true} style={styles.confirmText}>實際證交稅：{money(tradePreview.actualTax)}</Text>:null}
+        <Text editorId="native:LedgerScreen:confirmStrong:58" editorReadOnly={true} style={styles.confirmStrong}>{kind==='buy'?'現金支出':'現金流入'}：NT$ {money(Math.abs(calculateLedgerCashFlow(tradePreview)))}</Text>
       </>:null}
-      {dividendPreview?<Text style={styles.confirmStrong}>股息淨入帳：NT$ {money(dividendPreview.net)}</Text>:null}
-      {otherPreview!==null?<Text style={styles.confirmStrong}>現金調整：NT$ {money(otherPreview)}</Text>:null}
+      {dividendPreview?<Text editorId="native:LedgerScreen:confirmStrong:59" editorReadOnly={true} style={styles.confirmStrong}>股息淨入帳：NT$ {money(dividendPreview.net)}</Text>:null}
+      {otherPreview!==null?<Text editorId="native:LedgerScreen:confirmStrong:60" editorReadOnly={true} style={styles.confirmStrong}>現金調整：NT$ {money(otherPreview)}</Text>:null}
     </ConfirmModal>
   </>;
 }
 
 function NumericField({label,value,onChange,placeholder,signed=false}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string;signed?:boolean}){
-  return <View style={{flex:1}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType={signed?'numbers-and-punctuation':'decimal-pad'} placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>;
+  return <View style={{flex:1}}><Text editorId="native:LedgerScreen:fieldLabel:61" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><TextInput editorId="native:LedgerScreen:input:62" style={styles.input} value={value} onChangeText={onChange} keyboardType={signed?'numbers-and-punctuation':'decimal-pad'} placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>;
 }
-function PreviewRow({label,value,strong=false}:{label:string;value:string;strong?:boolean}){return <View style={styles.previewRow}><Text style={styles.previewLabel}>{label}</Text><Text style={[styles.previewValue,strong&&styles.previewStrong]}>{value}</Text></View>}
+function PreviewRow({label,value,strong=false}:{label:string;value:string;strong?:boolean}){return <View style={styles.previewRow}><Text editorId="native:LedgerScreen:previewLabel:63" editorReadOnly={false} style={styles.previewLabel}>{label}</Text><Text editorId="native:LedgerScreen:previewValue:64" editorReadOnly={true} style={[styles.previewValue,strong&&styles.previewStrong]}>{value}</Text></View>}
 function kindLabel(kind:LedgerKind){return kind==='buy'?'買進':kind==='sell'?'賣出':kind==='dividend'?'股息':'其他';}
 function kindTone(row:CanonicalLedgerEntry){return row.kind==='sell'?colors.loss:row.kind==='buy'?colors.primary:row.kind==='dividend'?colors.gain:colors.warning;}
 
@@ -388,47 +391,47 @@ function DatePickerModal({visible,value,onChange,onClose}:{visible:boolean;value
     setViewMonth(now.getMonth()+1);
   };
 
-  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><View style={styles.backdrop}><View style={styles.dateModal}>
-    <Text style={styles.modalTitle}>選擇日期</Text>
-    <Text style={styles.dateValue}>{value}</Text>
+  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><EditorSurface pageKey="ledger" frameKey="date-picker-modal" title="交易日期選擇" visible={visible}><View style={styles.backdrop}><View style={styles.dateModal}>
+    <Text editorId="native:LedgerScreen:modalTitle:65" editorReadOnly={false} style={styles.modalTitle}>選擇日期</Text>
+    <Text editorId="native:LedgerScreen:dateValue:66" editorReadOnly={true} style={styles.dateValue}>{value}</Text>
 
     <View style={styles.calendarHeader}>
-      <Pressable accessibilityLabel="前一年" style={styles.calendarNavButton} onPress={()=>changeYear(-1)}><Text style={styles.calendarNavText}>‹ 年</Text></Pressable>
-      <Text style={styles.calendarTitle}>{viewYear} 年</Text>
-      <Pressable accessibilityLabel="後一年" style={styles.calendarNavButton} onPress={()=>changeYear(1)}><Text style={styles.calendarNavText}>年 ›</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:calendarNavButton:67" accessibilityLabel="前一年" style={styles.calendarNavButton} onPress={()=>changeYear(-1)}><Text editorId="native:LedgerScreen:calendarNavText:68" editorReadOnly={false} style={styles.calendarNavText}>‹ 年</Text></Pressable>
+      <Text editorId="native:LedgerScreen:calendarTitle:69" editorReadOnly={true} style={styles.calendarTitle}>{viewYear} 年</Text>
+      <Pressable editorId="native:LedgerScreen:calendarNavButton:70" accessibilityLabel="後一年" style={styles.calendarNavButton} onPress={()=>changeYear(1)}><Text editorId="native:LedgerScreen:calendarNavText:71" editorReadOnly={false} style={styles.calendarNavText}>年 ›</Text></Pressable>
     </View>
     <View style={styles.calendarHeader}>
-      <Pressable accessibilityLabel="上個月" style={styles.calendarNavButton} onPress={()=>changeMonth(-1)}><Text style={styles.calendarNavText}>‹ 月</Text></Pressable>
-      <Text style={styles.calendarTitle}>{viewMonth} 月</Text>
-      <Pressable accessibilityLabel="下個月" style={styles.calendarNavButton} onPress={()=>changeMonth(1)}><Text style={styles.calendarNavText}>月 ›</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:calendarNavButton:72" accessibilityLabel="上個月" style={styles.calendarNavButton} onPress={()=>changeMonth(-1)}><Text editorId="native:LedgerScreen:calendarNavText:73" editorReadOnly={false} style={styles.calendarNavText}>‹ 月</Text></Pressable>
+      <Text editorId="native:LedgerScreen:calendarTitle:74" editorReadOnly={true} style={styles.calendarTitle}>{viewMonth} 月</Text>
+      <Pressable editorId="native:LedgerScreen:calendarNavButton:75" accessibilityLabel="下個月" style={styles.calendarNavButton} onPress={()=>changeMonth(1)}><Text editorId="native:LedgerScreen:calendarNavText:76" editorReadOnly={false} style={styles.calendarNavText}>月 ›</Text></Pressable>
     </View>
 
     <View style={styles.weekRow}>
-      {['日','一','二','三','四','五','六'].map(day=><Text key={day} style={styles.weekLabel}>{day}</Text>)}
+      {['日','一','二','三','四','五','六'].map(day=><Text editorId="native:LedgerScreen:weekLabel:77" editorReadOnly={true} key={day} style={styles.weekLabel}>{day}</Text>)}
     </View>
     <View style={styles.calendarGrid}>
       {cells.map((day,index)=>{
         const active=day!=null&&selected.year===viewYear&&selected.month===viewMonth&&selected.day===day;
         return <View key={`${viewYear}-${viewMonth}-${index}`} style={styles.dayCell}>
-          {day==null?null:<Pressable
+          {day==null?null:<Pressable editorId="native:LedgerScreen:dayButton:78"
             accessibilityRole="button"
             accessibilityLabel={`${viewYear}年${viewMonth}月${day}日`}
             style={[styles.dayButton,active&&styles.dayButtonActive]}
             onPress={()=>setSelectedDate(viewYear,viewMonth,day)}
-          ><Text style={[styles.dayText,active&&styles.dayTextActive]}>{day}</Text></Pressable>}
+          ><Text editorId="native:LedgerScreen:dayText:79" editorReadOnly={true} style={[styles.dayText,active&&styles.dayTextActive]}>{day}</Text></Pressable>}
         </View>;
       })}
     </View>
 
     <View style={styles.dateControls}>
-      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedMonth(-1)}><Text style={styles.dateButtonText}>上月</Text></Pressable>
-      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedDay(-1)}><Text style={styles.dateButtonText}>前一天</Text></Pressable>
-      <Pressable style={styles.dateButton} onPress={selectToday}><Text style={styles.dateButtonText}>今天</Text></Pressable>
-      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedDay(1)}><Text style={styles.dateButtonText}>後一天</Text></Pressable>
-      <Pressable style={styles.dateButton} onPress={()=>shiftSelectedMonth(1)}><Text style={styles.dateButtonText}>下月</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:dateButton:80" style={styles.dateButton} onPress={()=>shiftSelectedMonth(-1)}><Text editorId="native:LedgerScreen:dateButtonText:81" editorReadOnly={false} style={styles.dateButtonText}>上月</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:dateButton:82" style={styles.dateButton} onPress={()=>shiftSelectedDay(-1)}><Text editorId="native:LedgerScreen:dateButtonText:83" editorReadOnly={false} style={styles.dateButtonText}>前一天</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:dateButton:84" style={styles.dateButton} onPress={selectToday}><Text editorId="native:LedgerScreen:dateButtonText:85" editorReadOnly={false} style={styles.dateButtonText}>今天</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:dateButton:86" style={styles.dateButton} onPress={()=>shiftSelectedDay(1)}><Text editorId="native:LedgerScreen:dateButtonText:87" editorReadOnly={false} style={styles.dateButtonText}>後一天</Text></Pressable>
+      <Pressable editorId="native:LedgerScreen:dateButton:88" style={styles.dateButton} onPress={()=>shiftSelectedMonth(1)}><Text editorId="native:LedgerScreen:dateButtonText:89" editorReadOnly={false} style={styles.dateButtonText}>下月</Text></Pressable>
     </View>
-    <Pressable style={styles.primary} onPress={onClose}><Text style={styles.primaryText}>完成</Text></Pressable>
-  </View></View></Modal>;
+    <Pressable editorId="native:LedgerScreen:primary:90" style={styles.primary} onPress={onClose}><Text editorId="native:LedgerScreen:primaryText:91" editorReadOnly={false} style={styles.primaryText}>完成</Text></Pressable>
+  </View></View></EditorSurface></Modal>;
 }
 
 function parseIsoDate(value:string){
@@ -445,7 +448,7 @@ function formatIsoDate(year:number,month:number,day:number){
   return `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 function ConfirmModal({visible,title,onCancel,onConfirm,children}:{visible:boolean;title:string;onCancel:()=>void;onConfirm:()=>void;children:ReactNode}){
-  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}><View style={styles.backdrop}><View style={styles.confirmModal}><Text style={styles.modalTitle}>{title}</Text><View style={{gap:7}}>{children}</View><View style={styles.confirmButtons}><Pressable style={styles.secondaryButton} onPress={onCancel}><Text style={styles.secondaryText}>返回修改</Text></Pressable><Pressable style={styles.primaryButton} onPress={onConfirm}><Text style={styles.primaryText}>正式入帳</Text></Pressable></View></View></View></Modal>;
+  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}><EditorSurface pageKey="ledger" frameKey="confirm-entry-modal" title="確認入帳" visible={visible}><View style={styles.backdrop}><View style={styles.confirmModal}><Text editorId="native:LedgerScreen:modalTitle:92" editorReadOnly={false} style={styles.modalTitle}>{title}</Text><View style={{gap:7}}>{children}</View><View style={styles.confirmButtons}><Pressable editorId="native:LedgerScreen:secondaryButton:93" style={styles.secondaryButton} onPress={onCancel}><Text editorId="native:LedgerScreen:secondaryText:94" editorReadOnly={false} style={styles.secondaryText}>返回修改</Text></Pressable><Pressable editorId="native:LedgerScreen:primaryButton:95" style={styles.primaryButton} onPress={onConfirm}><Text editorId="native:LedgerScreen:primaryText:96" editorReadOnly={false} style={styles.primaryText}>正式入帳</Text></Pressable></View></View></View></EditorSurface></Modal>;
 }
 
 const styles=StyleSheet.create({

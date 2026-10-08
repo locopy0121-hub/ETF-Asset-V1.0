@@ -1,6 +1,8 @@
+import {EditorSurface} from './EditorSurface';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, PanResponder, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import {Alert,PanResponder,StyleSheet,useWindowDimensions,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import { type AiAssistantAction } from '../ai/aiAssistant';
@@ -82,30 +84,31 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
   if(!deriveAiUiState(aiSettings.prefs.ai,'home').showFloatingAi)return null;
 
   if(mode==='closed'){
-    return <Pressable
+    return <Pressable editorId="native:GlobalFloatingAi:fab:1"
       accessibilityRole="button"
       accessibilityLabel="開啟全局 AI 助理"
       onPress={()=>changeMode('open')}
       style={[styles.fab,{left:safePosition.x,top:safePosition.y,backgroundColor:theme.palette.primary}]}
-    ><Text style={styles.fabText}>AI</Text></Pressable>;
+    ><Text editorId="native:GlobalFloatingAi:fabText:2" editorReadOnly={false} style={styles.fabText}>AI</Text></Pressable>;
   }
 
   if(mode==='minimized'){
     return <View style={[styles.minimized,{left:safePosition.x,top:safePosition.y,width:Math.min(190,panelWidth),backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
-      <View {...responder.panHandlers} style={styles.dragHandle}><Text style={[styles.dragText,{color:theme.palette.text}]}>⋮⋮ AI 助理</Text></View>
-      <Pressable onPress={()=>changeMode('open')} style={styles.miniAction}><Text style={[styles.miniActionText,{color:theme.palette.primary}]}>展開</Text></Pressable>
-      <Pressable onPress={()=>changeMode('closed')} style={styles.closeAction}><Text style={[styles.closeText,{color:theme.palette.textSecondary}]}>×</Text></Pressable>
+      <View {...responder.panHandlers} style={styles.dragHandle}><Text editorId="native:GlobalFloatingAi:dragText:3" editorReadOnly={false} style={[styles.dragText,{color:theme.palette.text}]}>⋮⋮ AI 助理</Text></View>
+      <Pressable editorId="native:GlobalFloatingAi:miniAction:4" onPress={()=>changeMode('open')} style={styles.miniAction}><Text editorId="native:GlobalFloatingAi:miniActionText:5" editorReadOnly={false} style={[styles.miniActionText,{color:theme.palette.primary}]}>展開</Text></Pressable>
+      <Pressable editorId="native:GlobalFloatingAi:closeAction:6" onPress={()=>changeMode('closed')} style={styles.closeAction}><Text editorId="native:GlobalFloatingAi:closeText:7" editorReadOnly={false} style={[styles.closeText,{color:theme.palette.textSecondary}]}>×</Text></Pressable>
     </View>;
   }
 
   return <View style={[styles.panel,{left:safePosition.x,top:safePosition.y,width:panelWidth,maxHeight:CARD_HEIGHT,backgroundColor:theme.palette.surface,borderColor:theme.palette.border}]}>
+    <EditorSurface pageKey="home" frameKey="floating-ai" title="浮動 AI 視窗" inlineWorkbench={false}>
     <View {...responder.panHandlers} style={[styles.header,{backgroundColor:theme.palette.surfaceMuted,borderBottomColor:theme.palette.border}]}>
       <View style={{flex:1}}>
-        <Text style={[styles.title,{color:theme.palette.text}]}>AI 助理</Text>
-        <Text style={[styles.subtitle,{color:theme.palette.textSecondary}]}>Gemini · 財務資料／股息更新／行情／新聞整理</Text>
+        <Text editorId="native:GlobalFloatingAi:title:8" editorReadOnly={false} style={[styles.title,{color:theme.palette.text}]}>AI 助理</Text>
+        <Text editorId="native:GlobalFloatingAi:subtitle:9" editorReadOnly={false} style={[styles.subtitle,{color:theme.palette.textSecondary}]}>Gemini · 財務資料／股息更新／行情／新聞整理</Text>
       </View>
-      <Pressable onPress={()=>changeMode('minimized')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text style={[styles.headerActionText,{color:theme.palette.primary}]}>−</Text></Pressable>
-      <Pressable onPress={()=>changeMode('closed')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text style={[styles.headerActionText,{color:theme.palette.primary}]}>×</Text></Pressable>
+      <Pressable editorId="native:GlobalFloatingAi:headerAction:10" onPress={()=>changeMode('minimized')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text editorId="native:GlobalFloatingAi:headerActionText:11" editorReadOnly={false} style={[styles.headerActionText,{color:theme.palette.primary}]}>−</Text></Pressable>
+      <Pressable editorId="native:GlobalFloatingAi:headerAction:12" onPress={()=>changeMode('closed')} style={[styles.headerAction,{backgroundColor:theme.palette.surface}]}><Text editorId="native:GlobalFloatingAi:headerActionText:13" editorReadOnly={false} style={[styles.headerActionText,{color:theme.palette.primary}]}>×</Text></Pressable>
     </View>
     <View style={styles.body}>
       <AiQuestionBox
@@ -115,10 +118,11 @@ export function GlobalFloatingAi({collapseSignal=0,onExpandedChange}:{collapseSi
         onAction={runAction}
       />
       <View style={[styles.statusRow,{borderTopColor:theme.palette.border}]}>
-        <Text style={[styles.statusText,{color:theme.palette.textSecondary}]}>持股 {finance.holdings.length} 檔 · 新聞 {ai.items.length} 則</Text>
-        <Pressable disabled={ai.refreshing} onPress={()=>void ai.refresh()}><Text style={[styles.refreshText,{color:theme.palette.primary}]}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
+        <Text editorId="native:GlobalFloatingAi:statusText:14" editorReadOnly={true} style={[styles.statusText,{color:theme.palette.textSecondary}]}>持股 {finance.holdings.length} 檔 · 新聞 {ai.items.length} 則</Text>
+        <Pressable editorId="native:GlobalFloatingAi:pressable:15" disabled={ai.refreshing} onPress={()=>void ai.refresh()}><Text editorId="native:GlobalFloatingAi:refreshText:16" editorReadOnly={true} style={[styles.refreshText,{color:theme.palette.primary}]}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
       </View>
     </View>
+    </EditorSurface>
   </View>;
 }
 

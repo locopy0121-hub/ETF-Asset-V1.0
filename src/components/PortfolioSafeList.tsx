@@ -1,5 +1,6 @@
 import {useSystemColors} from '../theme/useSystemColors';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import type {HoldingQuote} from '../domain/uiModels';
 import {colors,radius} from '../theme/tokens';
 
@@ -9,18 +10,18 @@ export function PortfolioSafeList({rows,onOpenHolding}:{
 }){
   const colors=useSystemColors();
   return <View style={styles.root}>
-    {rows.length===0?<Text style={styles.empty}>目前沒有持股</Text>:rows.map(row=>{
+    {rows.length===0?<Text editorId="native:PortfolioSafeList:empty:1" editorReadOnly={false} style={styles.empty}>目前沒有持股</Text>:rows.map(row=>{
       const hasQuote=row.quoteVerified!==false&&Number.isFinite(row.price);
       const pnl=hasQuote&&Number.isFinite(row.pnl)?row.pnl:null;
-      return <Pressable key={row.symbol} accessibilityRole="button"
+      return <Pressable editorId="native:PortfolioSafeList:item:2" key={row.symbol} accessibilityRole="button"
         accessibilityLabel={'查看 '+row.symbol} onPress={()=>onOpenHolding(row)} style={styles.item}>
         <View style={styles.identity}>
-          <Text style={styles.symbol}>{row.symbol}</Text>
-          <Text numberOfLines={1} style={styles.name}>{row.name}</Text>
+          <Text editorId="native:PortfolioSafeList:symbol:3" editorReadOnly={true} style={styles.symbol}>{row.symbol}</Text>
+          <Text editorId="native:PortfolioSafeList:name:4" editorReadOnly={true} numberOfLines={1} style={styles.name}>{row.name}</Text>
         </View>
         <View style={styles.numbers}>
-          <Text style={styles.price}>{hasQuote?row.price.toFixed(2):'行情待取得'}</Text>
-          <Text style={[styles.pnl,pnl!==null&&{color:pnl>0?colors.gain:pnl<0?colors.loss:colors.flat}]}>
+          <Text editorId="native:PortfolioSafeList:price:5" editorReadOnly={true} style={styles.price}>{hasQuote?row.price.toFixed(2):'行情待取得'}</Text>
+          <Text editorId="native:PortfolioSafeList:pnl:6" editorReadOnly={true} style={[styles.pnl,pnl!==null&&{color:pnl>0?colors.gain:pnl<0?colors.loss:colors.flat}]}>
             {pnl===null?'損益待核對':'損益 NT$ '+Math.round(pnl).toLocaleString('zh-TW')}
           </Text>
         </View>

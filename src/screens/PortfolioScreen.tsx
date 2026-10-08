@@ -1,7 +1,10 @@
+import {EditorSurface} from '../components/EditorSurface';
+import {useDisplayFormat} from '../settings/useDisplayFormat';
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
 import {useSystemColors} from '../theme/useSystemColors';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {Modal,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text,TextInput} from '../components/EditableNative';
 
 import { FrameCard } from '../components/FrameCard';
 import {PortfolioAllocationDonut} from '../components/PortfolioAllocationDonut';
@@ -35,10 +38,10 @@ import {marketIntradaySeriesFor,marketQuoteSnapshotFor} from '../market/marketCe
 import { colors, radius, spacing } from '../theme/tokens';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
-const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const number=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFinite(n)?n:0;};
 
 export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void}) {
+  const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
   const market=useMarketRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -173,8 +176,8 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
                 patchPortfolioDisplay(quickModePatch('list',holdingLayoutMode));
               }}>
               {viewMode==='list'?<>
-              <Pressable accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
-                <Text style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
+              <Pressable editorId="native:PortfolioScreen:editShortcut:1" accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
+                <Text editorId="native:PortfolioScreen:editShortcutText:2" editorReadOnly={false} style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
               </Pressable>
               {simpleList
                 ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
@@ -196,7 +199,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
             </>:<>
 
               <View style={styles.sortRow}>
-                <Text style={styles.sortTitle}>排列</Text>
+                <Text editorId="native:PortfolioScreen:sortTitle:3" editorReadOnly={false} style={styles.sortTitle}>排列</Text>
                 {([
                   {key:'list',label:'單欄'},
                   {key:'grid2',label:'雙欄'},
@@ -204,14 +207,14 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
                   {key:'horizontal',label:'橫滑'},
                   {key:'paged2',label:'雙欄滑動'},
                 ] as const).map(x=>
-                  <Pressable key={x.key} onPress={()=>setHoldingLayoutMode(x.key)} style={[styles.chip,holdingLayoutMode===x.key&&styles.chipActive]}>
-                    <Text style={[styles.chipText,holdingLayoutMode===x.key&&styles.chipTextActive]}>{x.label}</Text>
+                  <Pressable editorId="native:PortfolioScreen:chip:4" key={x.key} onPress={()=>setHoldingLayoutMode(x.key)} style={[styles.chip,holdingLayoutMode===x.key&&styles.chipActive]}>
+                    <Text editorId="native:PortfolioScreen:chipText:5" editorReadOnly={false} style={[styles.chipText,holdingLayoutMode===x.key&&styles.chipTextActive]}>{x.label}</Text>
                   </Pressable>
                 )}
               </View>
-              {holdingLayoutMode==='grid3'?<Text style={styles.tableRule}>三欄無圖表：僅顯示報價、漲跌、損益，點選卡片可檢視詳情。</Text>:null}
+              {holdingLayoutMode==='grid3'?<Text editorId="native:PortfolioScreen:tableRule:6" editorReadOnly={false} style={styles.tableRule}>三欄無圖表：僅顯示報價、漲跌、損益，點選卡片可檢視詳情。</Text>:null}
               <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} {...(effectiveDisplay.holdingWall?{wallConfig:effectiveDisplay.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>
-              <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
+              <Text editorId="native:PortfolioScreen:tableRule:7" editorReadOnly={true} style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
             </PortfolioViewBoundary>
           </FrameCard>
@@ -231,6 +234,7 @@ function HoldingTable({rows,onOpenHolding,config,badges,refreshToken}:{
 }
 
 function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
+  const {money}=useDisplayFormat();
   const finance=useFinance();
   const [symbol,setSymbol]=useState(finance.holdings[0]?.symbol??'');
   const [price,setPrice]=useState('');
@@ -242,18 +246,18 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
     holding,currentPrice:quote?.currentPrice??holding.currentPrice,addPrice:number(price),addShares:number(shares),tradeMode:mode,
   }):null;
 
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><EditorSurface pageKey="portfolio" frameKey="calculator-modal" title="持股試算" visible={visible}>
     <View style={styles.modalBackdrop}><View style={styles.calculator}>
-      <View style={styles.modalTop}><View><Text style={styles.modalKicker}>庫存工具</Text><Text style={styles.modalTitle}>持股試算</Text></View><Pressable onPress={onClose}><Text style={styles.done}>完成</Text></Pressable></View>
-      <Text style={styles.modalHint}>試算直接呼叫正式 Canonical Core；不寫入 Ledger。</Text>
+      <View style={styles.modalTop}><View><Text editorId="native:PortfolioScreen:modalKicker:8" editorReadOnly={false} style={styles.modalKicker}>庫存工具</Text><Text editorId="native:PortfolioScreen:modalTitle:9" editorReadOnly={false} style={styles.modalTitle}>持股試算</Text></View><Pressable editorId="native:PortfolioScreen:pressable:10" onPress={onClose}><Text editorId="native:PortfolioScreen:done:11" editorReadOnly={false} style={styles.done}>完成</Text></Pressable></View>
+      <Text editorId="native:PortfolioScreen:modalHint:12" editorReadOnly={false} style={styles.modalHint}>試算直接呼叫正式 Canonical Core；不寫入 Ledger。</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolChoices}>
-        {finance.holdings.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}
+        {finance.holdings.map(item=><Pressable editorId="native:PortfolioScreen:chip:13" key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text editorId="native:PortfolioScreen:chipText:14" editorReadOnly={true} style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}
       </ScrollView>
       <SegmentedControl items={[{key:'ODD_LOT',label:'零股／定期定額'},{key:'ROUND_LOT',label:'整股'}] as const} value={mode} onChange={setMode}/>
       <View style={styles.calcGrid}><CalcField label="加碼價格" value={price} onChange={setPrice} placeholder={quote?.currentPrice.toFixed(2)??'0'}/><CalcField label="加碼股數" value={shares} onChange={setShares} placeholder="0"/></View>
 
-      {holding?<View style={styles.currentInfo}><Text style={styles.infoTitle}>目前持股</Text><Text style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
+      {holding?<View style={styles.currentInfo}><Text editorId="native:PortfolioScreen:infoTitle:15" editorReadOnly={false} style={styles.infoTitle}>目前持股</Text><Text editorId="native:PortfolioScreen:infoText:16" editorReadOnly={true} style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
 
       {scenario?<View style={styles.scenario}>
         <ResultRow label="本次成交金額" value={money(scenario.addTradeAmount)}/>
@@ -264,13 +268,13 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
         <ResultRow label="試算後含費成本均價" value={scenario.averageCostPerShare.toFixed(2)} strong/>
         <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={financialTone(scenario.priceUnrealizedProfit)}/>
         <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={financialTone(scenario.cashUnrealizedProfit)}/>
-      </View>:<View style={styles.result}><Text style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text style={styles.resultValue}>—</Text></View>}
+      </View>:<View style={styles.result}><Text editorId="native:PortfolioScreen:resultLabel:17" editorReadOnly={false} style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text editorId="native:PortfolioScreen:resultValue:18" editorReadOnly={false} style={styles.resultValue}>—</Text></View>}
     </View></View>
-  </Modal>;
+  </EditorSurface></Modal>;
 }
-function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
+function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text editorId="native:PortfolioScreen:fieldLabel:19" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><TextInput editorId="native:PortfolioScreen:input:20" style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
 function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'|'neutral'}){
-  const colors=useSystemColors();return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss},tone==='neutral'&&{color:colors.flat}]}>{value}</Text></View>}
+  const colors=useSystemColors();return <View style={styles.resultRow}><Text editorId="native:PortfolioScreen:resultRowLabel:21" editorReadOnly={false} style={styles.resultRowLabel}>{label}</Text><Text editorId="native:PortfolioScreen:resultRowValue:22" editorReadOnly={true} style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss},tone==='neutral'&&{color:colors.flat}]}>{value}</Text></View>}
 
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},

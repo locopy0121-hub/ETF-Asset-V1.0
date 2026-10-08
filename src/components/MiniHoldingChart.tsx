@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {Pressable,StyleSheet,View} from 'react-native';
+import {Text} from './EditableNative';
 
 import type {HoldingQuote} from '../domain/uiModels';
 

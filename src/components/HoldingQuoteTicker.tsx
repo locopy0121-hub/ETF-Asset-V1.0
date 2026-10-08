@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
-import {Animated,StyleSheet,Text,View} from 'react-native';
+import {Animated,StyleSheet,View} from 'react-native';
+import {Text} from './EditableNative';
 import type {HoldingQuote,WallTickerConfig} from '../domain/uiModels';
 import {quoteTickerCell} from '../domain/quoteTicker';
 import {colorWithAlpha} from '../maintenance/frameEffects';

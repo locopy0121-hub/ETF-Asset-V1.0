@@ -1,4 +1,5 @@
-import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import {type PortfolioModeChoice} from '../domain/portfolioModeSwitch';
 import {colors,radius} from '../theme/tokens';
 
@@ -11,12 +12,12 @@ export function PortfolioModeSwitcher({items,value,onChange}:{
     {items.map(item=>{
       const active=value===item.key;
       const safe=item.key==='safe';
-      return <Pressable key={item.key} accessibilityRole="button"
+      return <Pressable editorId="native:PortfolioModeSwitcher:card:1" key={item.key} accessibilityRole="button"
         accessibilityLabel={item.label} accessibilityState={{selected:active}}
         onPress={()=>{if(!active)onChange(item.key);}}
         style={[styles.card,safe&&styles.safe,active&&styles.active]}>
-        <Text style={[styles.title,active&&styles.activeText]}>{item.label}</Text>
-        <Text style={[styles.subtitle,active&&styles.activeSubtitle]}>{item.description}</Text>
+        <Text editorId="native:PortfolioModeSwitcher:title:2" editorReadOnly={false} style={[styles.title,active&&styles.activeText]}>{item.label}</Text>
+        <Text editorId="native:PortfolioModeSwitcher:subtitle:3" editorReadOnly={true} style={[styles.subtitle,active&&styles.activeSubtitle]}>{item.description}</Text>
       </Pressable>;
     })}
   </View>;

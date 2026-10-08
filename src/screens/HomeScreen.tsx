@@ -1,6 +1,8 @@
+import {useDisplayFormat} from '../settings/useDisplayFormat';
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {StyleSheet,View} from 'react-native';
+import {Pressable,Text} from '../components/EditableNative';
 
 import { FloatingDashboardChart } from '../components/FloatingDashboardChart';
 import { NewsReaderModal } from '../components/NewsReaderModal';
@@ -34,9 +36,9 @@ import { useMarketRuntime } from '../market/MarketRuntime';
 import { useAiNewsRuntime, type AiNewsItem } from '../ai/AiNewsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
-const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void;onNavigate:(page:MainPageKey)=>void}) {
+  const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
   const market=useMarketRuntime();
   const aiNews=useAiNewsRuntime();
@@ -144,7 +146,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
   return <>
-    <PageShell pageKey="home" title="資產管家" subtitle="掌握資產現況・所有損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+    <PageShell pageKey="home" title="資產管家" subtitle="掌握資產現況・所有損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable editorId="native:HomeScreen:refreshButton:1" onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text editorId="native:HomeScreen:refreshButtonText:2" editorReadOnly={true} style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <View
         style={styles.pageLayer}
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
@@ -196,12 +198,12 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
         },
         {key:'market-news',element:
           <FrameCard title="市場新聞">
-            {newsItems.map(item=><Pressable key={item.id} accessibilityRole="button" onPress={()=>setSelectedNews(item)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed]}>
+            {newsItems.map(item=><Pressable editorId="native:HomeScreen:newsRow:3" key={item.id} accessibilityRole="button" onPress={()=>setSelectedNews(item)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed]}>
               <View style={styles.newsDot}/>
-              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source} · 點擊於 App 內閱讀</Text></View>
-              <Text style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
+              <View style={{flex:1}}><Text editorId="native:HomeScreen:newsSymbol:4" editorReadOnly={true} style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text editorId="native:HomeScreen:newsTitle:5" editorReadOnly={true} numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text editorId="native:HomeScreen:newsSummary:6" editorReadOnly={true} numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text editorId="native:HomeScreen:newsMeta:7" editorReadOnly={true} style={styles.newsMeta}>{item.source} · 點擊於 App 內閱讀</Text></View>
+              <Text editorId="native:HomeScreen:newsTime:8" editorReadOnly={true} style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
             </Pressable>)}
-            {!newsItems.length?<Text style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
+            {!newsItems.length?<Text editorId="native:HomeScreen:ruleText:9" editorReadOnly={false} style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
           </FrameCard>
         },
         {key:'holding-quotes',element:
@@ -210,15 +212,15 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
               sortLabel={currentSort.label} onCycleFirst={cycleHomeFirst}
               onSelect={setQuoteStyle} onCycleSort={cycleHomeSort}/>
             <View style={styles.sortRow}>
-              <Text style={styles.sortLabel}>條件排序</Text>
+              <Text editorId="native:HomeScreen:sortLabel:10" editorReadOnly={false} style={styles.sortLabel}>條件排序</Text>
               {([{key:'pnl',label:'損益'},{key:'changePct',label:'漲跌'},{key:'marketValue',label:'市值'}] as const).map(x=>
-                <Pressable key={x.key} style={[styles.sortChip,sortKey===x.key&&styles.sortChipActive]} onPress={()=>setSortKey(x.key)}>
-                  <Text style={[styles.sortChipText,sortKey===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                <Pressable editorId="native:HomeScreen:sortChip:11" key={x.key} style={[styles.sortChip,sortKey===x.key&&styles.sortChipActive]} onPress={()=>setSortKey(x.key)}>
+                  <Text editorId="native:HomeScreen:sortChipText:12" editorReadOnly={false} style={[styles.sortChipText,sortKey===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
                 </Pressable>
               )}
             </View>
             <View style={styles.sortRow}>
-              <Text style={styles.sortLabel}>顯示排列</Text>
+              <Text editorId="native:HomeScreen:sortLabel:13" editorReadOnly={false} style={styles.sortLabel}>顯示排列</Text>
               {([
                 {key:'list',label:'單欄'},
                 {key:'grid2',label:'雙欄'},
@@ -226,14 +228,14 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
                 {key:'horizontal',label:'橫向滑動'},
                 {key:'paged2',label:'雙欄滑動'},
               ] as const).map(x=>
-                <Pressable key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
-                  <Text style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                <Pressable editorId="native:HomeScreen:sortChip:14" key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
+                  <Text editorId="native:HomeScreen:sortChipText:15" editorReadOnly={false} style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
                 </Pressable>
               )}
             </View>
-            {holdingLayoutMode==='grid3'?<Text style={styles.ruleText}>三欄自動使用無圖表精簡卡，保留 ETF 代號、名稱、報價、漲跌與損益。</Text>:null}
+            {holdingLayoutMode==='grid3'?<Text editorId="native:HomeScreen:ruleText:16" editorReadOnly={false} style={styles.ruleText}>三欄自動使用無圖表精簡卡，保留 ETF 代號、名稱、報價、漲跌與損益。</Text>:null}
             <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>
-            <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
+            <Text editorId="native:HomeScreen:ruleText:17" editorReadOnly={true} style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },
       ]}/>

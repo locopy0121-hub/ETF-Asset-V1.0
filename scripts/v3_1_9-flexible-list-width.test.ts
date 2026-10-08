@@ -21,6 +21,9 @@ assert.match(editor,/上方真實清單同步預覽/);
 
 // V4.0.3 may subscribe to display colors; preserve the original table structure byte-for-byte.
 const table=Buffer.from(readFileSync('src/components/PortfolioHoldingTable.tsx','utf8')
+  .replace(/ editorId="[^"]*"| editorReadOnly=\{(?:true|false)\}/g,'')
+  .replace("import {Pressable,Text} from './EditableNative';\n",'')
+  .replace("import {Animated,ScrollView,StyleSheet,View} from 'react-native';","import {Animated,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';")
   .replace("import {useSystemColors} from '../theme/useSystemColors';\n",'')
   .replace('\n  const colors=useSystemColors();',''));
 const tableText=table.toString('utf8');

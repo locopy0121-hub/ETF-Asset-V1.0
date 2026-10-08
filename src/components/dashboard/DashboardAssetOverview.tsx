@@ -1,6 +1,7 @@
 import {useSystemColors} from '../../theme/useSystemColors';
 import {useState} from 'react';
-import {Pressable,StyleSheet,Text,View} from 'react-native';
+import {Pressable,StyleSheet,View} from 'react-native';
+import {Text} from '../EditableNative';
 import type {DashboardLayoutConfig} from '../../domain/dashboardLayout';
 import type {FrameMaintenanceContext} from '../../maintenance/inspectionModel';
 import {colors,radius} from '../../theme/tokens';

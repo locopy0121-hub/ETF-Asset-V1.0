@@ -1,5 +1,6 @@
 import type {ReactNode} from 'react';
-import {Image,Pressable,StyleSheet,Text,View,type TextStyle} from 'react-native';
+import {Image,Pressable,StyleSheet,View,type TextStyle} from 'react-native';
+import {Text} from './EditableNative';
 
 import type {FrameEditorConfig} from '../editor/editorModel';
 import type {LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
@@ -20,6 +21,7 @@ function HeaderVisualText({id,value,style,frame,layoutTargets,selectedId,onSelec
   onSelect?:((target:LayoutSelectionTarget)=>void)|undefined;
 }){
   const targetId='header:'+id;
+  const readOnly=id!=='brand'&&['chart-header','holding-detail-header'].includes(frame.frameKey);
   const base=mergeTargetAppearance({
     ...TARGET_APPEARANCE,
     fontSize:style.fontSize??13,
@@ -29,7 +31,7 @@ function HeaderVisualText({id,value,style,frame,layoutTargets,selectedId,onSelec
     labelText:'',align:'left',
   },layoutTargets[targetId]);
   const target:InspectedTarget={
-    id:targetId,kind:'text',label:id==='brand'?'品牌名稱':id==='title'?'頁面主標題':'頁面副標題',
+    id:targetId,kind:readOnly?'value':'text',label:id==='brand'?'品牌名稱':id==='title'?'頁面主標題':'頁面副標題',
     page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
     properties:[{name:'原始文字',value,readOnly:true},{name:'作用範圍',value:'本頁表頭外觀'}],
     base,
@@ -37,9 +39,9 @@ function HeaderVisualText({id,value,style,frame,layoutTargets,selectedId,onSelec
   return <InspectableTarget target={target} frame={frame}>{(appearance,customized,override)=>{
     const layoutOverride=layoutTargets[targetId];
     const styled=customized||Boolean(layoutOverride&&Object.keys(layoutOverride).length);
-    const shown=customized&&appearance.labelText?appearance.labelText:value;
+    const shown=!readOnly&&customized&&appearance.labelText?appearance.labelText:value;
     return <Text accessibilityLabel={id==='title'?'頁面標題':undefined}
-      onPress={onSelect?(event=>{event.stopPropagation();onSelect({id:targetId,kind:'text',label:target.label});}):undefined}
+      onPress={onSelect?(event=>{event.stopPropagation();onSelect({id:targetId,kind:readOnly?'value':'text',label:target.label});}):undefined}
       style={[style,styled&&{
         ...(override.fontSize!==undefined||layoutOverride?.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
         ...(override.textColor!==undefined||override.textProfitColor!==undefined||layoutOverride?.textColor!==undefined?{color:appearance.textColor}:{}),

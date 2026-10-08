@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
 let display={profitColorMode:'red-up-green-down',gainColor:'#123456',lossColor:'#654321',neutralColor:'#ABCDEF'};
 const React=require('react');
-const react={...React,useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{},useMemo:f=>f()};
+const react={...React,useId:()=>':fixture:',useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{},useMemo:f=>f()};
 const flatten=s=>Array.isArray(s)?Object.assign({},...s.map(flatten)):s||{};
 const rn={Text:'Text',View:'View',Pressable:'Pressable',ScrollView:'ScrollView',StyleSheet:{create:x=>x,flatten,hairlineWidth:1,absoluteFill:{}},Animated:{Text:'Text',View:'View',Value:class{stopAnimation(){} setValue(){}},timing:()=>({}),sequence:()=>({start(){},stop(){}}),loop:x=>x}};
 function load(file){
@@ -11,6 +11,8 @@ function load(file){
   if(id==='react')return react;
   if(id==='react/jsx-runtime')return require(id);
   if(id==='react-native')return rn;
+  if(id.endsWith('/EditableNative'))return {Text:rn.Text,TextInput:rn.TextInput,Pressable:rn.Pressable};
+  if(id.endsWith('/FrameEditingContext'))return {FrameEditingProvider:({children})=>children};
   if(id.endsWith('/SettingsRuntime'))return {useSettingsRuntime:()=>({prefs:{display}})};
   if(id.endsWith('/ThemeRuntime'))return {useThemeRuntime:()=>({palette:{gain:'#EF4444',loss:'#10B981',text:'#000000',textSecondary:'#888888',surfaceMuted:'#FFFFFF',primary:'#0066FF'}})};
   if(id.endsWith('/TargetSurfaceEffects'))return {TargetBackdrop:()=>null,targetShadowStyle:()=>({})};

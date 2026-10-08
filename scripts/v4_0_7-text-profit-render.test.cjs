@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 let overrides={},seenTargets=[];
 let display={profitColorMode:'red-up-green-down',gainColor:'#123456',lossColor:'#654321',neutralColor:'#ABCDEF'};
 const React=require('react');
-const react={...React,useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{},useMemo:f=>f()};
+const react={...React,useId:()=>':fixture:',useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{},useMemo:f=>f()};
 const flatten=s=>Array.isArray(s)?Object.assign({},...s.map(flatten)):s||{};
 const rn={Text:'Text',View:'View',Pressable:'Pressable',ScrollView:'ScrollView',useWindowDimensions:()=>({width:360,height:800}),StyleSheet:{create:x=>x,flatten,hairlineWidth:1,absoluteFill:{}},Animated:{Text:'Text',View:'View',Value:class{stopAnimation(){} setValue(){}},timing:()=>({}),sequence:()=>({start(){},stop(){}}),loop:x=>x}};
 const cache=new Map();
@@ -13,6 +13,8 @@ function load(file){
   if(id==='react')return react;
   if(id==='react/jsx-runtime')return require(id);
   if(id==='react-native')return rn;
+  if(id.endsWith('/EditableNative'))return {Text:rn.Text,TextInput:rn.TextInput,Pressable:rn.Pressable};
+  if(id.endsWith('/FrameEditingContext'))return {FrameEditingProvider:({children})=>children};
   if(id.endsWith('/InspectableTarget'))return {InspectableTarget:({target,children})=>{seenTargets.push(target);const override=overrides[target.id]??{};const tone=override.profitToneOverride&&override.profitToneOverride!=='auto'?override.profitToneOverride:target.profitTone??'neutral';const appearance={...target.base,...override};for(const [color,flag] of [['textColor','textProfitColor'],['backgroundColor','backgroundProfitColor'],['borderColor','borderProfitColor']])appearance[color]=load('src/maintenance/workspaceModel.ts').linkedColor(appearance[color],appearance[flag],tone,display);return children(appearance,Object.keys(override).length>0,override,{displayTone:tone,editing:false,simulated:false});}};
   if(id.endsWith('/MaintenanceRuntime'))return {useMaintenance:()=>({hasIndividualReset:()=>false})};
   if(id.endsWith('/MaintenanceWorkbench'))return {InstalledFrameComponents:()=>null};

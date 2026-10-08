@@ -1,5 +1,7 @@
+import {EditorSurface} from './EditorSurface';
 import {useEffect,useState} from 'react';
-import {Modal,Pressable,StyleSheet,Text,View} from 'react-native';
+import {Modal,StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 
 import {colors,radius} from '../theme/tokens';
 
@@ -63,51 +65,51 @@ export function CalendarDatePickerModal({
     choose(now.getFullYear(),now.getMonth()+1,now.getDate());
   };
 
-  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><EditorSurface pageKey="dividend" frameKey="dividend-date-modal" title="股息日期選擇" visible={visible}>
     <View style={styles.backdrop}><View style={styles.modal}>
       <View style={styles.header}>
         <View style={{flex:1}}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.value}>{value||'尚未設定'}</Text>
+          <Text editorId="native:CalendarDatePickerModal:title:1" editorReadOnly={false} style={styles.title}>{title}</Text>
+          <Text editorId="native:CalendarDatePickerModal:value:2" editorReadOnly={true} style={styles.value}>{value||'尚未設定'}</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="關閉日期選擇" onPress={onClose} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
+        <Pressable editorId="native:CalendarDatePickerModal:close:3" accessibilityRole="button" accessibilityLabel="關閉日期選擇" onPress={onClose} style={styles.close}><Text editorId="native:CalendarDatePickerModal:closeText:4" editorReadOnly={false} style={styles.closeText}>×</Text></Pressable>
       </View>
 
       <View style={styles.calendarHeader}>
-        <Pressable accessibilityLabel="前一年" style={styles.navButton} onPress={()=>setViewYear(year=>year-1)}><Text style={styles.navText}>‹ 年</Text></Pressable>
-        <Text style={styles.calendarTitle}>{viewYear} 年</Text>
-        <Pressable accessibilityLabel="後一年" style={styles.navButton} onPress={()=>setViewYear(year=>year+1)}><Text style={styles.navText}>年 ›</Text></Pressable>
+        <Pressable editorId="native:CalendarDatePickerModal:navButton:5" accessibilityLabel="前一年" style={styles.navButton} onPress={()=>setViewYear(year=>year-1)}><Text editorId="native:CalendarDatePickerModal:navText:6" editorReadOnly={false} style={styles.navText}>‹ 年</Text></Pressable>
+        <Text editorId="native:CalendarDatePickerModal:calendarTitle:7" editorReadOnly={true} style={styles.calendarTitle}>{viewYear} 年</Text>
+        <Pressable editorId="native:CalendarDatePickerModal:navButton:8" accessibilityLabel="後一年" style={styles.navButton} onPress={()=>setViewYear(year=>year+1)}><Text editorId="native:CalendarDatePickerModal:navText:9" editorReadOnly={false} style={styles.navText}>年 ›</Text></Pressable>
       </View>
       <View style={styles.calendarHeader}>
-        <Pressable accessibilityLabel="上個月" style={styles.navButton} onPress={()=>changeMonth(-1)}><Text style={styles.navText}>‹ 月</Text></Pressable>
-        <Text style={styles.calendarTitle}>{viewMonth} 月</Text>
-        <Pressable accessibilityLabel="下個月" style={styles.navButton} onPress={()=>changeMonth(1)}><Text style={styles.navText}>月 ›</Text></Pressable>
+        <Pressable editorId="native:CalendarDatePickerModal:navButton:10" accessibilityLabel="上個月" style={styles.navButton} onPress={()=>changeMonth(-1)}><Text editorId="native:CalendarDatePickerModal:navText:11" editorReadOnly={false} style={styles.navText}>‹ 月</Text></Pressable>
+        <Text editorId="native:CalendarDatePickerModal:calendarTitle:12" editorReadOnly={true} style={styles.calendarTitle}>{viewMonth} 月</Text>
+        <Pressable editorId="native:CalendarDatePickerModal:navButton:13" accessibilityLabel="下個月" style={styles.navButton} onPress={()=>changeMonth(1)}><Text editorId="native:CalendarDatePickerModal:navText:14" editorReadOnly={false} style={styles.navText}>月 ›</Text></Pressable>
       </View>
 
       <View style={styles.weekRow}>
-        {['日','一','二','三','四','五','六'].map(day=><Text key={day} style={styles.weekLabel}>{day}</Text>)}
+        {['日','一','二','三','四','五','六'].map(day=><Text editorId="native:CalendarDatePickerModal:weekLabel:15" editorReadOnly={true} key={day} style={styles.weekLabel}>{day}</Text>)}
       </View>
       <View style={styles.grid}>
         {cells.map((day,index)=>{
           const active=day!=null&&selected?.year===viewYear&&selected.month===viewMonth&&selected.day===day;
           return <View key={`${viewYear}-${viewMonth}-${index}`} style={styles.dayCell}>
-            {day==null?null:<Pressable
+            {day==null?null:<Pressable editorId="native:CalendarDatePickerModal:dayButton:16"
               accessibilityRole="button"
               accessibilityLabel={`${viewYear}年${viewMonth}月${day}日`}
               onPress={()=>choose(viewYear,viewMonth,day)}
               style={[styles.dayButton,active&&styles.dayButtonActive]}
-            ><Text style={[styles.dayText,active&&styles.dayTextActive]}>{day}</Text></Pressable>}
+            ><Text editorId="native:CalendarDatePickerModal:dayText:17" editorReadOnly={true} style={[styles.dayText,active&&styles.dayTextActive]}>{day}</Text></Pressable>}
           </View>;
         })}
       </View>
 
       <View style={styles.actions}>
-        <Pressable style={styles.secondary} onPress={chooseToday}><Text style={styles.secondaryText}>今天</Text></Pressable>
-        {allowClear?<Pressable style={styles.secondary} onPress={()=>{onChange('');onClose();}}><Text style={styles.secondaryText}>清除日期</Text></Pressable>:null}
-        <Pressable style={styles.primary} onPress={onClose}><Text style={styles.primaryText}>取消</Text></Pressable>
+        <Pressable editorId="native:CalendarDatePickerModal:secondary:18" style={styles.secondary} onPress={chooseToday}><Text editorId="native:CalendarDatePickerModal:secondaryText:19" editorReadOnly={false} style={styles.secondaryText}>今天</Text></Pressable>
+        {allowClear?<Pressable editorId="native:CalendarDatePickerModal:secondary:20" style={styles.secondary} onPress={()=>{onChange('');onClose();}}><Text editorId="native:CalendarDatePickerModal:secondaryText:21" editorReadOnly={false} style={styles.secondaryText}>清除日期</Text></Pressable>:null}
+        <Pressable editorId="native:CalendarDatePickerModal:primary:22" style={styles.primary} onPress={onClose}><Text editorId="native:CalendarDatePickerModal:primaryText:23" editorReadOnly={false} style={styles.primaryText}>取消</Text></Pressable>
       </View>
     </View></View>
-  </Modal>;
+  </EditorSurface></Modal>;
 }
 
 const styles=StyleSheet.create({

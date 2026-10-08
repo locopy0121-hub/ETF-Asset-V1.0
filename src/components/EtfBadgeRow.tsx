@@ -1,5 +1,6 @@
 import {useEffect,useRef} from 'react';
-import {Animated,StyleSheet,Text,View} from 'react-native';
+import {Animated,StyleSheet,View} from 'react-native';
+import {Text} from './EditableNative';
 import {badgePresentationText,etfReminderLabel,type EtfBadgeConfig,type EtfBadgeKey,type EtfBadgeStyle,type EtfReminderType} from '../domain/etfBadges';
 
 /** Shared presentation for home cards and portfolio list. Code is rendered separately at left. */

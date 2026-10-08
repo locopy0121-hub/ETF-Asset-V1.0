@@ -15,6 +15,7 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {resolvePageTitle} from '../settings/settingsControlBehavior';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 import {PageHeaderVisual} from './PageHeaderVisual';
+import {FrameEditingProvider} from '../editor/FrameEditingContext';
 
 type Props=PropsWithChildren<{title:string;pageKey?:MainPageKey;subtitle?:string;actions?:ReactNode;headerFrameKey?:string;includeBottomInset?:boolean}>;
 
@@ -83,7 +84,7 @@ export function PageShell({title,pageKey,subtitle,actions,children,headerFrameKe
   const header=<PageHeaderVisual title={displayedTitle} {...(subtitle?{subtitle}:{})}
     frameConfig={headerConfig??headerFrame.frameConfig} frame={headerFrame}
     layoutTargets={editor.displayConfig.layoutTargets??{}}
-    {...(actions?{actions}:{})} active={active}
+    {...(actions?{actions:<FrameEditingProvider frame={headerFrame}>{actions}</FrameEditingProvider>}:{})} active={active}
     showEdit={Boolean(pageKey&&engineer.enabled)} onEdit={editHeader}/>;
   return <SafeAreaView style={[styles.safe,{backgroundColor:'transparent'}]} edges={includeBottomInset?['top','bottom']:['top']}>
     {pageKey?<WorkspaceSurface config={engineer.getWorkspace(pageKey,headerFrameKey)}

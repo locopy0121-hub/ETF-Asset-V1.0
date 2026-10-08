@@ -1,3 +1,4 @@
+import {MountedRegistry} from './mountedRegistry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import type {MainPageKey} from '../domain/pageRegistry';
@@ -55,8 +56,8 @@ type MaintenanceContextValue=Readonly<{
   restoreVisualHistory:(entryId:string)=>boolean;
   getFrameTargets:(page:MainPageKey,frameKey:string)=>readonly RegisteredVisualTarget[];
   hasIndividualReset:(page:MainPageKey,frameKey:string,id:string)=>boolean;
-  registerTarget:(page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>void;
-  unregisterTarget:(page:MainPageKey,frameKey:string,id:string)=>void;
+  registerTarget:(page:MainPageKey,frameKey:string,target:RegisteredVisualTarget,instanceToken?:string)=>void;
+  unregisterTarget:(page:MainPageKey,frameKey:string,id:string,instanceToken?:string)=>void;
   patchBatchVisual:(ids:readonly string[],source:VisualSource,keys:readonly BatchField[])=>void;
   setPreviewState:(state:SimulationState)=>void;
   setSyncSameKind:(enabled:boolean)=>void;
@@ -65,7 +66,7 @@ type MaintenanceContextValue=Readonly<{
   getWorkspaceBounds:(page:MainPageKey,frameKey:string)=>{width:number;height:number};
   getFrameRects:(page:MainPageKey,frameKey:string)=>Readonly<Record<string,PositionedRect>>;
   reportWorkspaceBounds:(page:MainPageKey,frameKey:string,bounds:{width:number;height:number})=>void;
-  reportRect:(page:MainPageKey,frameKey:string,id:string,rect:PositionedRect|null)=>void;
+  reportRect:(page:MainPageKey,frameKey:string,id:string,rect:PositionedRect|null,instanceToken?:string)=>void;
   begin:(page:MainPageKey,frameKey:string,title:string,config:FrameEditorConfig,instanceId?:string,displayConfig?:PageDisplayConfig)=>void;
   selectTarget:(target:InspectedTarget)=>void;syncTarget:(target:InspectedTarget)=>void;
   enterTarget:(target:InspectedTarget,frameConfig:FrameEditorConfig,displayConfig:PageDisplayConfig)=>void;
@@ -101,6 +102,8 @@ export function MaintenanceProvider({children}:PropsWithChildren){
   const [individualResets,setIndividualResets]=useState<IndividualResetMap>({});
   const [workspaces,setWorkspaces]=useState<Record<string,WorkspaceConfig>>({});
   const [liveBounds,setLiveBounds]=useState<Record<string,{width:number;height:number}>>({});
+  const ownedRects=useRef(new MountedRegistry<PositionedRect>());
+  const ownedTargets=useRef(new MountedRegistry<RegisteredVisualTarget>());
   const [liveRects,setLiveRects]=useState<Record<string,Record<string,PositionedRect>>>({});
   const [registered,setRegistered]=useState<Record<string,Record<string,RegisteredVisualTarget>>>({});
   const [hydrated,setHydrated]=useState(false);
@@ -179,22 +182,31 @@ export function MaintenanceProvider({children}:PropsWithChildren){
     const key=scopeId(page,frameKey),old=previous[key];
     return old?.width===bounds.width&&old?.height===bounds.height?previous:{...previous,[key]:bounds};
   }),[]);
-  const reportRect=useCallback((page:MainPageKey,frameKey:string,id:string,rect:PositionedRect|null)=>setLiveRects(previous=>{
-    const key=scopeId(page,frameKey),all=previous[key]??{},old=all[id];
-    if(rect===null){if(!old)return previous;const next={...all};delete next[id];return {...previous,[key]:next};}
-    if(old&&old.x===rect.x&&old.y===rect.y&&old.width===rect.width&&old.height===rect.height)return previous;
-    return {...previous,[key]:{...all,[id]:rect}};
-  }),[]);
-  const registerTarget=useCallback((page:MainPageKey,frameKey:string,target:RegisteredVisualTarget)=>setRegistered(old=>{
-    const key=scopeId(page,frameKey),before=old[key]??{},previous=before[target.id];
-    if(previous&&previous.kind===target.kind&&previous.label===target.label&&JSON.stringify(previous.base)===JSON.stringify(target.base)&&JSON.stringify(previous.properties)===JSON.stringify(target.properties))return old;
-    return {...old,[key]:{...before,[target.id]:target}};
-  }),[]);
-  const unregisterTarget=useCallback((page:MainPageKey,frameKey:string,id:string)=>setRegistered(old=>{
-    const key=scopeId(page,frameKey),before=old[key];
-    if(!before||!before[id])return old;
-    const next={...before};delete next[id];return {...old,[key]:next};
-  }),[]);
+  const reportRect=useCallback((page:MainPageKey,frameKey:string,id:string,reported:PositionedRect|null,instanceToken='legacy')=>{
+    const key=scopeId(page,frameKey),rect=ownedRects.current.update(key+'|'+id,instanceToken,reported);
+    setLiveRects(previous=>{
+      const all=previous[key]??{},old=all[id];
+      if(!rect){if(!old)return previous;const next={...all};delete next[id];return {...previous,[key]:next};}
+      if(old&&old.x===rect.x&&old.y===rect.y&&old.width===rect.width&&old.height===rect.height)return previous;
+      return {...previous,[key]:{...all,[id]:rect}};
+    });
+  },[]);
+  const registerTarget=useCallback((page:MainPageKey,frameKey:string,target:RegisteredVisualTarget,instanceToken='legacy')=>{
+    const key=scopeId(page,frameKey);
+    ownedTargets.current.update(key+'|'+target.id,instanceToken,target);
+    setRegistered(old=>{
+      const before=old[key]??{},previous=before[target.id];
+      if(previous&&previous.kind===target.kind&&previous.label===target.label&&JSON.stringify(previous.base)===JSON.stringify(target.base)&&JSON.stringify(previous.properties)===JSON.stringify(target.properties))return old;
+      return {...old,[key]:{...before,[target.id]:target}};
+    });
+  },[]);
+  const unregisterTarget=useCallback((page:MainPageKey,frameKey:string,id:string,instanceToken='legacy')=>{
+    const key=scopeId(page,frameKey),remaining=ownedTargets.current.update(key+'|'+id,instanceToken,null);
+    setRegistered(old=>{
+      const before=old[key];if(!before||!before[id])return old;
+      const next={...before};if(remaining)next[id]=remaining;else delete next[id];return {...old,[key]:next};
+    });
+  },[]);
   const value=useMemo<MaintenanceContextValue>(()=>({
     hydrated,enabled,session,selection,assets,assetsLoaded,
     getVisualHistory:()=>{

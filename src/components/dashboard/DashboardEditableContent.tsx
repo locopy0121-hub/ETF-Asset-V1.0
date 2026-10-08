@@ -1,5 +1,6 @@
 import {useState,type ReactNode} from 'react';
-import {Pressable,StyleSheet,Text,type StyleProp,type TextStyle} from 'react-native';
+import {Pressable,StyleSheet,type StyleProp,type TextStyle} from 'react-native';
+import {Text} from '../EditableNative';
 import {colorWithAlpha} from '../../maintenance/frameEffects';
 import {InspectableTarget} from '../../maintenance/InspectableTarget';
 import {

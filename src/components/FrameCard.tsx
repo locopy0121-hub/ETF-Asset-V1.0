@@ -10,7 +10,7 @@ import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 
 export type FrameCardProps=PropsWithChildren<{
-  title:string;tone?:FinancialTone;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
+  fill?:boolean;showTitle?:boolean;title:string;tone?:FinancialTone;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
   editorStyle?:Partial<FrameEditorConfig>;
   workActive?:boolean;workHidden?:boolean;
   onResizePreview?:(size:{width:number;height:number})=>void;
@@ -18,7 +18,7 @@ export type FrameCardProps=PropsWithChildren<{
 }>;
 
 export function FrameCard({title,action,children,layout='standard',appearance='theme',
-  editorStyle,tone='neutral',workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
+  editorStyle,fill=false,showTitle=true,tone='neutral',workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
@@ -177,7 +177,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const backgroundLayer=Boolean(editorStyle&&(gradientOn||imageOn));
   const shadowOn=Boolean(editorStyle?.shadowEnabled);
   return <Animated.View style={[
-    styles.card,{backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
+    styles.card,fill&&{flex:1},!showTitle&&{gap:0}, {backgroundColor:theme.palette.surface,borderColor:theme.palette.border},
     layout==='compact'&&styles.cardCompact,layout==='dense'&&styles.cardDense,
     responsiveDensity==='compact'&&layout==='standard'&&styles.cardCompact,
     responsiveDensity==='dense'&&layout!=='dense'&&styles.cardDense,
@@ -283,7 +283,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       borderStyle:'dashed',borderWidth:2,borderColor:theme.palette.primary,
       borderRadius:editorStyle?.borderRadius??radius.lg,
     }]}/>:null}
-    <View style={styles.header}>
+    {showTitle?<View style={styles.header}>
       <Pressable disabled={!editorStyle||!fx.frameInteractionEnabled}
         accessibilityRole={fx.frameInteractionEnabled?'button':undefined}
         accessibilityLabel={'框架標題：'+title}
@@ -317,7 +317,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
           style={[titleStyle,{flexShrink:1}]}>{title}</Text>}
       </Pressable>
       {action}
-    </View>
+    </View>:null}
     {workActive&&onResizePreview&&editorStyle?<View {...resizePan.panHandlers}
       accessible accessibilityRole="adjustable" accessibilityLabel="拖曳調整目前父框架寬度及高度"
       accessibilityHint="僅目前框架右下角可拖動，預覽後仍需按工作台儲存套用"

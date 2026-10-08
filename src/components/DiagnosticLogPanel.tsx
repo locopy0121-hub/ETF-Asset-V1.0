@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Alert,Pressable,Share,StyleSheet,Text,View} from 'react-native';
+import {Alert,Share,StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import {backupDocumentPickerAvailable,saveExternalBackup} from '../native/TfAssetNativeBridge';
 import {useDiagnostics} from '../diagnostics/DiagnosticRuntime';
 import {exportDiagnosticEntries,type DiagnosticEntry,type DiagnosticLevel} from '../diagnostics/diagnosticModel';
@@ -13,15 +14,15 @@ const label=(level:DiagnosticLevel)=>level==='fatal'?'閃退':level==='error'?'�
 function LogRow({entry}:{entry:DiagnosticEntry}){
   const [expanded,setExpanded]=useState(false);
   return <View style={styles.log}>
-    <Pressable accessibilityRole="button" accessibilityLabel={'查閱'+label(entry.level)+entry.code}
+    <Pressable editorId="native:DiagnosticLogPanel:logButton:1" accessibilityRole="button" accessibilityLabel={'查閱'+label(entry.level)+entry.code}
       onPress={()=>setExpanded(v=>!v)} style={styles.logButton}>
-      <Text style={[styles.level,entry.level==='fatal'&&styles.fatal,
+      <Text editorId="native:DiagnosticLogPanel:level:2" editorReadOnly={true} style={[styles.level,entry.level==='fatal'&&styles.fatal,
         entry.level==='error'&&styles.error]}>{label(entry.level)} · {entry.code}</Text>
-      <Text style={styles.date}>{new Date(entry.at).toLocaleString('zh-TW')}</Text>
-      <Text style={styles.message}>{entry.message}</Text>
-      <Text style={styles.date}>位置：{entry.screen}　{expanded?'收合 −':'詳細 +'}</Text>
+      <Text editorId="native:DiagnosticLogPanel:date:3" editorReadOnly={true} style={styles.date}>{new Date(entry.at).toLocaleString('zh-TW')}</Text>
+      <Text editorId="native:DiagnosticLogPanel:message:4" editorReadOnly={true} style={styles.message}>{entry.message}</Text>
+      <Text editorId="native:DiagnosticLogPanel:date:5" editorReadOnly={true} style={styles.date}>位置：{entry.screen}　{expanded?'收合 −':'詳細 +'}</Text>
     </Pressable>
-    {expanded?<Text selectable style={styles.detail}>{entry.detail||'無其他技術資訊'}</Text>:null}
+    {expanded?<Text editorId="native:DiagnosticLogPanel:detail:6" editorReadOnly={true} selectable style={styles.detail}>{entry.detail||'無其他技術資訊'}</Text>:null}
   </View>;
 }
 export function DiagnosticLogPanel(){
@@ -44,26 +45,26 @@ export function DiagnosticLogPanel(){
     finally{setBusy(false);}
   };
   return <View style={styles.root}>
-    <Text style={styles.note}>本機保存最近 14 天、最多 80 筆。記錄模式切換、詳情進入、JS 錯誤及可攔截的 Android 原生崩潰；重啟後仍可查看。</Text>
+    <Text editorId="native:DiagnosticLogPanel:note:7" editorReadOnly={false} style={styles.note}>本機保存最近 14 天、最多 80 筆。記錄模式切換、詳情進入、JS 錯誤及可攔截的 Android 原生崩潰；重啟後仍可查看。</Text>
     <View style={styles.actions}>
-      <Pressable style={styles.action} onPress={()=>void reload()}><Text style={styles.actionText}>重新整理</Text></Pressable>
-      <Pressable style={styles.action} disabled={busy||entries.length===0} onPress={()=>void exportLogs()}><Text style={styles.actionText}>{busy?'處理中…':'選擇資料夾匯出'}</Text></Pressable>
-      <Pressable style={styles.action} disabled={busy||entries.length===0}
+      <Pressable editorId="native:DiagnosticLogPanel:action:8" style={styles.action} onPress={()=>void reload()}><Text editorId="native:DiagnosticLogPanel:actionText:9" editorReadOnly={false} style={styles.actionText}>重新整理</Text></Pressable>
+      <Pressable editorId="native:DiagnosticLogPanel:action:10" style={styles.action} disabled={busy||entries.length===0} onPress={()=>void exportLogs()}><Text editorId="native:DiagnosticLogPanel:actionText:11" editorReadOnly={true} style={styles.actionText}>{busy?'處理中…':'選擇資料夾匯出'}</Text></Pressable>
+      <Pressable editorId="native:DiagnosticLogPanel:action:12" style={styles.action} disabled={busy||entries.length===0}
         onPress={()=>Alert.alert('清除診斷紀錄？','只清除錯誤 Log，不清除帳務、設定或備份。',[
           {text:'取消',style:'cancel'},{text:'清除',style:'destructive',onPress:()=>void clear()},
-        ])}><Text style={styles.delete}>清除 Log</Text></Pressable>
+        ])}><Text editorId="native:DiagnosticLogPanel:delete:13" editorReadOnly={false} style={styles.delete}>清除 Log</Text></Pressable>
     </View>
-    <Text style={styles.count}>目前 {entries.length} 筆 · 篩選 {selected.length} 筆</Text>
-    <View style={styles.filters}>{filters.map(item=><Pressable key={item.key}
+    <Text editorId="native:DiagnosticLogPanel:count:14" editorReadOnly={true} style={styles.count}>目前 {entries.length} 筆 · 篩選 {selected.length} 筆</Text>
+    <View style={styles.filters}>{filters.map(item=><Pressable editorId="native:DiagnosticLogPanel:filter:15" key={item.key}
       onPress={()=>{setFilter(item.key);setLimit(8);}} style={[styles.filter,filter===item.key&&styles.filterOn]}>
-      <Text style={[styles.filterText,filter===item.key&&styles.filterTextOn]}>{item.label}</Text>
+      <Text editorId="native:DiagnosticLogPanel:filterText:16" editorReadOnly={false} style={[styles.filterText,filter===item.key&&styles.filterTextOn]}>{item.label}</Text>
     </Pressable>)}</View>
-    {selected.length===0?<Text style={styles.note}>此分類暫無紀錄。舊版發生的閃退不會自動補回。</Text>:null}
+    {selected.length===0?<Text editorId="native:DiagnosticLogPanel:note:17" editorReadOnly={false} style={styles.note}>此分類暫無紀錄。舊版發生的閃退不會自動補回。</Text>:null}
     {selected.slice(0,limit).map(entry=><LogRow key={entry.id} entry={entry}/>)}
-    {limit<selected.length?<Pressable style={styles.action} onPress={()=>setLimit(v=>v+12)}>
-      <Text style={styles.actionText}>顯示更多（剩餘 {selected.length-limit} 筆）</Text>
+    {limit<selected.length?<Pressable editorId="native:DiagnosticLogPanel:action:18" style={styles.action} onPress={()=>setLimit(v=>v+12)}>
+      <Text editorId="native:DiagnosticLogPanel:actionText:19" editorReadOnly={true} style={styles.actionText}>顯示更多（剩餘 {selected.length-limit} 筆）</Text>
     </Pressable>:null}
-    <Text style={styles.note}>為保護隱私，不收集交易紀錄、持股金額或帳密。Android ANR、系統強制終止及 native signal 不保證可由 App 自行捕捉，必要時仍需裝置 logcat。</Text>
+    <Text editorId="native:DiagnosticLogPanel:note:20" editorReadOnly={false} style={styles.note}>為保護隱私，不收集交易紀錄、持股金額或帳密。Android ANR、系統強制終止及 native signal 不保證可由 App 自行捕捉，必要時仍需裝置 logcat。</Text>
   </View>;
 }
 const styles=StyleSheet.create({

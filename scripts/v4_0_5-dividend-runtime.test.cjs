@@ -16,10 +16,11 @@ function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(
  const compiled=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
  const req=id=>{
   if(id==='react')return react;if(id==='react/jsx-runtime')return require(id);if(id==='react-native')return rn;
+  if(id.endsWith('/EditableNative'))return {Text:rn.Text,TextInput:rn.TextInput,Pressable:rn.Pressable};
   if(id==='@react-native-async-storage/async-storage')return {default:externalStorage,__esModule:true};
   if(id.endsWith('/MarketRuntime'))return {useMarketRuntime:()=>market};
   if(id.endsWith('/FinanceRuntime')&&file.endsWith('DividendScreen.tsx'))return {useFinance:()=>ctx};
-  if(id.endsWith('/SettingsRuntime'))return {useSettingsRuntime:()=>({prefs:{ai:{enabled:true},dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true}}})};
+  if(id.endsWith('/SettingsRuntime'))return {useSettingsRuntime:()=>({prefs:{display:{fontScale:1,amountDecimals:0,percentDecimals:2,thousandsSeparator:true,dateFormat:'YYYY-MM-DD'},ai:{enabled:true},dividendCalendar:{showLastBuyDate:true,showExDate:true,showRecordDate:true,showPaymentDate:true,showStatus:true}}})};
   if(id.endsWith('/AiNewsRuntime'))return {useAiNewsRuntime:()=>({items:[]})};
   if(id.endsWith('/aiAssistant'))return {answerAiQuestion(){throw Error('AI should be idle');}};
   if(id.includes('/components/')){const name=path.basename(id);return {[name]:name};}

@@ -39,10 +39,11 @@ function main(){
 
   const settings=read('src/screens/SettingsScreen.tsx');
   assert.match(settings,/SafeAreaView/);
-  assert.match(settings,/return <SafeAreaView edges=\{\['top'\]\}/);
+  assert.match(settings,/<PageShell pageKey="settings"/);
+  assert.match(shell,/edges=\{includeBottomInset\?\['top','bottom'\]:\['top'\]\}/);
 
   const chart=read('src/screens/StockChartScreen.tsx');
-  assert.match(chart,/SafeAreaView edges=\{\['top','bottom'\]\}/);
+  assert.match(chart,/<PageShell pageKey="portfolio" headerFrameKey="chart-header" includeBottomInset/);
   assert.match(chart,/safe:\{flex:1,backgroundColor:colors\.background,paddingTop:spacing\.xs\}/);
 
   assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));

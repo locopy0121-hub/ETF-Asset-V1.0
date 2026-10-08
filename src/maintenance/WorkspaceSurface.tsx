@@ -1,4 +1,5 @@
 import {createContext,type PropsWithChildren,useCallback,useContext,useMemo,useRef,useState,useEffect} from 'react';
+import {MountedRegistry} from './mountedRegistry';
 import {ScrollView,StyleSheet,View,type LayoutChangeEvent} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {DEFAULT_WORKSPACE,type PositionedRect,type WorkspaceConfig} from './workspaceModel';
@@ -8,17 +9,18 @@ type RectRegistry=Readonly<Record<string,PositionedRect>>;
 type WorkspaceContextValue=Readonly<{
   config:WorkspaceConfig;bounds:Bounds;boxes:RectRegistry;scrollEpoch:number;
   measure:(target:View,callback:(rect:PositionedRect,bounds:Bounds)=>void)=>void;
-  report:(id:string,rect:PositionedRect|null)=>void;
+  report:(id:string,rect:PositionedRect|null,instanceToken?:string)=>void;
 }>;
 const WorkspaceContext=createContext<WorkspaceContextValue|null>(null);
 export function useWorkspace(){return useContext(WorkspaceContext);}
-export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false,onBounds}:PropsWithChildren<{
-  config?:WorkspaceConfig;active?:boolean;onBounds?:(bounds:Bounds)=>void;
+export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false,onBounds,fill=false}:PropsWithChildren<{
+  config?:WorkspaceConfig;active?:boolean;onBounds?:(bounds:Bounds)=>void;fill?:boolean;
 }>){
   const theme=useThemeRuntime();
   const stage=useRef<View|null>(null);
   const [viewport,setViewport]=useState<Bounds>({width:0,height:0});
   const [bounds,setBounds]=useState<Bounds>({width:0,height:0});
+  const ownedBoxes=useRef(new MountedRegistry<PositionedRect>());
   const [boxes,setBoxes]=useState<RectRegistry>({});
   const [scrollEpoch,setScrollEpoch]=useState(0);
   useEffect(()=>{if(bounds.width>0&&bounds.height>0)onBounds?.(bounds);},[bounds.width,bounds.height]);
@@ -30,7 +32,8 @@ export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false
     const {width,height}=ev.nativeEvent.layout;
     setViewport(previous=>previous.width===width&&previous.height===height?previous:{width,height});
   };
-  const report=useCallback((id:string,rect:PositionedRect|null)=>{
+  const report=useCallback((id:string,reported:PositionedRect|null,instanceToken='legacy')=>{
+    const rect=ownedBoxes.current.update(id,instanceToken,reported)??null;
     setBoxes(previous=>{
       if(rect===null){if(!(id in previous))return previous;const next={...previous};delete next[id];return next;}
       const old=previous[id];
@@ -60,7 +63,7 @@ export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false
   }:null;
   const content=<WorkspaceContext.Provider value={context}>
     <View ref={stage} onLayout={onStageLayout} collapsable={false}
-      style={[styles.stage,virtualWidth?{width:virtualWidth}:{width:'100%'},
+      style={[styles.stage,fill&&{flex:1},virtualWidth?{width:virtualWidth}:{width:'100%'},
         virtualHeight?{minHeight:virtualHeight}:null]}>
       {children}
       {active&&(config.showAxes||gridLines)?<View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -71,7 +74,7 @@ export function WorkspaceSurface({children,config=DEFAULT_WORKSPACE,active=false
       </View>:null}
     </View>
   </WorkspaceContext.Provider>;
-  return <View onLayout={onViewportLayout} style={styles.viewport}>
+  return <View onLayout={onViewportLayout} style={[styles.viewport,fill&&{flex:1}]}>
     {active&&virtualWidth>viewport.width&&viewport.width>0?
       <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator
         scrollEventThrottle={100} onScroll={()=>setScrollEpoch(v=>v+1)}

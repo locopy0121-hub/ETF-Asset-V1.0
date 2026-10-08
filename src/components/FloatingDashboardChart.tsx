@@ -1,5 +1,6 @@
 import {useMemo,useRef,useState} from 'react';
-import {Modal,PanResponder,Pressable,StyleSheet,Text,View} from 'react-native';
+import {Modal,PanResponder,Pressable,StyleSheet,View} from 'react-native';
+import {Text} from './EditableNative';
 
 import type {DashboardChartConfig} from '../editor/editorModel';
 

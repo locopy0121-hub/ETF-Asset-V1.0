@@ -1,5 +1,6 @@
 import {useMemo,useRef,useState} from 'react';
-import {Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from 'react-native';
+import {Linking,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text,TextInput} from './EditableNative';
 
 import type {AiAssistantAction,AiAssistantAnswer} from '../ai/aiAssistant';
 import {EMPTY_AI_SESSION_CONTEXT,type AiSessionContext} from '../ai/aiConversationTypes';
@@ -83,15 +84,15 @@ export function AiQuestionBox({
       onContentSizeChange={()=>scrollRef.current?.scrollToEnd({animated:true})}
     >
       {visible.length?visible.map(message=><View key={message.id} style={[styles.bubble,message.role==='user'?styles.user:styles.assistant,{backgroundColor:message.role==='user'?theme.palette.primary:theme.palette.surfaceMuted}]}>
-        <Text style={[styles.message,{color:message.role==='user'?'#FFFFFF':theme.palette.text}]}>{message.text}</Text>
+        <Text editorId="native:AiQuestionBox:message:1" editorReadOnly={true} style={[styles.message,{color:message.role==='user'?'#FFFFFF':theme.palette.text}]}>{message.text}</Text>
         {message.role==='assistant'&&message.actions?.length?<View style={styles.actions}>{message.actions.map(action=><View key={action.id} style={styles.actionLine}>
-          <Pressable onPress={()=>void runAction(action)} style={[styles.actionButton,confirming===action.id&&styles.confirmButton]}><Text style={styles.actionText}>{confirming===action.id?'確認新增':action.label}</Text></Pressable>
-          {confirming===action.id?<Pressable onPress={()=>setConfirming(null)} style={styles.cancelAction}><Text style={styles.cancelActionText}>取消</Text></Pressable>:null}
+          <Pressable editorId="native:AiQuestionBox:actionButton:2" onPress={()=>void runAction(action)} style={[styles.actionButton,confirming===action.id&&styles.confirmButton]}><Text editorId="native:AiQuestionBox:actionText:3" editorReadOnly={false} style={styles.actionText}>{confirming===action.id?'確認新增':action.label}</Text></Pressable>
+          {confirming===action.id?<Pressable editorId="native:AiQuestionBox:cancelAction:4" onPress={()=>setConfirming(null)} style={styles.cancelAction}><Text editorId="native:AiQuestionBox:cancelActionText:5" editorReadOnly={false} style={styles.cancelActionText}>取消</Text></Pressable>:null}
         </View>)}</View>:null}
-      </View>):<Text style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
+      </View>):<Text editorId="native:AiQuestionBox:empty:6" editorReadOnly={false} style={[styles.empty,{color:theme.palette.textSecondary}]}>可直接從這裡發問。AI 會先判斷意圖，再使用目前 App 的持股、帳務、股息、行情或新聞資料。</Text>}
     </ScrollView>);
   const composerElement=(<View style={styles.inputRow}>
-      <TextInput
+      <TextInput editorId="native:AiQuestionBox:input:7"
         value={input}
         onChangeText={setInput}
         editable={!asking}
@@ -101,23 +102,23 @@ export function AiQuestionBox({
         onSubmitEditing={()=>void submit()}
         style={[styles.input,{borderColor:theme.palette.border,backgroundColor:theme.palette.surface,color:theme.palette.text}]}
       />
-      <Pressable disabled={asking||!input.trim()} onPress={()=>void submit()} style={[styles.send,{backgroundColor:theme.palette.primary},(asking||!input.trim())&&styles.disabled]}><Text style={styles.sendText}>{asking?'處理中':'送出'}</Text></Pressable>
+      <Pressable editorId="native:AiQuestionBox:send:8" disabled={asking||!input.trim()} onPress={()=>void submit()} style={[styles.send,{backgroundColor:theme.palette.primary},(asking||!input.trim())&&styles.disabled]}><Text editorId="native:AiQuestionBox:sendText:9" editorReadOnly={true} style={styles.sendText}>{asking?'處理中':'送出'}</Text></Pressable>
     </View>);
   return <View style={styles.root}>
     {maintenance?<InspectableTarget frame={maintenance} target={inspected('ai:prompt-title','text','AI 指令標題',[
       {name:'目前標題',value:title,readOnly:true},{name:'原字號',value:'13 px',readOnly:true},
     ],{...TARGET_APPEARANCE,fontSize:13,textColor:theme.palette.text,backgroundColor:theme.palette.surface,padding:0})}>
-      {(appearance,customized,override)=><Text style={[styles.title,{color:theme.palette.text},customized&&{
+      {(appearance,customized,override)=><Text editorId="native:AiQuestionBox:title:10" editorReadOnly={true} style={[styles.title,{color:theme.palette.text},customized&&{
         ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
         ...(override.textColor||override.textProfitColor!==undefined?{color:appearance.textColor}:{}),
         ...(override.align?{textAlign:appearance.align}:{}),
       }]}>{customized&&appearance.labelText?appearance.labelText:title}</Text>}
-    </InspectableTarget>:<Text style={[styles.title,{color:theme.palette.text}]}>{title}</Text>}
+    </InspectableTarget>:<Text editorId="native:AiQuestionBox:title:11" editorReadOnly={false} style={[styles.title,{color:theme.palette.text}]}>{title}</Text>}
     {suggestions.length?<View style={styles.suggestions}>
       {suggestions.map((item,index)=>{
-        const chip=(background=theme.palette.surfaceMuted,color=theme.palette.primary,fontSize=12)=><Pressable
+        const chip=(background=theme.palette.surfaceMuted,color=theme.palette.primary,fontSize=12)=><Pressable editorId="native:AiQuestionBox:chip:12"
           onPress={()=>void submit(item)} style={[styles.chip,{backgroundColor:background}]}>
-          <Text style={[styles.chipText,{color,fontSize}]}>{item}</Text>
+          <Text editorId="native:AiQuestionBox:chipText:13" editorReadOnly={true} style={[styles.chipText,{color,fontSize}]}>{item}</Text>
         </Pressable>;
         if(!maintenance)return <View key={item}>{chip()}</View>;
         return <InspectableTarget key={item} frame={maintenance} target={inspected('ai:quick-action:'+index,

@@ -1,5 +1,5 @@
-import {useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
-import {PanResponder,Pressable,StyleSheet,Text,View} from 'react-native';
+import {useEffect,useMemo,useRef,useState,useId,type ReactNode} from 'react';
+import {PanResponder,Pressable,StyleSheet,Text,View,type StyleProp,type ViewStyle} from 'react-native';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
@@ -19,10 +19,11 @@ const withoutAbsolutePrefixGeometry=(value:TargetOverride):TargetOverride=>{
 };
 
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
-export function InspectableTarget({target,frame,children,flex=false}:{
+export function InspectableTarget({target,frame,children,flex=false,layoutStyle}:{
   target:InspectedTarget;frame:FrameMaintenanceContext;
-  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean;editing:boolean}>)=>ReactNode;flex?:boolean;
+  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean;editing:boolean;wrapped?:boolean}>)=>ReactNode;flex?:boolean;layoutStyle?:StyleProp<ViewStyle>;
 }){
+  const instanceToken=useId();
   const engineer=useMaintenance();
   const workspace=useWorkspace();
   const theme=useThemeRuntime();
@@ -81,7 +82,8 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const materialActive=customized&&['text','value','prefix','generic','frame'].includes(target.kind)&&
     (materialKeys.some(key=>Object.hasOwn(override,key))||Boolean(condition&&
       (condition.backgroundColor||condition.borderColor||condition.backgroundOpacity!==undefined)));
-  const wrapperKind=['wall','portfolio-list','control','generic','frame'].includes(target.kind)||materialActive;
+  const nativeTextSurface=target.id.startsWith('native:')&&['text','value'].includes(target.kind);
+  const wrapperKind=['wall','portfolio-list','control','generic','frame'].includes(target.kind)||materialActive||nativeTextSurface;
   const wrapperStyle=customized&&wrapperKind?{
     // Parent frame paints its own border, padding and opaque face. Never double-apply.
     ...(target.kind==='frame'?{backgroundColor:'transparent'}:
@@ -89,7 +91,7 @@ export function InspectableTarget({target,frame,children,flex=false}:{
       (override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined||
         condition?.backgroundColor||condition?.backgroundOpacity!==undefined?
         {backgroundColor:colorWithAlpha(resolvedAppearance.backgroundColor,appearance.backgroundOpacity)}:{})),
-    ...(target.kind==='frame'?{}:(override.borderColor||override.borderProfitColor!==undefined||condition?.borderColor?{borderColor:resolvedAppearance.borderColor}:{})),
+    ...(target.kind==='frame'?{}:(override.borderColor||override.borderOpacity!==undefined||override.borderProfitColor!==undefined||condition?.borderColor?{borderColor:colorWithAlpha(resolvedAppearance.borderColor,appearance.borderOpacity)}:{})),
     ...(target.kind==='frame'?{}:(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{})),
     ...(target.kind==='frame'?{}:(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{})),
     ...(target.kind==='frame'?{}:(override.padding!==undefined?{padding:appearance.padding}:{})),
@@ -152,17 +154,17 @@ export function InspectableTarget({target,frame,children,flex=false}:{
   const rect=geometry?positionedRect(geometry,override):null;
   useEffect(()=>{
     if(!workspace||!rect)return;
-    workspace.report(targetKey,rect);
-    if(engineer.enabled)engineer.reportRect(target.page,target.frameKey,targetKey,rect);
-    return()=>{workspace.report(targetKey,null);engineer.reportRect(target.page,target.frameKey,targetKey,null);};
+    workspace.report(targetKey,rect,instanceToken);
+    if(engineer.enabled)engineer.reportRect(target.page,target.frameKey,targetKey,rect,instanceToken);
+    return()=>{workspace.report(targetKey,null,instanceToken);engineer.reportRect(target.page,target.frameKey,targetKey,null,instanceToken);};
   },[workspace?.report,engineer.enabled,engineer.reportRect,targetKey,rect?.x,rect?.y,rect?.width,rect?.height]);
   // Only truly mounted native A targets are eligible for batch preview/edit.
   // This registry is ephemeral, scoped to the real page/frame and never stores data sources.
   const visualFingerprint=JSON.stringify({label:target.label,kind:target.kind,base:target.base,properties:target.properties});
   useEffect(()=>{
     if(!engineer.enabled)return;
-    engineer.registerTarget(target.page,target.frameKey,{id:target.id,kind:target.kind,label:target.label,base:target.base,properties:target.properties});
-    return()=>engineer.unregisterTarget(target.page,target.frameKey,target.id);
+    engineer.registerTarget(target.page,target.frameKey,{id:target.id,kind:target.kind,label:target.label,base:target.base,properties:target.properties},instanceToken);
+    return()=>engineer.unregisterTarget(target.page,target.frameKey,target.id,instanceToken);
   },[engineer.enabled,engineer.registerTarget,engineer.unregisterTarget,target.page,target.frameKey,target.id,visualFingerprint]);
   const currentTarget=geometry?{...target,geometry}:target;
   const pick=()=>{measureCurrent();engineer.selectTarget(currentTarget);};
@@ -177,16 +179,16 @@ export function InspectableTarget({target,frame,children,flex=false}:{
     override.width!==undefined||override.height!==undefined||
     Boolean(override.anchorX&&override.anchorX!=='free')||
     Boolean(override.anchorY&&override.anchorY!=='free');
-  const needsContainerStyle=Boolean(wrapperStyle&&Object.keys(wrapperStyle).length>0);
+  const needsContainerStyle=Boolean(wrapperStyle&&Object.keys(wrapperStyle).length>0)||override.opacity!==undefined;
   if(!engineer.enabled&&!flex&&!hasSpatialOverride&&!needsContainerStyle)
-    return <>{children(resolvedAppearance,customized,override,renderContext)}</>;
+    return <>{children(resolvedAppearance,customized,override,{...renderContext,wrapped:false})}</>;
   return <View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
-    style={[placement,{position:'relative',opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
+    style={[placement,{position:'relative'},layoutStyle,{opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
     {materialActive?<TargetBackdrop appearance={appearance} start={resolvedAppearance.backgroundColor}
       middle={resolvedAppearance.gradientMidColor} end={resolvedAppearance.gradientEndColor}
       glow={resolvedAppearance.glowColor}/>:null}
-    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override,renderContext):
+    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override,{...renderContext,wrapped:true}):
       <View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {editing&&previewState!=='actual'?<View pointerEvents="none"
       style={{position:'absolute',left:2,right:2,bottom:1,padding:4,borderRadius:5,

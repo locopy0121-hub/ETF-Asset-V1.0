@@ -1,6 +1,7 @@
 import {useSystemColors} from '../theme/useSystemColors';
 import {useEffect,useRef} from 'react';
-import {Animated,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
+import {Animated,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST,portfolioColumnValue,type PortfolioColumnConfig,type PortfolioListConfig} from '../domain/portfolioList';
 import type {HoldingQuote} from '../domain/uiModels';
@@ -17,30 +18,30 @@ export function PortfolioHoldingTable({rows,onOpenHolding,config=DEFAULT_PORTFOL
   return <View style={styles.tableOuter}>
     <View style={styles.split}>
       <View style={[styles.fixedColumn,{width:config.fixedWidth}]}>
-        <View style={[styles.header,{height:38}]}><Text style={styles.headerText}>ETF 代號｜名稱</Text></View>
-        {rows.map(row=><Pressable key={row.symbol} accessibilityRole="button" accessibilityLabel={'查看持股 '+row.symbol}
+        <View style={[styles.header,{height:38}]}><Text editorId="native:PortfolioHoldingTable:headerText:1" editorReadOnly={false} style={styles.headerText}>ETF 代號｜名稱</Text></View>
+        {rows.map(row=><Pressable editorId="native:PortfolioHoldingTable:fixedRow:2" key={row.symbol} accessibilityRole="button" accessibilityLabel={'查看持股 '+row.symbol}
           onPress={onOpen(row)} style={[styles.fixedRow,{height:config.rowHeight}]}>
           <View style={styles.identity}>
-            <View style={styles.symbolWrap}><Text numberOfLines={1} style={styles.symbol}>{row.symbol}</Text>{row.pinned?<Text accessibilityLabel="已釘選" style={styles.pinMarker}>★</Text>:null}</View>
+            <View style={styles.symbolWrap}><Text editorId="native:PortfolioHoldingTable:symbol:3" editorReadOnly={true} numberOfLines={1} style={styles.symbol}>{row.symbol}</Text>{row.pinned?<Text editorId="native:PortfolioHoldingTable:pinMarker:4" editorReadOnly={false} accessibilityLabel="已釘選" style={styles.pinMarker}>★</Text>:null}</View>
             <EtfBadgeRow etfType={row.etfType} dividendType={row.dividendType} reminder={row.reminderEvent} config={badges} narrow refreshToken={refreshToken}/>
           </View>
-          {config.showName?<Text numberOfLines={1} style={styles.name}>{row.name}</Text>:null}
+          {config.showName?<Text editorId="native:PortfolioHoldingTable:name:5" editorReadOnly={true} numberOfLines={1} style={styles.name}>{row.name}</Text>:null}
         </Pressable>)}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.scroll}>
         <View>
           <View style={[styles.rightHeader,{height:38}]}>
             {columns.map(field=><View key={field.key} style={{width:field.width,paddingHorizontal:2,backgroundColor:field.backgroundColor??'transparent'}}>
-              <Text numberOfLines={1} style={[styles.headerText,{textAlign:field.align,color:field.textColor??colors.textSecondary}]}>{field.label}</Text>
+              <Text editorId="native:PortfolioHoldingTable:headerText:6" editorReadOnly={false} numberOfLines={1} style={[styles.headerText,{textAlign:field.align,color:field.textColor??colors.textSecondary}]}>{field.label}</Text>
             </View>)}
           </View>
-          {rows.map(row=><Pressable key={row.symbol} onPress={onOpen(row)} style={[styles.rightRow,{height:config.rowHeight}]}>
+          {rows.map(row=><Pressable editorId="native:PortfolioHoldingTable:rightRow:7" key={row.symbol} onPress={onOpen(row)} style={[styles.rightRow,{height:config.rowHeight}]}>
             {columns.map(field=><PortfolioNumberCell key={field.key} row={row} config={field} refreshToken={refreshToken}/>)}
           </Pressable>)}
         </View>
       </ScrollView>
     </View>
-    <Text style={styles.hint}>第一欄固定；數值欄可水平滑動及自訂顯示。純均價與含費均價獨立顯示，不重新計算帳務。</Text>
+    <Text editorId="native:PortfolioHoldingTable:hint:8" editorReadOnly={false} style={styles.hint}>第一欄固定；數值欄可水平滑動及自訂顯示。純均價與含費均價獨立顯示，不重新計算帳務。</Text>
   </View>;
 }
 function PortfolioNumberCell({row,config,refreshToken}:{row:HoldingQuote;config:PortfolioColumnConfig;refreshToken?:string|number|null|undefined}){

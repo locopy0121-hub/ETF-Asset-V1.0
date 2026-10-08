@@ -1,4 +1,5 @@
 import { PAGE_FRAMES } from '../domain/frameRegistry';
+import {EDITOR_FRAMES} from '../domain/editorFrameRegistry';
 import {normalizePortfolioViewMode,normalizePortfolioLayoutMode} from '../domain/portfolioModeSwitch';
 import {sortPreset} from '../domain/holdingSort';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
@@ -139,11 +140,12 @@ export type PageDisplayConfig = Readonly<{
 export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
-  Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => {
-    const headerFrame=frame.key==='page-header'||frame.key==='holding-detail-header';
+  Object.fromEntries(EDITOR_FRAMES[page].map((frame, index) => {
+    const standalone=frame.key.endsWith('-modal')||['news-reader','app-navigation','floating-ai'].includes(frame.key);
+    const headerFrame=frame.key==='page-header'||frame.key==='holding-detail-header'||frame.key==='chart-header';
     return [
       frame.key,
-      {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:headerFrame?28:17,titleColor:'#0F172A',titleOpacity:1,titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderOpacity:1,borderWidth:headerFrame?0:1,borderRadius:headerFrame?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS} satisfies FrameEditorConfig,
+      {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:headerFrame?28:17,titleColor:'#0F172A',titleOpacity:1,titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderOpacity:1,borderWidth:headerFrame?0:1,borderRadius:headerFrame?0:16,shadowEnabled:false,shadowOpacity:.12,effects:DEFAULT_FRAME_EFFECTS,...(standalone?{padding:0,backgroundOpacity:0,borderWidth:0,borderRadius:0}:{} )} satisfies FrameEditorConfig,
     ];
   }));
 

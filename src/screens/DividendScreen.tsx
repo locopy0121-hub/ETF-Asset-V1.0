@@ -1,5 +1,8 @@
+import {EditorSurface} from '../components/EditorSurface';
+import {useDisplayFormat} from '../settings/useDisplayFormat';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {Alert,Modal,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text,TextInput} from '../components/EditableNative';
 
 import { AiQuestionBox } from '../components/AiQuestionBox';
 import { CalendarDatePickerModal } from '../components/CalendarDatePickerModal';
@@ -21,7 +24,6 @@ import { colors, spacing } from '../theme/tokens';
 
 import {isIsoCalendarDate as isIsoDate,validateDividendDates,validateDividendPlan,dividendAutofill,dividendEligibleShares,dividendPlanStatus,dividendPlanToLedger,type DividendPlan} from '../dividend/dividendPlans';
 
-const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const nowIso=()=>deviceLocalCalendarDate();
 const calendarEventColor=(type:DividendCalendarEventType)=>
   type==='lastBuyDate'?'#8B5CF6':type==='exDate'?colors.primary:type==='recordDate'?colors.warning:colors.gain;
@@ -31,6 +33,7 @@ const noteDate=(note:string|undefined,labels:readonly string[])=>{for(const labe
 type DividendDatePickerTarget='payment'|'lastBuy'|'ex'|'record';
 
 export function DividendScreen() {
+  const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
   const aiSettings=useSettingsRuntime();
   const aiNews=useAiNewsRuntime();
@@ -220,7 +223,7 @@ export function DividendScreen() {
   const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend'){const error=finance.applyDividendPlan({type:'import',plan:dividendEventToPlan(action.event)});if(error)Alert.alert('未儲存股息預告',error);else Alert.alert('已儲存股息預告','請到股息頁核對日期與符合配息股數，確認實際收到款項後再入帳。');};};
 
   return <>
-    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<View style={styles.headerActions}><Pressable accessibilityRole="button" accessibilityLabel="新增股息" onPress={()=>openAddDividend()} style={styles.addHeaderButton}><Text style={styles.addHeaderButtonText}>＋ 新增</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<View style={styles.headerActions}><Pressable editorId="native:DividendScreen:addHeaderButton:1" accessibilityRole="button" accessibilityLabel="新增股息" onPress={()=>openAddDividend()} style={styles.addHeaderButton}><Text editorId="native:DividendScreen:addHeaderButtonText:2" editorReadOnly={false} style={styles.addHeaderButtonText}>＋ 新增</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <PageEditorStack pageKey="dividend" frames={[
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
@@ -233,16 +236,16 @@ export function DividendScreen() {
           </FrameCard>
         },
         {key:'dividend-calendar',element:
-          <FrameCard title="股息月曆" action={<Text style={styles.calendarCount}>{monthEvents.length} 項事件</Text>}>
+          <FrameCard title="股息月曆" action={<Text editorId="native:DividendScreen:calendarCount:3" editorReadOnly={true} style={styles.calendarCount}>{monthEvents.length} 項事件</Text>}>
             <View style={styles.calendarTop}>
-              <Pressable accessibilityRole="button" accessibilityLabel="上一個月" onPress={()=>shiftMonth(-1)} style={styles.arrowButton}><Text style={styles.arrow}>‹</Text></Pressable>
+              <Pressable editorId="native:DividendScreen:arrowButton:4" accessibilityRole="button" accessibilityLabel="上一個月" onPress={()=>shiftMonth(-1)} style={styles.arrowButton}><Text editorId="native:DividendScreen:arrow:5" editorReadOnly={false} style={styles.arrow}>‹</Text></Pressable>
               <View style={styles.monthBlock}>
-                <Text style={styles.month}>{month.replace('-',' 年 ')} 月</Text>
-                <Text style={styles.monthCaption}>{month===today.slice(0,7)?'本月':'股息事件月曆'}</Text>
+                <Text editorId="native:DividendScreen:month:6" editorReadOnly={true} style={styles.month}>{month.replace('-',' 年 ')} 月</Text>
+                <Text editorId="native:DividendScreen:monthCaption:7" editorReadOnly={true} style={styles.monthCaption}>{month===today.slice(0,7)?'本月':'股息事件月曆'}</Text>
               </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="下一個月" onPress={()=>shiftMonth(1)} style={styles.arrowButton}><Text style={styles.arrow}>›</Text></Pressable>
+              <Pressable editorId="native:DividendScreen:arrowButton:8" accessibilityRole="button" accessibilityLabel="下一個月" onPress={()=>shiftMonth(1)} style={styles.arrowButton}><Text editorId="native:DividendScreen:arrow:9" editorReadOnly={false} style={styles.arrow}>›</Text></Pressable>
             </View>
-            <View style={styles.week}>{['日','一','二','三','四','五','六'].map((x,index)=><Text key={x} style={[styles.weekday,(index===0||index===6)&&styles.weekend]}>{x}</Text>)}</View>
+            <View style={styles.week}>{['日','一','二','三','四','五','六'].map((x,index)=><Text editorId="native:DividendScreen:weekday:10" editorReadOnly={true} key={x} style={[styles.weekday,(index===0||index===6)&&styles.weekend]}>{x}</Text>)}</View>
             <View style={styles.grid}>{Array.from({length:calendarCells},(_,i)=>{
               const day=i-firstWeekday+1;
               const valid=day>=1&&day<=daysInMonth;
@@ -250,7 +253,7 @@ export function DividendScreen() {
               const date=valid?month+'-'+String(day).padStart(2,'0'):'';
               const selected=valid&&selectedDate===date;
               const isToday=valid&&today===date;
-              return <Pressable
+              return <Pressable editorId="native:DividendScreen:day:11"
                 key={i}
                 disabled={!valid}
                 accessibilityRole="button"
@@ -259,32 +262,32 @@ export function DividendScreen() {
                 style={[styles.day,!valid&&styles.dayInvalid,dayEvents.length>0&&styles.eventDay,selected&&styles.selectedDay]}
               >
                 <View style={[styles.dayNumberWrap,isToday&&styles.todayNumberWrap,selected&&styles.selectedNumberWrap]}>
-                  <Text style={[styles.dayText,!valid&&styles.dayGhost,selected&&styles.selectedDayText]}>{valid?day:''}</Text>
+                  <Text editorId="native:DividendScreen:dayText:12" editorReadOnly={true} style={[styles.dayText,!valid&&styles.dayGhost,selected&&styles.selectedDayText]}>{valid?day:''}</Text>
                 </View>
                 {dayEvents.length?<View style={styles.eventDots}>
                   {dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:calendarEventColor(event.type)}]}/>)}
-                  {dayEvents.length>3?<Text style={styles.moreEvents}>+{dayEvents.length-3}</Text>:null}
+                  {dayEvents.length>3?<Text editorId="native:DividendScreen:moreEvents:13" editorReadOnly={true} style={styles.moreEvents}>+{dayEvents.length-3}</Text>:null}
                 </View>:<View style={styles.eventDotsPlaceholder}/>}
               </Pressable>;
             })}</View>
             {selectedDate.startsWith(month)?<View style={styles.eventDetails}>
               <View style={styles.eventDetailHeader}>
                 <View>
-                  <Text style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
-                  <Text style={styles.eventDetailTitle}>{selectedDate===today?'今天':'日期事件'}</Text>
+                  <Text editorId="native:DividendScreen:eventDetailDate:14" editorReadOnly={true} style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
+                  <Text editorId="native:DividendScreen:eventDetailTitle:15" editorReadOnly={true} style={styles.eventDetailTitle}>{selectedDate===today?'今天':'日期事件'}</Text>
                 </View>
-                <Text style={styles.eventDetailCount}>{selectedEvents.length?selectedEvents.length+' 項':'無事件'}</Text>
+                <Text editorId="native:DividendScreen:eventDetailCount:16" editorReadOnly={true} style={styles.eventDetailCount}>{selectedEvents.length?selectedEvents.length+' 項':'無事件'}</Text>
               </View>
               {selectedEvents.length?selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}>
                 <View style={[styles.eventTypeBadge,{backgroundColor:calendarEventColor(event.type)+'18'}]}>
                   <View style={[styles.eventTypeDot,{backgroundColor:calendarEventColor(event.type)}]}/>
-                  <Text style={[styles.eventType,{color:calendarEventColor(event.type)}]}>{dividendCalendarTypeLabel(event.type)}</Text>
+                  <Text editorId="native:DividendScreen:eventType:17" editorReadOnly={true} style={[styles.eventType,{color:calendarEventColor(event.type)}]}>{dividendCalendarTypeLabel(event.type)}</Text>
                 </View>
                 <View style={styles.eventInfo}>
-                  <Text style={styles.eventSymbol}>{event.symbol} · {event.name}</Text>
-                  <Text style={styles.eventText}>{event.date}{event.status?' · '+event.status:''}</Text>
+                  <Text editorId="native:DividendScreen:eventSymbol:18" editorReadOnly={true} style={styles.eventSymbol}>{event.symbol} · {event.name}</Text>
+                  <Text editorId="native:DividendScreen:eventText:19" editorReadOnly={true} style={styles.eventText}>{event.date}{event.status?' · '+event.status:''}</Text>
                 </View>
-              </View>):<Text style={styles.noEventText}>這一天沒有已記錄的股息事件。</Text>}
+              </View>):<Text editorId="native:DividendScreen:noEventText:20" editorReadOnly={false} style={styles.noEventText}>這一天沒有已記錄的股息事件。</Text>}
             </View>:null}
             <View style={styles.legend}>
               <Legend color="#8B5CF6" label="最後購買日"/>
@@ -296,44 +299,44 @@ export function DividendScreen() {
         },
         {key:'dividend-list',element:
           <FrameCard title="股息清單">
-            {finance.dividendPlanError?<Text style={styles.formWarning}>{finance.dividendPlanError}</Text>:null}
+            {finance.dividendPlanError?<Text editorId="native:DividendScreen:formWarning:21" editorReadOnly={true} style={styles.formWarning}>{finance.dividendPlanError}</Text>:null}
             {monthPlans.map(plan=><View key={plan.id} style={styles.planCard}>
-              <Text style={styles.stockName}>{plan.symbol} · {plan.name}</Text>
-              <Text style={styles.eventText}>{plan.status==='confirmed'?'已確定／待入帳':'預告'} · 配發日 {plan.paymentDate||'待公告'}</Text>
-              <Text style={styles.eventText}>每股 {plan.perShareAmount??'待公告'} · 符合配息 {plan.sharesHeld??'待核對'} 股</Text>
-              <Text style={styles.formHint}>最後購買日 {plan.lastBuyDate||'待公告'}｜除息日 {plan.exDate||'待公告'}｜基準日 {plan.recordDate||'待公告'}</Text>
+              <Text editorId="native:DividendScreen:stockName:22" editorReadOnly={true} style={styles.stockName}>{plan.symbol} · {plan.name}</Text>
+              <Text editorId="native:DividendScreen:eventText:23" editorReadOnly={true} style={styles.eventText}>{plan.status==='confirmed'?'已確定／待入帳':'預告'} · 配發日 {plan.paymentDate||'待公告'}</Text>
+              <Text editorId="native:DividendScreen:eventText:24" editorReadOnly={true} style={styles.eventText}>每股 {plan.perShareAmount??'待公告'} · 符合配息 {plan.sharesHeld??'待核對'} 股</Text>
+              <Text editorId="native:DividendScreen:formHint:25" editorReadOnly={true} style={styles.formHint}>最後購買日 {plan.lastBuyDate||'待公告'}｜除息日 {plan.exDate||'待公告'}｜基準日 {plan.recordDate||'待公告'}</Text>
               <View style={styles.planActions}>
-                <Pressable accessibilityLabel={'編輯股息預告 '+plan.symbol} onPress={()=>editPlan(plan)} style={styles.planButton}><Text>編輯</Text></Pressable>
-                {plan.status==='forecast'?<Pressable accessibilityLabel={'確認股息預告 '+plan.symbol} onPress={()=>applyPlan({type:'confirm',id:plan.id})} style={styles.planButton}><Text>確認資料</Text></Pressable>:<Pressable accessibilityLabel={'入帳股息 '+plan.symbol} disabled={!plan.paymentDate||plan.paymentDate>today} onPress={()=>postPlan(plan)} style={[styles.planButton,(!plan.paymentDate||plan.paymentDate>today)&&{opacity:.4}]}><Text>實際入帳</Text></Pressable>}
-                <Pressable accessibilityLabel={'刪除股息預告 '+plan.symbol} onPress={()=>Alert.alert('刪除預告','此操作不會更動正式帳務。',[{text:'取消',style:'cancel'},{text:'刪除',style:'destructive',onPress:()=>applyPlan({type:'delete',id:plan.id})}])} style={styles.planButton}><Text>刪除</Text></Pressable>
+                <Pressable editorId="native:DividendScreen:planButton:26" accessibilityLabel={'編輯股息預告 '+plan.symbol} onPress={()=>editPlan(plan)} style={styles.planButton}><Text editorId="native:DividendScreen:text:27" editorReadOnly={false}>編輯</Text></Pressable>
+                {plan.status==='forecast'?<Pressable editorId="native:DividendScreen:planButton:28" accessibilityLabel={'確認股息預告 '+plan.symbol} onPress={()=>applyPlan({type:'confirm',id:plan.id})} style={styles.planButton}><Text editorId="native:DividendScreen:text:29" editorReadOnly={false}>確認資料</Text></Pressable>:<Pressable editorId="native:DividendScreen:planButton:30" accessibilityLabel={'入帳股息 '+plan.symbol} disabled={!plan.paymentDate||plan.paymentDate>today} onPress={()=>postPlan(plan)} style={[styles.planButton,(!plan.paymentDate||plan.paymentDate>today)&&{opacity:.4}]}><Text editorId="native:DividendScreen:text:31" editorReadOnly={false}>實際入帳</Text></Pressable>}
+                <Pressable editorId="native:DividendScreen:planButton:32" accessibilityLabel={'刪除股息預告 '+plan.symbol} onPress={()=>Alert.alert('刪除預告','此操作不會更動正式帳務。',[{text:'取消',style:'cancel'},{text:'刪除',style:'destructive',onPress:()=>applyPlan({type:'delete',id:plan.id})}])} style={styles.planButton}><Text editorId="native:DividendScreen:text:33" editorReadOnly={false}>刪除</Text></Pressable>
               </View>
             </View>)}
             {monthRows.length?monthRows.map(row=>{
               const amount=calculateLedgerCashFlow(row);
               const status=row.date>today?'已入帳（未來日期需核對）':'已入帳';
-              return <Pressable key={row.id} accessibilityRole="button" accessibilityLabel={`查看 ${row.symbol} 股息資訊`} onPress={()=>setSelectedDividendId(current=>current===row.id?null:row.id)} style={styles.dividendRow}>
-                <View style={styles.dateBadge}><Text style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
+              return <Pressable editorId="native:DividendScreen:dividendRow:34" key={row.id} accessibilityRole="button" accessibilityLabel={`查看 ${row.symbol} 股息資訊`} onPress={()=>setSelectedDividendId(current=>current===row.id?null:row.id)} style={styles.dividendRow}>
+                <View style={styles.dateBadge}><Text editorId="native:DividendScreen:dateBadgeText:35" editorReadOnly={true} style={styles.dateBadgeText}>{row.date.slice(5)}</Text></View>
                 <View style={{flex:1}}>
-                  <Text style={styles.stockName}>{row.name}</Text>
-                  <Text style={styles.symbol}>{row.symbol} · {row.sharesHeld.toLocaleString('zh-TW')} 股 × {row.perShareAmount}</Text>
-                  <Text style={styles.symbol}>{selectedDividendId===row.id?'▲ 收合股息資訊':'▼ 查看股息資訊'}</Text>
+                  <Text editorId="native:DividendScreen:stockName:36" editorReadOnly={true} style={styles.stockName}>{row.name}</Text>
+                  <Text editorId="native:DividendScreen:symbol:37" editorReadOnly={true} style={styles.symbol}>{row.symbol} · {row.sharesHeld.toLocaleString('zh-TW')} 股 × {row.perShareAmount}</Text>
+                  <Text editorId="native:DividendScreen:symbol:38" editorReadOnly={true} style={styles.symbol}>{selectedDividendId===row.id?'▲ 收合股息資訊':'▼ 查看股息資訊'}</Text>
                   {selectedDividendId===row.id?<View style={styles.eventDetails}>
-                    <Text style={styles.eventText}>配息股數：{row.sharesHeld.toLocaleString('zh-TW')} 股</Text>
-                    <Text style={styles.eventText}>每股配息：NT$ {row.perShareAmount}</Text>
-                    <Text style={styles.eventText}>帳務日期：{row.date}</Text>
-                    <Text style={styles.eventText}>最後購買日：{noteDate(row.note,['最後購買日','最後買進日'])||'尚未取得可靠公告'}</Text>
-                    <Text style={styles.eventText}>除息日：{noteDate(row.note,['除息日'])||'尚未取得可靠公告'}</Text>
-                    <Text style={styles.eventText}>收益分配基準日：{noteDate(row.note,['收益分配基準日','股權登記日'])||'尚未取得可靠公告'}</Text>
-                    <Text style={styles.eventText}>股息配發日：{noteDate(row.note,['配發日'])||'尚未取得可靠公告'}</Text>
-                    <Text style={styles.eventText}>資料來源／備註：{row.note??'尚未記錄'}</Text>
+                    <Text editorId="native:DividendScreen:eventText:39" editorReadOnly={true} style={styles.eventText}>配息股數：{row.sharesHeld.toLocaleString('zh-TW')} 股</Text>
+                    <Text editorId="native:DividendScreen:eventText:40" editorReadOnly={true} style={styles.eventText}>每股配息：NT$ {row.perShareAmount}</Text>
+                    <Text editorId="native:DividendScreen:eventText:41" editorReadOnly={true} style={styles.eventText}>帳務日期：{row.date}</Text>
+                    <Text editorId="native:DividendScreen:eventText:42" editorReadOnly={true} style={styles.eventText}>最後購買日：{noteDate(row.note,['最後購買日','最後買進日'])||'尚未取得可靠公告'}</Text>
+                    <Text editorId="native:DividendScreen:eventText:43" editorReadOnly={true} style={styles.eventText}>除息日：{noteDate(row.note,['除息日'])||'尚未取得可靠公告'}</Text>
+                    <Text editorId="native:DividendScreen:eventText:44" editorReadOnly={true} style={styles.eventText}>收益分配基準日：{noteDate(row.note,['收益分配基準日','股權登記日'])||'尚未取得可靠公告'}</Text>
+                    <Text editorId="native:DividendScreen:eventText:45" editorReadOnly={true} style={styles.eventText}>股息配發日：{noteDate(row.note,['配發日'])||'尚未取得可靠公告'}</Text>
+                    <Text editorId="native:DividendScreen:eventText:46" editorReadOnly={true} style={styles.eventText}>資料來源／備註：{row.note??'尚未記錄'}</Text>
                   </View>:null}
                 </View>
                 <View style={{alignItems:'flex-end'}}>
-                  <Text style={styles.dividendAmount}>NT$ {money(amount)}</Text>
-                  <Text style={[styles.status,{color:status==='已入帳'?colors.gain:colors.warning}]}>{status}</Text>
+                  <Text editorId="native:DividendScreen:dividendAmount:47" editorReadOnly={true} style={styles.dividendAmount}>NT$ {money(amount)}</Text>
+                  <Text editorId="native:DividendScreen:status:48" editorReadOnly={true} style={[styles.status,{color:status==='已入帳'?colors.gain:colors.warning}]}>{status}</Text>
                 </View>
               </Pressable>;
-            }):<Text style={styles.empty}>{monthPlans.length?'本月尚無正式入帳紀錄':'本月尚無股息紀錄'}</Text>}
+            }):<Text editorId="native:DividendScreen:empty:49" editorReadOnly={true} style={styles.empty}>{monthPlans.length?'本月尚無正式入帳紀錄':'本月尚無股息紀錄'}</Text>}
           </FrameCard>
         },
         {key:'annual-trend',element:
@@ -341,95 +344,95 @@ export function DividendScreen() {
             <View style={styles.bars}>{monthTotals.map((amount,index)=>{
               const key=year+'-'+String(index+1).padStart(2,'0');
               const h=Math.max(3,Math.round(amount/maxMonth*82));
-              return <Pressable key={key} onPress={()=>setMonth(key)} style={styles.barCol}>
-                <View style={[styles.bar,{height:h}]}/><Text style={styles.barLabel}>{index+1}</Text>
+              return <Pressable editorId="native:DividendScreen:barCol:50" key={key} onPress={()=>setMonth(key)} style={styles.barCol}>
+                <View style={[styles.bar,{height:h}]}/><Text editorId="native:DividendScreen:barLabel:51" editorReadOnly={true} style={styles.barLabel}>{index+1}</Text>
               </Pressable>;
             })}</View>
           </FrameCard>
         },
       ]}/>
     </PageShell>
-    <Modal visible={addOpen} transparent animationType="slide" onRequestClose={()=>setAddOpen(false)}>
+    <Modal visible={addOpen} transparent animationType="slide" onRequestClose={()=>setAddOpen(false)}><EditorSurface pageKey="dividend" frameKey="dividend-entry-modal" title="新增股息" visible={addOpen}>
       <View style={styles.modalBackdrop}>
         <View style={styles.modalSheet}>
           <View style={styles.modalHeader}>
             <View style={{flex:1}}>
-              <Text style={styles.modalTitle}>新增股息</Text>
-              <Text style={styles.modalSubtitle}>{editPlanId?'編輯後需重新確認資料':'預告先保存事件；實際收到股息後才增加現金'}</Text>
+              <Text editorId="native:DividendScreen:modalTitle:52" editorReadOnly={false} style={styles.modalTitle}>新增股息</Text>
+              <Text editorId="native:DividendScreen:modalSubtitle:53" editorReadOnly={true} style={styles.modalSubtitle}>{editPlanId?'編輯後需重新確認資料':'預告先保存事件；實際收到股息後才增加現金'}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="關閉新增股息" onPress={()=>setAddOpen(false)} style={styles.modalClose}><Text style={styles.modalCloseText}>×</Text></Pressable>
+            <Pressable editorId="native:DividendScreen:modalClose:54" accessibilityRole="button" accessibilityLabel="關閉新增股息" onPress={()=>setAddOpen(false)} style={styles.modalClose}><Text editorId="native:DividendScreen:modalCloseText:55" editorReadOnly={false} style={styles.modalCloseText}>×</Text></Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
             <View style={styles.planActions}>
-              <Pressable accessibilityLabel="登錄股息預告" onPress={()=>setAddMode('forecast')} style={[styles.planButton,addMode==='forecast'&&styles.modeSelected]}><Text>登錄預告</Text></Pressable>
-              {!editPlanId?<Pressable accessibilityLabel="建立實際股息入帳" onPress={()=>setAddMode('receipt')} style={[styles.planButton,addMode==='receipt'&&styles.modeSelected]}><Text>實際入帳</Text></Pressable>:null}
+              <Pressable editorId="native:DividendScreen:planButton:56" accessibilityLabel="登錄股息預告" onPress={()=>setAddMode('forecast')} style={[styles.planButton,addMode==='forecast'&&styles.modeSelected]}><Text editorId="native:DividendScreen:text:57" editorReadOnly={false}>登錄預告</Text></Pressable>
+              {!editPlanId?<Pressable editorId="native:DividendScreen:planButton:58" accessibilityLabel="建立實際股息入帳" onPress={()=>setAddMode('receipt')} style={[styles.planButton,addMode==='receipt'&&styles.modeSelected]}><Text editorId="native:DividendScreen:text:59" editorReadOnly={false}>實際入帳</Text></Pressable>:null}
             </View>
             {finance.holdings.length?<View>
-              <Text style={styles.fieldLabel}>快速選擇目前持股</Text>
+              <Text editorId="native:DividendScreen:fieldLabel:60" editorReadOnly={false} style={styles.fieldLabel}>快速選擇目前持股</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.holdingChips}>
-                {finance.holdings.map(row=><Pressable key={row.symbol} onPress={()=>openAddDividend(row.symbol)} style={[styles.holdingChip,addSymbol===row.symbol&&styles.holdingChipActive]}>
-                  <Text style={[styles.holdingChipCode,addSymbol===row.symbol&&styles.holdingChipCodeActive]}>{row.symbol}</Text>
-                  <Text style={styles.holdingChipShares}>{row.shares.toLocaleString('zh-TW')} 股</Text>
+                {finance.holdings.map(row=><Pressable editorId="native:DividendScreen:holdingChip:61" key={row.symbol} onPress={()=>openAddDividend(row.symbol)} style={[styles.holdingChip,addSymbol===row.symbol&&styles.holdingChipActive]}>
+                  <Text editorId="native:DividendScreen:holdingChipCode:62" editorReadOnly={true} style={[styles.holdingChipCode,addSymbol===row.symbol&&styles.holdingChipCodeActive]}>{row.symbol}</Text>
+                  <Text editorId="native:DividendScreen:holdingChipShares:63" editorReadOnly={true} style={styles.holdingChipShares}>{row.shares.toLocaleString('zh-TW')} 股</Text>
                 </Pressable>)}
               </ScrollView>
             </View>:null}
 
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>ETF 代號</Text>
-              <TextInput value={addSymbol} onChangeText={updateAddSymbol} autoCapitalize="characters" autoCorrect={false} placeholder="例如 0050" style={styles.formInput}/>
-              {addInstrument?<Text style={styles.autoFillHint}>已從目前持股帶入：{addInstrument.name} · {addInstrument.shares.toLocaleString('zh-TW')} 股</Text>:null}
+              <Text editorId="native:DividendScreen:fieldLabel:64" editorReadOnly={false} style={styles.fieldLabel}>ETF 代號</Text>
+              <TextInput editorId="native:DividendScreen:formInput:65" value={addSymbol} onChangeText={updateAddSymbol} autoCapitalize="characters" autoCorrect={false} placeholder="例如 0050" style={styles.formInput}/>
+              {addInstrument?<Text editorId="native:DividendScreen:autoFillHint:66" editorReadOnly={true} style={styles.autoFillHint}>已從目前持股帶入：{addInstrument.name} · {addInstrument.shares.toLocaleString('zh-TW')} 股</Text>:null}
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>ETF 名稱</Text>
-              <TextInput value={addName} onChangeText={setAddName} placeholder="ETF 名稱" style={styles.formInput}/>
+              <Text editorId="native:DividendScreen:fieldLabel:67" editorReadOnly={false} style={styles.fieldLabel}>ETF 名稱</Text>
+              <TextInput editorId="native:DividendScreen:formInput:68" value={addName} onChangeText={setAddName} placeholder="ETF 名稱" style={styles.formInput}/>
             </View>
 
             <View style={styles.formTwo}>
               <View style={{flex:1}}>
-                <Text style={styles.fieldLabel}>股息配發／入帳日</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="選擇股息配發／入帳日" onPress={()=>setDatePickerTarget('payment')} style={styles.dateInput}>
-                  <Text style={styles.dateInputText}>{addPaymentDate}</Text><Text style={styles.dateInputIcon}>📅</Text>
+                <Text editorId="native:DividendScreen:fieldLabel:69" editorReadOnly={false} style={styles.fieldLabel}>股息配發／入帳日</Text>
+                <Pressable editorId="native:DividendScreen:dateInput:70" accessibilityRole="button" accessibilityLabel="選擇股息配發／入帳日" onPress={()=>setDatePickerTarget('payment')} style={styles.dateInput}>
+                  <Text editorId="native:DividendScreen:dateInputText:71" editorReadOnly={true} style={styles.dateInputText}>{addPaymentDate}</Text><Text editorId="native:DividendScreen:dateInputIcon:72" editorReadOnly={false} style={styles.dateInputIcon}>📅</Text>
                 </Pressable>
               </View>
               <View style={{flex:1}}>
-                <Text style={styles.fieldLabel}>每股股息</Text>
-                <TextInput value={addPerShare} onChangeText={setAddPerShare} keyboardType="decimal-pad" placeholder="0" style={styles.formInput}/>
+                <Text editorId="native:DividendScreen:fieldLabel:73" editorReadOnly={false} style={styles.fieldLabel}>每股股息</Text>
+                <TextInput editorId="native:DividendScreen:formInput:74" value={addPerShare} onChangeText={setAddPerShare} keyboardType="decimal-pad" placeholder="0" style={styles.formInput}/>
               </View>
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>符合配息股數</Text>
-              <TextInput value={addShares} onChangeText={value=>{setSharesAuto(false);setAddShares(value);}} keyboardType="decimal-pad" placeholder="0" style={styles.formInput}/>
-              <Text style={styles.formHint}>{sharesAuto&&eligibleShares!==null?'已依公告日期與原帳本帶入 '+eligibleShares+' 股，請核對實際配息資格。':'目前持股僅供快速帶入；尚未到資格日期或資料不足時需另行核對，可手動修正。'}</Text>
+              <Text editorId="native:DividendScreen:fieldLabel:75" editorReadOnly={false} style={styles.fieldLabel}>符合配息股數</Text>
+              <TextInput editorId="native:DividendScreen:formInput:76" value={addShares} onChangeText={value=>{setSharesAuto(false);setAddShares(value);}} keyboardType="decimal-pad" placeholder="0" style={styles.formInput}/>
+              <Text editorId="native:DividendScreen:formHint:77" editorReadOnly={true} style={styles.formHint}>{sharesAuto&&eligibleShares!==null?'已依公告日期與原帳本帶入 '+eligibleShares+' 股，請核對實際配息資格。':'目前持股僅供快速帶入；尚未到資格日期或資料不足時需另行核對，可手動修正。'}</Text>
             </View>
 
             <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>入帳預覽</Text>
-              <View style={styles.previewRow}><Text style={styles.previewLabel}>股息總額</Text><Text style={styles.previewValue}>NT$ {money(addGross)}</Text></View>
-              <View style={styles.previewRow}><Text style={styles.previewLabel}>正式帳務淨入帳</Text><Text style={styles.previewValueStrong}>NT$ {money(addNet)}</Text></View>
-              <Text style={styles.formHint}>淨入帳沿用既有股息核心規則計算，不在此表單另造公式。</Text>
+              <Text editorId="native:DividendScreen:previewTitle:78" editorReadOnly={false} style={styles.previewTitle}>入帳預覽</Text>
+              <View style={styles.previewRow}><Text editorId="native:DividendScreen:previewLabel:79" editorReadOnly={false} style={styles.previewLabel}>股息總額</Text><Text editorId="native:DividendScreen:previewValue:80" editorReadOnly={true} style={styles.previewValue}>NT$ {money(addGross)}</Text></View>
+              <View style={styles.previewRow}><Text editorId="native:DividendScreen:previewLabel:81" editorReadOnly={false} style={styles.previewLabel}>正式帳務淨入帳</Text><Text editorId="native:DividendScreen:previewValueStrong:82" editorReadOnly={true} style={styles.previewValueStrong}>NT$ {money(addNet)}</Text></View>
+              <Text editorId="native:DividendScreen:formHint:83" editorReadOnly={false} style={styles.formHint}>淨入帳沿用既有股息核心規則計算，不在此表單另造公式。</Text>
             </View>
 
-            <Text style={styles.formSectionTitle}>股息事件日期（選填）</Text>
+            <Text editorId="native:DividendScreen:formSectionTitle:84" editorReadOnly={false} style={styles.formSectionTitle}>股息事件日期（選填）</Text>
             <DateField label="最後購買日" value={addLastBuyDate} onPress={()=>setDatePickerTarget('lastBuy')}/>
             <DateField label="除息日" value={addExDate} onPress={()=>setDatePickerTarget('ex')}/>
             <DateField label="收益分配基準日" value={addRecordDate} onPress={()=>setDatePickerTarget('record')}/>
 
             <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>備註</Text>
-              <TextInput value={addNote} onChangeText={setAddNote} placeholder="資料來源、入帳備註等" multiline style={[styles.formInput,styles.formInputMultiline]}/>
+              <Text editorId="native:DividendScreen:fieldLabel:85" editorReadOnly={false} style={styles.fieldLabel}>備註</Text>
+              <TextInput editorId="native:DividendScreen:formInput:86" value={addNote} onChangeText={setAddNote} placeholder="資料來源、入帳備註等" multiline style={[styles.formInput,styles.formInputMultiline]}/>
             </View>
 
-            {formError?<Text style={styles.formWarning}>{formError}</Text>:null}
-            <Pressable disabled={!canSave} onPress={saveDividend} style={[styles.saveDividendButton,!canSave&&styles.saveDividendButtonDisabled]}>
-              <Text style={styles.saveDividendButtonText}>{addMode==='forecast'?(editPlanId?'儲存預告修改':'儲存股息預告'):'確認新增股息紀錄'}</Text>
+            {formError?<Text editorId="native:DividendScreen:formWarning:87" editorReadOnly={true} style={styles.formWarning}>{formError}</Text>:null}
+            <Pressable editorId="native:DividendScreen:saveDividendButton:88" disabled={!canSave} onPress={saveDividend} style={[styles.saveDividendButton,!canSave&&styles.saveDividendButtonDisabled]}>
+              <Text editorId="native:DividendScreen:saveDividendButtonText:89" editorReadOnly={true} style={styles.saveDividendButtonText}>{addMode==='forecast'?(editPlanId?'儲存預告修改':'儲存股息預告'):'確認新增股息紀錄'}</Text>
             </Pressable>
-            <Text style={styles.formWarning}>未來配發日不直接寫入現金帳務；可先登錄預告，確認資料並實際收到股息後再入帳。</Text>
+            <Text editorId="native:DividendScreen:formWarning:90" editorReadOnly={false} style={styles.formWarning}>未來配發日不直接寫入現金帳務；可先登錄預告，確認資料並實際收到股息後再入帳。</Text>
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </EditorSurface></Modal>
     <CalendarDatePickerModal
       visible={datePickerTarget!==null}
       value={datePickerValue}
@@ -442,9 +445,9 @@ export function DividendScreen() {
   </>;
 }
 function DateField({label,value,onPress}:{label:string;value:string;onPress:()=>void}){
-  return <View style={styles.formGroup}><Text style={styles.fieldLabel}>{label}</Text><Pressable accessibilityRole="button" accessibilityLabel={'選擇'+label} onPress={onPress} style={styles.dateInput}><Text style={[styles.dateInputText,!value&&styles.dateInputPlaceholder]}>{value||'選擇日期'}</Text><Text style={styles.dateInputIcon}>📅</Text></Pressable></View>;
+  return <View style={styles.formGroup}><Text editorId="native:DividendScreen:fieldLabel:91" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><Pressable editorId="native:DividendScreen:dateInput:92" accessibilityRole="button" accessibilityLabel={'選擇'+label} onPress={onPress} style={styles.dateInput}><Text editorId="native:DividendScreen:dateInputText:93" editorReadOnly={true} style={[styles.dateInputText,!value&&styles.dateInputPlaceholder]}>{value||'選擇日期'}</Text><Text editorId="native:DividendScreen:dateInputIcon:94" editorReadOnly={false} style={styles.dateInputIcon}>📅</Text></Pressable></View>;
 }
-function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text style={styles.legendText}>{label}</Text></View>}
+function Legend({color,label}:{color:string;label:string}){return <View style={styles.legendItem}><View style={[styles.legendDot,{backgroundColor:color}]}/><Text editorId="native:DividendScreen:legendText:95" editorReadOnly={false} style={styles.legendText}>{label}</Text></View>}
 const styles=StyleSheet.create({
   planCard:{padding:12,borderWidth:1,borderColor:colors.border,borderRadius:12,marginBottom:10,gap:5},
   planActions:{flexDirection:'row',flexWrap:'wrap',gap:8,marginVertical:8},

@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {Alert,Pressable,StyleSheet,Text,View} from 'react-native';
+import {Alert,StyleSheet,View} from 'react-native';
+import {Pressable,Text} from '../components/EditableNative';
 
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {type AiAssistantAction} from '../ai/aiAssistant';
@@ -31,13 +32,13 @@ export function AiScreen(){
     <PageEditorStack pageKey="ai" frames={[{key:'ai-news',element:
       <FrameCard title="AI 財務管家">
         <View style={styles.overview}>
-          <View style={styles.overviewTile}><Text style={styles.overviewLabel}>持股</Text><Text style={styles.overviewValue}>{finance.holdings.length} 檔</Text></View>
-          <View style={styles.overviewTile}><Text style={styles.overviewLabel}>帳務</Text><Text style={styles.overviewValue}>{finance.entries.length} 筆</Text></View>
-          <View style={styles.overviewTile}><Text style={styles.overviewLabel}>新聞</Text><Text style={styles.overviewValue}>{ai.items.length} 則</Text></View>
+          <View style={styles.overviewTile}><Text editorId="native:AiScreen:overviewLabel:1" editorReadOnly={false} style={styles.overviewLabel}>持股</Text><Text editorId="native:AiScreen:overviewValue:2" editorReadOnly={true} style={styles.overviewValue}>{finance.holdings.length} 檔</Text></View>
+          <View style={styles.overviewTile}><Text editorId="native:AiScreen:overviewLabel:3" editorReadOnly={false} style={styles.overviewLabel}>帳務</Text><Text editorId="native:AiScreen:overviewValue:4" editorReadOnly={true} style={styles.overviewValue}>{finance.entries.length} 筆</Text></View>
+          <View style={styles.overviewTile}><Text editorId="native:AiScreen:overviewLabel:5" editorReadOnly={false} style={styles.overviewLabel}>新聞</Text><Text editorId="native:AiScreen:overviewValue:6" editorReadOnly={true} style={styles.overviewValue}>{ai.items.length} 則</Text></View>
         </View>
         <View style={styles.capabilityPanel}>
-          <Text style={styles.capabilityTitle}>Gemini 已接入</Text>
-          <Text style={styles.capabilityText}>資產配置 · 持股排行 · 最近交易 · 單檔成本／損益 · 股息更新 · 持股新聞</Text>
+          <Text editorId="native:AiScreen:capabilityTitle:7" editorReadOnly={false} style={styles.capabilityTitle}>Gemini 已接入</Text>
+          <Text editorId="native:AiScreen:capabilityText:8" editorReadOnly={false} style={styles.capabilityText}>資產配置 · 持股排行 · 最近交易 · 單檔成本／損益 · 股息更新 · 持股新聞</Text>
         </View>
         <AiQuestionBox
           title="直接詢問或下達資料整理指令"
@@ -47,11 +48,11 @@ export function AiScreen(){
         />
         <View style={styles.source}>
           <View style={{flex:1}}>
-            <Text style={styles.sourceTitle}>新聞資料來源狀態</Text>
-            <Text style={styles.sourceText}>AI 持股新聞目前 {ai.items.length} 則 · 顯示上限 {newsCount} · {holdingsOnly?'僅持股相關':'全部相關'}。對話內新聞以文字摘要播送，不以新聞卡片取代 AI 回答。</Text>
-            {ai.lastError?<Text style={styles.error}>{ai.lastError}</Text>:null}
+            <Text editorId="native:AiScreen:sourceTitle:9" editorReadOnly={false} style={styles.sourceTitle}>新聞資料來源狀態</Text>
+            <Text editorId="native:AiScreen:sourceText:10" editorReadOnly={true} style={styles.sourceText}>AI 持股新聞目前 {ai.items.length} 則 · 顯示上限 {newsCount} · {holdingsOnly?'僅持股相關':'全部相關'}。對話內新聞以文字摘要播送，不以新聞卡片取代 AI 回答。</Text>
+            {ai.lastError?<Text editorId="native:AiScreen:error:11" editorReadOnly={true} style={styles.error}>{ai.lastError}</Text>:null}
           </View>
-          <Pressable disabled={ai.refreshing} onPress={()=>void ai.refresh()} style={[styles.refresh,ai.refreshing&&styles.disabled]}><Text style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
+          <Pressable editorId="native:AiScreen:refresh:12" disabled={ai.refreshing} onPress={()=>void ai.refresh()} style={[styles.refresh,ai.refreshing&&styles.disabled]}><Text editorId="native:AiScreen:refreshText:13" editorReadOnly={true} style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
         </View>
       </FrameCard>
     }]}/>
