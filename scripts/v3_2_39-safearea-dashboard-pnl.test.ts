@@ -39,7 +39,8 @@ function main(){
 
   const settings=read('src/screens/SettingsScreen.tsx');
   assert.match(settings,/SafeAreaView/);
-  assert.match(settings,/<PageShell pageKey="settings"/);
+  // Protected settings page retains the V4.0.14 SafeAreaView, not PageShell.
+  assert.match(settings,/return <SafeAreaView edges=\{\['top'\]\}/);
   assert.match(shell,/edges=\{includeBottomInset\?\['top','bottom'\]:\['top'\]\}/);
 
   const chart=read('src/screens/StockChartScreen.tsx');
