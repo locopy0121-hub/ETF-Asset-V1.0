@@ -1,3 +1,4 @@
+import {financialTone} from '../theme/financialTone';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { type ReactNode, useEffect, useRef } from 'react';
 
@@ -59,7 +60,8 @@ export function HoldingQuoteModule({
   const miniOpen=onOpenChart??onPress;
   const cfg=wallConfig;
   const cardStyle=cfg.style;
-  const cardTone=item.previousClose>0?(change>0?'gain':change<0?'loss':'neutral'):'neutral';
+  const microPnlField=cfg.fields.find(field=>field.field==='pnl');
+  const cardTone=financialTone(change,item.quoteVerified!==false&&item.previousClose>0&&item.previousCloseKnown!==false);
   const cardBackground=linkedColor(cardStyle.backgroundColor,cardStyle.backgroundProfitColor,cardTone,systemColors);
   const cardBorder=linkedColor(cardStyle.borderColor,cardStyle.borderProfitColor,cardTone,systemColors);
   const cardSecondary=linkedColor(cardStyle.secondaryTextColor,cardStyle.secondaryTextProfitColor,cardTone,systemColors);
@@ -130,7 +132,7 @@ export function HoldingQuoteModule({
       {micro?<View style={[styles.footer,styles.microFooter,{borderTopColor:cardBorder}]}>
         <Text style={styles.microPnlLabel}>損益</Text>
         <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}
-          style={[styles.microPnlValue,{color:linkedColor(cardStyle.textColor,true,item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors)}]}>
+          style={[styles.microPnlValue,{color:microPnlField?fieldColor(microPnlField,item,change,cfg,systemColors):linkedColor(cardStyle.textColor,cardStyle.textProfitColor!==false,financialTone(item.pnl,item.quoteVerified!==false),systemColors)}]}>
           {item.quoteVerified===false?'待取得':'NT$ '+money(item.pnl)}
         </Text>
       </View>:!compact&&groups.footer.length?<View style={[styles.footer,{borderTopColor:cardBorder}]}>
@@ -189,7 +191,7 @@ function WallText({
     numberOfLines={1}
     inlineBackgroundColor={liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity??1):liveBackground}
     style={{
-      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,field.textColor==null&&header?wall.header.textOpacity??1:field.textOpacity??1),
+      color:liveBackground&&field.useProfitBackground&&field.useProfitColor?'#FFFFFF':colorWithAlpha(header&&!field.useProfitColor&&!(field.field==='symbol'?wall.style.secondaryTextProfitColor:wall.style.textProfitColor)?(field.textColor??wall.header.textColor):tone,field.textColor==null&&header?wall.header.textOpacity??1:field.textOpacity??1),
       fontSize,
       fontWeight:quotePrimary||primary?'900':'800',
       textAlign:header&&field.field==='symbol'?'left':field.align,
@@ -224,7 +226,7 @@ function WallMetric({
   const rendered=<View style={[right?styles.rightMetric:undefined,{backgroundColor:liveBackground?colorWithAlpha(liveBackground,field.backgroundOpacity??1):'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
     <Text style={[styles.footerLabel,{color:field.useProfitBackground&&liveBackground?'#FFFFFF':
       colorWithAlpha(linkedColor(field.textColor??wall.style.secondaryTextColor,wall.style.secondaryTextProfitColor,
-        item.pnl>0?'gain':item.pnl<0?'loss':'neutral',systemColors),field.textColor==null?(wall.style.secondaryTextOpacity??1):(field.textOpacity??1)),textAlign:field.align}]}>{field.label}</Text>
+        financialTone(item.pnl,item.quoteVerified!==false),systemColors),field.textColor==null?(wall.style.secondaryTextOpacity??1):(field.textOpacity??1)),textAlign:field.align}]}>{field.label}</Text>
     <EffectText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
@@ -317,7 +319,7 @@ function effectActive(effect:ItemEffectConfig,numeric:number|null){
 
 function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig,system:DisplayPrefs){
   const value=field.field==='pnl'||field.field==='roi'?item.pnl:field.field==='marketValue'?item.marketValue:change;
-  const tone=value>0?'gain':value<0?'loss':'neutral';
+  const tone=financialTone(value,item.quoteVerified!==false&&(['pnl','roi','marketValue'].includes(field.field)||(item.previousClose>0&&item.previousCloseKnown!==false)));
   const base=field.textColor??(field.field==='symbol'?wall.style.secondaryTextColor:wall.style.textColor);
   if(field.useProfitColor)return linkedColor(base,true,tone,system);
   const linked=field.field==='symbol'?wall.style.secondaryTextProfitColor:wall.style.textProfitColor;
@@ -327,7 +329,7 @@ function resolveWallBackground(field:HoldingWallFieldConfig,item:HoldingQuote,ch
   if(!field.useProfitBackground)return field.backgroundColor;
   const value=field.field==='pnl'||field.field==='roi'||field.field==='marketValue'?item.pnl:change;
   if(!Number.isFinite(value)||(field.field!=='pnl'&&field.field!=='roi'&&field.field!=='marketValue'&&!(item.previousClose>0)))return field.backgroundColor;
-  return linkedColor(field.backgroundColor??system.neutralColor,true,value>0?'gain':value<0?'loss':'neutral',system);
+  return linkedColor(field.backgroundColor??system.neutralColor,true,financialTone(value,item.quoteVerified!==false&&(['pnl','roi','marketValue'].includes(field.field)||(item.previousClose>0&&item.previousCloseKnown!==false))),system);
 }
 function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:null;

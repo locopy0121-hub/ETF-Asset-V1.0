@@ -13,7 +13,7 @@ export function simulatedVisualTone(state:SimulationState,actual:FinancialTone):
 // Without an active simulation, retain the legacy distinction between a manually
 // selected linked-color tone and the MetricTile's real-value fallback color.
 export function resolveNativeMetricTones(
-  realTone:'default'|'gain'|'loss',configuredTone:'auto'|FinancialTone|undefined,
+  realTone:'default'|'gain'|'loss'|'neutral',configuredTone:'auto'|FinancialTone|undefined,
   simulationTone:FinancialTone|undefined,
 ):Readonly<{linked:FinancialTone;fallback:FinancialTone}>{
   const source:FinancialTone=realTone==='default'?'neutral':realTone;

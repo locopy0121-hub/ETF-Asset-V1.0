@@ -1,3 +1,4 @@
+import type {FinancialTone} from '../maintenance/workspaceModel';
 import {Children,cloneElement,isValidElement,type ComponentProps,type ReactElement,type ReactNode} from 'react';
 import { Pressable,StyleSheet,Text,type TextStyle,View } from 'react-native';
 
@@ -28,7 +29,7 @@ import {formatDisplayNumber} from '../maintenance/numberDisplay';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
-function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root'):ReactNode {
+function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root',frameTone:FinancialTone='neutral'):ReactNode {
   return Children.map(node,(child,index)=>{
     if(!isValidElement(child))return child;
     const part=child.key!==null?String(child.key):String(index);
@@ -119,7 +120,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         const isDataValue=/NT\$\s*[-+]?\s*[\d,]+(?:\.\d+)?|^[+-]?[\d,]+(?:\.\d+)?%?$/.test(content)
           ||!!raw?.fontVariant?.includes('tabular-nums');
         const target:InspectedTarget={
-          id:'text:'+nodeId,kind:isDataValue?'value':'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+          profitTone:frameTone,id:'text:'+nodeId,kind:isDataValue?'value':'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
           properties:[{name:'原畫面文字',value:content,readOnly:true},{name:'原字號',value:size+' px',readOnly:true},
             {name:'原文字顏色',value:color,readOnly:true},
             ...(isDataValue?[{name:'資料保護',value:'原始數值不可由文字工具覆寫',readOnly:true}]:[])],
@@ -173,7 +174,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
     const props=child.props as {children?:ReactNode};
     if(props.children!==undefined){
       return cloneElement(child as ReactElement<{children?:ReactNode}>,{
-        children:decorateContent(props.children,frame,nodeId),
+        children:decorateContent(props.children,frame,nodeId,frameTone),
       });
     }
     return child;
@@ -224,7 +225,7 @@ export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;fra
           <Text style={{fontSize:17}}>🔧</Text>
         </Pressable>:null}
       </View>,
-      children:<>{decorateContent(item.element.props.children,frame)}
+      children:<>{decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
         {instances.length?<InstalledFrameComponents instances={instances} frame={frame} enabled={engineer.enabled}
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
           onWrench={id=>open(id)}/>:null}

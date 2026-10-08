@@ -19,12 +19,12 @@ export function DashboardProfitDetail({rows,layout,onMore,maintenance}:{
   return <View style={styles.root}>
     {shown.map((row,index)=><View key={row.key}
       style={[styles.row,{minHeight:layout.rowHeight,paddingHorizontal:layout.rowPaddingHorizontal,gap:layout.rowGap},index>0&&styles.rowBorder]}>
-      <DashboardEditableText id={'detail-label-'+row.key} label={row.label+' 標題'} frame={maintenance}
+      <DashboardEditableText tone={row.tone??'neutral'} id={'detail-label-'+row.key} label={row.label+' 標題'} frame={maintenance}
         numberOfLines={1} style={[styles.label,{fontSize:layout.labelFontSize,color:layout.labelColor,textAlign:layout.align}]}>{row.label}</DashboardEditableText>
       <DashboardEditableText id={'detail-value-'+row.key} label={row.label+' 數值'} frame={maintenance} kind="value"
         tone={row.tone??'neutral'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}
         style={[styles.value,{fontSize:layout.valueFontSize,textAlign:layout.align,
-          color:row.tone==='gain'?colors.gain:row.tone==='loss'?colors.loss:layout.valueColor}]}>{row.value}</DashboardEditableText>
+          color:row.tone==='gain'?colors.gain:row.tone==='loss'?colors.loss:row.tone==='neutral'?colors.flat:layout.valueColor}]}>{row.value}</DashboardEditableText>
     </View>)}
     {layout.showMore?<Pressable accessibilityRole="button" onPress={onMore} disabled={!onMore} style={styles.more}>
       <DashboardEditableText id="detail-more" label="查看更多" frame={maintenance} style={styles.moreText}>查看更多 ›</DashboardEditableText>

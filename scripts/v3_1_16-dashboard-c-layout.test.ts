@@ -49,11 +49,11 @@ for(const token of ['DashboardAssetOverview','DashboardProfitAnalysis','Dashboar
   assert.ok(layoutTool.includes(token),'real layout workbench missing dashboard module '+token);
 assert.match(layoutTool,/wallConfig=\{wall\}/,'holding wall keeps its independent live draft config');
 
-// Holding-wall editor and floating preview stay frozen. V3.2.11 intentionally extends the
-// real collection renderer only with layout-edit selection passthrough so Page Settings
-// can render the same collection path as the live page. No quote/accounting data is changed.
+// Holding-wall editor and floating preview stay frozen. V4.0.7 updates only the
+// collection visual-tone/override path; actual render coverage is in test:v4_0_7.
+// Accounting core and layout boundaries remain frozen.
 assert.equal(gitBlob('src/components/HoldingMarketWallEditor.tsx'),'e8f4d4ba19bec21e79d6b8e0ca8e3ca0241a8466');
-assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'9127e9205df8bac7d76d1c9bf70c23313592e5ce');
+assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'2cda7a131c60f985cc0342bcf11394caa1895c81');
 assert.equal(gitBlob('src/components/FloatingHoldingCardPreview.tsx'),'951e2ab7f04fb1b000aef7377d4df5327187a488');
 const uiModels=read('src/domain/uiModels.ts');
 for(const visualFlag of ['backgroundProfitColor','textProfitColor','secondaryTextProfitColor','borderProfitColor','useProfitColor','useProfitBackground'])

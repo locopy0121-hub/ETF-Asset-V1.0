@@ -1,8 +1,9 @@
+import {financialTone} from '../theme/financialTone';
 import { ScrollView,StyleSheet,Text,useWindowDimensions, View } from 'react-native';
 import {useState} from 'react';
 import {HoldingQuoteTicker} from './HoldingQuoteTicker';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
-import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance} from '../maintenance/inspectionModel';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingWallConfig, type QuoteModuleStyle } from '../domain/uiModels';
@@ -46,15 +47,19 @@ export function HoldingQuoteCollection({
     const cardConfig=cardReset?DEFAULT_HOLDING_WALL_CONFIG:effectiveWallConfig;
     const cardBadges=cardReset?DEFAULT_ETF_BADGES:effectiveBadgeConfig;
     const card=cardConfig.style;
-    const render=(appearance?:TargetAppearance)=>{
+    const render=(appearance?:TargetAppearance,override?:TargetOverride)=>{
+      const textOverride=override?.textColor!==undefined||override?.textProfitColor!==undefined;
       const adjusted=appearance?{
         ...cardConfig,
         style:{...card,
           backgroundColor:appearance.backgroundColor,textColor:appearance.textColor,
           borderColor:appearance.borderColor,borderWidth:appearance.borderWidth,
-          cornerRadius:appearance.borderRadius,padding:appearance.padding},
+          cornerRadius:appearance.borderRadius,padding:appearance.padding,
+          ...(textOverride?{textProfitColor:false,secondaryTextProfitColor:false}:{}),
+          ...(!appearance.useProfitColor?{textProfitColor:false,secondaryTextProfitColor:false}:{})},
         fields:cardConfig.fields.map(field=>({...field,fontScale:field.fontScale*appearance.fontSize/16,
-          useProfitColor:appearance.useProfitColor?field.useProfitColor:false})),
+          ...(textOverride?{textColor:appearance.textColor}:{}),
+          useProfitColor:!textOverride&&appearance.useProfitColor?field.useProfitColor:false})),
       }:cardConfig;
       return <HoldingQuoteModule item={item} style={safeHoldingStyle(micro?'grid3':'list',cardReset?'quote':style)}
         layout={holdingCardLayout(micro?'grid3':narrow?'grid2':'list')}
@@ -64,6 +69,7 @@ export function HoldingQuoteCollection({
     };
     if(!maintenance)return render();
     const target:InspectedTarget={
+      profitTone:financialTone(item.price-item.previousClose,item.quoteVerified!==false&&item.previousClose>0&&item.previousCloseKnown!==false),
       id:'quote:'+item.symbol,kind:'quote-card',label:item.symbol+' '+item.name,
       page:maintenance.page,frameKey:maintenance.frameKey,frameTitle:maintenance.frameTitle,
       properties:[
@@ -77,7 +83,7 @@ export function HoldingQuoteCollection({
         textColor:card.textColor,backgroundColor:card.backgroundColor,borderColor:card.borderColor,
         borderWidth:card.borderWidth,borderRadius:card.cornerRadius,padding:card.padding},
     };
-    return <InspectableTarget key={target.id} target={target} frame={maintenance}>{(appearance,customized)=>render(customized?appearance:undefined)}</InspectableTarget>;
+    return <InspectableTarget key={target.id} target={target} frame={maintenance}>{(appearance,customized,override)=>render(customized?appearance:undefined,override)}</InspectableTarget>;
   };
   const content=(()=>{
     if(layoutMode==='horizontal'){

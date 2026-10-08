@@ -28,7 +28,7 @@ export function DashboardAssetOverview({
   const runtime=useLayoutRuntime();
   const [cardSize,setCardSize]=useState<{width:number;height:number}|null>(null);
   const colorPrefs=useSettingsRuntime().prefs.display;
-  const totalTone=financialTone(totalPnl);
+  const totalTone=financialTone(pnlComplete?totalPnl:null);
   const yesterdayTone=financialTone(yesterdayPnl);
   const todayTone=financialTone(todayPnl);
   const cardId='dashboard:overview-card';
@@ -44,14 +44,14 @@ export function DashboardAssetOverview({
 
   const pnlSummary=pnlComplete?<View style={styles.pnlRow} accessibilityLabel={`昨日損益 ${displayPnl(yesterdayPnl)}，今日損益 ${displayPnl(todayPnl)}，持股總損益 ${signedMoney(totalPnl)}`}>
     <View style={styles.pnlCell}>
-      <DashboardEditableText id="overview-previous-pnl-label" label="昨日損益標題" frame={maintenance}
+      <DashboardEditableText tone={yesterdayTone} id="overview-previous-pnl-label" label="昨日損益標題" frame={maintenance}
         style={styles.pnlLabel}>昨日損益</DashboardEditableText>
       <DashboardEditableText id="overview-previous-pnl" label="昨日單日損益" frame={maintenance} kind="value" tone={yesterdayTone}
         numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.pnlValue,{color:pnlColor(yesterdayPnl)}]}>{displayPnl(yesterdayPnl)}</DashboardEditableText>
     </View>
     <Text style={styles.operator}>│</Text>
     <View style={styles.pnlCell}>
-      <DashboardEditableText id="overview-today-pnl-label" label="今日損益標題" frame={maintenance}
+      <DashboardEditableText tone={todayTone} id="overview-today-pnl-label" label="今日損益標題" frame={maintenance}
         style={styles.pnlLabel}>今日損益</DashboardEditableText>
       <DashboardEditableText id="overview-today-pnl" label="今日單日損益" frame={maintenance} kind="value" tone={todayTone}
         numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.pnlValue,{color:pnlColor(todayPnl)}]}>{displayPnl(todayPnl)}</DashboardEditableText>
@@ -66,7 +66,7 @@ export function DashboardAssetOverview({
       <DashboardEditableText id="overview-total-pnl" label="持股總損益" frame={maintenance} kind="value" tone={totalTone}
         numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.totalPnlValue,{color:pnlColor(totalPnl)}]}>{signedMoney(totalPnl)}</DashboardEditableText>
     </Pressable>
-  </View>:<DashboardEditableText id="overview-pnl-pending" label="損益狀態" frame={maintenance}
+  </View>:<DashboardEditableText tone={totalTone} id="overview-pnl-pending" label="損益狀態" frame={maintenance}
     style={styles.pnlPending}>損益待核對</DashboardEditableText>;
 
   const renderItem=(item:DashboardLayoutConfig['overview']['order'][number])=>{

@@ -1,4 +1,4 @@
-import {portfolioFrameTone} from '../theme/financialTone';
+import {portfolioFrameTone,financialTone} from '../theme/financialTone';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -99,16 +99,16 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const dashboardLayout=effectiveDisplay.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
   const dashboardKpis=[
-    {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const,glyph:'↗'},
-    {key:'totalPnl',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'未實現＋已實現＋股息',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const,glyph:'%'},
-    {key:'totalUnrealizedProfit',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'估計清算後',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const,glyph:'▥'},
+    {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:financialTone(portfolio.realizedNetPnL),glyph:'↗'},
+    {key:'totalPnl',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'未實現＋已實現＋股息',tone:financialTone(portfolio.totalPnl,valuationComplete),glyph:'%'},
+    {key:'totalUnrealizedProfit',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'估計清算後',tone:financialTone(portfolio.totalUnrealizedProfit,valuationComplete),glyph:'▥'},
     {key:'totalMarketValue',label:'持股市值',value:valuationComplete?money(portfolio.totalMarketValue):'待核對',caption:'持股行情＋股數',glyph:'◔'},
   ];
   const dashboardProfitRows=[
-    {key:'price',label:'純價差未實現',value:valuationComplete?money(portfolio.totalPriceUnrealizedProfit):'待核對',tone:portfolio.totalPriceUnrealizedProfit>=0?'gain' as const:'loss' as const},
-    {key:'net',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',tone:portfolio.totalUnrealizedProfit>=0?'gain' as const:'loss' as const},
-    {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:portfolio.realizedNetPnL>=0?'gain' as const:'loss' as const},
-    {key:'total',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:portfolio.totalPnl>=0?'gain' as const:'loss' as const},
+    {key:'price',label:'純價差未實現',value:valuationComplete?money(portfolio.totalPriceUnrealizedProfit):'待核對',tone:financialTone(portfolio.totalPriceUnrealizedProfit,valuationComplete)},
+    {key:'net',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',tone:financialTone(portfolio.totalUnrealizedProfit,valuationComplete)},
+    {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:financialTone(portfolio.realizedNetPnL)},
+    {key:'total',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:financialTone(portfolio.totalPnl,valuationComplete)},
   ];
   const transactionCountBySymbol=useMemo(()=>{
     const counts=new Map<string,number>();

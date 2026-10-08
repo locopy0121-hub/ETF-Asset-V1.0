@@ -102,14 +102,14 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
     </FrameCard>},
       {key:'holding-detail-pnl',element:<FrameCard title="損益拆解" tone={financialTone(holding.pricePnl,holding.quoteVerified!==false)}>
       <View style={styles.metrics}>
-        <MetricTile label="純價差損益" value={holding.quoteVerified===false?'待核對':money(holding.pricePnl)} caption="毛市值－純成交成本" tone={holding.pricePnl>=0?'gain':'loss'}/>
-        <MetricTile label="淨清算未實現" value={holding.quoteVerified===false?'待核對':money(holding.pnl)} caption={(holding.roi>=0?'+':'')+holding.roi.toFixed(2)+'%'} tone={holding.pnl>=0?'gain':'loss'}/>
-        <MetricTile label="已實現" value={money(holding.realizedPnl)} caption="歷史賣出" tone={holding.realizedPnl>=0?'gain':'loss'}/>
-        <MetricTile label="含息總損益" value={holding.quoteVerified===false?'待核對':money(holding.comprehensivePnl)} caption="Canonical" tone={holding.comprehensivePnl>=0?'gain':'loss'}/>
+        <MetricTile label="純價差損益" value={holding.quoteVerified===false?'待核對':money(holding.pricePnl)} caption="毛市值－純成交成本" tone={financialTone(holding.pricePnl,holding.quoteVerified!==false)}/>
+        <MetricTile label="淨清算未實現" value={holding.quoteVerified===false?'待核對':money(holding.pnl)} caption={(holding.roi>=0?'+':'')+holding.roi.toFixed(2)+'%'} tone={financialTone(holding.pnl,holding.quoteVerified!==false)}/>
+        <MetricTile label="已實現" value={money(holding.realizedPnl)} caption="歷史賣出" tone={financialTone(holding.realizedPnl)}/>
+        <MetricTile label="含息總損益" value={holding.quoteVerified===false?'待核對':money(holding.comprehensivePnl)} caption="Canonical" tone={financialTone(holding.comprehensivePnl,holding.quoteVerified!==false)}/>
       </View>
     </FrameCard>},
       {key:'holding-detail-dividend',element:<FrameCard title="股息" tone={financialTone(holding.cumulativeDividend)}>
-      <View style={styles.metrics}><MetricTile label="累積淨股息" value={money(holding.cumulativeDividend)} caption="NT$" tone="gain"/><MetricTile label="持股占比" value={finance.valuationComplete?holding.weight.toFixed(1)+'%':'待核對'} caption="目前組合"/></View>
+      <View style={styles.metrics}><MetricTile label="累積淨股息" value={money(holding.cumulativeDividend)} caption="NT$" tone={financialTone(holding.cumulativeDividend)}/><MetricTile label="持股占比" value={finance.valuationComplete?holding.weight.toFixed(1)+'%':'待核對'} caption="目前組合"/></View>
     </FrameCard>},
       {key:'holding-detail-history',element:<FrameCard title="交易與股息紀錄">
       {history.length?history.slice(0,12).map(entry=><View key={entry.id} style={styles.historyRow}>

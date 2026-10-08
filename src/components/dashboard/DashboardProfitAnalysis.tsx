@@ -4,7 +4,7 @@ import type {FrameMaintenanceContext,TargetOverride} from '../../maintenance/ins
 import {DashboardEditableMetric} from './DashboardEditableContent';
 
 export type DashboardKpi=Readonly<{
-  key:string;label:string;value:string;caption:string;tone?:'gain'|'loss';
+  key:string;label:string;value:string;caption:string;tone?:'gain'|'loss'|'neutral';
   glyph:string;
 }>;
 

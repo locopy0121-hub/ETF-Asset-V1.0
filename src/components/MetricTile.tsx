@@ -15,7 +15,7 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {resolveSystemProfitColors} from '../settings/systemColorPalette';
 
 export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone,previewTap=false}:{
-  label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';
+  label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss'|'neutral';
   editorStyle?:TargetOverride;simulationTone?:FinancialTone;previewTap?:boolean; // ephemeral preview only
 }){
   const theme=useThemeRuntime();
@@ -31,7 +31,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   const nativeTones=resolveNativeMetricTones(tone,editorStyle?.profitToneOverride,simulationTone);
   const actualTone=nativeTones.linked;
   const colorPrefs=resolveSystemProfitColors(settings.prefs.display);
-  const toneColor=nativeTones.fallback==='gain'?colorPrefs.gainColor:nativeTones.fallback==='loss'?colorPrefs.lossColor:theme.palette.text;
+  const toneColor=nativeTones.fallback==='gain'?colorPrefs.gainColor:nativeTones.fallback==='loss'?colorPrefs.lossColor:tone==='neutral'||simulationTone==='neutral'?colorPrefs.neutralColor:theme.palette.text;
   const textColor=editorStyle?.useProfitColor===false?editorStyle.textColor:tone!=='default'||simulationTone?toneColor:editorStyle?.textColor??theme.palette.text;
   const effectiveTextColor=editorStyle?.textProfitColor===true?
     linkedColor(editorStyle.textColor??theme.palette.text,true,actualTone,colorPrefs):

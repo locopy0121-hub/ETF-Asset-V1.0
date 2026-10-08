@@ -54,9 +54,10 @@ export function DashboardEditableText({
   };
   const renderDirect=(override:TargetOverride|undefined)=>{
     const appearance=mergeTargetAppearance(directBase,override);
-    const effectiveTextColor=linkedColor(appearance.textColor,appearance.textProfitColor,tone,colorPrefs);
-    const effectiveBackground=linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,tone,colorPrefs);
-    const effectiveBorder=linkedColor(appearance.borderColor,appearance.borderProfitColor,tone,colorPrefs);
+    const directTone=override?.profitToneOverride&&override.profitToneOverride!=='auto'?override.profitToneOverride:tone;
+    const effectiveTextColor=linkedColor(appearance.textColor,appearance.textProfitColor,directTone,colorPrefs);
+    const effectiveBackground=linkedColor(appearance.backgroundColor,appearance.backgroundProfitColor,directTone,colorPrefs);
+    const effectiveBorder=linkedColor(appearance.borderColor,appearance.borderProfitColor,directTone,colorPrefs);
     const text=kind==='value'&&override?.displayUnit&&appearance.displayUnit!=='original'?
       formatDisplayNumber(original,appearance.displayUnit,appearance.displayDigits,true):
       kind==='prefix'&&override?.prefixText!==undefined?appearance.prefixText:original;
@@ -141,7 +142,7 @@ export function DashboardEditableText({
 export function DashboardEditableMetric({
   id,frame,label,value,caption,tone='default',pageStyle,
 }:{
-  id:string;frame?:FrameMaintenanceContext|undefined;label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss';pageStyle:TargetOverride;
+  id:string;frame?:FrameMaintenanceContext|undefined;label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss'|'neutral';pageStyle:TargetOverride;
 }){
   const layoutRuntime=useLayoutRuntime();
   const targetId=`dashboard:${id}`;

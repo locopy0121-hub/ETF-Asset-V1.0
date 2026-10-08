@@ -2,9 +2,9 @@ import {useSystemColors} from '../theme/useSystemColors';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '../theme/tokens';
 
-export function ValueRow({label,value,subvalue,tone='default'}:{label:string;value:string;subvalue?:string;tone?:'default'|'gain'|'loss'}){
+export function ValueRow({label,value,subvalue,tone='default'}:{label:string;value:string;subvalue?:string;tone?:'default'|'gain'|'loss'|'neutral'}){
   const colors=useSystemColors();
-  const c=tone==='gain'?colors.gain:tone==='loss'?colors.loss:colors.text;
+  const c=tone==='gain'?colors.gain:tone==='loss'?colors.loss:tone==='neutral'?colors.flat:colors.text;
   return <View style={styles.row}>
     <Text style={styles.label}>{label}</Text>
     <View style={styles.values}><Text style={[styles.value,{color:c}]}>{value}</Text>{subvalue?<Text style={styles.sub}>{subvalue}</Text>:null}</View>

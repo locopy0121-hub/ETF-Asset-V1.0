@@ -1,4 +1,4 @@
-import {portfolioFrameTone} from '../theme/financialTone';
+import {portfolioFrameTone,financialTone} from '../theme/financialTone';
 import {useSystemColors} from '../theme/useSystemColors';
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -150,7 +150,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
               <MetricTile label="總市值" value={valuationComplete?money(portfolio.totalMarketValue):"估值待核對"} caption="NT$"/>
               <MetricTile label="純成交成本" value={money(portfolio.totalTradeCost)} caption="不含費"/>
               <MetricTile label="含費成本" value={money(portfolio.totalInvestmentCost)} caption="Canonical"/>
-              <MetricTile label="含息總損益" value={valuationComplete?money(portfolio.totalPnl):"估值待核對"} caption="已實現＋未實現＋股息" tone={portfolio.totalPnl>=0?'gain':'loss'}/>
+              <MetricTile label="含息總損益" value={valuationComplete?money(portfolio.totalPnl):"估值待核對"} caption="已實現＋未實現＋股息" tone={financialTone(portfolio.totalPnl,valuationComplete)}/>
             </View>
           </FrameCard>
         },
@@ -262,15 +262,15 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
         <ResultRow label="試算後股數" value={money(scenario.newShares)}/>
         <ResultRow label="試算後純成交均價" value={scenario.averageTradePrice.toFixed(2)} strong/>
         <ResultRow label="試算後含費成本均價" value={scenario.averageCostPerShare.toFixed(2)} strong/>
-        <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={scenario.priceUnrealizedProfit>=0?'gain':'loss'}/>
-        <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={scenario.cashUnrealizedProfit>=0?'gain':'loss'}/>
+        <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={financialTone(scenario.priceUnrealizedProfit)}/>
+        <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={financialTone(scenario.cashUnrealizedProfit)}/>
       </View>:<View style={styles.result}><Text style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text style={styles.resultValue}>—</Text></View>}
     </View></View>
   </Modal>;
 }
 function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
-function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'}){
-  const colors=useSystemColors();return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss}]}>{value}</Text></View>}
+function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'|'neutral'}){
+  const colors=useSystemColors();return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss},tone==='neutral'&&{color:colors.flat}]}>{value}</Text></View>}
 
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
