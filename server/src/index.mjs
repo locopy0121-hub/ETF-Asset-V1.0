@@ -6,6 +6,7 @@ import {MarketJobs} from './jobs.mjs';
 import {makeApp} from './http.mjs';
 import {EtfNavService} from './nav.mjs';
 import {VALID_SYMBOL} from './parser.mjs';
+import {EtfHoldingsService,registerEtfHoldingsApi} from './etfHoldings.mjs';
 
 const port=Number(process.env.PORT||8080);
 const store=new MarketStore();
@@ -16,7 +17,11 @@ const navService=new EtfNavService();
 const jobs=new MarketJobs({store,sources,navService,
   staticSymbols:(process.env.MARKET_TRACKED_SYMBOLS??'').split(','),
   pollSeconds:process.env.MARKET_POLL_SECONDS});
-const server=http.createServer(makeApp({store,jobs,sources,navService}));
+const app=makeApp({store,jobs,sources,navService});
+const etfHoldings=new EtfHoldingsService({pg:store.pg,redis:store.redis,
+  symbols:(process.env.ETF_TRACKED_SYMBOLS??process.env.MARKET_TRACKED_SYMBOLS??'0050,0056,00878,00919,00929,00713').split(',').map(value=>value.trim())});
+registerEtfHoldingsApi(app,etfHoldings);
+const server=http.createServer(app);
 const wss=new WebSocketServer({noServer:true,maxPayload:1024});
 const allSockets=new Set();
 server.on('upgrade',(request,socket,head)=>{
@@ -64,10 +69,11 @@ server.listen(port,'0.0.0.0',()=>console.log(
   '; public endpoints never receive the private Ledger',
 ));
 jobs.start();
+etfHoldings.start();
 let shuttingDown=false;
 async function shutdown(){
   if(shuttingDown)return;shuttingDown=true;
-  jobs.stop();clearInterval(heartbeat);
+  jobs.stop();etfHoldings.stop();clearInterval(heartbeat);
   for(const ws of allSockets)ws.close(1001,'service closing');
   wss.close();
   await new Promise(resolve=>server.close(resolve));

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {nextEtfConstituentCheck,shouldRefreshEtfConstituents} from '../src/market/etfConstituentPolicy';
+const at=(value:string)=>Date.parse(value+'+08:00');
+assert.equal(nextEtfConstituentCheck(at('2026-10-09T13:19:00')),at('2026-10-09T13:20:00'));
+assert.equal(nextEtfConstituentCheck(at('2026-10-09T13:20:00')),at('2026-10-09T14:30:00'));
+assert.equal(nextEtfConstituentCheck(at('2026-10-09T14:30:00')),at('2026-10-12T08:30:00'));
+assert.equal(nextEtfConstituentCheck(at('2026-10-10T10:00:00')),at('2026-10-12T08:30:00'));
+assert.equal(shouldRefreshEtfConstituents(at('2026-10-08T13:21:00'),at('2026-10-08T14:30:00')),true);
+assert.equal(shouldRefreshEtfConstituents(null,at('2026-10-08T10:00:00')),true,'new holding downloads immediately');
+assert.equal(shouldRefreshEtfConstituents(at('2026-10-08T10:00:00'),at('2026-10-08T13:20:00')),true,'pre-close checkpoint is not skipped by morning cache');
+assert.equal(shouldRefreshEtfConstituents(at('2026-10-08T13:21:00'),at('2026-10-08T14:00:00')),false,'quote ticks must not trigger new downloads');
+assert.equal(shouldRefreshEtfConstituents(at('2026-10-08T13:21:00'),at('2026-10-09T09:00:00')),true,'foreground catches up after an overnight suspension');
+console.log('New holdings / Taipei pre-close / weekend / foreground refresh policy: PASS');

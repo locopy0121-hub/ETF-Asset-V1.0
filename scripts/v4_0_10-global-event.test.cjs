@@ -24,6 +24,6 @@ assert.doesNotMatch(overlay,/coerceIn\(1L,30_000L\)/,'Mini/Monitor expiry must n
 assert.match(stream,/onProviderDegraded\(event\.health\)/,'provider failure must trigger SaiETF fallback without JS polling');
 assert.match(presentation,/now-at>30_000L/,'native surfaces must label a quiet last trade as delayed');
 assert.match(presentation,/updatedAt[\s\S]*30_000L/,'native floating surfaces must redraw once at the source freshness deadline');
-assert.ok(/^4\.0\.(10|11|12)$/.test(pkg.version));
+assert.ok(/^4\.0\.(10|11|12|13)$/.test(pkg.version));
 assert.equal(appIdentity.expo.android.versionCode,40000+Number(pkg.version.split('.')[2]));
 console.log('V4.0.10 global event updates contract PASS');

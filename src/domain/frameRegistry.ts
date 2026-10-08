@@ -30,6 +30,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'holding-detail-header', title:'個股資訊表頭', description:'個股名稱、代號、返回與編輯入口；與庫存主頁表頭獨立保存' },
     { key:'holding-detail-quote', title:'個股即時行情', description:'即時價格、漲跌、來源、圖表樣式、資料來源與歷史圖表' },
     { key:'holding-detail-info', title:'個股持股資訊', description:'持有股數、純成交均價、含費成本均價與目前市值' },
+    { key:'holding-detail-constituents', title:'ETF 成分股', description:'成分股名稱、代號、權重、資料日期、來源與完整清單' },
     { key:'holding-detail-pnl', title:'個股損益拆解', description:'純價差、淨清算、已實現與含息總損益' },
     { key:'holding-detail-dividend', title:'個股股息資訊', description:'累積淨股息與持股占比' },
     { key:'holding-detail-history', title:'個股交易與股息紀錄', description:'此標的歷史買賣與股息摘要' },

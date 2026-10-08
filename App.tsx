@@ -33,6 +33,7 @@ import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsCon
 import { colors, spacing } from './src/theme/tokens';
 import { ThemeRuntimeProvider, useThemeRuntime } from './src/theme/ThemeRuntime';
 import { ThemeBackgroundLayer } from './src/theme/ThemeBackgroundLayer';
+import {EtfConstituentsSync} from './src/market/EtfConstituentsRuntime';
 import { consumeNativeMarketForceRefreshRequests, subscribeNativeMarketRefreshRequests, syncNativeMonitor, syncNativeWidget } from './src/native/TfAssetNativeBridge';
 
 type NativeSurfaceSyncJob<TConfig>=Readonly<{config:TConfig;snapshot:SharedSnapshot}>;
@@ -81,7 +82,7 @@ export default function App() {
       <BrokerSettingsRuntimeProvider>
       <FinanceProvider>
       <PageEditorProvider>
-        <DiagnosticsProvider><MaintenanceProvider><AppBody/></MaintenanceProvider></DiagnosticsProvider>
+        <DiagnosticsProvider><EtfConstituentsSync/><MaintenanceProvider><AppBody/></MaintenanceProvider></DiagnosticsProvider>
       </PageEditorProvider>
       </FinanceProvider>
       </BrokerSettingsRuntimeProvider>

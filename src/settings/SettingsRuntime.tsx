@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {normalizeEtfHoldingsApiUrl} from '../market/etfConstituents';
 import type { MainPageKey } from '../domain/pageRegistry';
 import type { DividendCalendarPrefs } from '../dividend/dividendCalendar';
 import { normalizeControlPrefs, patchAiPrefs, patchPageTitle, resetLimitedPreferences } from './settingsControlBehavior';
@@ -43,6 +44,7 @@ export type TradeDefaults=Readonly<{
 export type AiPrefs=Readonly<{enabled:boolean;floatingButton:boolean}>;
 export type NavigationPrefs=Readonly<{swipeEnabled:boolean;swipeThreshold:number;swipeEdgeOnly:boolean}>;
 export type SettingsPrefs=Readonly<{
+  etfHoldingsApiUrl?:string;
   schema:1;
   engineerEnabled:boolean;
   pageTitles:Partial<Record<MainPageKey,string>>;
@@ -103,6 +105,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
   const fontScale=Math.max(0.8,Math.min(1.4,Number(d?.fontScale??DEFAULT_SETTINGS.display.fontScale)));
   const color=(value:unknown,fallback:string)=>typeof value==='string'&&/^#[0-9A-Fa-f]{6}$/.test(value)?value.toUpperCase():fallback;
   return {
+    etfHoldingsApiUrl:normalizeEtfHoldingsApiUrl(typeof input?.etfHoldingsApiUrl==='string'?input.etfHoldingsApiUrl:''),
     schema:1,
     engineerEnabled:input?.engineerEnabled===true,
     pageTitles:controls.pageTitles,
@@ -146,6 +149,7 @@ function normalize(input:Partial<SettingsPrefs>|null|undefined):SettingsPrefs{
 }
 
 type SettingsRuntimeValue=Readonly<{
+  patchEtfHoldingsApiUrl:(url:string)=>void;
   hydrated:boolean;
   prefs:SettingsPrefs;
   patchEngineerEnabled:(enabled:boolean)=>void;
@@ -191,6 +195,7 @@ export function SettingsRuntimeProvider({children}:PropsWithChildren){
     patchNotifications:patch=>setPrefs(current=>normalize({...current,notifications:{...current.notifications,...patch}})),
     patchDisplay:patch=>setPrefs(current=>normalize({...current,display:{...current.display,...patch}})),
     patchMarketCard:patch=>setPrefs(current=>normalize({...current,marketCard:{...current.marketCard,...patch}})),
+    patchEtfHoldingsApiUrl:url=>setPrefs(current=>normalize({...current,etfHoldingsApiUrl:url})),
     patchTradeDefaults:patch=>setPrefs(current=>normalize({...current,tradeDefaults:{...current.tradeDefaults,...patch}})),
     patchPageTitle:(page,title)=>setPrefs(current=>normalize(patchPageTitle(current,page,title))),
     patchAi:patch=>setPrefs(current=>normalize(patchAiPrefs(current,patch))),

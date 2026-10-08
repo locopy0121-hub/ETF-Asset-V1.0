@@ -41,6 +41,7 @@ export class MarketStore extends EventEmitter{
     await this.pg.query(sql);
     await this.pg.query(metadataSql);
     await this.pg.query(multiSourceSql);
+    await this.pg.query(await readFile(fileURLToPath(new URL('../sql/004_etf_holdings.sql',import.meta.url)),'utf8'));
     if(this.redis){
       try{await Promise.race([this.redis.connect(),new Promise((_,reject)=>
         setTimeout(()=>reject(new Error('Redis connect timeout')),4_000))]);

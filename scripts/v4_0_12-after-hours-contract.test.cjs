@@ -15,13 +15,13 @@ assert.match(runtime,/time\.isBefore\(LocalTime\.of\(13, 30\)\)/,
 assert.doesNotMatch(runtime,/!time\.isAfter\(LocalTime\.of\(13, 30\)\)/,
   'Android must not keep the whole 13:30 minute live');
 
-assert.equal(pkg.version,'4.0.12');
-assert.equal(app.expo.version,'4.0.12');
-assert.equal(app.expo.android.versionCode,40012);
-assert.equal(app.expo.ios.buildNumber,'40012');
-assert.match(workflow,/TF Asset V4\.0\.12 CI \/ QA APK/);
-assert.match(workflow,/TF-Asset-V4\.0\.12-QA\.apk/);
-assert.match(workflow,/versionCode='40012'/);
-assert.match(workflow,/versionName='4\.0\.12'/);
+assert.match(pkg.version,/^4\.0\.(12|13)$/);
+assert.equal(app.expo.version,pkg.version);
+assert.equal(app.expo.android.versionCode,40000+Number(pkg.version.split('.')[2]));
+assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
+assert.match(workflow,/TF Asset V4\.0\.(12|13) CI \/ QA APK/);
+assert.match(workflow,/TF-Asset-V4\.0\.(12|13)-QA\.apk/);
+assert.match(workflow,/versionCode='400(12|13)'/);
+assert.match(workflow,/versionName='4\.0\.(12|13)'/);
 
 console.log('V4.0.12 exclusive 13:30 boundary / release identity / CI artifact contract: PASS');

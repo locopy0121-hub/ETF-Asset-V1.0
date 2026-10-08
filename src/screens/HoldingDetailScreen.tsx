@@ -18,6 +18,8 @@ import { ledgerDisplayAmount, useFinance } from '../finance/FinanceRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 import {PAGE_FRAMES} from '../domain/frameRegistry';
+import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
+import {isEtfSymbol} from '../market/etfConstituents';
 
 const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const monthsByRange:Record<HoldingChartRange,number>={'1月':1,'3月':3,'6月':6,'1年':12};
@@ -100,6 +102,7 @@ export function HoldingDetailScreen({holding:initialHolding,onBack}:{holding:Hol
         <MetricTile label="目前市值" value={holding.quoteVerified===false?'待核對':money(holding.marketValue)} caption="NT$"/>
       </View>
     </FrameCard>},
+      ...(isEtfSymbol(holding.symbol)?[{key:'holding-detail-constituents',element:<FrameCard title="ETF 成分股"><EtfConstituentsContent key={holding.symbol} symbol={holding.symbol} name={holding.name}/></FrameCard>}]:[]),
       {key:'holding-detail-pnl',element:<FrameCard title="損益拆解" tone={financialTone(holding.pricePnl,holding.quoteVerified!==false)}>
       <View style={styles.metrics}>
         <MetricTile label="純價差損益" value={holding.quoteVerified===false?'待核對':money(holding.pricePnl)} caption="毛市值－純成交成本" tone={financialTone(holding.pricePnl,holding.quoteVerified!==false)}/>
