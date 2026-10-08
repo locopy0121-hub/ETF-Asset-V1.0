@@ -4,6 +4,7 @@ import {Alert,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
+import type {PortfolioPrimaryMode} from '../domain/portfolioModeSwitch';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
@@ -47,10 +48,12 @@ const behaviors:readonly {key:FrameBehavior;label:string}[]=[
 const aligns=([{key:'left',label:'靠左'},{key:'center',label:'置中'},{key:'right',label:'靠右'}] as const);
 
 export function PageFrameSettingsModal({
-  visible,pageKey,title,frames,onClose,previewQuote,previewRows,initialContentTab,
+  visible,pageKey,title,frames,onClose,previewQuote,previewRows,initialContentTab,previewFirstMode,previewListFallback,
 }:{
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
+  previewFirstMode?:PortfolioPrimaryMode;
+  previewListFallback?:boolean;
   initialContentTab?:'wall'|'badges'|undefined;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
@@ -135,6 +138,7 @@ export function PageFrameSettingsModal({
             <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
               onPatchFrame={patch} onMoveFrame={move} onSetFrameBehavior={setBehavior}
               onChangeDisplay={setDisplayDraft} previewQuote={previewQuote} previewRows={previewRows}
+              previewFirstMode={previewFirstMode} previewListFallback={previewListFallback}
               pageTitle={titleDraft} onChangePageTitle={setTitleDraft}/>
           </View>
         </View>

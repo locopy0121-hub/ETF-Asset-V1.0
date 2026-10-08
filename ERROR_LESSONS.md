@@ -1,3 +1,9 @@
+## 2026-10-09｜V4.0.17 庫存預覽不得錯用行情牆
+
+現象：庫存「持股檢視」實際是 PortfolioHoldingTable（清單模式），PageLayoutToolWorkbench 卻一律渲染 HoldingQuoteCollection，導致預覽是深色行情卡片，編輯工具指向錯誤類別。
+
+修護：預覽依 portfolioViewMode 選擇與 PortfolioScreen 相同的正式元件；清單時帶入 portfolioList、etfBadges、現有持股與排序，顯示四鍵快捷列並接入 PortfolioListEditor；行情牆時維持現有卡片編輯。不得拿假卡片代替正式清單、不得改動財務資料或受保護的系統設定主頁。CI 原始碼/邏輯閘不取代真機操作驗收。
+
 ## 2026-10-09｜受保護「系統設定／控制中心」主頁，不得納入 V4.0.15 編輯器改造
 
 已依使用者明確規則撤回 V4.0.15 對 SettingsScreen 的 PageShell／PageEditorStack 及 EditableNative 變更，完整回復 V4.0.14 設定主頁（僅顯示版本資訊更新）。五個設定頁直接子面板也按 V4.0.14 回復，避免新增 wrapper 改變設定內容與操作。新增回歸 Gate 比對 Git blob baseline，後續不得破壞保護規則。先前只加 header fallback 不能符合此保護要求，故採正式還原。

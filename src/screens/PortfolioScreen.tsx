@@ -222,7 +222,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
       ]}/>
     </PageShell>
 
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewQuote={sorted[0]} previewRows={sorted} previewFirstMode={firstMode} previewListFallback={listFallback} onClose={()=>setSettingsOpen(false)}/>
     <CalculatorModal visible={calculatorOpen} onClose={()=>setCalculatorOpen(false)}/>
   </>;
 }

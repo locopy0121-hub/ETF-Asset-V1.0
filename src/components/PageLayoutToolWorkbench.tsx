@@ -10,6 +10,13 @@ import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../ed
 import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
+import {PortfolioHoldingTable} from './PortfolioHoldingTable';
+import {PortfolioSafeList} from './PortfolioSafeList';
+import {PortfolioQuickBar} from './PortfolioQuickBar';
+import {PortfolioListEditor} from './PortfolioListEditor';
+import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
+import {normalizePortfolioViewMode,quickModeFromDisplay,type PortfolioPrimaryMode} from '../domain/portfolioModeSwitch';
+import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard} from './FrameCard';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
@@ -39,7 +46,7 @@ const hasRealPreview=(page:MainPageKey,key:string)=>
   key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,previewFirstMode='list',previewListFallback=false,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
@@ -51,6 +58,8 @@ export function PageLayoutToolWorkbench({
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
+  previewFirstMode?:PortfolioPrimaryMode;
+  previewListFallback?:boolean;
   pageTitle:string;
   onChangePageTitle:(value:string)=>void;
 }){
@@ -96,6 +105,11 @@ export function PageLayoutToolWorkbench({
   const rawQuoteStyle=(displayDraft.quoteStyle??'quote') as QuoteModuleStyle;
   const holdingQuoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
   const holdingPreviewRows=previewRows?.length?previewRows:(previewQuote?[previewQuote]:[]);
+  // The preview must follow PortfolioScreen's active view, not force quote cards.
+  const portfolioListMode=pageKey==='portfolio'&&normalizePortfolioViewMode(displayDraft.portfolioViewMode)==='list';
+  const previewSort=sortPreset(displayDraft.sortKey);
+  const sortedPreviewRows=sortHoldingQuotes(holdingPreviewRows,previewSort.key,previewSort.descending);
+  const previewQuickMode=quickModeFromDisplay(displayDraft.portfolioViewMode,holdingQuoteStyle,holdingLayoutMode);
   const dashboard=displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const dashboardCharts=displayDraft.dashboardCharts??[];
   const targets=displayDraft.layoutTargets??{};
@@ -204,6 +218,40 @@ export function PageLayoutToolWorkbench({
   };
   const previewContentFor=(item:PageFrameDefinition)=>{
     const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
+    if(pageKey==='portfolio'&&item.key==='holding-view')return <View style={{gap:12}}>
+      {/* The production quick bar and actual view renderer, bound to the same draft. */}
+      <View pointerEvents="none"><PortfolioQuickBar firstMode={previewFirstMode} activeMode={previewQuickMode}
+        sortLabel={previewSort.label} onCycleFirst={()=>{}} onSelect={()=>{}} onCycleSort={()=>{}}/></View>
+      {portfolioListMode?<>
+        <Pressable accessibilityRole="button" accessibilityLabel="選取持股清單設定"
+          onPress={()=>{setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('portfolio-list');}}
+          style={{alignSelf:'flex-start',borderWidth:1,borderColor:colors.primary,backgroundColor:colors.surfaceMuted,
+            paddingVertical:7,paddingHorizontal:12,borderRadius:radius.pill}}>
+          <Text style={{fontSize:11,fontWeight:'900',color:colors.primary}}>✎ 編輯清單／標籤／提醒及特效</Text>
+        </Pressable>
+        {previewListFallback?<PortfolioSafeList rows={sortedPreviewRows} onOpenHolding={()=>{}}/>:
+          <PortfolioHoldingTable rows={sortedPreviewRows} config={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
+            badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES} refreshToken={finance.sharedSnapshot.generatedAt}/>}
+      </>:<>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+          <Text style={{fontSize:10,fontWeight:'800',color:colors.textSecondary}}>排列</Text>
+          {(['list','grid2','grid3','horizontal','paged2'] as const).map((key,index)=>
+            <Pressable key={key} onPress={()=>onChangeDisplay({...displayDraft,holdingLayoutMode:key,
+              ...(key==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{})})}
+              style={{paddingHorizontal:10,paddingVertical:6,borderRadius:radius.pill,borderWidth:1,
+                borderColor:holdingLayoutMode===key?colors.primary:colors.border,backgroundColor:colors.surfaceMuted}}>
+              <Text style={{fontSize:10,color:colors.textSecondary}}>{['單欄','雙欄','三欄','橫滑','雙欄滑動'][index]}</Text>
+            </Pressable>)}
+        </View>
+        {holdingLayoutMode==='grid3'?<Text style={{fontSize:10,color:colors.textSecondary}}>三欄無圖表：僅顯示報價、漲跌、損益，點選卡片可檢視詳情。</Text>:null}
+        <HoldingQuoteCollection rows={sortedPreviewRows} wallConfig={wall}
+          badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES} style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
+          refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={()=>{}} onOpenChart={()=>{}}
+          layoutEditMode layoutSelectionId={frameKey===item.key?selection.id:null}
+          onLayoutSelect={(id,label)=>{setFrameKey(item.key);selectHolding(id,label);}}/>
+        <Text style={{fontSize:10,color:colors.textSecondary}}>共 {sortedPreviewRows.length} 筆持股；排列模式不限制資料筆數。</Text>
+      </>}
+    </View>;
     if(itemHolding&&holdingPreviewRows.length)return <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
       badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
       style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
@@ -271,6 +319,7 @@ export function PageLayoutToolWorkbench({
     if(kind==='data')return holding;
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
+    if(portfolioListMode&&holding)return kind==='frame';
     if(holding)return ['frame','card','text','value','chart','data'].includes(kind);
     if(pageKey==='home'&&frame.key==='asset-dashboard')return ['frame','card','text','value','chart','layout'].includes(kind);
     if(pageKey==='home'&&frame.key==='profit-analysis')return ['frame','card','layout'].includes(kind);
@@ -281,7 +330,7 @@ export function PageLayoutToolWorkbench({
 
   return <View style={styles.root}>
     <View style={styles.head}><View style={{flex:1}}><Text style={styles.title}>排版工具</Text>
-      <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料。點到哪個物件，虛線框就鎖定該物件，下方只顯示已實裝的工具。</Text></View></View>
+      <Text style={styles.hint}>預覽依正式頁面的清單／行情牆模式使用相同元件、資料及設定草稿；帳務內容唯讀。</Text></View></View>
 
     <Text style={styles.title}>全部框架清單</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
@@ -352,16 +401,21 @@ export function PageLayoutToolWorkbench({
       patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}
       setBehavior={behavior=>onSetFrameBehavior(frame.key,behavior)} move={delta=>onMoveFrame(frame.key,delta)}/>:null}
 
-    {holding&&selection.kind==='card'?<HoldingCardTools wall={wall} open={openGroup} toggle={toggle} patch={patchWallStyle}/>:null}
-    {holding&&(selection.kind==='text'||selection.kind==='value')&&selectedField?
+    {portfolioListMode&&frame.key==='holding-view'?<Accordion title="清單欄位／列高／外觀" subtitle="直接編輯正式清單；上方預覽同步更新" open={openGroup==='portfolio-list'} onPress={()=>toggle('portfolio-list')}>
+      <PortfolioListEditor value={displayDraft.portfolioList??DEFAULT_PORTFOLIO_LIST}
+        onChange={portfolioList=>onChangeDisplay({...displayDraft,portfolioList})}
+        previewQuote={sortedPreviewRows[0]} badges={displayDraft.etfBadges??DEFAULT_ETF_BADGES}/>
+    </Accordion>:null}
+    {!portfolioListMode&&holding&&selection.kind==='card'?<HoldingCardTools wall={wall} open={openGroup} toggle={toggle} patch={patchWallStyle}/>:null}
+    {!portfolioListMode&&holding&&(selection.kind==='text'||selection.kind==='value')&&selectedField?
       <HoldingFieldTools field={selectedField} open={openGroup} toggle={toggle}
         patch={next=>patchField(selectedField.field,next)} move={delta=>moveField(selectedField.field,delta)}/>:null}
-    {holding&&selection.kind==='chart'?<HoldingMiniChartTools style={rawQuoteStyle} layoutMode={holdingLayoutMode} open={openGroup} toggle={toggle}
+    {!portfolioListMode&&holding&&selection.kind==='chart'?<HoldingMiniChartTools style={rawQuoteStyle} layoutMode={holdingLayoutMode} open={openGroup} toggle={toggle}
       onChange={quoteStyle=>onChangeDisplay({...displayDraft,quoteStyle})}/>:null}
     {!holding&&selection.kind==='chart'&&selectedDashboardChart?<DashboardChartTools chart={selectedDashboardChart}
       actualX={selectedDashboardChart.x<0?Math.max(0,previewBounds.width-selectedDashboardChart.width):selectedDashboardChart.x}
       open={openGroup} toggle={toggle} patch={next=>patchDashboardChart(selectedDashboardChart.id,next)}/>:null}
-    {holding&&selection.kind==='data'?<Accordion title="欄位顯示" subtitle="只改顯示與排序，不改原始行情與帳務資料" open={openGroup==='layout'} onPress={()=>toggle('layout')}>
+    {!portfolioListMode&&holding&&selection.kind==='data'?<Accordion title="欄位顯示" subtitle="只改顯示與排序，不改原始行情與帳務資料" open={openGroup==='layout'} onPress={()=>toggle('layout')}>
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 

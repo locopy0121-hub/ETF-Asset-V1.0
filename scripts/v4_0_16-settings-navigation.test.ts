@@ -7,7 +7,9 @@ import {makePageConfig,mergeEditorState,normalizeEditorConfig} from '../src/edit
 
 const blobSha=(source:string)=>{const content=Buffer.from(source,'utf8');return createHash('sha1').update('blob '+content.length+'\0').update(content).digest('hex');};
 const screen=readFileSync('src/screens/SettingsScreen.tsx','utf8');
-const protectedBaseline=screen.replace("const VERSION='4.0.16';","const VERSION='4.0.14';").replace("const BUILD='40016';","const BUILD='40014';");
+const release=JSON.parse(readFileSync('app.json','utf8')).expo as {version:string;android:{versionCode:number}};
+const protectedBaseline=screen.replace("const VERSION='"+release.version+"';","const VERSION='4.0.14';")
+  .replace("const BUILD='"+String(release.android.versionCode)+"';","const BUILD='40014';");
 assert.equal(blobSha(protectedBaseline),'ec360bf7adf599136f06fd8724283d7b148311c0','SettingsScreen must match V4.0.14 byte-for-byte except release metadata');
 const protectedSubcomponents=[
   ['src/components/EtfHoldingsApiSettings.tsx','e5734da68b3cf49381a35aba82f08a3557761789'],
