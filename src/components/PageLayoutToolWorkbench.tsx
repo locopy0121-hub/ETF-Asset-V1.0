@@ -331,7 +331,7 @@ export function PageLayoutToolWorkbench({
 
   return <View style={styles.root}>
     <View style={styles.head}><View style={{flex:1}}><Text style={styles.title}>排版工具</Text>
-      <Text style={styles.hint}>預覽依正式頁面的清單／行情牆模式使用相同元件、資料及設定草稿；帳務內容唯讀。</Text></View></View>
+      <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料。清單模式預覽正式表格，行情牆模式預覽正式卡片；只提供對應模式的編輯工具，帳務內容唯讀。</Text></View></View>
 
     <Text style={styles.title}>全部框架清單</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
