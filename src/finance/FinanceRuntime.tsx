@@ -143,10 +143,6 @@ export function FinanceProvider({children}:PropsWithChildren){
     AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
   },[hydrated,initialCash,entries,cashConfigured,dividendPlans,invalidDividendPlans]);
 
-  useEffect(()=>{
-    market.setTrackedSymbols(entries.flatMap(entry=>'symbol' in entry?[entry.symbol]:[]));
-  },[entries,market.setTrackedSymbols]);
-
   const quoteBySymbol=useMemo(
     ()=>new Map(market.quotes.map(row=>[row.symbol,row] as const)),
     [market.quotes],
@@ -179,6 +175,10 @@ export function FinanceProvider({children}:PropsWithChildren){
     entries,
     quotes:canonicalQuotes,
   }),[initialCash,entries,canonicalQuotes]);
+
+  useEffect(()=>{
+    market.setTrackedSymbols(snapshot.holdings.map(holding=>holding.etfCode));
+  },[snapshot.holdings,market.setTrackedSymbols]);
 
   const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map<HoldingQuote>(summary=>{
     const rawQuote=quoteBySymbol.get(summary.etfCode);

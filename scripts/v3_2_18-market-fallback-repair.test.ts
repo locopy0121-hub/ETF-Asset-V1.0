@@ -21,9 +21,9 @@ assert.match(providers,/regularMarketPrice/);
 assert.match(runtime,/V3_RUNTIME_STORAGE_KEY='@tf-asset\/market-runtime-v231'/,
   'V3 runtime settings must still be discoverable during V4 migration');
 assert.match(runtime,/LEGACY_RUNTIME_STORAGE_KEY='@tf-asset\/market-runtime'/);
-assert.match(runtime,/migratedFromLegacy&&legacyLive\?\.refreshSeconds===5/);
-assert.match(runtime,/live:\{\.\.\.legacyLive,refreshSeconds:1\}/,
-  'legacy 5-second default must migrate to the 1-second live rule');
+assert.doesNotMatch(runtime,/migratedFromLegacy|legacyLive|refreshSeconds:5/);
+assert.match(runtime,/return phase==='live'\?1:30/,
+  'legacy 5-second default cannot override SaiETF 1-second live rule');
 
 const pkg=JSON.parse(read('package.json'));
 const app=JSON.parse(read('app.json'));

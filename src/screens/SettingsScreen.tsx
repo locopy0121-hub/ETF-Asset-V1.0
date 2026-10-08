@@ -28,7 +28,7 @@ import { useBrokerSettingsRuntime, type RecurringFeeMode } from '../finance/Brok
 import { useFinance } from '../finance/FinanceRuntime';
 import { FINANCE_FORMULA_CATALOG } from '../finance/financeFormulaCatalog';
 import { auditCashSources } from '../finance/cashAudit';
-import { useMarketRuntime, type MarketUpdateConfig } from '../market/MarketRuntime';
+import { useMarketRuntime } from '../market/MarketRuntime';
 import { useMonitorSettingsRuntime } from '../monitor/MonitorSettingsRuntime';
 import {
   createLocalBackup,
@@ -59,8 +59,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='4.0.8';
-const BUILD='40008';
+const VERSION='4.0.9';
+const BUILD='40009';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -274,7 +274,7 @@ export function SettingsScreen(){
   function dataSection(){
     return <View style={styles.children}>
       <ChildButton label="統一行情資料中心／即時更新" summary={'版本 '+market.marketDataVersion+' · '+marketPhaseLabel(market.phase)} active={dataPanel==='market'} onPress={()=>setDataPanel(dataPanel==='market'?null:'market')}/>
-      {dataPanel==='market'?<MarketPanel config={market.config} onChange={market.setConfig} refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings} fugleConfigured={market.fugleConfigured} providerHealth={market.providerHealth} onSaveFugleApiKey={market.saveFugleApiKey} onClearFugleApiKey={market.clearFugleApiKey}/>:null}
+      {dataPanel==='market'?<MarketPanel refreshing={market.refreshing} onRefresh={()=>void market.refresh({force:true})} lastSuccessAt={market.lastSuccessAt} lastError={market.lastError} marketDataVersion={market.marketDataVersion} missingSymbols={market.missingSymbols} quoteCount={market.quotes.length} quotes={market.quotes} holdings={finance.holdings} fugleConfigured={market.fugleConfigured} providerHealth={market.providerHealth} onSaveFugleApiKey={market.saveFugleApiKey} onClearFugleApiKey={market.clearFugleApiKey}/>:null}
       <ChildButton label="API 成本政策" summary="ALL FREE · NO MONEY" active={dataPanel==='policy'} onPress={()=>setDataPanel(dataPanel==='policy'?null:'policy')}/>
       {dataPanel==='policy'?<Panel title="零成本資料來源政策">
         <StatusRow label="API 費用" value="NT$ 0"/>
@@ -848,8 +848,6 @@ function SettingNumberRow({label,suffix,value,onChange}:{label:string;suffix:str
 }
 
 type MarketPanelProps={
-  config:MarketUpdateConfig;
-  onChange:(next:MarketUpdateConfig)=>void;
   refreshing:boolean;
   onRefresh:()=>void;
   lastSuccessAt:number|null;
@@ -866,11 +864,10 @@ type MarketPanelProps={
 };
 
 function MarketPanel({
-  config,onChange,refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount,
+  refreshing,onRefresh,lastSuccessAt,lastError,marketDataVersion,missingSymbols,quoteCount,
   quotes,holdings,fugleConfigured,providerHealth,onSaveFugleApiKey,onClearFugleApiKey,
 }:MarketPanelProps){
   const [fugleKey,setFugleKey]=useState('');
-  const patch=(next:Partial<MarketUpdateConfig>)=>onChange({...config,...next});
   return <Panel title="SaiETF Market Core｜唯一行情中心">
     <StatusRow label="行情路由" value="Fugle → TWSE MIS → Yahoo → Cache"/>
     <StatusRow label="Market Core 資料版本" value={String(marketDataVersion)}/>
@@ -888,28 +885,8 @@ function MarketPanel({
     <StatusRow label="最近錯誤" value={lastError??'無'}/>
     <ActionButton label={refreshing?'更新中…':'立即更新行情'} disabled={refreshing} onPress={onRefresh}/>
     <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}/>
-    <ToggleRow label="啟用市場更新排程" value={config.scheduleEnabled} onChange={scheduleEnabled=>patch({scheduleEnabled})}/>
-    <ToggleRow label="回到前景立即刷新" value={config.refreshOnForeground} onChange={refreshOnForeground=>patch({refreshOnForeground})}/>
-    <ToggleRow label="停止全部自動更新" value={config.stopAll} onChange={stopAll=>patch({stopAll})}/>
-    <View style={[styles.scheduleBox,config.stopAll&&styles.disabledBox]}>
-      <ToggleRow label="盤中排程" value={config.live.enabled} disabled={config.stopAll}
-        onChange={enabled=>onChange({...config,live:{...config.live,enabled}})}/>
-      <TimeFields start={config.live.start} end={config.live.end} disabled={config.stopAll}
-        onStart={start=>onChange({...config,live:{...config.live,start}})}
-        onEnd={end=>onChange({...config,live:{...config.live,end}})}/>
-      <Stepper label="盤中更新頻率" value={config.live.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒"
-        disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,live:{...config.live,refreshSeconds}})}/>
-    </View>
-    <View style={[styles.scheduleBox,config.stopAll&&styles.disabledBox]}>
-      <ToggleRow label="盤後排程" value={config.afterHours.enabled} disabled={config.stopAll}
-        onChange={enabled=>onChange({...config,afterHours:{...config.afterHours,enabled}})}/>
-      <TimeFields start={config.afterHours.start} end={config.afterHours.end} disabled={config.stopAll}
-        onStart={start=>onChange({...config,afterHours:{...config.afterHours,start}})}
-        onEnd={end=>onChange({...config,afterHours:{...config.afterHours,end}})}/>
-      <Stepper label="盤後更新頻率" value={config.afterHours.refreshSeconds} min={1} max={3600} step={1} suffix=" 秒"
-        disabled={config.stopAll} onChange={refreshSeconds=>onChange({...config,afterHours:{...config.afterHours,refreshSeconds}})}/>
-    </View>
-    <Text style={styles.note}>V4.0.8 行情網路入口只由 MarketDataCenter 管理；Memory Hot Store 為盤中 SSOT，SQLite 僅做持久化。首頁、庫存、圖表、Finance、Widget 與 Monitor 不再各自建立第二條行情抓取路徑。</Text>
+    <StatusRow label="SaiETF 更新定律" value="盤中 1 秒 · 非盤中 30 秒 · 回前景立即查詢"/>
+    <Text style={styles.note}>V4.0.9 行情網路入口只由 MarketDataCenter 管理。盤中優先套用 Fugle LIVE 成交；TWSE MIS 與 Yahoo 依 SaiETF 節流備援。Memory Hot Store 為盤中 SSOT，SQLite 僅做持久化；新報價直接推送至首頁及持股損益。首頁、庫存、圖表、Finance、Widget 與 Monitor 不再各自建立第二條行情抓取路徑。Fugle API Key 須在本 App 設定。</Text>
   </Panel>;
 }
 
@@ -948,10 +925,6 @@ function Stepper({label,value,min,max,step,suffix,onChange,disabled=false}:{labe
   return <View><Text style={styles.fieldLabel}>{label}</Text><View style={styles.stepRow}><Pressable disabled={disabled||value<=min} style={styles.stepButton} onPress={()=>onChange(Math.max(min,value-step))}><Text style={styles.stepText}>−</Text></Pressable><Text style={styles.stepValue}>{value}{suffix}</Text><Pressable disabled={disabled||value>=max} style={styles.stepButton} onPress={()=>onChange(Math.min(max,value+step))}><Text style={styles.stepText}>＋</Text></Pressable></View></View>;
 }
 
-function TimeFields({start,end,onStart,onEnd,disabled}:{start:string;end:string;onStart:(value:string)=>void;onEnd:(value:string)=>void;disabled:boolean}){
-  return <View style={styles.timeRow}><View style={{flex:1}}><Text style={styles.fieldLabel}>開始時間</Text><TextInput editable={!disabled} style={styles.input} value={start} onChangeText={onStart}/></View><View style={{flex:1}}><Text style={styles.fieldLabel}>結束時間</Text><TextInput editable={!disabled} style={styles.input} value={end} onChangeText={onEnd}/></View></View>;
-}
-
 function formatTime(value:number|null){
   if(!value)return '尚無';
   try{return new Date(value).toLocaleString('zh-TW');}catch{return String(value);}
@@ -965,7 +938,7 @@ function formatBytes(bytes:number){
   return (bytes/1024/1024).toFixed(1)+' MB';
 }
 function marketPhaseLabel(phase:'live'|'afterHours'|'offline'){
-  return phase==='live'?'盤中':phase==='afterHours'?'盤後':'休市／未排程';
+  return phase==='live'?'盤中 1 秒':'非盤中 30 秒';
 }
 
 const styles=StyleSheet.create({
@@ -1020,9 +993,7 @@ const styles=StyleSheet.create({
   resetActionText:{fontSize:11,fontWeight:'900',color:colors.textSecondary},
   saveAction:{flex:1,minHeight:40,borderRadius:radius.md,alignItems:'center',justifyContent:'center',backgroundColor:colors.primary},
   saveActionText:{fontSize:11,fontWeight:'900',color:'#FFFFFF'},
-  scheduleBox:{gap:8,padding:10,borderRadius:radius.md,backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border},
   disabledBox:{opacity:0.5},
-  timeRow:{flexDirection:'row',gap:8},
   stepRow:{flexDirection:'row',alignItems:'center',gap:10},
   stepButton:{width:40,height:38,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,alignItems:'center',justifyContent:'center',backgroundColor:colors.surface},
   stepText:{fontSize:18,fontWeight:'900',color:colors.primary},

@@ -572,3 +572,8 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - 1 秒排程不等於畫面每秒同步。若 Memory Hot Store 的讀取被整批 provider fallback 或 runtime 大鎖阻塞，已有新行情仍會顯示待核對。
 - Provider 應逐筆發布已接受行情；批次結束時不可用較舊集合覆蓋期間到達的 streaming tick。JS 也要用來源查詢時間拒絕晚到舊 snapshot。
 - 完整移植必須刪除舊執行入口與旁路，不只把 SaiETF 類別放進專案。App 只接受 SaiETF broker-free 來源契約，Widget／Monitor 不自行抓第二份行情。
+
+## V4.0.9 SaiETF LIVE 訂閱與設定殘留
+- V4.0.8 雖移植原生仲裁，React Native 仍每秒拉快照；Fugle tick 到畫面最多多等一次輪詢。改為 Memory Hot Store 推送，並保留快照恢復路徑。
+- 舊排程 JSON、設定開關與歷史交易代號會讓 SaiETF 更新定律失效；移除舊排程執行權，以正持股訂閱並在回前景即刻恢復。
+- 單檔 AI 查價與正持股訂閱若共用同一 `refresh` 訂閱更新，會把持股 WebSocket 清單換掉；專用訂閱入口與臨時查價分開。

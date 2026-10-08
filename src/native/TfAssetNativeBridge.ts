@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { DeviceEventEmitter, NativeModules, Platform } from 'react-native';
 import type { SharedSnapshot } from '../domain/snapshot';
 import type { MonitorConfig } from '../monitor/monitorDomain';
 import type { WidgetConfig } from '../widget/widgetDomain';
@@ -75,6 +75,8 @@ export type UnifiedMarketSnapshot=Readonly<{
 type TfAssetNativeModule={
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   readUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
+  setUnifiedMarketSymbols:(symbolsJson:string)=>Promise<boolean>;
+  pauseUnifiedMarketData:()=>Promise<boolean>;
   saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
   loadFugleApiKey:()=>Promise<string|null>;
   clearFugleApiKey:()=>Promise<boolean>;
@@ -155,6 +157,13 @@ export async function postNativeTestNotification(channelId=NATIVE_NOTIFICATION_C
 export const unifiedMarketCenterAvailable=Platform.OS==='android'
   &&typeof native?.refreshUnifiedMarketData==='function'
   &&typeof native?.readUnifiedMarketData==='function';
+export function subscribeUnifiedMarketData(onSnapshot:(snapshot:UnifiedMarketSnapshot)=>void):()=>void{
+  if(!unifiedMarketCenterAvailable)return ()=>{};
+  const listener=DeviceEventEmitter.addListener('SaiEtfMarketSnapshot',(raw:string)=>{
+    try{onSnapshot(JSON.parse(raw) as UnifiedMarketSnapshot);}catch{}
+  });
+  return ()=>listener.remove();
+}
 export async function loadUnifiedMarketData(symbols:readonly string[]=[]):Promise<UnifiedMarketSnapshot>{
   if(!unifiedMarketCenterAvailable||!native)throw new Error('Android 行情資料中心尚未安裝');
   const raw=await native.readUnifiedMarketData(JSON.stringify(symbols));
@@ -164,6 +173,14 @@ export async function refreshUnifiedMarketData(symbols:readonly string[]):Promis
   if(!unifiedMarketCenterAvailable||!native)throw new Error('Android 行情資料中心尚未安裝');
   const raw=await native.refreshUnifiedMarketData(JSON.stringify(symbols));
   return JSON.parse(raw) as UnifiedMarketSnapshot;
+}
+export async function updateNativeMarketSymbols(symbols:readonly string[]):Promise<boolean>{
+  if(!unifiedMarketCenterAvailable||!native)return false;
+  return native.setUnifiedMarketSymbols(JSON.stringify(symbols));
+}
+export async function pauseNativeMarketStreaming():Promise<boolean>{
+  if(!unifiedMarketCenterAvailable||!native)return false;
+  return native.pauseUnifiedMarketData();
 }
 
 

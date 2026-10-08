@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import org.json.JSONArray
 import org.json.JSONObject
 import tw.saietf.core.market.MarketBatch
@@ -19,11 +20,12 @@ import tw.saietf.core.market.MarketSource
 import tw.saietf.core.market.ProviderHealth
 import tw.saietf.core.market.QuoteQuality
 
-class SaiEtfMarketRuntime(context: Context) {
+class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String) -> Unit = {}) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val taipeiZone = ZoneId.of("Asia/Taipei")
     private val version = AtomicLong(System.currentTimeMillis())
+    @Volatile private var trackedSymbols: Set<String> = emptySet()
     private val keyStore = FugleApiKeyStore(appContext)
     private val persistence = MarketPersistenceRepository(appContext)
     private val fugle = FugleWebSocketProvider(apiKeyProvider = keyStore::load)
@@ -49,6 +51,15 @@ class SaiEtfMarketRuntime(context: Context) {
         provider = fugle,
         marketDataCenter = center,
     )
+    init {
+        scope.launch {
+            center.quotesState.collectLatest { quotes ->
+                if (quotes.isEmpty()) return@collectLatest
+                version.incrementAndGet()
+                runCatching { onLiveSnapshot(snapshot(trackedSymbols, includeIntraday = false).toString()) }
+            }
+        }
+    }
 
     fun saveFugleKey(apiKey: String): Boolean {
         keyStore.save(apiKey)
@@ -64,12 +75,23 @@ class SaiEtfMarketRuntime(context: Context) {
         return true
     }
 
+    fun updateSymbols(requested: Collection<String>) {
+        val symbols = requested.map { it.trim().uppercase(Locale.US) }
+            .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }.toSet()
+        trackedSymbols = symbols
+        streamingController.updateSymbols(symbols)
+    }
+
+    fun pause() {
+        streamingController.pause()
+        scope.launch { persistenceController.flushNow() }
+    }
+
     @Synchronized fun refresh(requested: Collection<String>): JSONObject {
         val symbols = requested
             .map { it.trim().uppercase(Locale.US) }
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }
             .toSet()
-        streamingController.updateSymbols(symbols)
         if (symbols.isEmpty()) return snapshot(symbols)
 
         val now = System.currentTimeMillis()
@@ -88,7 +110,7 @@ class SaiEtfMarketRuntime(context: Context) {
     fun snapshot(requested: Collection<String> = emptyList()): JSONObject =
         snapshot(requested.map { it.trim().uppercase(Locale.US) }.filter { it.isNotBlank() }.toSet(), null)
 
-    private fun snapshot(symbols: Set<String>, batch: MarketBatch? = null): JSONObject {
+    private fun snapshot(symbols: Set<String>, batch: MarketBatch? = null, includeIntraday: Boolean = true): JSONObject {
         val live = center.memoryQuotes(symbols)
 
         val rows = JSONArray()
@@ -109,7 +131,7 @@ class SaiEtfMarketRuntime(context: Context) {
             .put("queriedAt", System.currentTimeMillis())
             .put("providerHealth", health)
             .put("marketCore", "SAIETF_NATIVE")
-            .put("intraday", persistence.runtimeSnapshot().optJSONObject("intraday") ?: JSONObject())
+            .also { if (includeIntraday) it.put("intraday", persistence.runtimeSnapshot().optJSONObject("intraday") ?: JSONObject()) }
     }
 
     private fun healthRow(health: ProviderHealth): JSONObject =

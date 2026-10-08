@@ -25,6 +25,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.modules.core.DeviceEventManagerModule
 
 class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
   companion object{
@@ -39,7 +40,10 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
   private val marketDb by lazy { TfAssetMarketDatabase(reactContext) }
-  private val saietfMarket by lazy { SaiEtfMarketRuntime(reactContext) }
+  private val saietfMarket by lazy { SaiEtfMarketRuntime(reactContext) { payload ->
+    runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+      .emit("SaiEtfMarketSnapshot",payload) }
+  } }
   // Store only exception class and code location. Never store trades, balances or exception messages.
   private fun installCrashJournal(){
     synchronized(TfAssetNativeModule::class.java){
@@ -234,6 +238,22 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       try{promise.resolve(saietfMarket.snapshot(symbols).toString())}
       catch(error:Exception){promise.reject("MARKET_READ",error)}
     }.start()
+  }
+
+  @ReactMethod fun setUnifiedMarketSymbols(symbolsJson:String,promise:Promise){
+    val symbols=runCatching{
+      val array=org.json.JSONArray(symbolsJson)
+      (0 until array.length()).map{array.optString(it,"")}
+    }.getOrElse{promise.reject("MARKET_SYMBOLS","台股追蹤清單格式錯誤",it);return}
+    runCatching{saietfMarket.updateSymbols(symbols)}
+      .onSuccess{promise.resolve(true)}
+      .onFailure{promise.reject("MARKET_SUBSCRIPTIONS",it)}
+  }
+
+  @ReactMethod fun pauseUnifiedMarketData(promise:Promise){
+    runCatching{saietfMarket.pause()}
+      .onSuccess{promise.resolve(true)}
+      .onFailure{promise.reject("MARKET_PAUSE",it)}
   }
 
   @ReactMethod fun queryLocalEtfComponents(symbol:String,topN:Int,promise:Promise){

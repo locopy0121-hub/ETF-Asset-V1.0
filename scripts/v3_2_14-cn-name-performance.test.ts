@@ -38,8 +38,8 @@ assert.doesNotMatch(market,/new MarketDataCenter\(/,'React runtime must not own 
 assert.match(nativeRuntime,/MarketPersistenceController/,'native SaiETF core must own market persistence');
 assert.match(persistenceController,/PERSIST_INTERVAL_MILLIS = 5_000L/,
   'native market persistence must remain throttled instead of writing SQLite every quote');
-assert.match(market,/const payload:PersistedMarketRuntime=\{schema:5,config,catalog,lastSuccessAt\}/);
-assert.match(market,/\[hydrated,config,catalog,lastSuccessAt\]/);
+assert.match(market,/const payload:PersistedMarketRuntime=\{schema:6,catalog,lastSuccessAt\}/);
+assert.match(market,/\[hydrated,catalog,lastSuccessAt\]/);
 assert.doesNotMatch(market,/\[hydrated,config,quotes,lastSuccessAt,catalog\]/,
   'scheduled quote ticks must not stringify the live quote set');
 assert.match(market,/setUnresolvedSymbols\(current=>sameStrings\(current,missing\)\?current:missing\)/,

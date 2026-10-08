@@ -7,7 +7,7 @@ import {
 import {FALLBACK_QUOTES,type RuntimeIntradayPoint,type RuntimeQuote} from '../finance/financeSeed';
 import {
   clearNativeFugleApiKey,loadNativeFugleApiKey,nativeRuntimeAvailable,
-  loadUnifiedMarketData,refreshUnifiedMarketData,saveNativeFugleApiKey,
+  loadUnifiedMarketData,refreshUnifiedMarketData,saveNativeFugleApiKey,subscribeUnifiedMarketData,updateNativeMarketSymbols,pauseNativeMarketStreaming,
   type UnifiedMarketSnapshot,
 } from '../native/TfAssetNativeBridge';
 import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
@@ -15,7 +15,6 @@ import {fetchTaiwanSecurityCatalog,type TaiwanSecurityInfo} from './TaiwanSecuri
 
 export type MarketPhase='live'|'afterHours'|'offline';
 export type MarketRefreshResult='updated'|'unchanged'|'error';
-export type MarketUpdateSource='AUTO';
 export type EtfCatalogItem=TaiwanSecurityInfo;
 
 type ProviderHealth=Readonly<{
@@ -28,34 +27,14 @@ type ProviderHealth=Readonly<{
   circuitState:'HEALTHY'|'DEGRADED'|'COOLDOWN'|'RECOVERING';
 }>;
 
-export type MarketUpdateConfig=Readonly<{
-  source:MarketUpdateSource;
-  scheduleEnabled:boolean;
-  refreshOnForeground:boolean;
-  stopAll:boolean;
-  live:Readonly<{enabled:boolean;start:string;end:string;refreshSeconds:number}>;
-  afterHours:Readonly<{enabled:boolean;start:string;end:string;refreshSeconds:number}>;
-}>;
-
-export const DEFAULT_MARKET_UPDATE:MarketUpdateConfig={
-  source:'AUTO',
-  scheduleEnabled:true,
-  refreshOnForeground:true,
-  stopAll:false,
-  live:{enabled:true,start:'09:00',end:'13:30',refreshSeconds:1},
-  afterHours:{enabled:true,start:'13:31',end:'18:00',refreshSeconds:60},
-};
-
 type PersistedMarketRuntime=Readonly<{
-  schema:5;
-  config:MarketUpdateConfig;
+  schema:6;
   catalog:readonly TaiwanSecurityInfo[];
   lastSuccessAt:number|null;
 }>;
 
 type MarketRuntimeValue=Readonly<{
   hydrated:boolean;
-  config:MarketUpdateConfig;
   quotes:readonly RuntimeQuote[];
   phase:MarketPhase;
   refreshing:boolean;
@@ -68,7 +47,6 @@ type MarketRuntimeValue=Readonly<{
   providerHealth:readonly ProviderHealth[];
   unresolvedSymbols:readonly string[];
   fugleConfigured:boolean;
-  setConfig:(next:MarketUpdateConfig)=>void;
   refresh:(options?:{force?:boolean;silent?:boolean})=>Promise<MarketRefreshResult>;
   refreshCatalog:()=>Promise<void>;
   setTrackedSymbols:(symbols:readonly string[])=>void;
@@ -90,66 +68,34 @@ function fallbackCatalog():TaiwanSecurityInfo[]{
   }));
 }
 const sameStrings=(a:readonly string[],b:readonly string[])=>a.length===b.length&&a.every((value,index)=>value===b[index]);
-const clampSeconds=(value:number)=>Math.max(1,Math.min(3600,Math.floor(Number(value)||1)));
-const hhmm=(value:string)=>{
-  const [hRaw='0',mRaw='0']=String(value||'00:00').split(':');
-  const h=Number(hRaw),m=Number(mRaw);
-  return Math.max(0,Math.min(1439,(Number.isFinite(h)?h:0)*60+(Number.isFinite(m)?m:0)));
-};
-const inWindow=(now:number,start:string,end:string)=>{
-  const a=hhmm(start),b=hhmm(end);return a<=b?now>=a&&now<=b:now>=a||now<=b;
-};
 function taipeiClock(){
   try{
     const parts=new Intl.DateTimeFormat('en-US',{
       timeZone:'Asia/Taipei',weekday:'short',year:'numeric',month:'2-digit',day:'2-digit',
-      hour:'2-digit',minute:'2-digit',hourCycle:'h23',
+      hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',
     }).formatToParts(new Date());
     const get=(type:string)=>parts.find(part=>part.type===type)?.value??'';
-    const weekday=get('weekday'),hour=Number(get('hour'))||0,minute=Number(get('minute'))||0;
+    const weekday=get('weekday'),hour=Number(get('hour'))||0,minute=Number(get('minute'))||0,second=Number(get('second'))||0;
     return {
       weekend:weekday==='Sat'||weekday==='Sun',
-      minutes:hour*60+minute,
+      minutes:hour*60+minute+second/60,
       date:`${get('year')}-${get('month')}-${get('day')}`,
     };
   }catch{
     const d=new Date();
     return {
       weekend:d.getDay()===0||d.getDay()===6,
-      minutes:d.getHours()*60+d.getMinutes(),
+      minutes:d.getHours()*60+d.getMinutes()+d.getSeconds()/60,
       date:d.toISOString().slice(0,10),
     };
   }
 }
-export function resolveMarketPhase(config:MarketUpdateConfig):MarketPhase{
-  if(config.stopAll||!config.scheduleEnabled)return 'offline';
-  const clock=taipeiClock();if(clock.weekend)return 'offline';
-  if(config.live.enabled&&inWindow(clock.minutes,config.live.start,config.live.end))return 'live';
-  if(config.afterHours.enabled&&inWindow(clock.minutes,config.afterHours.start,config.afterHours.end))return 'afterHours';
-  return 'offline';
+export function resolveMarketPhase():MarketPhase{
+  const clock=taipeiClock();
+  return !clock.weekend&&clock.minutes>=540&&clock.minutes<=810?'live':'afterHours';
 }
-export function marketRefreshSeconds(config:MarketUpdateConfig,phase:MarketPhase){
-  return phase==='live'?clampSeconds(config.live.refreshSeconds):phase==='afterHours'?clampSeconds(config.afterHours.refreshSeconds):0;
-}
-function normalizeConfig(input:Partial<MarketUpdateConfig>|null|undefined):MarketUpdateConfig{
-  return {
-    source:'AUTO',
-    scheduleEnabled:input?.scheduleEnabled??DEFAULT_MARKET_UPDATE.scheduleEnabled,
-    refreshOnForeground:input?.refreshOnForeground??DEFAULT_MARKET_UPDATE.refreshOnForeground,
-    stopAll:input?.stopAll??DEFAULT_MARKET_UPDATE.stopAll,
-    live:{
-      enabled:input?.live?.enabled??DEFAULT_MARKET_UPDATE.live.enabled,
-      start:input?.live?.start??DEFAULT_MARKET_UPDATE.live.start,
-      end:input?.live?.end??DEFAULT_MARKET_UPDATE.live.end,
-      refreshSeconds:clampSeconds(input?.live?.refreshSeconds??DEFAULT_MARKET_UPDATE.live.refreshSeconds),
-    },
-    afterHours:{
-      enabled:input?.afterHours?.enabled??DEFAULT_MARKET_UPDATE.afterHours.enabled,
-      start:input?.afterHours?.start??DEFAULT_MARKET_UPDATE.afterHours.start,
-      end:input?.afterHours?.end??DEFAULT_MARKET_UPDATE.afterHours.end,
-      refreshSeconds:clampSeconds(input?.afterHours?.refreshSeconds??DEFAULT_MARKET_UPDATE.afterHours.refreshSeconds),
-    },
-  };
+export function marketRefreshSeconds(phase:MarketPhase){
+  return phase==='live'?1:30;
 }
 function resetRuntimeIntradaySession(rows:RuntimeQuote[],sessionDate:string):RuntimeQuote[]{
   let changed=false;
@@ -200,8 +146,7 @@ function parseProviderHealth(snapshot:UnifiedMarketSnapshot):ProviderHealth[]{
 }
 
 export function MarketRuntimeProvider({children}:PropsWithChildren){
-  const [config,setConfigState]=useState<MarketUpdateConfig>(DEFAULT_MARKET_UPDATE);
-  const [phase,setPhase]=useState<MarketPhase>(()=>resolveMarketPhase(DEFAULT_MARKET_UPDATE));
+  const [phase,setPhase]=useState<MarketPhase>(resolveMarketPhase);
   const [quotes,setQuotes]=useState<RuntimeQuote[]>([]);
   const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>([]);
   const [hydrated,setHydrated]=useState(false);
@@ -215,22 +160,23 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [fugleConfigured,setFugleConfigured]=useState(false);
   const [marketDataVersion,setMarketDataVersion]=useState(0);
 
-  const configRef=useRef(config),quotesRef=useRef<RuntimeQuote[]>([]),symbolsRef=useRef<string[]>([]);
+  const quotesRef=useRef<RuntimeQuote[]>([]),symbolsRef=useRef<string[]>([]);
   const catalogRef=useRef<TaiwanSecurityInfo[]>(fallbackCatalog());
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
   const refreshVisibleRef=useRef(false);
   const latestSnapshotAtRef=useRef(0);
+  const latestSnapshotVersionRef=useRef(0);
 
-  useEffect(()=>{configRef.current=config;},[config]);
   useEffect(()=>{quotesRef.current=quotes;},[quotes]);
   useEffect(()=>{symbolsRef.current=trackedSymbols;},[trackedSymbols]);
   useEffect(()=>{catalogRef.current=catalog;},[catalog]);
 
   const applySnapshot=useCallback((snapshot:UnifiedMarketSnapshot)=>{
     const snapshotAt=Number(snapshot.queriedAt)||0;
-    if(snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
-    latestSnapshotAtRef.current=Math.max(latestSnapshotAtRef.current,snapshotAt);
     const version=Number.isFinite(snapshot.version)?snapshot.version:Date.now();
+    if(version<latestSnapshotVersionRef.current||snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
+    latestSnapshotVersionRef.current=Math.max(latestSnapshotVersionRef.current,version);
+    latestSnapshotAtRef.current=Math.max(latestSnapshotAtRef.current,snapshotAt);
     setMarketDataVersion(version);
     const missing=Array.isArray(snapshot.missing)?[...snapshot.missing].sort():[];
     setUnresolvedSymbols(current=>sameStrings(current,missing)?current:missing);
@@ -258,21 +204,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       ]);
       if(!alive)return;
       let persisted:Partial<PersistedMarketRuntime>|null=null;
-      let migratedFromLegacy=false;
-      for(const [index,raw] of [runtimeRaw,previousRaw,v3Raw,legacyRaw].entries()){
+      for(const raw of [runtimeRaw,previousRaw,v3Raw,legacyRaw]){
         if(!raw)continue;
         try{
           persisted=JSON.parse(raw) as Partial<PersistedMarketRuntime>;
-          migratedFromLegacy=index>0;
           break;
         }catch{}
-      }
-      if(persisted?.config){
-        const legacyLive=persisted.config.live;
-        const migratedConfig=migratedFromLegacy&&legacyLive?.refreshSeconds===5
-          ?{...persisted.config,live:{...legacyLive,refreshSeconds:1}}
-          :persisted.config;
-        setConfigState(normalizeConfig(migratedConfig));
       }
       if(Array.isArray(persisted?.catalog)&&persisted.catalog.length){
         const next=[...persisted.catalog];catalogRef.current=next;setCatalog(next);
@@ -292,13 +229,16 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated)return;
-    const payload:PersistedMarketRuntime={schema:5,config,catalog,lastSuccessAt};
+    const payload:PersistedMarketRuntime={schema:6,catalog,lastSuccessAt};
     AsyncStorage.setItem(RUNTIME_STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,config,catalog,lastSuccessAt]);
+  },[hydrated,catalog,lastSuccessAt]);
 
-  const setConfig=useCallback((next:MarketUpdateConfig)=>setConfigState(normalizeConfig(next)),[]);
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
     const normalized=Array.from(new Set(symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean))).sort();
+    if(!sameStrings(symbolsRef.current,normalized)){
+      symbolsRef.current=normalized;
+      void updateNativeMarketSymbols(normalized).catch(()=>{});
+    }
     setTrackedSymbolsState(current=>sameStrings(current,normalized)?current:normalized);
   },[]);
 
@@ -360,12 +300,15 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     void refresh({silent:true});
   },[hydrated,trackedSymbols,refresh]);
 
-  useEffect(()=>{setPhase(resolveMarketPhase(config));},[config]);
-
-  // Consume SaiETF's memory SSOT independently of slow HTTP fallback batches.
-  // This read never starts a second provider request and never invents a price.
+  // SaiETF Memory Hot Store pushes Fugle ticks immediately. Polling below is
+  // also retained for initial state, persisted chart data and bridge recovery.
   useEffect(()=>{
-    if(!hydrated||!nativeRuntimeAvailable||config.stopAll||!config.scheduleEnabled)return;
+    if(!hydrated||!nativeRuntimeAvailable)return;
+    return subscribeUnifiedMarketData(applySnapshot);
+  },[hydrated,applySnapshot]);
+
+  useEffect(()=>{
+    if(!hydrated||!nativeRuntimeAvailable)return;
     let disposed=false,reading=false;
     const read=()=>{
       if(disposed||reading||AppState.currentState!=='active')return;
@@ -376,13 +319,13 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     read();
     const timer=setInterval(read,1000);
     return()=>{disposed=true;clearInterval(timer);};
-  },[hydrated,config.stopAll,config.scheduleEnabled,applySnapshot]);
+  },[hydrated,applySnapshot]);
 
   useEffect(()=>{
-    if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
+    if(!hydrated)return;
     let disposed=false,lastPhase:MarketPhase|null=null,nextDueAt=0;
     const tick=()=>{
-      const currentPhase=resolveMarketPhase(configRef.current);
+      const currentPhase=resolveMarketPhase();
       setPhase(current=>current===currentPhase?current:currentPhase);
       if(disposed||AppState.currentState!=='active')return;
       const now=Date.now();
@@ -394,8 +337,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
           return next;
         });
       }
-      const seconds=marketRefreshSeconds(configRef.current,currentPhase);
-      if(seconds<=0){lastPhase=currentPhase;nextDueAt=0;return;}
+      const seconds=marketRefreshSeconds(currentPhase);
       if(currentPhase!==lastPhase){lastPhase=currentPhase;nextDueAt=0;}
       if(now<nextDueAt)return;
       nextDueAt=now+seconds*1000;
@@ -404,12 +346,15 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     tick();
     const timer=setInterval(tick,1000);
     return()=>{disposed=true;clearInterval(timer);};
-  },[hydrated,config,refresh]);
+  },[hydrated,refresh]);
 
   useEffect(()=>{
     if(!hydrated)return;
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
-      if(next==='active'&&configRef.current.refreshOnForeground)void refresh({force:true,silent:true});
+      if(next==='active'){
+        void updateNativeMarketSymbols(symbolsRef.current).catch(()=>{});
+        void refresh({force:true,silent:true});
+      }else if(next==='background'||next==='inactive')void pauseNativeMarketStreaming().catch(()=>{});
     });
     return()=>sub.remove();
   },[hydrated,refresh]);
@@ -420,12 +365,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[hydrated,catalog.length,refreshCatalog]);
 
   const value=useMemo<MarketRuntimeValue>(()=>({
-    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
+    hydrated,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
     marketDataVersion,missingSymbols:unresolvedSymbols,providerHealth,unresolvedSymbols,
-    fugleConfigured,setConfig,refresh,refreshCatalog,setTrackedSymbols,saveFugleApiKey,clearFugleApiKey,
+    fugleConfigured,refresh,refreshCatalog,setTrackedSymbols,saveFugleApiKey,clearFugleApiKey,
   }),[
-    hydrated,config,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
-    marketDataVersion,providerHealth,unresolvedSymbols,fugleConfigured,setConfig,refresh,refreshCatalog,
+    hydrated,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
+    marketDataVersion,providerHealth,unresolvedSymbols,fugleConfigured,refresh,refreshCatalog,
     setTrackedSymbols,saveFugleApiKey,clearFugleApiKey,
   ]);
 
