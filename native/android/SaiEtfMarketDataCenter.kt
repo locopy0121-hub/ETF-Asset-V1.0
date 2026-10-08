@@ -53,15 +53,20 @@ class MarketDataCenter(
         val sourcesTried = mutableListOf<MarketSource>()
 
         hotStore.snapshot(pending.toSet()).values.forEach { raw ->
-            if (raw.source != MarketSource.FUGLE) return@forEach
             val symbol = raw.symbol.trim().uppercase(Locale.US)
             if (symbol !in pending) return@forEach
+            if (tradingSessionActive && raw.source != MarketSource.FUGLE) return@forEach
             val normalized = raw.copy(
                 symbol = symbol,
                 quality = qualityFor(raw.sourceTimestampEpochMillis, nowEpochMillis, currentTaipeiDate),
             )
             val sameSessionDate = taipeiDate(normalized.sourceTimestampEpochMillis) == currentTaipeiDate
-            if (sameSessionDate && normalized.quality == QuoteQuality.LIVE) {
+            val reusable = if (tradingSessionActive) {
+                raw.source == MarketSource.FUGLE && normalized.quality == QuoteQuality.LIVE
+            } else {
+                raw.isClose && (raw.source == MarketSource.FUGLE || raw.source == MarketSource.TWSE_MIS)
+            }
+            if (sameSessionDate && reusable) {
                 accepted[symbol] = normalized
                 pending.remove(symbol)
             }
@@ -135,7 +140,12 @@ class MarketDataCenter(
                 val sameSessionDate = taipeiDate(normalized.sourceTimestampEpochMillis) == currentTaipeiDate
                 synchronized(quoteMutationLock) {
                     val existing = hotStore.snapshot(setOf(symbol))[symbol] ?: cache[symbol]
-                    if (!arbitrator.decide(existing, normalized).accepted) return@synchronized
+                    if (!arbitrator.decide(
+                            existing,
+                            normalized,
+                            protectTrustedSameSession = !tradingSessionActive,
+                        ).accepted
+                    ) return@synchronized
                     cache[symbol] = normalized
                     if (tradingSessionActive && !sameSessionDate) {
                         stale[symbol] = normalized.copy(quality = QuoteQuality.STALE)

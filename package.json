@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.11",
+  "version": "4.0.12",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -296,7 +296,8 @@
     "test:v4_0_8": "npm run test:v4_0_7 && node scripts/v4_0_8-layout-apply.test.cjs && node scripts/v4_0_8-live-runtime.test.cjs && tsx scripts/v4_0_8-saietf-only.test.ts",
     "test:v4_0_9": "npm run test:v4_0_8 && node scripts/v4_0_9-live-priority.test.cjs && tsx scripts/v4_0_9-update-policy.test.ts",
     "test:v4_0_10": "npm run test:v4_0_9 && node scripts/v4_0_10-global-event.test.cjs",
-    "test:v4_0_11": "npm run test:v4_0_9 && node scripts/v4_0_10-global-event.test.cjs"
+    "test:v4_0_11": "npm run test:v4_0_9 && node scripts/v4_0_10-global-event.test.cjs",
+    "test:v4_0_12": "npm run test:v4_0_11 && node scripts/v4_0_12-after-hours-contract.test.cjs && bash scripts/test-native-market-bridge.sh"
   },
   "dependencies": {
     "expo": "~57.0.21",

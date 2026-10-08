@@ -32,6 +32,7 @@ class MarketArbitrator(
     fun decide(
         existing: MarketQuote?,
         candidate: MarketQuote,
+        protectTrustedSameSession: Boolean = false,
     ): ArbitrationResult {
         if (!candidate.price.isFinite() || candidate.price <= 0.0 || candidate.isTrial) {
             return ArbitrationResult(false, ArbitrationReason.REJECT_INVALID)
@@ -47,6 +48,14 @@ class MarketArbitrator(
         }
         if (candidateSession < existingSession) {
             return ArbitrationResult(false, ArbitrationReason.REJECT_OLDER_SESSION)
+        }
+
+        if (
+            (protectTrustedSameSession || existing.isClose) &&
+            existing.source in trustedTradeSources &&
+            candidate.source == MarketSource.YAHOO
+        ) {
+            return ArbitrationResult(false, ArbitrationReason.KEEP_EXISTING)
         }
 
         if (
@@ -119,6 +128,8 @@ class MarketArbitrator(
         }
 
     companion object {
+        private val trustedTradeSources = setOf(MarketSource.FUGLE, MarketSource.TWSE_MIS)
+
         val defaultSourcePriority: Map<MarketSource, Int> = mapOf(
             MarketSource.FUGLE to 0,
             MarketSource.TWSE_MIS to 1,

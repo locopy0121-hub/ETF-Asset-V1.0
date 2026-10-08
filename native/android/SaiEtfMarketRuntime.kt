@@ -167,6 +167,6 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         val time = local.toLocalTime()
         return local.dayOfWeek.value < 6 &&
             !time.isBefore(LocalTime.of(9, 0)) &&
-            !time.isAfter(LocalTime.of(13, 30))
+            time.isBefore(LocalTime.of(13, 30))
     }
 }
