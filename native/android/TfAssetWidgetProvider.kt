@@ -462,6 +462,6 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
   }
   private fun number2(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%,.0f",v) else "--"}
-  private fun timeText(value:String)=if(value.length>=16)value.substring(11,16) else "--"
+  private fun timeText(value:String)=TfAssetMarketPresentation.sourceTimeLabel(value)
   private fun parseColor(value:String,fallback:Int)=runCatching{Color.parseColor(value)}.getOrDefault(fallback)
 }

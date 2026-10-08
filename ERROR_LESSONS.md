@@ -577,3 +577,9 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - V4.0.8 雖移植原生仲裁，React Native 仍每秒拉快照；Fugle tick 到畫面最多多等一次輪詢。改為 Memory Hot Store 推送，並保留快照恢復路徑。
 - 舊排程 JSON、設定開關與歷史交易代號會讓 SaiETF 更新定律失效；移除舊排程執行權，以正持股訂閱並在回前景即刻恢復。
 - 單檔 AI 查價與正持股訂閱若共用同一 `refresh` 訂閱更新，會把持股 WebSocket 清單換掉；專用訂閱入口與臨時查價分開。
+
+## V4.0.11 非同步行情持久化不能作原生顯示 Gate
+- Canonical 快照與 SQLite 快照可能處於不同 Tick。以價格 / 時間戳逐筆相等作可用性條件，會在每次新 Tick 或寫入延遲時清空有效行情。
+- Monitor / Mini / Widget 顯示同一 immutable canonical 投影；持久化只負責恢復。不可在 presentation 混入另一個來源版本重新算漲跌或損益。
+- 單檔缺少行情只隱藏該檔金融欄位，總資產完整性與逐檔可用性分別判定。
+- 原生 ISO UTC 字串不能 substring 作手機時間；需解析為 Instant，再轉 Asia/Taipei。

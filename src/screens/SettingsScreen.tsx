@@ -59,8 +59,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='4.0.10';
-const BUILD='40010';
+const VERSION='4.0.11';
+const BUILD='40011';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -886,7 +886,7 @@ function MarketPanel({
     <ActionButton label={refreshing?'更新中…':'立即更新行情'} disabled={refreshing} onPress={onRefresh}/>
     <MarketComparisonPanel quotes={quotes} holdings={holdings} marketDataVersion={marketDataVersion}/>
     <StatusRow label="SaiETF 行情更新" value="Fugle 成交即推送 · 來源失效時備援 · 回前景立即同步"/>
-    <Text style={styles.note}>V4.0.10 行情網路入口只由 MarketDataCenter 管理。盤中優先套用 Fugle LIVE 成交；TWSE MIS 與 Yahoo 依 SaiETF 來源狀態備援。Memory Hot Store 為行情入口，SQLite 僅做持久化；新報價直接推送至首頁、持股損益、Widget、Monitor 與 Mini。背景桌面更新受 Android 限制，請核對來源時間與有效狀態。Fugle API Key 須在本 App 設定。</Text>
+    <Text style={styles.note}>V4.0.11 行情網路入口只由 MarketDataCenter 管理。盤中優先套用 Fugle LIVE 成交；TWSE MIS 與 Yahoo 依 SaiETF 來源狀態備援。Memory Hot Store 為行情入口，SQLite 僅做持久化；新報價直接推送至首頁、持股損益、Widget、Monitor 與 Mini。背景桌面更新受 Android 限制，請核對來源時間與有效狀態。Fugle API Key 須在本 App 設定。</Text>
   </Panel>;
 }
 

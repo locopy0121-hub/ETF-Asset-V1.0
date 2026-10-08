@@ -16,6 +16,7 @@ export type HoldingSnapshot = Readonly<{
   changePercent: number | null;
   marketStatus: MarketStatus;
   updatedAt: string | null;
+  quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE'|undefined;
   valuationStatus?:'current_session'|'reference'|'unavailable'|undefined;
   valuationValidUntil?:number|null|undefined;
   marketQuality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close'|'unavailable';
