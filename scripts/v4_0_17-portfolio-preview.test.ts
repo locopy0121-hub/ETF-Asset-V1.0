@@ -24,6 +24,7 @@ assert.ok(preview.includes('!portfolioListMode&&holding&&selection.kind'),'table
 assert.ok(real.includes('previewFirstMode={firstMode} previewListFallback={listFallback}'));
 assert.ok(modal.includes('previewFirstMode={previewFirstMode} previewListFallback={previewListFallback}'));
 assert.ok(preview.includes('previewListFallback?<PortfolioSafeList'));
+assert.ok(preview.includes('<ThemeBackgroundLayer/>'),'preview must use the same wallpaper layer as the real App');
 const settings=readFileSync('src/screens/SettingsScreen.tsx','utf8');
 assert.equal(settings.includes('PageEditorStack'),false,'protected settings page must remain untouched');
 console.log('V4.0.17 portfolio preview renderer parity/mode gates PASS');

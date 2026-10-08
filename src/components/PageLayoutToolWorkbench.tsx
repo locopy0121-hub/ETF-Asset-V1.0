@@ -35,6 +35,7 @@ import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
 import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
+import {ThemeBackgroundLayer} from '../theme/ThemeBackgroundLayer';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
@@ -58,8 +59,8 @@ export function PageLayoutToolWorkbench({
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
-  previewFirstMode?:PortfolioPrimaryMode;
-  previewListFallback?:boolean;
+  previewFirstMode?:PortfolioPrimaryMode|undefined;
+  previewListFallback?:boolean|undefined;
   pageTitle:string;
   onChangePageTitle:(value:string)=>void;
 }){
@@ -367,6 +368,7 @@ export function PageLayoutToolWorkbench({
               setActualCanvasHeight(previous=>Math.abs(previous-height)<1?previous:height);
               setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
             }}>
+              <ThemeBackgroundLayer/>
               {previewFrames.map(renderActualFrame)}
               {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
                 const data=chartData(chart);
