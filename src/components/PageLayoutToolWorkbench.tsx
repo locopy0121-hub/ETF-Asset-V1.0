@@ -403,7 +403,6 @@ export function PageLayoutToolWorkbench({
     <ScrollView style={styles.fixedEditorScroll} contentContainerStyle={styles.fixedEditorContent}
       nestedScrollEnabled showsVerticalScrollIndicator keyboardShouldPersistTaps="handled">
       <View style={styles.editorToolsContent}>
-  return <View style={styles.root}>
     <Text style={styles.title}>全部框架清單</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
       {orderedFrames.map(item=><Pressable key={'frame-list:'+item.key}
