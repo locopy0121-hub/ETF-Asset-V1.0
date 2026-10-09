@@ -155,7 +155,9 @@ export function DashboardEditableMetric({
       {...(caption!==undefined?{caption}:{})}{...(tone!=='default'?{tone}:{})} editorStyle={directStyle}/>;
     return layoutRuntime.active?<Pressable onLayout={event=>{const {width,height}=event.nativeEvent.layout;setMeasured({width,height});}}
       onPress={event=>{event.stopPropagation();layoutRuntime.onSelect?.({id:targetId,kind:'card',label,...(measured??{})});}}
-      style={layoutRuntime.selectedId===targetId?styles.metricSelected:undefined}>{tile}</Pressable>:tile;
+      // Preserve the same fill geometry as the live MetricTile; without flex:1 the
+      // selector wrapper collapses the tile into a thin background strip on Android.
+      style={[styles.metricPreviewBounds,layoutRuntime.selectedId===targetId&&styles.metricSelected]}>{tile}</Pressable>:tile;
   }
 
   const base=mergeTargetAppearance(TARGET_APPEARANCE,directStyle);
@@ -182,5 +184,6 @@ export function DashboardEditableMetric({
 
 const styles=StyleSheet.create({
   layoutSelected:{borderWidth:2,borderStyle:'dashed',borderColor:'#0B6CFF',borderRadius:6},
+  metricPreviewBounds:{flex:1,minWidth:92,alignSelf:'stretch'},
   metricSelected:{borderWidth:2,borderStyle:'dashed',borderColor:'#0B6CFF',borderRadius:12},
 });
