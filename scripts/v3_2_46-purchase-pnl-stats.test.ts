@@ -29,7 +29,11 @@ assert.ok(stats.lots.filter(row=>row.status==='open').every(row=>Math.abs(row.re
 const home=readFileSync('src/screens/HomeScreen.tsx','utf8');
 assert.ok(home.includes('totalPnl={portfolio.totalPriceUnrealizedProfit}'));
 assert.ok(!home.includes('totalPnl={portfolio.totalUnrealizedProfit}'));
-assert.ok(home.includes("label:'投資總報酬（含息）'"));
+const profitView=readFileSync('src/components/dashboard/homeProfitPresentation.ts','utf8');
+assert.ok(home.includes('homeProfitPresentation(portfolio,valuationComplete,money)'),
+  'HomeScreen must render KPI labels from the shared canonical snapshot presentation');
+assert.ok(profitView.includes("label:'投資總報酬（含息）'"),
+  'the canonical total-return label must remain accurate on both actual page and preview');
 
 const overview=readFileSync('src/components/dashboard/DashboardAssetOverview.tsx','utf8');
 assert.ok(overview.includes('持股總損益'));
