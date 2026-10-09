@@ -3,6 +3,7 @@ import {Pressable,StyleSheet,View,type TextStyle} from 'react-native';
 import type {TargetOverride} from '../maintenance/inspectionModel';
 import type {LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {dividendControlVisual,dividendTargetId,dividendTextVisual} from '../editor/dividendPageLayout';
+import {dividendCatalogTarget} from '../editor/dividendEditorCatalog';
 import {Text as EditableText,Pressable as EditablePressable} from './EditableNative';
 import {MetricTile} from './MetricTile';
 import {AiQuestionBox} from './AiQuestionBox';
@@ -52,7 +53,7 @@ export function selectDividendPreview(
       const label=p.editorId.split(':').slice(-2).join(' · ');
       const raw=StyleSheet.flatten(p.style as TextStyle|TextStyle[]) as TextStyle|undefined;
       return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
-        onPress={()=>onSelect({id,kind:p.editorReadOnly===false?'text':'value',label})}
+        onPress={()=>onSelect(dividendCatalogTarget(id)??{id,kind:p.editorReadOnly===false?'text':'value',label})}
         style={[raw?.flex!==undefined?{flex:raw.flex}:{},raw?.width!==undefined?{width:raw.width}:{},
           selectedId===id?{borderWidth:1,borderColor:'#0969DA',borderRadius:5}:undefined]}>
         <View pointerEvents="none">{cloneElement(element,{editorSkip:true,style:[p.style,dividendTextVisual(overrides[id])]})}</View>
@@ -63,8 +64,8 @@ export function selectDividendPreview(
       const label=p.accessibilityLabel??p.editorId.split(':').slice(-2).join(' · ');
       return cloneElement(element,{
         disabled:false,
-        onPress:()=>onSelect({id,kind:'card',label}),
-        onLongPress:()=>onSelect({id,kind:'card',label}),
+        onPress:()=>onSelect(dividendCatalogTarget(id)??{id,kind:'card',label}),
+        onLongPress:()=>onSelect(dividendCatalogTarget(id)??{id,kind:'card',label}),
         editorSkip:true,
         style:[p.style,dividendControlVisual(overrides[id]),
           ...(selectedId===id?[{borderWidth:2,borderColor:'#0969DA'}]:[])],
