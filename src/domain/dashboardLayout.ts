@@ -1,3 +1,5 @@
+import {EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX} from '../editor/dimensionPolicy';
+
 export const DASHBOARD_OVERVIEW_ORDER=['label','amount','caption'] as const;
 export type DashboardOverviewItemKey=typeof DASHBOARD_OVERVIEW_ORDER[number];
 
@@ -127,7 +129,7 @@ export function normalizeDashboardLayout(raw:unknown):DashboardLayoutConfig{
     sectionGap:clamp(source.sectionGap,6,32,DEFAULT_DASHBOARD_LAYOUT.sectionGap),
     contentPadding:clamp(source.contentPadding,0,24,DEFAULT_DASHBOARD_LAYOUT.contentPadding),
     overview:{
-      minHeight:clamp(overview.minHeight,104,220,DEFAULT_DASHBOARD_LAYOUT.overview.minHeight),
+      minHeight:clamp(overview.minHeight,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,DEFAULT_DASHBOARD_LAYOUT.overview.minHeight),
       padding:clamp(overview.padding,8,28,DEFAULT_DASHBOARD_LAYOUT.overview.padding),
       prefixVisible:overview.prefixVisible!==false,
       captionVisible:overview.captionVisible!==false,
@@ -146,7 +148,7 @@ export function normalizeDashboardLayout(raw:unknown):DashboardLayoutConfig{
     },
     profitAnalysis:{
       cardGap:clamp(profitAnalysis.cardGap,6,24,DEFAULT_DASHBOARD_LAYOUT.profitAnalysis.cardGap),
-      cardHeight:clamp(profitAnalysis.cardHeight,84,156,DEFAULT_DASHBOARD_LAYOUT.profitAnalysis.cardHeight),
+      cardHeight:clamp(profitAnalysis.cardHeight,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,DEFAULT_DASHBOARD_LAYOUT.profitAnalysis.cardHeight),
       iconVisible:profitAnalysis.iconVisible!==false,
       captionVisible:profitAnalysis.captionVisible!==false,
       cardPadding:clamp(profitAnalysis.cardPadding,0,28,DEFAULT_DASHBOARD_LAYOUT.profitAnalysis.cardPadding),
@@ -161,7 +163,7 @@ export function normalizeDashboardLayout(raw:unknown):DashboardLayoutConfig{
     },
     profitDetail:{
       itemCount:(Math.round(itemCount) as 2|3|4),
-      rowHeight:clamp(profitDetail.rowHeight,40,72,DEFAULT_DASHBOARD_LAYOUT.profitDetail.rowHeight),
+      rowHeight:clamp(profitDetail.rowHeight,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,DEFAULT_DASHBOARD_LAYOUT.profitDetail.rowHeight),
       showMore:profitDetail.showMore!==false,
       rowPaddingHorizontal:clamp(profitDetail.rowPaddingHorizontal,0,32,DEFAULT_DASHBOARD_LAYOUT.profitDetail.rowPaddingHorizontal),
       rowGap:clamp(profitDetail.rowGap,0,28,DEFAULT_DASHBOARD_LAYOUT.profitDetail.rowGap),
