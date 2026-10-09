@@ -240,7 +240,7 @@ export function DividendScreen() {
           </FrameCard>
         },
         ...(aiSettings.prefs.ai.enabled?[{key:'dividend-ai',element:
-          <FrameCard title="股息 AI 問答">
+          <FrameCard title="股息 AI 問答" showTitle={false}>
             <AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/>
           </FrameCard>
         }]:[]),
