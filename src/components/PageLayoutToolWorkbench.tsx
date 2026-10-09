@@ -964,7 +964,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
   if(frameKey==='pnl-detail')return <Accordion title="明細佈局" subtitle="列數、高度、左右內距與欄位間距" open={open==='layout'} onPress={()=>toggle('layout')}>
     <OrderRows order={value.profitDetail.order} labels={{price:'純價差未實現',net:'淨清算未實現',realized:'已實現損益',total:'含息總損益'}} onChange={order=>patchDetail({order})}/>
     <NumberStep label="顯示列數" value={value.profitDetail.itemCount} min={2} max={4} step={1} suffix=" 列" onChange={v=>patchDetail({itemCount:v as 2|3|4})}/>
-    <NumberStep label="列高" value={value.profitDetail.rowHeight} min={40} max={72} step={2} suffix=" px" onChange={rowHeight=>patchDetail({rowHeight})}/>
+    <NumberStep label="列高" value={value.profitDetail.rowHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={rowHeight=>patchDetail({rowHeight})}/>
     <NumberStep label="左右內距" value={value.profitDetail.rowPaddingHorizontal} min={0} max={32} step={1} suffix=" px" onChange={rowPaddingHorizontal=>patchDetail({rowPaddingHorizontal})}/>
     <NumberStep label="欄位間距" value={value.profitDetail.rowGap} min={0} max={28} step={1} suffix=" px" onChange={rowGap=>patchDetail({rowGap})}/>
     <SwitchRow label="查看更多" value={value.profitDetail.showMore} onChange={showMore=>patchDetail({showMore})}/>
