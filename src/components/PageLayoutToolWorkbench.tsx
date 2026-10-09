@@ -20,7 +20,7 @@ import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard,type FrameCardProps} from './FrameCard';
 import {selectDividendPreview} from './DividendPreviewSelector';
-import {DIVIDEND_EDITOR_CATALOG} from '../editor/dividendEditorCatalog';
+import {DIVIDEND_EDITOR_CATALOG,dividendTargetForKind} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
 import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
@@ -151,6 +151,12 @@ export function PageLayoutToolWorkbench({
 
   const chooseKind=(kind:LayoutToolTargetKind)=>{
     if(kind==='frame')setSelection({id:'frame',kind,label:'框架'});
+    else if(pageKey==='dividend'&&(kind==='card'||kind==='text'||kind==='value')){
+      const target=dividendTargetForKind(frame.key,kind);
+      if(target){selectTarget(target);return;}
+      setSelection({id:'frame',kind:'frame',label:'框架'});
+      setOpenGroup('size');return;
+    }
     else if(holding&&kind==='card')setSelection({id:'card',kind,label:'行情卡片'});
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
@@ -300,6 +306,12 @@ export function PageLayoutToolWorkbench({
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
     const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
+    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
+      tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
+      onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
+        previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
+      {previewContentFor(item)}
+    </FrameCard>;
     return <View key={item.key}>
       <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
         {item.key==='page-header'?
@@ -311,19 +323,15 @@ export function PageLayoutToolWorkbench({
             <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
-          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} editorStyle={itemConfig} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
-              tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
-              onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
-                previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
-              {previewContentFor(item)}
-            </FrameCard>
-          </Pressable>}
+          pageKey==='dividend'
+            ?<View>{frameContent}</View>
+            :<Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>{frameContent}</Pressable>
       </LayoutSelectionProvider>
     </View>;
   };
 
-  const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
+  const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):
+    selection.id.startsWith('dividend:')?dividendTargetBase(selection.id):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
   const frameSortIndex=orderedFrames.findIndex(item=>item.key===frame.key);
 
@@ -848,6 +856,18 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
     <SwitchRow label="顯示文字" value={value.quickActions.titleVisible} onChange={titleVisible=>patchQuick({titleVisible})}/>
   </Accordion>;
   return null;
+}
+
+/** Base dimensions and typography match the actual calendar date nodes, not dashboard defaults. */
+function dividendTargetBase(id:string):TargetAppearance{
+  if(id.endsWith(':dayText:12'))return {...TARGET_APPEARANCE,fontSize:12,fontWeight:'800',
+    textColor:colors.text,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+  if(id.endsWith(':weekday:10'))return {...TARGET_APPEARANCE,fontSize:10,fontWeight:'900',
+    textColor:colors.textSecondary,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0,align:'center'};
+  if(id.endsWith(':month:6'))return {...TARGET_APPEARANCE,fontSize:18,fontWeight:'900',
+    textColor:colors.text,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+  if(id.endsWith(':day:11'))return {...TARGET_APPEARANCE,height:48,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:12};
+  return {...TARGET_APPEARANCE,backgroundOpacity:0,padding:0,borderWidth:0};
 }
 
 function headerTargetBase(id:string,frame:FrameEditorConfig):TargetAppearance{
