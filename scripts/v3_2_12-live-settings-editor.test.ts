@@ -14,7 +14,8 @@ const must=(condition:boolean,message:string)=>{if(!condition)throw new Error(me
 
 // Upper workspace is the actual-page selector, not a separately modelled preview.
 must(workbench.includes('實際頁面編輯區'),'missing actual-page editor surface');
-must(workbench.includes('previewFrames.map(renderActualFrame)'),'actual frames are not rendered in the upper surface');
+must(workbench.includes('.map(renderActualFrame)')&&workbench.includes('previewFrames.filter(item=>item.key===frameKey)'),
+  'actual frames must render in the upper surface, focused on selected dividend frame');
 must(workbench.includes('LayoutSelectionProvider'),'actual component selection provider missing');
 must(workbench.includes('滑到哪裡、點到哪裡'),'actual-page selection instruction missing');
 
