@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {DIVIDEND_EDITOR_CATALOG,dividendCatalogTarget,dividendTargetForKind} from '../src/editor/dividendEditorCatalog';
+import {DIVIDEND_EDITOR_CATALOG,dividendCatalogTarget,dividendPreviewInteractionTarget,dividendTargetForKind} from '../src/editor/dividendEditorCatalog';
 import {dividendTargetId,dividendTextVisual} from '../src/editor/dividendPageLayout';
 import {mergeDisplayState} from '../src/editor/editorModel';
 
@@ -15,6 +15,10 @@ assert.equal(dividendTargetForKind('dividend-calendar','value')?.label,'本月�
 assert.equal(dividendCatalogTarget(dayId)?.kind,'text',
   'tapping the real numeral must select text tools even though the underlying date is read-only');
 assert.notEqual(dayId,cellId);
+assert.equal(dividendPreviewInteractionTarget('native:DividendScreen:day:11','tap')?.id,dayId,
+  'tap on a date should edit the number even when the outer date cell receives the gesture');
+assert.equal(dividendPreviewInteractionTarget('native:DividendScreen:day:11','long-press')?.id,cellId,
+  'long press must still allow date-cell border and background editing');
 
 const display=mergeDisplayState({dividend:{layoutTargets:{
   [dayId]:{fontSize:23,fontWeight:'700',textColor:'#123456',letterSpacing:1,actualDividend:99999},
