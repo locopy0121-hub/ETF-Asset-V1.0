@@ -61,9 +61,13 @@ export function selectDividendPreview(
       const id=dividendTargetId(p.editorId);
       const label=p.editorId.split(':').slice(-2).join(' · ');
       const raw=StyleSheet.flatten(p.style as TextStyle|TextStyle[]) as TextStyle|undefined;
+      const explicit=overrides[id];
       return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
         onPress={()=>onSelect(dividendCatalogTarget(id)??{id,kind:p.editorReadOnly===false?'text':'value',label})}
-        style={[raw?.flex!==undefined?{flex:raw.flex}:{},raw?.width!==undefined?{width:raw.width}:{},
+        style={[raw?.flex!==undefined&&explicit?.width===undefined?{flex:raw.flex}:{},
+          raw?.width!==undefined&&explicit?.width===undefined?{width:raw.width}:{},
+          ...(explicit?.width!==undefined?{width:explicit.width,minWidth:1,maxWidth:explicit.width,flex:0}:{}),
+          ...(explicit?.height!==undefined?{height:explicit.height,minHeight:1}:{}),
           selectedId===id?{borderWidth:1,borderColor:'#0969DA',borderRadius:5}:undefined]}>
         <View pointerEvents="none">{cloneElement(element,{editorSkip:true,style:[p.style,dividendTextVisual(overrides[id])]})}</View>
       </Pressable>;
