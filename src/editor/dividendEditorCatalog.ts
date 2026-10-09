@@ -81,3 +81,14 @@ export function dividendCatalogTarget(id:string):DividendEditorItem|undefined {
   }
   return undefined;
 }
+
+/** Avoid nested Pressable responder collisions on calendar cells:
+ * tap selects the numeral, long press selects the containing date card.
+ */
+export function dividendPreviewInteractionTarget(
+  editorId:string,gesture:'tap'|'long-press'='tap',
+):DividendEditorItem|undefined {
+  const actualId=editorId==='native:DividendScreen:day:11'&&gesture==='tap'
+    ?'native:DividendScreen:dayText:12':editorId;
+  return dividendCatalogTarget(dividendTargetId(actualId));
+}
