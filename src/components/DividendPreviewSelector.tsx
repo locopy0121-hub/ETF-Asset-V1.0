@@ -3,7 +3,7 @@ import {Pressable,StyleSheet,View,type TextStyle} from 'react-native';
 import type {TargetOverride} from '../maintenance/inspectionModel';
 import type {LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {dividendControlVisual,dividendTargetId,dividendTextVisual} from '../editor/dividendPageLayout';
-import {dividendCatalogTarget} from '../editor/dividendEditorCatalog';
+import {dividendCatalogTarget,dividendPreviewInteractionTarget} from '../editor/dividendEditorCatalog';
 import {Text as EditableText,Pressable as EditablePressable} from './EditableNative';
 import {MetricTile} from './MetricTile';
 import {AiQuestionBox} from './AiQuestionBox';
@@ -64,8 +64,10 @@ export function selectDividendPreview(
       const label=p.accessibilityLabel??p.editorId.split(':').slice(-2).join(' · ');
       return cloneElement(element,{
         disabled:false,
-        onPress:()=>onSelect(dividendCatalogTarget(id)??{id,kind:'card',label}),
-        onLongPress:()=>onSelect(dividendCatalogTarget(id)??{id,kind:'card',label}),
+        // A short tap on a calendar cell edits its date numeral; hold to edit the cell.
+        // This also handles devices that dispatch both nested and parent press responders.
+        onPress:()=>onSelect(dividendPreviewInteractionTarget(p.editorId!,'tap')??{id,kind:'card',label}),
+        onLongPress:()=>onSelect(dividendPreviewInteractionTarget(p.editorId!,'long-press')??{id,kind:'card',label}),
         editorSkip:true,
         style:[p.style,dividendControlVisual(overrides[id]),
           ...(selectedId===id?[{borderWidth:2,borderColor:'#0969DA'}]:[])],
