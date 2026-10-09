@@ -29,6 +29,7 @@ import {formatDisplayNumber} from '../maintenance/numberDisplay';
 import {FrameEditingProvider} from '../editor/FrameEditingContext';
 import {Text as EditableText} from './EditableNative';
 import {dividendTargetId} from '../editor/dividendPageLayout';
+import {readableDividendSummaryMetric} from '../dividend/dividendSummaryVisual';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -70,10 +71,16 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         },
       };
       return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
-        {(_appearance,customized,override,render)=><MetricTile {...props}
-          previewTap={render.editing}
-          {...(render.simulated?{simulationTone:render.displayTone}:{})}
-          {...((customized||dividendLayout)?{editorStyle:{...(dividendLayout??{}),...(customized?applyConditionalAppearance(override,render.displayTone):{})}}:{})}/>} 
+        {(_appearance,customized,override,render)=>{
+          const customizedStyle=(customized||dividendLayout)?
+            {...(dividendLayout??{}),...(customized?applyConditionalAppearance(override,render.displayTone):{})}:undefined;
+          const visualStyle=frame.page==='dividend'&&frame.frameKey==='dividend-summary'&&customizedStyle?
+            readableDividendSummaryMetric(customizedStyle):customizedStyle;
+          return <MetricTile {...props}
+            previewTap={render.editing}
+            {...(render.simulated?{simulationTone:render.displayTone}:{})}
+            {...(visualStyle?{editorStyle:visualStyle}:{})}/>;
+        }}
       </InspectableTarget>;
     }
     if(child.type===AiQuestionBox){

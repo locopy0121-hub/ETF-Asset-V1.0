@@ -1,4 +1,4 @@
-name: TF Asset V4.0.21 CI / QA APK
+name: TF Asset V4.0.22 CI / QA APK
 
 on:
   push:
@@ -29,18 +29,20 @@ jobs:
         run: npx tsx scripts/v4_0_19-calendar-text-selector.test.ts
       - name: V4.0.19 fixed split preview and compact toolbar regression
         run: node scripts/v4_0_19-fixed-preview-layout.test.cjs
-      - name: V4.0.21 quick bar visual editor regression
+      - name: V4.0.22 quick bar visual editor regression
         run: npx tsx scripts/v4_0_20-quickbar-editor.test.ts
-      - name: V4.0.21 real home KPI preview / flex regression
+      - name: V4.0.22 real home KPI preview / flex regression
         run: npx tsx scripts/v4_0_21-home-profit-preview.test.ts
-      - name: V4.0.21 inherited ledger pagination regression
+      - name: V4.0.22 dividend summary readability and independent AI frame
+        run: npx tsx scripts/v4_0_22-dividend-summary-separate-ai.test.ts
+      - name: V4.0.22 inherited ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
-      - name: V4.0.21 inherited dashboard content editing regression
+      - name: V4.0.22 inherited dashboard content editing regression
         run: npx tsx scripts/v3_1_17-dashboard-content.test.ts
-      - name: V4.0.21 inherited holding detail editor / Android safe-area regression
+      - name: V4.0.22 inherited holding detail editor / Android safe-area regression
         run: npx tsx scripts/v3_1_18-holding-detail-safearea.test.ts
-      - name: V4.0.21 full inherited + Market Core gates
-        run: npm run test:v4_0_21
+      - name: V4.0.22 full inherited + Market Core gates
+        run: npm run test:v4_0_22
       - name: Native market bridge behavior and nine-symbol App valuation
         run: bash scripts/test-native-market-bridge.sh
       - name: Generate declared skill coverage matrix
@@ -53,19 +55,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: V4.0.21 inherited controls source smoke
+      - name: V4.0.22 inherited controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V4.0.21 inherited controls runtime behavior
+      - name: V4.0.22 inherited controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V4.0.21 inherited AI holdings behavior
+      - name: V4.0.22 inherited AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V4.0.21 inherited dividend calendar behavior
+      - name: V4.0.22 inherited dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V4.0.21 inherited system profit colors
+      - name: V4.0.22 inherited system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V4.0.21 inherited integration smoke
+      - name: V4.0.22 inherited integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V4.0.21 inherited UX controls
+      - name: V4.0.22 inherited UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -73,7 +75,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V4.0.21 Node/Redis/PostgreSQL inherited integration
+    name: V4.0.22 Node/Redis/PostgreSQL inherited integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -109,7 +111,7 @@ jobs:
         run: npm run check
 
   qa-apk:
-    name: V4.0.21 QA APK / native integration
+    name: V4.0.22 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
     if: (github.event_name == 'push' && startsWith(github.ref_name, 'v4.0.')) || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.')))
@@ -135,18 +137,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V4.0.21 identity
+      - name: Freeze V4.0.22 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "4.0.21"
-          test "$(node -p "require('./app.json').expo.version")" = "4.0.21"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40021"
+          test "$(node -p "require('./package.json').version")" = "4.0.22"
+          test "$(node -p "require('./app.json').expo.version")" = "4.0.22"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40022"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V4.0.21 Hard Gates
-        run: npm run test:v4_0_21
+      - name: V4.0.22 Hard Gates
+        run: npm run test:v4_0_22
 
       - name: Generate declared skill coverage matrix for APK evidence
         run: npx tsx scripts/v3_2_49-skill-report.ts
@@ -182,8 +184,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 40021');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.21"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 40022');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.22"');
           g=g.replace(/dependencies\s*\{/,'dependencies {\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")\n    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")\n    implementation("com.squareup.okhttp3:okhttp:4.12.0")');
           if(!g.includes('kotlinx-coroutines-android:1.10.2')||!g.includes('kotlinx-serialization-json:1.9.0')||!g.includes('com.squareup.okhttp3:okhttp:4.12.0')) throw new Error('SaiETF native market Gradle dependencies were not injected');
           fs.writeFileSync(gradle,g);
@@ -245,26 +247,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V4.0.21-QA.apk
-          test "$(stat -c%s TF-Asset-V4.0.21-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V4.0.21-QA.apk
-          sha256sum TF-Asset-V4.0.21-QA.apk | tee TF-Asset-V4.0.21-QA.sha256
+          cp "$APK_PATH" TF-Asset-V4.0.22-QA.apk
+          test "$(stat -c%s TF-Asset-V4.0.22-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V4.0.22-QA.apk
+          sha256sum TF-Asset-V4.0.22-QA.apk | tee TF-Asset-V4.0.22-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V4.0.21-QA.apk | tee TF-Asset-V4.0.21-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.21-badging.txt
-          grep "versionCode='40021'" TF-Asset-V4.0.21-badging.txt
-          grep "versionName='4.0.21'" TF-Asset-V4.0.21-badging.txt
-          file TF-Asset-V4.0.21-QA.apk
+          "$AAPT" dump badging TF-Asset-V4.0.22-QA.apk | tee TF-Asset-V4.0.22-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.22-badging.txt
+          grep "versionCode='40022'" TF-Asset-V4.0.22-badging.txt
+          grep "versionName='4.0.22'" TF-Asset-V4.0.22-badging.txt
+          file TF-Asset-V4.0.22-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V4.0.21-QA-APK
+          name: TF-Asset-V4.0.22-QA-APK
           path: |
-            TF-Asset-V4.0.21-QA.apk
-            TF-Asset-V4.0.21-QA.sha256
-            TF-Asset-V4.0.21-badging.txt
+            TF-Asset-V4.0.22-QA.apk
+            TF-Asset-V4.0.22-QA.sha256
+            TF-Asset-V4.0.22-badging.txt
             reports/V3.2.49-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30

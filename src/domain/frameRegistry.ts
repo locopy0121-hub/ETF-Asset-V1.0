@@ -55,6 +55,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
   dividend: [
     { key:'page-header', title:'頁面頂部表頭', description:'TF Asset 品牌、標題、副標及右側按鈕區' },
     { key:'dividend-summary', title:'股息摘要', description:'本月、年度、月平均' },
+    { key:'dividend-ai', title:'股息 AI 問答', description:'獨立 AI 問答框架，與股息摘要各自排序、尺寸及顯示' },
     { key:'dividend-calendar', title:'股息月曆', description:'必要主框架與事件狀態' },
     { key:'dividend-list', title:'股息清單', description:'日期、標的、金額、狀態' },
     { key:'annual-trend', title:'年度趨勢', description:'1–12 月股息趨勢' },

@@ -22,6 +22,7 @@ import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard,type FrameCardProps} from './FrameCard';
 import {selectDividendPreview} from './DividendPreviewSelector';
+import {DIVIDEND_SUMMARY_METRIC_MIN_WIDTH,DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT} from '../dividend/dividendSummaryVisual';
 import {DIVIDEND_EDITOR_CATALOG,dividendTargetForKind} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
@@ -48,7 +49,7 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
-const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-calendar','dividend-list','annual-trend']);
+const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-ai','dividend-calendar','dividend-list','annual-trend']);
 const hasRealPreview=(page:MainPageKey,key:string)=>
   key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):false);
 
@@ -310,7 +311,7 @@ export function PageLayoutToolWorkbench({
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
     const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
-    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
+    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
       tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
       onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
         previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
@@ -334,6 +335,7 @@ export function PageLayoutToolWorkbench({
     </View>;
   };
 
+  const dividendSummaryCard=pageKey==='dividend'&&frame.key==='dividend-summary'&&selection.id.startsWith('dividend:metric:');
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):
     selection.id.startsWith('dividend:')?dividendTargetBase(selection.id):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
@@ -470,7 +472,9 @@ export function PageLayoutToolWorkbench({
     </Accordion>:null}
 
     {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
-      <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height} open={openGroup} toggle={toggle}
+      <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
+        minCardWidth={dividendSummaryCard?DIVIDEND_SUMMARY_METRIC_MIN_WIDTH:28}
+        minCardHeight={dividendSummaryCard?DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT:24} open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
 
@@ -832,10 +836,10 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
   </View>;
 }
 
-function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number|undefined;actualHeight?:number|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
+function TargetTools({kind,id,current,actualWidth,actualHeight,minCardWidth=28,minCardHeight=24,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number|undefined;actualHeight?:number|undefined;minCardWidth?:number;minCardHeight?:number;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
   const card=kind==='card';
-  const effectiveWidth=Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4));
-  const effectiveHeight=Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35));
+  const effectiveWidth=Math.max(minCardWidth,Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4)));
+  const effectiveHeight=Math.max(minCardHeight,Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35)));
   const effectiveLineHeight=Math.round(current.lineHeight>0?current.lineHeight:Math.max(current.fontSize*1.2,actualHeight??0));
   return <View>
     {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="直接修改本頁實際標題；套用後寫入既有 pageTitles" open={open==='content'} onPress={()=>toggle('content')}>
@@ -843,8 +847,8 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
         maxLength={48} style={styles.textInput}/>
     </Accordion>:null}
     {card?<Accordion title="尺寸／空間" subtitle="卡片實際尺寸、內距與外距" open={open==='surface'} onPress={()=>toggle('surface')}>
-      <NumberStep label="寬度" value={effectiveWidth} min={28} max={900} step={10} suffix=" px" onChange={width=>patch({width})}/>
-      <NumberStep label="高度" value={effectiveHeight} min={24} max={700} step={10} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="寬度" value={effectiveWidth} min={minCardWidth} max={900} step={10} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={effectiveHeight} min={minCardHeight} max={700} step={10} suffix=" px" onChange={height=>patch({height})}/>
       <NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
       <NumberStep label="上下外距" value={current.marginVertical} min={0} max={32} step={1} suffix=" px" onChange={marginVertical=>patch({marginVertical})}/>
       <NumberStep label="左右外距" value={current.marginHorizontal} min={0} max={32} step={1} suffix=" px" onChange={marginHorizontal=>patch({marginHorizontal})}/>
