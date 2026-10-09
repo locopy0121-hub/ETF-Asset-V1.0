@@ -38,7 +38,7 @@ assert.equal(day?.borderColor,undefined,'cell and numeral styles must be isolate
 const visual=dividendTextVisual(day);
 assert.equal(visual?.fontSize,23);
 assert.equal(visual?.fontWeight,'700');
-assert.equal(visual?.color,'#123456');
+assert.equal(visual?.color,'rgba(18,52,86,1.000)', 'visual adapter uses the canonical alpha color format');
 
 const workbench=readFileSync('src/components/PageLayoutToolWorkbench.tsx','utf8');
 const selector=readFileSync('src/components/DividendPreviewSelector.tsx','utf8');
