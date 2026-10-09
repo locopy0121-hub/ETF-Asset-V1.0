@@ -72,7 +72,10 @@ function normalizeButtonPartial(input:unknown,base:QuickBarButtonStyle,partial:b
   if(!isObject(input))return partial?{}:base;
   const out:Record<string,unknown>={};
   for(const key of Object.keys(RANGES) as (keyof QuickBarButtonStyle)[]){
-    if(partial&&!(key in input))continue;
+    if(!(key in input)){
+      if(!partial)out[key]=base[key];
+      continue;
+    }
     const value=input[key],range=RANGES[key];
     if(key==='width'||key==='height'){
       out[key]=value===null?null:bounded(value,range![0],range![1],base[key]??(key==='width'?100:76));
