@@ -28,7 +28,7 @@ export function PortfolioQuickBar({firstMode,activeMode,sortLabel,onCycleFirst,o
   const layout=rawLayout?normalizeQuickBarLayout(rawLayout):DEFAULT_QUICK_BAR_LAYOUT;
   const button=(key:QuickBarKey)=>{
     const shared={key,buttonKey:key,layout,
-      selectedEdit:editSelectedKey===key,previewSelect:onEditSelect?()=>onEditSelect(key):undefined};
+      selectedEdit:editSelectedKey===key,...(onEditSelect?{previewSelect:()=>onEditSelect(key)}:{})};
     switch(key){
       case 'first':return <QuickButton {...shared} label={first.label} glyph={first.glyph}
         selected={activeMode===firstMode} onPress={onCycleFirst}
