@@ -776,7 +776,7 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
           <SwitchRow label="Glow 損益色" value={current.glowProfitColor} onChange={glowProfitColor=>patch({glowProfitColor})}/></>:null}
       </>:null}
     </Accordion>
-    {card&&id.startsWith('dashboard:kpi-')?<Accordion title="卡片文字" subtitle="標題、主數值、說明各自可調" open={open==='card-type'} onPress={()=>toggle('card-type')}>
+    {card&&(id.startsWith('dashboard:kpi-')||id.startsWith('dividend:metric:'))?<Accordion title="卡片文字" subtitle="標題、主數值、說明各自可調" open={open==='card-type'} onPress={()=>toggle('card-type')}>
       <NumberStep label="標題大小" value={current.labelFontSize} min={8} max={32} step={1} suffix=" px" onChange={labelFontSize=>patch({labelFontSize})}/>
       <ColorPalettePicker label="標題顏色" value={current.labelColor} onChange={labelColor=>patch({labelColor})} opacity={current.labelOpacity} onOpacityChange={labelOpacity=>patch({labelOpacity})}/>
       <SwitchRow label="標題損益色" value={current.labelProfitColor===true} onChange={labelProfitColor=>patch({labelProfitColor})}/>
