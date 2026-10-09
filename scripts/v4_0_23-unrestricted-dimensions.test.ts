@@ -47,6 +47,8 @@ const quick=text('src/components/PortfolioQuickBar.tsx');
 const dividend=text('src/screens/DividendScreen.tsx');
 assert.match(tools,/min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1}/);
 assert.match(tools,/keyboardType="numeric" selectTextOnFocus/);
+assert.match(tools,/文字／數值物件尺寸/,'text and value elements must have independent width and height editors');
+assert.match(preview,/explicit\?\.width!==undefined/,'real text/value preview must respect stored widths');
 assert.doesNotMatch(tools,/minCardWidth=\{dividendSummaryCard/);
 assert.doesNotMatch(tools,/minCardHeight=\{dividendSummaryCard/);
 assert.match(preview,/fixedWidth\?\{width:metricStyle.width,minWidth:1/);
