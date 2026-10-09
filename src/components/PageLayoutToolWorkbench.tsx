@@ -312,7 +312,7 @@ export function PageLayoutToolWorkbench({
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
           <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined} editorStyle={itemConfig}
+            <FrameCard title={item.title} editorStyle={itemConfig} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
               tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
               onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
                 previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
