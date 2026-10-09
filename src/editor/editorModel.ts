@@ -2,6 +2,7 @@ import {EDITOR_FRAMES} from '../domain/editorFrameRegistry';
 import {normalizePortfolioViewMode,normalizePortfolioLayoutMode} from '../domain/portfolioModeSwitch';
 import {sortPreset} from '../domain/holdingSort';
 import {DEFAULT_QUICK_BAR_LAYOUT,normalizeQuickBarLayout,type QuickBarLayout} from '../domain/portfolioQuickBarLayout';
+import {EDITOR_DIMENSION_MAX,EDITOR_DIMENSION_MIN} from './dimensionPolicy';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {DEFAULT_ETF_BADGES,normalizeEtfBadges,type EtfBadgeConfig} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST,normalizePortfolioList,type PortfolioListConfig} from '../domain/portfolioList';
@@ -298,7 +299,7 @@ const normalizeDashboardCharts=(raw:unknown):readonly DashboardChartConfig[]=>{
       visible:source.visible!==false,
       style:DASHBOARD_STYLES.includes(source.style as DashboardChartStyle)?source.style as DashboardChartStyle:fallback.style,
       source:DASHBOARD_SOURCES.includes(source.source as DashboardChartSource)?source.source as DashboardChartSource:fallback.source,
-      x:nextX===-1?-1:clamp(nextX,0,1200,fallback.x),y:clamp(nextY,0,1600,fallback.y),width:clamp(nextWidth,140,900,fallback.width),height:clamp(nextHeight,120,700,fallback.height),
+      x:nextX===-1?-1:clamp(nextX,0,1200,fallback.x),y:clamp(nextY,0,1600,fallback.y),width:clamp(nextWidth,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,fallback.width),height:clamp(nextHeight,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,fallback.height),
       zIndex:clamp(source.zIndex,0,99,index+1),locked:source.locked===true,aspectLocked:source.aspectLocked===true,
       backgroundColor:wallColor(source.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(source.backgroundOpacity,0,1,fallback.backgroundOpacity??1),
       textColor:wallColor(source.textColor,fallback.textColor),textOpacity:clamp(source.textOpacity,0,1,fallback.textOpacity??1),
@@ -347,9 +348,9 @@ export function normalizeEditorConfig(
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
-      ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,160,1600,320)}:{}),
-      ...(typeof candidate.height==='number'&&Number.isFinite(candidate.height)&&candidate.height>0?{height:clamp(candidate.height,80,2400,300)}:{}),
-      ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,600,0)}:{}),
+      ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,320)}:{}),
+      ...(typeof candidate.height==='number'&&Number.isFinite(candidate.height)&&candidate.height>0?{height:clamp(candidate.height,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,300)}:{}),
+      ...(typeof candidate.minHeight==='number'&&Number.isFinite(candidate.minHeight)?{minHeight:clamp(candidate.minHeight,0,EDITOR_DIMENSION_MAX,0)}:{}),
     };
   });
 
