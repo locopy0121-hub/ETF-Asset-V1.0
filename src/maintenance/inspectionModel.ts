@@ -1,4 +1,5 @@
 import type {TextStyle} from 'react-native';
+import {EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX} from '../editor/dimensionPolicy';
 import type {MainPageKey} from '../domain/pageRegistry';
 import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
@@ -72,7 +73,7 @@ export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
-  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['textOpacity',0,1],['labelOpacity',0,1],['captionOpacity',0,1],['backgroundOpacity',0,1],['borderOpacity',0,1],['gradientEndOpacity',0,1],['gradientMidOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',28,2400],['height',24,2400],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-24,24],['prefixOffsetY',-8,8],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
+  for(const [field,min,max] of [['fontSize',8,48],['labelFontSize',8,32],['captionFontSize',8,30],['borderWidth',0,8],['borderRadius',0,48],['padding',0,32],['opacity',0,1],['textOpacity',0,1],['labelOpacity',0,1],['captionOpacity',0,1],['backgroundOpacity',0,1],['borderOpacity',0,1],['gradientEndOpacity',0,1],['gradientMidOpacity',0,1],['offsetX',-5000,5000],['offsetY',-5000,5000],['width',EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX],['height',EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX],['anchorBaseWidth',0,2400],['anchorBaseHeight',0,2400],['letterSpacing',-4,16],['lineHeight',0,96],['prefixGap',0,48],['prefixOffsetX',-24,24],['prefixOffsetY',-8,8],['labelLetterSpacing',-4,16],['captionLetterSpacing',-4,16],['labelLineHeight',0,96],['captionLineHeight',0,96],
     ['gradientMidStop',.1,.9],['imageIndex',0,9],['imageOpacity',0,1],['imageFocusX',0,1],['imageFocusY',0,1],['marginVertical',0,32],['marginHorizontal',0,32],
     ['shadowOpacity',0,.8],['shadowBlur',0,48],['shadowOffsetX',-24,24],['shadowOffsetY',-24,24],
     ['glowOpacity',0,.8],['glowWidth',0,16],['thresholdValue',-1000000000000,1000000000000]] as const){
