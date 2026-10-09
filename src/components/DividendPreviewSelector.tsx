@@ -7,6 +7,7 @@ import {dividendCatalogTarget,dividendPreviewInteractionTarget} from '../editor/
 import {Text as EditableText,Pressable as EditablePressable} from './EditableNative';
 import {MetricTile} from './MetricTile';
 import {AiQuestionBox} from './AiQuestionBox';
+import {readableDividendSummaryMetric} from '../dividend/dividendSummaryVisual';
 
 type PreviewElement=ReactElement<{
   children?:ReactNode;
@@ -42,9 +43,9 @@ export function selectDividendPreview(
       const id=dividendTargetId('metric:'+label);
       return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+p.label}
         onPress={()=>onSelect({id,kind:'card',label})}
-        style={[{flex:1,minWidth:92},selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined]}>
+        style={[{flex:1,minWidth:136,minHeight:128,alignSelf:'stretch'},selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined]}>
         <View pointerEvents="none" style={{flex:1}}>{cloneElement(element,{
-          ...((overrides[id]??p.editorStyle)?{editorStyle:overrides[id]??p.editorStyle}:{})
+          ...((overrides[id]??p.editorStyle)?{editorStyle:readableDividendSummaryMetric(overrides[id]??p.editorStyle)}:{})
         })}</View>
       </Pressable>;
     }
