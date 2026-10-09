@@ -164,9 +164,9 @@ export function createInitialEditorState(): PageEditorState {
 
 export function createInitialDisplayState(): PageDisplayState {
   return {
-    home: { quoteStyle:'quote', sortKey:'pnl', quickBar:DEFAULT_QUICK_BAR_LAYOUT, holdingLayoutMode:'grid2', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS, dashboardLayout:DEFAULT_DASHBOARD_LAYOUT, layoutTargets:{} },
+    home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', quickBar:DEFAULT_QUICK_BAR_LAYOUT, holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS, dashboardLayout:DEFAULT_DASHBOARD_LAYOUT, layoutTargets:{} },
     ledger: {layoutTargets:{}},
-    portfolio: { quoteStyle:'chart', sortKey:'manual', quickBar:DEFAULT_QUICK_BAR_LAYOUT, portfolioViewMode:'list', portfolioListStyle:'table', holdingLayoutMode:'list', holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, portfolioList:DEFAULT_PORTFOLIO_LIST, holdingChart:DEFAULT_HOLDING_CHART, layoutTargets:{} },
+    portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', portfolioListStyle:'table', holdingLayoutMode:'list', quickBar:DEFAULT_QUICK_BAR_LAYOUT, holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, portfolioList:DEFAULT_PORTFOLIO_LIST, holdingChart:DEFAULT_HOLDING_CHART, layoutTargets:{} },
     dividend: {layoutTargets:{}},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true, layoutTargets:{} },
     settings: {layoutTargets:{}},
