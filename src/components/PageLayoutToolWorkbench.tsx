@@ -373,7 +373,7 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
       <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
-      <ScrollView key={pageKey==='dividend'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+      <ScrollView key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
         <View style={styles.previewViewport} onLayout={event=>{
           const width=event.nativeEvent.layout.width;
@@ -387,7 +387,8 @@ export function PageLayoutToolWorkbench({
               setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
             }}>
               <ThemeBackgroundLayer/>
-              {(pageKey==='dividend' ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
+              {(pageKey==='dividend'||pageKey==='portfolio'||(pageKey==='home'&&frameKey==='holding-quotes')
+                ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
               {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
                 const data=chartData(chart);
                 const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
