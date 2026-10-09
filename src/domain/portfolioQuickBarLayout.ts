@@ -1,3 +1,4 @@
+import {colors} from '../theme/tokens';
 /** Four-mode selector display only. No change to mode/sort semantics or accounting. */
 export const QUICK_BAR_KEYS=['first','chart','advanced','sort'] as const;
 export type QuickBarKey=(typeof QUICK_BAR_KEYS)[number];
@@ -42,9 +43,9 @@ export type QuickBarLayout=Readonly<{
 }>;
 export const DEFAULT_QUICK_BAR_BUTTON:QuickBarButtonStyle={
   width:null,height:null,minHeight:76,paddingHorizontal:3,paddingVertical:8,marginHorizontal:0,marginVertical:0,
-  borderWidth:1,borderRadius:12,borderColor:'#D9E1EC',backgroundColor:'#F1F5FF',
-  selectedBackgroundColor:'#0B68F8',glyphColor:'#0B68F8',labelColor:'#0F172A',
-  statusColor:'#64748B',selectedTextColor:'#FFFFFF',
+  borderWidth:1,borderRadius:12,borderColor:colors.border,backgroundColor:colors.surfaceMuted,
+  selectedBackgroundColor:colors.primary,glyphColor:colors.primary,labelColor:colors.text,
+  statusColor:colors.textSecondary,selectedTextColor:'#FFFFFF',
   glyphSize:26,glyphLineHeight:31,labelSize:12,labelLineHeight:17,
   statusSize:9,statusLineHeight:12,contentGap:3,
 };
