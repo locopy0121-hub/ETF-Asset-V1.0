@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {homeProfitPresentation} from '../src/components/dashboard/homeProfitPresentation';
+const read=(path:string)=>readFileSync(path,'utf8');
+const real=read('src/screens/HomeScreen.tsx');
+const preview=read('src/components/PageLayoutToolWorkbench.tsx');
+const metric=read('src/components/dashboard/DashboardEditableContent.tsx');
+const kpi=read('src/components/dashboard/DashboardProfitAnalysis.tsx');
+const settings=read('src/screens/SettingsScreen.tsx');
+
+const snapshot={realizedNetPnL:0,totalPnl:1260006,totalUnrealizedProfit:1259843,
+  totalMarketValue:11318255,totalPriceUnrealizedProfit:1290992};
+const format=(value:number)=>Math.round(value).toLocaleString('zh-TW');
+const {kpis,rows}=homeProfitPresentation(snapshot,true,format);
+assert.deepEqual(kpis.map(k=>k.key),['realizedNetPnL','totalPnl','totalUnrealizedProfit','totalMarketValue']);
+assert.deepEqual(kpis.map(k=>k.label),['已實現損益','投資總報酬（含息）','淨清算未實現','持股市值']);
+assert.deepEqual(kpis.map(k=>k.value),['0','1,260,006','1,259,843','11,318,255']);
+assert.equal(kpis[1]?.caption,'未實現＋已實現＋股息');
+assert.equal(kpis[2]?.caption,'估計清算後');
+assert.equal(rows[0]?.value,'1,290,992');
+assert.equal(kpis[1]?.tone,'gain');
+assert.equal(rows[0]?.tone,'gain');
+const missing=homeProfitPresentation(snapshot,false,format);
+assert.equal(missing.kpis[1]?.value,'待核對');
+assert.equal(missing.kpis[2]?.value,'待核對');
+assert.equal(missing.kpis[3]?.value,'待核對');
+assert.equal(missing.rows[0]?.value,'待核對');
+assert.equal(missing.kpis[0]?.value,'0','realized-only value remains available without fresh quotes');
+assert.ok(!real.includes('label:\'含息總損益\''),'real view must not reintroduce duplicate labels');
+assert.match(real,/\{kpis:dashboardKpis,rows:dashboardProfitRows\}=homeProfitPresentation\(portfolio,valuationComplete,money\)/);
+assert.match(preview,/\{kpis,rows\}=homeProfitPresentation\(portfolio,valuationComplete,money\)/);
+assert.match(real,/<DashboardProfitAnalysis items={dashboardKpis} layout={dashboardLayout.profitAnalysis}/);
+assert.match(preview,/<DashboardProfitAnalysis items={kpis} layout={dashboard.profitAnalysis}/);
+assert.match(kpi,/ordered\.slice\(0,4\)\.map/);
+assert.match(metric,/metricPreviewBounds:\{flex:1,minWidth:92,alignSelf:'stretch'\}/);
+assert.match(metric,/style=\{\[styles\.metricPreviewBounds,layoutRuntime\.selectedId===targetId&&styles\.metricSelected\]\}/);
+assert.match(metric,/onPress=\{event=>\{event\.stopPropagation\(\);layoutRuntime\.onSelect/);
+assert.match(preview,/LayoutSelectionProvider targets={targets}/);
+assert.match(preview,/fixedPreviewPane/);
+assert.doesNotMatch(settings,/DashboardProfitAnalysis|homeProfitPresentation/,
+  'protected system settings screen must not host portfolio KPI rendering');
+console.log('V4.0.21 live profit analysis text/value/line-up + Android metric preview flex geometry: PASS');
