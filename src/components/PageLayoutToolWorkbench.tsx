@@ -404,6 +404,7 @@ export function PageLayoutToolWorkbench({
       nestedScrollEnabled showsVerticalScrollIndicator keyboardShouldPersistTaps="handled">
       <View style={styles.editorToolsContent}>
     <Text style={styles.title}>全部框架清單</Text>
+    <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料；調整顯示外觀不會更動原始數值與帳務。</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
       {orderedFrames.map(item=><Pressable key={'frame-list:'+item.key}
         accessibilityRole="button" accessibilityLabel={'編輯框架 '+item.title}
