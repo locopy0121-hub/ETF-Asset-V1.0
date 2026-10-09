@@ -325,7 +325,7 @@ export function PageLayoutToolWorkbench({
           </Pressable>:
           pageKey==='dividend'
             ?<View>{frameContent}</View>
-            :<Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>{frameContent}</Pressable>
+            :<Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>{frameContent}</Pressable>}
       </LayoutSelectionProvider>
     </View>;
   };
