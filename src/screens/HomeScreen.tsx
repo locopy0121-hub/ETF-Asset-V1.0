@@ -11,6 +11,7 @@ import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/Ho
 import {DashboardAssetOverview} from '../components/dashboard/DashboardAssetOverview';
 import {PurchasePnlStatsModal} from '../components/dashboard/PurchasePnlStatsModal';
 import {DashboardProfitAnalysis} from '../components/dashboard/DashboardProfitAnalysis';
+import {homeProfitPresentation} from '../components/dashboard/homeProfitPresentation';
 import {DashboardProfitDetail} from '../components/dashboard/DashboardProfitDetail';
 import {DashboardQuickActions} from '../components/dashboard/DashboardQuickActions';
 import { PageEditorStack } from '../components/PageEditorStack';
@@ -100,18 +101,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const currentPnl=pnlHistory.current;
   const dashboardLayout=effectiveDisplay.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
-  const dashboardKpis=[
-    {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:financialTone(portfolio.realizedNetPnL),glyph:'↗'},
-    {key:'totalPnl',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'未實現＋已實現＋股息',tone:financialTone(portfolio.totalPnl,valuationComplete),glyph:'%'},
-    {key:'totalUnrealizedProfit',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'估計清算後',tone:financialTone(portfolio.totalUnrealizedProfit,valuationComplete),glyph:'▥'},
-    {key:'totalMarketValue',label:'持股市值',value:valuationComplete?money(portfolio.totalMarketValue):'待核對',caption:'持股行情＋股數',glyph:'◔'},
-  ];
-  const dashboardProfitRows=[
-    {key:'price',label:'純價差未實現',value:valuationComplete?money(portfolio.totalPriceUnrealizedProfit):'待核對',tone:financialTone(portfolio.totalPriceUnrealizedProfit,valuationComplete)},
-    {key:'net',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',tone:financialTone(portfolio.totalUnrealizedProfit,valuationComplete)},
-    {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:financialTone(portfolio.realizedNetPnL)},
-    {key:'total',label:'投資總報酬（含息）',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:financialTone(portfolio.totalPnl,valuationComplete)},
-  ];
+  const {kpis:dashboardKpis,rows:dashboardProfitRows}=homeProfitPresentation(portfolio,valuationComplete,money);
   const transactionCountBySymbol=useMemo(()=>{
     const counts=new Map<string,number>();
     for(const entry of finance.entries){
