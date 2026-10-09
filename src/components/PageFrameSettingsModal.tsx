@@ -1,4 +1,4 @@
-import {type ReactNode,useEffect,useMemo,useState} from 'react';
+import {type ReactElement,type ReactNode,useEffect,useMemo,useState} from 'react';
 import {Alert,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
@@ -27,6 +27,7 @@ import {colors,radius,spacing} from '../theme/tokens';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
+import type {FrameCardProps} from './FrameCard';
 import {EtfBadgeEditor} from './EtfBadgeEditor';
 import {useMarketRuntime} from '../market/MarketRuntime';
 import {PortfolioListEditor} from './PortfolioListEditor';
@@ -48,12 +49,13 @@ const behaviors:readonly {key:FrameBehavior;label:string}[]=[
 const aligns=([{key:'left',label:'靠左'},{key:'center',label:'置中'},{key:'right',label:'靠右'}] as const);
 
 export function PageFrameSettingsModal({
-  visible,pageKey,title,frames,onClose,previewQuote,previewRows,initialContentTab,previewFirstMode,previewListFallback,
+  visible,pageKey,title,frames,onClose,previewQuote,previewRows,initialContentTab,previewFirstMode,previewListFallback,previewElements,
 }:{
   visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
   previewFirstMode?:PortfolioPrimaryMode;
   previewListFallback?:boolean;
+  previewElements?:readonly {key:string;element:ReactElement<FrameCardProps>}[]|undefined;
   initialContentTab?:'wall'|'badges'|undefined;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
@@ -139,7 +141,7 @@ export function PageFrameSettingsModal({
               onPatchFrame={patch} onMoveFrame={move} onSetFrameBehavior={setBehavior}
               onChangeDisplay={setDisplayDraft} previewQuote={previewQuote} previewRows={previewRows}
               previewFirstMode={previewFirstMode} previewListFallback={previewListFallback}
-              pageTitle={titleDraft} onChangePageTitle={setTitleDraft}/>
+              previewElements={previewElements} pageTitle={titleDraft} onChangePageTitle={setTitleDraft}/>
           </View>
         </View>
         <View style={styles.resetOnly}>
