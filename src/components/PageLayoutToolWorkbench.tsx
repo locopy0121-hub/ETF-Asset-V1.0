@@ -25,6 +25,7 @@ import {selectDividendPreview} from './DividendPreviewSelector';
 import {DIVIDEND_EDITOR_CATALOG,dividendTargetForKind} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
+import {homeProfitPresentation} from './dashboard/homeProfitPresentation';
 import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
 import {DashboardQuickActions} from './dashboard/DashboardQuickActions';
 import {DEFAULT_DASHBOARD_LAYOUT,type DashboardLayoutConfig} from '../domain/dashboardLayout';
@@ -200,18 +201,7 @@ export function PageLayoutToolWorkbench({
 
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
-  const kpis=[
-    {key:'realizedNetPnL',label:'已實現損益',value:money(portfolio.realizedNetPnL),caption:'歷史賣出',tone:financialTone(portfolio.realizedNetPnL),glyph:'↗'},
-    {key:'totalPnl',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',caption:'含息總損益',tone:financialTone(portfolio.totalPnl,valuationComplete),glyph:'%'},
-    {key:'totalUnrealizedProfit',label:'未實現損益',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',caption:'淨清算',tone:financialTone(portfolio.totalUnrealizedProfit,valuationComplete),glyph:'▥'},
-    {key:'totalMarketValue',label:'持股市值',value:valuationComplete?money(portfolio.totalMarketValue):'待核對',caption:'持股行情＋股數',glyph:'◔'},
-  ];
-  const rows=[
-    {key:'price',label:'純價差未實現',value:valuationComplete?money(portfolio.totalPriceUnrealizedProfit):'待核對',tone:financialTone(portfolio.totalPriceUnrealizedProfit,valuationComplete)},
-    {key:'net',label:'淨清算未實現',value:valuationComplete?money(portfolio.totalUnrealizedProfit):'待核對',tone:financialTone(portfolio.totalUnrealizedProfit,valuationComplete)},
-    {key:'realized',label:'已實現損益',value:money(portfolio.realizedNetPnL),tone:financialTone(portfolio.realizedNetPnL)},
-    {key:'total',label:'含息總損益',value:valuationComplete?money(portfolio.totalPnl):'待核對',tone:financialTone(portfolio.totalPnl,valuationComplete)},
-  ];
+  const {kpis,rows}=homeProfitPresentation(portfolio,valuationComplete,money);
 
   const chartData=(chart:DashboardChartConfig)=>{
     const source=chart.source;
