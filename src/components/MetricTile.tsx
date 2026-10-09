@@ -66,6 +66,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
 
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:colorWithAlpha(effectiveBorder??'#E2E8F0',surface.borderOpacity),borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
+      ...(editorStyle.width!==undefined||editorStyle.height!==undefined?{flex:0,minWidth:1,minHeight:1}:{}),
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
       marginHorizontal:surface.marginHorizontal,
       ...(editorStyle.width!==undefined?{width:editorStyle.width}:{}),
