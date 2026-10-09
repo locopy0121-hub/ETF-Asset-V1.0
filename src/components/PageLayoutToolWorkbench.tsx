@@ -13,6 +13,8 @@ import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteColle
 import {PortfolioHoldingTable} from './PortfolioHoldingTable';
 import {PortfolioSafeList} from './PortfolioSafeList';
 import {PortfolioQuickBar} from './PortfolioQuickBar';
+import {DEFAULT_QUICK_BAR_LAYOUT,QUICK_BAR_LABELS,normalizeQuickBarLayout,normalizeQuickBarButton,resolveQuickBarButton,moveQuickBarButton,
+  type QuickBarKey,type QuickBarButtonStyle,type QuickBarLayout} from '../domain/portfolioQuickBarLayout';
 import {PortfolioListEditor} from './PortfolioListEditor';
 import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
 import {normalizePortfolioViewMode,quickModeFromDisplay,type PortfolioPrimaryMode} from '../domain/portfolioModeSwitch';
@@ -91,6 +93,7 @@ export function PageLayoutToolWorkbench({
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
   const [frameKey,setFrameKey]=useState(initial);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
+  const [quickEditKey,setQuickEditKey]=useState<QuickBarKey|'all'>('all');
   const [openGroup,setOpenGroup]=useState<string|null>('size');
   const [frameMeasurements,setFrameMeasurements]=useState<Record<string,{width:number;height:number}>>({});
   const [previewBounds,setPreviewBounds]=useState({width:0,height:0});
@@ -117,6 +120,9 @@ export function PageLayoutToolWorkbench({
   const previewSort=sortPreset(displayDraft.sortKey);
   const sortedPreviewRows=sortHoldingQuotes(holdingPreviewRows,previewSort.key,previewSort.descending);
   const previewQuickMode=quickModeFromDisplay(displayDraft.portfolioViewMode,holdingQuoteStyle,holdingLayoutMode);
+  const quickBar=normalizeQuickBarLayout(displayDraft.quickBar??DEFAULT_QUICK_BAR_LAYOUT);
+  const onQuickBarSelect=(key:QuickBarKey)=>{setQuickEditKey(key);setOpenGroup('quick-size');};
+  const patchQuickBar=(next:QuickBarLayout)=>onChangeDisplay({...displayDraft,quickBar:normalizeQuickBarLayout(next)});
   const dashboard=displayDraft.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
   const dashboardCharts=displayDraft.dashboardCharts??[];
   const targets=displayDraft.layoutTargets??{};
@@ -239,8 +245,9 @@ export function PageLayoutToolWorkbench({
     const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
     if(pageKey==='portfolio'&&item.key==='holding-view')return <View style={{gap:12}}>
       {/* The production quick bar and actual view renderer, bound to the same draft. */}
-      <View pointerEvents="none"><PortfolioQuickBar firstMode={previewFirstMode} activeMode={previewQuickMode}
-        sortLabel={previewSort.label} onCycleFirst={()=>{}} onSelect={()=>{}} onCycleSort={()=>{}}/></View>
+      <PortfolioQuickBar firstMode={previewFirstMode} activeMode={previewQuickMode}
+        sortLabel={previewSort.label} onCycleFirst={()=>{}} onSelect={()=>{}} onCycleSort={()=>{}}
+        layout={quickBar} onEditSelect={onQuickBarSelect} editSelectedKey={quickEditKey==='all'?null:quickEditKey}/>
       {portfolioListMode?<>
         <Pressable accessibilityRole="button" accessibilityLabel="選取持股清單設定"
           onPress={()=>{setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('portfolio-list');}}
@@ -271,13 +278,19 @@ export function PageLayoutToolWorkbench({
         <Text style={{fontSize:10,color:colors.textSecondary}}>共 {sortedPreviewRows.length} 筆持股；排列模式不限制資料筆數。</Text>
       </>}
     </View>;
-    if(itemHolding&&holdingPreviewRows.length)return <HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
-      badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
-      style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
-      refreshToken={finance.sharedSnapshot.generatedAt}
-      onOpenHolding={()=>{}} onOpenChart={()=>{}}
-      layoutEditMode layoutSelectionId={frameKey===item.key?selection.id:null}
-      onLayoutSelect={(id,label)=>{setFrameKey(item.key);selectHolding(id,label);}}/>;
+    if(pageKey==='home'&&item.key==='holding-quotes')return <View style={{gap:12}}>
+      <PortfolioQuickBar firstMode={holdingQuoteStyle==='compact'?'compact':'quote'} activeMode={holdingQuoteStyle}
+        sortLabel={previewSort.label} onCycleFirst={()=>{}} onSelect={()=>{}} onCycleSort={()=>{}}
+        layout={quickBar} onEditSelect={onQuickBarSelect} editSelectedKey={quickEditKey==='all'?null:quickEditKey}/>
+      {holdingPreviewRows.length?<HoldingQuoteCollection rows={holdingPreviewRows} wallConfig={wall}
+        badgeConfig={displayDraft.etfBadges??DEFAULT_ETF_BADGES}
+        style={holdingQuoteStyle} layoutMode={holdingLayoutMode}
+        refreshToken={finance.sharedSnapshot.generatedAt}
+        onOpenHolding={()=>{}} onOpenChart={()=>{}}
+        layoutEditMode layoutSelectionId={frameKey===item.key?selection.id:null}
+        onLayoutSelect={(id,label)=>{setFrameKey(item.key);selectHolding(id,label);}}/>:
+        <Text style={{fontSize:11,color:colors.textSecondary}}>尚無持股；仍可編輯四鍵模塊的尺寸與外觀。</Text>}
+    </View>;
     if(pageKey==='home'&&item.key==='asset-dashboard')return <View style={{paddingHorizontal:dashboard.contentPadding}}>
       <DashboardAssetOverview amount={money(portfolio.totalMarketValue)} complete={valuationComplete}
         caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'} layout={dashboard.overview}
@@ -360,7 +373,7 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
       <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
-      <ScrollView key={pageKey==='dividend'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+      <ScrollView key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
         <View style={styles.previewViewport} onLayout={event=>{
           const width=event.nativeEvent.layout.width;
@@ -374,7 +387,8 @@ export function PageLayoutToolWorkbench({
               setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
             }}>
               <ThemeBackgroundLayer/>
-              {(pageKey==='dividend' ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
+              {(pageKey==='dividend'||pageKey==='portfolio'||(pageKey==='home'&&frameKey==='holding-quotes')
+                ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
               {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
                 const data=chartData(chart);
                 const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
@@ -419,6 +433,9 @@ export function PageLayoutToolWorkbench({
     {!hasRealPreview(pageKey,frame.key)?<Text style={styles.hint}>
       此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
     </Text>:null}
+
+    {holding?<QuickBarLayoutTools layout={quickBar} onChange={patchQuickBar}
+      selectedKey={quickEditKey} onSelectKey={setQuickEditKey} open={openGroup} toggle={toggle}/>:null}
 
     {pageKey==='dividend'&&DIVIDEND_EDITOR_CATALOG[frame.key]?.length?<View>
       <Text style={styles.title}>股息內容編輯項目</Text>
@@ -475,6 +492,103 @@ export function PageLayoutToolWorkbench({
         </Pressable>
       </View>
     </ScrollView>
+  </View>;
+}
+
+/** The same settings are consumed by both HomeScreen and PortfolioScreen.
+ * Editing geometry never changes the underlying four callbacks or sort ordering.
+ */
+function QuickBarLayoutTools({layout,onChange,selectedKey,onSelectKey,open,toggle}:{
+  layout:QuickBarLayout;
+  onChange:(next:QuickBarLayout)=>void;
+  selectedKey:QuickBarKey|'all';
+  onSelectKey:(key:QuickBarKey|'all')=>void;
+  open:string|null;
+  toggle:(key:string)=>void;
+}){
+  const v=selectedKey==='all'?layout.button:resolveQuickBarButton(layout,selectedKey);
+  const patch=(next:Partial<QuickBarButtonStyle>)=>{
+    if(selectedKey==='all'){
+      onChange({...layout,button:normalizeQuickBarButton({...layout.button,...next})});
+    }else{
+      onChange({...layout,overrides:{...layout.overrides,[selectedKey]:{...layout.overrides[selectedKey],...next}}});
+    }
+  };
+  const resetSelected=()=>Alert.alert('確認恢復快捷列外觀',
+    selectedKey==='all'?'恢復四鍵共同外觀。':'恢復此按鈕的單獨外觀設定，重新跟隨共同外觀。',[
+      {text:'取消',style:'cancel'},
+      {text:'確認恢復',style:'destructive',onPress:()=>{
+        if(selectedKey==='all')onChange({...layout,button:DEFAULT_QUICK_BAR_LAYOUT.button});
+        else {
+          const next={...layout.overrides};delete next[selectedKey];
+          onChange({...layout,overrides:next});
+        }
+      }},
+    ]);
+  return <View style={styles.quickBarTools}>
+    <Text style={styles.title}>四鍵模塊 · 大小／排序／邊框／間距</Text>
+    <Text style={styles.hint}>設定只影響按鈕外觀與顯示排列；按鈕的切換、圖表、進階及排序動作保持原功能。首頁與庫存分別儲存。</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+      {(['all',...layout.order] as const).map(key=><Pressable key={'quick:'+key}
+        accessibilityRole="button" accessibilityLabel={'編輯'+(key==='all'?'整列按鈕':QUICK_BAR_LABELS[key])}
+        onPress={()=>onSelectKey(key)} style={[styles.kindChip,selectedKey===key&&styles.kindChipActive]}>
+        <Text style={[styles.kindText,selectedKey===key&&styles.kindTextActive]}>
+          {key==='all'?'全部按鈕':QUICK_BAR_LABELS[key]}
+        </Text>
+      </Pressable>)}
+    </ScrollView>
+    <Accordion title="按鈕排列順序" subtitle="四鍵拖動前後順位，不變更實際功能" open={open==='quick-order'} onPress={()=>toggle('quick-order')}>
+      <OrderRows order={layout.order} labels={QUICK_BAR_LABELS}
+        onChange={order=>onChange({...layout,order})}/>
+    </Accordion>
+    <Accordion title="整列邊界／間距" subtitle="橫向間隔、換行間隔、內距與外距" open={open==='quick-row'} onPress={()=>toggle('quick-row')}>
+      <NumberStep label="按鈕左右間距" value={layout.columnGap} min={0} max={40} step={1} suffix=" px"
+        onChange={columnGap=>onChange({...layout,columnGap})}/>
+      <NumberStep label="按鈕行距" value={layout.rowGap} min={0} max={40} step={1} suffix=" px"
+        onChange={rowGap=>onChange({...layout,rowGap})}/>
+      <NumberStep label="整列左右內距" value={layout.paddingHorizontal} min={0} max={40} step={1} suffix=" px"
+        onChange={paddingHorizontal=>onChange({...layout,paddingHorizontal})}/>
+      <NumberStep label="整列上下內距" value={layout.paddingVertical} min={0} max={40} step={1} suffix=" px"
+        onChange={paddingVertical=>onChange({...layout,paddingVertical})}/>
+      <NumberStep label="整列左右外距" value={layout.marginHorizontal} min={0} max={40} step={1} suffix=" px"
+        onChange={marginHorizontal=>onChange({...layout,marginHorizontal})}/>
+      <NumberStep label="整列上下外距" value={layout.marginVertical} min={0} max={40} step={1} suffix=" px"
+        onChange={marginVertical=>onChange({...layout,marginVertical})}/>
+    </Accordion>
+    <Accordion title="按鈕尺寸／內外距" subtitle="指定寬高或等寬自適應；最小高度、內容距離" open={open==='quick-size'} onPress={()=>toggle('quick-size')}>
+      <SwitchRow label="固定寬度" value={v.width!==null} onChange={fixed=>patch({width:fixed?92:null})}/>
+      {v.width!==null?<NumberStep label="寬度" value={v.width} min={64} max={250} step={1} suffix=" px" onChange={width=>patch({width})}/>:null}
+      <SwitchRow label="固定高度" value={v.height!==null} onChange={fixed=>patch({height:fixed?Math.max(v.minHeight,76):null})}/>
+      {v.height!==null?<NumberStep label="高度" value={v.height} min={56} max={220} step={1} suffix=" px" onChange={height=>patch({height})}/>:null}
+      <NumberStep label="最小高度" value={v.minHeight} min={44} max={180} step={1} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
+      <NumberStep label="左右內距" value={v.paddingHorizontal} min={0} max={36} step={1} suffix=" px" onChange={paddingHorizontal=>patch({paddingHorizontal})}/>
+      <NumberStep label="上下內距" value={v.paddingVertical} min={0} max={36} step={1} suffix=" px" onChange={paddingVertical=>patch({paddingVertical})}/>
+      <NumberStep label="左右外距" value={v.marginHorizontal} min={0} max={28} step={1} suffix=" px" onChange={marginHorizontal=>patch({marginHorizontal})}/>
+      <NumberStep label="上下外距" value={v.marginVertical} min={0} max={28} step={1} suffix=" px" onChange={marginVertical=>patch({marginVertical})}/>
+      <NumberStep label="內容垂直間距" value={v.contentGap} min={0} max={30} step={1} suffix=" px" onChange={contentGap=>patch({contentGap})}/>
+    </Accordion>
+    <Accordion title="邊框／背景" subtitle="框線粗細、圓角、普通／選取顏色" open={open==='quick-border'} onPress={()=>toggle('quick-border')}>
+      <NumberStep label="邊框粗細" value={v.borderWidth} min={0} max={8} step={1} suffix=" px" onChange={borderWidth=>patch({borderWidth})}/>
+      <NumberStep label="邊框圓角" value={v.borderRadius} min={0} max={48} step={1} suffix=" px" onChange={borderRadius=>patch({borderRadius})}/>
+      <ColorPalettePicker label="邊框色" value={v.borderColor} onChange={borderColor=>patch({borderColor})}/>
+      <ColorPalettePicker label="一般背景色" value={v.backgroundColor} onChange={backgroundColor=>patch({backgroundColor})}/>
+      <ColorPalettePicker label="選取背景色" value={v.selectedBackgroundColor} onChange={selectedBackgroundColor=>patch({selectedBackgroundColor})}/>
+    </Accordion>
+    <Accordion title="圖示／文字／行高" subtitle="圖示字級、標題字級、排序狀態字級及各行高" open={open==='quick-text'} onPress={()=>toggle('quick-text')}>
+      <NumberStep label="圖示大小" value={v.glyphSize} min={12} max={52} step={1} suffix=" px" onChange={glyphSize=>patch({glyphSize})}/>
+      <NumberStep label="圖示行高" value={v.glyphLineHeight} min={12} max={72} step={1} suffix=" px" onChange={glyphLineHeight=>patch({glyphLineHeight})}/>
+      <NumberStep label="標題字級" value={v.labelSize} min={8} max={34} step={1} suffix=" px" onChange={labelSize=>patch({labelSize})}/>
+      <NumberStep label="標題行高" value={v.labelLineHeight} min={8} max={48} step={1} suffix=" px" onChange={labelLineHeight=>patch({labelLineHeight})}/>
+      <NumberStep label="排序狀態字級" value={v.statusSize} min={8} max={28} step={1} suffix=" px" onChange={statusSize=>patch({statusSize})}/>
+      <NumberStep label="排序狀態行高" value={v.statusLineHeight} min={8} max={40} step={1} suffix=" px" onChange={statusLineHeight=>patch({statusLineHeight})}/>
+      <ColorPalettePicker label="圖示顏色" value={v.glyphColor} onChange={glyphColor=>patch({glyphColor})}/>
+      <ColorPalettePicker label="標題顏色" value={v.labelColor} onChange={labelColor=>patch({labelColor})}/>
+      <ColorPalettePicker label="排序狀態文字色" value={v.statusColor} onChange={statusColor=>patch({statusColor})}/>
+      <ColorPalettePicker label="選取文字色" value={v.selectedTextColor} onChange={selectedTextColor=>patch({selectedTextColor})}/>
+    </Accordion>
+    <Pressable onPress={resetSelected} style={styles.reset} accessibilityRole="button">
+      <Text style={styles.resetText}>恢復{selectedKey==='all'?'全部':'目前按鈕'}外觀</Text>
+    </Pressable>
   </View>;
 }
 
@@ -960,6 +1074,7 @@ const styles=StyleSheet.create({
   livePageScroll:{flex:1,minHeight:0,borderRadius:radius.md,backgroundColor:colors.background},livePageContent:{padding:8,paddingBottom:24},previewScaleText:{fontSize:9,fontWeight:'800',color:colors.textSecondary,marginBottom:5},previewViewport:{width:'100%',alignItems:'flex-start'},actualCanvas:{position:'relative',gap:10,minHeight:420},
   chartSelectOverlay:{position:'absolute',borderWidth:1,borderColor:'transparent',borderRadius:12},chartSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary},chartHidden:{borderStyle:'dashed',borderColor:'#94A3B8',backgroundColor:'rgba(248,250,252,0.72)',alignItems:'center',justifyContent:'center'},chartHiddenText:{fontSize:9,fontWeight:'900',color:colors.textSecondary,textAlign:'center',padding:6},
   frameSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary,borderRadius:radius.lg,padding:3},
+  quickBarTools:{gap:8,borderWidth:1,borderColor:colors.border,borderRadius:radius.md,padding:10,backgroundColor:colors.surface},
   kindRow:{gap:6,paddingVertical:2},kindChip:{paddingHorizontal:11,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},kindChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},kindText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},kindTextActive:{color:'#FFFFFF'},
   accordion:{borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},accordionHead:{paddingVertical:11,flexDirection:'row',alignItems:'center',gap:8},accordionTitle:{fontSize:13,fontWeight:'900',color:colors.text},rowHint:{fontSize:9,lineHeight:14,color:colors.textSecondary,marginTop:2},chev:{fontSize:18,fontWeight:'900',color:colors.primary},accordionBody:{gap:8,paddingBottom:8},
   row:{minHeight:40,flexDirection:'row',alignItems:'center',gap:8},rowLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.textSecondary},readOnlyValue:{fontSize:10,fontWeight:'900',color:colors.text},rowButtons:{flexDirection:'row',gap:6},step:{width:34,height:34,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center'},stepText:{fontSize:17,fontWeight:'900',color:colors.primary},num:{minWidth:76,textAlign:'center',fontSize:11,fontWeight:'900',color:colors.text},

@@ -164,7 +164,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
         },
         {key:'holding-view',element:
           <FrameCard title="持股檢視" tone={portfolioFrameTone('portfolio','holding-view',portfolio,valuationComplete)}>
-            <PortfolioQuickBar firstMode={firstMode} activeMode={activeQuickMode}
+            <PortfolioQuickBar firstMode={firstMode} activeMode={activeQuickMode} layout={effectiveDisplay.quickBar}
               sortLabel={currentSort.label} onCycleFirst={cycleFirst}
               onSelect={applyQuickMode} onCycleSort={cycleSort}/>
             <PortfolioViewBoundary key={viewMode+(listFallback?'-simple':'')}
