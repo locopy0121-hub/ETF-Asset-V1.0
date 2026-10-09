@@ -1,3 +1,4 @@
+import {marketCalendarLabel} from '../market/marketCenterViews';
 import {EditorSurface} from '../components/EditorSurface';
 import {useDisplayFormat} from '../settings/useDisplayFormat';
 import { useEffect, useMemo, useState } from 'react';
@@ -251,18 +252,19 @@ export function DividendScreen() {
               const valid=day>=1&&day<=daysInMonth;
               const dayEvents=valid?(events.get(day)??[]):[];
               const date=valid?month+'-'+String(day).padStart(2,'0'):'';
+              const holiday=valid?marketCalendarLabel(date):'';
               const selected=valid&&selectedDate===date;
               const isToday=valid&&today===date;
               return <Pressable editorId="native:DividendScreen:day:11"
                 key={i}
                 disabled={!valid}
                 accessibilityRole="button"
-                accessibilityLabel={valid?`${date}，${dayEvents.length} 項股息事件`:'空白日期'}
+                accessibilityLabel={valid?`${date}，${holiday}，${dayEvents.length} 項股息事件`:'空白日期'}
                 onPress={()=>valid&&setSelectedDate(date)}
                 style={[styles.day,!valid&&styles.dayInvalid,dayEvents.length>0&&styles.eventDay,selected&&styles.selectedDay]}
               >
                 <View style={[styles.dayNumberWrap,isToday&&styles.todayNumberWrap,selected&&styles.selectedNumberWrap]}>
-                  <Text editorId="native:DividendScreen:dayText:12" editorReadOnly={true} style={[styles.dayText,!valid&&styles.dayGhost,selected&&styles.selectedDayText]}>{valid?day:''}</Text>
+                  <Text editorId="native:DividendScreen:dayText:12" editorReadOnly={true} style={[styles.dayText,!valid&&styles.dayGhost,selected&&styles.selectedDayText,Boolean(holiday)&&styles.closedDayText]}>{valid?day:''}</Text>
                 </View>
                 {dayEvents.length?<View style={styles.eventDots}>
                   {dayEvents.slice(0,3).map(event=><View key={event.id} style={[styles.eventDot,{backgroundColor:calendarEventColor(event.type)}]}/>)}
@@ -271,6 +273,7 @@ export function DividendScreen() {
               </Pressable>;
             })}</View>
             {selectedDate.startsWith(month)?<View style={styles.eventDetails}>
+              <Text style={[styles.eventDetailTitle,Boolean(marketCalendarLabel(selectedDate))&&styles.closedDayText]}>選取日期備註：{selectedDate}｜{marketCalendarLabel(selectedDate)||'正常交易日'}</Text>
               <View style={styles.eventDetailHeader}>
                 <View>
                   <Text editorId="native:DividendScreen:eventDetailDate:14" editorReadOnly={true} style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
@@ -503,7 +506,8 @@ const styles=StyleSheet.create({
   arrow:{fontSize:25,lineHeight:27,fontWeight:'900',color:colors.primary},
   week:{flexDirection:'row',paddingTop:2,paddingBottom:5,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   weekday:{flex:1,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.textSecondary},
-  weekend:{color:colors.primary},
+  weekend:{color:'#DC2626'},
+  closedDayText:{color:'#DC2626',fontWeight:'800'},
   grid:{flexDirection:'row',flexWrap:'wrap',paddingTop:6},
   day:{width:'14.285%',height:48,alignItems:'center',justifyContent:'center',borderRadius:12,paddingTop:3},
   dayInvalid:{opacity:0},

@@ -1,6 +1,7 @@
 package com.tfasset.app
 
 import android.content.Context
+import com.tfasset.app.saietf.TradingCalendar
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -38,19 +39,17 @@ internal object TfAssetMarketPresentation{
     val holdings=raw.optJSONArray("holdings")?:JSONArray()
     val localNow=Instant.ofEpochMilli(now).atZone(ZoneId.of("Asia/Taipei"))
     val minute=localNow.hour*60+localNow.minute
-    val active=localNow.dayOfWeek!=DayOfWeek.SATURDAY&&localNow.dayOfWeek!=DayOfWeek.SUNDAY&&minute>=540&&minute<810
+    val active=!TradingCalendar.closed(now)&&minute>=540&&minute<810
     fun usable(row:JSONObject):Boolean{
       if(row.optString("valuationStatus","") !in listOf("current_session","reference"))return false
       val until=row.optLong("valuationValidUntil",0L)
-      if(until<=now)return false
       val price=row.optDouble("price",Double.NaN)
       val at=runCatching{Instant.parse(row.optString("updatedAt","")).toEpochMilli()}.getOrDefault(0L)
       if(!price.isFinite()||price<=0)return false
-      if(at<=0L||at>now+120_000L||now-at>7*86_400_000L)return false
+      if(at<=0L||at>now+120_000L)return false
       val quality=row.optString("marketQuality","")
       if(quality !in listOf("trade","backup_realtime","previous_close","official_close"))return false
       val sourceDate=Instant.ofEpochMilli(at).atZone(ZoneId.of("Asia/Taipei")).toLocalDate().toString()
-      if(active&&(sourceDate!=localNow.toLocalDate().toString()||quality !in listOf("trade","backup_realtime")||row.optString("quoteStatus") in listOf("STALE","OFFLINE")))return false
       return true
     }
     val synchronized=raw.optBoolean("valuationComplete",false) &&
@@ -85,7 +84,7 @@ internal object TfAssetMarketPresentation{
         }
         val delayed=row.optString("quoteStatus")=="DELAYED" ||
           (active && at>0L && now-at>30_000L)
-        row.put("marketStatus",if(!active)"盤外參考價" else label+(if(delayed)"（延遲）" else ""))
+        row.put("marketStatus",if(TradingCalendar.closed(now))"休市｜最後有效行情" else if(!active)"盤外參考價" else if(row.optString("valuationStatus")=="reference"||row.optString("quoteStatus") in listOf("STALE","OFFLINE"))"最後有效行情（未更新）" else label+(if(delayed)"（延遲）" else ""))
       }
       if(!rowUsable){
         listOf("marketValue","pnl","roi","comprehensivePnl")

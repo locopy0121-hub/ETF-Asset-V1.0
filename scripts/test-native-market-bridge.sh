@@ -24,13 +24,19 @@ java -cp "$compiler_dir/v412-after-hours-test.jar:$compile_cp" V412AfterHoursSta
 
 node --import tsx scripts/v4_0_2-market-data-flow.test.ts
 "$compiler_dir/kotlinc/bin/kotlinc" \
-  native/android/TfAssetMarketPresentation.kt scripts/native/V404AndroidStubs.kt \
+  native/android/TfAssetMarketPresentation.kt native/android/SaiEtfTradingCalendar.kt scripts/native/V404AndroidStubs.kt \
   scripts/native/V404DatabaseStub.kt scripts/native/V404PresentationTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/presentation-test.jar"
 java -cp "$compiler_dir/presentation-test.jar:$compile_cp" com.tfasset.app.V404PresentationTestKt
 
 "$compiler_dir/kotlinc/bin/kotlinc" \
-  native/android/TfAssetMarketPresentation.kt scripts/native/V404AndroidStubs.kt \
+  native/android/TfAssetMarketPresentation.kt native/android/SaiEtfTradingCalendar.kt scripts/native/V404AndroidStubs.kt \
   scripts/native/V411PresentationStabilityTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/stability-test.jar"
 java -cp "$compiler_dir/stability-test.jar:$compile_cp" com.tfasset.app.V411PresentationStabilityTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/TfAssetMarketPresentation.kt native/android/SaiEtfTradingCalendar.kt \
+  scripts/native/V404AndroidStubs.kt scripts/native/V418CalendarTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/calendar-test.jar"
+java -cp "$compiler_dir/calendar-test.jar:$compile_cp" com.tfasset.app.V418CalendarTestKt

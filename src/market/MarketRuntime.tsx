@@ -1,3 +1,4 @@
+import {applyMarketClosedDates} from './marketCenterViews';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState,type AppStateStatus} from 'react-native';
 import {
@@ -159,6 +160,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     if(version<latestSnapshotVersionRef.current||snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
     latestSnapshotVersionRef.current=Math.max(latestSnapshotVersionRef.current,version);
     latestSnapshotAtRef.current=Math.max(latestSnapshotAtRef.current,snapshotAt);
+    if(Array.isArray(snapshot.closedDates))applyMarketClosedDates(snapshot.closedDates,snapshot.holidayNames);
     if(snapshot.phase==='live'||snapshot.phase==='afterHours'||snapshot.phase==='offline')setPhase(snapshot.phase);
     setMarketDataVersion(version);
     const missing=Array.isArray(snapshot.missing)?[...snapshot.missing].sort():[];

@@ -38,7 +38,24 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             YahooQuoteProvider(),
         ),
     )
+    private val calendarPrefs = appContext.getSharedPreferences("market-trading-calendar", Context.MODE_PRIVATE)
     init {
+        TradingCalendar.restore(calendarPrefs.getStringSet("closedDates", emptySet()) ?: emptySet())
+        scope.launch {
+            runCatching {
+                val connection = java.net.URL("https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule").openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 8000
+                connection.readTimeout = 8000
+                try {
+                    val rows = JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+                    if (TradingCalendar.acceptOfficialRows(rows)) {
+                        calendarPrefs.edit().putStringSet("closedDates", TradingCalendar.snapshot().toSet()).apply()
+                        version.incrementAndGet()
+                        onLiveSnapshot(snapshot(trackedSymbols).toString())
+                    }
+                } finally { connection.disconnect() }
+            }
+        }
         center.restorePersistedQuotes(persistence.persistedQuotes().values)
     }
     @Volatile private var latestProviderHealth: List<ProviderHealth> =
@@ -145,6 +162,8 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             .put("queriedAt", System.currentTimeMillis())
             .put("providerHealth", health)
             .put("marketCore", "SAIETF_NATIVE")
+            .put("closedDates", JSONArray(TradingCalendar.snapshot()))
+            .put("holidayNames", JSONObject(TradingCalendar.namesSnapshot()))
             .put("phase", if (isLiveSession(System.currentTimeMillis())) "live" else "afterHours")
             .also { if (includeIntraday) it.put("intraday", persistence.runtimeSnapshot().optJSONObject("intraday") ?: JSONObject()) }
     }
@@ -165,7 +184,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
     private fun isLiveSession(epochMillis: Long): Boolean {
         val local = Instant.ofEpochMilli(epochMillis).atZone(taipeiZone)
         val time = local.toLocalTime()
-        return local.dayOfWeek.value < 6 &&
+        return !TradingCalendar.closed(epochMillis) &&
             !time.isBefore(LocalTime.of(9, 0)) &&
             time.isBefore(LocalTime.of(13, 30))
     }

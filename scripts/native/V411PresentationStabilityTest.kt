@@ -30,6 +30,6 @@ fun main(){
   check(delayed.getJSONArray("holdings").getJSONObject(0).getDouble("price")==115.2)
   check(delayed.getJSONArray("holdings").getJSONObject(0).getString("marketStatus").contains("延遲"))
   val expired=TfAssetMarketPresentation.decorateSnapshot(JSONObject(),raw,now+60000)
-  check(expired.getJSONArray("holdings").getJSONObject(0).isNull("price"))
+  check(expired.getJSONArray("holdings").getJSONObject(0).getDouble("price")==115.2)
   println("V4.0.11 canonical snapshot: SQLite lag/newer tick/partial portfolio/delay/expiry PASS")
 }

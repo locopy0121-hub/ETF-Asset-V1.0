@@ -59,13 +59,24 @@ fun main() {
     check(center.memoryQuotes().getValue("009816").price==9.7)
     val empty=MarketDataCenter(emptyList())
     empty.restorePersistedQuotes(listOf(quotes[1].copy(asOfEpochMillis=now-8*86400000L,sourceTimestampEpochMillis=now-8*86400000L)),now)
-    check(empty.memoryQuotes().isEmpty()) { "Expired cache was promoted" }
+    check(empty.memoryQuotes().size==1) { "Last known price was lost by age" }
     empty.restorePersistedQuotes(listOf(quotes[1].copy(sourceTimestampEpochMillis=now+120001)),now)
-    check(empty.memoryQuotes().isEmpty())
+    check(empty.memoryQuotes().values.first().sourceTimestampEpochMillis==now-8*86400000L)
     val nextSession=MarketDataCenter(emptyList())
     nextSession.restorePersistedQuotes(quotes,now)
     val next=nextSession.refresh(symbols.toSet(),now+86400000L,"2026-10-08",true)
-    check(next.quotes.isEmpty() && next.unresolvedSymbols.size==9) { "Old cache must not pretend to be today's live quote" }
+    check(next.quotes.size==9 && next.unresolvedSymbols.isEmpty() && next.quotes.values.all { it.quality != QuoteQuality.LIVE }) { "Old cache must not pretend to be today's live quote" }
+    val oldProvider=object:MarketQuoteProvider {
+        override val source=MarketSource.TWSE_MIS
+        override fun fetch(symbols:Set<String>)=mapOf("0050" to quotes[1])
+    }
+    val freshProvider=object:MarketQuoteProvider {
+        override val source=MarketSource.YAHOO
+        override fun fetch(symbols:Set<String>)=mapOf("0050" to quotes[1].copy(source=source,price=116.0,asOfEpochMillis=now+86400000L,sourceTimestampEpochMillis=now+86400000L,sessionDate="2026-10-08"))
+    }
+    val fallbackCenter=MarketDataCenter(listOf(oldProvider,freshProvider))
+    fallbackCenter.refresh(setOf("0050"),now+86400000L,"2026-10-08",true)
+    check(fallbackCenter.memoryQuotes().getValue("0050").price==116.0) { "Retained reference blocked newer fallback" }
     // A slow fallback symbol must not hold back other symbols' live memory updates.
     val fallbackStarted=java.util.concurrent.CountDownLatch(1)
     val releaseFallback=java.util.concurrent.CountDownLatch(1)

@@ -106,7 +106,7 @@ export function FinanceProvider({children}:PropsWithChildren){
       return [freshness,validity].filter(at=>at>now);
     });
     if(future.length===0)return;
-    const timer=setTimeout(()=>setValuationNow(Date.now()),Math.max(1,Math.min(...future)-now));
+    const timer=setTimeout(()=>setValuationNow(Date.now()),Math.max(1,Math.min(2_147_483_647,Math.min(...future)-now)));
     return()=>clearTimeout(timer);
   },[market.quotes,valuationNow]);
   const valuationContext=useMemo(()=>({now:valuationNow,unresolvedSymbols:market.unresolvedSymbols}),[valuationNow,market.unresolvedSymbols]);
@@ -210,7 +210,7 @@ export function FinanceProvider({children}:PropsWithChildren){
         quote?.name,
       ),
       quoteVerified:verified,
-      valuationStatus:verified?(valuationSessionActive(valuationNow)?'current_session':'reference'):'unavailable',
+      valuationStatus:verified?(valuationSessionActive(valuationNow)&&valuationQuote?.sessionDate===new Date(valuationNow+8*3_600_000).toISOString().slice(0,10)&&!['STALE','OFFLINE'].includes(valuationQuote?.quoteStatus??'')?'current_session':'reference'):'unavailable',
       valuationValidUntil:valuationQuote?valuationValidUntil(valuationQuote,valuationNow):null,
       quoteStatus:valuationQuote?.quoteStatus==='LIVE'&&valuationNow-(valuationQuote.sourceQuoteAt??0)>30_000
         ?'DELAYED':valuationQuote?.quoteStatus,

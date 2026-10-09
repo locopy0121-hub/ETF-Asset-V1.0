@@ -76,7 +76,11 @@ export function marketRowsToRuntimeQuotes(
 ):RuntimeQuote[]{
   const rows=Array.isArray(snapshot.quotes)?snapshot.quotes:[];
   const prior=new Map(previous.map(row=>[row.symbol,row]));
-  return rows.filter(row=>isTrustedMarketRow(row,now)).map(row=>{
+  const valid=rows.filter(row=>isTrustedMarketRow(row,now));
+  const incoming=new Map(valid.map(row=>[row.symbol,row]));
+  const retained=previous.filter(old=>!incoming.has(old.symbol)||(incoming.get(old.symbol)!.sourceQuoteAt??0)<(old.sourceQuoteAt??0));
+  const retainedSymbols=new Set(retained.map(row=>row.symbol));
+  return [...retained,...valid.filter(row=>!retainedSymbols.has(row.symbol)).map(row=>{
     const old=prior.get(row.symbol);
     const prev=typeof row.previousClose==='number'&&Number.isFinite(row.previousClose)&&row.previousClose>0
       ?row.previousClose
@@ -119,5 +123,5 @@ export function marketRowsToRuntimeQuotes(
       intradayDate,
       intradayPreviousClose,
     };
-  });
+  })];
 }

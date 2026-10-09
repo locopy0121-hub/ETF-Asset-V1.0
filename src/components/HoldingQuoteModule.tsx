@@ -1,3 +1,4 @@
+import {marketClosed} from '../market/marketCenterViews';
 import {financialTone} from '../theme/financialTone';
 import {Animated,Pressable,StyleSheet,View} from 'react-native';
 import {Text} from './EditableNative';
@@ -115,7 +116,7 @@ export function HoldingQuoteModule({
 
       {(!micro&&showQuoteMetadata||item.quoteVerified===false)?<Text style={{fontSize:10,color:item.quoteVerified===false?'#F59E0B':'#94A3B8'}}>
         {item.quoteVerified===false?'行情待取得｜估值待核對':
-          (item.valuationStatus==='reference'?'盤外參考價':item.quoteQuality==='official_close'?'官方收盤參考':item.quoteStatus==='DELAYED'?'最後成交（延遲）':'實際成交')+'｜'+
+          (item.valuationStatus==='reference'?(marketClosed(Date.now())?'休市｜最後有效行情':'最後有效行情（參考）'):item.quoteQuality==='official_close'?'官方收盤參考':item.quoteStatus==='DELAYED'?'最後成交（延遲）':'實際成交')+'｜'+
           (item.quoteSourceAt?new Date(item.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'}):'來源待核對')+
           '｜資料版本 '+(item.marketDataVersion??0)}
       </Text>:null}

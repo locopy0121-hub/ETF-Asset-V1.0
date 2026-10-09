@@ -7,7 +7,7 @@ import java.util.Locale
 class MarketDataCenter(
     private val providers: List<MarketQuoteProvider>,
     private val liveThresholdMillis: Long = 30_000L,
-    private val maxOfflineCacheAgeMillis: Long = 7L * 24L * 60L * 60L * 1_000L,
+    private val maxOfflineCacheAgeMillis: Long = Long.MAX_VALUE,
     private val providerPolicies: Map<MarketSource, MarketProviderPolicy> = defaultPolicies,
     private val hotStore: MemoryMarketStore = MemoryMarketStore(),
     private val arbitrator: MarketArbitrator = MarketArbitrator(),
@@ -124,6 +124,7 @@ class MarketDataCenter(
                 val sourceTime = raw.sourceTimestampEpochMillis
                     .takeIf { it > 0L }
                     ?: raw.asOfEpochMillis
+                if (sourceTime <= 0L || sourceTime > nowEpochMillis + 120_000L || raw.isTrial) return@forEach
                 val normalized = raw.copy(
                     symbol = symbol,
                     asOfEpochMillis = sourceTime,
@@ -147,14 +148,13 @@ class MarketDataCenter(
                         ).accepted
                     ) return@synchronized
                     cache[symbol] = normalized
-                    if (tradingSessionActive && !sameSessionDate) {
-                        stale[symbol] = normalized.copy(quality = QuoteQuality.STALE)
-                    } else {
-                        accepted[symbol] = normalized
-                        // Arbitration and publication must be atomic with a Fugle tick.
-                        hotStore.publish(listOf(normalized))
-                        pending.remove(symbol)
-                    }
+                    // Publish valid last-known prices even when a new session has no tick yet.
+                    if (tradingSessionActive && !sameSessionDate) stale[symbol] = normalized
+                    accepted[symbol] = normalized
+                    // Keep searching later providers for a current-session quote.
+                    // Publishing a reference must not stop the fallback chain.
+                    hotStore.publish(listOf(normalized))
+                    if (!tradingSessionActive || sameSessionDate) pending.remove(symbol)
                 }
             }
         }
@@ -168,12 +168,9 @@ class MarketDataCenter(
                 quality = qualityFor(cached.asOfEpochMillis, nowEpochMillis, currentTaipeiDate),
             )
             val sameSessionDate = taipeiDate(normalized.asOfEpochMillis) == currentTaipeiDate
-            if (tradingSessionActive && !sameSessionDate) {
-                stale[symbol] = normalized.copy(quality = QuoteQuality.STALE)
-            } else {
-                accepted[symbol] = normalized
-                pending.remove(symbol)
-            }
+            if (tradingSessionActive && !sameSessionDate) stale[symbol] = normalized
+            accepted[symbol] = normalized
+            pending.remove(symbol)
         }
 
         return MarketBatch(

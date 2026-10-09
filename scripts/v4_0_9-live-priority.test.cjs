@@ -51,6 +51,6 @@ function renderFinance(){host=financeHost;ctx=host.run(()=>finance.FinanceProvid
  marketListener(nativeSnapshot);await tick();renderMarket();renderFinance();assert.equal(ctx.snapshot.portfolio.totalMarketValue,1200);assert.equal(ctx.holdings[0].pnl,159);
  releaseFetch({version:1,queriedAt:clock,quotes:[],missing:['0050']});await tick();renderMarket();renderFinance();assert.equal(ctx.snapshot.portfolio.totalMarketValue,1200,'late pre-tick response must not replace newer hot-store data');
  nativeSnapshot={version:4,queriedAt:clock+3000,quotes:[{...nativeRow,sourceQuoteAt:clock-86400000,sessionDate:'2026-10-07',quoteStatus:'STALE'}],missing:['0050']};
- marketListener(nativeSnapshot);await tick();renderMarket();renderFinance();assert.equal(ctx.valuationComplete,false,'previous day must remain invalid during current session');
+ marketListener(nativeSnapshot);await tick();renderMarket();renderFinance();assert.equal(ctx.valuationComplete,true,'older snapshot retains last valid valuation');assert.equal(ctx.snapshot.portfolio.totalMarketValue,1200);
  console.log('SaiETF pushed LIVE tick -> canonical total and P&L without timer; late/stale guard PASS');process.exit(0);
 })().catch(e=>{console.error(e);process.exitCode=1;});

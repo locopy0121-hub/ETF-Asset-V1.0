@@ -66,6 +66,7 @@ export type NativeMarketProviderHealth=Readonly<{
 }>;
 export type UnifiedMarketSnapshot=Readonly<{
   version:number;quotes:UnifiedMarketRow[];
+  closedDates?:string[];holidayNames?:Record<string,string>;
   phase?:'live'|'afterHours'|'offline';
   intraday?:Record<string,UnifiedMarketIntradaySeries>;
   updatedCount?:number;coveredCount?:number;requestedCount?:number;missing?:string[];
