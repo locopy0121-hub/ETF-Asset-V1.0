@@ -1,5 +1,5 @@
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState,type ReactElement} from 'react';
 import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
@@ -18,7 +18,8 @@ import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
 import {normalizePortfolioViewMode,quickModeFromDisplay,type PortfolioPrimaryMode} from '../domain/portfolioModeSwitch';
 import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
-import {FrameCard} from './FrameCard';
+import {FrameCard,type FrameCardProps} from './FrameCard';
+import {selectDividendPreview} from './DividendPreviewSelector';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
 import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
@@ -43,11 +44,12 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
+const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-calendar','dividend-list','annual-trend']);
 const hasRealPreview=(page:MainPageKey,key:string)=>
-  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
+  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,previewFirstMode='list',previewListFallback=false,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,previewElements,pageTitle,onChangePageTitle,previewFirstMode='list',previewListFallback=false,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
@@ -59,6 +61,7 @@ export function PageLayoutToolWorkbench({
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
+  previewElements?:readonly {key:string;element:ReactElement<FrameCardProps>}[]|undefined;
   previewFirstMode?:PortfolioPrimaryMode|undefined;
   previewListFallback?:boolean|undefined;
   pageTitle:string;
@@ -82,6 +85,7 @@ export function PageLayoutToolWorkbench({
   const previewFrames=useMemo(()=>orderedFrames.filter(frame=>hasRealPreview(pageKey,frame.key)),[orderedFrames,pageKey]);
   const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
+    pageKey==='dividend'&&previewFrames.some(f=>f.key==='dividend-calendar')?'dividend-calendar':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
   const [frameKey,setFrameKey]=useState(initial);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
@@ -218,6 +222,12 @@ export function PageLayoutToolWorkbench({
     setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');
   };
   const previewContentFor=(item:PageFrameDefinition)=>{
+    if(pageKey==='dividend'){
+      const actual=previewElements?.find(view=>view.key===item.key)?.element;
+      return actual?selectDividendPreview(actual.props.children,
+        selected=>{setFrameKey(item.key);selectTarget(selected);},
+        frameKey===item.key?selection.id:null,targets):null;
+    }
     const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
     if(pageKey==='portfolio'&&item.key==='holding-view')return <View style={{gap:12}}>
       {/* The production quick bar and actual view renderer, bound to the same draft. */}
@@ -300,7 +310,7 @@ export function PageLayoutToolWorkbench({
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
           <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} editorStyle={itemConfig}
+            <FrameCard title={item.title} action={pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined} editorStyle={itemConfig}
               tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
               onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
                 previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
@@ -318,6 +328,7 @@ export function PageLayoutToolWorkbench({
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
+    if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -421,7 +432,7 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height} open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
