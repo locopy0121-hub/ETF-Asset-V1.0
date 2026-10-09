@@ -1,5 +1,5 @@
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState,type ReactElement} from 'react';
 import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
@@ -18,7 +18,9 @@ import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
 import {normalizePortfolioViewMode,quickModeFromDisplay,type PortfolioPrimaryMode} from '../domain/portfolioModeSwitch';
 import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
-import {FrameCard} from './FrameCard';
+import {FrameCard,type FrameCardProps} from './FrameCard';
+import {selectDividendPreview} from './DividendPreviewSelector';
+import {DIVIDEND_EDITOR_CATALOG,dividendTargetForKind} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
 import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
@@ -43,11 +45,12 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
+const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-calendar','dividend-list','annual-trend']);
 const hasRealPreview=(page:MainPageKey,key:string)=>
-  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):false);
+  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
-  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,pageTitle,onChangePageTitle,previewFirstMode='list',previewListFallback=false,
+  pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,previewElements,pageTitle,onChangePageTitle,onResetPage,previewFirstMode='list',previewListFallback=false,
 }:{
   pageKey:MainPageKey;
   frames:readonly PageFrameDefinition[];
@@ -59,10 +62,12 @@ export function PageLayoutToolWorkbench({
   onChangeDisplay:(next:PageDisplayConfig)=>void;
   previewQuote?:HoldingQuote|undefined;
   previewRows?:readonly HoldingQuote[]|undefined;
+  previewElements?:readonly {key:string;element:ReactElement<FrameCardProps>}[]|undefined;
   previewFirstMode?:PortfolioPrimaryMode|undefined;
   previewListFallback?:boolean|undefined;
   pageTitle:string;
   onChangePageTitle:(value:string)=>void;
+  onResetPage:()=>void;
 }){
   const finance=useFinance();
   const market=useMarketRuntime();
@@ -82,6 +87,7 @@ export function PageLayoutToolWorkbench({
   const previewFrames=useMemo(()=>orderedFrames.filter(frame=>hasRealPreview(pageKey,frame.key)),[orderedFrames,pageKey]);
   const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
+    pageKey==='dividend'&&previewFrames.some(f=>f.key==='dividend-calendar')?'dividend-calendar':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
   const [frameKey,setFrameKey]=useState(initial);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
@@ -146,6 +152,12 @@ export function PageLayoutToolWorkbench({
 
   const chooseKind=(kind:LayoutToolTargetKind)=>{
     if(kind==='frame')setSelection({id:'frame',kind,label:'框架'});
+    else if(pageKey==='dividend'&&(kind==='card'||kind==='text'||kind==='value')){
+      const target=dividendTargetForKind(frame.key,kind);
+      if(target){selectTarget(target);return;}
+      setSelection({id:'frame',kind:'frame',label:'框架'});
+      setOpenGroup('size');return;
+    }
     else if(holding&&kind==='card')setSelection({id:'card',kind,label:'行情卡片'});
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
@@ -218,6 +230,12 @@ export function PageLayoutToolWorkbench({
     setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');
   };
   const previewContentFor=(item:PageFrameDefinition)=>{
+    if(pageKey==='dividend'){
+      const actual=previewElements?.find(view=>view.key===item.key)?.element;
+      return actual?selectDividendPreview(actual.props.children,
+        selected=>{setFrameKey(item.key);selectTarget(selected);},
+        frameKey===item.key?selection.id:null,targets):null;
+    }
     const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
     if(pageKey==='portfolio'&&item.key==='holding-view')return <View style={{gap:12}}>
       {/* The production quick bar and actual view renderer, bound to the same draft. */}
@@ -288,6 +306,13 @@ export function PageLayoutToolWorkbench({
     const selected=frameKey===item.key;
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
+    const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
+    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
+      tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
+      onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
+        previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
+      {previewContentFor(item)}
+    </FrameCard>;
     return <View key={item.key}>
       <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
         {item.key==='page-header'?
@@ -299,25 +324,22 @@ export function PageLayoutToolWorkbench({
             <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
-          <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} editorStyle={itemConfig}
-              tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
-              onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
-                previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
-              {previewContentFor(item)}
-            </FrameCard>
-          </Pressable>}
+          pageKey==='dividend'
+            ?<View>{frameContent}</View>
+            :<Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>{frameContent}</Pressable>}
       </LayoutSelectionProvider>
     </View>;
   };
 
-  const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):dashboardTargetBase(selection.id,dashboard);
+  const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):
+    selection.id.startsWith('dividend:')?dividendTargetBase(selection.id):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
   const frameSortIndex=orderedFrames.findIndex(item=>item.key===frame.key);
 
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
+    if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -329,33 +351,16 @@ export function PageLayoutToolWorkbench({
     return kind==='frame';
   });
 
-  return <View style={styles.root}>
-    <View style={styles.head}><View style={{flex:1}}><Text style={styles.title}>排版工具</Text>
-      <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料。清單模式預覽正式表格，行情牆模式預覽正式卡片；只提供對應模式的編輯工具，帳務內容唯讀。</Text></View></View>
-
-    <Text style={styles.title}>全部框架清單</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
-      {orderedFrames.map(item=><Pressable key={'frame-list:'+item.key}
-        accessibilityRole="button" accessibilityLabel={'編輯框架 '+item.title}
-        accessibilityState={{selected:frameKey===item.key}}
-        onPress={()=>selectFrameDirect(item)}
-        style={[styles.kindChip,frameKey===item.key&&styles.kindChipActive]}>
-        <Text style={[styles.kindText,frameKey===item.key&&styles.kindTextActive]}>
-          {item.title}{draft[item.key]?.visible===false?'（已隱藏）':''}
-        </Text>
-      </Pressable>)}
-    </ScrollView>
-    {!hasRealPreview(pageKey,frame.key)?<Text style={styles.hint}>
-      此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
-    </Text>:null}
-
+  // Independent, fixed-height upper preview and lower editor. Neither scroll moves the other.
+  return <View style={styles.splitRoot}>
+    <View style={styles.fixedPreviewPane}>
     <View style={styles.previewShell}>
       <View style={styles.previewTop}>
         <Text style={styles.previewTitle}>實際頁面編輯區</Text>
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
       <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
-      <ScrollView nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+      <ScrollView key={pageKey==='dividend'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
         <View style={styles.previewViewport} onLayout={event=>{
           const width=event.nativeEvent.layout.width;
@@ -369,7 +374,7 @@ export function PageLayoutToolWorkbench({
               setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
             }}>
               <ThemeBackgroundLayer/>
-              {previewFrames.map(renderActualFrame)}
+              {(pageKey==='dividend' ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
               {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
                 const data=chartData(chart);
                 const x=chart.x<0?Math.max(0,previewBounds.width-chart.width):chart.x;
@@ -390,6 +395,42 @@ export function PageLayoutToolWorkbench({
         </View>
       </ScrollView>
     </View>
+
+    </View>
+    <View style={styles.splitDivider}>
+      <Text style={styles.splitDividerText} numberOfLines={1}>設定編輯 · {frame.title} › {selection.label}</Text>
+    </View>
+    <ScrollView style={styles.fixedEditorScroll} contentContainerStyle={styles.fixedEditorContent}
+      nestedScrollEnabled showsVerticalScrollIndicator keyboardShouldPersistTaps="handled">
+      <View style={styles.editorToolsContent}>
+    <Text style={styles.title}>全部框架清單</Text>
+    <Text style={styles.hint}>預覽直接使用 App 真實元件與目前資料；調整顯示外觀不會更動原始數值與帳務。</Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+      {orderedFrames.map(item=><Pressable key={'frame-list:'+item.key}
+        accessibilityRole="button" accessibilityLabel={'編輯框架 '+item.title}
+        accessibilityState={{selected:frameKey===item.key}}
+        onPress={()=>selectFrameDirect(item)}
+        style={[styles.kindChip,frameKey===item.key&&styles.kindChipActive]}>
+        <Text style={[styles.kindText,frameKey===item.key&&styles.kindTextActive]}>
+          {item.title}{draft[item.key]?.visible===false?'（已隱藏）':''}
+        </Text>
+      </Pressable>)}
+    </ScrollView>
+    {!hasRealPreview(pageKey,frame.key)?<Text style={styles.hint}>
+      此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
+    </Text>:null}
+
+    {pageKey==='dividend'&&DIVIDEND_EDITOR_CATALOG[frame.key]?.length?<View>
+      <Text style={styles.title}>股息內容編輯項目</Text>
+      <Text style={styles.hint}>上方點選真實內容，或從以下清單選擇項目。所有數值、配發狀態與業務動作維持原始資料及功能。</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+        {DIVIDEND_EDITOR_CATALOG[frame.key]!.map(item=><Pressable key={item.id} accessibilityRole="button"
+          accessibilityLabel={'編輯'+item.label} onPress={()=>selectTarget(item)}
+          style={[styles.kindChip,selection.id===item.id&&styles.kindChipActive]}>
+          <Text style={[styles.kindText,selection.id===item.id&&styles.kindTextActive]}>{item.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+    </View>:null}
 
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
       {visibleKinds.map(kind=><Pressable key={kind} onPress={()=>chooseKind(kind)} style={[styles.kindChip,selection.kind===kind&&styles.kindChipActive]}>
@@ -421,13 +462,19 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height} open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
 
     {!holding&&selection.kind==='layout'&&pageKey==='home'?
       <DashboardLayoutTools frameKey={frame.key} value={dashboard} open={openGroup} toggle={toggle} onChange={patchDashboard}/>:null}
+        <Pressable accessibilityRole="button" accessibilityLabel="恢復本頁預設排版"
+          onPress={onResetPage} style={styles.reset}>
+          <Text style={styles.resetText}>恢復本頁預設排版</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   </View>;
 }
 
@@ -751,7 +798,7 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
           <SwitchRow label="Glow 損益色" value={current.glowProfitColor} onChange={glowProfitColor=>patch({glowProfitColor})}/></>:null}
       </>:null}
     </Accordion>
-    {card&&id.startsWith('dashboard:kpi-')?<Accordion title="卡片文字" subtitle="標題、主數值、說明各自可調" open={open==='card-type'} onPress={()=>toggle('card-type')}>
+    {card&&(id.startsWith('dashboard:kpi-')||id.startsWith('dividend:metric:'))?<Accordion title="卡片文字" subtitle="標題、主數值、說明各自可調" open={open==='card-type'} onPress={()=>toggle('card-type')}>
       <NumberStep label="標題大小" value={current.labelFontSize} min={8} max={32} step={1} suffix=" px" onChange={labelFontSize=>patch({labelFontSize})}/>
       <ColorPalettePicker label="標題顏色" value={current.labelColor} onChange={labelColor=>patch({labelColor})} opacity={current.labelOpacity} onOpacityChange={labelOpacity=>patch({labelOpacity})}/>
       <SwitchRow label="標題損益色" value={current.labelProfitColor===true} onChange={labelProfitColor=>patch({labelProfitColor})}/>
@@ -825,6 +872,18 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
   return null;
 }
 
+/** Base dimensions and typography match the actual calendar date nodes, not dashboard defaults. */
+function dividendTargetBase(id:string):TargetAppearance{
+  if(id.endsWith(':dayText:12'))return {...TARGET_APPEARANCE,fontSize:12,fontWeight:'800',
+    textColor:colors.text,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+  if(id.endsWith(':weekday:10'))return {...TARGET_APPEARANCE,fontSize:10,fontWeight:'900',
+    textColor:colors.textSecondary,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0,align:'center'};
+  if(id.endsWith(':month:6'))return {...TARGET_APPEARANCE,fontSize:18,fontWeight:'900',
+    textColor:colors.text,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
+  if(id.endsWith(':day:11'))return {...TARGET_APPEARANCE,height:48,backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:12};
+  return {...TARGET_APPEARANCE,backgroundOpacity:0,padding:0,borderWidth:0};
+}
+
 function headerTargetBase(id:string,frame:FrameEditorConfig):TargetAppearance{
   if(id==='header:title')return {...TARGET_APPEARANCE,fontSize:frame.titleFontSize,textColor:frame.titleColor,
     align:frame.titleAlign,fontWeight:'800',backgroundOpacity:0,padding:0,borderWidth:0,borderRadius:0};
@@ -891,9 +950,14 @@ function ChoiceRow({label,value,items,onChange}:{label:string;value:string;items
 
 const styles=StyleSheet.create({
   root:{gap:12},head:{flexDirection:'row',gap:8,alignItems:'flex-start'},title:{fontSize:18,fontWeight:'900',color:colors.text},hint:{fontSize:11,lineHeight:17,color:colors.textSecondary,marginTop:3},
+  splitRoot:{flex:1,minHeight:0,backgroundColor:colors.surface},
+  fixedPreviewPane:{flex:0.92,minHeight:0,paddingHorizontal:10,paddingTop:6,paddingBottom:4},
+  splitDivider:{minHeight:35,justifyContent:'center',paddingHorizontal:14,backgroundColor:colors.surfaceMuted,borderTopWidth:1,borderBottomWidth:1,borderColor:colors.border},
+  splitDividerText:{fontSize:12,fontWeight:'800',color:colors.primary},
+  fixedEditorScroll:{flex:1.08,minHeight:0},fixedEditorContent:{padding:12,paddingBottom:42},editorToolsContent:{gap:12},
   moduleRow:{gap:6,paddingVertical:2},moduleChip:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surfaceMuted},moduleChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},moduleText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},moduleTextActive:{color:'#FFFFFF'},
-  previewShell:{borderWidth:1,borderColor:'#9AC3F7',borderRadius:radius.lg,padding:10,backgroundColor:'#EFF6FF'},previewTop:{marginBottom:8},previewTitle:{fontSize:12,fontWeight:'900',color:colors.primary},path:{fontSize:10,color:colors.textSecondary,marginTop:2},
-  livePageScroll:{height:380,borderRadius:radius.md,backgroundColor:colors.background},livePageContent:{padding:8,paddingBottom:24},previewScaleText:{fontSize:9,fontWeight:'800',color:colors.textSecondary,marginBottom:5},previewViewport:{width:'100%',alignItems:'flex-start'},actualCanvas:{position:'relative',gap:10,minHeight:420},
+  previewShell:{flex:1,minHeight:0,borderWidth:1,borderColor:'#9AC3F7',borderRadius:radius.lg,padding:8,backgroundColor:'#EFF6FF'},previewTop:{marginBottom:8},previewTitle:{fontSize:12,fontWeight:'900',color:colors.primary},path:{fontSize:10,color:colors.textSecondary,marginTop:2},
+  livePageScroll:{flex:1,minHeight:0,borderRadius:radius.md,backgroundColor:colors.background},livePageContent:{padding:8,paddingBottom:24},previewScaleText:{fontSize:9,fontWeight:'800',color:colors.textSecondary,marginBottom:5},previewViewport:{width:'100%',alignItems:'flex-start'},actualCanvas:{position:'relative',gap:10,minHeight:420},
   chartSelectOverlay:{position:'absolute',borderWidth:1,borderColor:'transparent',borderRadius:12},chartSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary},chartHidden:{borderStyle:'dashed',borderColor:'#94A3B8',backgroundColor:'rgba(248,250,252,0.72)',alignItems:'center',justifyContent:'center'},chartHiddenText:{fontSize:9,fontWeight:'900',color:colors.textSecondary,textAlign:'center',padding:6},
   frameSelected:{borderWidth:2,borderStyle:'dashed',borderColor:colors.primary,borderRadius:radius.lg,padding:3},
   kindRow:{gap:6,paddingVertical:2},kindChip:{paddingHorizontal:11,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},kindChipActive:{backgroundColor:colors.primary,borderColor:colors.primary},kindText:{fontSize:10,fontWeight:'900',color:colors.textSecondary},kindTextActive:{color:'#FFFFFF'},

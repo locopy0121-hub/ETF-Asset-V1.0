@@ -25,7 +25,9 @@ assert.match(quote,/onLayoutSelect\?\.\('card','行情卡片'\)/);
 assert.match(quote,/field:'\+field\.field/);
 
 const modal=read('src/components/PageFrameSettingsModal.tsx');
-assert.match(modal,/頁面設定 · 排版工具／統一能力模型/);
+// The V4.0.19 compact toolbar intentionally removes the former text-heavy heading.
+assert.match(modal,/compactToolbar/);
+assert.doesNotMatch(modal,/<Text style=\{styles\.kicker\}>頁面設定 · 排版工具／統一能力模型<\/Text>/);
 assert.match(modal,/PageLayoutToolWorkbench/);
 assert.doesNotMatch(modal,/駐點維護工程師｜本頁常駐/);
 

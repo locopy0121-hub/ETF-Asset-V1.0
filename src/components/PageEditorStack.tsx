@@ -28,6 +28,7 @@ import {applyConditionalAppearance,activeConditionalRule} from '../maintenance/c
 import {formatDisplayNumber} from '../maintenance/numberDisplay';
 import {FrameEditingProvider} from '../editor/FrameEditingContext';
 import {Text as EditableText} from './EditableNative';
+import {dividendTargetId} from '../editor/dividendPageLayout';
 
 type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
@@ -54,6 +55,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
     }
     if(child.type===MetricTile){
       const props=child.props as ComponentProps<typeof MetricTile>;
+      const dividendLayout=frame.page==='dividend'?frame.displayConfig.layoutTargets?.[dividendTargetId('metric:'+props.label)]:undefined;
       const target:InspectedTarget={
         id:'metric:'+props.label,kind:'metric',label:props.label,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
         profitTone:props.tone==='gain'?'gain':props.tone==='loss'?'loss':'neutral',
@@ -71,7 +73,7 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
         {(_appearance,customized,override,render)=><MetricTile {...props}
           previewTap={render.editing}
           {...(render.simulated?{simulationTone:render.displayTone}:{})}
-          {...(customized?{editorStyle:applyConditionalAppearance(override,render.displayTone)}:{})}/>} 
+          {...((customized||dividendLayout)?{editorStyle:{...(dividendLayout??{}),...(customized?applyConditionalAppearance(override,render.displayTone):{})}}:{})}/>} 
       </InspectableTarget>;
     }
     if(child.type===AiQuestionBox){

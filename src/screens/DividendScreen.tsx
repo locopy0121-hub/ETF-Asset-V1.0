@@ -223,9 +223,7 @@ export function DividendScreen() {
   };
   const runAiAction=(action:AiAssistantAction)=>{if(action.kind==='addDividend'){const error=finance.applyDividendPlan({type:'import',plan:dividendEventToPlan(action.event)});if(error)Alert.alert('未儲存股息預告',error);else Alert.alert('已儲存股息預告','請到股息頁核對日期與符合配息股數，確認實際收到款項後再入帳。');};};
 
-  return <>
-    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<View style={styles.headerActions}><Pressable editorId="native:DividendScreen:addHeaderButton:1" accessibilityRole="button" accessibilityLabel="新增股息" onPress={()=>openAddDividend()} style={styles.addHeaderButton}><Text editorId="native:DividendScreen:addHeaderButtonText:2" editorReadOnly={false} style={styles.addHeaderButtonText}>＋ 新增</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
-      <PageEditorStack pageKey="dividend" frames={[
+  const dividendPreviewElements = [
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
             <View style={styles.metrics}>
@@ -273,7 +271,7 @@ export function DividendScreen() {
               </Pressable>;
             })}</View>
             {selectedDate.startsWith(month)?<View style={styles.eventDetails}>
-              <Text style={[styles.eventDetailTitle,Boolean(marketCalendarLabel(selectedDate))&&styles.closedDayText]}>選取日期備註：{selectedDate}｜{marketCalendarLabel(selectedDate)||'正常交易日'}</Text>
+              <Text editorId="native:DividendScreen:holidayRemark:96" editorReadOnly={true} style={[styles.eventDetailTitle,Boolean(marketCalendarLabel(selectedDate))&&styles.closedDayText]}>選取日期備註：{selectedDate}｜{marketCalendarLabel(selectedDate)||'正常交易日'}</Text>
               <View style={styles.eventDetailHeader}>
                 <View>
                   <Text editorId="native:DividendScreen:eventDetailDate:14" editorReadOnly={true} style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
@@ -353,7 +351,11 @@ export function DividendScreen() {
             })}</View>
           </FrameCard>
         },
-      ]}/>
+  ];
+
+  return <>
+    <PageShell pageKey="dividend" title="股息中心" subtitle="股息淨額與現金入帳共用正式帳務核心" actions={<View style={styles.headerActions}><Pressable editorId="native:DividendScreen:addHeaderButton:1" accessibilityRole="button" accessibilityLabel="新增股息" onPress={()=>openAddDividend()} style={styles.addHeaderButton}><Text editorId="native:DividendScreen:addHeaderButtonText:2" editorReadOnly={false} style={styles.addHeaderButtonText}>＋ 新增</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+      <PageEditorStack pageKey="dividend" frames={dividendPreviewElements}/>
     </PageShell>
     <Modal visible={addOpen} transparent animationType="slide" onRequestClose={()=>setAddOpen(false)}><EditorSurface pageKey="dividend" frameKey="dividend-entry-modal" title="新增股息" visible={addOpen}>
       <View style={styles.modalBackdrop}>
@@ -444,7 +446,7 @@ export function DividendScreen() {
       onChange={updatePickedDate}
       onClose={()=>setDatePickerTarget(null)}
     />
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="dividend" title="股息" frames={PAGE_FRAMES.dividend} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal previewElements={dividendPreviewElements} visible={settingsOpen} pageKey="dividend" title="股息" frames={PAGE_FRAMES.dividend} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 function DateField({label,value,onPress}:{label:string;value:string;onPress:()=>void}){
