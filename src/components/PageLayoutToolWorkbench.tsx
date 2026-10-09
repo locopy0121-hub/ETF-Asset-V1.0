@@ -22,7 +22,7 @@ import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard,type FrameCardProps} from './FrameCard';
 import {selectDividendPreview} from './DividendPreviewSelector';
-import {DIVIDEND_SUMMARY_METRIC_MIN_WIDTH,DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT} from '../dividend/dividendSummaryVisual';
+import {EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX} from '../editor/dimensionPolicy';
 import {DIVIDEND_EDITOR_CATALOG,dividendTargetForKind} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
@@ -335,7 +335,6 @@ export function PageLayoutToolWorkbench({
     </View>;
   };
 
-  const dividendSummaryCard=pageKey==='dividend'&&frame.key==='dividend-summary'&&selection.id.startsWith('dividend:metric:');
   const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):
     selection.id.startsWith('dividend:')?dividendTargetBase(selection.id):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
@@ -473,8 +472,7 @@ export function PageLayoutToolWorkbench({
 
     {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
-        minCardWidth={dividendSummaryCard?DIVIDEND_SUMMARY_METRIC_MIN_WIDTH:28}
-        minCardHeight={dividendSummaryCard?DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT:24} open={openGroup} toggle={toggle}
+        open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
 
@@ -551,10 +549,10 @@ function QuickBarLayoutTools({layout,onChange,selectedKey,onSelectKey,open,toggl
     </Accordion>
     <Accordion title="按鈕尺寸／內外距" subtitle="指定寬高或等寬自適應；最小高度、內容距離" open={open==='quick-size'} onPress={()=>toggle('quick-size')}>
       <SwitchRow label="固定寬度" value={v.width!==null} onChange={fixed=>patch({width:fixed?92:null})}/>
-      {v.width!==null?<NumberStep label="寬度" value={v.width} min={64} max={250} step={1} suffix=" px" onChange={width=>patch({width})}/>:null}
+      {v.width!==null?<NumberStep label="寬度" value={v.width} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>:null}
       <SwitchRow label="固定高度" value={v.height!==null} onChange={fixed=>patch({height:fixed?Math.max(v.minHeight,76):null})}/>
-      {v.height!==null?<NumberStep label="高度" value={v.height} min={56} max={220} step={1} suffix=" px" onChange={height=>patch({height})}/>:null}
-      <NumberStep label="最小高度" value={v.minHeight} min={44} max={180} step={1} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
+      {v.height!==null?<NumberStep label="高度" value={v.height} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>:null}
+      <NumberStep label="最小高度" value={v.minHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
       <NumberStep label="左右內距" value={v.paddingHorizontal} min={0} max={36} step={1} suffix=" px" onChange={paddingHorizontal=>patch({paddingHorizontal})}/>
       <NumberStep label="上下內距" value={v.paddingVertical} min={0} max={36} step={1} suffix=" px" onChange={paddingVertical=>patch({paddingVertical})}/>
       <NumberStep label="左右外距" value={v.marginHorizontal} min={0} max={28} step={1} suffix=" px" onChange={marginHorizontal=>patch({marginHorizontal})}/>
@@ -609,10 +607,10 @@ function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggl
       </View>
     </Accordion>
     <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
-      <NumberStep label="寬度" value={actualWidth} min={160} max={1600} step={10} suffix=" px" onChange={width=>patch({width})}/>
-      <NumberStep label="高度" value={actualHeight} min={80} max={2400} step={10} suffix=" px" onChange={height=>patch({height})}/>
-      <NumberStep label="最小高度" value={actualMinHeight} min={0} max={2400} step={10} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
-      <NumberStep label="最大寬度" value={actualMaxWidth} min={160} max={1600} step={20} suffix=" px" onChange={maxWidth=>patchFx({maxWidth})}/>
+      <NumberStep label="寬度" value={actualWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={actualHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="最小高度" value={actualMinHeight} min={0} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
+      <NumberStep label="最大寬度" value={actualMaxWidth} min={0} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={maxWidth=>patchFx({maxWidth})}/>
     </Accordion>
     <Accordion title="內距／空間" subtitle="整體內距、四邊內距、內容間距與外距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
       <NumberStep label="整體 Padding" value={frame.padding??16} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
@@ -747,8 +745,8 @@ function DashboardChartTools({chart,actualX,open,toggle,patch}:{chart:DashboardC
     <Accordion title="尺寸／位置" subtitle="全部顯示目前實際像素值" open={open==='chart-size'} onPress={()=>toggle('chart-size')}>
       <NumberStep label="X" value={Math.round(actualX)} min={0} max={1600} step={4} suffix=" px" onChange={x=>patch({x})}/>
       <NumberStep label="Y" value={Math.round(chart.y)} min={0} max={2400} step={4} suffix=" px" onChange={y=>patch({y})}/>
-      <NumberStep label="寬度" value={Math.round(chart.width)} min={140} max={900} step={8} suffix=" px" onChange={width=>patch({width})}/>
-      <NumberStep label="高度" value={Math.round(chart.height)} min={120} max={700} step={8} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="寬度" value={Math.round(chart.width)} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={Math.round(chart.height)} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>
       <NumberStep label="圖層" value={chart.zIndex} min={0} max={99} step={1} suffix="" onChange={zIndex=>patch({zIndex})}/>
     </Accordion>
     <Accordion title="顏色／外觀" subtitle="沿用現有顏色規劃；每個顏色追加透明度" open={open==='chart-color'} onPress={()=>toggle('chart-color')}>
@@ -836,10 +834,10 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
   </View>;
 }
 
-function TargetTools({kind,id,current,actualWidth,actualHeight,minCardWidth=28,minCardHeight=24,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number|undefined;actualHeight?:number|undefined;minCardWidth?:number;minCardHeight?:number;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
+function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch,reset,contentValue,onContentChange}:{kind:'card'|'text'|'value';id:string;current:TargetAppearance;actualWidth?:number|undefined;actualHeight?:number|undefined;open:string|null;toggle:(k:string)=>void;patch:(n:TargetOverride)=>void;reset:()=>void;contentValue?:string;onContentChange?:(value:string)=>void}){
   const card=kind==='card';
-  const effectiveWidth=Math.max(minCardWidth,Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4)));
-  const effectiveHeight=Math.max(minCardHeight,Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35)));
+  const effectiveWidth=Math.round(current.width??actualWidth??Math.max(28,current.fontSize*4));
+  const effectiveHeight=Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35));
   const effectiveLineHeight=Math.round(current.lineHeight>0?current.lineHeight:Math.max(current.fontSize*1.2,actualHeight??0));
   return <View>
     {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="直接修改本頁實際標題；套用後寫入既有 pageTitles" open={open==='content'} onPress={()=>toggle('content')}>
@@ -847,8 +845,9 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,minCardWidth=28,m
         maxLength={48} style={styles.textInput}/>
     </Accordion>:null}
     {card?<Accordion title="尺寸／空間" subtitle="卡片實際尺寸、內距與外距" open={open==='surface'} onPress={()=>toggle('surface')}>
-      <NumberStep label="寬度" value={effectiveWidth} min={minCardWidth} max={900} step={10} suffix=" px" onChange={width=>patch({width})}/>
-      <NumberStep label="高度" value={effectiveHeight} min={minCardHeight} max={700} step={10} suffix=" px" onChange={height=>patch({height})}/>
+      <NumberStep label="寬度" value={effectiveWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={effectiveHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>
+      <Text style={styles.hint}>寬高可直接輸入，亦可每次調整 1 px。過小的尺寸可能裁切文字，但不會強制恢復放大。</Text>
       <NumberStep label="內距" value={current.padding} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
       <NumberStep label="上下外距" value={current.marginVertical} min={0} max={32} step={1} suffix=" px" onChange={marginVertical=>patch({marginVertical})}/>
       <NumberStep label="左右外距" value={current.marginHorizontal} min={0} max={32} step={1} suffix=" px" onChange={marginHorizontal=>patch({marginHorizontal})}/>
@@ -946,7 +945,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
   const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>onChange({...value,quickActions:{...value.quickActions,...next}});
   if(frameKey==='asset-dashboard')return <Accordion title="內容佈局" subtitle="資產總覽的真實內容結構" open={open==='layout'} onPress={()=>toggle('layout')}>
     <OrderRows order={value.overview.order} labels={{label:'標題',amount:'金額',caption:'說明'}} onChange={order=>patchOverview({order})}/>
-    <NumberStep label="最小高度" value={value.overview.minHeight} min={104} max={220} step={4} suffix=" px" onChange={minHeight=>patchOverview({minHeight})}/>
+    <NumberStep label="最小高度" value={value.overview.minHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={minHeight=>patchOverview({minHeight})}/>
     <NumberStep label="卡片內距" value={value.overview.padding} min={8} max={28} step={1} suffix=" px" onChange={padding=>patchOverview({padding})}/>
     <NumberStep label="內容間距" value={value.overview.contentGap} min={0} max={24} step={1} suffix=" px" onChange={contentGap=>patchOverview({contentGap})}/>
     <AlignRow value={value.overview.align} onChange={align=>patchOverview({align})}/>
@@ -956,7 +955,7 @@ function DashboardLayoutTools({frameKey,value,open,toggle,onChange}:{frameKey:st
   </Accordion>;
   if(frameKey==='profit-analysis')return <Accordion title="KPI 佈局" subtitle="卡片高度、間距、圖示與說明" open={open==='layout'} onPress={()=>toggle('layout')}>
     <OrderRows order={value.profitAnalysis.order} labels={{realizedNetPnL:'已實現損益',totalPnl:'含息總損益',totalUnrealizedProfit:'未實現損益',totalMarketValue:'持股市值'}} onChange={order=>patchProfit({order})}/>
-    <NumberStep label="卡片高度" value={value.profitAnalysis.cardHeight} min={84} max={156} step={4} suffix=" px" onChange={cardHeight=>patchProfit({cardHeight})}/>
+    <NumberStep label="卡片高度" value={value.profitAnalysis.cardHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={cardHeight=>patchProfit({cardHeight})}/>
     <NumberStep label="卡片間距" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} suffix=" px" onChange={cardGap=>patchProfit({cardGap})}/>
     <NumberStep label="卡片內距" value={value.profitAnalysis.cardPadding} min={0} max={28} step={1} suffix=" px" onChange={cardPadding=>patchProfit({cardPadding})}/>
     <SwitchRow label="圖示" value={value.profitAnalysis.iconVisible} onChange={iconVisible=>patchProfit({iconVisible})}/>
@@ -1048,7 +1047,21 @@ function Accordion({title,subtitle,open,onPress,children}:{title:string;subtitle
   return <View style={styles.accordion}><Pressable onPress={onPress} style={styles.accordionHead}><View style={{flex:1}}><Text style={styles.accordionTitle}>{title}</Text><Text style={styles.rowHint}>{subtitle}</Text></View><Text style={styles.chev}>{open?'−':'＋'}</Text></Pressable>{open?<View style={styles.accordionBody}>{children}</View>:null}</View>;
 }
 function NumberStep({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(value:number)=>void}){
-  return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Pressable style={styles.step} onPress={()=>onChange(Math.max(min,value-step))}><Text style={styles.stepText}>−</Text></Pressable><Text style={styles.num}>{value}{suffix}</Text><Pressable style={styles.step} onPress={()=>onChange(Math.min(max,value+step))}><Text style={styles.stepText}>＋</Text></Pressable></View>;
+  const [draft,setDraft]=useState<string|null>(null);
+  const commit=()=>{
+    if(draft===null)return;
+    const parsed=Number(draft.trim());
+    if(draft.trim()&&Number.isFinite(parsed))onChange(Math.max(min,Math.min(max,parsed)));
+    setDraft(null);
+  };
+  return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text>
+    <Pressable style={styles.step} onPress={()=>{setDraft(null);onChange(Math.max(min,value-step));}}><Text style={styles.stepText}>−</Text></Pressable>
+    <TextInput accessibilityLabel={label+'數值'} keyboardType="numeric" selectTextOnFocus
+      value={draft??String(value)} onChangeText={setDraft} onBlur={commit} onSubmitEditing={commit}
+      style={styles.numInput}/>
+    <Text style={styles.numSuffix}>{suffix}</Text>
+    <Pressable style={styles.step} onPress={()=>{setDraft(null);onChange(Math.min(max,value+step));}}><Text style={styles.stepText}>＋</Text></Pressable>
+  </View>;
 }
 function SwitchRow({label,value,onChange}:{label:string;value:boolean;onChange:(value:boolean)=>void}){return <View style={styles.row}><Text style={styles.rowLabel}>{label}</Text><Switch value={value} onValueChange={onChange} trackColor={{true:colors.primary}}/></View>;}
 function AlignRow({value,onChange}:{value:'left'|'center'|'right';onChange:(value:'left'|'center'|'right')=>void}){return <ChoiceRow label="對齊" value={value} items={[['left','靠左'],['center','置中'],['right','靠右']]} onChange={v=>onChange(v as 'left'|'center'|'right')}/>;}
@@ -1078,5 +1091,6 @@ const styles=StyleSheet.create({
   orderButtons:{flexDirection:'row',gap:8},orderButton:{flex:1,minHeight:38,borderRadius:10,backgroundColor:'#EAF2FF',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:colors.border},orderButtonDisabled:{opacity:.35},orderButtonText:{fontSize:11,fontWeight:'900',color:colors.primary},
   orderList:{gap:6,paddingVertical:2},orderTitle:{fontSize:10,fontWeight:'900',color:colors.textSecondary},orderRow:{minHeight:38,flexDirection:'row',alignItems:'center',gap:7,borderWidth:1,borderColor:colors.border,borderRadius:10,paddingHorizontal:8,backgroundColor:colors.surface},orderIndex:{width:20,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.primary},orderLabel:{flex:1,fontSize:10,fontWeight:'800',color:colors.text},orderMini:{width:32,height:30,borderRadius:8,alignItems:'center',justifyContent:'center',backgroundColor:'#EAF2FF'},
   imageBackgroundTools:{gap:8},backgroundImageGrid:{flexDirection:'row',flexWrap:'wrap',gap:7},backgroundImageChoice:{width:58,height:58,borderRadius:10,borderWidth:1,borderColor:colors.border,overflow:'hidden',position:'relative'},backgroundImageChoiceActive:{borderWidth:3,borderColor:colors.primary},backgroundImageThumb:{width:'100%',height:'100%'},backgroundImageNumber:{position:'absolute',right:3,bottom:2,fontSize:9,fontWeight:'900',color:'#FFFFFF',backgroundColor:'rgba(15,23,42,.62)',paddingHorizontal:4,borderRadius:5},customImageBox:{gap:6},removeImageButton:{minHeight:36,borderWidth:1,borderColor:colors.border,borderRadius:10,alignItems:'center',justifyContent:'center'},removeImageText:{fontSize:10,fontWeight:'900',color:colors.primary},
+  numInput:{minWidth:54,maxWidth:105,paddingVertical:5,paddingHorizontal:3,fontSize:12,fontWeight:'900',textAlign:'center',color:colors.text,borderBottomWidth:1,borderBottomColor:colors.border},numSuffix:{fontSize:10,color:colors.textSecondary},
   reset:{marginTop:10,minHeight:42,borderRadius:12,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},resetText:{fontSize:11,fontWeight:'900',color:colors.primary},
 });
