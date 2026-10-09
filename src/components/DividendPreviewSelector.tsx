@@ -41,11 +41,19 @@ export function selectDividendPreview(
     if(child.type===MetricTile&&typeof p.label==='string'){
       const label=p.label;
       const id=dividendTargetId('metric:'+label);
+      const metricStyle=readableDividendSummaryMetric(overrides[id]??p.editorStyle);
+      const fixedWidth=metricStyle.width!==undefined;
+      const fixedHeight=metricStyle.height!==undefined;
       return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+p.label}
         onPress={()=>onSelect({id,kind:'card',label})}
-        style={[{flex:1,minWidth:136,minHeight:128,alignSelf:'stretch'},selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined]}>
-        <View pointerEvents="none" style={{flex:1}}>{cloneElement(element,{
-          ...((overrides[id]??p.editorStyle)?{editorStyle:readableDividendSummaryMetric(overrides[id]??p.editorStyle)}:{})
+        style={[{alignSelf:'stretch',
+          // Only auto-sized cards use the recommended readable dimensions.
+          // An explicit edited size is never replaced by that recommendation.
+          ...(fixedWidth?{width:metricStyle.width,minWidth:1,flexGrow:0}:{flex:1,minWidth:136}),
+          ...(fixedHeight?{height:metricStyle.height,minHeight:1}:{minHeight:128}),
+        },selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined]}>
+        <View pointerEvents="none" style={fixedWidth||fixedHeight?{flexGrow:0,flexShrink:0}:{flex:1}}>{cloneElement(element,{
+          ...(overrides[id]??p.editorStyle?{editorStyle:metricStyle}:{})
         })}</View>
       </Pressable>;
     }
