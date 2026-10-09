@@ -1,5 +1,5 @@
 import {Children,cloneElement,isValidElement,type ReactElement,type ReactNode} from 'react';
-import {Pressable,View} from 'react-native';
+import {Pressable,StyleSheet,View,type TextStyle} from 'react-native';
 import type {TargetOverride} from '../maintenance/inspectionModel';
 import type {LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {dividendControlVisual,dividendTargetId,dividendTextVisual} from '../editor/dividendPageLayout';
@@ -37,19 +37,24 @@ export function selectDividendPreview(
     const p=element.props;
     if(child.type===AiQuestionBox)return <View pointerEvents="none">{child}</View>;
     if(child.type===MetricTile&&typeof p.label==='string'){
-      const id=dividendTargetId('metric:'+p.label);
+      const label=p.label;
+      const id=dividendTargetId('metric:'+label);
       return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+p.label}
-        onPress={()=>onSelect({id,kind:'card',label:p.label})}
-        style={selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined}>
-        <View pointerEvents="none">{cloneElement(element,{editorStyle:overrides[id]??p.editorStyle})}</View>
+        onPress={()=>onSelect({id,kind:'card',label})}
+        style={[{flex:1,minWidth:92},selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined]}>
+        <View pointerEvents="none" style={{flex:1}}>{cloneElement(element,{
+          ...((overrides[id]??p.editorStyle)?{editorStyle:overrides[id]??p.editorStyle}:{})
+        })}</View>
       </Pressable>;
     }
     if(typeof p.editorId==='string'&&child.type===EditableText){
       const id=dividendTargetId(p.editorId);
       const label=p.editorId.split(':').slice(-2).join(' · ');
+      const raw=StyleSheet.flatten(p.style as TextStyle|TextStyle[]) as TextStyle|undefined;
       return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
         onPress={()=>onSelect({id,kind:p.editorReadOnly===false?'text':'value',label})}
-        style={selectedId===id?{borderWidth:1,borderColor:'#0969DA',borderRadius:5}:undefined}>
+        style={[raw?.flex!==undefined?{flex:raw.flex}:{},raw?.width!==undefined?{width:raw.width}:{},
+          selectedId===id?{borderWidth:1,borderColor:'#0969DA',borderRadius:5}:undefined]}>
         <View pointerEvents="none">{cloneElement(element,{editorSkip:true,style:[p.style,dividendTextVisual(overrides[id])]})}</View>
       </Pressable>;
     }
@@ -59,7 +64,7 @@ export function selectDividendPreview(
       return cloneElement(element,{
         disabled:false,
         onPress:()=>onSelect({id,kind:'card',label}),
-        onLongPress:undefined,
+        onLongPress:()=>onSelect({id,kind:'card',label}),
         editorSkip:true,
         style:[p.style,dividendControlVisual(overrides[id]),
           ...(selectedId===id?[{borderWidth:2,borderColor:'#0969DA'}]:[])],
