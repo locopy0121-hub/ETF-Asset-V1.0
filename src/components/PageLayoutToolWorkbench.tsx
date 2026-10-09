@@ -20,6 +20,7 @@ import {sortPreset,sortHoldingQuotes} from '../domain/holdingSort';
 import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard,type FrameCardProps} from './FrameCard';
 import {selectDividendPreview} from './DividendPreviewSelector';
+import {DIVIDEND_EDITOR_CATALOG} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
 import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
@@ -298,6 +299,7 @@ export function PageLayoutToolWorkbench({
     const selected=frameKey===item.key;
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
+    const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
     return <View key={item.key}>
       <LayoutSelectionProvider targets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}>
         {item.key==='page-header'?
@@ -310,7 +312,7 @@ export function PageLayoutToolWorkbench({
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
           <Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>
-            <FrameCard title={item.title} action={pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined} editorStyle={itemConfig}
+            <FrameCard title={item.title} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined} editorStyle={itemConfig}
               tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
               onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
                 previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
@@ -401,6 +403,18 @@ export function PageLayoutToolWorkbench({
         </View>
       </ScrollView>
     </View>
+
+    {pageKey==='dividend'&&DIVIDEND_EDITOR_CATALOG[frame.key]?.length?<View>
+      <Text style={styles.title}>股息內容編輯項目</Text>
+      <Text style={styles.hint}>上方點選真實內容，或從以下清單選擇項目。所有數值、配發狀態與業務動作維持原始資料及功能。</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+        {DIVIDEND_EDITOR_CATALOG[frame.key]!.map(item=><Pressable key={item.id} accessibilityRole="button"
+          accessibilityLabel={'編輯'+item.label} onPress={()=>selectTarget(item)}
+          style={[styles.kindChip,selection.id===item.id&&styles.kindChipActive]}>
+          <Text style={[styles.kindText,selection.id===item.id&&styles.kindTextActive]}>{item.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+    </View>:null}
 
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
       {visibleKinds.map(kind=><Pressable key={kind} onPress={()=>chooseKind(kind)} style={[styles.kindChip,selection.kind===kind&&styles.kindChipActive]}>
