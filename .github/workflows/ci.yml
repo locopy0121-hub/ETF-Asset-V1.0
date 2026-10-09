@@ -29,6 +29,8 @@ jobs:
         run: npx tsx scripts/v4_0_19-calendar-text-selector.test.ts
       - name: V4.0.19 fixed split preview and compact toolbar regression
         run: node scripts/v4_0_19-fixed-preview-layout.test.cjs
+      - name: V4.0.20 quick bar visual editor regression
+        run: npx tsx scripts/v4_0_20-quickbar-editor.test.ts
       - name: V4.0.18 inherited ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
       - name: V4.0.18 inherited dashboard content editing regression
