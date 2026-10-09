@@ -227,13 +227,23 @@ export function DividendScreen() {
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
             <View style={styles.metrics}>
-              <MetricTile label="本月淨入帳" value={money(monthTotal)} caption="扣 NHI／匯費" tone="gain"/>
-              <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
-              <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
+              <View style={styles.summaryMetricCell}>
+                <MetricTile label="本月淨入帳" value={money(monthTotal)} caption="扣 NHI／匯費" tone="gain"/>
+              </View>
+              <View style={styles.summaryMetricCell}>
+                <MetricTile label="年度淨股息" value={money(annual)} caption={year}/>
+              </View>
+              <View style={styles.summaryMetricCell}>
+                <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
+              </View>
             </View>
-            {aiSettings.prefs.ai.enabled?<View style={styles.aiBox}><AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/></View>:null}
           </FrameCard>
         },
+        ...(aiSettings.prefs.ai.enabled?[{key:'dividend-ai',element:
+          <FrameCard title="股息 AI 問答">
+            <AiQuestionBox title="股息 AI 問答" suggestions={['更新持股股息日','這個月股息多少？','今年股息多少？','哪個月股息最高？']} onAsk={askDividend} onAction={runAiAction}/>
+          </FrameCard>
+        }]:[]),
         {key:'dividend-calendar',element:
           <FrameCard title="股息月曆" action={<Text editorId="native:DividendScreen:calendarCount:3" editorReadOnly={true} style={styles.calendarCount}>{monthEvents.length} 項事件</Text>}>
             <View style={styles.calendarTop}>
@@ -497,8 +507,9 @@ const styles=StyleSheet.create({
   saveDividendButton:{minHeight:46,borderRadius:14,backgroundColor:colors.primary,alignItems:'center',justifyContent:'center'},
   saveDividendButtonDisabled:{opacity:0.45},
   saveDividendButtonText:{fontSize:12,fontWeight:'900',color:'#FFFFFF'},
-  metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
-  aiBox:{paddingTop:spacing.md,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border},
+  metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap',alignItems:'stretch'},
+  // Two readable columns on narrow Android screens, third card occupies the next row.
+  summaryMetricCell:{flexGrow:1,flexBasis:'46%',minWidth:136,minHeight:128,alignSelf:'stretch'},
   calendarCount:{fontSize:10,fontWeight:'900',color:colors.primary,backgroundColor:colors.surfaceMuted,paddingHorizontal:9,paddingVertical:5,borderRadius:999},
   calendarTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:4,paddingVertical:2},
   monthBlock:{alignItems:'center',gap:2},
