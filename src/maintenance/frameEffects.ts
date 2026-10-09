@@ -77,7 +77,7 @@ export function normalizeFrameEffects(raw:unknown,defaults:FrameEffects=DEFAULT_
     responsiveCompactWidth:[360,900],responsiveDenseWidth:[240,600],
     outerGlowOpacity:[0,.8],outerGlowSpread:[0,32],outerGlowSoftness:[0,48],
     paddingTop:[-1,32],paddingRight:[-1,32],paddingBottom:[-1,32],paddingLeft:[-1,32],
-    contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,1600],
+    contentGap:[-1,40],marginVertical:[0,32],maxWidth:[0,100000],
     gradientMidStop:[.1,.9],imageIndex:[0,9],imageOpacity:[0,1],maskOpacity:[0,1],
     imageFocusX:[0,1],imageFocusY:[0,1],
   };
