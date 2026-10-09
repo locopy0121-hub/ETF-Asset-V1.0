@@ -271,7 +271,7 @@ export function DividendScreen() {
               </Pressable>;
             })}</View>
             {selectedDate.startsWith(month)?<View style={styles.eventDetails}>
-              <Text style={[styles.eventDetailTitle,Boolean(marketCalendarLabel(selectedDate))&&styles.closedDayText]}>選取日期備註：{selectedDate}｜{marketCalendarLabel(selectedDate)||'正常交易日'}</Text>
+              <Text editorId="native:DividendScreen:holidayRemark:96" editorReadOnly={true} style={[styles.eventDetailTitle,Boolean(marketCalendarLabel(selectedDate))&&styles.closedDayText]}>選取日期備註：{selectedDate}｜{marketCalendarLabel(selectedDate)||'正常交易日'}</Text>
               <View style={styles.eventDetailHeader}>
                 <View>
                   <Text editorId="native:DividendScreen:eventDetailDate:14" editorReadOnly={true} style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
