@@ -65,7 +65,7 @@ function QuickButton({buttonKey,layout,label,glyph,selected,onPress,hint,status,
     style={[styles.key,{
       ...(v.width===null?{flexGrow:1,flexBasis:0,minWidth:0}:{width:v.width,flexGrow:0}),
       ...(v.height!==null?{height:v.height}:{}),
-      minHeight:v.minHeight,paddingHorizontal:v.paddingHorizontal,paddingVertical:v.paddingVertical,
+      minHeight:v.height===null?v.minHeight:Math.min(v.minHeight,v.height),paddingHorizontal:v.paddingHorizontal,paddingVertical:v.paddingVertical,
       marginHorizontal:v.marginHorizontal,marginVertical:v.marginVertical,
       borderWidth:v.borderWidth,borderRadius:v.borderRadius,
       borderColor:selected?v.selectedBackgroundColor:v.borderColor,
