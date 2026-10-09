@@ -1,4 +1,5 @@
 import {colors} from '../theme/tokens';
+import {EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX} from '../editor/dimensionPolicy';
 /** Four-mode selector display only. No change to mode/sort semantics or accounting. */
 export const QUICK_BAR_KEYS=['first','chart','advanced','sort'] as const;
 export type QuickBarKey=(typeof QUICK_BAR_KEYS)[number];
@@ -60,7 +61,7 @@ const bounded=(raw:unknown,min:number,max:number,defaultValue:number)=>{
 };
 const color=(raw:unknown,fallback:string)=>typeof raw==='string'&&/^#[0-9a-fA-F]{6}$/.test(raw)?raw.toUpperCase():fallback;
 const RANGES:Readonly<Record<keyof QuickBarButtonStyle,readonly [number,number]|null>>={
-  width:[64,250],height:[56,220],minHeight:[44,180],
+  width:[EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX],height:[EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX],minHeight:[EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX],
   paddingHorizontal:[0,36],paddingVertical:[0,36],
   marginHorizontal:[0,28],marginVertical:[0,28],borderWidth:[0,8],borderRadius:[0,48],
   glyphSize:[12,52],glyphLineHeight:[12,72],labelSize:[8,34],labelLineHeight:[8,48],
