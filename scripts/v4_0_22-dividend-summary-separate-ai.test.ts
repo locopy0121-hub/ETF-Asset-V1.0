@@ -35,20 +35,19 @@ assert.match(dividend,/aiSettings.prefs.ai.enabled\?\[/,'disabled AI should not 
 assert.match(dividend,/summaryMetricCell:\{flexGrow:1,flexBasis:'46%',minWidth:136,minHeight:128/);
 assert.match(editor,/actualDividendPreviewKeys=new Set\(\['dividend-summary','dividend-ai'/);
 assert.match(editor,/showTitle={!?\(pageKey==='dividend'&&item.key==='dividend-ai'\)}/);
-assert.match(editor,/minCardWidth={dividendSummaryCard\?DIVIDEND_SUMMARY_METRIC_MIN_WIDTH:28}/);
-assert.match(editor,/minCardHeight={dividendSummaryCard\?DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT:24}/);
+assert.doesNotMatch(editor,/minCardWidth={dividendSummaryCard/,'user sizes must not be clamped by card tools');
+assert.doesNotMatch(editor,/minCardHeight={dividendSummaryCard/,'user heights must not be clamped by card tools');
 assert.match(stack,/readableDividendSummaryMetric\(customizedStyle\)/);
 assert.match(preview,/readableDividendSummaryMetric\(overrides\[id\]\?\?p.editorStyle\)/);
 
 const ancient={width:68,height:24,fontSize:17,labelFontSize:11,captionFontSize:10};
 const safe=readableDividendSummaryMetric(ancient);
-assert.equal(safe.width,DIVIDEND_SUMMARY_METRIC_MIN_WIDTH);
-assert.ok((safe.height??0)>=DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT);
+assert.equal(safe.width,68,'previous saved width must remain selectable');
+assert.equal(safe.height,24,'previous saved height must remain selectable');
 assert.deepEqual(ancient,{width:68,height:24,fontSize:17,labelFontSize:11,captionFontSize:10},
   'old persisted data must never be mutated');
 const huge=readableDividendSummaryMetric({...ancient,fontSize:38,labelFontSize:25,captionFontSize:24,padding:22});
-assert.ok((huge.height??0)>dividendSummaryMetricMinHeight(ancient),
-  'larger type needs more height to remain legible');
+assert.equal(huge.height,24,'typography cannot silently enlarge a user-set card height');
 assert.equal(readableDividendSummaryMetric({backgroundColor:'#00AABB'}).width,undefined,
   'natural responsive width must not become a forced width');
 
