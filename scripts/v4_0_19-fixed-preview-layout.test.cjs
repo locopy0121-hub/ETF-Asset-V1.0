@@ -40,7 +40,7 @@ assert.ok(lower<workbench.indexOf('全部框架清單',splitStart));
 assert.ok(lower<workbench.indexOf('股息內容編輯項目',splitStart));
 assert.match(workbench,/previewFrames\.filter\(item=>item\.key===frameKey\)/,
   'dividend preview must focus the frame being edited rather than start at the top of a long page');
-assert.match(workbench,/key={pageKey==='dividend'\?frameKey:'all-frames'}/,
+assert.match(workbench,/key={pageKey==='dividend'\|\|pageKey==='home'\|\|pageKey==='portfolio'\?frameKey:'all-frames'}/,
   'switching dividend frames must return the preview scroll to the selected frame');
 assert.match(workbench,/onPress={onResetPage}/);
 assert.match(workbench,/selectDividendPreview\(actual\.props\.children/);
