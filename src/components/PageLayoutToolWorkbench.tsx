@@ -860,6 +860,12 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
       <NumberStep label="行高" value={effectiveLineHeight} min={8} max={96} step={2} suffix=" px" onChange={lineHeight=>patch({lineHeight})}/>
       <AlignRow value={current.align} onChange={align=>patch({align})}/>
     </Accordion>}
+    {!card?<Accordion title="文字／數值物件尺寸" subtitle="文字與數值也能獨立調整寬高；不改動帳務原值"
+      open={open==='surface'} onPress={()=>toggle('surface')}>
+      <NumberStep label="寬度" value={effectiveWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>
+      <NumberStep label="高度" value={effectiveHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>
+      <Text style={styles.hint}>此處設定的是顯示邊界；縮小可裁切文字，不影響數值或資料。</Text>
+    </Accordion>:null}
     {!card&&kind==='value'?<Accordion title="數值格式" subtitle="只改顯示格式，不改帳務原始數值" open={open==='number'} onPress={()=>toggle('number')}>
       <ChoiceRow label="顯示單位" value={current.displayUnit} items={[['original','原始'],['yuan','元'],['thousand','千'],['ten-thousand','萬'],['million','百萬']]} onChange={displayUnit=>patch({displayUnit:displayUnit as TargetAppearance['displayUnit']})}/>
       <NumberStep label="小數位" value={current.displayDigits} min={0} max={4} step={1} suffix=" 位" onChange={displayDigits=>patch({displayDigits})}/>
