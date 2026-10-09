@@ -1,5 +1,6 @@
 import {type ReactElement,type ReactNode,useEffect,useMemo,useState} from 'react';
 import {Alert,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
 import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
@@ -123,32 +124,27 @@ export function PageFrameSettingsModal({
     ],
   );
 
+  // Only the two actions stay in the fixed toolbar. The preview and tool list
+  // have their own bounded scroll regions; the whole editor never scrolls away.
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
-    <View style={styles.root}>
-      <View style={styles.top}>
-        <View style={{flex:1}}>
-          <Text style={styles.kicker}>頁面設定 · 排版工具／統一能力模型</Text>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.hint}>上方直接顯示實際頁面；滑到哪裡、點到哪個真實物件，下方編輯器就開啟該物件目前設定值。</Text>
-        </View>
-        <Pressable style={styles.cancel} onPress={cancel}><Text style={styles.cancelText}>取消</Text></Pressable>
-        <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
+    <SafeAreaView style={styles.root} edges={['top','bottom']}>
+      <View style={styles.compactToolbar}>
+        <Pressable accessibilityRole="button" accessibilityLabel="取消頁面編輯" style={styles.cancel} onPress={cancel}>
+          <Text style={styles.cancelText}>取消</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="套用頁面編輯" style={styles.save} onPress={apply}>
+          <Text style={styles.saveText}>套用</Text>
+        </Pressable>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <View style={styles.bodyNoTop}>
-            <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
-              onPatchFrame={patch} onMoveFrame={move} onSetFrameBehavior={setBehavior}
-              onChangeDisplay={setDisplayDraft} previewQuote={previewQuote} previewRows={previewRows}
-              previewFirstMode={previewFirstMode} previewListFallback={previewListFallback}
-              previewElements={previewElements} pageTitle={titleDraft} onChangePageTitle={setTitleDraft}/>
-          </View>
-        </View>
-        <View style={styles.resetOnly}>
-          <Pressable onPress={reset} style={styles.resetPageButton}><Text style={styles.resetText}>恢復本頁預設排版</Text></Pressable>
-        </View>
-      </ScrollView>
-    </View>
+      <View style={styles.fixedSplitWorkbench}>
+        <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
+          onPatchFrame={patch} onMoveFrame={move} onSetFrameBehavior={setBehavior}
+          onChangeDisplay={setDisplayDraft} previewQuote={previewQuote} previewRows={previewRows}
+          previewFirstMode={previewFirstMode} previewListFallback={previewListFallback}
+          previewElements={previewElements} pageTitle={titleDraft} onChangePageTitle={setTitleDraft}
+          onResetPage={reset}/>
+      </View>
+    </SafeAreaView>
   </Modal>;
 }
 
@@ -415,6 +411,8 @@ function ChoiceGroup<T extends string>({items,value,onChange,disabled=false}:{it
 
 const styles=StyleSheet.create({
   root:{flex:1,backgroundColor:colors.background},
+  compactToolbar:{flexDirection:'row',justifyContent:'flex-end',alignItems:'center',gap:10,paddingHorizontal:spacing.md,paddingVertical:8,minHeight:54,backgroundColor:colors.surface,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  fixedSplitWorkbench:{flex:1,minHeight:0,backgroundColor:colors.surface},
   pageTitleInput:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,minHeight:42,paddingHorizontal:12,color:colors.text,backgroundColor:colors.surface,fontSize:15},
   top:{paddingTop:56,paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,backgroundColor:colors.surface,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'flex-start',gap:spacing.sm},
   kicker:{fontSize:12,fontWeight:'800',color:colors.primary},title:{fontSize:26,fontWeight:'900',color:colors.text,marginTop:4},hint:{fontSize:12,color:colors.textSecondary,lineHeight:18,marginTop:5},
