@@ -17,9 +17,10 @@ export const DIVIDEND_EDITOR_CATALOG:Readonly<Record<string,readonly DividendEdi
     node('arrowButton:8','下個月按鈕','card'),
     node('month:6','年月標題'),
     node('monthCaption:7','月份說明'),
-    node('weekday:10','星期欄'),
+    node('weekday:10','星期欄','text'),
     node('day:11','日期格','card'),
-    node('dayText:12','日期數字'),
+    // Dates are computed read-only but their typography is a text target, not the cell card.
+    node('dayText:12','日期數字','text'),
     node('moreEvents:13','更多事件提示'),
     node('holidayRemark:96','休市／節日備註'),
     node('eventDetailDate:14','選取日期'),
@@ -55,3 +56,28 @@ export const DIVIDEND_EDITOR_CATALOG:Readonly<Record<string,readonly DividendEdi
     node('barLabel:51','月份標籤'),
   ],
 };
+
+/** Resolves a component-type button to an actual visible dividend target.
+ * The calendar's primary text entry is the day number, not a dashboard placeholder.
+ */
+export function dividendTargetForKind(frameKey:string,kind:'card'|'text'|'value'):DividendEditorItem|undefined {
+  const items=DIVIDEND_EDITOR_CATALOG[frameKey]??[];
+  const preferred=frameKey==='dividend-calendar'
+    ?kind==='text'?'dayText:12':kind==='card'?'day:11':'calendarCount:3'
+    :undefined;
+  if(preferred){
+    const match=items.find(item=>item.id===dividendTargetId('native:DividendScreen:'+preferred));
+    if(match)return match;
+  }
+  return items.find(item=>item.kind===kind)
+    ??(kind==='text'?items.find(item=>item.kind==='value'):undefined);
+}
+
+/** Match a tapped real node against its catalog; do not infer semantics from its value. */
+export function dividendCatalogTarget(id:string):DividendEditorItem|undefined {
+  for(const items of Object.values(DIVIDEND_EDITOR_CATALOG)){
+    const target=items.find(item=>item.id===id);
+    if(target)return target;
+  }
+  return undefined;
+}
