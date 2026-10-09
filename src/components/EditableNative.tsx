@@ -6,6 +6,7 @@ import {TARGET_APPEARANCE,type InspectedTarget,type TargetAppearance,type Target
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {scaledFontSize} from '../settings/displayFormat';
+import {dividendControlVisual,dividendTargetId,dividendTextVisual} from '../editor/dividendPageLayout';
 
 type Meta={editorId?:string;editorReadOnly?:boolean;editorSkip?:boolean};
 const NestedText=createContext(false);
@@ -49,6 +50,7 @@ function typography(style:TextStyle|undefined,a:TargetAppearance,o:TargetOverrid
 }
 export function Text({editorId,editorReadOnly=true,editorSkip=false,style,children,...props}:ComponentProps<typeof NativeText>&Meta){
   const frame=useEditingFrame(),nested=useContext(NestedText);
+  const dividendOverride=frame?.page==='dividend'&&editorId?frame.displayConfig.layoutTargets?.[dividendTargetId(editorId)]:undefined;
   const {prefs}=useSettingsRuntime();
   const raw=StyleSheet.flatten(style) as TextStyle|undefined;
   const size=raw?.fontSize??14;
@@ -56,7 +58,7 @@ export function Text({editorId,editorReadOnly=true,editorSkip=false,style,childr
     <NativeText {...props} style={[style,{
       fontSize:scaledFontSize(o.fontSize!==undefined&&a?a.fontSize:size,prefs.display),
       ...(raw?.lineHeight!==undefined?{lineHeight:scaledFontSize(raw.lineHeight,prefs.display)}:{}),
-    },a&&typography(raw,a,o),a&&o.lineHeight!==undefined&&a.lineHeight>0?{lineHeight:scaledFontSize(a.lineHeight,prefs.display)}:undefined,clearOwnedSurface(o),clearParentLayout(raw,wrapped)]}>
+    },a&&typography(raw,a,o),a&&o.lineHeight!==undefined&&a.lineHeight>0?{lineHeight:scaledFontSize(a.lineHeight,prefs.display)}:undefined,clearOwnedSurface(o),clearParentLayout(raw,wrapped),dividendTextVisual(dividendOverride)]}>
       {!editorReadOnly&&a&&o.labelText!==undefined?a.labelText:children}
     </NativeText>
   </NestedText.Provider>;
@@ -86,6 +88,7 @@ export function TextInput({editorId,editorReadOnly:_readOnly,editorSkip:_skip,st
 }
 export function Pressable({editorId,editorReadOnly:_readOnly,editorSkip:_skip,...props}:ComponentProps<typeof NativePressable>&Meta){
   const frame=useEditingFrame();
+  const dividendOverride=frame?.page==='dividend'&&editorId?frame.displayConfig.layoutTargets?.[dividendTargetId(editorId)]:undefined;
   if(!frame||!editorId)return <NativePressable {...props}/>;
   const raw=StyleSheet.flatten(typeof props.style==='function'?props.style({pressed:false}):props.style) as ViewStyle|undefined;
   const target:InspectedTarget={id:editorId,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
@@ -93,5 +96,5 @@ export function Pressable({editorId,editorReadOnly:_readOnly,editorSkip:_skip,..
     properties:[{name:'業務動作',value:'維護設定只調整外觀，保留原動作與禁用狀態',readOnly:true}],
     base:{...TARGET_APPEARANCE,backgroundOpacity:0,padding:0,borderWidth:0}};
   return <InspectableTarget frame={frame} target={target} layoutStyle={parentLayout(raw)}>{(_a,_custom,o,context)=> <NativePressable {...props}
-    style={typeof props.style==='function'?(state=>[typeof props.style==='function'?props.style(state):props.style,clearOwnedSurface(o),clearParentLayout(raw,context.wrapped)]):[props.style,clearOwnedSurface(o),clearParentLayout(raw,context.wrapped)]}/>}</InspectableTarget>;
+    style={typeof props.style==='function'?(state=>[typeof props.style==='function'?props.style(state):props.style,clearOwnedSurface(o),clearParentLayout(raw,context.wrapped),dividendControlVisual(dividendOverride)]):[props.style,clearOwnedSurface(o),clearParentLayout(raw,context.wrapped),dividendControlVisual(dividendOverride)]}/>}</InspectableTarget>;
 }
