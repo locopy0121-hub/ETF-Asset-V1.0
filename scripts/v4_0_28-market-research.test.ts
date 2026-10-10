@@ -20,7 +20,7 @@ const candles:DailyCandle[]=[
 const immutable=JSON.stringify(candles);
 assert.deepEqual(aggregateMarketCandles(candles,'month').map(x=>[x.open,x.high,x.low,x.close,x.volume]),[[10,12,9,11,100],[11,14,10,13,500]]);
 assert.equal(aggregateMarketCandles(candles,'day').length,3);
-assert.equal(aggregateMarketCandles(candles,'week').length,2);
+assert.equal(aggregateMarketCandles(candles,'week').length,1,'three dates in the same ISO week aggregate together');
 assert.equal(marketIndicators(candles).ma20,null);
 assert.equal(premiumDiscount(24.32,24.21)?.toFixed(2),'0.45');
 assert.equal(premiumDiscount(24.32,null),null);
