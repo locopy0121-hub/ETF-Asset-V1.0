@@ -112,170 +112,246 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
     <View style={styles.root}>
       <View style={styles.header}>
         <View style={{flex:1}}>
-          <Text style={styles.title}>每日損益統計</Text>
-          <Text style={styles.subtitle}>正式日收盤重建每日持股，主畫面改用金融走勢圖＋統計表；圖表與表格共用同一份每日紀錄。</Text>
+          <Text style={styles.title}>每日損益統計中心</Text>
+          <Text style={styles.subtitle}>日／月／年真實損益起伏 · 正式收盤紀錄 · 逐筆查詢</Text>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="關閉每日損益統計" onPress={onClose} style={styles.close}>
           <Text style={styles.closeText}>關閉</Text>
         </Pressable>
       </View>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {historyLoading?<View style={styles.notice}><Text style={styles.noticeText}>
+          正在從 {historyStartDate??'第一筆交易日'} 重建正式歷史收盤資料…
+        </Text></View>:null}
+        {historyError?<View style={[styles.notice,styles.noticeError]}><Text style={styles.noticeText}>
+          歷史資料未完整：{historyError}。以下保留已有有效紀錄。
+        </Text></View>:null}
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {historyLoading?<View style={styles.notice}><Text style={styles.noticeText}>正在從 {historyStartDate??'第一筆交易日'} 重建正式歷史收盤資料…</Text></View>:null}
-        {historyError?<View style={[styles.notice,styles.noticeError]}><Text style={styles.noticeText}>歷史重建尚未完整：{historyError}</Text></View>:null}
-
-        <View style={styles.statsGrid}>
-          <Stat label="最新總資產" value={latest?money(latest.totalMarketValue):'—'}/>
-          <Stat label="期間市值損益" value={signed(rangeStats.periodPnl)} valueColor={tone(rangeStats.periodPnl)}/>
-          <Stat label="獲利／虧損日" value={`${rangeStats.gainDays}／${rangeStats.lossDays}`}/>
-          <Stat label="平均每日市值" value={signed(rangeStats.averageDailyPnl)} valueColor={tone(rangeStats.averageDailyPnl)}/>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>期間統計總覽</Text>
+          <View style={styles.statsGrid}>
+            <Stat label="最新累積總損益" value={latest?signed(latest.totalPnl):'—'}
+              valueColor={latest?tone(latest.totalPnl):undefined}/>
+            <Stat label="期間每日損益合計" value={ranged.length?signed(rangeStats.periodPnl):'—'}
+              valueColor={ranged.length?tone(rangeStats.periodPnl):undefined}/>
+            <Stat label="獲利／虧損／持平日" value={`${rangeStats.gainDays}／${rangeStats.lossDays}／${rangeStats.flatDays}`}/>
+            <Stat label="獲利勝率" value={win===null?'—':win.toFixed(1)+'%'}/>
+            <Stat label="平均每日損益" value={ranged.length?signed(rangeStats.averageDailyPnl):'—'}
+              valueColor={ranged.length?tone(rangeStats.averageDailyPnl):undefined}/>
+            <Stat label="最佳單日" value={rangeStats.best?signed(rangeStats.best.todayPnl):'—'}
+              valueColor={rangeStats.best?tone(rangeStats.best.todayPnl):undefined}/>
+            <Stat label="最差單日" value={rangeStats.worst?signed(rangeStats.worst.todayPnl):'—'}
+              valueColor={rangeStats.worst?tone(rangeStats.worst.todayPnl):undefined}/>
+            <Stat label="最新持股市值" value={latest?money(latest.totalMarketValue):'—'}/>
+          </View>
+          <Text style={styles.tableHint}>勝率僅以獲利與虧損日計算；每日損益已扣除買賣本金流量，不等於市值直接增減。</Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>資產／損益走勢</Text>
-            <Text style={styles.chartHint}>紅綠依損益方向 · 虛線為基準</Text>
+            <Text style={styles.sectionTitle}>損益走勢 · 日／月／年</Text>
+            <Text style={styles.chartHint}>紅色獲利 · 綠色虧損</Text>
           </View>
           <View style={styles.controlRow}>
-            {METRIC_OPTIONS.map(option=><Pressable key={option.key} onPress={()=>{setMetric(option.key);setSelectedDate(null);}}
+            {PERIOD_OPTIONS.map(option=><Pressable key={option.key} accessibilityRole="button"
+              accessibilityLabel={option.label} accessibilityState={{selected:period===option.key}}
+              onPress={()=>changePeriod(option.key)}
+              style={[styles.controlChip,period===option.key&&styles.controlChipActive]}>
+              <Text style={[styles.controlText,period===option.key&&styles.controlTextActive]}>{option.label}</Text>
+            </Pressable>)}
+          </View>
+          <View style={styles.controlRow}>
+            {RANGE_OPTIONS[period].map(option=><Pressable key={String(option.count)}
+              accessibilityRole="button" onPress={()=>changeCount(option.count)}
+              style={[styles.rangeChip,periodCount===option.count&&styles.controlChipActive]}>
+              <Text style={[styles.controlText,periodCount===option.count&&styles.controlTextActive]}>{option.label}</Text>
+            </Pressable>)}
+          </View>
+          <View style={styles.controlRow}>
+            {METRIC_OPTIONS.map(option=><Pressable key={option.key} accessibilityRole="button"
+              onPress={()=>setMetric(option.key)}
               style={[styles.controlChip,metric===option.key&&styles.controlChipActive]}>
               <Text style={[styles.controlText,metric===option.key&&styles.controlTextActive]}>{option.label}</Text>
             </Pressable>)}
           </View>
           <View style={styles.controlRow}>
-            {RANGE_OPTIONS.map(option=><Pressable key={option.key} onPress={()=>chooseRange(option.key)}
-              style={[styles.rangeChip,range===option.key&&styles.controlChipActive]}>
-              <Text style={[styles.controlText,range===option.key&&styles.controlTextActive]}>{option.label}</Text>
+            {CHART_OPTIONS.map(option=><Pressable key={option.key} accessibilityRole="button"
+              onPress={()=>setChartStyle(option.key)}
+              style={[styles.rangeChip,chartStyle===option.key&&styles.controlChipActive]}>
+              <Text style={[styles.controlText,chartStyle===option.key&&styles.controlTextActive]}>{option.label}</Text>
             </Pressable>)}
           </View>
-
           <View style={styles.chartCard}>
             <View style={styles.chartValueRow}>
-              <View>
-                <Text style={styles.chartMetricLabel}>{METRIC_OPTIONS.find(item=>item.key===metric)?.label}</Text>
-                <Text style={[styles.chartMetricValue,selected&&metric!=='asset'?{color:tone(metricValue(selected,metric))}:undefined]}>
-                  {selected?(metric==='asset'?money(selected.totalMarketValue):signed(metricValue(selected,metric))):'—'}
+              <View style={{flexShrink:1}}>
+                <Text style={styles.chartMetricLabel}>{METRIC_OPTIONS.find(option=>option.key===metric)?.label}（{PERIOD_OPTIONS.find(option=>option.key===period)?.label}）</Text>
+                <Text style={[styles.chartMetricValue,selectedBucket&&metric!=='marketValue'?{color:tone(bucketValue(selectedBucket,metric))}:undefined]}>
+                  {selectedBucket?(metric==='marketValue'?money(selectedBucket.lastMarketValue):signed(bucketValue(selectedBucket,metric))):'—'}
                 </Text>
               </View>
               <View style={styles.chartDateWrap}>
-                <Text style={styles.chartDate}>{selected?.date??'—'}</Text>
-                <Text style={styles.chartStatus}>{selected?(selected.basis==='official-history'?'正式收盤':selected.final?'收盤估值':'盤中'):'—'}</Text>
+                <Text style={styles.chartDate}>{selectedBucket?.label??'—'}</Text>
+                <Text style={styles.chartStatus}>{selectedBucket?
+                  `${selectedBucket.days} 日 · ${selectedBucket.estimatedDays?'含暫估':'正式'}`:'尚無紀錄'}</Text>
               </View>
             </View>
-
-            {points.length>=2?<View onLayout={event=>{const next=Math.round(event.nativeEvent.layout.width);if(next>0)setPlotWidth(next);}} style={styles.plot}>
-              {[0.25,0.5,0.75].map(ratio=><View key={ratio} pointerEvents="none" style={[styles.gridLine,{top:12+ratio*(CHART_HEIGHT-38)}]}/>)}
-              <View pointerEvents="none" style={[styles.baseline,{top:baselineY}]}/>
-              {points.slice(1).map((point,index)=>{
-                const prior=points[index]!;
-                const dx=point.x-prior.x,dy=point.y-prior.y;
-                const length=Math.max(1,Math.sqrt(dx*dx+dy*dy));
-                const angle=Math.atan2(dy,dx);
-                const segmentValue=metric==='asset'?point.value-prior.value:point.value;
-                return <View key={'seg-'+point.row.date} pointerEvents="none" style={{
-                  position:'absolute',
-                  left:(prior.x+point.x)/2-length/2,
-                  top:(prior.y+point.y)/2-1,
-                  width:length,
-                  height:2,
-                  borderRadius:1,
-                  backgroundColor:tone(segmentValue),
-                  transform:[{rotateZ:angle+'rad'}],
-                }}/>;
-              })}
-              {selectedPoint?<>
-                <View pointerEvents="none" style={[styles.selectionLine,{left:selectedPoint.x}]}/>
-                <View pointerEvents="none" style={[styles.selectionDot,{left:selectedPoint.x-4,top:selectedPoint.y-4,backgroundColor:tone(metric==='asset'?(selected?.todayPnl??0):selectedPoint.value)}]}/>
-              </>:null}
-              {points.map((point,index)=>{
-                const nextX=points[index+1]?.x??plotWidth-CHART_PADDING_X;
-                const prevX=points[index-1]?.x??CHART_PADDING_X;
-                const hitWidth=Math.max(10,(nextX-prevX)/2);
-                return <Pressable key={'hit-'+point.row.date} accessibilityRole="button"
-                  accessibilityLabel={`${point.row.date} ${METRIC_OPTIONS.find(item=>item.key===metric)?.label} ${metric==='asset'?money(point.value):signed(point.value)}`}
-                  onPress={()=>setSelectedDate(point.row.date)}
-                  style={{position:'absolute',left:Math.max(0,point.x-hitWidth/2),top:0,width:hitWidth,height:CHART_HEIGHT}}/>;
-              })}
-              <Text pointerEvents="none" style={[styles.axisLabel,{top:4}]}>{metric==='asset'?money(rawMax):signed(rawMax)}</Text>
-              <Text pointerEvents="none" style={[styles.axisLabel,{bottom:4}]}>{metric==='asset'?money(rawMin):signed(rawMin)}</Text>
-            </View>:<View style={styles.plotEmpty}><Text style={styles.empty}>至少兩筆正式每日資料後顯示走勢。</Text></View>}
+            <View onLayout={event=>{
+              const width=Math.floor(event.nativeEvent.layout.width);
+              if(width>0&&width!==plotWidth)setPlotWidth(width);
+            }} style={styles.plot}>
+              {points.length?[<>
+                {[0.25,0.5,0.75].map(ratio=><View key={ratio} pointerEvents="none"
+                  style={[styles.gridLine,{top:12+ratio*(CHART_HEIGHT-38)}]}/>)}
+                <View pointerEvents="none" style={[styles.baseline,{top:baselineY}]}/>
+                {chartStyle!=='line'&&points.map((point,index)=>{
+                  const segmentTone=metric==='marketValue'
+                    ?point.value-(points[index-1]?.value??point.value):point.value;
+                  const top=Math.min(point.y,baselineY),height=Math.max(2,Math.abs(point.y-baselineY));
+                  const barWidth=chartStyle==='bar'
+                    ?Math.max(3,Math.min(20,innerWidth/Math.max(2,points.length)*0.65))
+                    :Math.max(3,innerWidth/Math.max(1,points.length-1));
+                  return <View key={'column-'+point.bucket.key} pointerEvents="none" style={{
+                    position:'absolute',left:point.x-barWidth/2,top,width:barWidth,height,
+                    borderRadius:chartStyle==='bar'?3:0,opacity:chartStyle==='area'?0.22:0.88,
+                    backgroundColor:tone(segmentTone),
+                  }}/>;
+                })}
+                {chartStyle!=='bar'&&points.slice(1).map((point,index)=>{
+                  const prior=points[index]!;
+                  const dx=point.x-prior.x,dy=point.y-prior.y;
+                  const length=Math.max(1,Math.hypot(dx,dy));
+                  const angle=Math.atan2(dy,dx);
+                  const direction=metric==='marketValue'?point.value-prior.value:point.value;
+                  return <View key={'seg-'+point.bucket.key} pointerEvents="none" style={{
+                    position:'absolute',left:(prior.x+point.x)/2-length/2,
+                    top:(prior.y+point.y)/2-1,width:length,height:2,borderRadius:1,
+                    backgroundColor:tone(direction),transform:[{rotateZ:angle+'rad'}],
+                  }}/>;
+                })}
+                {selectedPoint?<View pointerEvents="none" style={[styles.selectionLine,{left:selectedPoint.x}]}/>:null}
+                {selectedPoint?<View pointerEvents="none" style={[styles.selectionDot,{
+                  left:selectedPoint.x-4,top:selectedPoint.y-4,
+                  backgroundColor:tone(metric==='marketValue'?selectedPoint.bucket.periodPnl:selectedPoint.value),
+                }]}/>:null}
+                {points.length===1?<View pointerEvents="none" style={[styles.selectionDot,{
+                  left:points[0]!.x-4,top:points[0]!.y-4,
+                  backgroundColor:tone(points[0]!.bucket.periodPnl),
+                }]}/>:null}
+                {points.map((point,index)=>{
+                  const nextX=points[index+1]?.x??plotWidth-CHART_PADDING_X;
+                  const prevX=points[index-1]?.x??CHART_PADDING_X;
+                  const hitWidth=Math.max(10,(nextX-prevX)/2);
+                  return <Pressable key={'hit-'+point.bucket.key} accessibilityRole="button"
+                    accessibilityLabel={`${point.bucket.label} ${METRIC_OPTIONS.find(o=>o.key===metric)?.label} ${money(point.value)}`}
+                    onPress={()=>setSelectedDate(point.bucket.endDate)}
+                    style={{position:'absolute',left:Math.max(0,point.x-hitWidth/2),
+                      top:0,width:hitWidth,height:CHART_HEIGHT}}/>;
+                })}
+                <Text pointerEvents="none" style={[styles.axisLabel,{top:4}]}>
+                  {metric==='marketValue'?money(rawMax):signed(rawMax)}
+                </Text>
+                <Text pointerEvents="none" style={[styles.axisLabel,{bottom:4}]}>
+                  {metric==='marketValue'?money(rawMin):signed(rawMin)}
+                </Text>
+              </>]:<View style={styles.plotEmpty}><Text style={styles.empty}>尚無可繪製的日／月／年損益紀錄。</Text></View>}
+            </View>
             <View style={styles.chartFoot}>
-              <Text style={styles.chartFootText}>{chartRows[0]?.date.slice(5)??'—'}</Text>
-              <Text style={styles.chartFootText}>{ranged.length>120?'走勢抽樣顯示 · 表格保留全部資料':''}</Text>
-              <Text style={styles.chartFootText}>{chartRows[chartRows.length-1]?.date.slice(5)??'—'}</Text>
+              <Text style={styles.chartFootText}>{chartRows[0]?.label??'—'}</Text>
+              <Text style={styles.chartFootText}>{chartPeriods.length>120?'已抽樣繪圖 · 統計保留全數':''}</Text>
+              <Text style={styles.chartFootText}>{chartRows[chartRows.length-1]?.label??'—'}</Text>
             </View>
           </View>
+          <Text style={styles.tableHint}>日：逐交易日；月／年：期間每日損益合計，累積損益與市值使用該期間最後一筆估值。點選圖形可查看對應日期。</Text>
         </View>
 
         {selected?<View style={styles.detailCard}>
           <View style={styles.detailHead}>
-            <Text style={styles.detailTitle}>{selected.date} 詳細計算</Text>
-            <Text style={[styles.detailTotal,{color:tone(selected.totalPnl)}]}>總損益 {signed(selected.totalPnl)}</Text>
+            <Text style={styles.detailTitle}>{selected.date} 損益明細</Text>
+            <Text style={[styles.detailTotal,{color:tone(selected.todayPnl)}]}>{signed(selected.todayPnl)}</Text>
           </View>
-          <Text style={styles.detailFormula}>
-            前日總損益 {signed(selected.previousTotalPnl)} ＋ 今日市值 {signed(selected.todayPnl)}
-            {' '}＋ 帳務調整 {signed(selected.accountingAdjustment)} ＝ 總損益 {signed(selected.totalPnl)}
-          </Text>
-          <Text style={styles.meta}>
-            前日持股市值 {money(selected.previousMarketValue)} → 當日 {money(selected.totalMarketValue)}
-            {selected.tradeMarketFlow!==0?` · 買賣本金流 ${signed(selected.tradeMarketFlow)}`:''}
-            {' · '}{selected.basis==='official-history'?'證券中心正式日收盤':'即時行情＋正式前收'}
+          <Text style={styles.meta}>前次累積損益 {signed(selected.previousTotalPnl)} · 當日累積總損益 {signed(selected.totalPnl)}</Text>
+          <Text style={styles.detailFormula}>前次累積 {signed(selected.previousTotalPnl)} ＋ 當日 {signed(selected.todayPnl)}
+            {' '}＋ 帳務調整 {signed(selected.accountingAdjustment)} ＝ 累積 {signed(selected.totalPnl)}</Text>
+          <Text style={styles.meta}>前次持股市值 {money(selected.previousMarketValue)} → 當日 {money(selected.totalMarketValue)}
+            {selected.tradeMarketFlow!==0?` · 交易本金流 ${signed(selected.tradeMarketFlow)}`:''}
+            {' · '}{selected.basis==='official-history'?'正式歷史收盤':'即時／前收估值'}
           </Text>
         </View>:null}
 
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>每日統計表</Text>
-            <Pressable onPress={()=>{setAscending(value=>!value);setPage(0);}} style={styles.sortButton}>
-              <Text style={styles.sortText}>日期 {ascending?'↑':'↓'}</Text>
+            <Text style={styles.sectionTitle}>每日損益紀錄</Text>
+            <Text style={styles.chartHint}>共 {ordered.length} 筆</Text>
+          </View>
+          <View style={styles.controlRow}>
+            <Text style={styles.controlLabel}>每頁</Text>
+            {PAGE_SIZES.map(size=><Pressable key={size} accessibilityRole="button"
+              accessibilityLabel={`每頁顯示 ${size} 筆`} onPress={()=>{setPageSize(size);setPage(0);}}
+              style={[styles.rangeChip,pageSize===size&&styles.controlChipActive]}>
+              <Text style={[styles.controlText,pageSize===size&&styles.controlTextActive]}>{size}</Text>
+            </Pressable>)}
+            <Text style={styles.pageInfo}>第 {safePage+1}／{pageCount} 頁</Text>
+          </View>
+          <View style={styles.controlRow}>
+            {FILTER_OPTIONS.map(option=><Pressable key={option.key} accessibilityRole="button"
+              onPress={()=>updateFilter(option.key)} style={[styles.rangeChip,filter===option.key&&styles.controlChipActive]}>
+              <Text style={[styles.controlText,filter===option.key&&styles.controlTextActive]}>{option.label}</Text>
+            </Pressable>)}
+          </View>
+          <View style={styles.controlRow}>
+            <Text style={styles.controlLabel}>排序</Text>
+            {SORT_OPTIONS.map(option=><Pressable key={option.key} accessibilityRole="button"
+              onPress={()=>updateSort(option.key)}
+              style={[styles.rangeChip,sort===option.key&&styles.controlChipActive]}>
+              <Text style={[styles.controlText,sort===option.key&&styles.controlTextActive]}>
+                {option.label}{sort===option.key?(ascending?' ↑':' ↓'):''}
+              </Text>
+            </Pressable>)}
+          </View>
+          {pageRows.length?pageRows.map(row=><Pressable key={row.date} accessibilityRole="button"
+            accessibilityLabel={`${row.date} 每日損益 ${signed(row.todayPnl)}`}
+            onPress={()=>setSelectedDate(row.date)}
+            style={[styles.recordCard,selectedDate===row.date&&styles.recordCardSelected]}>
+            <View style={{flex:1,gap:4}}>
+              <Text style={styles.recordDate}>{row.date}</Text>
+              <Text style={styles.recordMeta}>{row.basis==='official-history'?'正式收盤':'暫估'} · 累積 {signed(row.totalPnl)}</Text>
+              <Text style={styles.recordMeta}>本金流 {signed(row.tradeMarketFlow)} · 帳務調整 {signed(row.accountingAdjustment)}</Text>
+            </View>
+            <View style={{alignItems:'flex-end',gap:4}}>
+              <Text style={styles.recordMeta}>市值 {money(row.totalMarketValue)}</Text>
+              <Text style={[styles.recordPnl,{color:tone(row.todayPnl)}]}>{signed(row.todayPnl)}</Text>
+              <Text style={styles.recordDetailHint}>點選查看明細 ›</Text>
+            </View>
+          </Pressable>):<Text style={styles.empty}>目前沒有符合條件的每日紀錄。</Text>}
+          <View style={styles.pagination}>
+            <Pressable disabled={safePage<=0} onPress={()=>setPage(value=>Math.max(0,value-1))}
+              style={[styles.pageButton,safePage<=0&&styles.pageButtonDisabled]}>
+              <Text style={styles.pageText}>‹ 上一頁</Text>
+            </Pressable>
+            <Text style={styles.pageInfo}>第 {safePage+1}／{pageCount} 頁 · 共 {ordered.length} 筆</Text>
+            <Pressable disabled={safePage>=pageCount-1}
+              onPress={()=>setPage(value=>Math.min(pageCount-1,value+1))}
+              style={[styles.pageButton,safePage>=pageCount-1&&styles.pageButtonDisabled]}>
+              <Text style={styles.pageText}>下一頁 ›</Text>
             </Pressable>
           </View>
-          <Text style={styles.tableHint}>日期固定於第一欄；其餘欄位左右滑動。點選任一列可同步上方走勢與詳細計算。</Text>
+        </View>
 
-          {ordered.length?<View style={styles.tableShell}>
-            <View style={styles.fixedColumn}>
-              <View style={[styles.tableRow,styles.tableHeader]}><Cell text="日期" width={98} header/></View>
-              {pageRows.map(row=><Pressable key={'fixed-'+row.date} onPress={()=>setSelectedDate(row.date)}
-                style={[styles.tableRow,selected?.date===row.date&&styles.tableRowSelected]}>
-                <Cell text={row.date} width={98} strong/>
-              </Pressable>)}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>月度損益摘要</Text>
+          <Text style={styles.tableHint}>依當前圖表日期範圍彙整；若日期範圍跨越部分月份，僅統計範圍內已取得的交易日。</Text>
+          {monthly.length?monthly.map(bucket=><View key={bucket.key} style={styles.monthCard}>
+            <View style={{flex:1,gap:5}}>
+              <Text style={styles.monthTitle}>{bucket.label} · {bucket.days} 筆</Text>
+              <Text style={styles.recordMeta}>平均日損益 {signed(bucket.averageDailyPnl)}</Text>
+              <Text style={styles.recordMeta}>獲利／虧損／持平 {bucket.gainDays}／{bucket.lossDays}／{bucket.flatDays}
+                {' · '}勝率 {winRate(bucket.gainDays,bucket.lossDays)?.toFixed(1)??'—'}%</Text>
+              <Text style={styles.recordMeta}>最佳 {bucket.best?.date??'—'} {bucket.best?signed(bucket.best.todayPnl):'—'}
+                {' · '}最差 {bucket.worst?.date??'—'} {bucket.worst?signed(bucket.worst.todayPnl):'—'}</Text>
+              <Text style={styles.recordMeta}>{bucket.estimatedDays?'含暫估行情':'正式紀錄'} · 月末累積 {signed(bucket.lastTotalPnl)}</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroller}>
-              <View style={styles.tableBody}>
-                <View style={[styles.tableRow,styles.tableHeader]}>
-                  <Cell text="狀態" width={78} header/>
-                  <Cell text="前日資產" width={110} header right/>
-                  <Cell text="總資產" width={110} header right/>
-                  <Cell text="今日損益" width={104} header right/>
-                  <Cell text="前日總損益" width={112} header right/>
-                  <Cell text="帳務調整" width={104} header right/>
-                  <Cell text="總損益" width={104} header right/>
-                  <Cell text="資金異動" width={104} header right/>
-                </View>
-                {pageRows.map(row=><Pressable key={row.date} onPress={()=>setSelectedDate(row.date)}
-                  style={[styles.tableRow,selected?.date===row.date&&styles.tableRowSelected]}>
-                  <Cell text={row.basis==='official-history'?'正式':'暫估'} width={78}/>
-                  <Cell text={money(row.previousMarketValue)} width={110} right/>
-                  <Cell text={money(row.totalMarketValue)} width={110} right/>
-                  <Cell text={signed(row.todayPnl)} width={104} right color={tone(row.todayPnl)}/>
-                  <Cell text={signed(row.previousTotalPnl)} width={112} right color={tone(row.previousTotalPnl)}/>
-                  <Cell text={signed(row.accountingAdjustment)} width={104} right color={tone(row.accountingAdjustment)}/>
-                  <Cell text={signed(row.totalPnl)} width={104} right color={tone(row.totalPnl)} strong/>
-                  <Cell text={signed(row.tradeMarketFlow)} width={104} right/>
-                </Pressable>)}
-              </View>
-            </ScrollView>
-          </View>:<Text style={styles.empty}>取得正式行情後，系統會自第一筆交易日起自動建立統計表。</Text>}
-
-          {ordered.length>PAGE_SIZE?<View style={styles.pagination}>
-            <Pressable disabled={safePage<=0} onPress={()=>setPage(value=>Math.max(0,value-1))} style={[styles.pageButton,safePage<=0&&styles.pageButtonDisabled]}>
-              <Text style={styles.pageText}>上一頁</Text>
-            </Pressable>
-            <Text style={styles.pageInfo}>{safePage+1} / {pageCount} · 共 {ordered.length} 日</Text>
-            <Pressable disabled={safePage>=pageCount-1} onPress={()=>setPage(value=>Math.min(pageCount-1,value+1))} style={[styles.pageButton,safePage>=pageCount-1&&styles.pageButtonDisabled]}>
-              <Text style={styles.pageText}>下一頁</Text>
-            </Pressable>
-          </View>:null}
+            <Text style={[styles.monthPnl,{color:tone(bucket.periodPnl)}]}>{signed(bucket.periodPnl)}</Text>
+          </View>):<Text style={styles.empty}>取得正式歷史資料後顯示月度摘要。</Text>}
         </View>
       </ScrollView>
     </View>
@@ -361,5 +437,19 @@ const styles=StyleSheet.create({
   pageButtonDisabled:{opacity:.35},
   pageText:{fontSize:10,fontWeight:'900',color:colors.primary},
   pageInfo:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
+  recordCard:{flexDirection:'row',alignItems:'center',gap:12,minHeight:84,
+    backgroundColor:colors.surface,padding:12,borderWidth:1,borderColor:colors.border,
+    borderRadius:radius.md},
+  recordCardSelected:{borderColor:colors.primary,backgroundColor:colors.surfaceMuted},
+  recordDate:{fontSize:12,fontWeight:'900',color:colors.text},
+  recordMeta:{fontSize:9,lineHeight:14,color:colors.textSecondary},
+  recordPnl:{fontSize:18,fontWeight:'900',fontVariant:['tabular-nums']},
+  recordDetailHint:{fontSize:9,color:colors.primary,fontWeight:'800'},
+  controlLabel:{fontSize:10,color:colors.textSecondary,fontWeight:'800',alignSelf:'center'},
+  monthCard:{flexDirection:'row',gap:12,alignItems:'flex-start',
+    borderRadius:radius.md,borderColor:colors.border,borderWidth:1,
+    padding:12,backgroundColor:colors.surface},
+  monthTitle:{fontSize:12,fontWeight:'900',color:colors.text},
+  monthPnl:{fontSize:15,fontWeight:'900',fontVariant:['tabular-nums']},
   empty:{fontSize:12,lineHeight:18,color:colors.textSecondary,paddingVertical:spacing.md},
 });
