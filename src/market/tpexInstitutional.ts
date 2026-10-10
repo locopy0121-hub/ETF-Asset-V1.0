@@ -45,8 +45,9 @@ export function parseTpexInstitutional(payload:unknown,symbol:string,date:string
   const announced=p.reportDate??p.date;
   if(announced!==undefined&&announcedDate(announced)!==date)return null;
   const wanted=symbol.trim().toUpperCase();
+  const plain=(v:unknown)=>String(v??'').replace(/<[^>]*>/g,'').replace(/&nbsp;|&#160;/gi,' ').trim();
   for(const row of p.aaData){
-    if(!Array.isArray(row)||String(row[0]??'').trim().toUpperCase()!==wanted)continue;
+    if(!Array.isArray(row)||plain(row[0]).toUpperCase()!==wanted)continue;
     // Reject unknown shapes: 2 identifiers, 7 x (buy,sell,net), 1 total.
     if(row.length!==24)return null;
     const numbers=row.slice(2).map(integer);
@@ -74,7 +75,10 @@ export async function fetchTpexInstitutionalDay(symbol:string,date:string,signal
   const url='https://www.tpex.org.tw/web/stock/3insti/daily_trade/3itrade_hedge_result.php?'+query.toString();
   const response=await fetch(url,{headers:{Accept:'application/json','Cache-Control':'no-cache'},...(signal?{signal}:{})});
   if(!response.ok)throw new Error('TPEx 法人日報 HTTP '+response.status);
-  const value=parseTpexInstitutional(await response.json(),symbol,date);
+  const payload:unknown=await response.json();
+  if(!payload||typeof payload!=='object'||!Array.isArray((payload as {aaData?:unknown}).aaData))
+    throw new Error('TPEx 官方日報資料格式已變更；停止顯示以免誤判為休市');
+  const value=parseTpexInstitutional(payload,symbol,date);
   cache.set(key,{record:value,expires:Date.now()+(value?60*60*1000:10*60*1000)});
   return value;
 }
