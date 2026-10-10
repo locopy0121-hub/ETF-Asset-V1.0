@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
-import {Pressable,StyleSheet} from 'react-native';
+import {Pressable,StyleSheet,type LayoutChangeEvent} from 'react-native';
+import {useEqualGridActive} from './EqualGrid';
 import {Text} from './EditableNative';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
@@ -15,11 +16,13 @@ import {colorWithAlpha} from '../maintenance/frameEffects';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {resolveSystemProfitColors} from '../settings/systemColorPalette';
 
-export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone,previewTap=false}:{
+export function MetricTile({label,value,caption,tone='default',editorStyle,simulationTone,previewTap=false,onVisualLayout}:{
   label:string;value:string;caption?:string;tone?:'default'|'gain'|'loss'|'neutral';
   editorStyle?:TargetOverride;simulationTone?:FinancialTone;previewTap?:boolean; // ephemeral preview only
+  onVisualLayout?:(event:LayoutChangeEvent)=>void;
 }){
   const theme=useThemeRuntime();
+  const equalGrid=useEqualGridActive();
   const [emphasized,setEmphasized]=useState(false);
   const start=useRef<MetricTouchPoint|null>(null);
   const swipeConsumed=useRef(false);
@@ -55,7 +58,7 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
   const displayedCaption=editorStyle?.captionText||caption;
   const displayedValue=editorStyle?.displayUnit&&editorStyle.displayUnit!=='original'?
     formatDisplayNumber(value,editorStyle.displayUnit,editorStyle.displayDigits??0):value;
-  return <Pressable disabled={!tapEnabled} accessibilityRole={tapEnabled?'button':undefined}
+  return <Pressable onLayout={onVisualLayout} disabled={!tapEnabled} accessibilityRole={tapEnabled?'button':undefined}
     accessibilityLabel={tapEnabled?'切換強調顯示：'+label:undefined}
     accessibilityState={tapEnabled?{selected:emphasized}:undefined}
     onTouchStart={event=>{start.current={x:event.nativeEvent.pageX,y:event.nativeEvent.pageY};swipeConsumed.current=false;}}
@@ -67,9 +70,10 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     editorStyle&&{borderColor:colorWithAlpha(effectiveBorder??'#E2E8F0',surface.borderOpacity),borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       ...(editorStyle.width!==undefined||editorStyle.height!==undefined?{flex:0,minWidth:1,minHeight:1}:{}),
+      ...(equalGrid?{width:'100%',minWidth:0,flexGrow:0,flexShrink:0}:{}),
       borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
       marginHorizontal:surface.marginHorizontal,
-      ...(editorStyle.width!==undefined?{width:editorStyle.width}:{}),
+      ...(!equalGrid&&editorStyle.width!==undefined?{width:editorStyle.width}:{}),
       ...(editorStyle.height!==undefined?{height:editorStyle.height}:{}),
       ...(editorStyle.offsetX!==undefined||editorStyle.offsetY!==undefined?{transform:[{translateX:editorStyle.offsetX??0},{translateY:editorStyle.offsetY??0}]}:{}),
       ...targetShadowStyle(surface,shadow)},
