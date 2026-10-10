@@ -66,6 +66,8 @@ assert.match(wrapper,/const visual=flex&&visualBounds\?visualBounds:/,
   'engineer dashed border follows the physical painted tile bounds');
 assert.match(metric,/const visualStyle=editorStyle\?equalGridVisualOverride\(editorStyle,equalGrid\):undefined/);
 assert.match(metric,/marginHorizontal:equalGrid\?0:surface\.marginHorizontal/);
+assert.match(metric,/equalGrid&&\{flex:0,width:'100%',minWidth:0,flexGrow:0,flexShrink:0\}/,
+  'native tile flex:1 must be neutralized so it cannot paint multiple cells in one region');
 assert.match(metric,/visualStyle\?\.offsetX/);
 assert.match(stack,/delete paintedStyle\.offsetX;delete paintedStyle\.offsetY/);
 assert.match(preview,/if\(child\.type===EqualGrid\)/);
