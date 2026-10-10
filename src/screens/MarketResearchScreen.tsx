@@ -7,6 +7,7 @@ import {PageShell} from '../components/PageShell';
 import {PageEditorStack} from '../components/PageEditorStack';
 import {FrameCard} from '../components/FrameCard';
 import {OfficialCandleChart} from '../components/OfficialCandleChart';
+import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
 import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
 import {PageGearButton} from '../components/PageGearButton';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
@@ -17,6 +18,8 @@ import {useMarketRuntime} from '../market/MarketRuntime';
 import {searchTaiwanSecurities,aggregateMarketCandles,marketIndicators,type ResearchPeriod,type ResearchTab} from '../market/marketResearchModel';
 import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
 import {isEtfSymbol} from '../market/etfConstituents';
+import {fetchTwseInstitutionalSeries,type InstitutionalRecord} from '../market/twseInstitutional';
+import {fetchOfficialEtfNavHistory,matchOfficialNavToClose,type NavRecord} from '../market/officialEtfNav';
 import {useSystemColors} from '../theme/useSystemColors';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
@@ -71,6 +74,11 @@ export function MarketResearchScreen(){
   const [candles,setCandles]=useState<DailyCandle[]>([]);
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null);
   const [settingsOpen,setSettingsOpen]=useState(false);
+  const [institutionalDays,setInstitutionalDays]=useState<1|3|5>(5);
+  const [institutions,setInstitutions]=useState<InstitutionalRecord[]>([]);
+  const [institutionLoading,setInstitutionLoading]=useState(false),[institutionError,setInstitutionError]=useState<string|null>(null);
+  const [navRows,setNavRows]=useState<NavRecord[]>([]);
+  const [navLoading,setNavLoading]=useState(false),[navError,setNavError]=useState<string|null>(null);
   const results=useMemo(()=>searchTaiwanSecurities(market.catalog,query),[market.catalog,query]);
   const info=market.catalog.find(row=>row.symbol===symbol);
   const quote=market.quotes.find(row=>row.symbol===symbol);
@@ -87,8 +95,33 @@ export function MarketResearchScreen(){
       .finally(()=>{if(live)setLoading(false);});
     return()=>{live=false;abort.abort();};
   },[symbol,range]);
+  useEffect(()=>{
+    if(!symbol||tab!=='institution'||info?.market!=='TWSE'){
+      setInstitutions([]);setInstitutionError(null);return;
+    }
+    const abort=new AbortController();let alive=true;
+    setInstitutions([]);setInstitutionLoading(true);setInstitutionError(null);
+    void fetchTwseInstitutionalSeries(symbol,institutionalDays,new Date(),abort.signal)
+      .then(records=>{if(alive)setInstitutions(records);})
+      .catch(error=>{if(alive)setInstitutionError(error instanceof Error?error.message:String(error));})
+      .finally(()=>{if(alive)setInstitutionLoading(false);});
+    return()=>{alive=false;abort.abort();};
+  },[symbol,tab,info?.market,institutionalDays]);
+  useEffect(()=>{
+    if(!symbol||tab!=='premium'||info?.market!=='TWSE'||!isEtfSymbol(symbol)){
+      setNavRows([]);setNavError(null);return;
+    }
+    const abort=new AbortController();let alive=true;
+    setNavRows([]);setNavLoading(true);setNavError(null);
+    void fetchOfficialEtfNavHistory(symbol,ranges[range],new Date(),abort.signal)
+      .then(records=>{if(alive)setNavRows(records);})
+      .catch(error=>{if(alive)setNavError(error instanceof Error?error.message:String(error));})
+      .finally(()=>{if(alive)setNavLoading(false);});
+    return()=>{alive=false;abort.abort();};
+  },[symbol,tab,info?.market,range]);
+  const navComparisons=useMemo(()=>matchOfficialNavToClose(navRows,candles),[navRows,candles]);
   const transformed=useMemo(()=>aggregateMarketCandles(candles,period),[candles,period]);
-  const indicators=useMemo(()=>marketIndicators(candles),[candles]);
+  const indicators=useMemo(()=>marketIndicators(transformed),[transformed]);
   const value=quote&&Number.isFinite(quote.currentPrice)&&quote.currentPrice>0?quote.currentPrice:null;
   const prior=quote?.previousClose;
   const diff=value!==null&&typeof prior==='number'&&prior>0?value-prior:null;
@@ -138,6 +171,7 @@ export function MarketResearchScreen(){
           <View key={item.label} style={{backgroundColor:theme.palette.surfaceMuted,padding:10,borderRadius:10,minWidth:78}}>
             <Text style={{fontSize:11,color:theme.palette.textSecondary}}>{item.label}</Text><Text editorReadOnly style={{color:theme.palette.text,fontWeight:'800'}}>{item.value}</Text>
           </View>)}</View>
+        <MarketTechnicalSignals candles={transformed}/>
         <Text style={{fontSize:11,color:theme.palette.textSecondary}}>週月 K 依取得之官方日線聚合，不用瞬間成交價偽造 OHLC／成交量。</Text>
       </View>:<Text style={{fontSize:12,color:theme.palette.textSecondary}}>目前檢視：{tabs.find(x=>x.key===tab)?.label}</Text>}
     </FrameCard>},
@@ -149,9 +183,51 @@ export function MarketResearchScreen(){
           <Fact key={label} label={label??''} value={metric??'—'}/>)}</View>:null}
       {tab==='etf'?(isEtfSymbol(symbol)?<EtfConstituentsContent symbol={symbol} name={info?.name??symbol}/>:
         <Text style={{color:theme.palette.textSecondary}}>此標的未辨識為 ETF，不顯示不適用的成分資料。</Text>):null}
-      {tab==='institution'?<Text style={{color:theme.palette.textSecondary}}>官方逐日三大法人、分點券商、大戶籌碼尚未接入已驗證的資料源；行情快照只有成交價，不能推算主力買賣超。資料取得前不顯示假數據。</Text>:null}
-      {tab==='premium'?<View><Fact label="市場成交價" value={price(value)}/><Fact label="同日公告淨值 NAV" value="尚無核實資料"/><Fact label="折溢價率" value="—"/>
-        <Text style={{color:theme.palette.textSecondary,fontSize:12}}>缺少同日同口徑官方 NAV 時不得以盤中價格混算前日 NAV。</Text></View>:null}
+      {tab==='institution'?<View style={{gap:10}}>
+        <View style={styles.row}>{([1,3,5] as const).map(n=><Chip key={n} label={n+'個交易日'} active={institutionalDays===n} click={()=>setInstitutionalDays(n)}/>)}</View>
+        {info?.market!=='TWSE'?<Text style={{color:theme.palette.textSecondary}}>此標的為上櫃或市場未知；上市 T86 資料不適用。上櫃法人資料待加入 TPEx 已驗證介接。</Text>:
+        institutionLoading?<Text style={{color:theme.palette.textSecondary}}>讀取 TWSE 法人逐日資料中…</Text>:
+        institutionError?<Text style={{color:theme.palette.textSecondary}}>法人資料暫時無法取得：{institutionError}</Text>:
+        institutions.length===0?<Text style={{color:theme.palette.textSecondary}}>所選日期查無已公告法人資料（盤中／休市可能尚未公布）。</Text>:<View style={{gap:6}}>
+          <Text style={{fontSize:11,color:theme.palette.textSecondary}}>TWSE T86 官方日報｜單位：股｜紅＝買超，綠＝賣超（非即時主力分點）</Text>
+          {institutions.map(row=>{
+            const mag=Math.max(Math.abs(row.foreign),Math.abs(row.trust),Math.abs(row.dealer),1);
+            return <View key={row.date} style={{gap:4,borderBottomWidth:.5,borderBottomColor:theme.palette.border,paddingBottom:9}}>
+              <Text style={{fontSize:12,fontWeight:'800',color:theme.palette.text}}>{row.date}　三大法人 {row.total>=0?'+':''}{amount(row.total)} 股</Text>
+              {([{key:'foreign',title:'外資'},{key:'trust',title:'投信'},{key:'dealer',title:'自營商'}] as const).map(item=>{
+                const v=row[item.key];
+                return <View key={item.key} style={styles.row}>
+                  <Text style={{fontSize:11,color:theme.palette.textSecondary,width:45}}>{item.title}</Text>
+                  <View style={{height:9,flex:1,backgroundColor:theme.palette.surfaceMuted,borderRadius:4,overflow:'hidden'}}>
+                    <View style={{height:9,width:Math.max(0,100*Math.abs(v)/mag)+'%' as `${number}%`,backgroundColor:v>=0?system.gain:system.loss}}/>
+                  </View>
+                  <Text editorReadOnly style={{fontSize:11,fontWeight:'800',minWidth:87,textAlign:'right',color:v>0?system.gain:v<0?system.loss:system.flat}}>{v>0?'+':''}{amount(v)}</Text>
+                </View>;
+              })}
+            </View>;
+          })}
+        </View>}
+        <Text style={{fontSize:11,color:theme.palette.textSecondary}}>券商分點、主力與大戶資料仍需獨立、合法且具時間戳的來源，不由法人日報推算。</Text>
+      </View>:null}
+      {tab==='premium'?<View style={{gap:8}}>
+        {!isEtfSymbol(symbol)?<Text style={{color:theme.palette.textSecondary}}>非 ETF 標的不適用折溢價。</Text>:
+        info?.market!=='TWSE'?<Text style={{color:theme.palette.textSecondary}}>目前僅支援 TWSE 上市 ETF 的官方參考淨值；上櫃商品不套用上市 ETF 資料。</Text>:
+        navLoading?<Text style={{color:theme.palette.textSecondary}}>讀取 TWSE e添富官方 NAV 歷史…</Text>:
+        navError?<Text style={{color:theme.palette.textSecondary}}>官方 NAV 來源暫不可用：{navError}</Text>:
+        navComparisons.length===0?<Text style={{color:theme.palette.textSecondary}}>尚無可核實的公告淨值資料。</Text>:
+        <View style={{gap:2}}>{navComparisons.slice(0,24).map(row=>
+          <View key={row.date} style={{paddingVertical:7,borderBottomWidth:.5,borderBottomColor:theme.palette.border}}>
+            <Text style={{color:theme.palette.text,fontWeight:'800',fontSize:12}}>{row.date}　NAV {price(row.nav)}　收盤 {price(row.close)}</Text>
+            <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
+              {row.premiumPct===null?'折溢價待同日官方收盤價':('同日收盤折溢價 '+(row.premiumPct>0?'+':'')+row.premiumPct.toFixed(2)+'%')}
+              {row.reportedPct===null?'':'｜官方報表 '+(row.reportedPct>0?'+':'')+row.reportedPct.toFixed(2)+'%'}
+            </Text>
+          </View>)}</View>}
+        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>僅列官方歷史淨值與相同交易日收盤價比較，非即時預估淨值（iNAV）。兩者日期不同時不計算折溢價。</Text>
+        <Pressable onPress={()=>void Linking.openURL('https://www.twse.com.tw/zh/ETFortune/products').catch(()=>{})}>
+          <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>查看證交所 e添富原始公告 ↗</Text>
+        </Pressable>
+      </View>:null}
       {tab==='news'?(relatedNews.length?relatedNews.map(n=><Pressable key={n.id} onPress={()=>void Linking.openURL(n.url).catch(()=>{})} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{n.title}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{n.source}｜{n.publishedAt}</Text></View>
         </Pressable>):<Text style={{color:theme.palette.textSecondary}}>目前無此標的經核實新聞。既有新聞來源僅追蹤持股，不用其他標的新聞替代。</Text>):null}

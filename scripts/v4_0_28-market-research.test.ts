@@ -39,6 +39,6 @@ assert.match(source,/PageEditorStack pageKey="market"/);
 assert.match(market,/combinedSymbols\(\)/);
 assert.doesNotMatch(settings,/MarketResearchScreen|PageEditorStack pageKey="market"/);
 const identity=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.equal(identity.version,'4.0.28');
-assert.equal(identity.android.versionCode,40028);
+assert.ok(Number(identity.version.split('.')[2])>=28,'V4.0.28 regression must persist after later upgrades');
+assert.ok(identity.android.versionCode>=40028);
 console.log('V4.0.28 market query, official OHLC aggregation, read-only subscriptions, protected settings: PASS');
