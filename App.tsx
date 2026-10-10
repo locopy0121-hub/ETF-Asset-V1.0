@@ -6,7 +6,7 @@ import {Pressable,Text} from './src/components/EditableNative';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AiNewsRuntimeProvider, useAiNewsRuntime } from './src/ai/AiNewsRuntime';
-import { MAIN_PAGES, type MainPageKey } from './src/domain/pageRegistry';
+import { NAV_PAGES, type MainPageKey } from './src/domain/pageRegistry';
 import {resolveBackNavigation,resolvePageSwipeDirection} from './src/domain/navigationGestures';
 import type { HoldingQuote } from './src/domain/uiModels';
 import type { SharedSnapshot } from './src/domain/snapshot';
@@ -144,7 +144,7 @@ function AppBody(){
   const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
   const aiUi=deriveAiUiState(settings.prefs.ai,active);
   const swipeToAdjacent=(direction:-1|1)=>{
-    const pages=MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab);
+    const pages=NAV_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab);
     const index=pages.findIndex(page=>page.key===active);
     const target=pages[index+direction];
     if(target)navigatePage(target.key);
@@ -288,7 +288,7 @@ function AppBody(){
     {!detail&&!chartHolding&&(!maintenance.session||maintenance.session.frameKey==='app-navigation')?<SafeAreaView edges={['bottom']} style={[styles.navSafe,{backgroundColor:theme.palette.surface,borderTopColor:theme.palette.border}]}>
       <EditorSurface pageKey="home" frameKey="app-navigation" title="底部導覽列" fill={false} inlineWorkbench={false}>
       <View style={styles.nav}>
-        {MAIN_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
+        {NAV_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab).map(page=>{
           const selected=page.key===active;
           return <Pressable editorId="native:App:navItem:5"
             key={page.key}

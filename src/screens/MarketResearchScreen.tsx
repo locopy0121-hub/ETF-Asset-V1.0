@@ -146,7 +146,7 @@ export function MarketResearchScreen(){
         {[['證券代號',info?.symbol??symbol],['公司全名',info?.companyName??'—'],['市場',info?.market??'—'],
           ['產業',info?.industry??'—'],['上市櫃日期',info?.listingDate??'—'],['資本額',amount(info?.paidInCapitalTwd)],
           ['普通股發行量',amount(info?.issuedCommonShares)],['董事長',info?.chairman??'—'],['來源',info?.source??'—']].map(([label,metric])=>
-          <Fact key={label} label={label} value={metric}/>)}</View>:null}
+          <Fact key={label} label={label??''} value={metric??'—'}/>)}</View>:null}
       {tab==='etf'?(isEtfSymbol(symbol)?<EtfConstituentsContent symbol={symbol} name={info?.name??symbol}/>:
         <Text style={{color:theme.palette.textSecondary}}>此標的未辨識為 ETF，不顯示不適用的成分資料。</Text>):null}
       {tab==='institution'?<Text style={{color:theme.palette.textSecondary}}>官方逐日三大法人、分點券商、大戶籌碼尚未接入已驗證的資料源；行情快照只有成交價，不能推算主力買賣超。資料取得前不顯示假數據。</Text>:null}
