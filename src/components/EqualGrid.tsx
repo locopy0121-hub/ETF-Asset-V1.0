@@ -1,4 +1,4 @@
-import {Children,cloneElement,createContext,isValidElement,useContext,useState,
+import {Children,cloneElement,isValidElement,useState,
   type PropsWithChildren,type ReactElement} from 'react';
 import {View,type LayoutChangeEvent,type ViewStyle,type StyleProp} from 'react-native';
 import type {MainPageKey} from '../domain/pageRegistry';
@@ -6,9 +6,7 @@ import type {FrameEditorConfig} from '../editor/editorModel';
 import {usePageEditor} from '../editor/pageEditor';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
 import {DEFAULT_EQUAL_GRID,equalGridWidths,normalizeEqualGrid} from '../domain/equalGridLayout';
-
-export const EqualGridContext=createContext(false);
-export const useEqualGridActive=()=>useContext(EqualGridContext);
+import {EqualGridContext} from './equalGridContext';
 
 /** Measures the actual content width; no hardcoded 328px or assumed phone resolution.
  * Enabled: 2/3/4/auto equal columns, reflowing any partial last row to fill.
