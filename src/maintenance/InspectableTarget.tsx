@@ -76,7 +76,10 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
     spaceWidth:workspace?.bounds.width??0,spaceHeight:workspace?.bounds.height??0};
   const displacement=effectiveOffset(override,measured);
   // Preserve V3.0.3's two-column safe grid in both modes, including when the editor is OFF.
-  const placement=flex?(equalGrid?styles.equalGridMetricPlacement:styles.metricPlacement):undefined;
+  // Dividend already owns its row/cell geometry. Do not nest a second 46%-basis
+  // grid inside each real KPI cell; that produced engineer boxes unlike the tile.
+  const parentOwnsGrid=frame.page==='dividend'&&frame.frameKey==='dividend-summary';
+  const placement=flex?(equalGrid||parentOwnsGrid?styles.equalGridMetricPlacement:styles.metricPlacement):undefined;
   const explicitWidth=!equalGrid&&override.width!==undefined?(flex?
     {flexBasis:override.width,minWidth:override.width,maxWidth:override.width}:{width:override.width}):null;
   const spatial={transform:[{translateX:displacement.x},{translateY:displacement.y}],
@@ -226,7 +229,7 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
 }
 const styles=StyleSheet.create({
   metricPlacement:{flexGrow:1,flexShrink:0,flexBasis:'46%',minWidth:0,maxWidth:'100%',alignSelf:'stretch'},
-  equalGridMetricPlacement:{width:'100%',minWidth:0,alignSelf:'flex-start'},
+  equalGridMetricPlacement:{width:'100%',minWidth:0,alignSelf:'stretch'},
   selectionOutline:{borderWidth:2,borderStyle:'dashed',borderRadius:8,zIndex:4},
   wrench:{position:'absolute',right:2,top:2,zIndex:8,elevation:8,
     minWidth:28,minHeight:28,borderRadius:15,borderWidth:1,justifyContent:'center',alignItems:'center'},
