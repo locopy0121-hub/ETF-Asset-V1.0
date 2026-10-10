@@ -33,7 +33,8 @@ assert.match(finance,/ledgerNameBySymbol\.get\(summary\.etfCode\)/,
 // V4 performance contract: React Native consumes the SaiETF native core.
 // High-frequency quotes are not serialized into AsyncStorage on every tick.
 assert.match(market,/loadUnifiedMarketData\(\)/,'cold start must hydrate through the native SaiETF market bridge');
-assert.match(market,/refreshUnifiedMarketData\(symbolsRef\.current\)/,'on-demand refresh must use the native SaiETF market bridge');
+assert.match(market,/refreshUnifiedMarketData\(combinedSymbols\(\)\)/,'on-demand refresh must use the same native SaiETF bridge for holdings plus research');
+assert.match(market,/\.\.\.symbolsRef\.current,\.\.\.researchRef\.current/,'research must be unioned with existing tracked holding symbols');
 assert.doesNotMatch(market,/new MarketDataCenter\(/,'React runtime must not own a duplicate quote engine');
 assert.match(nativeRuntime,/MarketPersistenceController/,'native SaiETF core must own market persistence');
 assert.match(persistenceController,/PERSIST_INTERVAL_MILLIS = 5_000L/,
