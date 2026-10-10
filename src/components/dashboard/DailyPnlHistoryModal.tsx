@@ -3,7 +3,7 @@ import {useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {summarizeDailyPnl,type DailyPnlRecord,type DailyPnlStats} from '../../finance/dailyPnlHistory';
 import {bucketValue,filterPnlRows,pagePnlRows,periodKey,recentPnlPeriods,samplePnlBuckets,sortPnlRows,summarizePeriods,winRate,
-  type PnlBucket,type PnlFilter,type PnlMetric,type PnlPageSize,type PnlPeriod,type PnlSort} from '../../finance/dailyPnlAnalytics';
+  type PnlFilter,type PnlMetric,type PnlPageSize,type PnlPeriod,type PnlSort} from '../../finance/dailyPnlAnalytics';
 import {colors,radius,spacing} from '../../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
@@ -199,7 +199,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
               const width=Math.floor(event.nativeEvent.layout.width);
               if(width>0&&width!==plotWidth)setPlotWidth(width);
             }} style={styles.plot}>
-              {points.length?[<>
+              {points.length>0?<>
                 {[0.25,0.5,0.75].map(ratio=><View key={ratio} pointerEvents="none"
                   style={[styles.gridLine,{top:12+ratio*(CHART_HEIGHT-38)}]}/>)}
                 <View pointerEvents="none" style={[styles.baseline,{top:baselineY}]}/>
@@ -257,7 +257,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
             </View>
             <View style={styles.chartFoot}>
               <Text style={styles.chartFootText}>{chartRows[0]?.label??'—'}</Text>
-              <Text style={styles.chartFootText}>{chartPeriods.length>120?'已抽樣繪圖 · 統計保留全數':''}</Text>
+              <Text style={styles.chartFootText}>{chartRows.length<chartPeriods.length?'已抽樣繪圖 · 統計保留全數':''}</Text>
               <Text style={styles.chartFootText}>{chartRows[chartRows.length-1]?.label??'—'}</Text>
             </View>
           </View>
@@ -345,7 +345,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
               <Text style={styles.monthTitle}>{bucket.label} · {bucket.days} 筆</Text>
               <Text style={styles.recordMeta}>平均日損益 {signed(bucket.averageDailyPnl)}</Text>
               <Text style={styles.recordMeta}>獲利／虧損／持平 {bucket.gainDays}／{bucket.lossDays}／{bucket.flatDays}
-                {' · '}勝率 {winRate(bucket.gainDays,bucket.lossDays)?.toFixed(1)??'—'}%</Text>
+                {' · '}勝率 {winRate(bucket.gainDays,bucket.lossDays)===null?'—':winRate(bucket.gainDays,bucket.lossDays)!.toFixed(1)+'%'}</Text>
               <Text style={styles.recordMeta}>最佳 {bucket.best?.date??'—'} {bucket.best?signed(bucket.best.todayPnl):'—'}
                 {' · '}最差 {bucket.worst?.date??'—'} {bucket.worst?signed(bucket.worst.todayPnl):'—'}</Text>
               <Text style={styles.recordMeta}>{bucket.estimatedDays?'含暫估行情':'正式紀錄'} · 月末累積 {signed(bucket.lastTotalPnl)}</Text>
