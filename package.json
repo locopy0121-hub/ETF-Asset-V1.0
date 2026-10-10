@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.31",
+  "version": "4.0.32",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_31 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_32 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -316,7 +316,8 @@
     "test:v4_0_28": "npm run test:v4_0_27 && npx tsx scripts/v4_0_28-market-research.test.ts",
     "test:v4_0_29": "npm run test:v4_0_28 && npx tsx scripts/v4_0_29-market-depth.test.ts",
     "test:v4_0_30": "npm run test:v4_0_29 && npx tsx scripts/v4_0_30-tpex-institutional.test.ts",
-    "test:v4_0_31": "npm run test:v4_0_30 && npx tsx scripts/v4_0_31-market-chart.test.ts"
+    "test:v4_0_31": "npm run test:v4_0_30 && npx tsx scripts/v4_0_31-market-chart.test.ts",
+    "test:v4_0_32": "npm run test:v4_0_31 && npx tsx scripts/v4_0_32-market-taiex.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
