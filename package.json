@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.24",
+  "version": "4.0.25",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_24 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_25 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -309,7 +309,8 @@
     "test:v4_0_21": "npm run test:v4_0_20 && npx tsx scripts/v4_0_21-home-profit-preview.test.ts",
     "test:v4_0_22": "npm run test:v4_0_21 && npx tsx scripts/v4_0_22-dividend-summary-separate-ai.test.ts",
     "test:v4_0_23": "npm run test:v4_0_22 && npx tsx scripts/v4_0_23-unrestricted-dimensions.test.ts",
-    "test:v4_0_24": "npm run test:v4_0_23 && npx tsx scripts/v4_0_24-equal-grid-engineer.test.ts"
+    "test:v4_0_24": "npm run test:v4_0_23 && npx tsx scripts/v4_0_24-equal-grid-engineer.test.ts",
+    "test:v4_0_25": "npm run test:v4_0_24 && npx tsx scripts/v4_0_25-equal-grid-live-parity.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
