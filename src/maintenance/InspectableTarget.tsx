@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useRef,useState,useId,type ReactNode} from 'react';
 import {PanResponder,Pressable,StyleSheet,Text,View,type LayoutChangeEvent,type StyleProp,type ViewStyle} from 'react-native';
-import {useEqualGridActive} from '../components/EqualGrid';
+import {useEqualGridActive} from '../components/equalGridContext';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
