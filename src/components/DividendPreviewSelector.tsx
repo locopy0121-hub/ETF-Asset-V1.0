@@ -45,7 +45,7 @@ export function selectDividendPreview(
     const p=element.props;
     if(child.type===AiQuestionBox)return <View pointerEvents="none">{child}</View>;
     if(child.type===EqualGrid)return cloneElement(element,{
-      previewConfig,
+      ...(previewConfig?{previewConfig}:{}),
       children:selectDividendPreview(p.children,onSelect,selectedId,overrides,previewConfig),
     });
     if(child.type===MetricTile&&typeof p.label==='string'){
