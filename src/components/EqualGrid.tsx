@@ -5,7 +5,7 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import type {FrameEditorConfig} from '../editor/editorModel';
 import {usePageEditor} from '../editor/pageEditor';
 import {useMaintenance} from '../maintenance/MaintenanceRuntime';
-import {DEFAULT_EQUAL_GRID,equalGridWidths,normalizeEqualGrid} from '../domain/equalGridLayout';
+import {DEFAULT_EQUAL_GRID,equalGridPixelWidths,normalizeEqualGrid} from '../domain/equalGridLayout';
 import {EqualGridContext} from './equalGridContext';
 
 /** Measures the actual content width; no hardcoded 328px or assumed phone resolution.
@@ -22,14 +22,19 @@ export function EqualGrid({pageKey,frameKey,previewConfig,children}:PropsWithChi
   const rule=normalizeEqualGrid(effective?.equalGrid??DEFAULT_EQUAL_GRID);
   const [available,setAvailable]=useState(0);
   const cells=Children.toArray(children);
-  const widths=rule.enabled?equalGridWidths(cells.length,rule,available):[];
+  const columns=rule.columns==='auto'?Math.min(4,Math.max(1,cells.length)):rule.columns;
+  // Width and gap together may never exceed the measured parent on narrow screens.
+  const safeGap=rule.enabled&&available>0&&columns>1?
+    Math.min(rule.gap,Math.max(0,Math.floor((available-columns)/(columns-1)))):rule.gap;
+  const effectiveRule={...rule,gap:safeGap};
+  const widths=rule.enabled?equalGridPixelWidths(cells.length,effectiveRule,available):[];
   const measured=(event:LayoutChangeEvent)=>{
     const next=Math.round(event.nativeEvent.layout.width);
     if(next>0)setAvailable(previous=>previous===next?previous:next);
   };
   return <View onLayout={measured} style={{
     width:'100%',flexDirection:'row',flexWrap:'wrap',
-    alignItems:'flex-start',columnGap:rule.enabled?rule.gap:8,rowGap:rule.enabled?rule.gap:8,
+    alignItems:'flex-start',columnGap:rule.enabled?safeGap:8,rowGap:rule.enabled?safeGap:8,
   }}>
     {cells.map((child,index)=>{
       if(!isValidElement(child))return child;
