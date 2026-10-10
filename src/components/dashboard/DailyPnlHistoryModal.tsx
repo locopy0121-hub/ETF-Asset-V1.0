@@ -358,7 +358,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
   </Modal>;
 }
 
-function Stat({label,value,valueColor}:{label:string;value:string;valueColor?:string}){
+function Stat({label,value,valueColor}:{label:string;value:string;valueColor?:string|undefined}){
   return <View style={styles.stat}>
     <Text style={styles.statLabel}>{label}</Text>
     <Text numberOfLines={2} style={[styles.statValue,valueColor?{color:valueColor}:undefined]}>{value}</Text>
