@@ -71,7 +71,8 @@ export function parseTaiexFmtqik(raw:unknown):IndexClose[]{
 export function pickTaiexDisplay(mis:IndexSnapshot|null,history:readonly IndexClose[],today:string,phase:'live'|'afterHours'|'offline'){
   const sorted=[...history].sort((a,b)=>a.date.localeCompare(b.date));
   const end=sorted[sorted.length-1]??null;
-  const fresh=!!mis&&mis.date<=today&&mis.date>=(end?.date??'');
+  const fresh=!!mis&&mis.date<=today&&mis.date>=(end?.date??'')&&
+    (phase==='live'||!end||mis.date>end.date);
   if(fresh&&mis){
     const delta=mis.previousClose===null?null:mis.value-mis.previousClose;
     return {date:mis.date,value:mis.value,change:delta,
