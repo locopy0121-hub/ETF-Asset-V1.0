@@ -58,6 +58,8 @@ const settings=read('src/screens/SettingsScreen.tsx');
 assert.match(widget,/const effective=previewConfig\?\?session\?\.draft\?\?config\[frameKey\]/);
 assert.match(widget,/equalGridPixelWidths\(cells\.length,effectiveRule,available\)/);
 assert.match(widget,/columnGap:rule\.enabled\?safeGap:8/);
+assert.match(widget,/Math\.floor\(event\.nativeEvent\.layout\.width\)/,
+  'fractional Android width must be rounded down to avoid a trailing column wrap');
 assert.match(wrapper,/const placementOverride=equalGridVisualOverride\(override,equalGrid&&flex\)/);
 assert.match(wrapper,/const displacement=effectiveOffset\(placementOverride,measured\)/);
 assert.match(wrapper,/const rect=geometry\?positionedRect\(geometry,placementOverride\):null/);
