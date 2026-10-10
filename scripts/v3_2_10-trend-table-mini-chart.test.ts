@@ -4,23 +4,32 @@ import {readFileSync} from 'node:fs';
 const read=(p:string)=>readFileSync(p,'utf8');
 
 const modal=read('src/components/dashboard/DailyPnlHistoryModal.tsx');
+// V4.0.26 replaces the old fixed 30-row horizontal table with a ledger-style
+// 10/20/50 row list; the mini/holding chart contracts below are unchanged.
 for(const token of [
-  "type TrendMetric='asset'|'totalPnl'|'dailyPnl'",
-  'sampleRows(',
-  '每日統計表',
-  'PAGE_SIZE=30',
-  'tableShell',
-  'fixedColumn',
-  '資產／損益走勢',
+  '損益走勢 · 日／月／年',
+  "key:'day',label:'日走勢'",
+  "key:'month',label:'月走勢'",
+  "key:'year',label:'年走勢'",
+  '每日損益紀錄',
+  '月度損益摘要',
+  'pagePnlRows(ordered,page,pageSize)',
+  'recordCard',
+  '10,20,50',
+  '每日損益',
+  '累積總損益',
+  '持股市值',
   '7日',
   '30日',
   '90日',
-  '今年',
   '全部',
-]) assert.ok(modal.includes(token),'daily statistics UI missing '+token);
+])assert.ok(modal.includes(token),'daily statistics UI missing '+token);
 assert.ok(!modal.includes('trendBar'),'legacy bar-chart renderer must be removed');
-assert.ok(modal.includes('<ScrollView horizontal'),'statistics table must horizontally scroll while the date column stays fixed');
-assert.ok(modal.indexOf('fixedColumn')<modal.indexOf('<ScrollView horizontal'),'fixed date column must render outside the horizontal scroller');
+assert.ok(modal.indexOf('損益走勢 · 日／月／年')<modal.indexOf('每日損益紀錄'),
+  'period trend needs to render before ledger-style daily records');
+assert.ok(modal.includes('onPress={()=>setSelectedDate(row.date)}'),
+  'daily records must update the selected chart and detail');
+
 
 const mini=read('src/components/MiniHoldingChart.tsx');
 for(const token of [
