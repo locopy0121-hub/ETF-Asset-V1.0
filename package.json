@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.27",
+  "version": "4.0.28",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_27 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_28 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -312,7 +312,8 @@
     "test:v4_0_24": "npm run test:v4_0_23 && npx tsx scripts/v4_0_24-equal-grid-engineer.test.ts",
     "test:v4_0_25": "npm run test:v4_0_24 && npx tsx scripts/v4_0_25-equal-grid-live-parity.test.ts",
     "test:v4_0_26": "npm run test:v4_0_25 && npx tsx scripts/v4_0_26-daily-pnl-stats.test.ts",
-    "test:v4_0_27": "npm run test:v4_0_26 && npx tsx scripts/v4_0_27-holding-market-value-history.test.ts"
+    "test:v4_0_27": "npm run test:v4_0_26 && npx tsx scripts/v4_0_27-holding-market-value-history.test.ts",
+    "test:v4_0_28": "npm run test:v4_0_27 && npx tsx scripts/v4_0_28-market-research.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
