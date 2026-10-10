@@ -204,8 +204,8 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                   style={[styles.gridLine,{top:12+ratio*(CHART_HEIGHT-38)}]}/>)}
                 <View pointerEvents="none" style={[styles.baseline,{top:baselineY}]}/>
                 {chartStyle!=='line'&&points.map((point,index)=>{
-                  const segmentTone=metric==='marketValue'
-                    ?point.value-(points[index-1]?.value??point.value):point.value;
+                  const segmentTone=metric==='dailyPnl'?point.value:
+                    point.value-(points[index-1]?.value??point.value);
                   const top=Math.min(point.y,baselineY),height=Math.max(2,Math.abs(point.y-baselineY));
                   const barWidth=chartStyle==='bar'
                     ?Math.max(3,Math.min(20,innerWidth/Math.max(2,points.length)*0.65))
@@ -221,7 +221,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                   const dx=point.x-prior.x,dy=point.y-prior.y;
                   const length=Math.max(1,Math.hypot(dx,dy));
                   const angle=Math.atan2(dy,dx);
-                  const direction=metric==='marketValue'?point.value-prior.value:point.value;
+                  const direction=metric==='dailyPnl'?point.value:point.value-prior.value;
                   return <View key={'seg-'+point.bucket.key} pointerEvents="none" style={{
                     position:'absolute',left:(prior.x+point.x)/2-length/2,
                     top:(prior.y+point.y)/2-1,width:length,height:2,borderRadius:1,
@@ -231,7 +231,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                 {selectedPoint?<View pointerEvents="none" style={[styles.selectionLine,{left:selectedPoint.x}]}/>:null}
                 {selectedPoint?<View pointerEvents="none" style={[styles.selectionDot,{
                   left:selectedPoint.x-4,top:selectedPoint.y-4,
-                  backgroundColor:tone(metric==='marketValue'?selectedPoint.bucket.periodPnl:selectedPoint.value),
+                  backgroundColor:tone(selectedPoint.bucket.periodPnl),
                 }]}/>:null}
                 {points.length===1?<View pointerEvents="none" style={[styles.selectionDot,{
                   left:points[0]!.x-4,top:points[0]!.y-4,
