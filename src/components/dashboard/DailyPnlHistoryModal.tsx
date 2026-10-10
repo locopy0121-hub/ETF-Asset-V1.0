@@ -2,48 +2,40 @@ import {useSystemColors} from '../../theme/useSystemColors';
 import {useMemo,useState} from 'react';
 import {Modal,Pressable,ScrollView,StyleSheet,Text,View} from 'react-native';
 import {summarizeDailyPnl,type DailyPnlRecord,type DailyPnlStats} from '../../finance/dailyPnlHistory';
+import {bucketValue,filterPnlRows,pagePnlRows,periodKey,recentPnlPeriods,samplePnlBuckets,sortPnlRows,summarizePeriods,winRate,
+  type PnlBucket,type PnlFilter,type PnlMetric,type PnlPageSize,type PnlPeriod,type PnlSort} from '../../finance/dailyPnlAnalytics';
 import {colors,radius,spacing} from '../../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const signed=(value:number)=>`${value>0?'+':''}${money(value)}`;
 const CHART_HEIGHT=196;
 const CHART_PADDING_X=12;
-const PAGE_SIZE=30;
-
-type HistoryRange='7'|'30'|'90'|'ytd'|'all';
-type TrendMetric='asset'|'totalPnl'|'dailyPnl';
-
-const RANGE_OPTIONS:readonly {key:HistoryRange;label:string}[]=[
-  {key:'7',label:'7日'},{key:'30',label:'30日'},{key:'90',label:'90日'},{key:'ytd',label:'今年'},{key:'all',label:'全部'},
+type ChartStyle='line'|'area'|'bar';
+const PERIOD_OPTIONS:readonly {key:PnlPeriod;label:string}[]=[
+  {key:'day',label:'日走勢'},{key:'month',label:'月走勢'},{key:'year',label:'年走勢'},
 ];
-const METRIC_OPTIONS:readonly {key:TrendMetric;label:string}[]=[
-  {key:'asset',label:'總資產'},{key:'totalPnl',label:'總損益'},{key:'dailyPnl',label:'每日損益'},
+const RANGE_OPTIONS:Record<PnlPeriod,readonly {count:number|'all';label:string}[]>={
+  day:[{count:7,label:'7日'},{count:30,label:'30日'},{count:90,label:'90日'},{count:'all',label:'全部'}],
+  month:[{count:3,label:'3月'},{count:6,label:'6月'},{count:12,label:'12月'},{count:'all',label:'全部'}],
+  year:[{count:3,label:'3年'},{count:5,label:'5年'},{count:'all',label:'全部'}],
+};
+const METRIC_OPTIONS:readonly {key:PnlMetric;label:string}[]=[
+  {key:'dailyPnl',label:'期間損益'},
+  {key:'totalPnl',label:'累積總損益'},
+  {key:'marketValue',label:'持股市值'},
 ];
-
-function metricValue(row:DailyPnlRecord,metric:TrendMetric){
-  return metric==='asset'?row.totalMarketValue:metric==='totalPnl'?row.totalPnl:row.todayPnl;
-}
-
-function sampleRows(rows:readonly DailyPnlRecord[],metric:TrendMetric,maxPoints=120){
-  if(rows.length<=maxPoints)return [...rows];
-  const buckets=Math.max(1,Math.floor(maxPoints/4));
-  const bucketSize=Math.ceil(rows.length/buckets);
-  const sampled:DailyPnlRecord[]=[];
-  for(let start=0;start<rows.length;start+=bucketSize){
-    const bucket=rows.slice(start,Math.min(rows.length,start+bucketSize));
-    if(!bucket.length)continue;
-    let min=bucket[0]!,max=bucket[0]!;
-    for(const row of bucket){
-      if(metricValue(row,metric)<metricValue(min,metric))min=row;
-      if(metricValue(row,metric)>metricValue(max,metric))max=row;
-    }
-    const chosen=[bucket[0]!,min,max,bucket[bucket.length-1]!]
-      .filter((row,index,all)=>all.findIndex(item=>item.date===row.date)===index)
-      .sort((a,b)=>a.date.localeCompare(b.date));
-    sampled.push(...chosen);
-  }
-  return sampled.filter((row,index,all)=>all.findIndex(item=>item.date===row.date)===index);
-}
+const CHART_OPTIONS:readonly {key:ChartStyle;label:string}[]=[
+  {key:'line',label:'折線'},{key:'area',label:'面積'},{key:'bar',label:'柱狀'},
+];
+const FILTER_OPTIONS:readonly {key:PnlFilter;label:string}[]=[
+  {key:'all',label:'全部'},{key:'gain',label:'獲利'},{key:'loss',label:'虧損'},
+  {key:'flat',label:'持平'},{key:'official',label:'正式收盤'},
+];
+const SORT_OPTIONS:readonly {key:PnlSort;label:string}[]=[
+  {key:'date',label:'日期'},{key:'dailyPnl',label:'每日損益'},
+  {key:'totalPnl',label:'累積損益'},{key:'marketValue',label:'市值'},
+];
+const PAGE_SIZES:readonly PnlPageSize[]=[10,20,50];
 
 export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoading=false,historyError=null,historyStartDate=null}:{
   visible:boolean;
@@ -56,33 +48,41 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
 }){
   const colors=useSystemColors();
   const tone=(value:number)=>value>0?colors.gain:value<0?colors.loss:colors.flat;
-  const [range,setRange]=useState<HistoryRange>('30');
-  const [metric,setMetric]=useState<TrendMetric>('asset');
+  const [period,setPeriod]=useState<PnlPeriod>('day');
+  const [periodCount,setPeriodCount]=useState<number|'all'>(30);
+  const [metric,setMetric]=useState<PnlMetric>('dailyPnl');
+  const [chartStyle,setChartStyle]=useState<ChartStyle>('line');
+  const [sort,setSort]=useState<PnlSort>('date');
   const [ascending,setAscending]=useState(false);
+  const [filter,setFilter]=useState<PnlFilter>('all');
+  const [pageSize,setPageSize]=useState<PnlPageSize>(20);
   const [page,setPage]=useState(0);
   const [plotWidth,setPlotWidth]=useState(320);
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
 
   const chronological=useMemo(()=>[...records].sort((a,b)=>a.date.localeCompare(b.date)),[records]);
+  const grouped=useMemo(()=>summarizePeriods(chronological,period),[chronological,period]);
+  const chartPeriods=useMemo(()=>recentPnlPeriods(grouped,periodCount),[grouped,periodCount]);
   const ranged=useMemo(()=>{
-    if(range==='all')return chronological;
-    if(range==='ytd'){
-      const year=chronological[chronological.length-1]?.date.slice(0,4);
-      return year?chronological.filter(row=>row.date.startsWith(year)):chronological;
-    }
-    return chronological.slice(-Number(range));
-  },[chronological,range]);
-  const rangeStats=range==='all'?stats:summarizeDailyPnl(ranged);
-  const ordered=useMemo(()=>ascending?[...ranged]:[...ranged].reverse(),[ranged,ascending]);
-  const pageCount=Math.max(1,Math.ceil(ordered.length/PAGE_SIZE));
-  const safePage=Math.min(page,pageCount-1);
-  const pageRows=ordered.slice(safePage*PAGE_SIZE,(safePage+1)*PAGE_SIZE);
-  const chartRows=useMemo(()=>sampleRows(ranged,metric),[ranged,metric]);
+    if(!chartPeriods.length)return [];
+    const from=chartPeriods[0]!.startDate,to=chartPeriods[chartPeriods.length-1]!.endDate;
+    return chronological.filter(row=>row.date>=from&&row.date<=to);
+  },[chronological,chartPeriods]);
+  const rangeStats=periodCount==='all'?stats:summarizeDailyPnl(ranged);
+  const ordered=useMemo(()=>sortPnlRows(filterPnlRows(ranged,filter),sort,ascending),
+    [ranged,filter,sort,ascending]);
+  const pageState=pagePnlRows(ordered,page,pageSize);
+  const {rows:pageRows,page:safePage,pageCount}=pageState;
+  const chartRows=useMemo(()=>samplePnlBuckets(chartPeriods,metric),[chartPeriods,metric]);
   const latest=ranged[ranged.length-1]??null;
   const selected=ranged.find(row=>row.date===selectedDate)??latest;
+  const selectedBucket=chartPeriods.find(row=>row.key===periodKey(selected?.date??'',period))??
+    chartPeriods[chartPeriods.length-1]??null;
+  const monthly=useMemo(()=>summarizePeriods(ranged,'month').reverse(),[ranged]);
+  const win=winRate(rangeStats.gainDays,rangeStats.lossDays);
 
-  const values=chartRows.map(row=>metricValue(row,metric));
-  const baseline=metric==='asset'?(values[0]??0):0;
+  const values=chartRows.map(bucket=>bucketValue(bucket,metric));
+  const baseline=metric==='marketValue'?(values[0]??0):0;
   const rawMin=Math.min(baseline,...values);
   const rawMax=Math.max(baseline,...values);
   const rawRange=Math.max(1,rawMax-rawMin);
@@ -92,11 +92,21 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
   const innerWidth=Math.max(40,plotWidth-CHART_PADDING_X*2);
   const x=(index:number)=>CHART_PADDING_X+(chartRows.length<=1?innerWidth/2:index/(chartRows.length-1)*innerWidth);
   const y=(value:number)=>12+(max-value)/valueRange*(CHART_HEIGHT-38);
-  const points=chartRows.map((row,index)=>({row,value:metricValue(row,metric),x:x(index),y:y(metricValue(row,metric))}));
+  const points=chartRows.map((bucket,index)=>({
+    bucket,value:bucketValue(bucket,metric),x:x(index),y:y(bucketValue(bucket,metric)),
+  }));
   const baselineY=y(baseline);
-  const selectedPoint=points.find(point=>point.row.date===selected?.date)??null;
+  const selectedPoint=points.find(point=>point.bucket.key===selectedBucket?.key)??null;
+  const changePeriod=(next:PnlPeriod)=>{
+    setPeriod(next);setPeriodCount(next==='day'?30:next==='month'?12:'all');
+    setPage(0);setSelectedDate(null);
+  };
+  const changeCount=(next:number|'all')=>{
+    setPeriodCount(next);setPage(0);setSelectedDate(null);
+  };
+  const updateSort=(key:PnlSort)=>{setSort(key);setAscending(value=>key===sort?!value:false);setPage(0);};
+  const updateFilter=(next:PnlFilter)=>{setFilter(next);setPage(0);};
 
-  const chooseRange=(next:HistoryRange)=>{setRange(next);setPage(0);setSelectedDate(null);};
 
   return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
     <View style={styles.root}>
