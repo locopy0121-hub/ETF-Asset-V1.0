@@ -57,7 +57,7 @@ const history=readFileSync('src/finance/dailyPnlHistory.ts','utf8');
 const ledger=readFileSync('src/finance/canonicalLedger.ts','utf8');
 const settings=readFileSync('src/screens/SettingsScreen.tsx','utf8');
 assert.match(purchase,/tab==='daily'\?<HoldingMarketValueHistoryPanel records={dailyRecords}\/>:null/,
-  'the screenshot's holding stats daily tab must use the new panel');
+  'holding stats daily tab must use the new panel');
 assert.doesNotMatch(purchase,/\.slice\(0,120\)/,'historic records must not be truncated at 120');
 assert.match(panel,/setPeriod\(next\)/);
 assert.match(panel,/summarizePeriods\(chronological,period\)/);
