@@ -199,7 +199,7 @@ export function MarketResearchScreen(){
                 return <View key={item.key} style={styles.row}>
                   <Text style={{fontSize:11,color:theme.palette.textSecondary,width:45}}>{item.title}</Text>
                   <View style={{height:9,flex:1,backgroundColor:theme.palette.surfaceMuted,borderRadius:4,overflow:'hidden'}}>
-                    <View style={{height:9,width:String(Math.max(0,100*Math.abs(v)/mag))+'%',backgroundColor:v>=0?system.gain:system.loss}}/>
+                    <View style={{height:9,width:Math.max(0,100*Math.abs(v)/mag)+'%' as `${number}%`,backgroundColor:v>=0?system.gain:system.loss}}/>
                   </View>
                   <Text editorReadOnly style={{fontSize:11,fontWeight:'800',minWidth:87,textAlign:'right',color:v>0?system.gain:v<0?system.loss:system.flat}}>{v>0?'+':''}{amount(v)}</Text>
                 </View>;
