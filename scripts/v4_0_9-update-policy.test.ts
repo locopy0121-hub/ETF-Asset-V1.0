@@ -12,10 +12,11 @@ assert.match(runtime,/subscribeUnifiedMarketData\(applySnapshot\)/,'memory ticks
 assert.match(finance,/setTrackedSymbols\(snapshot\.holdings\.map\(holding=>holding\.etfCode\)\)/,'only current positions subscribe');
 assert.match(native,/quotesState\.collectLatest[\s\S]*version\.incrementAndGet/,'Fugle tick advances visible data version');
 assert.match(bridge,/RCTDeviceEventEmitter[\s\S]*SaiEtfMarketSnapshot/,'native hot store emits snapshot');
-assert.match(runtime,/updateNativeMarketSymbols\(normalized\)/,'holdings changes update Fugle subscriptions without waiting for HTTP');
+assert.match(runtime,/updateNativeMarketSymbols\(combinedSymbols\(\)\)/,'changes to holdings or research symbols update the unified Fugle subscriptions');
+assert.match(runtime,/setResearchSymbolsState\(current=>sameStrings\(current,next\)\?current:next\)/,'research subscription state is independent of holdings');
 assert.doesNotMatch(native.slice(native.indexOf('@Synchronized fun refresh'),native.indexOf('fun snapshot(')),/updateSymbols\(symbols\)/,
   'ad-hoc AI quote refresh must not replace holdings WebSocket subscriptions');
-assert.match(runtime,/next==='active'[\s\S]*updateNativeMarketSymbols\(symbolsRef\.current\)/,'resume restores live Fugle subscriptions');
+assert.match(runtime,/next==='active'[\s\S]*updateNativeMarketSymbols\(combinedSymbols\(\)\)/,'resume restores both held and selected research symbols');
 assert.match(runtime,/next==='background'[\s\S]*pauseNativeMarketStreaming\(\)/,'background pauses streaming like SaiETF');
 assert.doesNotMatch(settings,/label="停止全部自動更新"|label="盤中更新頻率"|label="盤後更新頻率"/);
 console.log('SaiETF update policy / current holdings / event bridge ownership PASS');

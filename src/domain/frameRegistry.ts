@@ -52,6 +52,13 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     {key:'chart-note',title:'圖表說明',description:'專業圖表頁獨立設定，不改帳務與原始行情'},
     {key:'calculator-modal',title:'持股試算',description:'業務視窗獨立外觀設定，原始資料維持唯讀'},
   ],
+  market: [
+    {key:'page-header',title:'市場資訊中心表頭',description:'市場頁主標題與入口'},
+    {key:'market-search',title:'標的搜尋',description:'股票與 ETF 代號名稱搜尋'},
+    {key:'market-summary',title:'即時行情',description:'統一行情中心行情及來源'},
+    {key:'market-chart',title:'技術圖表',description:'分時走勢、歷史日週月 K 線及指標'},
+    {key:'market-details',title:'標的研究',description:'官方基本資料、ETF 成分、法人、折溢價與新聞'},
+  ],
   dividend: [
     { key:'page-header', title:'頁面頂部表頭', description:'TF Asset 品牌、標題、副標及右側按鈕區' },
     { key:'dividend-summary', title:'股息摘要', description:'本月、年度、月平均' },

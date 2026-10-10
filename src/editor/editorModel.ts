@@ -159,6 +159,7 @@ export function createInitialEditorState(): PageEditorState {
     home: makePageConfig('home'),
     ledger: makePageConfig('ledger'),
     portfolio: makePageConfig('portfolio'),
+    market: makePageConfig('market'),
     dividend: makePageConfig('dividend'),
     ai: makePageConfig('ai'),
     settings: makePageConfig('settings'),
@@ -169,6 +170,7 @@ export function createInitialDisplayState(): PageDisplayState {
   return {
     home: { quoteStyle:'quote', sortKey:'pnl', holdingLayoutMode:'grid2', quickBar:DEFAULT_QUICK_BAR_LAYOUT, holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, newsVisibleCount:5, newsHoldingsOnly:true, dashboardMetrics:DEFAULT_DASHBOARD_METRICS, dashboardCharts:DEFAULT_DASHBOARD_CHARTS, dashboardLayout:DEFAULT_DASHBOARD_LAYOUT, layoutTargets:{} },
     ledger: {layoutTargets:{}},
+    market: {layoutTargets:{}},
     portfolio: { quoteStyle:'chart', sortKey:'manual', portfolioViewMode:'list', portfolioListStyle:'table', holdingLayoutMode:'list', quickBar:DEFAULT_QUICK_BAR_LAYOUT, holdingWall:DEFAULT_HOLDING_WALL_CONFIG, etfBadges:DEFAULT_ETF_BADGES, portfolioList:DEFAULT_PORTFOLIO_LIST, holdingChart:DEFAULT_HOLDING_CHART, layoutTargets:{} },
     dividend: {layoutTargets:{}},
     ai: { newsVisibleCount:10, newsHoldingsOnly:true, layoutTargets:{} },
@@ -370,6 +372,7 @@ export function mergeEditorState(raw:unknown):PageEditorState{
     home:normalizeEditorConfig('home',source.home??{}),
     ledger:normalizeEditorConfig('ledger',source.ledger??{}),
     portfolio:normalizeEditorConfig('portfolio',source.portfolio??{}),
+    market:normalizeEditorConfig('market',source.market??{}),
     dividend:normalizeEditorConfig('dividend',source.dividend??{}),
     ai:normalizeEditorConfig('ai',source.ai??{}),
     settings:normalizeEditorConfig('settings',source.settings??{}),
@@ -389,5 +392,5 @@ export function mergeDisplayState(raw:unknown):PageDisplayState{
   const source=(raw&&typeof raw==='object'?raw:{}) as Partial<Record<MainPageKey,PageDisplayConfig>>;
   const merge=(page:MainPageKey):PageDisplayConfig=>({...defaults[page],...(source[page]??{}),layoutTargets:normalizeLayoutTargets(source[page]?.layoutTargets)});
   const home={...merge('home'),quickBar:normalizeQuickBarLayout(source.home?.quickBar),holdingWall:normalizeHoldingWall(source.home?.holdingWall),etfBadges:normalizeEtfBadges(source.home?.etfBadges),dashboardMetrics:normalizeDashboardMetrics(source.home?.dashboardMetrics),dashboardCharts:normalizeDashboardCharts(source.home?.dashboardCharts),dashboardLayout:normalizeDashboardLayout(source.home?.dashboardLayout)};
-  return {home,ledger:merge('ledger'),portfolio:{...merge('portfolio'),quickBar:normalizeQuickBarLayout(source.portfolio?.quickBar),portfolioViewMode:normalizePortfolioViewMode(source.portfolio?.portfolioViewMode),portfolioListStyle:'table',sortKey:sortPreset(source.portfolio?.sortKey).key,holdingLayoutMode:normalizePortfolioLayoutMode(source.portfolio?.holdingLayoutMode),holdingWall:normalizeHoldingWall(source.portfolio?.holdingWall),etfBadges:normalizeEtfBadges(source.portfolio?.etfBadges),portfolioList:normalizePortfolioList(source.portfolio?.portfolioList),holdingChart:normalizeHoldingChart(source.portfolio?.holdingChart)},dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
+  return {home,ledger:merge('ledger'),portfolio:{...merge('portfolio'),quickBar:normalizeQuickBarLayout(source.portfolio?.quickBar),portfolioViewMode:normalizePortfolioViewMode(source.portfolio?.portfolioViewMode),portfolioListStyle:'table',sortKey:sortPreset(source.portfolio?.sortKey).key,holdingLayoutMode:normalizePortfolioLayoutMode(source.portfolio?.holdingLayoutMode),holdingWall:normalizeHoldingWall(source.portfolio?.holdingWall),etfBadges:normalizeEtfBadges(source.portfolio?.etfBadges),portfolioList:normalizePortfolioList(source.portfolio?.portfolioList),holdingChart:normalizeHoldingChart(source.portfolio?.holdingChart)},market:merge('market'),dividend:merge('dividend'),ai:merge('ai'),settings:merge('settings')};
 }

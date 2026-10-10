@@ -8,9 +8,9 @@ const settings=read('src/screens/SettingsScreen.tsx');
 assert.doesNotMatch(runtime,/marketRefreshSeconds/,'SaiETF 原生事件取代舊固定秒數定律');
 assert.doesNotMatch(settings,/label="盤中更新頻率"/,'舊的自訂時段規則已退役');
 
-assert.match(runtime,/void refresh\(\{silent:true\}\);[\s\S]*?\},\[hydrated,trackedSymbols,refresh\]\);/,
+assert.match(runtime,/void refresh\(\{silent:true\}\);[\s\S]*?\},\[hydrated,trackedSymbols,researchSymbols,refresh\]\);/,
   'App 啟動／追蹤標的完成 hydration 後必須立即取得行情');
-assert.match(runtime,/if\(next==='active'\)\{[\s\S]*?updateNativeMarketSymbols\(symbolsRef\.current\)[\s\S]*?void refresh\(\{force:true,silent:true\}\)/,
+assert.match(runtime,/if\(next==='active'\)\{[\s\S]*?updateNativeMarketSymbols\(combinedSymbols\(\)\)[\s\S]*?void refresh\(\{force:true,silent:true\}\)/,
   'App 回到前景時必須立即強制刷新');
 
 assert.match(runtime,/subscribeUnifiedMarketData\(applySnapshot\)/,'原生行情事件直接通知 App');
