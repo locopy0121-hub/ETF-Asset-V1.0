@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useRef,useState,useId,type ReactNode} from 'react';
-import {PanResponder,Pressable,StyleSheet,Text,View,type StyleProp,type ViewStyle} from 'react-native';
+import {PanResponder,Pressable,StyleSheet,Text,View,type LayoutChangeEvent,type StyleProp,type ViewStyle} from 'react-native';
+import {useEqualGridActive} from '../components/EqualGrid';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
@@ -21,15 +22,22 @@ const withoutAbsolutePrefixGeometry=(value:TargetOverride):TargetOverride=>{
 /** Selects the ACTUAL mounted component and measures its XY relative to the ACTUAL frame. */
 export function InspectableTarget({target,frame,children,flex=false,layoutStyle}:{
   target:InspectedTarget;frame:FrameMaintenanceContext;
-  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean;editing:boolean;wrapped?:boolean}>)=>ReactNode;flex?:boolean;layoutStyle?:StyleProp<ViewStyle>;
+  children:(appearance:TargetAppearance,customized:boolean,override:TargetOverride,render:Readonly<{displayTone:FinancialTone;simulated:boolean;editing:boolean;wrapped?:boolean;onVisualLayout?:(event:LayoutChangeEvent)=>void}>)=>ReactNode;flex?:boolean;layoutStyle?:StyleProp<ViewStyle>;
 }){
   const instanceToken=useId();
   const engineer=useMaintenance();
   const workspace=useWorkspace();
   const theme=useThemeRuntime();
   const settings=useSettingsRuntime();
+  const equalGrid=useEqualGridActive();
   const node=useRef<View|null>(null);
   const [geometry,setGeometry]=useState<TargetGeometry|null>(null);
+  const [visualBounds,setVisualBounds]=useState<{x:number;y:number;width:number;height:number}|null>(null);
+  const visualLayout=(event:LayoutChangeEvent)=>{
+    const {x,y,width,height}=event.nativeEvent.layout;
+    setVisualBounds(previous=>previous&&previous.x===x&&previous.y===y&&previous.width===width&&previous.height===height?
+      previous:{x,y,width,height});
+  };
   // A global enabled flag must NOT put an invisible Pressable over live cards.
   // Capture taps only while an explicit workbench session edits this frame.
   const active=engineer.enabled&&engineer.session!==null&&
@@ -68,8 +76,8 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
     spaceWidth:workspace?.bounds.width??0,spaceHeight:workspace?.bounds.height??0};
   const displacement=effectiveOffset(override,measured);
   // Preserve V3.0.3's two-column safe grid in both modes, including when the editor is OFF.
-  const placement=flex?styles.metricPlacement:undefined;
-  const explicitWidth=override.width!==undefined?(flex?
+  const placement=flex?(equalGrid?styles.equalGridMetricPlacement:styles.metricPlacement):undefined;
+  const explicitWidth=!equalGrid&&override.width!==undefined?(flex?
     {flexBasis:override.width,minWidth:override.width,maxWidth:override.width}:{width:override.width}):null;
   const spatial={transform:[{translateX:displacement.x},{translateY:displacement.y}],
     ...(override.height!==undefined?{height:override.height}:{})};
@@ -105,10 +113,13 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
   const measureCurrent=()=>{
     if(!node.current||!workspace)return;
     workspace.measure(node.current,(rect,space)=>{
-      const nextShape:TargetGeometry={naturalX:0,naturalY:0,width:rect.width,height:rect.height,
+      // Metric outer cells may stretch to the frame while the actual painted tile
+      // is smaller. Measure the child's onLayout bounds, not the transparent wrapper.
+      const visual=flex&&visualBounds?visualBounds:{x:0,y:0,width:rect.width,height:rect.height};
+      const nextShape:TargetGeometry={naturalX:0,naturalY:0,width:visual.width,height:visual.height,
         spaceWidth:space.width,spaceHeight:space.height};
       const shifted=effectiveOffset(override,nextShape);
-      const next:TargetGeometry={...nextShape,naturalX:rect.x-shifted.x,naturalY:rect.y-shifted.y};
+      const next:TargetGeometry={...nextShape,naturalX:rect.x+visual.x-shifted.x,naturalY:rect.y+visual.y-shifted.y};
       setGeometry(previous=>previous&&Object.keys(next).every(k=>
         previous[k as keyof TargetGeometry]===next[k as keyof TargetGeometry])?previous:next);
     });
@@ -148,10 +159,12 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
   // A parent resize or horizontal workbench scroll can alter the relative base XY.
   // Re-measure every anchored component when the frame width/height changes,
   // not just the currently selected one; otherwise sibling anchors remain stale.
-  useEffect(()=>{if(selected||editing||override.anchorX||override.anchorY)measureCurrent();},
+  useEffect(()=>{if(selected||editing||override.anchorX||override.anchorY||flex)measureCurrent();},
     [workspace?.scrollEpoch,workspace?.bounds.width,workspace?.bounds.height,selected,editing,
-      override.anchorX,override.anchorY]);
+      override.anchorX,override.anchorY,visualBounds?.x,visualBounds?.y,visualBounds?.width,visualBounds?.height]);
   const rect=geometry?positionedRect(geometry,override):null;
+  const visualFrame=flex&&visualBounds?{position:'absolute' as const,
+    left:visualBounds.x,top:visualBounds.y,width:visualBounds.width,height:visualBounds.height}:null;
   useEffect(()=>{
     if(!workspace||!rect)return;
     workspace.report(targetKey,rect,instanceToken);
@@ -188,7 +201,8 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
     {materialActive?<TargetBackdrop appearance={appearance} start={resolvedAppearance.backgroundColor}
       middle={resolvedAppearance.gradientMidColor} end={resolvedAppearance.gradientEndColor}
       glow={resolvedAppearance.glowColor}/>:null}
-    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override,{...renderContext,wrapped:true}):
+    {appearance.visible||selected||editing?children(resolvedAppearance,customized,override,{...renderContext,wrapped:true,
+      ...(flex?{onVisualLayout:visualLayout}:{})}):
       <View style={{height:24,opacity:.55}}><Text>元件已隱藏（維護模式）</Text></View>}
     {editing&&previewState!=='actual'?<View pointerEvents="none"
       style={{position:'absolute',left:2,right:2,bottom:1,padding:4,borderRadius:5,
@@ -198,18 +212,21 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
       </Text>
     </View>:null}
     {(selected||editing)&&engineer.enabled?<View pointerEvents="none"
-      style={[StyleSheet.absoluteFill,styles.selectionOutline,{borderColor:theme.palette.primary}]}/>:null}
-    {active?<Pressable style={StyleSheet.absoluteFill} accessibilityRole="button"
+      style={[visualFrame??StyleSheet.absoluteFill,styles.selectionOutline,{borderColor:theme.palette.primary}]}/>:null}
+    {active?<Pressable style={visualFrame??StyleSheet.absoluteFill} accessibilityRole="button"
       accessibilityLabel={'選取元件 '+target.label} onPress={pick}/>:null}
     {(selected||editing)&&active?<Pressable accessibilityRole="button"
       accessibilityLabel={'編輯元件 '+target.label} onPress={enter}
-      style={[styles.wrench,{borderColor:theme.palette.primary,backgroundColor:theme.palette.surface}]}>
+      style={[styles.wrench,visualFrame?{left:visualFrame.left+Math.max(0,visualFrame.width-30),
+        top:visualFrame.top+2,right:undefined}:null,
+        {borderColor:theme.palette.primary,backgroundColor:theme.palette.surface}]}>
       <Text style={{fontSize:15}}>🔧</Text>
     </Pressable>:null}
   </View>;
 }
 const styles=StyleSheet.create({
-  metricPlacement:{flexGrow:1,flexShrink:0,flexBasis:'46%',minWidth:136,maxWidth:'100%',alignSelf:'stretch'},
+  metricPlacement:{flexGrow:1,flexShrink:0,flexBasis:'46%',minWidth:0,maxWidth:'100%',alignSelf:'stretch'},
+  equalGridMetricPlacement:{width:'100%',minWidth:0,alignSelf:'flex-start'},
   selectionOutline:{borderWidth:2,borderStyle:'dashed',borderRadius:8,zIndex:4},
   wrench:{position:'absolute',right:2,top:2,zIndex:8,elevation:8,
     minWidth:28,minHeight:28,borderRadius:15,borderWidth:1,justifyContent:'center',alignItems:'center'},
