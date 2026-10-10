@@ -5,7 +5,7 @@
 export type InstitutionalRecord=Readonly<{
   date:string;symbol:string;name:string;
   foreign:number;trust:number;dealer:number;total:number;
-  source:'TWSE T86';fetchedAt:number;
+  source:'TWSE T86'|'TPEx 三大法人日報';fetchedAt:number;
 }>;
 type Payload={stat?:unknown;date?:unknown;fields?:unknown;data?:unknown};
 const tidy=(s:unknown)=>String(s??'').replace(/<[^>]*>/g,'').replace(/\s+/g,'').replace(/（/g,'(').replace(/）/g,')');

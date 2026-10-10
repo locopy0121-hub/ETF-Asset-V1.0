@@ -19,6 +19,7 @@ import {searchTaiwanSecurities,aggregateMarketCandles,marketIndicators,type Rese
 import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
 import {isEtfSymbol} from '../market/etfConstituents';
 import {fetchTwseInstitutionalSeries,type InstitutionalRecord} from '../market/twseInstitutional';
+import {fetchTpexInstitutionalSeries} from '../market/tpexInstitutional';
 import {fetchOfficialEtfNavHistory,matchOfficialNavToClose,type NavRecord} from '../market/officialEtfNav';
 import {useSystemColors} from '../theme/useSystemColors';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
@@ -96,12 +97,12 @@ export function MarketResearchScreen(){
     return()=>{live=false;abort.abort();};
   },[symbol,range]);
   useEffect(()=>{
-    if(!symbol||tab!=='institution'||info?.market!=='TWSE'){
+    if(!symbol||tab!=='institution'||!info?.market){
       setInstitutions([]);setInstitutionError(null);return;
     }
     const abort=new AbortController();let alive=true;
     setInstitutions([]);setInstitutionLoading(true);setInstitutionError(null);
-    void fetchTwseInstitutionalSeries(symbol,institutionalDays,new Date(),abort.signal)
+    void (info.market==='TPEx'?fetchTpexInstitutionalSeries(symbol,institutionalDays,new Date(),abort.signal):fetchTwseInstitutionalSeries(symbol,institutionalDays,new Date(),abort.signal))
       .then(records=>{if(alive)setInstitutions(records);})
       .catch(error=>{if(alive)setInstitutionError(error instanceof Error?error.message:String(error));})
       .finally(()=>{if(alive)setInstitutionLoading(false);});
@@ -185,15 +186,15 @@ export function MarketResearchScreen(){
         <Text style={{color:theme.palette.textSecondary}}>此標的未辨識為 ETF，不顯示不適用的成分資料。</Text>):null}
       {tab==='institution'?<View style={{gap:10}}>
         <View style={styles.row}>{([1,3,5] as const).map(n=><Chip key={n} label={n+'個交易日'} active={institutionalDays===n} click={()=>setInstitutionalDays(n)}/>)}</View>
-        {info?.market!=='TWSE'?<Text style={{color:theme.palette.textSecondary}}>此標的為上櫃或市場未知；上市 T86 資料不適用。上櫃法人資料待加入 TPEx 已驗證介接。</Text>:
-        institutionLoading?<Text style={{color:theme.palette.textSecondary}}>讀取 TWSE 法人逐日資料中…</Text>:
+        {!info?.market?<Text style={{color:theme.palette.textSecondary}}>標的市場尚未核實，暫不顯示法人數值。</Text>:
+        institutionLoading?<Text style={{color:theme.palette.textSecondary}}>讀取 {info.market==='TPEx'?'櫃買中心':'證交所'}法人逐日資料中…</Text>:
         institutionError?<Text style={{color:theme.palette.textSecondary}}>法人資料暫時無法取得：{institutionError}</Text>:
         institutions.length===0?<Text style={{color:theme.palette.textSecondary}}>所選日期查無已公告法人資料（盤中／休市可能尚未公布）。</Text>:<View style={{gap:6}}>
-          <Text style={{fontSize:11,color:theme.palette.textSecondary}}>TWSE T86 官方日報｜單位：股｜紅＝買超，綠＝賣超（非即時主力分點）</Text>
+          <Text style={{fontSize:11,color:theme.palette.textSecondary}}>{info.market==='TPEx'?'TPEx 三大法人官方日報':'TWSE T86 官方日報'}｜單位：股｜紅＝買超，綠＝賣超（非即時主力分點）</Text>
           {institutions.map(row=>{
             const mag=Math.max(Math.abs(row.foreign),Math.abs(row.trust),Math.abs(row.dealer),1);
             return <View key={row.date} style={{gap:4,borderBottomWidth:.5,borderBottomColor:theme.palette.border,paddingBottom:9}}>
-              <Text style={{fontSize:12,fontWeight:'800',color:theme.palette.text}}>{row.date}　三大法人 {row.total>=0?'+':''}{amount(row.total)} 股</Text>
+              <Text style={{fontSize:12,fontWeight:'800',color:theme.palette.text}}>{row.date}｜{row.source}　三大法人 {row.total>=0?'+':''}{amount(row.total)} 股</Text>
               {([{key:'foreign',title:'外資'},{key:'trust',title:'投信'},{key:'dealer',title:'自營商'}] as const).map(item=>{
                 const v=row[item.key];
                 return <View key={item.key} style={styles.row}>
