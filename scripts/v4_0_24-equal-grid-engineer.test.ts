@@ -47,7 +47,8 @@ assert.match(widget,/const effective=previewConfig\?\?session\?\.draft\?\?config
 assert.match(widget,/rule\.enabled\?equalGridWidths\(cells\.length,rule,available\):\[\]/);
 assert.match(widget,/style:rule\.enabled&&width!==undefined/);
 assert.match(widget,/minWidth:0,maxWidth:width,alignSelf:'flex-start'/);
-assert.match(preview,/previewConfig,\s*children:selectDividendPreview\(p\.children/);
+assert.match(preview,/previewConfig\?\{previewConfig\}:\{\}/);
+assert.match(preview,/children:selectDividendPreview\(p\.children,onSelect,selectedId,overrides,previewConfig\)/);
 assert.match(workbench,/label="啟用平均欄寬及自動補位"/);
 assert.match(workbench,/label="每列顯示數量"/);
 assert.match(workbench,/patch\(\{equalGrid:/);
