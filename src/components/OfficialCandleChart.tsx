@@ -1,11 +1,13 @@
 import {useSystemColors} from '../theme/useSystemColors';
 import {useMemo,useRef,useState} from 'react';
 import {Pressable,ScrollView,StyleSheet,View} from 'react-native';
+import Svg,{Polygon,Polyline} from 'react-native-svg';
 import {Text} from './EditableNative';
 import type {DailyCandle} from '../market/twseDailyHistory';
 import type {ChartDataKey,NativeChartStyle} from '../domain/chartEditor';
 import {colors} from '../theme/tokens';
 import {candleIndexAtX} from '../domain/chartCrosshair';
+import {marketPricePath} from '../domain/marketChartGeometry';
 
 const PLOT_HEIGHT=160;
 const VOLUME_HEIGHT=50;
@@ -35,7 +37,7 @@ const secondaryLabel:Partial<Record<ChartDataKey,string>>={
 /** Historical OHLCV renderer. Market history and private holding estimates remain separate layers. */
 export function OfficialCandleChart({
   candles,loading,error,rangeLabel,dataKeys=['open','high','low','close','volume'],chartStyle='candlestick',
-  holding,crosshairDefault=false,costLineEnabled=true,
+  holding,crosshairDefault=false,costLineEnabled=true,onSelectCandle,
 }:{
   candles:readonly DailyCandle[];
   loading:boolean;
@@ -46,6 +48,7 @@ export function OfficialCandleChart({
   holding?:HoldingChartContext;
   crosshairDefault?:boolean;
   costLineEnabled?:boolean;
+  onSelectCandle?:(candle:DailyCandle)=>void;
 }){
   const colors=useSystemColors();
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
@@ -80,13 +83,20 @@ export function OfficialCandleChart({
   const margin=Math.max((highest-lowest)*.08,.01);
   const axisHigh=highest+margin,axisLow=Math.max(0,lowest-margin),span=Math.max(.01,axisHigh-axisLow);
   const biggestVolume=Math.max(...ordered.map(x=>x.volume),1);
-  const selectedIndex=Math.max(0,ordered.findIndex(x=>x.date===selectedDate));
   const selected=ordered.find(x=>x.date===selectedDate)??ordered[ordered.length-1];
+  const selectedIndex=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const y=(value:number)=>(axisHigh-value)/span*PLOT_HEIGHT;
   const fullWidth=LEFT_PAD+ordered.length*STEP+4;
+  const lineGeometry=useMemo(()=>marketPricePath(ordered,STEP,LEFT_PAD,PLOT_HEIGHT),[ordered]);
+  const lineTrend=ordered.length>1?ordered[ordered.length-1]!.close-ordered[0]!.close:0;
+  const lineColor=lineTrend>0?colors.gain:lineTrend<0?colors.loss:colors.flat;
+  const chooseCandle=(candle:DailyCandle)=>{
+    setSelectedDate(candle.date);
+    onSelectCandle?.(candle);
+  };
   const chooseAt=(touchX:number)=>{
     const index=candleIndexAtX(touchX,scrollX.current,ordered.length,STEP,LEFT_PAD);
-    if(index>=0)setSelectedDate(ordered[index]!.date);
+    if(index>=0)chooseCandle(ordered[index]!);
   };
   const selectedIdx=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const selectedPrior=selectedIdx>0?ordered[selectedIdx-1]!.close:selected?.open??0;
@@ -149,11 +159,11 @@ export function OfficialCandleChart({
             const zeroY=secondaryKey?secY(0):0;
             const valueY=secondaryKey?secY(sec):0;
             return <Pressable accessibilityRole="button" accessibilityLabel={candle.date+'，開'+price(candle.open)+'，高'+price(candle.high)+'，低'+price(candle.low)+'，收'+price(candle.close)}
-              key={candle.date} onPress={()=>setSelectedDate(candle.date)}
+              key={candle.date} onPress={()=>chooseCandle(candle)}
               style={[styles.candleColumn,{width:STEP,backgroundColor:selected?.date===candle.date&&crosshairEnabled?'rgba(148,163,184,.12)':'transparent'}]}>
               <View style={styles.pricePlot}>
                 {columnMode?<View style={{position:'absolute',left:2,right:2,top:y(candle.close),height:Math.max(2,PLOT_HEIGHT-y(candle.close)),backgroundColor:tone,opacity:.78}}/>:
-                lineMode?<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:Math.max(2,chartStyle==='area'?PLOT_HEIGHT-y(candle.close):3),backgroundColor:tone,opacity:chartStyle==='area'?.28:1}}/>:
+                lineMode?(chartStyle==='line'||chartStyle==='area'?null:<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:3,backgroundColor:tone}}/>):
                 ohlcMode?<><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
                 <><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:positive?'transparent':tone,borderColor:tone}]}/></>}
               </View>
@@ -162,6 +172,11 @@ export function OfficialCandleChart({
               <Text style={styles.tick}>{showTick?candle.date.slice(5).replace('-','/'):''}</Text>
             </Pressable>;
           })}
+          {(chartStyle==='line'||chartStyle==='area')&&lineGeometry?
+            <Svg pointerEvents="none" style={{position:'absolute',left:0,top:0}} width={fullWidth} height={PLOT_HEIGHT} viewBox={'0 0 '+fullWidth+' '+PLOT_HEIGHT}>
+              {chartStyle==='area'?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
+              <Polyline points={lineGeometry.line} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
+            </Svg>:null}
           {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}><Text style={styles.costLabel}>成本 {price(holding.costAvg)}</Text></View>:null}
           {crosshairEnabled&&selected?<View pointerEvents="none" style={[styles.crosshairLayer,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)+20}]}>
             <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*STEP+STEP/2}]}/>

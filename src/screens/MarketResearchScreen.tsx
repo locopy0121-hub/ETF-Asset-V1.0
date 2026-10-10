@@ -71,7 +71,8 @@ export function MarketResearchScreen(){
   const [tab,setTab]=useState<ResearchTab>('chart');
   const [period,setPeriod]=useState<ResearchPeriod>('day');
   const [range,setRange]=useState<Range>('m3');
-  const [chartStyle,setChartStyle]=useState<'candlestick'|'line'>('candlestick');
+  const [chartStyle,setChartStyle]=useState<'candlestick'|'line'|'area'>('candlestick');
+  const [selectedCandleDate,setSelectedCandleDate]=useState<string|null>(null);
   const [candles,setCandles]=useState<DailyCandle[]>([]);
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null);
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -136,7 +137,7 @@ export function MarketResearchScreen(){
       <Text style={{fontSize:11,color:theme.palette.textSecondary}}>可輸入部分代號或中文名稱；查詢不需要持有股票。{market.catalogRefreshing?'官方目錄同步中':''}</Text>
       {query.trim()!==''&&query.trim()!==(symbol+' '+(info?.name??''))?
         results.length?<View>{results.slice(0,35).map(item=><Pressable key={item.symbol} onPress={()=>{
-          setSymbol(item.symbol);setQuery(item.symbol+' '+item.name);setTab('chart');
+          setSymbol(item.symbol);setQuery(item.symbol+' '+item.name);setTab('chart');setSelectedCandleDate(null);
         }} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',width:78}}>{item.symbol}</Text>
           <Text style={{color:theme.palette.text,flex:1}} numberOfLines={2}>{item.name}</Text>
@@ -161,18 +162,20 @@ export function MarketResearchScreen(){
         <Text style={{fontWeight:'800',color:theme.palette.text}}>當日實際成交走勢</Text>
         <IntradayChart points={quote?.intraday??[]}/>
         <View style={styles.row}>{([{key:'day',label:'日K'},{key:'week',label:'週K'},{key:'month',label:'月K'}] as const).map(x=>
-          <Chip key={x.key} label={x.label} active={period===x.key} click={()=>setPeriod(x.key)}/>)}</View>
+          <Chip key={x.key} label={x.label} active={period===x.key} click={()=>{setPeriod(x.key);setSelectedCandleDate(null);}}/>)}</View>
         <View style={styles.row}>{([{key:'m1',label:'1月'},{key:'m3',label:'3月'},{key:'m6',label:'6月'},{key:'y1',label:'1年'}] as const).map(x=>
-          <Chip key={x.key} label={x.label} active={range===x.key} click={()=>setRange(x.key)}/>)}</View>
-        <View style={styles.row}><Chip label="K線" active={chartStyle==='candlestick'} click={()=>setChartStyle('candlestick')}/><Chip label="折線" active={chartStyle==='line'} click={()=>setChartStyle('line')}/></View>
-        <OfficialCandleChart candles={transformed} loading={loading} error={error} rangeLabel={period+'｜'+range}
-          chartStyle={chartStyle} dataKeys={['open','high','low','close','volume']} crosshairDefault costLineEnabled={false}/>
+          <Chip key={x.key} label={x.label} active={range===x.key} click={()=>{setRange(x.key);setSelectedCandleDate(null);}}/>)}</View>
+        <View style={styles.row}><Chip label="K線" active={chartStyle==='candlestick'} click={()=>setChartStyle('candlestick')}/><Chip label="折線" active={chartStyle==='line'} click={()=>setChartStyle('line')}/><Chip label="面積" active={chartStyle==='area'} click={()=>setChartStyle('area')}/></View>
+        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>橫向滑動瀏覽歷史 K 線；開啟十字線後可拖動選取交易日，並同步 KD／MACD。</Text>
+        <OfficialCandleChart key={(symbol??'')+'-'+period+'-'+range} candles={transformed} loading={loading} error={error} rangeLabel={period+'｜'+range}
+          chartStyle={chartStyle} dataKeys={['open','high','low','close','volume','change','changePct']} crosshairDefault={false} costLineEnabled={false}
+          onSelectCandle={candle=>setSelectedCandleDate(candle.date)}/>
         <View style={styles.row}>{[{label:'MA5',value:price(indicators.ma5)},{label:'MA10',value:price(indicators.ma10)},
           {label:'MA20',value:price(indicators.ma20)},{label:'RSI14',value:indicators.rsi14?.toFixed(2)??'—'}].map(item=>
           <View key={item.label} style={{backgroundColor:theme.palette.surfaceMuted,padding:10,borderRadius:10,minWidth:78}}>
             <Text style={{fontSize:11,color:theme.palette.textSecondary}}>{item.label}</Text><Text editorReadOnly style={{color:theme.palette.text,fontWeight:'800'}}>{item.value}</Text>
           </View>)}</View>
-        <MarketTechnicalSignals candles={transformed}/>
+        <MarketTechnicalSignals candles={transformed} selectedDate={selectedCandleDate}/>
         <Text style={{fontSize:11,color:theme.palette.textSecondary}}>週月 K 依取得之官方日線聚合，不用瞬間成交價偽造 OHLC／成交量。</Text>
       </View>:<Text style={{fontSize:12,color:theme.palette.textSecondary}}>目前檢視：{tabs.find(x=>x.key===tab)?.label}</Text>}
     </FrameCard>},

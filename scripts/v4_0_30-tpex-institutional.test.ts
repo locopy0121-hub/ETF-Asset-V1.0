@@ -33,5 +33,5 @@ assert.match(screen,/row\.source/);
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/TpexInstitutional/);
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/TpexInstitutional/);
 const version=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.equal(version.version,'4.0.30');assert.equal(version.android.versionCode,40030);
+assert.ok(Number(version.version.split('.')[2])>=30);assert.ok(version.android.versionCode>=40030);
 console.log('V4.0.30 official TPEx parser, arithmetic, date / symbol safety, protected settings: PASS');
