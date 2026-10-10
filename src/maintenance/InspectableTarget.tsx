@@ -132,11 +132,11 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
     });
   };
   // Ref state prevents pan responders being replaced while React renders during a drag.
-  const live=useRef({active,selected,geometry,override,engineer,workspace,target,drag:{x:0,y:0}});
-  live.current={...live.current,active,selected,geometry,override,engineer,workspace,target};
+  const live=useRef({active,selected,equalGrid,geometry,override,engineer,workspace,target,drag:{x:0,y:0}});
+  live.current={...live.current,active,selected,equalGrid,geometry,override,engineer,workspace,target};
   const responder=useMemo(()=>PanResponder.create({
     onStartShouldSetPanResponder:()=>false,
-    onMoveShouldSetPanResponder:(_,gesture)=>live.current.active&&live.current.selected&&!equalGrid&&
+    onMoveShouldSetPanResponder:(_,gesture)=>live.current.active&&live.current.selected&&!live.current.equalGrid&&
       Math.abs(gesture.dx)+Math.abs(gesture.dy)>5,
     onPanResponderGrant:()=>{
       const r=live.current;r.drag={x:r.override.offsetX??0,y:r.override.offsetY??0};
