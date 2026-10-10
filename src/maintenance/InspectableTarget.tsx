@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,useId,type ReactNode} from 'react';
 import {PanResponder,Pressable,StyleSheet,Text,View,type LayoutChangeEvent,type StyleProp,type ViewStyle} from 'react-native';
 import {useEqualGridActive} from '../components/equalGridContext';
+import {equalGridVisualOverride} from '../domain/equalGridLayout';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
 import {useWorkspace} from './WorkspaceSurface';
@@ -52,6 +53,9 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
   };
   // Currency prefixes stay inside their money composite. Legacy absolute XY/size overrides are ignored.
   const override=target.kind==='prefix'?withoutAbsolutePrefixGeometry(storedOverride):storedOverride;
+  // Equal-grid placement and saved manual XY/width must never be applied together.
+  // Saved overrides remain unchanged and become active immediately when grid is OFF.
+  const placementOverride=equalGridVisualOverride(override,equalGrid&&flex);
   const actualTone=override.profitToneOverride&&override.profitToneOverride!=='auto'?
     override.profitToneOverride:target.profitTone??'neutral';
   // Simulation is session-only and only paints the selected real A in maintenance mode.
@@ -74,16 +78,16 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
   const customized=Object.keys(override).length>0;
   const measured=geometry??{naturalX:0,naturalY:0,width:0,height:0,
     spaceWidth:workspace?.bounds.width??0,spaceHeight:workspace?.bounds.height??0};
-  const displacement=effectiveOffset(override,measured);
+  const displacement=effectiveOffset(placementOverride,measured);
   // Preserve V3.0.3's two-column safe grid in both modes, including when the editor is OFF.
   // Dividend already owns its row/cell geometry. Do not nest a second 46%-basis
   // grid inside each real KPI cell; that produced engineer boxes unlike the tile.
   const parentOwnsGrid=frame.page==='dividend'&&frame.frameKey==='dividend-summary';
   const placement=flex?(equalGrid||parentOwnsGrid?styles.equalGridMetricPlacement:styles.metricPlacement):undefined;
-  const explicitWidth=!equalGrid&&override.width!==undefined?(flex?
-    {flexBasis:override.width,minWidth:override.width,maxWidth:override.width}:{width:override.width}):null;
+  const explicitWidth=!equalGrid&&placementOverride.width!==undefined?(flex?
+    {flexBasis:placementOverride.width,minWidth:placementOverride.width,maxWidth:placementOverride.width}:{width:placementOverride.width}):null;
   const spatial={transform:[{translateX:displacement.x},{translateY:displacement.y}],
-    ...(override.height!==undefined?{height:override.height}:{})};
+    ...(placementOverride.height!==undefined?{height:placementOverride.height}:{})};
   // Material layers for native text/value and generic surfaces are real, local instances.
   // MetricTile owns its own backdrop so financial labels and figures are not wrapped twice.
   const materialKeys=['backgroundMode','gradientDirection','gradientEndColor','gradientMidColor',
@@ -121,18 +125,18 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
       const visual=flex&&visualBounds?visualBounds:{x:0,y:0,width:rect.width,height:rect.height};
       const nextShape:TargetGeometry={naturalX:0,naturalY:0,width:visual.width,height:visual.height,
         spaceWidth:space.width,spaceHeight:space.height};
-      const shifted=effectiveOffset(override,nextShape);
+      const shifted=effectiveOffset(placementOverride,nextShape);
       const next:TargetGeometry={...nextShape,naturalX:rect.x+visual.x-shifted.x,naturalY:rect.y+visual.y-shifted.y};
       setGeometry(previous=>previous&&Object.keys(next).every(k=>
         previous[k as keyof TargetGeometry]===next[k as keyof TargetGeometry])?previous:next);
     });
   };
   // Ref state prevents pan responders being replaced while React renders during a drag.
-  const live=useRef({active,selected,geometry,override,engineer,workspace,target,drag:{x:0,y:0}});
-  live.current={...live.current,active,selected,geometry,override,engineer,workspace,target};
+  const live=useRef({active,selected,equalGrid,geometry,override,engineer,workspace,target,drag:{x:0,y:0}});
+  live.current={...live.current,active,selected,equalGrid,geometry,override,engineer,workspace,target};
   const responder=useMemo(()=>PanResponder.create({
     onStartShouldSetPanResponder:()=>false,
-    onMoveShouldSetPanResponder:(_,gesture)=>live.current.active&&live.current.selected&&
+    onMoveShouldSetPanResponder:(_,gesture)=>live.current.active&&live.current.selected&&!live.current.equalGrid&&
       Math.abs(gesture.dx)+Math.abs(gesture.dy)>5,
     onPanResponderGrant:()=>{
       const r=live.current;r.drag={x:r.override.offsetX??0,y:r.override.offsetY??0};
@@ -165,7 +169,7 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
   useEffect(()=>{if(selected||editing||override.anchorX||override.anchorY||flex)measureCurrent();},
     [workspace?.scrollEpoch,workspace?.bounds.width,workspace?.bounds.height,selected,editing,
       override.anchorX,override.anchorY,visualBounds?.x,visualBounds?.y,visualBounds?.width,visualBounds?.height]);
-  const rect=geometry?positionedRect(geometry,override):null;
+  const rect=geometry?positionedRect(geometry,placementOverride):null;
   const visualFrame=flex&&visualBounds?{position:'absolute' as const,
     left:visualBounds.x,top:visualBounds.y,width:visualBounds.width,height:visualBounds.height}:null;
   useEffect(()=>{
@@ -191,10 +195,10 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
   // Saved text/color/font overrides apply to the native child directly. Never
   // introduce a new wrapper around text merely because it was customized;
   // this preserves the user's V3.0.3-accepted NORMAL-mode layout.
-  const hasSpatialOverride=override.offsetX!==undefined||override.offsetY!==undefined||
-    override.width!==undefined||override.height!==undefined||
-    Boolean(override.anchorX&&override.anchorX!=='free')||
-    Boolean(override.anchorY&&override.anchorY!=='free');
+  const hasSpatialOverride=placementOverride.offsetX!==undefined||placementOverride.offsetY!==undefined||
+    placementOverride.width!==undefined||placementOverride.height!==undefined||
+    Boolean(placementOverride.anchorX&&placementOverride.anchorX!=='free')||
+    Boolean(placementOverride.anchorY&&placementOverride.anchorY!=='free');
   const needsContainerStyle=Boolean(wrapperStyle&&Object.keys(wrapperStyle).length>0)||override.opacity!==undefined;
   if(!engineer.enabled&&!flex&&!hasSpatialOverride&&!needsContainerStyle)
     return <>{children(resolvedAppearance,customized,override,{...renderContext,wrapped:false})}</>;
