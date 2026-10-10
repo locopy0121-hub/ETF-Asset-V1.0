@@ -253,7 +253,7 @@ export function HoldingMarketValueHistoryPanel({records}:{
   </View>;
 }
 
-function MiniStat({label,value,color}:{label:string;value:string;color?:string}){
+function MiniStat({label,value,color}:{label:string;value:string;color?:string|undefined}){
   return <View style={styles.stat}>
     <Text style={styles.statLabel}>{label}</Text>
     <Text style={[styles.statValue,color?{color}:undefined]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
