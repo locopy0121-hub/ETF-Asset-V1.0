@@ -253,7 +253,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                 <Text pointerEvents="none" style={[styles.axisLabel,{bottom:4}]}>
                   {metric==='marketValue'?money(rawMin):signed(rawMin)}
                 </Text>
-              </>]:<View style={styles.plotEmpty}><Text style={styles.empty}>尚無可繪製的日／月／年損益紀錄。</Text></View>}
+              </>:<View style={styles.plotEmpty}><Text style={styles.empty}>尚無可繪製的日／月／年損益紀錄。</Text></View>}
             </View>
             <View style={styles.chartFoot}>
               <Text style={styles.chartFootText}>{chartRows[0]?.label??'—'}</Text>
