@@ -7,6 +7,7 @@ import {PageShell} from '../components/PageShell';
 import {PageEditorStack} from '../components/PageEditorStack';
 import {FrameCard} from '../components/FrameCard';
 import {OfficialCandleChart} from '../components/OfficialCandleChart';
+import {TaiexIndexCard} from '../components/TaiexIndexCard';
 import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
 import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
 import {PageGearButton} from '../components/PageGearButton';
@@ -130,6 +131,7 @@ export function MarketResearchScreen(){
   const percent=diff!==null&&typeof prior==='number'&&prior>0?100*diff/prior:null;
   const tone=diff===null?theme.palette.text:diff>0?system.gain:diff<0?system.loss:system.flat;
   const frameData=[
+    {key:'market-index',element:<FrameCard title="台股加權指數"><TaiexIndexCard marketVersion={market.marketDataVersion} phase={market.phase}/></FrameCard>},
     {key:'market-search',element:<FrameCard title="全市場搜尋">
       <TextInput value={query} onChangeText={setQuery} placeholder="2330、00985A、0050、台積電…" autoCapitalize="characters" autoCorrect={false}
         placeholderTextColor={theme.palette.textSecondary}
