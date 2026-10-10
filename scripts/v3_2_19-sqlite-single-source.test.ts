@@ -13,8 +13,8 @@ const settings=read('src/screens/SettingsScreen.tsx');
 
 // V4 architecture: SaiETF native MarketDataCenter/Memory Hot Store is the live SSOT.
 // React Native is only a consumer/adapter; TF Asset market-only SQLite is durable persistence.
-assert.match(runtime,/refreshUnifiedMarketData\(symbolsRef\.current\)/,
-  'App runtime must refresh through the SaiETF native market bridge');
+assert.match(runtime,/refreshUnifiedMarketData\(combinedSymbols\(\)\)/,
+  'App runtime must refresh holdings and selected research symbols through the SaiETF native market bridge');
 assert.match(runtime,/loadUnifiedMarketData\(\)/,
   'startup must hydrate through the SaiETF native market bridge');
 assert.match(runtime,/marketRowsToRuntimeQuotes/,'native market rows must be adapted for TF Asset UI consumers');
