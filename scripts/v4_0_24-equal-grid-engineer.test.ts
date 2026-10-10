@@ -58,7 +58,7 @@ assert.match(inspector,/const visual=flex&&visualBounds\?visualBounds:/);
 assert.match(inspector,/style=\{\[visualFrame\?\?StyleSheet\.absoluteFill,styles\.selectionOutline/);
 assert.match(inspector,/style=\{visualFrame\?\?StyleSheet\.absoluteFill\}/);
 assert.match(inspector,/const parentOwnsGrid=frame\.page==='dividend'/);
-assert.match(stack,/offsetX:undefined,offsetY:undefined/,
+assert.match(stack,/delete paintedStyle\.offsetX;delete paintedStyle\.offsetY/,
   'metric transform must not be applied twice in engineer mode');
 assert.doesNotMatch(settings,/EqualGrid|equalGridWidths|PageLayoutToolWorkbench|InspectableTarget/,
   'protected system settings UI must not be altered by equal grid feature');
