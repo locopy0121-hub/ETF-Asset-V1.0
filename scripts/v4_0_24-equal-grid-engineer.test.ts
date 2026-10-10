@@ -52,7 +52,7 @@ assert.match(workbench,/label="啟用平均欄寬及自動補位"/);
 assert.match(workbench,/label="每列顯示數量"/);
 assert.match(workbench,/patch\(\{equalGrid:/);
 assert.match(metric,/onLayout=\{onVisualLayout\}/);
-assert.match(stack,/onVisualLayout=\{render\.onVisualLayout\}/);
+assert.match(stack,/render\.onVisualLayout\?\{onVisualLayout:render\.onVisualLayout\}/);
 assert.match(inspector,/const visual=flex&&visualBounds\?visualBounds:/);
 assert.match(inspector,/style=\{\[visualFrame\?\?StyleSheet\.absoluteFill,styles\.selectionOutline/);
 assert.match(inspector,/style=\{visualFrame\?\?StyleSheet\.absoluteFill\}/);
