@@ -23,6 +23,8 @@ function load(file){
   if(id.endsWith('/SettingsRuntime'))return {useSettingsRuntime:()=>({prefs:{display,marketCard:{showQuoteMetadata:false}}})};
   if(id.endsWith('/ThemeRuntime'))return {useThemeRuntime:()=>({palette:{gain:'#EF4444',loss:'#10B981',text:'#000000',textSecondary:'#888888',surfaceMuted:'#FFFFFF',primary:'#0066FF'}})};
   if(id.endsWith('/TargetSurfaceEffects'))return {TargetBackdrop:()=>null,targetShadowStyle:()=>({})};
+  // Direct-function legacy renderer cannot run React context hooks; visual-only flag defaults OFF.
+  if(id.endsWith('/equalGridContext'))return {useEqualGridActive:()=>false};
   
   if(id.endsWith('/LayoutSelectionContext'))return {useLayoutRuntime:()=>({targets:overrides,active:false})};
   if(id.endsWith('/HoldingQuoteTicker'))return {HoldingQuoteTicker:()=>null};
