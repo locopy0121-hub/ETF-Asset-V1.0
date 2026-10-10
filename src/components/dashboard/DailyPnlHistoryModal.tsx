@@ -272,9 +272,9 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
           <Text style={styles.meta}>前次累積損益 {signed(selected.previousTotalPnl)} · 當日累積總損益 {signed(selected.totalPnl)}</Text>
           <Text style={styles.detailFormula}>前次累積 {signed(selected.previousTotalPnl)} ＋ 當日 {signed(selected.todayPnl)}
             {' '}＋ 帳務調整 {signed(selected.accountingAdjustment)} ＝ 累積 {signed(selected.totalPnl)}</Text>
-          <Text style={styles.meta}>前次持股市值 {money(selected.previousMarketValue)} → 當日 {money(selected.totalMarketValue)}
+          <Text style={styles.meta}>前日持股市值 {money(selected.previousMarketValue)} → 當日 {money(selected.totalMarketValue)}
             {selected.tradeMarketFlow!==0?` · 交易本金流 ${signed(selected.tradeMarketFlow)}`:''}
-            {' · '}{selected.basis==='official-history'?'正式歷史收盤':'即時／前收估值'}
+            {' · '}{selected.basis==='official-history'?'證券中心正式日收盤':'即時／前收估值'}
           </Text>
         </View>:null}
 
