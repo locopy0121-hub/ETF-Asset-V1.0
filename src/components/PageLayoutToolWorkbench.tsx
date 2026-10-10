@@ -23,6 +23,7 @@ import {PageHeaderVisual} from './PageHeaderVisual';
 import {FrameCard,type FrameCardProps} from './FrameCard';
 import {selectDividendPreview} from './DividendPreviewSelector';
 import {EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX} from '../editor/dimensionPolicy';
+import {DEFAULT_EQUAL_GRID,normalizeEqualGrid,type EqualGridColumns} from '../domain/equalGridLayout';
 import {DIVIDEND_EDITOR_CATALOG,dividendTargetForKind} from '../editor/dividendEditorCatalog';
 import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
 import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
@@ -231,7 +232,7 @@ export function PageLayoutToolWorkbench({
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
       return actual?selectDividendPreview(actual.props.children,
         selected=>{setFrameKey(item.key);selectTarget(selected);},
-        frameKey===item.key?selection.id:null,targets):null;
+        frameKey===item.key?selection.id:null,targets,draft[item.key]):null;
     }
     const itemHolding=(pageKey==='home'&&item.key==='holding-quotes')||(pageKey==='portfolio'&&item.key==='holding-view');
     if(pageKey==='portfolio'&&item.key==='holding-view')return <View style={{gap:12}}>
@@ -311,7 +312,7 @@ export function PageLayoutToolWorkbench({
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
     const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
-    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets):undefined}
+    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
       tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
       onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
         previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
@@ -446,7 +447,7 @@ export function PageLayoutToolWorkbench({
       </Pressable>)}
     </ScrollView>
 
-    {selection.kind==='frame'?<FrameTools frame={frameConfig} fx={fx} measured={frameMeasurements[frame.key]}
+    {selection.kind==='frame'?<FrameTools frame={frameConfig} frameKey={frame.key} fx={fx} measured={frameMeasurements[frame.key]}
       position={frameSortIndex+1} canMoveUp={frameSortIndex>0} canMoveDown={frameSortIndex>=0&&frameSortIndex<orderedFrames.length-1}
       open={openGroup} toggle={toggle}
       patch={next=>onPatchFrame(frame.key,next)} patchFx={patchFx}
@@ -584,13 +585,14 @@ function QuickBarLayoutTools({layout,onChange,selectedKey,onSelectKey,open,toggl
   </View>;
 }
 
-function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggle,patch,patchFx,setBehavior,move}:{frame:FrameEditorConfig;fx:FrameEffects;measured?:{width:number;height:number}|undefined;position:number;canMoveUp:boolean;canMoveDown:boolean;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void;setBehavior:(behavior:FrameBehavior)=>void;move:(delta:-1|1)=>void}){
+function FrameTools({frame,frameKey,fx,measured,position,canMoveUp,canMoveDown,open,toggle,patch,patchFx,setBehavior,move}:{frame:FrameEditorConfig;frameKey:string;fx:FrameEffects;measured?:{width:number;height:number}|undefined;position:number;canMoveUp:boolean;canMoveDown:boolean;open:string|null;toggle:(k:string)=>void;patch:(n:Partial<FrameEditorConfig>)=>void;patchFx:(n:Partial<FrameEffects>)=>void;setBehavior:(behavior:FrameBehavior)=>void;move:(delta:-1|1)=>void}){
   const basePadding=frame.padding??(frame.layout==='compact'?12:frame.layout==='dense'?10:16);
   const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
   const actualWidth=Math.round(frame.width??measured?.width??320);
   const actualHeight=Math.round(frame.height??measured?.height??Math.max(frame.minHeight??0,260));
   const actualMinHeight=Math.round((frame.minHeight??0)>0?(frame.minHeight??0):actualHeight);
   const actualMaxWidth=Math.round(fx.maxWidth>0?fx.maxWidth:actualWidth);
+  const equalGrid=normalizeEqualGrid(frame.equalGrid??DEFAULT_EQUAL_GRID);
   return <View>
     <Accordion title="排序" subtitle="恢復原有框架順位設定；只改同層顯示順序" open={open==='order'} onPress={()=>toggle('order')}>
       <ChoiceRow label="排序模式" value={frame.behavior} items={[['manual','手動排序'],['auto','自動順位'],['locked','鎖定']]} onChange={value=>setBehavior(value as FrameBehavior)}/>
@@ -606,6 +608,17 @@ function FrameTools({frame,fx,measured,position,canMoveUp,canMoveDown,open,toggl
         </Pressable>
       </View>
     </Accordion>
+    {frameKey==='dividend-summary'?<Accordion title="等寬分配／自動補位" subtitle="開啟才會接管欄寬；關閉完整恢復自由尺寸" open={open==='equal-grid'} onPress={()=>toggle('equal-grid')}>
+      <SwitchRow label="啟用平均欄寬及自動補位" value={equalGrid.enabled}
+        onChange={enabled=>patch({equalGrid:{...equalGrid,enabled}})}/>
+      {equalGrid.enabled?<><ChoiceRow label="每列顯示數量" value={String(equalGrid.columns)}
+        items={[['auto','自動（依數量）'],['2','2 格'],['3','3 格'],['4','4 格']]}
+        onChange={v=>patch({equalGrid:{...equalGrid,columns:v==='auto'?'auto':Number(v) as EqualGridColumns}})}/>
+        <NumberStep label="卡片間距" value={equalGrid.gap} min={0} max={40} step={1} suffix=" px"
+          onChange={gap=>patch({equalGrid:{...equalGrid,gap}})}/>
+        <Text style={styles.hint}>本列平均分配寬度；最後一排不足時自動擴展補位。不修改單張卡片已儲存的寬高與位置。</Text>
+      </>:null}
+    </Accordion>:null}
     <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
       <NumberStep label="寬度" value={actualWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>
       <NumberStep label="高度" value={actualHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>
