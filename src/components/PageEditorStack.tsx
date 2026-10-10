@@ -78,7 +78,8 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
             readableDividendSummaryMetric(customizedStyle):customizedStyle;
           // The inspector wrapper owns XY; do not apply the same translate twice
           // on the painted card. Measured child layout drives the exact dashed box.
-          const paintedStyle=visualStyle?{...visualStyle,offsetX:undefined,offsetY:undefined}:undefined;
+          const paintedStyle=visualStyle?{...visualStyle}:undefined;
+          if(paintedStyle){delete paintedStyle.offsetX;delete paintedStyle.offsetY;}
           return <MetricTile {...props} onVisualLayout={render.onVisualLayout}
             previewTap={render.editing}
             {...(render.simulated?{simulationTone:render.displayTone}:{})}
