@@ -15,6 +15,8 @@ function load(file){
   if(id.endsWith('/FrameEditingContext'))return {FrameEditingProvider:({children})=>children};
   if(id.endsWith('/SettingsRuntime'))return {useSettingsRuntime:()=>({prefs:{display}})};
   if(id.endsWith('/ThemeRuntime'))return {useThemeRuntime:()=>({palette:{gain:'#EF4444',loss:'#10B981',text:'#000000',textSecondary:'#888888',surfaceMuted:'#FFFFFF',primary:'#0066FF'}})};
+  // Isolated renderer has no React dispatcher; equal-grid is a separate visual-only context.
+  if(id.endsWith('/equalGridContext'))return {useEqualGridActive:()=>false};
   if(id.endsWith('/TargetSurfaceEffects'))return {TargetBackdrop:()=>null,targetShadowStyle:()=>({})};
   if(id.endsWith('/DashboardEditableContent'))return {DashboardEditableText:({children,style})=>React.createElement('Text',{style},children)};
   if(id.endsWith('/LayoutSelectionContext'))return {useLayoutRuntime:()=>({targets:{},active:false})};

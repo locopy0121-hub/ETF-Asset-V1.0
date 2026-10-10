@@ -18,6 +18,8 @@ function load(file){
   if(id.endsWith('/MaintenanceRuntime'))return {useMaintenance:()=>({enabled:false,session:null,selection:null,getTargetOverride:(_p,_f,id)=>maintenanceOverrides[id]??{}})};
   if(id.endsWith('/MaintenanceWorkbench'))return {InstalledFrameComponents:()=>null};
   if(id.endsWith('/WorkspaceSurface'))return {WorkspaceSurface:({children})=>children,useWorkspace:()=>null};
+  // Direct-call smoke test renders no React tree; equal grid is visual and OFF by default.
+  if(id.endsWith('/equalGridContext'))return {useEqualGridActive:()=>false};
   if(id.endsWith('/pageEditor'))return {usePageEditor:()=>({})};
   if(id.endsWith('/SettingsRuntime'))return {useSettingsRuntime:()=>({prefs:{display,marketCard:{showQuoteMetadata:false}}})};
   if(id.endsWith('/ThemeRuntime'))return {useThemeRuntime:()=>({palette:{gain:'#EF4444',loss:'#10B981',text:'#000000',textSecondary:'#888888',surfaceMuted:'#FFFFFF',primary:'#0066FF'}})};

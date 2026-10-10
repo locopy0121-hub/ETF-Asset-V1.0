@@ -1,6 +1,9 @@
 import {Children,cloneElement,isValidElement,type ReactElement,type ReactNode} from 'react';
 import {Pressable,StyleSheet,View,type TextStyle} from 'react-native';
 import type {TargetOverride} from '../maintenance/inspectionModel';
+import type {FrameEditorConfig} from '../editor/editorModel';
+import {normalizeEqualGrid} from '../domain/equalGridLayout';
+import {EqualGrid} from './EqualGrid';
 import type {LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {dividendControlVisual,dividendTargetId,dividendTextVisual} from '../editor/dividendPageLayout';
 import {dividendCatalogTarget,dividendPreviewInteractionTarget} from '../editor/dividendEditorCatalog';
@@ -21,6 +24,7 @@ type PreviewElement=ReactElement<{
   disabled?:boolean;
   editorSkip?:boolean;
   editorStyle?:TargetOverride;
+  previewConfig?:FrameEditorConfig;
 }>;
 
 /**
@@ -32,12 +36,18 @@ export function selectDividendPreview(
   onSelect:(target:LayoutSelectionTarget)=>void,
   selectedId:string|null,
   overrides:Readonly<Record<string,TargetOverride>>,
+  previewConfig?:FrameEditorConfig,
 ):ReactNode {
+  const equalActive=normalizeEqualGrid(previewConfig?.equalGrid).enabled;
   return Children.map(content,child=>{
     if(!isValidElement(child))return child;
     const element=child as PreviewElement;
     const p=element.props;
     if(child.type===AiQuestionBox)return <View pointerEvents="none">{child}</View>;
+    if(child.type===EqualGrid)return cloneElement(element,{
+      ...(previewConfig?{previewConfig}:{}),
+      children:selectDividendPreview(p.children,onSelect,selectedId,overrides,previewConfig),
+    });
     if(child.type===MetricTile&&typeof p.label==='string'){
       const label=p.label;
       const id=dividendTargetId('metric:'+label);
@@ -49,10 +59,11 @@ export function selectDividendPreview(
         style={[{alignSelf:'stretch',
           // Only auto-sized cards use the recommended readable dimensions.
           // An explicit edited size is never replaced by that recommendation.
-          ...(fixedWidth?{width:metricStyle.width,minWidth:1,flexGrow:0}:{flex:1,minWidth:136}),
-          ...(fixedHeight?{height:metricStyle.height,minHeight:1}:{minHeight:128}),
+          ...(equalActive?{width:'100%',minWidth:0,flexGrow:0,alignSelf:'flex-start'}:
+            fixedWidth?{width:metricStyle.width,minWidth:1,flexGrow:0}:{flex:1,minWidth:136}),
+          ...(fixedHeight?{height:metricStyle.height,minHeight:1}:equalActive?{minHeight:0}:{minHeight:128}),
         },selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:10}:undefined]}>
-        <View pointerEvents="none" style={fixedWidth||fixedHeight?{flexGrow:0,flexShrink:0}:{flex:1}}>{cloneElement(element,{
+        <View pointerEvents="none" style={equalActive?{width:'100%'}:fixedWidth||fixedHeight?{flexGrow:0,flexShrink:0}:{flex:1}}>{cloneElement(element,{
           ...(overrides[id]??p.editorStyle?{editorStyle:metricStyle}:{})
         })}</View>
       </Pressable>;
@@ -84,11 +95,11 @@ export function selectDividendPreview(
         editorSkip:true,
         style:[p.style,dividendControlVisual(overrides[id]),
           ...(selectedId===id?[{borderWidth:2,borderColor:'#0969DA'}]:[])],
-        children:selectDividendPreview(p.children,onSelect,selectedId,overrides),
+        children:selectDividendPreview(p.children,onSelect,selectedId,overrides,previewConfig),
       });
     }
     if(p.children!==undefined)return cloneElement(element,{
-      children:selectDividendPreview(p.children,onSelect,selectedId,overrides),
+      children:selectDividendPreview(p.children,onSelect,selectedId,overrides,previewConfig),
     });
     return child;
   });
