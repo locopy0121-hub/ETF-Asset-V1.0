@@ -59,7 +59,7 @@ async function main(){
   const market=read('src/market/MarketRuntime.tsx');
   const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
   const nativeModule=read('native/android/TfAssetNativeModule.kt');
-  assert.match(market,/refreshUnifiedMarketData\(symbolsRef\.current\)/,
+  assert.match(market,/refreshUnifiedMarketData\(combinedSymbols\(\)\)/,
     'React runtime must use the imported SaiETF native market core');
   assert.match(market,/loadUnifiedMarketData\(\)/,
     'cold-start hydration must come from the native SaiETF core snapshot');
