@@ -54,6 +54,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
   ],
   market: [
     {key:'page-header',title:'市場資訊中心表頭',description:'市場頁主標題與入口'},
+    {key:'market-taiex',title:'台股加權指數',description:'證交所官方加權指數摘要、日內／日線及開高低昨收'},
     {key:'market-search',title:'標的搜尋',description:'股票與 ETF 代號名稱搜尋'},
     {key:'market-summary',title:'即時行情',description:'統一行情中心行情及來源'},
     {key:'market-chart',title:'技術圖表',description:'分時走勢、歷史日週月 K 線及指標'},
