@@ -1,5 +1,6 @@
 import {EDITOR_FRAMES} from '../domain/editorFrameRegistry';
 import {normalizePortfolioViewMode,normalizePortfolioLayoutMode} from '../domain/portfolioModeSwitch';
+import {normalizeEqualGrid,type EqualGridConfig} from '../domain/equalGridLayout';
 import {sortPreset} from '../domain/holdingSort';
 import {DEFAULT_QUICK_BAR_LAYOUT,normalizeQuickBarLayout,type QuickBarLayout} from '../domain/portfolioQuickBarLayout';
 import {EDITOR_DIMENSION_MAX,EDITOR_DIMENSION_MIN} from './dimensionPolicy';
@@ -114,6 +115,7 @@ export type FrameEditorConfig = Readonly<{
   width?:number; // Explicit parent frame width, 0/undefined follows available space.
   height?:number; // Explicit parent frame height; children retain their own geometry, no implicit scrolling.
   minHeight?:number;
+  equalGrid?:EqualGridConfig; // Explicit opt-in; only frames rendering EqualGrid consume this visual rule.
   effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
 }>;
 
@@ -346,6 +348,7 @@ export function normalizeEditorConfig(
       backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity??1),
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderOpacity:clamp(candidate.borderOpacity,0,1,fallback.borderOpacity??1),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
+      equalGrid:normalizeEqualGrid(candidate.equalGrid),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
       ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,320)}:{}),
