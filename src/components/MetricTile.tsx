@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {Pressable,StyleSheet,type LayoutChangeEvent} from 'react-native';
-import {useEqualGridActive} from './EqualGrid';
+import {useEqualGridActive} from './equalGridContext';
 import {Text} from './EditableNative';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
