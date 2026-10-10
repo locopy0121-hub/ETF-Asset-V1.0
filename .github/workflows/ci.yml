@@ -1,4 +1,4 @@
-name: TF Asset V4.0.24 CI / QA APK
+name: TF Asset V4.0.25 CI / QA APK
 
 on:
   push:
@@ -29,24 +29,26 @@ jobs:
         run: npx tsx scripts/v4_0_19-calendar-text-selector.test.ts
       - name: V4.0.19 fixed split preview and compact toolbar regression
         run: node scripts/v4_0_19-fixed-preview-layout.test.cjs
-      - name: V4.0.24 quick bar visual editor regression
+      - name: V4.0.25 quick bar visual editor regression
         run: npx tsx scripts/v4_0_20-quickbar-editor.test.ts
-      - name: V4.0.24 real home KPI preview / flex regression
+      - name: V4.0.25 real home KPI preview / flex regression
         run: npx tsx scripts/v4_0_21-home-profit-preview.test.ts
-      - name: V4.0.24 dividend summary readability and independent AI frame
+      - name: V4.0.25 dividend summary readability and independent AI frame
         run: npx tsx scripts/v4_0_22-dividend-summary-separate-ai.test.ts
-      - name: V4.0.24 unrestricted saved dimensions and actual preview regression
+      - name: V4.0.25 unrestricted saved dimensions and actual preview regression
         run: npx tsx scripts/v4_0_23-unrestricted-dimensions.test.ts
-      - name: V4.0.24 equal columns and engineer overlay bounds regression
+      - name: V4.0.25 equal columns and engineer overlay bounds regression
         run: npx tsx scripts/v4_0_24-equal-grid-engineer.test.ts
-      - name: V4.0.24 inherited ledger pagination regression
+      - name: V4.0.25 live equal-grid XY isolation and automatic row refill
+        run: npx tsx scripts/v4_0_25-equal-grid-live-parity.test.ts
+      - name: V4.0.25 inherited ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
-      - name: V4.0.24 inherited dashboard content editing regression
+      - name: V4.0.25 inherited dashboard content editing regression
         run: npx tsx scripts/v3_1_17-dashboard-content.test.ts
-      - name: V4.0.24 inherited holding detail editor / Android safe-area regression
+      - name: V4.0.25 inherited holding detail editor / Android safe-area regression
         run: npx tsx scripts/v3_1_18-holding-detail-safearea.test.ts
-      - name: V4.0.24 full inherited + Market Core gates
-        run: npm run test:v4_0_24
+      - name: V4.0.25 full inherited + Market Core gates
+        run: npm run test:v4_0_25
       - name: Native market bridge behavior and nine-symbol App valuation
         run: bash scripts/test-native-market-bridge.sh
       - name: Generate declared skill coverage matrix
@@ -59,19 +61,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: V4.0.24 inherited controls source smoke
+      - name: V4.0.25 inherited controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V4.0.24 inherited controls runtime behavior
+      - name: V4.0.25 inherited controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V4.0.24 inherited AI holdings behavior
+      - name: V4.0.25 inherited AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V4.0.24 inherited dividend calendar behavior
+      - name: V4.0.25 inherited dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V4.0.24 inherited system profit colors
+      - name: V4.0.25 inherited system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V4.0.24 inherited integration smoke
+      - name: V4.0.25 inherited integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V4.0.24 inherited UX controls
+      - name: V4.0.25 inherited UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -79,7 +81,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V4.0.24 Node/Redis/PostgreSQL inherited integration
+    name: V4.0.25 Node/Redis/PostgreSQL inherited integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -115,7 +117,7 @@ jobs:
         run: npm run check
 
   qa-apk:
-    name: V4.0.24 QA APK / native integration
+    name: V4.0.25 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
     if: (github.event_name == 'push' && startsWith(github.ref_name, 'v4.0.')) || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.')))
@@ -141,18 +143,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V4.0.24 identity
+      - name: Freeze V4.0.25 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "4.0.24"
-          test "$(node -p "require('./app.json').expo.version")" = "4.0.24"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40024"
+          test "$(node -p "require('./package.json').version")" = "4.0.25"
+          test "$(node -p "require('./app.json').expo.version")" = "4.0.25"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40025"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V4.0.24 Hard Gates
-        run: npm run test:v4_0_24
+      - name: V4.0.25 Hard Gates
+        run: npm run test:v4_0_25
 
       - name: Generate declared skill coverage matrix for APK evidence
         run: npx tsx scripts/v3_2_49-skill-report.ts
@@ -188,8 +190,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 40024');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.24"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 40025');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.25"');
           g=g.replace(/dependencies\s*\{/,'dependencies {\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")\n    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")\n    implementation("com.squareup.okhttp3:okhttp:4.12.0")');
           if(!g.includes('kotlinx-coroutines-android:1.10.2')||!g.includes('kotlinx-serialization-json:1.9.0')||!g.includes('com.squareup.okhttp3:okhttp:4.12.0')) throw new Error('SaiETF native market Gradle dependencies were not injected');
           fs.writeFileSync(gradle,g);
@@ -251,26 +253,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V4.0.24-QA.apk
-          test "$(stat -c%s TF-Asset-V4.0.24-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V4.0.24-QA.apk
-          sha256sum TF-Asset-V4.0.24-QA.apk | tee TF-Asset-V4.0.24-QA.sha256
+          cp "$APK_PATH" TF-Asset-V4.0.25-QA.apk
+          test "$(stat -c%s TF-Asset-V4.0.25-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V4.0.25-QA.apk
+          sha256sum TF-Asset-V4.0.25-QA.apk | tee TF-Asset-V4.0.25-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V4.0.24-QA.apk | tee TF-Asset-V4.0.24-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.24-badging.txt
-          grep "versionCode='40024'" TF-Asset-V4.0.24-badging.txt
-          grep "versionName='4.0.24'" TF-Asset-V4.0.24-badging.txt
-          file TF-Asset-V4.0.24-QA.apk
+          "$AAPT" dump badging TF-Asset-V4.0.25-QA.apk | tee TF-Asset-V4.0.25-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.25-badging.txt
+          grep "versionCode='40025'" TF-Asset-V4.0.25-badging.txt
+          grep "versionName='4.0.25'" TF-Asset-V4.0.25-badging.txt
+          file TF-Asset-V4.0.25-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V4.0.24-QA-APK
+          name: TF-Asset-V4.0.25-QA-APK
           path: |
-            TF-Asset-V4.0.24-QA.apk
-            TF-Asset-V4.0.24-QA.sha256
-            TF-Asset-V4.0.24-badging.txt
+            TF-Asset-V4.0.25-QA.apk
+            TF-Asset-V4.0.25-QA.sha256
+            TF-Asset-V4.0.25-badging.txt
             reports/V3.2.49-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
