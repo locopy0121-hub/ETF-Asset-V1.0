@@ -71,10 +71,12 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
       setEmphasized(previous=>nextMetricTapEmphasis(previous,editorStyle?.tapAction??'none'));}}
 
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
-    equalGrid&&{width:'100%',minWidth:0,flexGrow:0,flexShrink:0},
+    // A native flex:1 tile can retain a zero flex-basis despite width:100%,
+    // causing multiple cards to paint on top of each other on Android.
+    equalGrid&&{flex:0,width:'100%',minWidth:0,flexGrow:0,flexShrink:0},
     editorStyle&&{borderColor:colorWithAlpha(effectiveBorder??'#E2E8F0',surface.borderOpacity),borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
       ...(visualStyle?.width!==undefined||visualStyle?.height!==undefined?{flex:0,minWidth:1,minHeight:1}:{}),
-      ...(equalGrid?{width:'100%',minWidth:0,flexGrow:0,flexShrink:0}:{}),
+      ...(equalGrid?{flex:0,width:'100%',minWidth:0,flexGrow:0,flexShrink:0}:{}),
       borderStyle:surface.borderStyle,padding:surface.padding,
       marginVertical:equalGrid?0:surface.marginVertical,
       marginHorizontal:equalGrid?0:surface.marginHorizontal,
