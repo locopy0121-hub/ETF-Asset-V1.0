@@ -53,7 +53,7 @@ export function parseTpexInstitutional(payload:unknown,symbol:string,date:string
     if(numbers.some(x=>x===null))return null;
     // Enforce the official arithmetic for every buy/sell/net block.
     for(let i=0;i<21;i+=3){
-      if(numbers[i]!-numbers[i+1]!==numbers[i+2])return null;
+      if(numbers[i]! - numbers[i+1]! !== numbers[i+2]!)return null;
     }
     const foreign=numbers[2]!,trust=numbers[11]!,dealer=numbers[20]!,total=numbers[21]!;
     if(foreign+trust+dealer!==total)return null;
