@@ -9,6 +9,7 @@ import { AiQuestionBox } from '../components/AiQuestionBox';
 import { CalendarDatePickerModal } from '../components/CalendarDatePickerModal';
 import { FrameCard } from '../components/FrameCard';
 import { MetricTile } from '../components/MetricTile';
+import {EqualGrid} from '../components/EqualGrid';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
@@ -226,7 +227,7 @@ export function DividendScreen() {
   const dividendPreviewElements = [
         {key:'dividend-summary',element:
           <FrameCard title="股息摘要">
-            <View style={styles.metrics}>
+            <EqualGrid pageKey="dividend" frameKey="dividend-summary">
               <View style={styles.summaryMetricCell}>
                 <MetricTile label="本月淨入帳" value={money(monthTotal)} caption="扣 NHI／匯費" tone="gain"/>
               </View>
@@ -236,7 +237,7 @@ export function DividendScreen() {
               <View style={styles.summaryMetricCell}>
                 <MetricTile label="月平均股息" value={money(monthlyAverage)} caption="年度÷12"/>
               </View>
-            </View>
+            </EqualGrid>
           </FrameCard>
         },
         ...(aiSettings.prefs.ai.enabled?[{key:'dividend-ai',element:
@@ -509,7 +510,7 @@ const styles=StyleSheet.create({
   saveDividendButtonText:{fontSize:12,fontWeight:'900',color:'#FFFFFF'},
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap',alignItems:'stretch'},
   // Two readable columns on narrow Android screens, third card occupies the next row.
-  summaryMetricCell:{flexGrow:1,flexBasis:'46%',minWidth:136,minHeight:128,alignSelf:'stretch'},
+  summaryMetricCell:{flexGrow:1,flexBasis:'46%',minWidth:0,minHeight:0,alignSelf:'flex-start'},
   calendarCount:{fontSize:10,fontWeight:'900',color:colors.primary,backgroundColor:colors.surfaceMuted,paddingHorizontal:9,paddingVertical:5,borderRadius:999},
   calendarTop:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:4,paddingVertical:2},
   monthBlock:{alignItems:'center',gap:2},
