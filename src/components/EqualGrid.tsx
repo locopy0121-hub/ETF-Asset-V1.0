@@ -29,7 +29,8 @@ export function EqualGrid({pageKey,frameKey,previewConfig,children}:PropsWithChi
   const effectiveRule={...rule,gap:safeGap};
   const widths=rule.enabled?equalGridPixelWidths(cells.length,effectiveRule,available):[];
   const measured=(event:LayoutChangeEvent)=>{
-    const next=Math.round(event.nativeEvent.layout.width);
+    // Floor fractional dp so the allocated column widths cannot exceed the physical row.
+    const next=Math.floor(event.nativeEvent.layout.width);
     if(next>0)setAvailable(previous=>previous===next?previous:next);
   };
   return <View onLayout={measured} style={{
