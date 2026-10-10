@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {Pressable,StyleSheet,type LayoutChangeEvent} from 'react-native';
 import {useEqualGridActive} from './equalGridContext';
+import {equalGridVisualOverride} from '../domain/equalGridLayout';
 import {Text} from './EditableNative';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
@@ -23,6 +24,8 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
 }){
   const theme=useThemeRuntime();
   const equalGrid=useEqualGridActive();
+  // Keep colors/type/height; only grid-owned geometry is temporarily masked.
+  const visualStyle=editorStyle?equalGridVisualOverride(editorStyle,equalGrid):undefined;
   const [emphasized,setEmphasized]=useState(false);
   const start=useRef<MetricTouchPoint|null>(null);
   const swipeConsumed=useRef(false);
@@ -70,13 +73,14 @@ export function MetricTile({label,value,caption,tone='default',editorStyle,simul
     style={[styles.tile,{position:'relative',backgroundColor:gradientOn?'transparent':colorWithAlpha(effectiveBackground,surface.backgroundOpacity)},
     equalGrid&&{width:'100%',minWidth:0,flexGrow:0,flexShrink:0},
     editorStyle&&{borderColor:colorWithAlpha(effectiveBorder??'#E2E8F0',surface.borderOpacity),borderWidth:surface.borderWidth,borderRadius:surface.borderRadius,
-      ...(editorStyle.width!==undefined||editorStyle.height!==undefined?{flex:0,minWidth:1,minHeight:1}:{}),
+      ...(visualStyle?.width!==undefined||visualStyle?.height!==undefined?{flex:0,minWidth:1,minHeight:1}:{}),
       ...(equalGrid?{width:'100%',minWidth:0,flexGrow:0,flexShrink:0}:{}),
-      borderStyle:surface.borderStyle,padding:surface.padding,marginVertical:surface.marginVertical,
-      marginHorizontal:surface.marginHorizontal,
-      ...(!equalGrid&&editorStyle.width!==undefined?{width:editorStyle.width}:{}),
-      ...(editorStyle.height!==undefined?{height:editorStyle.height}:{}),
-      ...(editorStyle.offsetX!==undefined||editorStyle.offsetY!==undefined?{transform:[{translateX:editorStyle.offsetX??0},{translateY:editorStyle.offsetY??0}]}:{}),
+      borderStyle:surface.borderStyle,padding:surface.padding,
+      marginVertical:equalGrid?0:surface.marginVertical,
+      marginHorizontal:equalGrid?0:surface.marginHorizontal,
+      ...(!equalGrid&&visualStyle?.width!==undefined?{width:visualStyle.width}:{}),
+      ...(visualStyle?.height!==undefined?{height:visualStyle.height}:{}),
+      ...(visualStyle?.offsetX!==undefined||visualStyle?.offsetY!==undefined?{transform:[{translateX:visualStyle.offsetX??0},{translateY:visualStyle.offsetY??0}]}:{}),
       ...targetShadowStyle(surface,shadow)},
     (thresholdMatched||tapEnabled&&(emphasized||previewTap))&&{borderWidth:Math.max(2,surface.borderWidth),borderColor:theme.palette.primary}]}>
 
