@@ -116,7 +116,9 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://tfasset:test_only_v231@localhost:5432/tfasset_market
           TEST_REDIS_URL: redis://localhost:6379
-        run: npm run check
+        # Concurrent test workers can race CREATE TABLE on the same ephemeral PostgreSQL schema.
+        # Keep every assertion; serialize only the backend test runner in CI.
+        run: node --check src/index.mjs && node --test --test-concurrency=1 test/*.test.mjs
 
   qa-apk:
     name: V4.0.26 QA APK / native integration
