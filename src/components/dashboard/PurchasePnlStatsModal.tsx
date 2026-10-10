@@ -7,6 +7,7 @@ import {Pressable,Text} from '../EditableNative';
 import type {CanonicalLedgerEntry,CanonicalLedgerSnapshot} from '../../finance/canonicalLedger';
 import type {DailyPnlRecord} from '../../finance/dailyPnlHistory';
 import {buildPurchasePnlStatistics,type PurchaseLotPnlStat} from '../../finance/purchasePnlStats';
+import {HoldingMarketValueHistoryPanel} from './HoldingMarketValueHistoryPanel';
 import {colors,radius,spacing} from '../../theme/tokens';
 
 const PAGE_SIZE=20;
@@ -95,7 +96,7 @@ export function PurchasePnlStatsModal({
   const pageCount=Math.max(1,Math.ceil(filteredLots.length/PAGE_SIZE));
   const safePage=Math.min(page,pageCount-1);
   const pageLots=filteredLots.slice(safePage*PAGE_SIZE,(safePage+1)*PAGE_SIZE);
-  const dailyRows=useMemo(()=>[...dailyRecords].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,120),[dailyRecords]);
+
   const chooseTab=(next:Tab)=>{setTab(next);setPage(0);};
   const chooseFilter=(next:Filter)=>{setFilter(next);setPage(0);};
 
@@ -177,18 +178,7 @@ export function PurchasePnlStatsModal({
           </View>
         </View>:null}
 
-        {tab==='daily'?<View style={styles.section}>
-          <View style={styles.sectionHead}>
-            <Text editorId="native:PurchasePnlStatsModal:sectionTitle:37" editorReadOnly={false} style={styles.sectionTitle}>每日市值走勢紀錄</Text>
-            <Text editorId="native:PurchasePnlStatsModal:sectionMeta:38" editorReadOnly={true} style={styles.sectionMeta}>保留最近 {dailyRows.length} 筆</Text>
-          </View>
-          <Text editorId="native:PurchasePnlStatsModal:dailyNote:39" editorReadOnly={false} style={styles.dailyNote}>每日紀錄用來回溯市場變化，不拿來反推「持股總損益」。持股總損益永遠以目前市值減目前持股成本為準。</Text>
-          {dailyRows.map(row=><View key={row.date} style={styles.dailyRow}>
-            <View><Text editorId="native:PurchasePnlStatsModal:dailyDate:40" editorReadOnly={true} style={styles.dailyDate}>{row.date}</Text><Text editorId="native:PurchasePnlStatsModal:dailyBasis:41" editorReadOnly={true} style={styles.dailyBasis}>{row.basis==='official-history'?'正式收盤':'即時／前收基準'}{row.final?' · 已結束':''}</Text></View>
-            <View style={styles.dailyRight}><Text editorId="native:PurchasePnlStatsModal:dailyMarket:42" editorReadOnly={true} style={styles.dailyMarket}>市值 {money(row.totalMarketValue)}</Text><Text editorId="native:PurchasePnlStatsModal:dailyPnl:43" editorReadOnly={true} style={[styles.dailyPnl,{color:tone(row.todayPnl)}]}>{signed(row.todayPnl)}</Text></View>
-          </View>)}
-          {!dailyRows.length?<Text editorId="native:PurchasePnlStatsModal:empty:44" editorReadOnly={false} style={styles.empty}>尚無每日行情紀錄。</Text>:null}
-        </View>:null}
+        {tab==='daily'?<HoldingMarketValueHistoryPanel records={dailyRecords}/>:null}
       </ScrollView>
     </View>
   </EditorSurface></Modal>;
