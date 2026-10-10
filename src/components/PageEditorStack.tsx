@@ -76,10 +76,13 @@ function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root
             {...(dividendLayout??{}),...(customized?applyConditionalAppearance(override,render.displayTone):{})}:undefined;
           const visualStyle=frame.page==='dividend'&&frame.frameKey==='dividend-summary'&&customizedStyle?
             readableDividendSummaryMetric(customizedStyle):customizedStyle;
-          return <MetricTile {...props}
+          // The inspector wrapper owns XY; do not apply the same translate twice
+          // on the painted card. Measured child layout drives the exact dashed box.
+          const paintedStyle=visualStyle?{...visualStyle,offsetX:undefined,offsetY:undefined}:undefined;
+          return <MetricTile {...props} onVisualLayout={render.onVisualLayout}
             previewTap={render.editing}
             {...(render.simulated?{simulationTone:render.displayTone}:{})}
-            {...(visualStyle?{editorStyle:visualStyle}:{})}/>;
+            {...(paintedStyle?{editorStyle:paintedStyle}:{})}/>;
         }}
       </InspectableTarget>;
     }
