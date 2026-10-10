@@ -10,7 +10,7 @@ export type ControlPrefs=Readonly<{
   ai:AiControlPrefs;
 }>;
 
-const PAGE_KEYS:readonly MainPageKey[]=['home','ledger','portfolio','dividend','ai','settings'];
+const PAGE_KEYS:readonly MainPageKey[]=['home','ledger','portfolio','market','dividend','ai','settings'];
 
 function normalizeTitle(value:unknown){
   return typeof value==='string'?value.trim().slice(0,48):'';

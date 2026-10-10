@@ -28,6 +28,7 @@ import { StockChartScreen } from './src/screens/StockChartScreen';
 import {HoldingDetailBoundary} from './src/components/HoldingDetailBoundary';
 import {DiagnosticsProvider,recordDiagnosticEvent} from './src/diagnostics/DiagnosticRuntime';
 import { HomeScreen } from './src/screens/HomeScreen';
+import {MarketResearchScreen} from './src/screens/MarketResearchScreen';
 import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -258,6 +259,7 @@ function AppBody(){
     switch(active){
       case 'ledger': return <LedgerScreen/>;
       case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding} onOpenChart={openChart}/>;
+      case 'market': return <MarketResearchScreen/>;
       case 'dividend': return <DividendScreen/>;
       case 'ai': return <AiScreen/>;
       case 'settings': return <SettingsScreen/>;
@@ -310,6 +312,7 @@ function glyph(key:MainPageKey){
     case 'home': return '⌂';
     case 'ledger': return '▤';
     case 'portfolio': return '◇';
+    case 'market': return '⌕';
     case 'dividend': return '$';
     case 'ai': return 'AI';
     case 'settings': return '⚙';

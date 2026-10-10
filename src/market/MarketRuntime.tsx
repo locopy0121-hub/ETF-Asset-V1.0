@@ -51,6 +51,7 @@ type MarketRuntimeValue=Readonly<{
   refresh:(options?:{force?:boolean;silent?:boolean})=>Promise<MarketRefreshResult>;
   refreshCatalog:()=>Promise<void>;
   setTrackedSymbols:(symbols:readonly string[])=>void;
+  setResearchSymbols:(symbols:readonly string[])=>void;
   saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
   clearFugleApiKey:()=>Promise<boolean>;
 }>;
@@ -132,6 +133,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [phase,setPhase]=useState<MarketPhase>('offline');
   const [quotes,setQuotes]=useState<RuntimeQuote[]>([]);
   const [trackedSymbols,setTrackedSymbolsState]=useState<string[]>([]);
+  const [researchSymbols,setResearchSymbolsState]=useState<string[]>([]);
   const [hydrated,setHydrated]=useState(false);
   const [refreshing,setRefreshing]=useState(false);
   const [lastSuccessAt,setLastSuccessAt]=useState<number|null>(null);
@@ -144,6 +146,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [marketDataVersion,setMarketDataVersion]=useState(0);
 
   const quotesRef=useRef<RuntimeQuote[]>([]),symbolsRef=useRef<string[]>([]);
+  const researchRef=useRef<string[]>([]);
+  const combinedSymbols=useCallback(()=>[...new Set([...symbolsRef.current,...researchRef.current])].sort(),[]);
   const catalogRef=useRef<TaiwanSecurityInfo[]>(fallbackCatalog());
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
   const refreshVisibleRef=useRef(false);
@@ -224,10 +228,19 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     const normalized=Array.from(new Set(symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean))).sort();
     if(!sameStrings(symbolsRef.current,normalized)){
       symbolsRef.current=normalized;
-      void updateNativeMarketSymbols(normalized).catch(()=>{});
+      void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
     }
     setTrackedSymbolsState(current=>sameStrings(current,normalized)?current:normalized);
-  },[]);
+  },[combinedSymbols]);
+
+  const setResearchSymbols=useCallback((symbols:readonly string[])=>{
+    const next=[...new Set(symbols.map(x=>x.trim().toUpperCase()).filter(Boolean))].sort();
+    if(!sameStrings(researchRef.current,next)){
+      researchRef.current=next;
+      void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
+    }
+    setResearchSymbolsState(current=>sameStrings(current,next)?current:next);
+  },[combinedSymbols]);
 
   const refresh=useCallback((options?:{force?:boolean;silent?:boolean}):Promise<MarketRefreshResult>=>{
     const announce=options?.silent!==true;
@@ -240,7 +253,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       if(!nativeRuntimeAvailable)return 'error';
       if(announce){setRefreshing(true);setLastError(null);}
       try{
-        const snapshot=await refreshUnifiedMarketData(symbolsRef.current);
+        const snapshot=await refreshUnifiedMarketData(combinedSymbols());
         applySnapshot(snapshot);
         const missing=Array.isArray(snapshot.missing)?snapshot.missing:[];
         if(announce&&missing.length)setLastError('未解析行情：'+missing.join(', '));
@@ -257,7 +270,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     })();
     refreshPromiseRef.current=task.finally(()=>{refreshPromiseRef.current=null;});
     return refreshPromiseRef.current;
-  },[applySnapshot]);
+  },[applySnapshot,combinedSymbols]);
 
   const refreshCatalog=useCallback(async()=>{
     setCatalogRefreshing(true);
@@ -283,9 +296,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[]);
 
   useEffect(()=>{
-    if(!hydrated||trackedSymbols.length===0)return;
+    if(!hydrated||(trackedSymbols.length===0&&researchSymbols.length===0))return;
     void refresh({silent:true});
-  },[hydrated,trackedSymbols,refresh]);
+  },[hydrated,trackedSymbols,researchSymbols,refresh]);
 
   // SaiETF Memory Hot Store pushes every accepted quote into this single consumer.
   useEffect(()=>{
@@ -297,12 +310,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     if(!hydrated)return;
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
       if(next==='active'){
-        void updateNativeMarketSymbols(symbolsRef.current).catch(()=>{});
+        void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
         void refresh({force:true,silent:true});
       }else if(next==='background'||next==='inactive')void pauseNativeMarketStreaming().catch(()=>{});
     });
     return()=>sub.remove();
-  },[hydrated,refresh]);
+  },[hydrated,refresh,combinedSymbols]);
 
   useEffect(()=>{
     if(hydrated&&(catalog.length<=FALLBACK_QUOTES.length||catalog.every(row=>row.source==='bootstrap-only')))
@@ -312,11 +325,11 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const value=useMemo<MarketRuntimeValue>(()=>({
     hydrated,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
     marketDataVersion,missingSymbols:unresolvedSymbols,providerHealth,unresolvedSymbols,
-    fugleConfigured,refresh,refreshCatalog,setTrackedSymbols,saveFugleApiKey,clearFugleApiKey,
+    fugleConfigured,refresh,refreshCatalog,setTrackedSymbols,setResearchSymbols,saveFugleApiKey,clearFugleApiKey,
   }),[
     hydrated,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
     marketDataVersion,providerHealth,unresolvedSymbols,fugleConfigured,refresh,refreshCatalog,
-    setTrackedSymbols,saveFugleApiKey,clearFugleApiKey,
+    setTrackedSymbols,setResearchSymbols,saveFugleApiKey,clearFugleApiKey,
   ]);
 
   return <MarketRuntimeContext.Provider value={value}>{children}</MarketRuntimeContext.Provider>;
