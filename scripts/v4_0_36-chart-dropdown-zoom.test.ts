@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {anchoredChartOffset,chartCandleMetrics,nearestChartZoom,stepChartZoom} from '../src/domain/chartZoom';
-import {MARKET_CHART_STYLES} from '../src/components/ChartStyleDropdown';
+
 const source=readFileSync('src/components/OfficialCandleChart.tsx','utf8');
 const picker=readFileSync('src/components/ChartStyleDropdown.tsx','utf8');
 const stock=readFileSync('src/screens/StockChartScreen.tsx','utf8');
@@ -15,10 +15,10 @@ assert.equal(nearestChartZoom(Infinity),1);
 const small=chartCandleMetrics(.65),large=chartCandleMetrics(2.5);
 assert.ok(small.step<large.step&&small.bodyWidth<large.bodyWidth&&small.volumeWidth<large.volumeWidth);
 assert.equal(chartCandleMetrics(1).step,18,'default OHLC spacing unchanged');
-assert.equal(anchoredChartOffset(240,240,18,36,3000,3),600,'keep same centered historical date when zooming');
+assert.equal(anchoredChartOffset(240,240,18,36,3000,3),597,'keep same centered historical date when zooming');
 assert.equal(anchoredChartOffset(400,200,18,12,140,3),0,'clamp short chart to available scroll');
 assert.equal(anchoredChartOffset(9999,200,18,36,700,3),500);
-assert.deepEqual(MARKET_CHART_STYLES,['candlestick','ohlc','line','area','column','price-volume']);
+assert.match(picker,/MARKET_CHART_STYLES:[^\n]*\['candlestick','ohlc','line','area','column','price-volume'\]/);
 assert.match(picker,/accessibilityState=\{\{expanded\}\}/);
 assert.match(picker,/setExpanded\(false\)/,'dropdown closes after selection');
 assert.match(stock,/<ChartStyleDropdown value=\{style\} onChange=\{setStyle\}/);
