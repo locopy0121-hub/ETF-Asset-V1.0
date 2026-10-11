@@ -44,6 +44,9 @@ assert.match(taiex,/editorReadOnly style=/);
 assert.match(taiex,/if\(!layoutPreview\.active\)void refresh\(true\)/);
 assert.match(taiex,/if\(!layoutPreview\.active\)setRange\(item\.id\)/);
 
+// Engineer-mode market overrides must survive persistence and reload.
+assert.match(read('src/maintenance/inspectionModel.ts'),/home\|ledger\|portfolio\|market\|dividend\|ai\|settings/);
+
 // The protected top-level system settings structure must remain intact.
 assert.match(settings,/駐點維護工程師｜全局總開關/);
 assert.match(settings,/systemPanel==='engineer'/);
