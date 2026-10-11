@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
-import {View,type StyleProp,type TextStyle} from 'react-native';
+import {StyleSheet,View,type StyleProp,type TextStyle} from 'react-native';
 import Svg,{Line,Polygon,Polyline} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
@@ -7,6 +7,7 @@ import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
+import {colorWithAlpha} from '../maintenance/frameEffects';
 import {fetchTaiexHistory,fetchTaiexMis} from '../market/taiexIndexSource';
 import {pickTaiexDisplay,selectTaiexHistory,taiex52WeekCloseRange,taipeiIndexDate,
   type IndexClose,type IndexPoint,type IndexRange,type IndexSnapshot} from '../market/taiexIndex';
@@ -50,25 +51,38 @@ function PriceLine({values,color}:{values:readonly IndexPoint[];color:string}){
 /** Named targets share the page editor's persisted visual overrides.
  * Values remain read-only; editing only changes appearance, never market data.
  */
-function IndexEditableText({id,label,kind,style,children}:{
+function IndexEditableText({id,label,kind,style,children,profitTone='neutral'}:{
   id:string;label:string;kind:'text'|'value';style:StyleProp<TextStyle>;children:ReactNode;
+  profitTone?:'gain'|'loss'|'neutral';
 }){
   const runtime=useLayoutRuntime();
   const editor=usePageEditor('market');
+  const profitColors=useSystemColors();
   const override=(runtime.active?runtime.targets:editor.displayConfig.layoutTargets)?.[id];
+  const toneColor=profitTone==='gain'?profitColors.gain:profitTone==='loss'?profitColors.loss:profitColors.flat;
+  const selectedColor=override?.textProfitColor===true?toneColor:override?.textColor;
+  const resolvedColor=selectedColor&&override?.textOpacity!==undefined?
+    colorWithAlpha(selectedColor,override.textOpacity):selectedColor;
   const visual:TextStyle={
     ...(override?.fontSize!==undefined?{fontSize:override.fontSize}:{}),
-    ...(override?.textColor!==undefined?{color:override.textColor}:{}),
+    ...(resolvedColor!==undefined?{color:resolvedColor}:{}),
     ...(override?.fontWeight!==undefined?{fontWeight:override.fontWeight}:{}),
     ...(override?.fontStyle!==undefined?{fontStyle:override.fontStyle}:{}),
+    ...(override?.fontFamily!==undefined?{fontFamily:override.fontFamily==='system'?undefined:override.fontFamily}:{}),
+    ...(override?.textDecorationLine!==undefined?{textDecorationLine:override.textDecorationLine}:{}),
     ...(override?.letterSpacing!==undefined?{letterSpacing:override.letterSpacing}:{}),
     ...(override?.lineHeight!==undefined&&override.lineHeight>0?{lineHeight:override.lineHeight}:{}),
     ...(override?.align!==undefined?{textAlign:override.align}:{}),
     ...(override?.width!==undefined?{width:override.width}:{}),
     ...(override?.height!==undefined?{height:override.height}:{}),
+    ...(override?.backgroundColor!==undefined?{backgroundColor:colorWithAlpha(override.backgroundColor,override.backgroundOpacity??1)}:{}),
+    ...(override?.borderColor!==undefined?{borderColor:colorWithAlpha(override.borderColor,override.borderOpacity??1)}:{}),
+    ...(override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:{}),
+    ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
+    ...(override?.padding!==undefined?{padding:override.padding}:{})
     ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
   };
-  const content=<Text editorId={id} editorReadOnly style={[style,visual]}>{children}</Text>;
+  const content=<Text editorId={id} editorReadOnly style={[StyleSheet.flatten(style),visual]}>{children}</Text>;
   if(!runtime.active)return content;
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
     onPress={()=>runtime.onSelect?.({id,label,kind})}
@@ -85,11 +99,12 @@ function IndexEditableChart({children}:{children:ReactNode}){
   const body=<View style={[
     override?.width!==undefined?{width:override.width}:undefined,
     override?.height!==undefined?{height:override.height,overflow:'hidden'}:undefined,
-    override?.backgroundColor!==undefined?{backgroundColor:override.backgroundColor}:undefined,
+    override?.backgroundColor!==undefined?{backgroundColor:colorWithAlpha(override.backgroundColor,override.backgroundOpacity??1)}:undefined,
     override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:undefined,
-    override?.borderColor!==undefined?{borderColor:override.borderColor}:undefined,
+    override?.borderColor!==undefined?{borderColor:colorWithAlpha(override.borderColor,override.borderOpacity??1)}:undefined,
     override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:undefined,
     override?.padding!==undefined?{padding:override.padding}:undefined,
+    override?.opacity!==undefined?{opacity:override.opacity}:undefined,
   ]}>{children}</View>;
   if(!runtime.active)return body;
   return <Pressable accessibilityRole="button" accessibilityLabel="編輯加權指數走勢圖"
@@ -221,8 +236,8 @@ export function TaiexIndexCard({marketVersion,phase}:{
       </Pressable>
     </View>
     <View style={{flexDirection:'row',alignItems:'flex-end',flexWrap:'wrap',gap:8}}>
-      <IndexEditableText id="market:index:value" label="加權指數數值" kind="value" style={{color:tone,fontSize:33,fontWeight:'900'}}>{format(display?.value)}</IndexEditableText>
-      <IndexEditableText id="market:index:change" label="加權指數漲跌" kind="value" style={{color:tone,fontSize:14,fontWeight:'800',paddingBottom:5}}>
+      <IndexEditableText id="market:index:value" label="加權指數數值" kind="value" profitTone={change===null?'neutral':change>0?'gain':change<0?'loss':'neutral'} style={{color:tone,fontSize:33,fontWeight:'900'}}>{format(display?.value)}</IndexEditableText>
+      <IndexEditableText id="market:index:change" label="加權指數漲跌" kind="value" profitTone={change===null?'neutral':change>0?'gain':change<0?'loss':'neutral'} style={{color:tone,fontSize:14,fontWeight:'800',paddingBottom:5}}>
         {signed(change)} ({display?.percent!==null&&display?.percent!==undefined?signed(display.percent)+'%':'—'})
       </IndexEditableText>
     </View>
