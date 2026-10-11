@@ -54,7 +54,11 @@ export function OfficialCandleChart({
   const colors=useSystemColors();
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
   const [crosshairEnabled,setCrosshairEnabled]=useState(crosshairDefault);
+  // The normal interaction always pans. Cursor drag is opt-in and temporary.
+  const [cursorDragMode,setCursorDragMode]=useState(false);
   const scrollX=useRef(0);
+  const scrollViewRef=useRef<ScrollView|null>(null);
+  const autoScrollDataset=useRef<string|null>(null);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
   const showVolume=dataKeys.includes('volume')||chartStyle==='price-volume';
   const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low');
@@ -88,6 +92,9 @@ export function OfficialCandleChart({
   const selectedIndex=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const y=(value:number)=>(axisHigh-value)/span*PLOT_HEIGHT;
   const fullWidth=LEFT_PAD+ordered.length*STEP+4;
+  // Changing symbol or range presents the latest trade; subsequent user panning
+  // must never be forcibly snapped back by an ordinary state update.
+  const datasetId=ordered.length?ordered[0]!.date+'|'+ordered[ordered.length-1]!.date+'|'+ordered.length:'';
   const lineGeometry=useMemo(()=>marketPricePath(ordered,STEP,LEFT_PAD,PLOT_HEIGHT),[ordered]);
   const lineTrend=ordered.length>1?ordered[ordered.length-1]!.close-ordered[0]!.close:0;
   const lineColor=lineTrend>0?colors.gain:lineTrend<0?colors.loss:colors.flat;
@@ -126,11 +133,22 @@ export function OfficialCandleChart({
     <View style={styles.toolbar}>
       <Text style={styles.caption}>TWSE 歷史資料源 · {rangeLabel} · {ordered.length} 個交易日 · {chartStyle}</Text>
       <Pressable accessibilityRole="switch" accessibilityState={{checked:crosshairEnabled}}
-        onPress={()=>{setCrosshairEnabled(value=>!value);setSelectedDate(selected?.date??null);}}
+        onPress={()=>{setCrosshairEnabled(value=>!value);setCursorDragMode(false);setSelectedDate(selected?.date??null);}}
         style={[styles.crosshairToggle,crosshairEnabled&&styles.crosshairActive]}>
         <Text style={[styles.toggleText,crosshairEnabled&&styles.toggleActiveText]}>{crosshairEnabled?'十字線 ON':'十字線 OFF'}</Text>
       </Pressable>
     </View>
+    {crosshairEnabled?<View style={styles.cursorModeRow}>
+      <Text style={styles.caption}>操作方式</Text>
+      <Pressable accessibilityRole="button" accessibilityState={{selected:!cursorDragMode}}
+        onPress={()=>setCursorDragMode(false)} style={[styles.modeButton,!cursorDragMode&&styles.modeSelected]}>
+        <Text style={styles.modeButtonText}>左右滑動圖表</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityState={{selected:cursorDragMode}}
+        onPress={()=>setCursorDragMode(true)} style={[styles.modeButton,cursorDragMode&&styles.modeSelected]}>
+        <Text style={styles.modeButtonText}>拖動十字線</Text>
+      </Pressable>
+    </View>:null}
     {selected?<View style={styles.detail}>
       <Text style={styles.date}>{selected.date}</Text>
       <Text style={styles.number}>{[
@@ -141,9 +159,26 @@ export function OfficialCandleChart({
       {selectedMetrics.length?<Text style={styles.metricText}>{selectedMetrics.join('　')}</Text>:null}
     </View>:null}
     <View style={styles.plotRow}>
+      <View style={styles.axis}>
+        <Text style={styles.axisText}>{price(axisHigh)}</Text>
+        <Text style={styles.axisText}>{price((axisHigh+axisLow)/2)}</Text>
+        <Text style={styles.axisText}>{price(axisLow)}</Text>
+        <Text style={styles.axisTitle}>基準</Text>
+        {showCost&&holding?<Text style={[styles.costAxisLabel,{top:clamp(y(holding.costAvg)-11,15,PLOT_HEIGHT-34)}]}>
+          成本 {price(holding.costAvg)}
+        </Text>:null}
+      </View>
       <View style={styles.viewport}>
-        <ScrollView horizontal scrollEnabled={!crosshairEnabled} showsHorizontalScrollIndicator
-          scrollEventThrottle={32} onScroll={event=>{scrollX.current=event.nativeEvent.contentOffset.x;}}
+        <ScrollView ref={scrollViewRef} horizontal
+          scrollEnabled={!(crosshairEnabled&&cursorDragMode)} directionalLockEnabled nestedScrollEnabled
+          showsHorizontalScrollIndicator persistentScrollbar scrollEventThrottle={16}
+          onScroll={event=>{scrollX.current=event.nativeEvent.contentOffset.x;}}
+          onContentSizeChange={()=>{
+            if(datasetId&&autoScrollDataset.current!==datasetId){
+              autoScrollDataset.current=datasetId;
+              scrollViewRef.current?.scrollToEnd({animated:false});
+            }
+          }}
           contentContainerStyle={[styles.scroll,{width:fullWidth}]}>
           {ordered.map((candle,index)=>{
             const candlePaint=solidCandleAppearance(candle.open,candle.close,colors);
@@ -178,7 +213,7 @@ export function OfficialCandleChart({
               {chartStyle==='area'?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
               <Polyline points={lineGeometry.line} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
             </Svg>:null}
-          {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}><Text style={styles.costLabel}>成本 {price(holding.costAvg)}</Text></View>:null}
+          {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}/>:null}
           {crosshairEnabled&&selected?<View pointerEvents="none" style={[styles.crosshairLayer,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)+20}]}>
             <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*STEP+STEP/2}]}/>
             <View style={[styles.horizontalCrosshair,{top:y(selected.close)}]}/>
@@ -186,28 +221,31 @@ export function OfficialCandleChart({
             <View style={[styles.crosshairDateTag,{left:clamp(LEFT_PAD+selectedIndex*STEP-19,0,Math.max(0,fullWidth-50))}]}><Text style={styles.crosshairTagText}>{selected.date.slice(5)}</Text></View>
           </View>:null}
         </ScrollView>
-        {crosshairEnabled?<View style={[styles.touchOverlay,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)}]}
+        {crosshairEnabled&&cursorDragMode?<View style={[styles.touchOverlay,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)}]}
           onStartShouldSetResponder={()=>true} onMoveShouldSetResponder={()=>true}
           onResponderGrant={e=>chooseAt(e.nativeEvent.locationX)}
           onResponderMove={e=>chooseAt(e.nativeEvent.locationX)}
           accessibilityLabel="十字線觸控區：左右滑動選擇交易日"/>:null}
       </View>
-      <View style={styles.axis}>
-        <Text style={styles.axisText}>{price(axisHigh)}</Text>
-        {crosshairEnabled&&selected?<Text style={[styles.crosshairPrice,{top:clamp(y(selected.close)-9,0,PLOT_HEIGHT-18)}]}>{price(selected.close)}</Text>:null}
-        <Text style={styles.axisText}>{price((axisHigh+axisLow)/2)}</Text>
-        <Text style={styles.axisText}>{price(axisLow)}</Text>
-        <Text style={styles.axisTitle}>價格</Text>
+      <View style={styles.actualAxis}>
+        {selected?<Text style={[styles.crosshairPrice,{top:clamp(y(selected.close)-9,0,PLOT_HEIGHT-18)}]}>
+          {price(selected.close)}
+        </Text>:null}
+        <Text style={styles.actualAxisTitle}>{crosshairEnabled?'選取值':'實際值'}</Text>
       </View>
     </View>
     {secondaryKey?<Text style={styles.caption}>副圖：{secondaryLabel[secondaryKey]} · {number(secMin)} ～ {number(secMax)}</Text>:null}
     {holding&&(dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))||chartStyle==='pnl'||chartStyle==='roi'||chartStyle==='cost-price')?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
-    <Text style={styles.caption}>{crosshairEnabled?'左右拖動十字線檢視歷史資料；關閉後可橫向捲動':'點選交易日查看完整資料；開啟十字線後可拖動'}</Text>
+    <Text style={styles.caption}>{crosshairEnabled?(cursorDragMode?'拖動十字線選取日期；按「左右滑動圖表」可前後瀏覽':'左右滑動可查看全部歷史 K 棒；輕點 K 棒選取日期，亦可切換拖動十字線'):'左右滑動瀏覽所有歷史資料；點選 K 棒查看日期與實際值'}</Text>
   </View>;
 }
 const styles=StyleSheet.create({
   root:{gap:7,minHeight:285},notice:{fontSize:11,lineHeight:20,color:colors.textSecondary,padding:14},
   toolbar:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:6},
+  cursorModeRow:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:6},
+  modeButton:{paddingHorizontal:8,paddingVertical:5,borderWidth:1,borderColor:colors.border,borderRadius:9},
+  modeSelected:{borderColor:colors.primary,backgroundColor:colors.surfaceMuted},
+  modeButtonText:{fontSize:10,color:colors.text,fontWeight:'700'},
   caption:{fontSize:10,color:colors.textSecondary,flexShrink:1},
   estimateNote:{fontSize:9,lineHeight:14,color:colors.textSecondary},
   crosshairToggle:{paddingHorizontal:9,paddingVertical:6,borderRadius:9,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
@@ -221,10 +259,12 @@ const styles=StyleSheet.create({
   volumePlot:{height:VOLUME_HEIGHT,justifyContent:'flex-end',borderBottomWidth:1,borderBottomColor:colors.border},
   secondaryPlot:{height:SECONDARY_HEIGHT,position:'relative',borderBottomWidth:1,borderBottomColor:colors.border,width:CANDLE_WIDTH},
   tick:{fontSize:7,color:colors.textSecondary,height:20,textAlign:'center',width:STEP,overflow:'visible'},
-  axis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,justifyContent:'space-between',paddingLeft:3,position:'relative'},
+  axis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,justifyContent:'space-between',paddingRight:4,position:'relative',alignItems:'flex-start'},
   axisText:{fontSize:9,color:colors.textSecondary},axisTitle:{fontSize:9,color:colors.textSecondary},
+  costAxisLabel:{position:'absolute',left:0,fontSize:8,fontWeight:'800',color:colors.primary,backgroundColor:colors.surface,paddingRight:3},
+  actualAxis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,position:'relative',alignItems:'flex-end'},
+  actualAxisTitle:{position:'absolute',bottom:0,right:0,fontSize:9,color:colors.textSecondary},
   costLine:{position:'absolute',left:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary,zIndex:3},
-  costLabel:{position:'absolute',left:4,top:-15,fontSize:8,fontWeight:'800',color:colors.primary,backgroundColor:colors.surface},
   crosshairLayer:{position:'absolute',top:0,left:0,width:'100%'},
   verticalCrosshair:{position:'absolute',top:0,height:PLOT_HEIGHT,borderLeftWidth:1,borderStyle:'dashed',borderColor:colors.primary},
   horizontalCrosshair:{position:'absolute',left:0,right:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary},
