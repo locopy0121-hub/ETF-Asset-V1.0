@@ -9,6 +9,7 @@ import {FrameCard} from '../components/FrameCard';
 import {OfficialCandleChart} from '../components/OfficialCandleChart';
 import {TaiexIndexCard} from '../components/TaiexIndexCard';
 import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
+import {StockDividendHistoryContent} from '../components/StockDividendHistoryContent';
 import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
 import {PageGearButton} from '../components/PageGearButton';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
@@ -28,7 +29,7 @@ import {colors,radius,spacing} from '../theme/tokens';
 
 const tabs:readonly {key:ResearchTab;label:string}[]=[
   {key:'chart',label:'即時／K線'},{key:'profile',label:'基本資料'},{key:'etf',label:'ETF成分'},
-  {key:'institution',label:'法人／主力'},{key:'premium',label:'折溢價'},{key:'news',label:'新聞'},
+  {key:'institution',label:'法人／主力'},{key:'dividend',label:'歷史股利'},{key:'premium',label:'折溢價'},{key:'news',label:'新聞'},
 ];
 const price=(n:number|null|undefined)=>typeof n==='number'&&Number.isFinite(n)&&n>0?n.toFixed(2):'—';
 const amount=(n:number|null|undefined)=>typeof n==='number'&&Number.isFinite(n)&&n>=0?n.toLocaleString('zh-TW'):'—';
@@ -215,6 +216,7 @@ export function MarketResearchScreen(){
         </View>}
         <Text style={{fontSize:11,color:theme.palette.textSecondary}}>券商分點、主力與大戶資料仍需獨立、合法且具時間戳的來源，不由法人日報推算。</Text>
       </View>:null}
+      {tab==='dividend'?<StockDividendHistoryContent key={symbol} symbol={symbol} isEtf={isEtfSymbol(symbol)} market={info?.market??null}/>:null}
       {tab==='premium'?<View style={{gap:8}}>
         {!isEtfSymbol(symbol)?<Text style={{color:theme.palette.textSecondary}}>非 ETF 標的不適用折溢價。</Text>:
         info?.market!=='TWSE'?<Text style={{color:theme.palette.textSecondary}}>目前僅支援 TWSE 上市 ETF 的官方參考淨值；上櫃商品不套用上市 ETF 資料。</Text>:
@@ -237,7 +239,7 @@ export function MarketResearchScreen(){
       {tab==='news'?(relatedNews.length?relatedNews.map(n=><Pressable key={n.id} onPress={()=>void Linking.openURL(n.url).catch(()=>{})} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{n.title}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{n.source}｜{n.publishedAt}</Text></View>
         </Pressable>):<Text style={{color:theme.palette.textSecondary}}>目前無此標的經核實新聞。既有新聞來源僅追蹤持股，不用其他標的新聞替代。</Text>):null}
-      {tab==='chart'?<Text style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股、法人、折溢價及新聞。</Text>:null}
+      {tab==='chart'?<Text style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股、法人、歷史股利、折溢價及新聞。</Text>:null}
     </FrameCard>}]:[]),
   ];
   return <>

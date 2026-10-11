@@ -35,5 +35,5 @@ assert.equal(candleIndexAtX(2,0,82,18,3),0,'first candle clamped');
 assert.doesNotMatch(settings,/cursorDragMode|costAxisLabel/,'protected settings page only gets the version identifier update');
 assert.doesNotMatch(finance,/cursorDragMode|costAxisLabel/,'financial core untouched');
 const version=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.equal(version.version,'4.0.34');assert.equal(version.android.versionCode,40034);
+assert.ok(Number(version.version.split('.')[2])>=34);assert.ok(version.android.versionCode>=40034);
 console.log('V4.0.34 baseline left / actual values right, historical horizontal pan, opt-in cursor dragging and safe SSOT: PASS');

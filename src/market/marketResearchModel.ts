@@ -3,7 +3,7 @@ import type {TaiwanSecurityInfo} from './TaiwanSecurityCatalog';
 import type {DailyCandle} from './twseDailyHistory';
 
 export type ResearchPeriod='day'|'week'|'month';
-export type ResearchTab='chart'|'profile'|'etf'|'institution'|'premium'|'news';
+export type ResearchTab='chart'|'profile'|'etf'|'institution'|'dividend'|'premium'|'news';
 
 export function searchTaiwanSecurities(items:readonly TaiwanSecurityInfo[],text:string,max=40){
   const q=text.trim().toLocaleLowerCase('zh-TW');
