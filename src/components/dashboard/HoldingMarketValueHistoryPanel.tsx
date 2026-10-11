@@ -1,4 +1,5 @@
 import {useMemo,useState} from 'react';
+import {TrendChartViewport} from '../TrendChartViewport';
 import {StyleSheet,View} from 'react-native';
 import {Pressable,Text} from '../EditableNative';
 import {useSystemColors} from '../../theme/useSystemColors';
@@ -49,7 +50,6 @@ export function HoldingMarketValueHistoryPanel({records}:{
   const [pageSize,setPageSize]=useState<PnlPageSize>(20);
   const [page,setPage]=useState(0);
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
-  const [plotWidth,setPlotWidth]=useState(300);
 
   const chronological=useMemo(()=>[...records].sort((a,b)=>a.date.localeCompare(b.date)),[records]);
   const grouped=useMemo(()=>summarizePeriods(chronological,period),[chronological,period]);
@@ -62,7 +62,7 @@ export function HoldingMarketValueHistoryPanel({records}:{
   const visible=useMemo(()=>sortPnlRows(filterPnlRows(ranged,filter),sort,ascending),
     [ranged,filter,sort,ascending]);
   const paging=pagePnlRows(visible,page,pageSize);
-  const displayBuckets=useMemo(()=>samplePnlBuckets(currentBuckets,metric,80),[currentBuckets,metric]);
+  const displayBuckets=useMemo(()=>samplePnlBuckets(currentBuckets,metric,240),[currentBuckets,metric]);
   const monthly=useMemo(()=>summarizePeriods(ranged,'month').reverse(),[ranged]);
   const stats=useMemo(()=>summarizeDailyPnl(ranged),[ranged]);
   const win=winRate(stats.gainDays,stats.lossDays);
@@ -78,12 +78,7 @@ export function HoldingMarketValueHistoryPanel({records}:{
   const ceiling=metric==='marketValue'&&numbers.length?Math.max(...numbers):Math.max(0,...numbers);
   const padding=Math.max(1,(ceiling-floor)*0.1);
   const min=floor-padding,max=ceiling+padding;
-  const inner=Math.max(32,plotWidth-24);
   const y=(value:number)=>12+(max-value)/Math.max(1,max-min)*(GRAPH_HEIGHT-36);
-  const x=(index:number)=>12+(displayBuckets.length<=1?inner/2:index/(displayBuckets.length-1)*inner);
-  const points=displayBuckets.map((bucket,index)=>({
-    bucket,value:bucketValue(bucket,metric),x:x(index),y:y(bucketValue(bucket,metric)),
-  }));
   const baseline=y(metric==='marketValue'?floor:0);
 
   const changePeriod=(next:PnlPeriod)=>{
@@ -140,10 +135,17 @@ export function HoldingMarketValueHistoryPanel({records}:{
         </View>
         <Text style={styles.chartDate}>{selectedBucket?.label??'無紀錄'}</Text>
       </View>
-      <View style={styles.plot} onLayout={e=>{
-        const width=Math.floor(e.nativeEvent.layout.width);
-        if(width>0&&width!==plotWidth)setPlotWidth(width);
-      }}>
+      <TrendChartViewport pointCount={displayBuckets.length} plotHeight={GRAPH_HEIGHT}
+        seriesId={period+'|'+range+'|'+(displayBuckets[0]?.key??'')+'|'+(displayBuckets[displayBuckets.length-1]?.key??'')}
+        leftHigh={money(ceiling)} leftLow={money(floor)}
+        rightValue={selectedBucket?(metric==='marketValue'?'NT$ '+money(selectedBucket.lastMarketValue):signed(selectedBucket.periodPnl)):'—'}>
+        {chartWidth=>{
+          const inner=Math.max(32,chartWidth-24);
+          const x=(index:number)=>12+(displayBuckets.length<=1?inner/2:index/(displayBuckets.length-1)*inner);
+          const points=displayBuckets.map((bucket,index)=>({
+            bucket,value:bucketValue(bucket,metric),x:x(index),y:y(bucketValue(bucket,metric)),
+          }));
+          return <View style={[styles.plot,{width:chartWidth}]}>
         {points.length?<>
           {[0.25,0.5,0.75].map(f=><View key={f} pointerEvents="none" style={[styles.gridLine,{top:12+f*(GRAPH_HEIGHT-36)}]}/>)}
           {chartMode==='bar'?points.map((point,i)=>{
@@ -164,7 +166,7 @@ export function HoldingMarketValueHistoryPanel({records}:{
             }}/>;
           })}
           {points.map((point,i)=>{
-            const prior=points[i-1]?.x??12,next=points[i+1]?.x??plotWidth-12;
+            const prior=points[i-1]?.x??12,next=points[i+1]?.x??chartWidth-12;
             const hitWidth=Math.max(10,(next-prior)/2);
             return <Pressable key={'point'+point.bucket.key} accessibilityRole="button"
               accessibilityLabel={point.bucket.label+' '+(metric==='marketValue'?'持股市值 ':'期間損益 ')+money(point.value)}
@@ -172,10 +174,10 @@ export function HoldingMarketValueHistoryPanel({records}:{
               style={{position:'absolute',left:Math.max(0,point.x-hitWidth/2),top:0,
                 height:GRAPH_HEIGHT,width:hitWidth}}/>;
           })}
-          <Text pointerEvents="none" style={[styles.axis,{top:3}]}>{money(ceiling)}</Text>
-          <Text pointerEvents="none" style={[styles.axis,{bottom:2}]}>{money(floor)}</Text>
         </>:<View style={styles.noGraph}><Text style={styles.empty}>目前沒有可繪製的行情歷史。</Text></View>}
-      </View>
+          </View>;
+        }}
+      </TrendChartViewport>
       <View style={styles.axisFoot}><Text style={styles.tiny}>{displayBuckets[0]?.label??'—'}</Text>
         <Text style={styles.tiny}>{displayBuckets.length<currentBuckets.length?'圖形抽樣，不影響完整統計':''}</Text>
         <Text style={styles.tiny}>{displayBuckets[displayBuckets.length-1]?.label??'—'}</Text></View>
