@@ -8,12 +8,13 @@ const taiex=read('src/components/TaiexIndexCard.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
 
-assert.equal(pkg.version,'4.0.39');
+assert.ok(Number(pkg.version.split('.')[2])>=39,'V4.0.39 inherited market editor must remain supported');
 assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,40039);
-assert.equal(app.ios.buildNumber,'40039');
-assert.match(settings,/const VERSION='4\.0\.39'/);
-assert.match(settings,/const BUILD='40039'/);
+const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
+assert.equal(app.android.versionCode,build);
+assert.equal(app.ios.buildNumber,String(build));
+assert.ok(settings.includes("const VERSION='"+pkg.version+"'"));
+assert.ok(settings.includes("const BUILD='"+build+"'"));
 
 // A real frame from MarketResearchScreen must appear in the independent preview.
 // The background page-header artwork must not replace the selected index card.
