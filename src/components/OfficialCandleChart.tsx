@@ -61,6 +61,9 @@ export function OfficialCandleChart({
   const zoomRef=useRef(zoom);
   const viewportWidth=useRef(0);
   const pendingZoom=useRef<{oldOffset:number;oldStep:number;newStep:number}|null>(null);
+  // Store the last requested pinch level while React Native recomputes content width.
+  // Without this, quick two-finger gestures drop the user's final scale request.
+  const queuedZoom=useRef<number|null>(null);
   const pinch=useRef<{distance:number;initialZoom:number}|null>(null);
   const scrollX=useRef(0);
   const scrollViewRef=useRef<ScrollView|null>(null);
@@ -115,7 +118,11 @@ export function OfficialCandleChart({
   };
   const applyZoom=(next:number)=>{
     const target=nearestChartZoom(next),before=zoomRef.current;
-    if(target===before||pendingZoom.current)return;
+    if(pendingZoom.current){
+      queuedZoom.current=target===before?null:target;
+      return;
+    }
+    if(target===before)return;
     pendingZoom.current={oldOffset:scrollX.current,oldStep:chartCandleMetrics(before).step,newStep:chartCandleMetrics(target).step};
     zoomRef.current=target;
     setZoom(target);
@@ -219,6 +226,7 @@ export function OfficialCandleChart({
           onContentSizeChange={()=>{
             if(datasetId&&autoScrollDataset.current!==datasetId){
               pendingZoom.current=null;
+              queuedZoom.current=null;
               autoScrollDataset.current=datasetId;
               scrollViewRef.current?.scrollToEnd({animated:false});
               return;
@@ -229,6 +237,13 @@ export function OfficialCandleChart({
               const target=anchoredChartOffset(anchor.oldOffset,viewportWidth.current,anchor.oldStep,anchor.newStep,fullWidth,LEFT_PAD);
               scrollX.current=target;
               scrollViewRef.current?.scrollTo({x:target,animated:false});
+              // Apply the last gesture intent only after the previous width and offset settle.
+              // Each new scale receives its own anchored offset on the next layout callback.
+              if(queuedZoom.current!==null){
+                const requested=queuedZoom.current;
+                queuedZoom.current=null;
+                applyZoom(requested);
+              }
             }
             if(datasetId&&autoScrollDataset.current!==datasetId){autoScrollDataset.current=datasetId;}
           }}
