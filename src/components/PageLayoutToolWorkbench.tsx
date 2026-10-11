@@ -1,5 +1,5 @@
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
-import {useEffect,useMemo,useState,type ReactElement} from 'react';
+import {useEffect,useMemo,useRef,useState,type ReactElement} from 'react';
 import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
@@ -97,6 +97,8 @@ export function PageLayoutToolWorkbench({
     pageKey==='dividend'&&previewFrames.some(f=>f.key==='dividend-calendar')?'dividend-calendar':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
   const [frameKey,setFrameKey]=useState(initial);
+  const previewScrollRef=useRef<ScrollView|null>(null);
+  useEffect(()=>{if(pageKey==='market')previewScrollRef.current?.scrollTo({y:0,animated:false});},[pageKey,frameKey]);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
   const [quickEditKey,setQuickEditKey]=useState<QuickBarKey|'all'>('all');
   const [openGroup,setOpenGroup]=useState<string|null>('size');
@@ -391,7 +393,7 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
       <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
-      <ScrollView key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'||pageKey==='market'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+      <ScrollView ref={previewScrollRef} key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
         <View style={styles.previewViewport} onLayout={event=>{
           const width=event.nativeEvent.layout.width;
