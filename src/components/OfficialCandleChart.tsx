@@ -8,6 +8,7 @@ import type {ChartDataKey,NativeChartStyle} from '../domain/chartEditor';
 import {colors} from '../theme/tokens';
 import {candleIndexAtX} from '../domain/chartCrosshair';
 import {marketPricePath} from '../domain/marketChartGeometry';
+import {solidCandleAppearance} from '../domain/candleAppearance';
 
 const PLOT_HEIGHT=160;
 const VOLUME_HEIGHT=50;
@@ -145,8 +146,8 @@ export function OfficialCandleChart({
           scrollEventThrottle={32} onScroll={event=>{scrollX.current=event.nativeEvent.contentOffset.x;}}
           contentContainerStyle={[styles.scroll,{width:fullWidth}]}>
           {ordered.map((candle,index)=>{
-            const positive=candle.close>=candle.open;
-            const tone=positive?colors.gain:colors.loss;
+            const candlePaint=solidCandleAppearance(candle.open,candle.close,colors);
+            const tone=candlePaint.wick;
             const candleTop=y(Math.max(candle.open,candle.close));
             const candleBottom=y(Math.min(candle.open,candle.close));
             const wickTop=y(candle.high),wickBottom=y(candle.low);
@@ -165,9 +166,9 @@ export function OfficialCandleChart({
                 {columnMode?<View style={{position:'absolute',left:2,right:2,top:y(candle.close),height:Math.max(2,PLOT_HEIGHT-y(candle.close)),backgroundColor:tone,opacity:.78}}/>:
                 lineMode?(chartStyle==='line'||chartStyle==='area'?null:<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:3,backgroundColor:tone}}/>):
                 ohlcMode?<><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
-                <><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:positive?'transparent':tone,borderColor:tone}]}/></>}
+                <><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:candlePaint.bodyFill,borderColor:candlePaint.bodyBorder}]}/></>}
               </View>
-              {showVolume?<View style={styles.volumePlot}><View style={{height:Math.max(1,candle.volume/biggestVolume*(VOLUME_HEIGHT-6)),backgroundColor:tone,width:7}}/></View>:null}
+              {showVolume?<View style={styles.volumePlot}><View style={{height:Math.max(1,candle.volume/biggestVolume*(VOLUME_HEIGHT-6)),backgroundColor:candlePaint.volume,width:7}}/></View>:null}
               {secondaryKey?<View style={styles.secondaryPlot}><View style={{position:'absolute',left:3,width:7,top:Math.min(zeroY,valueY),height:Math.max(1,Math.abs(valueY-zeroY)),backgroundColor:sec>=0?colors.gain:colors.loss}}/></View>:null}
               <Text style={styles.tick}>{showTick?candle.date.slice(5).replace('-','/'):''}</Text>
             </Pressable>;
