@@ -14,7 +14,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {OfficialCandleChart,type HoldingChartContext} from '../components/OfficialCandleChart';
 import {ChartStyleDropdown} from '../components/ChartStyleDropdown';
 import {
-  DEFAULT_HOLDING_CHART,HOLDING_CHART_DATA_OPTIONS,HOLDING_CHART_RANGES,MARKET_CHART_DATA_OPTIONS,NATIVE_CHART_STYLES,
+  DEFAULT_HOLDING_CHART,HOLDING_CHART_DATA_OPTIONS,HOLDING_CHART_RANGES,MARKET_CHART_DATA_OPTIONS,
   type ChartDataKey,type HoldingChartRange,type NativeChartStyle,
 } from '../domain/chartEditor';
 import type {HoldingQuote} from '../domain/uiModels';
