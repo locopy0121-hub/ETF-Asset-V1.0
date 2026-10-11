@@ -290,7 +290,7 @@ export function OfficialCandleChart({
     </View>
     {secondaryKey?<Text style={styles.caption}>副圖：{secondaryLabel[secondaryKey]} · {number(secMin)} ～ {number(secMax)}</Text>:null}
     {holding&&(dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))||chartStyle==='pnl'||chartStyle==='roi'||chartStyle==='cost-price')?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
-    <Text style={styles.caption}>圖表可用＋／－放大縮小，點擊比例還原，支援雙指縮放。{crosshairEnabled?(cursorDragMode?'拖動十字線選取日期；切回「左右滑動圖表」可查看歷史':'左右滑動歷史 K 棒，輕點查看選取日期'):'左右滑動瀏覽所有歷史行情'}</Text>
+    <Text style={styles.caption}>圖表可用＋／－放大縮小，點擊比例還原，支援雙指縮放。{crosshairEnabled?(cursorDragMode?'拖動十字線選取日期；切回「左右滑動圖表」可查看歷史':'左右滑動可查看全部歷史 K 棒，輕點查看選取日期'):'左右滑動瀏覽所有歷史行情'}</Text>
   </View>;
 }
 const styles=StyleSheet.create({

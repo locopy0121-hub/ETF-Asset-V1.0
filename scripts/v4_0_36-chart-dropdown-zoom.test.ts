@@ -37,7 +37,7 @@ assert.match(source,/marketPricePath\(ordered,step,LEFT_PAD,PLOT_HEIGHT\)/);
 assert.match(source,/left:LEFT_PAD\+selectedIndex\*step/,'cursor follows zoomed candles');
 assert.match(source,/scrollEnabled=\{!\(crosshairEnabled&&cursorDragMode\)\}/);
 assert.match(source,/backgroundColor:candlePaint\.bodyFill,borderColor:candlePaint\.bodyBorder/);
-assert.ok(source.indexOf('<View style={styles.axis}>')<source.indexOf('<View style={styles.viewport}>'));
+assert.ok(source.indexOf('<View style={styles.axis}>')<source.indexOf('<View style={styles.viewport}'));
 assert.ok(source.indexOf('<View style={styles.actualAxis}>')>source.indexOf('</ScrollView>'));
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/ChartStyleDropdown|chartZoom/);
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/ChartStyleDropdown|chartZoom/);
