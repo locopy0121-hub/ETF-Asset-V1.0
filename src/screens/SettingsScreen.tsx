@@ -60,7 +60,7 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='4.0.36';
+const VERSION='4.0.37';
 const BUILD='40036';
 
 export function SettingsScreen(){
