@@ -13,7 +13,8 @@ import {solidCandleAppearance} from '../domain/candleAppearance';
 const PLOT_HEIGHT=160;
 const VOLUME_HEIGHT=50;
 const SECONDARY_HEIGHT=54;
-const PRICE_AXIS_WIDTH=58;
+const REFERENCE_AXIS_WIDTH=66;
+const VALUE_AXIS_WIDTH=58;
 const CANDLE_WIDTH=13;
 const GAP=5;
 const STEP=CANDLE_WIDTH+GAP;
@@ -55,6 +56,10 @@ export function OfficialCandleChart({
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
   const [crosshairEnabled,setCrosshairEnabled]=useState(crosshairDefault);
   const scrollX=useRef(0);
+  const scrollRef=useRef<ScrollView>(null);
+  const viewportWidth=useRef(0);
+  const initialScrollKey=useRef<string|null>(null);
+  const lastSelectedDate=useRef<string|null>(null);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
   const showVolume=dataKeys.includes('volume')||chartStyle==='price-volume';
   const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low');
@@ -92,13 +97,21 @@ export function OfficialCandleChart({
   const lineTrend=ordered.length>1?ordered[ordered.length-1]!.close-ordered[0]!.close:0;
   const lineColor=lineTrend>0?colors.gain:lineTrend<0?colors.loss:colors.flat;
   const chooseCandle=(candle:DailyCandle)=>{
+    if(lastSelectedDate.current===candle.date)return;
+    lastSelectedDate.current=candle.date;
     setSelectedDate(candle.date);
     onSelectCandle?.(candle);
   };
-  const chooseAt=(touchX:number)=>{
-    const index=candleIndexAtX(touchX,scrollX.current,ordered.length,STEP,LEFT_PAD);
+  const selectVisibleCandle=(offsetX:number)=>{
+    if(!crosshairEnabled||viewportWidth.current<=0)return;
+    // The rightmost fully visible candle is selected while panning through history.
+    // A tap on any candle still selects that exact date.
+    const localX=Math.max(0,viewportWidth.current-STEP*1.5);
+    const index=candleIndexAtX(localX,offsetX,ordered.length,STEP,LEFT_PAD);
     if(index>=0)chooseCandle(ordered[index]!);
   };
+  const latest=ordered[ordered.length-1];
+  const contentKey=ordered.length+'|'+ordered[0]?.date+'|'+latest?.date;
   const selectedIdx=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const selectedPrior=selectedIdx>0?ordered[selectedIdx-1]!.close:selected?.open??0;
   const selectedChange=selected?(selected.close-selectedPrior):0;
@@ -141,9 +154,28 @@ export function OfficialCandleChart({
       {selectedMetrics.length?<Text style={styles.metricText}>{selectedMetrics.join('　')}</Text>:null}
     </View>:null}
     <View style={styles.plotRow}>
-      <View style={styles.viewport}>
-        <ScrollView horizontal scrollEnabled={!crosshairEnabled} showsHorizontalScrollIndicator
-          scrollEventThrottle={32} onScroll={event=>{scrollX.current=event.nativeEvent.contentOffset.x;}}
+      <View style={styles.referenceAxis}>
+        <Text style={[styles.referenceTick,{top:0}]}>{price(axisHigh)}</Text>
+        {!(showCost&&holding&&Math.abs(y(holding.costAvg)-PLOT_HEIGHT/2)<15)?
+          <Text style={[styles.referenceTick,{top:PLOT_HEIGHT/2-6}]}>{price((axisHigh+axisLow)/2)}</Text>:null}
+        <Text style={[styles.referenceTick,{top:PLOT_HEIGHT-13}]}>{price(axisLow)}</Text>
+        {showCost&&holding?<Text style={[styles.fixedCostLabel,{top:clamp(y(holding.costAvg)-12,13,PLOT_HEIGHT-20)}]}>成本 {price(holding.costAvg)}</Text>:null}
+      </View>
+      <View style={styles.viewport} onLayout={event=>{viewportWidth.current=event.nativeEvent.layout.width;}}>
+        <ScrollView ref={scrollRef} horizontal scrollEnabled nestedScrollEnabled showsHorizontalScrollIndicator
+          scrollEventThrottle={48}
+          onScroll={event=>{
+            scrollX.current=event.nativeEvent.contentOffset.x;
+            selectVisibleCandle(scrollX.current);
+          }}
+          onContentSizeChange={()=>{
+            if(contentKey!==initialScrollKey.current){
+              initialScrollKey.current=contentKey;
+              // Start at the latest historical candles, but do not reset scroll
+              // whenever the crosshair is toggled or a different date is selected.
+              scrollRef.current?.scrollToEnd({animated:false});
+            }
+          }}
           contentContainerStyle={[styles.scroll,{width:fullWidth}]}>
           {ordered.map((candle,index)=>{
             const candlePaint=solidCandleAppearance(candle.open,candle.close,colors);
@@ -178,7 +210,7 @@ export function OfficialCandleChart({
               {chartStyle==='area'?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
               <Polyline points={lineGeometry.line} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
             </Svg>:null}
-          {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}><Text style={styles.costLabel}>成本 {price(holding.costAvg)}</Text></View>:null}
+          {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}/>:null}
           {crosshairEnabled&&selected?<View pointerEvents="none" style={[styles.crosshairLayer,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)+20}]}>
             <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*STEP+STEP/2}]}/>
             <View style={[styles.horizontalCrosshair,{top:y(selected.close)}]}/>
@@ -186,23 +218,15 @@ export function OfficialCandleChart({
             <View style={[styles.crosshairDateTag,{left:clamp(LEFT_PAD+selectedIndex*STEP-19,0,Math.max(0,fullWidth-50))}]}><Text style={styles.crosshairTagText}>{selected.date.slice(5)}</Text></View>
           </View>:null}
         </ScrollView>
-        {crosshairEnabled?<View style={[styles.touchOverlay,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)}]}
-          onStartShouldSetResponder={()=>true} onMoveShouldSetResponder={()=>true}
-          onResponderGrant={e=>chooseAt(e.nativeEvent.locationX)}
-          onResponderMove={e=>chooseAt(e.nativeEvent.locationX)}
-          accessibilityLabel="十字線觸控區：左右滑動選擇交易日"/>:null}
       </View>
-      <View style={styles.axis}>
-        <Text style={styles.axisText}>{price(axisHigh)}</Text>
-        {crosshairEnabled&&selected?<Text style={[styles.crosshairPrice,{top:clamp(y(selected.close)-9,0,PLOT_HEIGHT-18)}]}>{price(selected.close)}</Text>:null}
-        <Text style={styles.axisText}>{price((axisHigh+axisLow)/2)}</Text>
-        <Text style={styles.axisText}>{price(axisLow)}</Text>
-        <Text style={styles.axisTitle}>價格</Text>
+      <View style={styles.valueAxis}>
+        {selected?<Text style={[styles.actualPrice,{top:clamp(y(selected.close)-10,0,PLOT_HEIGHT-20)}]}>{price(selected.close)}</Text>:null}
+        <Text style={styles.axisTitle}>實際值</Text>
       </View>
     </View>
     {secondaryKey?<Text style={styles.caption}>副圖：{secondaryLabel[secondaryKey]} · {number(secMin)} ～ {number(secMax)}</Text>:null}
     {holding&&(dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))||chartStyle==='pnl'||chartStyle==='roi'||chartStyle==='cost-price')?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
-    <Text style={styles.caption}>{crosshairEnabled?'左右拖動十字線檢視歷史資料；關閉後可橫向捲動':'點選交易日查看完整資料；開啟十字線後可拖動'}</Text>
+    <Text style={styles.caption}>{crosshairEnabled?'左右滑動圖表瀏覽完整歷史，十字線自動對應可見 K 棒；亦可點選任一交易日':'左右滑動瀏覽歷史；點選 K 棒可看資料，開啟十字線顯示選取價格'}</Text>
   </View>;
 }
 const styles=StyleSheet.create({
@@ -215,22 +239,23 @@ const styles=StyleSheet.create({
   detail:{padding:8,backgroundColor:colors.surfaceMuted,borderRadius:8,gap:3},
   date:{fontSize:11,color:colors.text,fontWeight:'800'},number:{fontSize:10,color:colors.text,fontWeight:'700'},volumeText:{fontSize:10,color:colors.textSecondary},
   metricText:{fontSize:10,lineHeight:16,color:colors.text,fontWeight:'700'},
-  plotRow:{flexDirection:'row',alignItems:'flex-start'},viewport:{flex:1,position:'relative'},scroll:{paddingLeft:LEFT_PAD,paddingRight:4,position:'relative'},
+  plotRow:{flexDirection:'row',alignItems:'flex-start'},viewport:{flex:1,position:'relative',minWidth:0},scroll:{paddingLeft:LEFT_PAD,paddingRight:4,position:'relative'},
   candleColumn:{alignItems:'center'},pricePlot:{height:PLOT_HEIGHT,width:CANDLE_WIDTH,position:'relative'},
   wick:{position:'absolute',left:6,width:1},body:{position:'absolute',left:2,width:10,borderWidth:1},
   volumePlot:{height:VOLUME_HEIGHT,justifyContent:'flex-end',borderBottomWidth:1,borderBottomColor:colors.border},
   secondaryPlot:{height:SECONDARY_HEIGHT,position:'relative',borderBottomWidth:1,borderBottomColor:colors.border,width:CANDLE_WIDTH},
   tick:{fontSize:7,color:colors.textSecondary,height:20,textAlign:'center',width:STEP,overflow:'visible'},
-  axis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,justifyContent:'space-between',paddingLeft:3,position:'relative'},
-  axisText:{fontSize:9,color:colors.textSecondary},axisTitle:{fontSize:9,color:colors.textSecondary},
+  referenceAxis:{width:REFERENCE_AXIS_WIDTH,height:PLOT_HEIGHT,position:'relative',paddingRight:3},
+  referenceTick:{position:'absolute',right:3,fontSize:9,color:colors.textSecondary,textAlign:'right'},
+  fixedCostLabel:{position:'absolute',left:0,fontSize:9,fontWeight:'800',color:colors.primary,backgroundColor:colors.surface},
+  valueAxis:{width:VALUE_AXIS_WIDTH,height:PLOT_HEIGHT,position:'relative',paddingLeft:3},
+  actualPrice:{position:'absolute',left:1,color:'#FFFFFF',backgroundColor:colors.primary,fontSize:9,fontWeight:'800',paddingHorizontal:3,paddingVertical:2,zIndex:2},
+  axisTitle:{position:'absolute',left:3,bottom:0,fontSize:9,color:colors.textSecondary},
   costLine:{position:'absolute',left:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary,zIndex:3},
-  costLabel:{position:'absolute',left:4,top:-15,fontSize:8,fontWeight:'800',color:colors.primary,backgroundColor:colors.surface},
   crosshairLayer:{position:'absolute',top:0,left:0,width:'100%'},
   verticalCrosshair:{position:'absolute',top:0,height:PLOT_HEIGHT,borderLeftWidth:1,borderStyle:'dashed',borderColor:colors.primary},
   horizontalCrosshair:{position:'absolute',left:0,right:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary},
   volumeCrosshair:{position:'absolute',left:0,right:0,borderTopWidth:1,borderStyle:'dotted',borderColor:colors.textSecondary},
-  crosshairPrice:{position:'absolute',right:0,color:'#FFFFFF',backgroundColor:colors.primary,fontSize:9,fontWeight:'800',paddingHorizontal:3,paddingVertical:2,zIndex:2},
   crosshairDateTag:{position:'absolute',bottom:0,backgroundColor:colors.primary,paddingHorizontal:2,minWidth:45,alignItems:'center'},
-  crosshairTagText:{color:'#FFFFFF',fontSize:8,fontWeight:'800'},
-  touchOverlay:{position:'absolute',top:0,left:0,right:0}
+  crosshairTagText:{color:'#FFFFFF',fontSize:8,fontWeight:'800'}
 });
