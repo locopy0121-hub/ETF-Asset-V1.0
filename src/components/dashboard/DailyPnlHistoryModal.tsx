@@ -5,6 +5,7 @@ import {summarizeDailyPnl,type DailyPnlRecord,type DailyPnlStats} from '../../fi
 import {bucketValue,filterPnlRows,pagePnlRows,periodKey,recentPnlPeriods,samplePnlBuckets,sortPnlRows,summarizePeriods,winRate,
   type PnlFilter,type PnlMetric,type PnlPageSize,type PnlPeriod,type PnlSort} from '../../finance/dailyPnlAnalytics';
 import {colors,radius,spacing} from '../../theme/tokens';
+import {TrendChartViewport} from '../TrendChartViewport';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const signed=(value:number)=>`${value>0?'+':''}${money(value)}`;
@@ -57,7 +58,6 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
   const [filter,setFilter]=useState<PnlFilter>('all');
   const [pageSize,setPageSize]=useState<PnlPageSize>(20);
   const [page,setPage]=useState(0);
-  const [plotWidth,setPlotWidth]=useState(320);
   const [selectedDate,setSelectedDate]=useState<string|null>(null);
 
   const chronological=useMemo(()=>[...records].sort((a,b)=>a.date.localeCompare(b.date)),[records]);
@@ -89,14 +89,8 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
   const min=rawMin-rawRange*0.08;
   const max=rawMax+rawRange*0.08;
   const valueRange=Math.max(1,max-min);
-  const innerWidth=Math.max(40,plotWidth-CHART_PADDING_X*2);
-  const x=(index:number)=>CHART_PADDING_X+(chartRows.length<=1?innerWidth/2:index/(chartRows.length-1)*innerWidth);
   const y=(value:number)=>12+(max-value)/valueRange*(CHART_HEIGHT-38);
-  const points=chartRows.map((bucket,index)=>({
-    bucket,value:bucketValue(bucket,metric),x:x(index),y:y(bucketValue(bucket,metric)),
-  }));
   const baselineY=y(baseline);
-  const selectedPoint=points.find(point=>point.bucket.key===selectedBucket?.key)??null;
   const changePeriod=(next:PnlPeriod)=>{
     setPeriod(next);setPeriodCount(next==='day'?30:next==='month'?12:'all');
     setPage(0);setSelectedDate(null);
@@ -195,10 +189,19 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                   `${selectedBucket.days} 日 · ${selectedBucket.estimatedDays?'含暫估':'正式'}`:'尚無紀錄'}</Text>
               </View>
             </View>
-            <View onLayout={event=>{
-              const width=Math.floor(event.nativeEvent.layout.width);
-              if(width>0&&width!==plotWidth)setPlotWidth(width);
-            }} style={styles.plot}>
+            <TrendChartViewport pointCount={chartRows.length} plotHeight={CHART_HEIGHT}
+              seriesId={period+'|'+periodCount+'|'+(chartRows[0]?.key??'')+'|'+(chartRows[chartRows.length-1]?.key??'')}
+              leftHigh={metric==='marketValue'?money(rawMax):signed(rawMax)}
+              leftLow={metric==='marketValue'?money(rawMin):signed(rawMin)}
+              rightValue={selectedBucket?(metric==='marketValue'?money(bucketValue(selectedBucket,metric)):signed(bucketValue(selectedBucket,metric))):'—'}>
+              {chartWidth=>{
+                const innerWidth=Math.max(40,chartWidth-CHART_PADDING_X*2);
+                const x=(index:number)=>CHART_PADDING_X+(chartRows.length<=1?innerWidth/2:index/(chartRows.length-1)*innerWidth);
+                const points=chartRows.map((bucket,index)=>({
+                  bucket,value:bucketValue(bucket,metric),x:x(index),y:y(bucketValue(bucket,metric)),
+                }));
+                const selectedPoint=points.find(point=>point.bucket.key===selectedBucket?.key)??null;
+                return <View style={[styles.plot,{width:chartWidth}]}>
               {points.length>0?<>
                 {[0.25,0.5,0.75].map(ratio=><View key={ratio} pointerEvents="none"
                   style={[styles.gridLine,{top:12+ratio*(CHART_HEIGHT-38)}]}/>)}
@@ -238,7 +241,7 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                   backgroundColor:tone(points[0]!.bucket.periodPnl),
                 }]}/>:null}
                 {points.map((point,index)=>{
-                  const nextX=points[index+1]?.x??plotWidth-CHART_PADDING_X;
+                  const nextX=points[index+1]?.x??chartWidth-CHART_PADDING_X;
                   const prevX=points[index-1]?.x??CHART_PADDING_X;
                   const hitWidth=Math.max(10,(nextX-prevX)/2);
                   return <Pressable key={'hit-'+point.bucket.key} accessibilityRole="button"
@@ -247,14 +250,10 @@ export function DailyPnlHistoryModal({visible,onClose,records,stats,historyLoadi
                     style={{position:'absolute',left:Math.max(0,point.x-hitWidth/2),
                       top:0,width:hitWidth,height:CHART_HEIGHT}}/>;
                 })}
-                <Text pointerEvents="none" style={[styles.axisLabel,{top:4}]}>
-                  {metric==='marketValue'?money(rawMax):signed(rawMax)}
-                </Text>
-                <Text pointerEvents="none" style={[styles.axisLabel,{bottom:4}]}>
-                  {metric==='marketValue'?money(rawMin):signed(rawMin)}
-                </Text>
               </>:<View style={styles.plotEmpty}><Text style={styles.empty}>尚無可繪製的日／月／年損益紀錄。</Text></View>}
-            </View>
+                </View>;
+              }}
+            </TrendChartViewport>
             <View style={styles.chartFoot}>
               <Text style={styles.chartFootText}>{chartRows[0]?.label??'—'}</Text>
               <Text style={styles.chartFootText}>{chartRows.length<chartPeriods.length?'已抽樣繪圖 · 統計保留全數':''}</Text>
