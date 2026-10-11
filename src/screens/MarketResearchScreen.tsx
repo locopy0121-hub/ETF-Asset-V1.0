@@ -8,6 +8,7 @@ import {PageEditorStack} from '../components/PageEditorStack';
 import {FrameCard} from '../components/FrameCard';
 import {OfficialCandleChart} from '../components/OfficialCandleChart';
 import {ChartStyleDropdown,MARKET_CHART_STYLES} from '../components/ChartStyleDropdown';
+import {ChartPeriodDropdown} from '../components/ChartPeriodDropdown';
 import type {NativeChartStyle} from '../domain/chartEditor';
 import {TaiexIndexCard} from '../components/TaiexIndexCard';
 import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
@@ -166,10 +167,14 @@ export function MarketResearchScreen(){
       {tab==='chart'?<View style={{gap:10}}>
         <Text style={{fontWeight:'800',color:theme.palette.text}}>當日實際成交走勢</Text>
         <IntradayChart points={quote?.intraday??[]}/>
-        <View style={styles.row}>{([{key:'day',label:'日K'},{key:'week',label:'週K'},{key:'month',label:'月K'}] as const).map(x=>
-          <Chip key={x.key} label={x.label} active={period===x.key} click={()=>{setPeriod(x.key);setSelectedCandleDate(null);}}/>)}</View>
-        <View style={styles.row}>{([{key:'m1',label:'1月'},{key:'m3',label:'3月'},{key:'m6',label:'6月'},{key:'y1',label:'1年'}] as const).map(x=>
-          <Chip key={x.key} label={x.label} active={range===x.key} click={()=>{setRange(x.key);setSelectedCandleDate(null);}}/>)}</View>
+        <View style={styles.row}>
+          <ChartPeriodDropdown label="K線週期" value={period} options={([
+            {id:'day',label:'還原日'},{id:'week',label:'還原週'},{id:'month',label:'還原月'},
+          ] as const)} onChange={next=>{setPeriod(next);setSelectedCandleDate(null);}}/>
+          <ChartPeriodDropdown label="歷史區間" value={range} options={([
+            {id:'m1',label:'1月'},{id:'m3',label:'3月'},{id:'m6',label:'6月'},{id:'y1',label:'1年'},
+          ] as const)} onChange={next=>{setRange(next);setSelectedCandleDate(null);}}/>
+        </View>
         <ChartStyleDropdown value={chartStyle} onChange={setChartStyle} allowedStyles={MARKET_CHART_STYLES}/>
         <Text style={{color:theme.palette.textSecondary,fontSize:11}}>橫向滑動瀏覽歷史 K 線；開啟十字線後可拖動選取交易日，並同步 KD／MACD。</Text>
         <OfficialCandleChart key={(symbol??'')+'-'+period+'-'+range} candles={transformed} loading={loading} error={error} rangeLabel={period+'｜'+range}

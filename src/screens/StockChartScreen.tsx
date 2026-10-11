@@ -13,6 +13,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {OfficialCandleChart,type HoldingChartContext} from '../components/OfficialCandleChart';
 import {ChartStyleDropdown} from '../components/ChartStyleDropdown';
+import {ChartPeriodDropdown} from '../components/ChartPeriodDropdown';
 import {
   DEFAULT_HOLDING_CHART,HOLDING_CHART_DATA_OPTIONS,HOLDING_CHART_RANGES,MARKET_CHART_DATA_OPTIONS,
   type ChartDataKey,type HoldingChartRange,type NativeChartStyle,
@@ -114,7 +115,7 @@ export function StockChartScreen({holding:initialHolding,onBack}:{holding:Holdin
         {key:'chart-range',element:<FrameCard title="時間區間">
       <View style={styles.section}>
         <Text editorId="native:StockChartScreen:sectionTitle:11" editorReadOnly={false} style={styles.sectionTitle}>時間區間</Text>
-        <View style={styles.wrap}>{HOLDING_CHART_RANGES.map(item=><Chip key={item} label={item} active={range===item} onPress={()=>setRange(item)}/>)}</View>
+        <ChartPeriodDropdown label="歷史區間" value={range} options={HOLDING_CHART_RANGES.map(item=>({id:item,label:item}))} onChange={setRange}/>
       </View>
 
 
