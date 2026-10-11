@@ -160,9 +160,10 @@ export function OfficialCandleChart({
     </View>:null}
     <View style={styles.plotRow}>
       <View style={styles.axis}>
-        <Text style={styles.axisText}>{price(axisHigh)}</Text>
-        <Text style={styles.axisText}>{price((axisHigh+axisLow)/2)}</Text>
-        <Text style={styles.axisText}>{price(axisLow)}</Text>
+        <Text style={[styles.axisText,{top:0}]}>{price(axisHigh)}</Text>
+        {!(showCost&&holding&&Math.abs(y(holding.costAvg)-PLOT_HEIGHT/2)<14)?
+          <Text style={[styles.axisText,{top:PLOT_HEIGHT/2-6}]}>{price((axisHigh+axisLow)/2)}</Text>:null}
+        <Text style={[styles.axisText,{top:PLOT_HEIGHT-14}]}>{price(axisLow)}</Text>
         <Text style={styles.axisTitle}>基準</Text>
         {showCost&&holding?<Text style={[styles.costAxisLabel,{top:clamp(y(holding.costAvg)-11,15,PLOT_HEIGHT-34)}]}>
           成本 {price(holding.costAvg)}
@@ -253,17 +254,18 @@ const styles=StyleSheet.create({
   detail:{padding:8,backgroundColor:colors.surfaceMuted,borderRadius:8,gap:3},
   date:{fontSize:11,color:colors.text,fontWeight:'800'},number:{fontSize:10,color:colors.text,fontWeight:'700'},volumeText:{fontSize:10,color:colors.textSecondary},
   metricText:{fontSize:10,lineHeight:16,color:colors.text,fontWeight:'700'},
-  plotRow:{flexDirection:'row',alignItems:'flex-start'},viewport:{flex:1,position:'relative'},scroll:{paddingLeft:LEFT_PAD,paddingRight:4,position:'relative'},
+  plotRow:{flexDirection:'row',alignItems:'flex-start'},viewport:{flex:1,minWidth:0,position:'relative'},scroll:{paddingLeft:LEFT_PAD,paddingRight:4,position:'relative'},
   candleColumn:{alignItems:'center'},pricePlot:{height:PLOT_HEIGHT,width:CANDLE_WIDTH,position:'relative'},
   wick:{position:'absolute',left:6,width:1},body:{position:'absolute',left:2,width:10,borderWidth:1},
   volumePlot:{height:VOLUME_HEIGHT,justifyContent:'flex-end',borderBottomWidth:1,borderBottomColor:colors.border},
   secondaryPlot:{height:SECONDARY_HEIGHT,position:'relative',borderBottomWidth:1,borderBottomColor:colors.border,width:CANDLE_WIDTH},
   tick:{fontSize:7,color:colors.textSecondary,height:20,textAlign:'center',width:STEP,overflow:'visible'},
-  axis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,justifyContent:'space-between',paddingRight:4,position:'relative',alignItems:'flex-start'},
-  axisText:{fontSize:9,color:colors.textSecondary},axisTitle:{fontSize:9,color:colors.textSecondary},
+  axis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,position:'relative',paddingRight:4},
+  axisText:{position:'absolute',left:0,fontSize:9,color:colors.textSecondary},
+  axisTitle:{position:'absolute',left:0,top:PLOT_HEIGHT+3,fontSize:9,color:colors.textSecondary},
   costAxisLabel:{position:'absolute',left:0,fontSize:8,fontWeight:'800',color:colors.primary,backgroundColor:colors.surface,paddingRight:3},
   actualAxis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,position:'relative',alignItems:'flex-end'},
-  actualAxisTitle:{position:'absolute',bottom:0,right:0,fontSize:9,color:colors.textSecondary},
+  actualAxisTitle:{position:'absolute',top:PLOT_HEIGHT+3,right:0,fontSize:9,color:colors.textSecondary},
   costLine:{position:'absolute',left:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary,zIndex:3},
   crosshairLayer:{position:'absolute',top:0,left:0,width:'100%'},
   verticalCrosshair:{position:'absolute',top:0,height:PLOT_HEIGHT,borderLeftWidth:1,borderStyle:'dashed',borderColor:colors.primary},
