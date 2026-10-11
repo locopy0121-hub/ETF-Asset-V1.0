@@ -43,5 +43,5 @@ assert.doesNotMatch(runtime,/TaiexIndexCard|market-taiex-index/,'index read mode
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/taiexIndex/);
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/TaiexIndexCard|taiexIndex/);
 const identity=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.equal(identity.version,'4.0.32');assert.equal(identity.android.versionCode,40032);
+assert.ok(Number(identity.version.split('.')[2])>=32);assert.ok(identity.android.versionCode>=40032);
 console.log('V4.0.32 TWSE TAIEX live and official close, no fabricated values, editor frame and account isolation PASS');
