@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'go-v3.0.*', 'go-v3.1.*', 'go-v3.2.*', 'v4.0.*']
   pull_request:
-    branches: [main, 'go-v3.0.*', 'go-v3.1.*', 'go-v3.2.*']
+    branches: [main, 'go-v3.0.*', 'go-v3.1.*', 'go-v3.2.*', 'v4.0.*']
 
 concurrency:
   group: tfasset-qa-${{ github.ref }}
