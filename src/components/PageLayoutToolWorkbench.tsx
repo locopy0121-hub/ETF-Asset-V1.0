@@ -1,5 +1,5 @@
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
-import {useEffect,useMemo,useState,type ReactElement} from 'react';
+import {useEffect,useMemo,useRef,useState,type ReactElement} from 'react';
 import {Alert,Image,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,useWindowDimensions,View} from 'react-native';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
@@ -51,8 +51,9 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
 const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-ai','dividend-calendar','dividend-list','annual-trend']);
+const actualMarketPreviewKeys=new Set(['market-index','market-search','market-summary','market-chart','market-details']);
 const hasRealPreview=(page:MainPageKey,key:string)=>
-  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):false);
+  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):page==='market'?actualMarketPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
   pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,previewElements,pageTitle,onChangePageTitle,onResetPage,previewFirstMode='list',previewListFallback=false,
@@ -90,11 +91,14 @@ export function PageLayoutToolWorkbench({
   ]);
   const orderedFrames=useMemo(()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),[frames,draft]);
   const previewFrames=useMemo(()=>orderedFrames.filter(frame=>hasRealPreview(pageKey,frame.key)),[orderedFrames,pageKey]);
-  const initial=useMemo(()=>pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
+  const initial=useMemo(()=>pageKey==='market'&&previewFrames.some(f=>f.key==='market-index')?'market-index':
+    pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
     pageKey==='dividend'&&previewFrames.some(f=>f.key==='dividend-calendar')?'dividend-calendar':
     previewFrames[0]?.key??frames[0]?.key??'page-header',[pageKey,previewFrames,frames]);
   const [frameKey,setFrameKey]=useState(initial);
+  const previewScrollRef=useRef<ScrollView|null>(null);
+  useEffect(()=>{if(pageKey==='market')previewScrollRef.current?.scrollTo({y:0,animated:false});},[pageKey,frameKey]);
   const [selection,setSelection]=useState<Selection>({id:'frame',kind:'frame',label:'框架'});
   const [quickEditKey,setQuickEditKey]=useState<QuickBarKey|'all'>('all');
   const [openGroup,setOpenGroup]=useState<string|null>('size');
@@ -167,6 +171,12 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'frame',kind:'frame',label:'框架'});
       setOpenGroup('size');return;
     }
+    else if(pageKey==='market'&&frame.key==='market-index'&&kind==='card')
+      setSelection({id:'market:index:chart',kind,label:'指數走勢圖'});
+    else if(pageKey==='market'&&frame.key==='market-index'&&kind==='text')
+      setSelection({id:'market:index:title',kind,label:'加權指數標題'});
+    else if(pageKey==='market'&&frame.key==='market-index'&&kind==='value')
+      setSelection({id:'market:index:value',kind,label:'加權指數數值'});
     else if(holding&&kind==='card')setSelection({id:'card',kind,label:'行情卡片'});
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
@@ -228,6 +238,13 @@ export function PageLayoutToolWorkbench({
     setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');
   };
   const previewContentFor=(item:PageFrameDefinition)=>{
+    if(pageKey==='market'){
+      const actual=previewElements?.find(view=>view.key===item.key)?.element;
+      // Mount the real market component, not the page-header illustration.
+      // Non-index controls are presentation-only here: preview taps must never
+      // perform searches, refresh requests, or other production actions.
+      return actual?<View pointerEvents={item.key==='market-index'?'auto':'none'}>{actual.props.children}</View>:null;
+    }
     if(pageKey==='dividend'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
       return actual?selectDividendPreview(actual.props.children,
@@ -331,12 +348,21 @@ export function PageLayoutToolWorkbench({
           </Pressable>:
           pageKey==='dividend'
             ?<View>{frameContent}</View>
+            :pageKey==='market'
+              ?<View>{frameContent}</View>
             :<Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>{frameContent}</Pressable>}
       </LayoutSelectionProvider>
     </View>;
   };
 
-  const base=selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):
+  const base=selection.id.startsWith('market:index:')?
+      {...TARGET_APPEARANCE,
+        fontSize:selection.kind==='value'?22:selection.kind==='text'?14:12,
+        lineHeight:selection.kind==='value'?30:20,
+        textColor:colors.text,
+        ...(selection.kind==='card'?{backgroundColor:colors.surface,borderColor:colors.border,borderRadius:12}:{}),
+      }:
+    selection.id.startsWith('header:')?headerTargetBase(selection.id,frameConfig):
     selection.id.startsWith('dividend:')?dividendTargetBase(selection.id):dashboardTargetBase(selection.id,dashboard);
   const current=mergeTargetAppearance(base,targets[selection.id]);
   const frameSortIndex=orderedFrames.findIndex(item=>item.key===frame.key);
@@ -345,6 +371,8 @@ export function PageLayoutToolWorkbench({
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
+    if(pageKey==='market')return frame.key==='market-index'
+      ?['frame','card','text','value'].includes(kind):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -365,7 +393,7 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
       <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
-      <ScrollView key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+      <ScrollView ref={previewScrollRef} key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
         <View style={styles.previewViewport} onLayout={event=>{
           const width=event.nativeEvent.layout.width;
@@ -379,7 +407,7 @@ export function PageLayoutToolWorkbench({
               setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
             }}>
               <ThemeBackgroundLayer/>
-              {(pageKey==='dividend'||pageKey==='portfolio'||(pageKey==='home'&&frameKey==='holding-quotes')
+              {(pageKey==='dividend'||pageKey==='portfolio'||pageKey==='market'||(pageKey==='home'&&frameKey==='holding-quotes')
                 ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
               {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
                 const data=chartData(chart);
@@ -471,7 +499,7 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:index:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}

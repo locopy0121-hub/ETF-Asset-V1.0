@@ -114,7 +114,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
 export function normalizeTargetMap(raw:unknown):Record<string,Record<string,TargetOverride>> {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   return Object.fromEntries(Object.entries(raw as Record<string,unknown>)
-    .filter(([frameId,value])=>/^(home|ledger|portfolio|dividend|ai|settings):[a-z0-9-]+$/.test(frameId)
+    .filter(([frameId,value])=>/^(home|ledger|portfolio|market|dividend|ai|settings):[a-z0-9-]+$/.test(frameId)
       &&value&&typeof value==='object'&&!Array.isArray(value))
     .map(([frameId,value])=>[frameId,Object.fromEntries(Object.entries(value as Record<string,unknown>)
       .filter(([id])=>id.length>0&&id.length<=150)

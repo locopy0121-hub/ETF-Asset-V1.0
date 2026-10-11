@@ -31,10 +31,10 @@ for(const screen of [pnl,holdings]){
  assert.match(screen,/summarizePeriods\(chronological,period\)/,'finance source unchanged');
 }
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'4.0.38');
+assert.ok(Number(pkg.version.split('.')[2])>=38,'later releases must retain V4.0.38 chart behavior');
 assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,40038);
-assert.equal(app.ios.buildNumber,'40038');
-assert.match(read('src/screens/SettingsScreen.tsx'),/const BUILD='40038'/);
+assert.ok(app.android.versionCode>=40038);
+assert.equal(Number(app.ios.buildNumber),app.android.versionCode);
+assert.match(read('src/screens/SettingsScreen.tsx'),new RegExp("const BUILD='"+app.android.versionCode+"'"));
 assert.doesNotMatch(read('src/finance/FinanceRuntime.tsx'),/TrendChartViewport|trendContentWidth/);
 console.log('V4.0.38 global PnL/value chart pan, zoom, fixed axes, date selection, protected finance PASS');

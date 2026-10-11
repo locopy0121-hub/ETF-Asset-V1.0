@@ -1,10 +1,13 @@
-import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {View} from 'react-native';
+import {useCallback,useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
+import {StyleSheet,View,type StyleProp,type TextStyle} from 'react-native';
 import Svg,{Line,Polygon,Polyline} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
+import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
+import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
+import {colorWithAlpha} from '../maintenance/frameEffects';
 import {fetchTaiexHistory,fetchTaiexMis} from '../market/taiexIndexSource';
 import {pickTaiexDisplay,selectTaiexHistory,taiex52WeekCloseRange,taipeiIndexDate,
   type IndexClose,type IndexPoint,type IndexRange,type IndexSnapshot} from '../market/taiexIndex';
@@ -45,11 +48,78 @@ function PriceLine({values,color}:{values:readonly IndexPoint[];color:string}){
     </View>
   </View>;
 }
-function IndexMetric({label,value}:{label:string;value:string}){
+/** Named targets share the page editor's persisted visual overrides.
+ * Values remain read-only; editing only changes appearance, never market data.
+ */
+function IndexEditableText({id,label,kind,style,children,profitTone='neutral'}:{
+  id:string;label:string;kind:'text'|'value';style:StyleProp<TextStyle>;children:ReactNode;
+  profitTone?:'gain'|'loss'|'neutral';
+}){
+  const runtime=useLayoutRuntime();
+  const editor=usePageEditor('market');
+  const profitColors=useSystemColors();
+  const override=(runtime.active?runtime.targets:editor.displayConfig.layoutTargets)?.[id];
+  const toneColor=profitTone==='gain'?profitColors.gain:profitTone==='loss'?profitColors.loss:profitColors.flat;
+  const selectedColor=override?.textProfitColor===true?toneColor:override?.textColor;
+  const resolvedColor=selectedColor&&override?.textOpacity!==undefined?
+    colorWithAlpha(selectedColor,override.textOpacity):selectedColor;
+  const visual:TextStyle={
+    ...(override?.fontSize!==undefined?{fontSize:override.fontSize}:{}),
+    ...(resolvedColor!==undefined?{color:resolvedColor}:{}),
+    ...(override?.fontWeight!==undefined?{fontWeight:override.fontWeight}:{}),
+    ...(override?.fontStyle!==undefined?{fontStyle:override.fontStyle}:{}),
+    ...(override?.fontFamily!==undefined?{fontFamily:override.fontFamily==='system'?undefined:override.fontFamily}:{}),
+    ...(override?.textDecorationLine!==undefined?{textDecorationLine:override.textDecorationLine}:{}),
+    ...(override?.letterSpacing!==undefined?{letterSpacing:override.letterSpacing}:{}),
+    ...(override?.lineHeight!==undefined&&override.lineHeight>0?{lineHeight:override.lineHeight}:{}),
+    ...(override?.align!==undefined?{textAlign:override.align}:{}),
+    ...(override?.width!==undefined?{width:override.width}:{}),
+    ...(override?.height!==undefined?{height:override.height}:{}),
+    ...(override?.backgroundColor!==undefined?{backgroundColor:colorWithAlpha(override.backgroundColor,override.backgroundOpacity??1)}:{}),
+    ...(override?.borderColor!==undefined?{borderColor:colorWithAlpha(override.borderColor,override.borderOpacity??1)}:{}),
+    ...(override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:{}),
+    ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
+    ...(override?.padding!==undefined?{padding:override.padding}:{}),
+    ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
+  };
+  const content=<Text editorId={id} editorReadOnly style={[StyleSheet.flatten(style),visual]}>{children}</Text>;
+  if(!runtime.active)return content;
+  return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
+    onPress={()=>runtime.onSelect?.({id,label,kind})}
+    style={[{borderRadius:5,alignSelf:'flex-start',maxWidth:'100%'},
+      runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA'}:undefined]}>
+    <View pointerEvents="none">{content}</View>
+  </Pressable>;
+}
+function IndexEditableChart({children}:{children:ReactNode}){
+  const runtime=useLayoutRuntime();
+  const editor=usePageEditor('market');
+  const id='market:index:chart';
+  const override=(runtime.active?runtime.targets:editor.displayConfig.layoutTargets)?.[id];
+  const body=<View style={[
+    override?.width!==undefined?{width:override.width}:undefined,
+    override?.height!==undefined?{height:override.height,overflow:'hidden'}:undefined,
+    override?.backgroundColor!==undefined?{backgroundColor:colorWithAlpha(override.backgroundColor,override.backgroundOpacity??1)}:undefined,
+    override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:undefined,
+    override?.borderColor!==undefined?{borderColor:colorWithAlpha(override.borderColor,override.borderOpacity??1)}:undefined,
+    override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:undefined,
+    override?.padding!==undefined?{padding:override.padding}:undefined,
+    override?.opacity!==undefined?{opacity:override.opacity}:undefined,
+  ]}>{children}</View>;
+  if(!runtime.active)return body;
+  return <Pressable accessibilityRole="button" accessibilityLabel="編輯加權指數走勢圖"
+    onPress={()=>runtime.onSelect?.({id,kind:'card',label:'加權指數走勢圖'})}
+    style={runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined}>
+      <View pointerEvents="none">{body}</View>
+  </Pressable>;
+}
+function IndexMetric({id,label,value}:{id:string;label:string;value:string}){
   const theme=useThemeRuntime();
   return <View style={{width:'47%',gap:2,flexGrow:1}}>
-    <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{label}</Text>
-    <Text editorReadOnly style={{color:theme.palette.text,fontSize:14,fontWeight:'700'}}>{value}</Text>
+    <IndexEditableText id={'market:index:'+id+':label'} label={label+'標題'} kind="text"
+      style={{color:theme.palette.textSecondary,fontSize:11}}>{label}</IndexEditableText>
+    <IndexEditableText id={'market:index:'+id+':value'} label={label+'數值'} kind="value"
+      style={{color:theme.palette.text,fontSize:14,fontWeight:'700'}}>{value}</IndexEditableText>
   </View>;
 }
 /** Market page only: UI adapter, no edits to holdings, native SaiETF or system settings. */
@@ -57,6 +127,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
   marketVersion:number;phase:'live'|'afterHours'|'offline'
 }){
   const theme=useThemeRuntime(),system=useSystemColors();
+  const layoutPreview=useLayoutRuntime();
   const [range,setRange]=useState<IndexRange>('d1');
   const [mis,setMis]=useState<IndexSnapshot|null>(null);
   const [history,setHistory]=useState<IndexClose[]>([]);
@@ -121,7 +192,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
     finally{inFlight.current=false;setBusy(false);}
   },[phase]);
   // The TAIEX display is read-only and piggybacks on market snapshots, without a new global polling law.
-  useEffect(()=>{void refresh();},[marketVersion,refresh]);
+  useEffect(()=>{if(!layoutPreview.active)void refresh();},[marketVersion,refresh,layoutPreview.active]);
   useEffect(()=>{
     if(!points.length)return;
     void AsyncStorage.setItem(POINTS,JSON.stringify({date:today,rows:points})).catch(()=>{});
@@ -132,6 +203,8 @@ export function TaiexIndexCard({marketVersion,phase}:{
     return ()=>abort.abort();
   },[range]);
   useEffect(()=>{
+    // A settings preview reads the saved official snapshot; it never initiates another network request.
+    if(layoutPreview.active)return;
     const controller=new AbortController();let live=true;
     const months=ranges.find(x=>x.id===range)?.months??2;
     setHistoryBusy(true);
@@ -147,7 +220,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
       .catch(e=>{if(live)setError('歷史指數來源暫時無法取得：'+(e instanceof Error?e.message:String(e)));})
       .finally(()=>{if(live)setHistoryBusy(false);});
     return()=>{live=false;controller.abort();};
-  },[range]);
+  },[range,layoutPreview.active]);
   const change=display?.change??null;
   const tone=change===null?theme.palette.text:change>0?system.gain:change<0?system.loss:system.flat;
   const status=display?.live?'盤中即時快照':display?.fromClose?'官方最後收盤':'最後有效行情快照';
@@ -156,40 +229,40 @@ export function TaiexIndexCard({marketVersion,phase}:{
   return <View style={{gap:10}}>
     <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:6}}>
       <View style={{flex:1}}>
-        <Text style={{color:theme.palette.text,fontSize:16,fontWeight:'900'}}>臺灣加權股價指數（TAIEX）</Text>
-        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>TWSE TAIEX｜非交易標的</Text>
+        <IndexEditableText id="market:index:title" label="加權指數標題" kind="text" style={{color:theme.palette.text,fontSize:16,fontWeight:'900'}}>臺灣加權股價指數（TAIEX）</IndexEditableText>
+        <IndexEditableText id="market:index:subtitle" label="指數副標題" kind="text" style={{color:theme.palette.textSecondary,fontSize:11}}>TWSE TAIEX｜非交易標的</IndexEditableText>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="更新加權指數" onPress={()=>void refresh(true)}
+      <Pressable accessibilityRole="button" accessibilityLabel="更新加權指數" onPress={()=>{if(!layoutPreview.active)void refresh(true);}}
         style={{paddingHorizontal:11,paddingVertical:7,borderRadius:9,backgroundColor:theme.palette.surfaceMuted}}>
         <Text style={{color:theme.palette.primary,fontWeight:'700',fontSize:11}}>{busy?'更新中…':'更新'}</Text>
       </Pressable>
     </View>
     <View style={{flexDirection:'row',alignItems:'flex-end',flexWrap:'wrap',gap:8}}>
-      <Text editorReadOnly style={{color:tone,fontSize:33,fontWeight:'900'}}>{format(display?.value)}</Text>
-      <Text editorReadOnly style={{color:tone,fontSize:14,fontWeight:'800',paddingBottom:5}}>
+      <IndexEditableText id="market:index:value" label="加權指數數值" kind="value" profitTone={change===null?'neutral':change>0?'gain':change<0?'loss':'neutral'} style={{color:tone,fontSize:33,fontWeight:'900'}}>{format(display?.value)}</IndexEditableText>
+      <IndexEditableText id="market:index:change" label="加權指數漲跌" kind="value" profitTone={change===null?'neutral':change>0?'gain':change<0?'loss':'neutral'} style={{color:tone,fontSize:14,fontWeight:'800',paddingBottom:5}}>
         {signed(change)} ({display?.percent!==null&&display?.percent!==undefined?signed(display.percent)+'%':'—'})
-      </Text>
+      </IndexEditableText>
     </View>
-    <Text style={{fontSize:11,color:theme.palette.textSecondary}}>
+    <IndexEditableText id="market:index:status" label="指數行情狀態" kind="text" style={{fontSize:11,color:theme.palette.textSecondary}}>
       {status}｜{display?.date??'尚無日期'}｜{sourceTime}｜{display?.source??'TWSE'}
-    </Text>
+    </IndexEditableText>
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:5}}>
-      {ranges.map(item=><Pressable key={item.id} onPress={()=>setRange(item.id)} accessibilityRole="button"
+      {ranges.map(item=><Pressable key={item.id} onPress={()=>{if(!layoutPreview.active)setRange(item.id);}} accessibilityRole="button"
         accessibilityState={{selected:range===item.id}} style={{borderRadius:18,paddingHorizontal:10,paddingVertical:6,backgroundColor:range===item.id?theme.palette.primary:theme.palette.surfaceMuted}}>
         <Text style={{fontSize:11,color:range===item.id?'white':theme.palette.text,fontWeight:'700'}}>{item.label}</Text>
       </Pressable>)}
     </View>
     {historyBusy?<Text style={{color:theme.palette.textSecondary,fontSize:10}}>讀取官方歷史收盤指數中…</Text>:null}
-    <PriceLine values={chartData} color={tone}/>
+    <IndexEditableChart><PriceLine values={chartData} color={tone}/></IndexEditableChart>
     {range==='d1'?<Text style={{color:theme.palette.textSecondary,fontSize:10}}>日內曲線僅使用本機當日實際取得的官方指數快照；未蒐集到的時段不補造。其他期間使用 TWSE 公告每日收盤指數。</Text>:
       <Text style={{color:theme.palette.textSecondary,fontSize:10}}>期間走勢為 TWSE FMTQIK 逐交易日收盤點位，非盤中逐筆走勢。</Text>}
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:11}}>
-      <IndexMetric label="開盤指數（MIS）" value={format(display?.open)}/>
-      <IndexMetric label="前收指數" value={format(display?.previousClose)}/>
-      <IndexMetric label="當日最高（MIS）" value={format(display?.high)}/>
-      <IndexMetric label="當日最低（MIS）" value={format(display?.low)}/>
-      <IndexMetric label="52週收盤高點" value={oneYearRange?format(oneYearRange.high):'切換「1年」核實'}/>
-      <IndexMetric label="52週收盤低點" value={oneYearRange?format(oneYearRange.low):'切換「1年」核實'}/>
+      <IndexMetric id="open" label="開盤指數（MIS）" value={format(display?.open)}/>
+      <IndexMetric id="previous" label="前收指數" value={format(display?.previousClose)}/>
+      <IndexMetric id="high" label="當日最高（MIS）" value={format(display?.high)}/>
+      <IndexMetric id="low" label="當日最低（MIS）" value={format(display?.low)}/>
+      <IndexMetric id="year-high" label="52週收盤高點" value={oneYearRange?format(oneYearRange.high):'切換「1年」核實'}/>
+      <IndexMetric id="year-low" label="52週收盤低點" value={oneYearRange?format(oneYearRange.low):'切換「1年」核實'}/>
     </View>
     {error?<Text style={{fontSize:11,color:theme.palette.textSecondary}}>{error}</Text>:null}
     <Text style={{fontSize:10,color:theme.palette.textSecondary}}>官方來源：TWSE MIS／FMTQIK。休市顯示最後有效收盤，不以「待取得」代替。開高低僅在當日 MIS 核實後顯示，且與 52 週收盤極值定義不同。</Text>

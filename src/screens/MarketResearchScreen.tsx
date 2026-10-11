@@ -254,7 +254,7 @@ export function MarketResearchScreen(){
       <PageEditorStack pageKey="market" frames={frameData}/>
     </PageShell>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="market" title="市場資訊中心編輯"
-      frames={PAGE_FRAMES.market} onClose={()=>setSettingsOpen(false)}/>
+      frames={PAGE_FRAMES.market} previewElements={frameData} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 const styles=StyleSheet.create({
