@@ -12,6 +12,7 @@ import {Pressable,Text,TextInput} from '../components/EditableNative';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {OfficialCandleChart,type HoldingChartContext} from '../components/OfficialCandleChart';
+import {ChartStyleDropdown} from '../components/ChartStyleDropdown';
 import {
   DEFAULT_HOLDING_CHART,HOLDING_CHART_DATA_OPTIONS,HOLDING_CHART_RANGES,MARKET_CHART_DATA_OPTIONS,NATIVE_CHART_STYLES,
   type ChartDataKey,type HoldingChartRange,type NativeChartStyle,
@@ -105,7 +106,7 @@ export function StockChartScreen({holding:initialHolding,onBack}:{holding:Holdin
         {key:'chart-style',element:<FrameCard title="圖表樣式">
       <View style={styles.section}>
         <Text editorId="native:StockChartScreen:sectionTitle:10" editorReadOnly={false} style={styles.sectionTitle}>圖表樣式</Text>
-        <View style={styles.wrap}>{NATIVE_CHART_STYLES.map(item=><Chip key={item.id} label={item.label} active={style===item.id} onPress={()=>setStyle(item.id)}/>)}</View>
+        <ChartStyleDropdown value={style} onChange={setStyle}/>
       </View>
 
 

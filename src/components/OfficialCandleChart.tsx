@@ -9,6 +9,7 @@ import {colors} from '../theme/tokens';
 import {candleIndexAtX} from '../domain/chartCrosshair';
 import {marketPricePath} from '../domain/marketChartGeometry';
 import {solidCandleAppearance} from '../domain/candleAppearance';
+import {anchoredChartOffset,chartCandleMetrics,nearestChartZoom,stepChartZoom,DEFAULT_CHART_ZOOM} from '../domain/chartZoom';
 
 const PLOT_HEIGHT=160;
 const VOLUME_HEIGHT=50;
@@ -56,10 +57,16 @@ export function OfficialCandleChart({
   const [crosshairEnabled,setCrosshairEnabled]=useState(crosshairDefault);
   // The normal interaction always pans. Cursor drag is opt-in and temporary.
   const [cursorDragMode,setCursorDragMode]=useState(false);
+  const [zoom,setZoom]=useState(DEFAULT_CHART_ZOOM);
+  const zoomRef=useRef(zoom);
+  const viewportWidth=useRef(0);
+  const pendingZoom=useRef<{oldOffset:number;oldStep:number;newStep:number}|null>(null);
+  const pinch=useRef<{distance:number;initialZoom:number}|null>(null);
   const scrollX=useRef(0);
   const scrollViewRef=useRef<ScrollView|null>(null);
   const autoScrollDataset=useRef<string|null>(null);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
+  const {step,width:candleWidth,bodyWidth,volumeWidth}=chartCandleMetrics(zoom);
   const showVolume=dataKeys.includes('volume')||chartStyle==='price-volume';
   const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low');
   const showClose=dataKeys.includes('close')||dataKeys.includes('price');
@@ -91,11 +98,11 @@ export function OfficialCandleChart({
   const selected=ordered.find(x=>x.date===selectedDate)??ordered[ordered.length-1];
   const selectedIndex=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const y=(value:number)=>(axisHigh-value)/span*PLOT_HEIGHT;
-  const fullWidth=LEFT_PAD+ordered.length*STEP+4;
+  const fullWidth=LEFT_PAD+ordered.length*step+4;
   // Changing symbol or range presents the latest trade; subsequent user panning
   // must never be forcibly snapped back by an ordinary state update.
   const datasetId=ordered.length?ordered[0]!.date+'|'+ordered[ordered.length-1]!.date+'|'+ordered.length:'';
-  const lineGeometry=useMemo(()=>marketPricePath(ordered,STEP,LEFT_PAD,PLOT_HEIGHT),[ordered]);
+  const lineGeometry=useMemo(()=>marketPricePath(ordered,step,LEFT_PAD,PLOT_HEIGHT),[ordered,step]);
   const lineTrend=ordered.length>1?ordered[ordered.length-1]!.close-ordered[0]!.close:0;
   const lineColor=lineTrend>0?colors.gain:lineTrend<0?colors.loss:colors.flat;
   const chooseCandle=(candle:DailyCandle)=>{
@@ -103,8 +110,19 @@ export function OfficialCandleChart({
     onSelectCandle?.(candle);
   };
   const chooseAt=(touchX:number)=>{
-    const index=candleIndexAtX(touchX,scrollX.current,ordered.length,STEP,LEFT_PAD);
+    const index=candleIndexAtX(touchX,scrollX.current,ordered.length,step,LEFT_PAD);
     if(index>=0)chooseCandle(ordered[index]!);
+  };
+  const applyZoom=(next:number)=>{
+    const target=nearestChartZoom(next),before=zoomRef.current;
+    if(target===before||pendingZoom.current)return;
+    pendingZoom.current={oldOffset:scrollX.current,oldStep:chartCandleMetrics(before).step,newStep:chartCandleMetrics(target).step};
+    zoomRef.current=target;
+    setZoom(target);
+  };
+  const pinchDistance=(touches:readonly {pageX:number;pageY:number}[])=>{
+    if(touches.length!==2)return null;
+    return Math.hypot(touches[0]!.pageX-touches[1]!.pageX,touches[0]!.pageY-touches[1]!.pageY);
   };
   const selectedIdx=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const selectedPrior=selectedIdx>0?ordered[selectedIdx-1]!.close:selected?.open??0;
@@ -132,6 +150,20 @@ export function OfficialCandleChart({
   return <View style={styles.root}>
     <View style={styles.toolbar}>
       <Text style={styles.caption}>TWSE 歷史資料源 · {rangeLabel} · {ordered.length} 個交易日 · {chartStyle}</Text>
+      <View style={styles.zoomControls}>
+        <Pressable accessibilityRole="button" accessibilityLabel="縮小歷史圖表" disabled={zoom<=0.65}
+          onPress={()=>applyZoom(stepChartZoom(zoom,-1))} style={[styles.zoomButton,zoom<=0.65&&styles.zoomDisabled]}>
+          <Text style={styles.zoomSign}>－</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="還原圖表縮放百分之百"
+          onPress={()=>applyZoom(DEFAULT_CHART_ZOOM)} style={styles.zoomButton}>
+          <Text style={styles.zoomPercent}>{Math.round(zoom*100)}%</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="放大歷史圖表" disabled={zoom>=2.5}
+          onPress={()=>applyZoom(stepChartZoom(zoom,1))} style={[styles.zoomButton,zoom>=2.5&&styles.zoomDisabled]}>
+          <Text style={styles.zoomSign}>＋</Text>
+        </Pressable>
+      </View>
       <Pressable accessibilityRole="switch" accessibilityState={{checked:crosshairEnabled}}
         onPress={()=>{setCrosshairEnabled(value=>!value);setCursorDragMode(false);setSelectedDate(selected?.date??null);}}
         style={[styles.crosshairToggle,crosshairEnabled&&styles.crosshairActive]}>
@@ -169,16 +201,36 @@ export function OfficialCandleChart({
           成本 {price(holding.costAvg)}
         </Text>:null}
       </View>
-      <View style={styles.viewport}>
+      <View style={styles.viewport} onLayout={e=>{viewportWidth.current=e.nativeEvent.layout.width;}}>
         <ScrollView ref={scrollViewRef} horizontal
           scrollEnabled={!(crosshairEnabled&&cursorDragMode)} directionalLockEnabled nestedScrollEnabled
           showsHorizontalScrollIndicator persistentScrollbar scrollEventThrottle={16}
+          onTouchStart={event=>{
+            const distance=pinchDistance(event.nativeEvent.touches);
+            if(distance&&distance>0)pinch.current={distance,initialZoom:zoomRef.current};
+          }}
+          onTouchMove={event=>{
+            const distance=pinchDistance(event.nativeEvent.touches);
+            if(distance&&pinch.current?.distance)applyZoom(pinch.current.initialZoom*distance/pinch.current.distance);
+          }}
+          onTouchEnd={event=>{if(event.nativeEvent.touches.length<2)pinch.current=null;}}
+          onTouchCancel={()=>{pinch.current=null;}}
           onScroll={event=>{scrollX.current=event.nativeEvent.contentOffset.x;}}
           onContentSizeChange={()=>{
             if(datasetId&&autoScrollDataset.current!==datasetId){
+              pendingZoom.current=null;
               autoScrollDataset.current=datasetId;
               scrollViewRef.current?.scrollToEnd({animated:false});
+              return;
             }
+            if(pendingZoom.current){
+              const anchor=pendingZoom.current;
+              pendingZoom.current=null;
+              const target=anchoredChartOffset(anchor.oldOffset,viewportWidth.current,anchor.oldStep,anchor.newStep,fullWidth,LEFT_PAD);
+              scrollX.current=target;
+              scrollViewRef.current?.scrollTo({x:target,animated:false});
+            }
+            if(datasetId&&autoScrollDataset.current!==datasetId){autoScrollDataset.current=datasetId;}
           }}
           contentContainerStyle={[styles.scroll,{width:fullWidth}]}>
           {ordered.map((candle,index)=>{
@@ -188,6 +240,7 @@ export function OfficialCandleChart({
             const candleBottom=y(Math.min(candle.open,candle.close));
             const wickTop=y(candle.high),wickBottom=y(candle.low);
             const bodyHeight=Math.max(2,candleBottom-candleTop);
+            const bodyLeft=Math.max(0,(candleWidth-bodyWidth)/2);
             const showTick=index===0||index===ordered.length-1||candle.date.slice(0,7)!==ordered[index-1]?.date.slice(0,7)||index%Math.max(1,Math.ceil(ordered.length/5))===0;
             const lineMode=chartStyle==='line'||chartStyle==='area'||chartStyle==='cost-price'||chartStyle==='pnl'||chartStyle==='roi'||(!showOpen&&!showHigh&&!showLow&&showClose);
             const columnMode=chartStyle==='column';
@@ -197,16 +250,16 @@ export function OfficialCandleChart({
             const valueY=secondaryKey?secY(sec):0;
             return <Pressable accessibilityRole="button" accessibilityLabel={candle.date+'，開'+price(candle.open)+'，高'+price(candle.high)+'，低'+price(candle.low)+'，收'+price(candle.close)}
               key={candle.date} onPress={()=>chooseCandle(candle)}
-              style={[styles.candleColumn,{width:STEP,backgroundColor:selected?.date===candle.date&&crosshairEnabled?'rgba(148,163,184,.12)':'transparent'}]}>
-              <View style={styles.pricePlot}>
+              style={[styles.candleColumn,{width:step,backgroundColor:selected?.date===candle.date&&crosshairEnabled?'rgba(148,163,184,.12)':'transparent'}]}>
+              <View style={[styles.pricePlot,{width:candleWidth}]}>
                 {columnMode?<View style={{position:'absolute',left:2,right:2,top:y(candle.close),height:Math.max(2,PLOT_HEIGHT-y(candle.close)),backgroundColor:tone,opacity:.78}}/>:
                 lineMode?(chartStyle==='line'||chartStyle==='area'?null:<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:3,backgroundColor:tone}}/>):
-                ohlcMode?<><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
-                <><View style={[styles.wick,{top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{top:candleTop,height:bodyHeight,backgroundColor:candlePaint.bodyFill,borderColor:candlePaint.bodyBorder}]}/></>}
+                ohlcMode?<><View style={[styles.wick,{left:candleWidth/2,top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
+                <><View style={[styles.wick,{left:candleWidth/2,top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{left:bodyLeft,width:bodyWidth,top:candleTop,height:bodyHeight,backgroundColor:candlePaint.bodyFill,borderColor:candlePaint.bodyBorder}]}/></>}
               </View>
-              {showVolume?<View style={styles.volumePlot}><View style={{height:Math.max(1,candle.volume/biggestVolume*(VOLUME_HEIGHT-6)),backgroundColor:candlePaint.volume,width:7}}/></View>:null}
-              {secondaryKey?<View style={styles.secondaryPlot}><View style={{position:'absolute',left:3,width:7,top:Math.min(zeroY,valueY),height:Math.max(1,Math.abs(valueY-zeroY)),backgroundColor:sec>=0?colors.gain:colors.loss}}/></View>:null}
-              <Text style={styles.tick}>{showTick?candle.date.slice(5).replace('-','/'):''}</Text>
+              {showVolume?<View style={styles.volumePlot}><View style={{height:Math.max(1,candle.volume/biggestVolume*(VOLUME_HEIGHT-6)),backgroundColor:candlePaint.volume,width:volumeWidth}}/></View>:null}
+              {secondaryKey?<View style={[styles.secondaryPlot,{width:candleWidth}]}><View style={{position:'absolute',left:3,width:7,top:Math.min(zeroY,valueY),height:Math.max(1,Math.abs(valueY-zeroY)),backgroundColor:sec>=0?colors.gain:colors.loss}}/></View>:null}
+              <Text style={[styles.tick,{width:step}]}>{showTick?candle.date.slice(5).replace('-','/'):''}</Text>
             </Pressable>;
           })}
           {(chartStyle==='line'||chartStyle==='area')&&lineGeometry?
@@ -216,10 +269,10 @@ export function OfficialCandleChart({
             </Svg>:null}
           {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}/>:null}
           {crosshairEnabled&&selected?<View pointerEvents="none" style={[styles.crosshairLayer,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)+20}]}>
-            <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*STEP+STEP/2}]}/>
+            <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*step+step/2}]}/>
             <View style={[styles.horizontalCrosshair,{top:y(selected.close)}]}/>
             {showVolume?<View style={[styles.volumeCrosshair,{top:PLOT_HEIGHT+Math.max(0,VOLUME_HEIGHT-selected.volume/biggestVolume*(VOLUME_HEIGHT-6))}]}/>:null}
-            <View style={[styles.crosshairDateTag,{left:clamp(LEFT_PAD+selectedIndex*STEP-19,0,Math.max(0,fullWidth-50))}]}><Text style={styles.crosshairTagText}>{selected.date.slice(5)}</Text></View>
+            <View style={[styles.crosshairDateTag,{left:clamp(LEFT_PAD+selectedIndex*step-19,0,Math.max(0,fullWidth-50))}]}><Text style={styles.crosshairTagText}>{selected.date.slice(5)}</Text></View>
           </View>:null}
         </ScrollView>
         {crosshairEnabled&&cursorDragMode?<View style={[styles.touchOverlay,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)}]}
@@ -237,12 +290,16 @@ export function OfficialCandleChart({
     </View>
     {secondaryKey?<Text style={styles.caption}>副圖：{secondaryLabel[secondaryKey]} · {number(secMin)} ～ {number(secMax)}</Text>:null}
     {holding&&(dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))||chartStyle==='pnl'||chartStyle==='roi'||chartStyle==='cost-price')?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
-    <Text style={styles.caption}>{crosshairEnabled?(cursorDragMode?'拖動十字線選取日期；按「左右滑動圖表」可前後瀏覽':'左右滑動可查看全部歷史 K 棒；輕點 K 棒選取日期，亦可切換拖動十字線'):'左右滑動瀏覽所有歷史資料；點選 K 棒查看日期與實際值'}</Text>
+    <Text style={styles.caption}>圖表可用＋／－放大縮小，點擊比例還原，支援雙指縮放。{crosshairEnabled?(cursorDragMode?'拖動十字線選取日期；切回「左右滑動圖表」可查看歷史':'左右滑動歷史 K 棒，輕點查看選取日期'):'左右滑動瀏覽所有歷史行情'}</Text>
   </View>;
 }
 const styles=StyleSheet.create({
   root:{gap:7,minHeight:285},notice:{fontSize:11,lineHeight:20,color:colors.textSecondary,padding:14},
-  toolbar:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:6},
+  toolbar:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:6},
+  zoomControls:{flexDirection:'row',alignItems:'center',gap:3},
+  zoomButton:{minHeight:29,minWidth:29,borderWidth:1,borderRadius:7,borderColor:colors.border,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center',paddingHorizontal:6},
+  zoomDisabled:{opacity:.35},zoomSign:{fontSize:18,fontWeight:'900',color:colors.primary},
+  zoomPercent:{fontSize:10,fontWeight:'800',color:colors.text},
   cursorModeRow:{flexDirection:'row',flexWrap:'wrap',alignItems:'center',gap:6},
   modeButton:{paddingHorizontal:8,paddingVertical:5,borderWidth:1,borderColor:colors.border,borderRadius:9},
   modeSelected:{borderColor:colors.primary,backgroundColor:colors.surfaceMuted},
