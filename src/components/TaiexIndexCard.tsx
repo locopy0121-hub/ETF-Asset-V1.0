@@ -79,7 +79,7 @@ function IndexEditableText({id,label,kind,style,children,profitTone='neutral'}:{
     ...(override?.borderColor!==undefined?{borderColor:colorWithAlpha(override.borderColor,override.borderOpacity??1)}:{}),
     ...(override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:{}),
     ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
-    ...(override?.padding!==undefined?{padding:override.padding}:{})
+    ...(override?.padding!==undefined?{padding:override.padding}:{}),
     ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
   };
   const content=<Text editorId={id} editorReadOnly style={[StyleSheet.flatten(style),visual]}>{children}</Text>;
