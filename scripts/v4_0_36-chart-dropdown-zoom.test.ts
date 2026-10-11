@@ -42,5 +42,6 @@ assert.ok(source.indexOf('<View style={styles.actualAxis}>')>source.indexOf('</S
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/ChartStyleDropdown|chartZoom/);
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/ChartStyleDropdown|chartZoom/);
 const id=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.equal(id.version,'4.0.36');assert.equal(id.android.versionCode,40036);
+assert.equal(id.version,JSON.parse(readFileSync('package.json','utf8')).version);
+assert.ok(id.android.versionCode>=40036,'V4.0.36 behavior must be retained on later versions');
 console.log('V4.0.36 market/stock dropdown, zoom-in/out/reset, pinch, pan anchor, red-green K and protected core PASS');

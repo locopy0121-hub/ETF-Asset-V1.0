@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.36",
+  "version": "4.0.37",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_36 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_37 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -321,7 +321,8 @@
     "test:v4_0_33": "npm run test:v4_0_32 && npx tsx scripts/v4_0_33-appwide-solid-candle.test.ts",
     "test:v4_0_34": "npm run test:v4_0_33 && npx tsx scripts/v4_0_34-chart-pan-axis.test.ts",
     "test:v4_0_35": "npm run test:v4_0_34 && npx tsx scripts/v4_0_35-market-dividend-history.test.ts",
-    "test:v4_0_36": "npm run test:v4_0_35 && npx tsx scripts/v4_0_36-chart-dropdown-zoom.test.ts"
+    "test:v4_0_36": "npm run test:v4_0_35 && npx tsx scripts/v4_0_36-chart-dropdown-zoom.test.ts",
+    "test:v4_0_37": "npm run test:v4_0_36 && npx tsx scripts/v4_0_37-chart-gesture.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
