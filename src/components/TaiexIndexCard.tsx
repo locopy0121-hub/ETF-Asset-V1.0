@@ -192,7 +192,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
     finally{inFlight.current=false;setBusy(false);}
   },[phase]);
   // The TAIEX display is read-only and piggybacks on market snapshots, without a new global polling law.
-  useEffect(()=>{void refresh();},[marketVersion,refresh]);
+  useEffect(()=>{if(!layoutPreview.active)void refresh();},[marketVersion,refresh,layoutPreview.active]);
   useEffect(()=>{
     if(!points.length)return;
     void AsyncStorage.setItem(POINTS,JSON.stringify({date:today,rows:points})).catch(()=>{});
@@ -203,6 +203,8 @@ export function TaiexIndexCard({marketVersion,phase}:{
     return ()=>abort.abort();
   },[range]);
   useEffect(()=>{
+    // A settings preview reads the saved official snapshot; it never initiates another network request.
+    if(layoutPreview.active)return;
     const controller=new AbortController();let live=true;
     const months=ranges.find(x=>x.id===range)?.months??2;
     setHistoryBusy(true);
@@ -218,7 +220,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
       .catch(e=>{if(live)setError('歷史指數來源暫時無法取得：'+(e instanceof Error?e.message:String(e)));})
       .finally(()=>{if(live)setHistoryBusy(false);});
     return()=>{live=false;controller.abort();};
-  },[range]);
+  },[range,layoutPreview.active]);
   const change=display?.change??null;
   const tone=change===null?theme.palette.text:change>0?system.gain:change<0?system.loss:system.flat;
   const status=display?.live?'盤中即時快照':display?.fromClose?'官方最後收盤':'最後有效行情快照';
