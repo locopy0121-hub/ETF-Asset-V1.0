@@ -344,8 +344,10 @@ export function PageLayoutToolWorkbench({
             <PageHeaderVisual title={pageTitle} frameConfig={itemConfig} frame={maintenance}
               layoutTargets={targets} selectedId={selected?selection.id:null} onSelect={providerSelect}/>
           </Pressable>:
-          (pageKey==='dividend'||pageKey==='market')
+          pageKey==='dividend'
             ?<View>{frameContent}</View>
+            :pageKey==='market'
+              ?<View>{frameContent}</View>
             :<Pressable onPress={()=>selectFrameDirect(item)} style={selected&&selection.kind==='frame'?styles.frameSelected:undefined}>{frameContent}</Pressable>}
       </LayoutSelectionProvider>
     </View>;
