@@ -21,7 +21,8 @@ assert.ok(chart.indexOf('<View style={styles.axis}>')<chart.indexOf('<View style
 assert.ok(chart.indexOf('<View style={styles.actualAxis}>')>chart.indexOf('</ScrollView>'),'selected actual values must be right of chart');
 assert.match(chart,/costAxisLabel/,'cost baseline label stays pinned on left while chart pans');
 assert.match(chart,/styles\.crosshairPrice/,'selected close label remains pinned to actual-value side');
-assert.doesNotMatch(chart,/<View style=\{styles\.axis\}>[\s\S]*?crosshairPrice/,'do not put actual value inside baseline axis');
+const baselineBlock=chart.slice(chart.indexOf('<View style={styles.axis}>'),chart.indexOf('<View style={styles.viewport}>'));
+assert.doesNotMatch(baselineBlock,/crosshairPrice/,'do not put actual value inside baseline axis');
 assert.match(chart,/選取值/);
 assert.match(chart,/左右滑動可查看全部歷史 K 棒/);
 assert.match(market,/<OfficialCandleChart key=/,'market chart gets shared fix');
