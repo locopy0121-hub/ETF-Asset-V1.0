@@ -67,6 +67,8 @@ jobs:
         run: npx tsx scripts/v4_0_33-appwide-solid-candle.test.ts
       - name: V4.0.34 all-App chart axis / pan / crosshair regression
         run: npx tsx scripts/v4_0_34-chart-axis-pan.test.ts
+      - name: V4.0.34 individual stock historical dividend research regression
+        run: npx tsx scripts/v4_0_34-market-dividend-history.test.ts
       - name: Native market bridge behavior and nine-symbol App valuation
         run: bash scripts/test-native-market-bridge.sh
       - name: Generate declared skill coverage matrix
