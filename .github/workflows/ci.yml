@@ -1,4 +1,4 @@
-name: TF Asset V4.0.34 CI / QA APK
+name: TF Asset V4.0.35 CI / QA APK
 
 on:
   push:
@@ -29,44 +29,46 @@ jobs:
         run: npx tsx scripts/v4_0_19-calendar-text-selector.test.ts
       - name: V4.0.19 fixed split preview and compact toolbar regression
         run: node scripts/v4_0_19-fixed-preview-layout.test.cjs
-      - name: V4.0.34 quick bar visual editor regression
+      - name: V4.0.35 quick bar visual editor regression
         run: npx tsx scripts/v4_0_20-quickbar-editor.test.ts
-      - name: V4.0.34 real home KPI preview / flex regression
+      - name: V4.0.35 real home KPI preview / flex regression
         run: npx tsx scripts/v4_0_21-home-profit-preview.test.ts
-      - name: V4.0.34 dividend summary readability and independent AI frame
+      - name: V4.0.35 dividend summary readability and independent AI frame
         run: npx tsx scripts/v4_0_22-dividend-summary-separate-ai.test.ts
-      - name: V4.0.34 unrestricted saved dimensions and actual preview regression
+      - name: V4.0.35 unrestricted saved dimensions and actual preview regression
         run: npx tsx scripts/v4_0_23-unrestricted-dimensions.test.ts
-      - name: V4.0.34 equal columns and engineer overlay bounds regression
+      - name: V4.0.35 equal columns and engineer overlay bounds regression
         run: npx tsx scripts/v4_0_24-equal-grid-engineer.test.ts
-      - name: V4.0.34 live equal-grid XY isolation and automatic row refill
+      - name: V4.0.35 live equal-grid XY isolation and automatic row refill
         run: npx tsx scripts/v4_0_25-equal-grid-live-parity.test.ts
-      - name: V4.0.34 day month year PnL charts and pagination regression
+      - name: V4.0.35 day month year PnL charts and pagination regression
         run: npx tsx scripts/v4_0_26-daily-pnl-stats.test.ts
-      - name: V4.0.34 holding market-value daily tab pagination / chart regression
+      - name: V4.0.35 holding market-value daily tab pagination / chart regression
         run: npx tsx scripts/v4_0_27-holding-market-value-history.test.ts
-      - name: V4.0.34 inherited ledger pagination regression
+      - name: V4.0.35 inherited ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
-      - name: V4.0.34 inherited dashboard content editing regression
+      - name: V4.0.35 inherited dashboard content editing regression
         run: npx tsx scripts/v3_1_17-dashboard-content.test.ts
-      - name: V4.0.34 inherited holding detail editor / Android safe-area regression
+      - name: V4.0.35 inherited holding detail editor / Android safe-area regression
         run: npx tsx scripts/v3_1_18-holding-detail-safearea.test.ts
-      - name: V4.0.34 full inherited + Market Core gates
-        run: npm run test:v4_0_34
-      - name: V4.0.34 market research behavior
+      - name: V4.0.35 full inherited + Market Core gates
+        run: npm run test:v4_0_35
+      - name: V4.0.35 market research behavior
         run: npx tsx scripts/v4_0_28-market-research.test.ts
-      - name: V4.0.34 technical / institutional / ETF NAV data gates
+      - name: V4.0.35 technical / institutional / ETF NAV data gates
         run: npx tsx scripts/v4_0_29-market-depth.test.ts
-      - name: V4.0.34 TPEx institutional parser integrity and market isolation
+      - name: V4.0.35 TPEx institutional parser integrity and market isolation
         run: npx tsx scripts/v4_0_30-tpex-institutional.test.ts
-      - name: V4.0.34 chart geometry and synchronized indicator regression
+      - name: V4.0.35 chart geometry and synchronized indicator regression
         run: npx tsx scripts/v4_0_31-market-chart.test.ts
-      - name: V4.0.34 official TAIEX index model and market header gate
+      - name: V4.0.35 official TAIEX index model and market header gate
         run: npx tsx scripts/v4_0_32-market-taiex.test.ts
-      - name: V4.0.34 app-wide solid red/green OHLC regression
+      - name: V4.0.35 app-wide solid red/green OHLC regression
         run: npx tsx scripts/v4_0_33-appwide-solid-candle.test.ts
-      - name: V4.0.34 app-wide price axis and pan/cursor modes
+      - name: V4.0.35 app-wide price axis and pan/cursor modes
         run: npx tsx scripts/v4_0_34-chart-pan-axis.test.ts
+      - name: V4.0.35 market individual stock dividend history regression
+        run: npx tsx scripts/v4_0_35-market-dividend-history.test.ts
       - name: Native market bridge behavior and nine-symbol App valuation
         run: bash scripts/test-native-market-bridge.sh
       - name: Generate declared skill coverage matrix
@@ -79,19 +81,19 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: V4.0.34 inherited controls source smoke
+      - name: V4.0.35 inherited controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V4.0.34 inherited controls runtime behavior
+      - name: V4.0.35 inherited controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V4.0.34 inherited AI holdings behavior
+      - name: V4.0.35 inherited AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V4.0.34 inherited dividend calendar behavior
+      - name: V4.0.35 inherited dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V4.0.34 inherited system profit colors
+      - name: V4.0.35 inherited system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V4.0.34 inherited integration smoke
+      - name: V4.0.35 inherited integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V4.0.34 inherited UX controls
+      - name: V4.0.35 inherited UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
@@ -99,7 +101,7 @@ jobs:
         run: npm run doctor
 
   backend-quality:
-    name: V4.0.34 Node/Redis/PostgreSQL inherited integration
+    name: V4.0.35 Node/Redis/PostgreSQL inherited integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -137,7 +139,7 @@ jobs:
         run: node --check src/index.mjs && node --test --test-concurrency=1 test/*.test.mjs
 
   qa-apk:
-    name: V4.0.34 QA APK / native integration
+    name: V4.0.35 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
     if: (github.event_name == 'push' && startsWith(github.ref_name, 'v4.0.')) || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.')))
@@ -163,18 +165,18 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V4.0.34 identity
+      - name: Freeze V4.0.35 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "4.0.34"
-          test "$(node -p "require('./app.json').expo.version")" = "4.0.34"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40034"
+          test "$(node -p "require('./package.json').version")" = "4.0.35"
+          test "$(node -p "require('./app.json').expo.version")" = "4.0.35"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "40035"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V4.0.34 Hard Gates
-        run: npm run test:v4_0_34
+      - name: V4.0.35 Hard Gates
+        run: npm run test:v4_0_35
 
       - name: Generate declared skill coverage matrix for APK evidence
         run: npx tsx scripts/v3_2_49-skill-report.ts
@@ -210,8 +212,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 40034');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.34"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 40035');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "4.0.35"');
           g=g.replace(/dependencies\s*\{/,'dependencies {\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")\n    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")\n    implementation("com.squareup.okhttp3:okhttp:4.12.0")');
           if(!g.includes('kotlinx-coroutines-android:1.10.2')||!g.includes('kotlinx-serialization-json:1.9.0')||!g.includes('com.squareup.okhttp3:okhttp:4.12.0')) throw new Error('SaiETF native market Gradle dependencies were not injected');
           fs.writeFileSync(gradle,g);
@@ -273,26 +275,26 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V4.0.34-QA.apk
-          test "$(stat -c%s TF-Asset-V4.0.34-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V4.0.34-QA.apk
-          sha256sum TF-Asset-V4.0.34-QA.apk | tee TF-Asset-V4.0.34-QA.sha256
+          cp "$APK_PATH" TF-Asset-V4.0.35-QA.apk
+          test "$(stat -c%s TF-Asset-V4.0.35-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V4.0.35-QA.apk
+          sha256sum TF-Asset-V4.0.35-QA.apk | tee TF-Asset-V4.0.35-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V4.0.34-QA.apk | tee TF-Asset-V4.0.34-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.34-badging.txt
-          grep "versionCode='40034'" TF-Asset-V4.0.34-badging.txt
-          grep "versionName='4.0.34'" TF-Asset-V4.0.34-badging.txt
-          file TF-Asset-V4.0.34-QA.apk
+          "$AAPT" dump badging TF-Asset-V4.0.35-QA.apk | tee TF-Asset-V4.0.35-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V4.0.35-badging.txt
+          grep "versionCode='40035'" TF-Asset-V4.0.35-badging.txt
+          grep "versionName='4.0.35'" TF-Asset-V4.0.35-badging.txt
+          file TF-Asset-V4.0.35-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V4.0.34-QA-APK
+          name: TF-Asset-V4.0.35-QA-APK
           path: |
-            TF-Asset-V4.0.34-QA.apk
-            TF-Asset-V4.0.34-QA.sha256
-            TF-Asset-V4.0.34-badging.txt
+            TF-Asset-V4.0.35-QA.apk
+            TF-Asset-V4.0.35-QA.sha256
+            TF-Asset-V4.0.35-badging.txt
             reports/V3.2.49-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
