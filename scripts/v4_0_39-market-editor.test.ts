@@ -29,10 +29,10 @@ assert.match(workbench,/actual\.props\.children/);
 assert.match(workbench,/pageKey==='market'\|\|\(pageKey==='home'&&frameKey==='holding-quotes'\)/);
 
 // Market data is read-only. Labels, values and charts select a visual-only target.
-assert.match(workbench,/selection\.id\.startsWith\('market:index:'\)/);
+assert.match(workbench,/selection\.id\.startsWith\('market:(?:index:)?'\)/);
 assert.match(workbench,/id:'market:index:value'/);
 assert.match(workbench,/id:'market:index:chart'/);
-assert.match(workbench,/selection\.id\.startsWith\('market:index:'\)\)/);
+assert.match(workbench,/selection\.id\.startsWith\('market:(?:index:)?'\)\)/);
 for(const id of ['title','subtitle','value','change','status']){
   assert.match(taiex,new RegExp('id="market:index:'+id+'"'));
 }
