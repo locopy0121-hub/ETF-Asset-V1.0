@@ -33,7 +33,6 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
     private val fallbackInFlight = AtomicBoolean(false)
     private val keyStore = FugleApiKeyStore(appContext)
     private val persistence = MarketPersistenceRepository(appContext)
-    private val fugle = FugleWebSocketProvider(apiKeyProvider = keyStore::load)
     // SaiETF frozen core takes a MemoryMarketStore at construction; its core
     // does NOT expose the old TF-only mutable restorePersistedQuotes hook.
     private val warmStore = MemoryMarketStore(
@@ -45,6 +44,12 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             YahooQuoteProvider(),
         ),
         hotStore = warmStore,
+    )
+    // This socket is owned by TF Asset and talks directly to Fugle.
+    // No SaiETF process, app, service, database or network relay participates.
+    private val fugle = FugleWebSocketProvider(
+        apiKeyProvider = keyStore::load,
+        onTrade = { quote -> center.acceptStreamingQuote(quote) },
     )
     private val calendarPrefs = appContext.getSharedPreferences("market-trading-calendar", Context.MODE_PRIVATE)
     init {
