@@ -29,7 +29,7 @@ fun cachedSaiEtfMarketReferences(
         val sourceSession = Instant.ofEpochMilli(sourceAt).atZone(taipeiZone).toLocalDate()
         val age = (nowEpochMillis - sourceAt).coerceAtLeast(0L)
         val quality = when {
-            sourceSession != currentSession -> QuoteQuality.STALE
+            !sourceSession.isEqual(currentSession) -> QuoteQuality.STALE
             age <= 30_000L -> QuoteQuality.LIVE
             else -> QuoteQuality.DELAYED
         }

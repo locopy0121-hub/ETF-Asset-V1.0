@@ -46,8 +46,11 @@ fun main() {
             listOf(quote("0050", MarketSource.FUGLE, 115.2, close, isClose = true)),afterClose)))
     val covered = coveredCenter.refresh(setOf("0050"), afterClose, SESSION, false)
     check(coveredFetches == 1) { "Frozen SaiETF core retries the delayed after-hours candidate" }
-    check("0050" in covered.unresolvedSymbols) { "Rejected fallback must remain unresolved, not masquerade as a new quote" }
-    check(coveredCenter.memoryQuotes().getValue("0050").source == MarketSource.FUGLE)
+    // SaiETF's frozen arbitrator selects the newer source timestamp, even
+    // if the older quote came from higher-priority Fugle.
+    check(covered.unresolvedSymbols.isEmpty()) { "The fresher Yahoo trade must resolve the symbol" }
+    check(coveredCenter.memoryQuotes().getValue("0050").source == MarketSource.YAHOO)
+    check(coveredCenter.memoryQuotes().getValue("0050").price == 114.8)
 
     var requested: Set<String> = emptySet()
     val missingProvider = object : MarketQuoteProvider {
@@ -73,7 +76,7 @@ fun main() {
         override fun fetch(symbols: Set<String>): Map<String, MarketQuote> {
             fetchStarted.countDown()
             check(releaseFetch.await(5, TimeUnit.SECONDS))
-            return mapOf("0050" to quote("0050", source, 114.7, close + 120_000L))
+            return mapOf("0050" to quote("0050", source, 114.7, close - 1_000L))
         }
     }
     val racingCenter = MarketDataCenter(listOf(racingProvider))
@@ -103,7 +106,7 @@ fun main() {
         override fun fetch(symbols: Set<String>): Map<String, MarketQuote> {
             boundaryFetchStarted.countDown()
             check(releaseBoundaryFetch.await(5, TimeUnit.SECONDS))
-            return mapOf("0050" to quote("0050", source, 114.7, close + 1_000L))
+            return mapOf("0050" to quote("0050", source, 114.7, close - 1_000L))
         }
     }
     val boundaryCenter = MarketDataCenter(listOf(boundaryProvider))
@@ -127,5 +130,5 @@ fun main() {
     }
     check(boundaryCenter.memoryQuotes().getValue("0050").price == 115.2)
 
-    println("V4.0.12 after-hours close retention / missing-only fallback / boundary race protection: PASS")
+    println("SaiETF frozen after-hours newer-timestamp arbitration / equal-source tie / older fallback protection: PASS")
 }
