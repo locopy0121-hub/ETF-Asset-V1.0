@@ -681,7 +681,7 @@ function FrameTools({frame,frameKey,fx,measured,position,canMoveUp,canMoveDown,o
         onChange={height=>patch({height,...(actualMinHeight>height?{minHeight:height}:{})})}/>
       <NumberStep label="最小高度" value={actualMinHeight} min={0} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
       <NumberStep label="最大寬度" value={actualMaxWidth} min={0} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={maxWidth=>patchFx({maxWidth})}/>
-      <Text style={styles.hint}>0 = 不限制，並非元件實際尺寸。未指定寬高時依真實畫面測量；縮小高度會同步降低衝突的最小高度，增大寬度會同步放寬衝突的最大寬度。</Text>
+      <Text style={styles.hint}>寬度、高度、最小高度、最大寬度分別設定。0 = 不限制，並非元件實際尺寸。未指定寬高時依真實畫面測量；縮小高度會同步降低衝突的最小高度，增大寬度會同步放寬衝突的最大寬度。</Text>
     </Accordion>
     <Accordion title="內距／空間" subtitle="整體內距、四邊內距、內容間距與外距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
       <NumberStep label="整體 Padding" value={frame.padding??16} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
