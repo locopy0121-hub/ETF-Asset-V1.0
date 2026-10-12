@@ -169,30 +169,30 @@ export function MarketResearchScreen(){
       <MarketPreviewActionGuard><Pressable onPress={()=>void market.refresh({force:true})}><Text style={{fontWeight:'700',color:theme.palette.primary}}>{market.refreshing?'更新中…':'更新行情'}</Text></Pressable></MarketPreviewActionGuard>
     </FrameCard>},
     {key:'market-chart',element:<FrameCard title="行情圖表">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{tabs.map(x=>
-        <Chip key={x.key} label={x.label} active={tab===x.key} click={()=>setTab(x.key)}/>)}</ScrollView>
+      <MarketEditableSurface id="market:chart:tabs" label="市場研究頁籤列"><MarketPreviewActionGuard><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{tabs.map(x=>
+        <Chip key={x.key} label={x.label} active={tab===x.key} click={()=>setTab(x.key)}/>)}</ScrollView></MarketPreviewActionGuard></MarketEditableSurface>
       {tab==='chart'?<View style={{gap:10}}>
-        <Text style={{fontWeight:'800',color:theme.palette.text}}>當日實際成交走勢</Text>
-        <IntradayChart points={quote?.intraday??[]}/>
+        <MarketEditableText id="market:chart:title" label="分時走勢標題" style={{fontWeight:'800',color:theme.palette.text}}>當日實際成交走勢</MarketEditableText>
+        <MarketEditableSurface id="market:chart:intraday" label="分時走勢圖"><IntradayChart points={quote?.intraday??[]}/></MarketEditableSurface>
         <View style={styles.row}>
-          <ChartPeriodDropdown label="K線週期" value={period} options={([
+          <MarketEditableSurface id="market:chart:period" label="K 線週期選單"><MarketPreviewActionGuard><ChartPeriodDropdown label="K線週期" value={period} options={([
             {id:'day',label:'還原日'},{id:'week',label:'還原週'},{id:'month',label:'還原月'},
-          ] as const)} onChange={next=>{setPeriod(next);setSelectedCandleDate(null);}}/>
-          <ChartPeriodDropdown label="歷史區間" value={range} options={([
+          ] as const)} onChange={next=>{setPeriod(next);setSelectedCandleDate(null);}}/></MarketPreviewActionGuard></MarketEditableSurface>
+          <MarketEditableSurface id="market:chart:range" label="歷史區間選單"><MarketPreviewActionGuard><ChartPeriodDropdown label="歷史區間" value={range} options={([
             {id:'m1',label:'1月'},{id:'m3',label:'3月'},{id:'m6',label:'6月'},{id:'y1',label:'1年'},
-          ] as const)} onChange={next=>{setRange(next);setSelectedCandleDate(null);}}/>
+          ] as const)} onChange={next=>{setRange(next);setSelectedCandleDate(null);}}/></MarketPreviewActionGuard></MarketEditableSurface>
         </View>
-        <ChartStyleDropdown value={chartStyle} onChange={setChartStyle} allowedStyles={MARKET_CHART_STYLES}/>
-        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>橫向滑動瀏覽歷史 K 線；開啟十字線後可拖動選取交易日，並同步 KD／MACD。</Text>
-        <OfficialCandleChart key={(symbol??'')+'-'+period+'-'+range} candles={transformed} loading={loading} error={error} rangeLabel={period+'｜'+range}
+        <MarketEditableSurface id="market:chart:style" label="圖表樣式選單"><MarketPreviewActionGuard><ChartStyleDropdown value={chartStyle} onChange={setChartStyle} allowedStyles={MARKET_CHART_STYLES}/></MarketPreviewActionGuard></MarketEditableSurface>
+        <MarketEditableText id="market:chart:hint" label="圖表操作說明" style={{color:theme.palette.textSecondary,fontSize:11}}>橫向滑動瀏覽歷史 K 線；開啟十字線後可拖動選取交易日，並同步 KD／MACD。</MarketEditableText>
+        <MarketEditableSurface id="market:chart:history" label="歷史 K 線圖"><MarketPreviewActionGuard><OfficialCandleChart key={(symbol??'')+'-'+period+'-'+range} candles={transformed} loading={loading} error={error} rangeLabel={period+'｜'+range}
           chartStyle={chartStyle} dataKeys={['open','high','low','close','volume','change','changePct']} crosshairDefault={false} costLineEnabled={false}
-          onSelectCandle={candle=>setSelectedCandleDate(candle.date)}/>
+          onSelectCandle={candle=>setSelectedCandleDate(candle.date)}/></MarketPreviewActionGuard></MarketEditableSurface>
         <View style={styles.row}>{[{label:'MA5',value:price(indicators.ma5)},{label:'MA10',value:price(indicators.ma10)},
           {label:'MA20',value:price(indicators.ma20)},{label:'RSI14',value:indicators.rsi14?.toFixed(2)??'—'}].map(item=>
           <View key={item.label} style={{backgroundColor:theme.palette.surfaceMuted,padding:10,borderRadius:10,minWidth:78}}>
-            <Text style={{fontSize:11,color:theme.palette.textSecondary}}>{item.label}</Text><Text editorReadOnly style={{color:theme.palette.text,fontWeight:'800'}}>{item.value}</Text>
+            <MarketEditableText id={'market:chart:indicator:'+item.label+':label'} label={item.label+' 標籤'} style={{fontSize:11,color:theme.palette.textSecondary}}>{item.label}</MarketEditableText><MarketEditableText id={'market:chart:indicator:'+item.label+':value'} label={item.label+' 數值'} kind="value" style={{color:theme.palette.text,fontWeight:'800'}}>{item.value}</MarketEditableText>
           </View>)}</View>
-        <MarketTechnicalSignals candles={transformed} selectedDate={selectedCandleDate}/>
+        <MarketEditableSurface id="market:chart:signals" label="技術指標明細"><MarketTechnicalSignals candles={transformed} selectedDate={selectedCandleDate}/></MarketEditableSurface>
         <Text style={{fontSize:11,color:theme.palette.textSecondary}}>週月 K 依取得之官方日線聚合，不用瞬間成交價偽造 OHLC／成交量。</Text>
       </View>:<Text style={{fontSize:12,color:theme.palette.textSecondary}}>目前檢視：{tabs.find(x=>x.key===tab)?.label}</Text>}
     </FrameCard>},
