@@ -19,9 +19,9 @@ internal class FugleStreamingController(
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             provider.events.collect { event ->
                 when (event) {
-                    is MarketEvent.Quote -> {
-                        marketDataCenter.acceptStreamingQuote(event.quote)
-                    }
+                    // Price acceptance is synchronous from Fugle's native
+                    // onTrade callback. Do not accept it a second time here.
+                    is MarketEvent.Quote -> Unit
 
                     is MarketEvent.ProviderState -> {
                         if(event.health.circuitState != ProviderCircuitState.HEALTHY)
