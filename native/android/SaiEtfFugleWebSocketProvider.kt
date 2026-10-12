@@ -103,6 +103,9 @@ internal class FugleWebSocketProvider(
     private val apiKeyProvider: () -> String?,
     private val transport: FugleSocketTransport = OkHttpFugleSocketTransport(),
     private val clockMillis: () -> Long = System::currentTimeMillis,
+    // TF Asset consumes Fugle trades directly on the native socket callback;
+    // the diagnostic event buffer is not allowed to gate LIVE valuation.
+    private val onTrade: (MarketQuote) -> Unit = {},
 ) : MarketDataProvider {
     override val source: MarketSource = MarketSource.FUGLE
     override val capabilities: Set<MarketProviderCapability> =
@@ -446,6 +449,9 @@ internal class FugleWebSocketProvider(
             consecutiveFailures = 0
             recovering = false
         }
+        // Never gate the price feed on SharedFlow.tryEmit: a saturated buffer
+        // would otherwise silently drop a genuine Fugle trade.
+        onTrade(quote)
         _events.tryEmit(MarketEvent.Quote(quote))
         emitHealth()
     }
