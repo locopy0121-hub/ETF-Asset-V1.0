@@ -8,7 +8,13 @@ import {makePageConfig,mergeEditorState,normalizeEditorConfig} from '../src/edit
 const blobSha=(source:string)=>{const content=Buffer.from(source,'utf8');return createHash('sha1').update('blob '+content.length+'\0').update(content).digest('hex');};
 const screen=readFileSync('src/screens/SettingsScreen.tsx','utf8');
 const release=JSON.parse(readFileSync('app.json','utf8')).expo as {version:string;android:{versionCode:number}};
-const protectedBaseline=screen.replace("const VERSION='"+release.version+"';","const VERSION='4.0.14';")
+// V4.0.50: the user explicitly approved relocating the existing schedule here.
+// Strip only that exact addition; all other protected content retains its original hash.
+const protectedBaseline=screen
+  .replace("import {MarketUpdateSchedulePanel} from '../components/MarketUpdateSchedulePanel';\n",'')
+  .replace("type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs'|'schedule';","type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';")
+  .replace('      <ChildButton label="行情更新排程" summary="交易星期、盤中開始／結束時間" active={systemPanel===\'schedule\'} onPress={()=>setSystemPanel(systemPanel===\'schedule\'?null:\'schedule\')}/>\n      {systemPanel===\'schedule\'?<MarketUpdateSchedulePanel/>:null}\n','')
+  .replace("const VERSION='"+release.version+"';","const VERSION='4.0.14';")
   .replace("const BUILD='"+String(release.android.versionCode)+"';","const BUILD='40014';");
 assert.equal(blobSha(protectedBaseline),'ec360bf7adf599136f06fd8724283d7b148311c0','SettingsScreen must match V4.0.14 byte-for-byte except release metadata');
 const protectedSubcomponents=[

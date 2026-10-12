@@ -1,0 +1,44 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),React=require('react'),{create,act}=require('react-test-renderer');
+global.IS_REACT_ACT_ENVIRONMENT=true;
+let saved=[],loads=0;
+const initial={enabled:true,start:'10:00',end:'12:00',weekdays:[1,3,5]};
+const bridge={nativeRuntimeAvailable:false,loadMarketUpdateSchedule:async()=>{loads++;return initial;},saveMarketUpdateSchedule:async v=>{saved.push(v);return true;}};
+const palette={};
+const native={View:'View',Text:'Text',TextInput:'TextInput',Pressable:'Pressable',Switch:'Switch',ScrollView:'ScrollView',ImageBackground:'ImageBackground',StyleSheet:{create:v=>v},Platform:{OS:'ios'},AppState:{addEventListener:()=>({remove(){}})}};
+const runtime={entries:[],prefs:{pageTitles:{},engineerEnabled:false},palette,config:{enabled:false,mode:'main'}};
+const emptyModule=new Proxy({},{get:(_,key)=>String(key).startsWith('use')?()=>runtime:()=>null});
+function load(file){const m={exports:{}};const req=id=>{
+ if(id==='react-native')return native;
+ if(id==='react-native-safe-area-context')return {SafeAreaView:'SafeAreaView'};
+ if(id.endsWith('/TfAssetNativeBridge'))return bridge;
+ if(id.endsWith('/ThemeRuntime'))return {useThemeRuntime:()=>runtime};
+ if(id.endsWith('/BackupService'))return {listLocalBackups:async()=>[],dataStorageSummary:async()=>({keys:0,bytes:0}),lastVerifiedExternalBackup:async()=>null};
+ if(id.endsWith('/tokens'))return {colors:{},radius:{},spacing:{}};
+ if(id.endsWith('/frameRegistry')||id.endsWith('/MarketUpdateSchedulePanel')||id.endsWith('/marketUpdateSchedule'))return load(path.resolve(path.dirname(file),id)+(id.endsWith('/MarketUpdateSchedulePanel')?'.tsx':'.ts'));
+ if(id.startsWith('.'))return emptyModule;return require(id);
+ };new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText)(req,m,m.exports);return m.exports;}
+(async()=>{
+ const {SettingsScreen}=load('src/screens/SettingsScreen.tsx');let ui;
+ await act(async()=>{ui=create(React.createElement(SettingsScreen));});
+ const button=label=>ui.root.findAllByType('Pressable').find(p=>p.findAllByType('Text').some(t=>t.children.includes(label)));
+ assert.equal(loads,0,'collapsed settings must not load schedule');
+ await act(async()=>button('系統設定').props.onPress());
+ assert.ok(button('行情更新排程'),'schedule entry belongs inside system settings');
+ assert.equal(ui.root.findAllByProps({accessibilityLabel:'行情開始時間'}).length,0);
+ await act(async()=>button('行情更新排程').props.onPress());
+ const input=label=>ui.root.findByProps({accessibilityLabel:label});
+ assert.equal(input('行情開始時間').props.value,'10:00','existing native schedule must survive relocation');
+ assert.equal(input('行情結束時間').props.value,'12:00');
+ await act(async()=>input('行情開始時間').props.onChangeText('11:00'));
+ await act(async()=>button('儲存排程').props.onPress());
+ assert.deepEqual(saved.at(-1),{...initial,start:'11:00'});
+ await act(async()=>button('背景執行與權限').props.onPress());
+ assert.equal(ui.root.findAllByProps({accessibilityLabel:'行情開始時間'}).length,0,'sibling selection collapses schedule');
+ await act(async()=>button('行情更新排程').props.onPress());
+ await act(async()=>button('系統設定').props.onPress());
+ assert.equal(ui.root.findAllByProps({accessibilityLabel:'行情開始時間'}).length,0,'parent collapse removes schedule');
+ await act(async()=>ui.unmount());
+ const market=fs.readFileSync('src/screens/MarketResearchScreen.tsx','utf8');
+ assert.equal(market.includes('MarketUpdateSchedulePanel'),false,'market screen must no longer mount schedule');
+ console.log('Settings schedule navigation / saved data / save bridge / exclusive collapse PASS');
+})().catch(e=>{console.error(e);process.exitCode=1});

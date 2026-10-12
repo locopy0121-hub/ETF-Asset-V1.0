@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {EtfHoldingsApiSettings} from '../components/EtfHoldingsApiSettings';
+import {MarketUpdateSchedulePanel} from '../components/MarketUpdateSchedulePanel';
 import {
   Alert,
   AppState,
@@ -51,7 +52,7 @@ import { useWidgetSettingsRuntime } from '../widget/WidgetSettingsRuntime';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 type PluginPanel=null|'widget'|'monitor';
-type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';
+type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs'|'schedule';
 type AccountingPanel=null|'formulas'|'broker'|'defaults'|'core'|'cash';
 type DataPanel=null|'catalog'|'market'|'policy'|'wall'|'badges'|'metadata'|'summary'|'integrity'|'repair';
 type BackupPanel=null|'create'|'export'|'import'|'restore'|'clear';
@@ -60,8 +61,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='4.0.49';
-const BUILD='40049';
+const VERSION='4.0.50';
+const BUILD='40050';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -181,6 +182,8 @@ export function SettingsScreen(){
 
   function systemSection(){
     return <View style={styles.children}>
+      <ChildButton label="行情更新排程" summary="交易星期、盤中開始／結束時間" active={systemPanel==='schedule'} onPress={()=>setSystemPanel(systemPanel==='schedule'?null:'schedule')}/>
+      {systemPanel==='schedule'?<MarketUpdateSchedulePanel/>:null}
       <ChildButton label="駐點維護工程師｜全局總開關" summary={settings.prefs.engineerEnabled?'已啟用｜各區域活動扳手可呼叫':'已關閉｜日常畫面乾淨'} active={systemPanel==='engineer'} onPress={()=>setSystemPanel(systemPanel==='engineer'?null:'engineer')}/>
       {systemPanel==='engineer'?<Panel title="全 App 工程師進駐">
         <ToggleRow label="顯示各模塊／框架／元件活動扳手" value={settings.prefs.engineerEnabled} onChange={settings.patchEngineerEnabled}/>

@@ -3,7 +3,6 @@ import {useEffect,useMemo,useState} from 'react';
 import {Linking,ScrollView,StyleSheet,View} from 'react-native';
 import Svg,{Line,Polyline} from 'react-native-svg';
 import {Pressable,Text,TextInput} from '../components/EditableNative';
-import {MarketUpdateSchedulePanel} from '../components/MarketUpdateSchedulePanel';
 import {PageShell} from '../components/PageShell';
 import {PageEditorStack} from '../components/PageEditorStack';
 import {FrameCard} from '../components/FrameCard';
@@ -259,7 +258,6 @@ export function MarketResearchScreen(){
   ];
   return <>
     <PageShell pageKey="market" title="市場資訊中心" subtitle="台股／ETF 查詢與研究" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-      <MarketPreviewActionGuard><MarketUpdateSchedulePanel/></MarketPreviewActionGuard>
       <PageEditorStack pageKey="market" frames={frameData}/>
     </PageShell>
     <PageFrameSettingsModal visible={settingsOpen} pageKey="market" title="市場資訊中心編輯"
