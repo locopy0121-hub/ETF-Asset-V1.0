@@ -19,7 +19,8 @@ assert.doesNotMatch(bridge,/loadMarketCoreCache|persistMarketCoreCache|setMarket
 assert.match(native,/@Synchronized fun refresh/,'provider polling must serialize health state');
 assert.doesNotMatch(native,/@Synchronized fun snapshot/,'hot-store reads cannot wait for provider HTTP');
 assert.match(native,/MarketDataCenter\([\s\S]*TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/);
-assert.match(center,/hotStore\.publish\(listOf\(normalized\)\)[\s\S]*pending\.remove\(symbol\)/);
+assert.match(center,/hotStore\.publish\(accepted\.values\)/,'SaiETF frozen center publishes the selected batch to Memory Hot Store');
+assert.match(center,/pending\.remove\(symbol\)/,'resolved symbols must leave the next-provider fallback queue');
 assert.doesNotMatch(adapter,/SHIOAJI/);
 assert.doesNotMatch(widget,/HttpURLConnection|mis\.twse|query1\.finance/);
 for(const core of ['SaiEtfMarketArbitrator.kt','SaiEtfMarketModels.kt','SaiEtfMemoryMarketStore.kt'])
