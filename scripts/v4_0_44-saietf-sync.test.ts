@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {marketRowsToRuntimeQuotes} from '../src/market/unifiedMarketAdapter';
-import {valuationSessionActive} from '../src/market/marketCenterViews';
+import {valuationSessionActive,marketValuationQuoteFromRow} from '../src/market/marketCenterViews';
 import type {RuntimeQuote} from '../src/finance/financeSeed';
 import type {UnifiedMarketSnapshot,UnifiedMarketRow} from '../src/native/TfAssetNativeBridge';
 
@@ -36,6 +36,8 @@ const make=(price:number,prev:number|null,at:number,session:string,source:'FUGLE
 const snap=(row:UnifiedMarketRow,version:number):UnifiedMarketSnapshot=>({
   version,queriedAt:current,quotes:[row],missing:[],phase:'live',
 });
+assert.equal(marketValuationQuoteFromRow(prior,{now:current}),undefined,'prior-session cache cannot count as a live-session valuation');
+assert.ok(marketValuationQuoteFromRow(prior,{now:Date.parse('2026-10-12T08:00:00Z')}),'after-hours last valid quote remains visible');
 const stream=marketRowsToRuntimeQuotes(snap(make(81.5,null,current,'2026-10-12'),1),[prior],current)[0]!;
 assert.equal(stream.currentPrice,81.5);
 assert.equal(stream.previousCloseKnown,false,'old pre-holiday comparison must be discarded');

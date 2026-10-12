@@ -78,6 +78,9 @@ export function marketValuationQuoteFromRow(row:RuntimeQuote|undefined,context:V
   if(at>now+120_000)return undefined;
   if(typeof row.quality!=='string'||!VALUATION_QUALITIES.has(row.quality))return undefined;
   if(row.sessionDate&&row.sessionDate!==taipeiDate(at))return undefined;
+  // SaiETF policy: a prior-session cache is diagnostic during live trading,
+  // never proof that today's portfolio has complete and current valuation.
+  if(valuationSessionActive(now)&&taipeiDate(at)!==taipeiDate(now))return undefined;
   return row;
 }
 

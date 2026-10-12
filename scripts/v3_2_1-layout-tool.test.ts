@@ -12,7 +12,8 @@ assert.equal(layoutKindLabel('frame'),'框架');
 
 const wb=read('src/components/PageLayoutToolWorkbench.tsx');
 assert.match(wb,/預覽直接使用 App 真實元件與目前資料/);
-assert.match(wb,/寬度、高度、最小高度、最大寬度/);
+// Check the actual numeric controls, not an obsolete prose hint removed by the protected editor's compact layout.
+for(const label of ['寬度','高度','最小高度','最大寬度'])assert.ok(wb.includes('<NumberStep label="'+label+'"'),label+' numeric editor must exist');
 assert.match(wb,/layoutEditMode/);
 assert.match(wb,/selection\.kind==='frame'/);
 assert.match(wb,/selection\.kind==='card'/);
