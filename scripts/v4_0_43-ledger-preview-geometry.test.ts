@@ -7,12 +7,16 @@ const ledger=read('src/screens/LedgerScreen.tsx');
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'4.0.43');
+const [major,minor,patch]=pkg.version.split('.').map(Number);
+assert.equal(major,4);
+assert.equal(minor,0);
+assert.ok(patch>=43,'V4.0.43 ledger geometry remains required in later versions');
+const build=major*10000+minor*100+patch;
 assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,40043);
-assert.equal(app.ios.buildNumber,'40043');
-assert.ok(settings.includes("const BUILD='40043'"));
-assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='4.0.43'"));
+assert.equal(app.android.versionCode,build);
+assert.equal(app.ios.buildNumber,String(build));
+assert.ok(settings.includes("const BUILD='"+build+"'"));
+assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
 // Ledger editor must render real controlled transaction form and rows, never a stock screenshot.
 assert.match(ledger,/const ledgerFrameData=\[/);
 assert.match(ledger,/<PageEditorStack pageKey="ledger" frames=\{ledgerFrameData\}\/>/);
@@ -21,7 +25,8 @@ assert.match(workbench,/actualLedgerPreviewKeys=new Set/);
 assert.match(workbench,/page==='ledger'\?actualLedgerPreviewKeys\.has\(key\)/);
 assert.match(workbench,/if\(pageKey==='ledger'\)\{/);
 assert.match(workbench,/return actual\?<View pointerEvents="none">\{actual\.props\.children\}<\/View>:null/);
-assert.match(workbench,/pageKey==='market'\|\|pageKey==='ledger'\|\|/);
+assert.match(workbench,/pageKey==='market'\|\|pageKey==='ledger'\|\|\(pageKey==='home'&&frameKey==='holding-quotes'\)/,
+  'ledger preview must preserve edit targets alongside the existing market and home views');
 // Manual dimensions have only a positive, physical minimum; inactive bounds must display 0.
 assert.equal(normalizeEditorDimension(1,320),1);
 assert.equal(normalizeEditorDimension(0,320,true),0);
