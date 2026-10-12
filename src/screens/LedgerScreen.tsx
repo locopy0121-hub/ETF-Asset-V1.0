@@ -145,9 +145,7 @@ export function LedgerScreen() {
   const ledgerRows=ledgerPageSlice(ordered,ledgerCurrentPage,ledgerPageSize);
   useEffect(()=>{setLedgerPage(current=>clampLedgerPage(current,ordered.length,ledgerPageSize));},[ordered.length,ledgerPageSize]);
 
-  return <>
-    <PageShell pageKey="ledger" title="帳務中心" subtitle="Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-      <PageEditorStack pageKey="ledger" frames={[
+  const ledgerFrameData=[
         {key:'quick-entry',element:
           <FrameCard title="快速建檔">
             <SegmentedControl
@@ -285,10 +283,13 @@ export function LedgerScreen() {
             </View>
           </FrameCard>
         },
-      ]}/>
+      ];
+  return <>
+    <PageShell pageKey="ledger" title="帳務中心" subtitle="Ledger 是帳務真值來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+      <PageEditorStack pageKey="ledger" frames={ledgerFrameData}/>
     </PageShell>
 
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="ledger" title="紀錄" frames={PAGE_FRAMES.ledger} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="ledger" title="紀錄" frames={PAGE_FRAMES.ledger} previewElements={ledgerFrameData} onClose={()=>setSettingsOpen(false)}/>
     <DatePickerModal visible={dateOpen} value={date} onChange={setDate} onClose={()=>setDateOpen(false)}/>
     <Modal visible={!!selectedEntry} transparent animationType="fade" onRequestClose={()=>setSelectedEntry(null)}><EditorSurface pageKey="ledger" frameKey="trade-detail-modal" title="交易完整明細" visible={!!selectedEntry}>
       <View style={styles.backdrop}><View style={styles.detailModal}>
