@@ -26,7 +26,7 @@ for(const key of ['market-index','market-search','market-summary','market-chart'
 assert.match(workbench,/page==='market'\?actualMarketPreviewKeys\.has\(key\)/);
 assert.match(workbench,/pageKey==='market'\)\{/);
 assert.match(workbench,/actual\.props\.children/);
-assert.match(workbench,/pageKey==='market'\|\|\(pageKey==='home'&&frameKey==='holding-quotes'\)/);
+assert.match(workbench,/pageKey==='market'\|\|(?:pageKey==='ledger'\|\|)?\(pageKey==='home'&&frameKey==='holding-quotes'\)/);
 
 // Market data is read-only. Labels, values and charts select a visual-only target.
 assert.match(workbench,/selection\.id\.startsWith\('market:(?:index:)?'\)/);
