@@ -1,6 +1,7 @@
 package com.tfasset.app.saietf
 
 import android.content.Context
+import com.tfasset.app.TfAssetMarketSchedule
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -52,7 +53,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
     // No SaiETF process, app, service, database or network relay participates.
     private val fugle = FugleWebSocketProvider(
         apiKeyProvider = keyStore::load,
-        onTrade = { quote -> liveQuotes.accept(quote) },
+        onTrade = { quote -> if(!paused&&TfAssetMarketSchedule.allows(appContext))liveQuotes.accept(quote) },
         onHealth = { health ->
             val healthy = health.circuitState == tw.saietf.core.market.ProviderCircuitState.HEALTHY
             val recovered = healthy && !streamWasHealthy
@@ -60,7 +61,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             if (trackedSymbols.isNotEmpty()) scope.launch {
                 version.incrementAndGet()
                 onLiveSnapshot(snapshot(trackedSymbols, includeIntraday = false).toString())
-                if (!paused && recovered && fallbackInFlight.compareAndSet(false, true)) {
+                if (!paused && TfAssetMarketSchedule.allows(appContext) && recovered && fallbackInFlight.compareAndSet(false, true)) {
                     try { refresh(trackedSymbols) }
                     finally { fallbackInFlight.set(false) }
                 }
@@ -98,6 +99,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         scope = scope,
         provider = fugle,
         marketDataCenter = center,
+        allowStreaming = {!paused&&TfAssetMarketSchedule.allows(appContext)},
         // Transport handles reconnect/backoff. No periodic backup price fetch
         // is allowed to compete with the live Fugle subscription.
 
@@ -114,7 +116,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
 
     fun saveFugleKey(apiKey: String): Boolean {
         keyStore.save(apiKey)
-        fugle.onCredentialChanged()
+        streamingController.onCredentialChanged(if(paused)emptySet() else trackedSymbols)
         return true
     }
 
@@ -122,7 +124,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
 
     fun clearFugleKey(): Boolean {
         keyStore.clear()
-        fugle.onCredentialChanged()
+        streamingController.onCredentialChanged(if(paused)emptySet() else trackedSymbols)
         return true
     }
 
@@ -130,9 +132,12 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         val symbols = requested.map { it.trim().uppercase(Locale.US) }
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }.toSet()
         trackedSymbols = symbols
+        if(!TfAssetMarketSchedule.allows(appContext)){pause();return}
         paused = false
         streamingController.updateSymbols(symbols)
     }
+
+    fun resumeTrackedSymbols(){updateSymbols(trackedSymbols)}
 
     fun pause() {
         paused = true
@@ -145,14 +150,14 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             .map { it.trim().uppercase(Locale.US) }
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }
             .toSet()
-        if (symbols.isEmpty()) return snapshot(symbols)
+        if (symbols.isEmpty()||!TfAssetMarketSchedule.allows(appContext)) return snapshot(symbols)
 
         val now = System.currentTimeMillis()
         if (isLiveSession(now)) {
             // Lifecycle/manual/reconnect bootstrap comes from Fugle itself.
             // HTTP completion uses the SAME SaiETF arbitrator as socket ticks.
-            fugleRest.fetch(symbols).values.forEach { quote ->
-                liveQuotes.acceptBaseline(quote)
+            fugleRest.fetch(symbols){!paused&&TfAssetMarketSchedule.allows(appContext)}.values.forEach { quote ->
+                if(TfAssetMarketSchedule.allows(appContext))liveQuotes.acceptBaseline(quote)
             }
             version.incrementAndGet()
             val result = snapshot(symbols)

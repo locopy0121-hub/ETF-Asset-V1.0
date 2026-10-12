@@ -66,7 +66,7 @@ assert.match(providers,/query1\.finance\.yahoo\.com/);
 assert.match(fugle,/wss:\/\/api\.fugle\.tw\/marketdata\/v1\.0\/stock\/streaming/);
 assert.match(fugle,/TRADE_CHANNEL = "trades"/);
 assert.match(fugle,/scheduleReconnect/);
-assert.match(nativeRuntime,/onTrade = \{ quote -> liveQuotes\.accept\(quote\) \}/,
+assert.match(nativeRuntime,/onTrade = \{ quote -> if\(!paused&&TfAssetMarketSchedule\.allows\(appContext\)\)liveQuotes\.accept\(quote\) \}/,
   'TF Asset receives Fugle trades directly into its own market center');
 assert.match(fugleController,/is MarketEvent\.Quote -> Unit/,
   'buffered quote events must not overwrite the direct socket price');

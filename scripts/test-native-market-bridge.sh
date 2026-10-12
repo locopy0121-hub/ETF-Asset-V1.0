@@ -73,3 +73,15 @@ java -cp "$compiler_dir/v447-presentation.jar:$compile_cp" com.tfasset.app.V447P
 "$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetSurfaceSnapshotPolicy.kt scripts/native/V448SurfaceSnapshotTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v448-surface.jar"
 java -cp "$compiler_dir/v448-surface.jar:$compile_cp" com.tfasset.app.V448SurfaceSnapshotTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetMarketSchedulePolicy.kt native/android/SaiEtfTradingCalendar.kt scripts/native/V449MarketScheduleTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v449-schedule.jar"
+java -cp "$compiler_dir/v449-schedule.jar:$compile_cp" com.tfasset.app.V449MarketScheduleTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/SaiEtfFugleStreamingController.kt scripts/native/V449ControllerCoreStubs.kt scripts/native/V449ControllerProviderStub.kt scripts/native/V449ControllerTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v449-controller.jar"
+java -cp "$compiler_dir/v449-controller.jar:$compile_cp" com.tfasset.app.saietf.V449ControllerTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/SaiEtfMarketModels.kt native/android/TfAssetFugleRestQuoteProvider.kt scripts/native/V449RestScheduleTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v449-rest-schedule.jar"
+java -cp "$compiler_dir/v449-rest-schedule.jar:$compile_cp" com.tfasset.app.saietf.V449RestScheduleTestKt

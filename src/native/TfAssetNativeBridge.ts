@@ -1,4 +1,5 @@
 import { DeviceEventEmitter, NativeModules, Platform } from 'react-native';
+import {DEFAULT_MARKET_SCHEDULE,validateMarketSchedule,type MarketUpdateSchedule} from '../market/marketUpdateSchedule';
 import type { SharedSnapshot } from '../domain/snapshot';
 import type { MonitorConfig } from '../monitor/monitorDomain';
 import type { WidgetConfig } from '../widget/widgetDomain';
@@ -77,6 +78,8 @@ export type UnifiedMarketSnapshot=Readonly<{
   marketCore?:'SAIETF_NATIVE';
 }>;
 type TfAssetNativeModule={
+  readMarketUpdateSchedule:()=>Promise<string>;
+  saveMarketUpdateSchedule:(raw:string)=>Promise<boolean>;
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   readUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
   setUnifiedMarketSymbols:(symbolsJson:string)=>Promise<boolean>;
@@ -298,4 +301,16 @@ export async function acknowledgeNativeCrashJournal():Promise<boolean>{
 }
 export function saveCriticalNativeDiagnostic(code:string,screen:string):void{
   if(native&&typeof native.saveCriticalDiagnostic==='function')void native.saveCriticalDiagnostic(code,screen).catch(()=>{});
+}
+
+export async function loadMarketUpdateSchedule():Promise<MarketUpdateSchedule>{
+  if(!native||typeof native.readMarketUpdateSchedule!=='function')throw new Error('排程需要新版 Android App');
+  return validateMarketSchedule(JSON.parse(await native.readMarketUpdateSchedule()))??DEFAULT_MARKET_SCHEDULE;
+}
+export async function saveMarketUpdateSchedule(value:MarketUpdateSchedule):Promise<boolean>{
+  const normalized=validateMarketSchedule(value);
+  if(!normalized||!native||typeof native.saveMarketUpdateSchedule!=='function')throw new Error('排程不可用');
+  const saved=await native.saveMarketUpdateSchedule(JSON.stringify(normalized));
+  if(!saved)throw new Error('排程未儲存');
+  return true;
 }

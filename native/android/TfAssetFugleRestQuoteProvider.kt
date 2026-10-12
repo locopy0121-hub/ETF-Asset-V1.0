@@ -9,14 +9,16 @@ import tw.saietf.core.market.MarketQuote
 import tw.saietf.core.market.MarketSource
 
 /** One-shot lifecycle/reconnect bootstrap, never a price-polling scheduler. */
-internal class FugleRestQuoteProvider(private val apiKeyProvider: () -> String?) {
-    fun fetch(symbols: Set<String>): Map<String, MarketQuote> {
+internal class FugleRestQuoteProvider(private val apiKeyProvider: () -> String?,
+    private val openConnection:(String)->HttpURLConnection={symbol->URL("https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/$symbol").openConnection() as HttpURLConnection}) {
+    fun fetch(symbols: Set<String>,shouldContinue:()->Boolean={true}): Map<String, MarketQuote> {
         val key=apiKeyProvider()?.trim().orEmpty()
         if(key.isEmpty()) return emptyMap()
         return symbols.mapNotNull { symbol ->
+            if(!shouldContinue())return@mapNotNull null
             if(!symbol.matches(Regex("[0-9A-Z]{4,8}"))) return@mapNotNull null
             runCatching {
-                val connection=URL("https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/$symbol").openConnection() as HttpURLConnection
+                val connection=openConnection(symbol)
                 connection.connectTimeout=5000
                 connection.readTimeout=5000
                 connection.setRequestProperty("X-API-KEY",key)

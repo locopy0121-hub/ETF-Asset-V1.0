@@ -71,6 +71,12 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
       return
     }
     if(intent.action!=ACTION_FORCE_REFRESH)return
+    if(!TfAssetMarketSchedule.allows(context)){
+      context.getSharedPreferences("tf_asset_native",0).edit().putString("widget_refresh_status","排程休息中｜保留最後行情").apply()
+      val manager=AppWidgetManager.getInstance(context)
+      onUpdate(context,manager,manager.getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java)))
+      return
+    }
     synchronized(TfAssetWidgetProvider::class.java){
       if(refreshing)return
       refreshing=true

@@ -636,3 +636,9 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Repair: process-wide market owner, trading-session foreground Headless JS service, event-driven canonical Widget projection shared with App. No price polling or update-button dependency; connection notification required by chosen background mode. Stop at session close, last Widget removal and platform timeout.
 - Regression guards: newer pending events cannot be replaced by late versions; foreground queued surface writes skip background; native persisted market versions reject regression; bootstrap errors keep listeners alive; official calendar ingestion matches App.
 - Verification boundary: automated projection/task/native gates and QA build do not prove device screen-off, OEM background lifetime, genuine provider credentials or reconnect. These remain device validation pending.
+
+## V4.0.49 — configurable trading-session schedule
+- Intraday direct push does not justify after-hours lifecycle REST calls or an open socket. Persist a shared native schedule (enabled, Mon–Fri, start/end within 09:00–13:30 Taipei), and gate both subscription commands and REST before each symbol. App/Widget share this policy; cached finance remains intact.
+- Credential changes must first clear desired subscriptions; otherwise provider reconnect uses retained symbols despite a previous disconnect. Serialize transport commands and discard obsolete queued commands so a late resume cannot undo schedule pause.
+- Only one upcoming start/end boundary is armed while App/Widget owns the runtime. This is connection scheduling, not seconds-based price polling. Outside schedule and with no active owner, no automatic price work runs.
+- Device background restrictions remain: after a resting/background service stops, future sessions resume when the App is opened. UI states this explicitly. QA build is not proof of next-day autonomous background launch.

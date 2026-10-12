@@ -50,7 +50,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val saietfMarket get() = TfAssetMarketOwner.runtime(reactContext)
   private val lifecycleListener=object:com.facebook.react.bridge.LifecycleEventListener{
-    override fun onHostResume(){TfAssetMarketOwner.uiActive=true;TfAssetWidgetLiveService.ensureStarted(reactContext)}
+    override fun onHostResume(){TfAssetMarketOwner.uiActive=true;TfAssetMarketOwner.applySchedule(reactContext)}
     override fun onHostPause(){TfAssetMarketOwner.uiActive=false}
     override fun onHostDestroy(){TfAssetMarketOwner.uiActive=false}
   }
@@ -251,6 +251,12 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     return generator.generateKey()
   }
 
+  @ReactMethod fun readMarketUpdateSchedule(promise:Promise){promise.resolve(TfAssetMarketSchedule.load(reactContext).json().toString())}
+  @ReactMethod fun saveMarketUpdateSchedule(raw:String,promise:Promise){
+    if(!TfAssetMarketSchedule.save(reactContext,raw)){promise.reject("MARKET_SCHEDULE","時段須在 09:00–13:30 且選擇有效交易星期");return}
+    TfAssetMarketOwner.applySchedule(reactContext);promise.resolve(true)
+  }
+
   @ReactMethod fun refreshUnifiedMarketData(symbolsJson:String,promise:Promise){
     val symbols=runCatching{
       val array=org.json.JSONArray(symbolsJson)
@@ -289,7 +295,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       val array=org.json.JSONArray(symbolsJson)
       (0 until array.length()).map{array.optString(it,"")}
     }.getOrElse{promise.reject("MARKET_SYMBOLS","台股追蹤清單格式錯誤",it);return}
-    runCatching{saietfMarket.updateSymbols(symbols)}
+    runCatching{saietfMarket.updateSymbols(symbols);TfAssetMarketOwner.applySchedule(reactContext)}
       .onSuccess{promise.resolve(true)}
       .onFailure{promise.reject("MARKET_SUBSCRIPTIONS",it)}
   }

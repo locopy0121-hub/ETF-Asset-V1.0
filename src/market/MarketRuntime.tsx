@@ -1,4 +1,4 @@
-import {applyMarketClosedDates,nextMarketSessionBoundary} from './marketCenterViews';
+import {applyMarketClosedDates,nextMarketSessionBoundary,valuationSessionActive} from './marketCenterViews';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState,type AppStateStatus} from 'react-native';
 import {
@@ -304,7 +304,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     if(!hydrated||(trackedSymbols.length===0&&researchSymbols.length===0))return;
-    void refresh({silent:true});
+    if(valuationSessionActive(Date.now()))void refresh({silent:true});
   },[hydrated,trackedSymbols,researchSymbols,refresh]);
 
   // SaiETF Memory Hot Store pushes every accepted quote into this single consumer.
@@ -320,7 +320,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
       if(next==='active'){
         void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
-        void refresh({force:true,silent:true});
+        if(valuationSessionActive(Date.now()))void refresh({force:true,silent:true});
       }else if(next==='background'||next==='inactive')void pauseNativeMarketStreaming().catch(()=>{});
     });
     return()=>{sub.remove();};
@@ -336,7 +336,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       if(!alive||AppState.currentState==='background'||AppState.currentState==='inactive')return;
       const now=Date.now();
       timer=setTimeout(()=>{
-        if(alive&&combinedSymbols().length>0)void refresh({silent:true}).finally(schedule);
+        if(alive&&combinedSymbols().length>0&&valuationSessionActive(Date.now()))void refresh({silent:true}).finally(schedule);
+        else if(alive){void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});schedule();}
         else schedule();
       },Math.max(1,Math.min(2_147_483_647,nextMarketSessionBoundary(now)-now)));
     };
