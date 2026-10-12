@@ -20,7 +20,16 @@ const initial=marketRowsToRuntimeQuotes({version:1,quotes:[valid]},[],now);
 assert.equal(initial.length,1);
 assert.equal(marketRowsToRuntimeQuotes({version:2,quotes:[]},initial,now)[0].currentPrice,100);
 assert.equal(marketRowsToRuntimeQuotes({version:3,quotes:[{...valid,currentPrice:0}]},initial,now)[0].currentPrice,100);
-assert.equal(marketRowsToRuntimeQuotes({version:4,quotes:[{...valid,currentPrice:98,sourceQuoteAt:valid.sourceQuoteAt-1000}]},initial,now)[0].currentPrice,100);
+// SaiETF 2.0.2 native MarketDataCenter decides price authority. A raw mapper
+// reflects the supplied row; it must not privately re-arbitrate the price.
+const regressed={version:4,quotes:[{...valid,currentPrice:98,sourceQuoteAt:valid.sourceQuoteAt-1000}]};
+assert.equal(marketRowsToRuntimeQuotes(regressed,initial,now)[0].currentPrice,98,
+  'a pure presentation mapper must not silently replace the native-selected price');
+// The actual bridge boundary must reject that impossible regressed envelope
+// before it reaches this mapper and preserves the last accepted SaiETF quote.
+const {saiEtfTransportSnapshotRegressed}=require('../src/market/saiEtfSnapshotContract.ts');
+assert.equal(saiEtfTransportSnapshotRegressed(regressed,initial),true,
+  'bridge must reject older exchange timestamps as a whole, never select a competing price');
 assert.equal(marketRowsToRuntimeQuotes({version:5,quotes:[{...valid,currentPrice:101,sourceQuoteAt:valid.sourceQuoteAt+1000}]},initial,now)[0].currentPrice,101);
 console.log('Empty / invalid / older / newer snapshot merge PASS');
 
