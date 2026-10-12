@@ -66,7 +66,10 @@ assert.match(providers,/query1\.finance\.yahoo\.com/);
 assert.match(fugle,/wss:\/\/api\.fugle\.tw\/marketdata\/v1\.0\/stock\/streaming/);
 assert.match(fugle,/TRADE_CHANNEL = "trades"/);
 assert.match(fugle,/scheduleReconnect/);
-assert.match(fugleController,/marketDataCenter\.acceptStreamingQuote/);
+assert.match(nativeRuntime,/onTrade = \{ quote -> center\.acceptStreamingQuote\(quote\) \}/,
+  'TF Asset receives Fugle trades directly into its own market center');
+assert.match(fugleController,/is MarketEvent\.Quote -> Unit/,
+  'buffered quote events must not overwrite the direct socket price');
 
 assert.match(nativeRuntime,/MarketDataCenter\(/);
 assert.match(nativeRuntime,/TwseMisQuoteProvider\(\)/);
