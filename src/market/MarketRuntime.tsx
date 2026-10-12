@@ -12,7 +12,7 @@ import {
   type UnifiedMarketSnapshot,
 } from '../native/TfAssetNativeBridge';
 import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
-import {saiEtfSnapshotHasAdvancedQuote,saiEtfTransportSnapshotRegressed} from './saiEtfSnapshotContract';
+import {saiEtfSnapshotHasAdvancedQuote,omitRegressedTransportQuotes} from './saiEtfSnapshotContract';
 import {fetchTaiwanSecurityCatalog,type TaiwanSecurityInfo} from './TaiwanSecurityCatalog';
 
 export type MarketPhase='live'|'afterHours'|'offline';
@@ -160,9 +160,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{catalogRef.current=catalog;},[catalog]);
 
   const applySnapshot=useCallback((snapshot:UnifiedMarketSnapshot)=>{
-    // SaiETF's native core is authoritative. Ignore bridge events whose quote
-    // clocks move backwards; never reselect a fallback or invent a price.
-    if(saiEtfTransportSnapshotRegressed(snapshot,quotesRef.current))return;
+    // Market prices come from TF Asset's own native Fugle connection. A late
+    // bridge event for one symbol must never veto the other live symbols.
     const snapshotAt=Number(snapshot.queriedAt)||0;
     const version=Number.isFinite(snapshot.version)?snapshot.version:Date.now();
     if(version<latestSnapshotVersionRef.current||snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
@@ -177,7 +176,8 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     setQuotes(current=>{
       const sessionDate=taipeiDate();
       const sessionRows=snapshot.phase==='live'?resetRuntimeIntradaySession(current,sessionDate):current;
-      const normalized=marketRowsToRuntimeQuotes(snapshot,sessionRows);
+      const orderedSnapshot=omitRegressedTransportQuotes(snapshot,sessionRows);
+      const normalized=marketRowsToRuntimeQuotes(orderedSnapshot,sessionRows);
       const named=applyCatalogNames(normalized,catalogRef.current);
       const next=appendNativeIntraday(sessionRows,named,sessionDate);
       quotesRef.current=next;
