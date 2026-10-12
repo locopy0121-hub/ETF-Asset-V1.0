@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.45",
+  "version": "4.0.46",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_45 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_46 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -330,7 +330,8 @@
     "test:v4_0_42": "npm run test:v4_0_41 && npx tsx scripts/v4_0_42-market-research-editor.test.ts",
     "test:v4_0_43": "npm run test:v4_0_42 && npx tsx scripts/v4_0_43-ledger-preview-geometry.test.ts",
     "test:v4_0_44": "npm run test:v4_0_43 && npx tsx scripts/v4_0_44-saietf-sync.test.ts",
-    "test:v4_0_45": "npm run test:v4_0_44 && npx tsx scripts/v4_0_45-saietf-authority.test.ts"
+    "test:v4_0_45": "npm run test:v4_0_44 && npx tsx scripts/v4_0_45-saietf-authority.test.ts",
+    "test:v4_0_46": "npm run test:v4_0_45 && npx tsx scripts/v4_0_46-fugle-direct-live.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
