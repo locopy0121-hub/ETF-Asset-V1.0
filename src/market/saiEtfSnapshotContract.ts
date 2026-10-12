@@ -37,22 +37,40 @@ export function saiEtfSnapshotHasAdvancedQuote(
  * This is NOT a second price-selection mechanism: only SaiETF's native core
  * selects prices, and a subsequent complete native snapshot can retry.
  */
+function transportQuoteRegressed(
+  incoming:UnifiedMarketSnapshot['quotes'][number],
+  current:RuntimeQuote|undefined,
+):boolean{
+  if(!current)return false;
+  const previousClock=Number(current.sourceQuoteAt);
+  const incomingClock=Number(incoming.sourceQuoteAt);
+  if(!Number.isFinite(previousClock)||previousClock<=0)return false;
+  if(!Number.isFinite(incomingClock)||incomingClock<=0)return false;
+  if(incomingClock<previousClock)return true;
+  // Sequence numbers are comparable ONLY within the same provider.
+  return incomingClock===previousClock && incoming.source===current.source
+    && typeof current.sequence==='number' && typeof incoming.sequence==='number'
+    && incoming.sequence<current.sequence;
+}
+
 export function saiEtfTransportSnapshotRegressed(
   snapshot:UnifiedMarketSnapshot,
   accepted:readonly RuntimeQuote[],
 ):boolean{
   const bySymbol=new Map(accepted.map(row=>[row.symbol,row] as const));
-  return (snapshot.quotes??[]).some(incoming=>{
-    const current=bySymbol.get(incoming.symbol);
-    if(!current)return false;
-    const previousClock=Number(current.sourceQuoteAt);
-    const incomingClock=Number(incoming.sourceQuoteAt);
-    if(!Number.isFinite(previousClock)||previousClock<=0)return false;
-    if(!Number.isFinite(incomingClock)||incomingClock<=0)return false;
-    if(incomingClock<previousClock)return true;
-    // Sequence numbers only have ordering meaning within a single provider.
-    return incomingClock===previousClock && incoming.source===current.source
-      && typeof current.sequence==='number' && typeof incoming.sequence==='number'
-      && incoming.sequence<current.sequence;
-  });
+  return (snapshot.quotes??[]).some(row=>transportQuoteRegressed(row,bySymbol.get(row.symbol)));
+}
+
+/**
+ * A delayed quote for 00406A must not block a newer live Fugle 0050 trade.
+ * Native MarketDataCenter still has exclusive price arbitration; this only
+ * prevents late bridge deliveries from rolling back individual UI symbols.
+ */
+export function omitRegressedTransportQuotes(
+  snapshot:UnifiedMarketSnapshot,
+  accepted:readonly RuntimeQuote[],
+):UnifiedMarketSnapshot{
+  const bySymbol=new Map(accepted.map(row=>[row.symbol,row] as const));
+  const quotes=(snapshot.quotes??[]).filter(row=>!transportQuoteRegressed(row,bySymbol.get(row.symbol)));
+  return quotes.length===(snapshot.quotes??[]).length?snapshot:{...snapshot,quotes};
 }
