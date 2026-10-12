@@ -51,9 +51,10 @@ export function MarketEditableText({id,label,kind='text',tone='neutral',style,ch
   };
   const child=<Text style={[StyleSheet.flatten(style),visual]}>{children}</Text>;
   if(!runtime.active)return child;
+  const original=StyleSheet.flatten(style) as TextStyle|undefined;
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
     onPress={()=>runtime.onSelect?.({id,kind,label})}
-    style={[{alignSelf:'flex-start',maxWidth:'100%',borderRadius:6},
+    style={[{alignSelf:original?.flex!==undefined?'auto':'flex-start',...(original?.flex!==undefined?{flex:original.flex}:{}),maxWidth:'100%',borderRadius:6},
       runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA'}:undefined]}>
     <View pointerEvents="none">{child}</View>
   </Pressable>;
