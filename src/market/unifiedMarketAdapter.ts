@@ -78,7 +78,10 @@ export function marketRowsToRuntimeQuotes(
   const prior=new Map(previous.map(row=>[row.symbol,row]));
   const valid=rows.filter(row=>isTrustedMarketRow(row,now));
   const incoming=new Map(valid.map(row=>[row.symbol,row]));
-  const retained=previous.filter(old=>!incoming.has(old.symbol)||(incoming.get(old.symbol)!.sourceQuoteAt??0)<(old.sourceQuoteAt??0));
+  // Native SaiETF MarketDataCenter is the exclusive quote arbitrator.
+  // Retain only symbols absent from the native snapshot (e.g. during startup);
+  // never let an independent TF Asset timestamp rule veto a native-selected quote.
+  const retained=previous.filter(old=>!incoming.has(old.symbol));
   const retainedSymbols=new Set(retained.map(row=>row.symbol));
   return [...retained,...valid.filter(row=>!retainedSymbols.has(row.symbol)).map(row=>{
     const old=prior.get(row.symbol);

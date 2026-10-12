@@ -12,6 +12,7 @@ import {
   type UnifiedMarketSnapshot,
 } from '../native/TfAssetNativeBridge';
 import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
+import {saiEtfSnapshotHasAdvancedQuote} from './saiEtfSnapshotContract';
 import {fetchTaiwanSecurityCatalog,type TaiwanSecurityInfo} from './TaiwanSecurityCatalog';
 
 export type MarketPhase='live'|'afterHours'|'offline';
@@ -253,13 +254,16 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       if(!nativeRuntimeAvailable)return 'error';
       if(announce){setRefreshing(true);setLastError(null);}
       try{
+        // Compare source trade clocks, not poll success or cached row count.
+        // The native SaiETF center alone decides which price is authoritative.
+        const priorQuotes=quotesRef.current;
         const snapshot=await refreshUnifiedMarketData(combinedSymbols());
         applySnapshot(snapshot);
         const missing=Array.isArray(snapshot.missing)?snapshot.missing:[];
         if(announce&&missing.length)setLastError('未解析行情：'+missing.join(', '));
         else if(announce&&symbolsRef.current.length>0&&(snapshot.quotes?.length??0)===0)
           setLastError('SaiETF 行情中心目前沒有可核實行情。');
-        return (snapshot.quotes?.length??0)>0?'updated':'unchanged';
+        return saiEtfSnapshotHasAdvancedQuote(snapshot,priorQuotes)?'updated':'unchanged';
       }catch(error){
         if(announce)setLastError(error instanceof Error?error.message:String(error));
         return 'error';

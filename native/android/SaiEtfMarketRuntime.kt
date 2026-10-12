@@ -157,11 +157,31 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         snapshot(requested.map { it.trim().uppercase(Locale.US) }.filter { it.isNotBlank() }.toSet(), null)
 
     private fun snapshot(symbols: Set<String>, batch: MarketBatch? = null, includeIntraday: Boolean = true): JSONObject {
+        // SaiETF StateFlow / MemoryMarketStore is the only price authority.
+        // Presentation may recalculate quote freshness, but MUST NOT alter
+        // the native hot store or substitute a price from TF Asset caches.
+        val now = System.currentTimeMillis()
+        val currentTaipeiDate = taipeiDate(now)
+        val sessionActive = isLiveSession(now)
         val live = center.memoryQuotes(symbols)
-
         val rows = JSONArray()
-        live.values.sortedBy { it.symbol }.forEach { rows.put(marketQuoteToRuntimeRow(it)) }
-        val missing = symbols - live.keys
+        val currentSessionSymbols = mutableSetOf<String>()
+        live.values.sortedBy { it.symbol }.forEach { quote ->
+            val sourceAt = quote.sourceTimestampEpochMillis
+            val sameSession = sourceAt > 0L && taipeiDate(sourceAt) == currentTaipeiDate
+            val status = when {
+                !sameSession -> QuoteQuality.STALE
+                now - sourceAt > 30_000L -> QuoteQuality.DELAYED
+                else -> quote.quality
+            }
+            if (sameSession && status != QuoteQuality.STALE && status != QuoteQuality.OFFLINE) {
+                currentSessionSymbols += quote.symbol
+            }
+            rows.put(marketQuoteToRuntimeRow(quote.copy(quality = status)))
+        }
+        // A previous-session persisted price is visible as last-known data,
+        // but it is NOT current-session coverage or a new accepted live trade.
+        val missing = if (sessionActive) symbols - currentSessionSymbols else symbols - live.keys
         val health = JSONArray()
         val allHealth = listOf(streamingController.health()) +
             (batch?.providerHealth ?: latestProviderHealth)
@@ -171,7 +191,8 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             .put("version", version.get())
             .put("quotes", rows)
             .put("updatedCount", batch?.quotes?.size ?: 0)
-            .put("coveredCount", live.size)
+            .put("coveredCount", if (sessionActive) currentSessionSymbols.size else live.size)
+            .put("cachedCount", live.size)
             .put("requestedCount", if (symbols.isEmpty()) live.size else symbols.size)
             .put("missing", JSONArray(missing.toList().sorted()))
             .put("queriedAt", System.currentTimeMillis())
