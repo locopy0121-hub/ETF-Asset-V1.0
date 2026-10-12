@@ -5,11 +5,12 @@ const app=JSON.parse(read('app.json')).expo,pkg=JSON.parse(read('package.json'))
 const market=read('src/screens/MarketResearchScreen.tsx');
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
 const chart=read('src/components/OfficialCandleChart.tsx');
-assert.equal(pkg.version,'4.0.41');
+assert.ok(Number(pkg.version.split('.')[2])>=41,'V4.0.41 chart editor remains supported');
 assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,40041);
-assert.equal(app.ios.buildNumber,'40041');
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='4\.0\.41'/);
+const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
+assert.equal(app.android.versionCode,build);
+assert.equal(app.ios.buildNumber,String(build));
+assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
 for(const id of ['market:chart:tabs','market:chart:intraday','market:chart:period',
   'market:chart:range','market:chart:style','market:chart:history','market:chart:signals']){
   assert.ok(market.includes('id="'+id+'"'),'missing chart surface target '+id);
@@ -23,7 +24,7 @@ assert.match(market,/MarketPreviewActionGuard><ChartStyleDropdown/);
 assert.match(market,/MarketPreviewActionGuard><ChartPeriodDropdown/);
 assert.match(workbench,/id:'market:chart:history'/);
 assert.match(workbench,/id:'market:chart:indicator:MA5:value'/);
-assert.match(workbench,/\['market-index','market-search','market-summary','market-chart'\]\.includes\(item\.key\)/);
+assert.match(workbench,/\['market-index','market-search','market-summary','market-chart'(?:,'market-details')?\]\.includes\(item\.key\)/);
 // Existing chart zoom/pan/crosshair engine remains functional and intact.
 assert.match(chart,/onPress=\{\(\)=>applyZoom\(stepChartZoom\(zoom,1\)\)\}/);
 assert.match(chart,/onPress=\{\(\)=>applyZoom\(stepChartZoom\(zoom,-1\)\)\}/);
