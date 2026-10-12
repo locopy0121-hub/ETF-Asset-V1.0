@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.43",
+  "version": "4.0.44",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -328,7 +328,8 @@
     "test:v4_0_40": "npm run test:v4_0_39 && npx tsx scripts/v4_0_40-market-search-quote-editor.test.ts",
     "test:v4_0_41": "npm run test:v4_0_40 && npx tsx scripts/v4_0_41-market-chart-editor.test.ts",
     "test:v4_0_42": "npm run test:v4_0_41 && npx tsx scripts/v4_0_42-market-research-editor.test.ts",
-    "test:v4_0_43": "npm run test:v4_0_42 && npx tsx scripts/v4_0_43-ledger-preview-geometry.test.ts"
+    "test:v4_0_43": "npm run test:v4_0_42 && npx tsx scripts/v4_0_43-ledger-preview-geometry.test.ts",
+    "test:v4_0_44": "npm run test:v4_0_43 && npx tsx scripts/v4_0_44-saietf-sync.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

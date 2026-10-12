@@ -7,7 +7,7 @@ import java.util.Locale
 class MarketDataCenter(
     private val providers: List<MarketQuoteProvider>,
     private val liveThresholdMillis: Long = 30_000L,
-    private val maxOfflineCacheAgeMillis: Long = Long.MAX_VALUE,
+    private val maxOfflineCacheAgeMillis: Long = 7L * 24L * 60L * 60L * 1_000L,
     private val providerPolicies: Map<MarketSource, MarketProviderPolicy> = defaultPolicies,
     private val hotStore: MemoryMarketStore = MemoryMarketStore(),
     private val arbitrator: MarketArbitrator = MarketArbitrator(),
@@ -19,7 +19,6 @@ class MarketDataCenter(
     )
 
     private val cache = linkedMapOf<String, MarketQuote>()
-    private val quoteMutationLock = Any()
     private val taipeiZone = ZoneId.of("Asia/Taipei")
     private val providerRuntime = providers.associate { it.source to ProviderRuntime() }.toMutableMap()
 
@@ -53,20 +52,15 @@ class MarketDataCenter(
         val sourcesTried = mutableListOf<MarketSource>()
 
         hotStore.snapshot(pending.toSet()).values.forEach { raw ->
+            if (raw.source != MarketSource.FUGLE) return@forEach
             val symbol = raw.symbol.trim().uppercase(Locale.US)
             if (symbol !in pending) return@forEach
-            if (tradingSessionActive && raw.source != MarketSource.FUGLE) return@forEach
             val normalized = raw.copy(
                 symbol = symbol,
                 quality = qualityFor(raw.sourceTimestampEpochMillis, nowEpochMillis, currentTaipeiDate),
             )
             val sameSessionDate = taipeiDate(normalized.sourceTimestampEpochMillis) == currentTaipeiDate
-            val reusable = if (tradingSessionActive) {
-                raw.source == MarketSource.FUGLE && normalized.quality == QuoteQuality.LIVE
-            } else {
-                raw.isClose && (raw.source == MarketSource.FUGLE || raw.source == MarketSource.TWSE_MIS)
-            }
-            if (sameSessionDate && reusable) {
+            if (sameSessionDate && normalized.quality == QuoteQuality.LIVE) {
                 accepted[symbol] = normalized
                 pending.remove(symbol)
             }
@@ -124,7 +118,6 @@ class MarketDataCenter(
                 val sourceTime = raw.sourceTimestampEpochMillis
                     .takeIf { it > 0L }
                     ?: raw.asOfEpochMillis
-                if (sourceTime <= 0L || sourceTime > nowEpochMillis + 120_000L || raw.isTrial) return@forEach
                 val normalized = raw.copy(
                     symbol = symbol,
                     asOfEpochMillis = sourceTime,
@@ -138,29 +131,28 @@ class MarketDataCenter(
                     quality = qualityFor(sourceTime, nowEpochMillis, currentTaipeiDate),
                 )
 
-                val sameSessionDate = taipeiDate(normalized.sourceTimestampEpochMillis) == currentTaipeiDate
-                synchronized(quoteMutationLock) {
-                    val existing = hotStore.snapshot(setOf(symbol))[symbol] ?: cache[symbol]
-                    if (!arbitrator.decide(
-                            existing,
-                            normalized,
-                            protectTrustedSameSession = !tradingSessionActive,
-                        ).accepted
-                    ) return@synchronized
+                val existing = hotStore.snapshot(setOf(symbol))[symbol]
+                    ?: synchronized(cache) { cache[symbol] }
+                if (!arbitrator.decide(existing, normalized).accepted) {
+                    return@forEach
+                }
+
+                synchronized(cache) {
                     cache[symbol] = normalized
-                    // Publish valid last-known prices even when a new session has no tick yet.
-                    if (tradingSessionActive && !sameSessionDate) stale[symbol] = normalized
+                }
+
+                val sameSessionDate = taipeiDate(normalized.sourceTimestampEpochMillis) == currentTaipeiDate
+                if (tradingSessionActive && !sameSessionDate) {
+                    stale[symbol] = normalized.copy(quality = QuoteQuality.STALE)
+                } else {
                     accepted[symbol] = normalized
-                    // Keep searching later providers for a current-session quote.
-                    // Publishing a reference must not stop the fallback chain.
-                    hotStore.publish(listOf(normalized))
-                    if (!tradingSessionActive || sameSessionDate) pending.remove(symbol)
+                    pending.remove(symbol)
                 }
             }
         }
 
         pending.toList().forEach { symbol ->
-            val cached = synchronized(quoteMutationLock) { cache[symbol] } ?: return@forEach
+            val cached = synchronized(cache) { cache[symbol] } ?: return@forEach
             val age = (nowEpochMillis - cached.asOfEpochMillis).coerceAtLeast(0L)
             if (age > maxOfflineCacheAgeMillis) return@forEach
 
@@ -168,9 +160,16 @@ class MarketDataCenter(
                 quality = qualityFor(cached.asOfEpochMillis, nowEpochMillis, currentTaipeiDate),
             )
             val sameSessionDate = taipeiDate(normalized.asOfEpochMillis) == currentTaipeiDate
-            if (tradingSessionActive && !sameSessionDate) stale[symbol] = normalized
-            accepted[symbol] = normalized
-            pending.remove(symbol)
+            if (tradingSessionActive && !sameSessionDate) {
+                stale[symbol] = normalized.copy(quality = QuoteQuality.STALE)
+            } else {
+                accepted[symbol] = normalized
+                pending.remove(symbol)
+            }
+        }
+
+        if (accepted.isNotEmpty()) {
+            hotStore.publish(accepted.values)
         }
 
         return MarketBatch(
@@ -205,38 +204,16 @@ class MarketDataCenter(
             quality = qualityFor(sourceTime, nowEpochMillis, currentTaipeiDate),
             sessionDate = currentTaipeiDate,
         )
-        return synchronized(quoteMutationLock) {
-            val existing = hotStore.snapshot(setOf(symbol))[symbol] ?: cache[symbol]
-            if (!arbitrator.decide(existing, normalized).accepted) return@synchronized false
-            cache[symbol] = normalized
-            hotStore.publish(listOf(normalized))
-            true
-        }
-    }
+        val existing = hotStore.snapshot(setOf(symbol))[symbol]
+            ?: synchronized(cache) { cache[symbol] }
+        val decision = arbitrator.decide(existing, normalized)
+        if (!decision.accepted) return false
 
-    /** Restore only bounded, original-provider snapshots; never synthesize a fresh clock. */
-    fun restorePersistedQuotes(
-        quotes: Collection<MarketQuote>,
-        nowEpochMillis: Long = System.currentTimeMillis(),
-    ) {
-        val date = taipeiDate(nowEpochMillis)
-        val restored = quotes.mapNotNull { raw ->
-            val at = raw.sourceTimestampEpochMillis
-            if (raw.source == MarketSource.CACHE || raw.isTrial || !raw.price.isFinite() || raw.price <= 0.0 ||
-                at <= 0L || at > nowEpochMillis + 120_000L || nowEpochMillis - at > maxOfflineCacheAgeMillis) {
-                return@mapNotNull null
-            }
-            raw.copy(quality = qualityFor(at, nowEpochMillis, date))
+        synchronized(cache) {
+            cache[symbol] = normalized
         }
-        synchronized(quoteMutationLock) {
-            restored.forEach { raw ->
-                val existing = hotStore.snapshot(setOf(raw.symbol))[raw.symbol] ?: cache[raw.symbol]
-                if (arbitrator.decide(existing, raw).accepted) {
-                    cache[raw.symbol] = raw
-                    hotStore.publish(listOf(raw))
-                }
-            }
-        }
+        hotStore.publish(listOf(normalized))
+        return true
     }
 
     fun providerHealthSnapshot(nowEpochMillis: Long): List<ProviderHealth> =
@@ -271,7 +248,7 @@ class MarketDataCenter(
 
     fun cachedQuotes(symbols: Set<String>): Map<String, MarketQuote> {
         val requested = symbols.map { it.trim().uppercase(Locale.US) }.toSet()
-        return synchronized(quoteMutationLock) {
+        return synchronized(cache) {
             cache.filterKeys { it in requested }.toMap()
         }
     }

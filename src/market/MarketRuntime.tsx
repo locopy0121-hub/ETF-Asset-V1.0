@@ -1,4 +1,4 @@
-import {applyMarketClosedDates} from './marketCenterViews';
+import {applyMarketClosedDates,valuationSessionActive} from './marketCenterViews';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState,type AppStateStatus} from 'react-native';
 import {
@@ -306,15 +306,30 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     return subscribeUnifiedMarketData(applySnapshot);
   },[hydrated,applySnapshot]);
 
+  // SaiETF V1.0.64 contract: 1-second foreground market-center cadence while
+  // trading, 30 seconds outside the session. Native providers retain their own
+  // MIS/Yahoo pacing, circuit breakers, and Fugle streaming priority.
   useEffect(()=>{
-    if(!hydrated)return;
+    if(!hydrated||!nativeRuntimeAvailable)return;
+    let foreground=AppState.currentState!=='background'&&AppState.currentState!=='inactive';
+    let lastPollAt=Date.now();
+    const poll=setInterval(()=>{
+      if(!foreground||combinedSymbols().length===0)return;
+      const now=Date.now();
+      if(valuationSessionActive(now)||now-lastPollAt>=30_000){
+        lastPollAt=now;
+        void refresh({silent:true});
+      }
+    },1_000);
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
+      foreground=next==='active';
       if(next==='active'){
+        lastPollAt=Date.now();
         void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
         void refresh({force:true,silent:true});
       }else if(next==='background'||next==='inactive')void pauseNativeMarketStreaming().catch(()=>{});
     });
-    return()=>sub.remove();
+    return()=>{clearInterval(poll);sub.remove();};
   },[hydrated,refresh,combinedSymbols]);
 
   useEffect(()=>{

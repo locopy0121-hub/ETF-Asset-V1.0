@@ -82,9 +82,17 @@ export function marketRowsToRuntimeQuotes(
   const retainedSymbols=new Set(retained.map(row=>row.symbol));
   return [...retained,...valid.filter(row=>!retainedSymbols.has(row.symbol)).map(row=>{
     const old=prior.get(row.symbol);
-    const prev=typeof row.previousClose==='number'&&Number.isFinite(row.previousClose)&&row.previousClose>0
-      ?row.previousClose
-      :old?.previousClose&&old.previousClose>0?old.previousClose:row.currentPrice;
+    // Trade-stream messages may omit previous close. Never reuse a reference
+    // from a different Taipei trading session (e.g. after a long holiday).
+    const rowSession=typeof row.sessionDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(row.sessionDate)
+      ?row.sessionDate:taipeiDateMinute(row.sourceQuoteAt).date;
+    const priorSession=old?.sessionDate??(old?.sourceQuoteAt?taipeiDateMinute(old.sourceQuoteAt).date:null);
+    const sameSession=priorSession===rowSession;
+    const suppliedPreviousClose=typeof row.previousClose==='number'&&Number.isFinite(row.previousClose)&&row.previousClose>0;
+    const retainedPreviousClose=!suppliedPreviousClose&&sameSession&&old?.previousCloseKnown===true
+      &&typeof old.previousClose==='number'&&old.previousClose>0;
+    const knownPreviousClose=suppliedPreviousClose||retainedPreviousClose;
+    const prev=suppliedPreviousClose?row.previousClose!:retainedPreviousClose?old!.previousClose:row.currentPrice;
     const unchanged=old?.sourceQuoteAt===row.sourceQuoteAt&&old.currentPrice===row.currentPrice
       &&old.priceType===row.priceType;
     const sparkline=unchanged?old.sparkline:
@@ -93,8 +101,8 @@ export function marketRowsToRuntimeQuotes(
     const intraday=incomingIntraday?.points??old?.intraday??[];
     const intradayDate=incomingIntraday?.date??old?.intradayDate??null;
     const intradayPreviousClose=incomingIntraday
-      ?(incomingIntraday.previousClose??(intradayDate===old?.intradayDate?old?.intradayPreviousClose:null)??prev)
-      :(old?.intradayPreviousClose??null);
+      ?(incomingIntraday.previousClose??(sameSession&&intradayDate===old?.intradayDate?old?.intradayPreviousClose:null)??(knownPreviousClose?prev:null))
+      :(sameSession?(old?.intradayPreviousClose??(knownPreviousClose?prev:null)):null);
     return {
       symbol:row.symbol,name:row.name||old?.name||row.symbol,
       currentPrice:row.currentPrice,previousClose:prev,
@@ -104,15 +112,13 @@ export function marketRowsToRuntimeQuotes(
       isFallback:row.isFallback,market:row.market,statusMessage:row.statusMessage,
       checkedAt:row.checkedAt,
       volume:typeof row.volume==='number'&&Number.isFinite(row.volume)&&row.volume>=0?row.volume:null,
-      ...((typeof row.sessionDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(row.sessionDate)
-        ?row.sessionDate:old?.sessionDate) ? {sessionDate:(typeof row.sessionDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(row.sessionDate)
-          ?row.sessionDate:old?.sessionDate)!} : {}),
+      sessionDate:rowSession,
       ...((typeof row.fallbackLevel==='number'&&Number.isFinite(row.fallbackLevel)
         ?row.fallbackLevel:old?.fallbackLevel)!=null ? {fallbackLevel:(typeof row.fallbackLevel==='number'&&Number.isFinite(row.fallbackLevel)
           ?row.fallbackLevel:old?.fallbackLevel)!} : {}),
       ...(typeof row.sequence==='number'&&Number.isFinite(row.sequence)?{sequence:row.sequence}:{}),
-      ...((row.quoteStatus??old?.quoteStatus)?{quoteStatus:(row.quoteStatus??old?.quoteStatus)!}:{}),
-      previousCloseKnown:row.previousClose!==null||(old?.previousCloseKnown===true),
+      ...((row.quoteStatus??(sameSession?old?.quoteStatus:null))?{quoteStatus:(row.quoteStatus??old?.quoteStatus)!}:{}),
+      previousCloseKnown:knownPreviousClose,
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',
       dividendFrequency:old?.dividendFrequency??4,

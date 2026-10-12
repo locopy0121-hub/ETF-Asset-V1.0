@@ -615,3 +615,9 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Native Modal 上方需有自己的工作台；Activity 底下的工作台不可穿透 Modal。
 - 原生文字表面與 standalone 框架都需實際渲染背景、邊框與透明度，不能只儲存設定。
 - 舊來源 smoke 可改為等價新接線檢查；財務核心與凍結表格 hash 不放寬，適配 import / metadata 正規化後仍須比對原 blob。
+
+## V4.0.44 — SaiETF Market Center SSOT / session guard
+- Root issue: TF Asset port drifted from SaiETF frozen MarketDataCenter/MarketArbitrator, omitted SaiETF's foreground 1-second market-center polling cadence, and reused previous-close metadata from a prior Taipei session when Fugle trade events lacked previousClose.
+- Repair: restore authoritative SaiETF market arbitration and center implementation from `locopy0121-hub/Saietf_V1.0.1@main`; use the existing native provider rate limits (TWSE MIS 1s, Yahoo 15s) with 1s active-session UI polling and 30s outside; guard previous-close by exchange session date.
+- Constraints: do not change Ledger, protected Settings, Fugle API key storage, or introduce independent UI price-selection paths. Prior-session cache may be diagnostic, not today's live valuation.
+- Acceptance: V4.0.44 CI quality, backend integration, native build and verified APK; if inherited V4.0.43 gates fail, do not claim V4.0.44 release.
