@@ -3,7 +3,7 @@ import {marketValuationQuoteFromRow,valuationSessionActive,valuationValidUntil} 
 import type {RuntimeQuote} from '../src/finance/financeSeed';
 const now=Date.parse('2026-10-08T10:00:00+08:00');
 const quote:RuntimeQuote={symbol:'0050',name:'ETF',currentPrice:100,previousClose:99,sourceQuoteAt:Date.parse('2026-10-07T13:30:00+08:00'),quality:'trade',source:'TWSE_MIS',priceType:'REALTIME_TRADE',quoteStatus:'STALE',sessionDate:'2026-10-07',sparkline:[],liquidationTradeMode:'ROUND_LOT',dividendFrequency:4};
-assert.equal(marketValuationQuoteFromRow(quote,{now})?.currentPrice,100,'previous-session trade remains a reference until a newer quote arrives');
+assert.equal(marketValuationQuoteFromRow(quote,{now}),undefined,'SaiETF: a previous-session trade remains visible as a reference but must not count as a live-session complete valuation');
 assert.equal(marketValuationQuoteFromRow({...quote,sourceQuoteAt:now-600_000,sessionDate:'2026-10-08',quoteStatus:'DELAYED'},{now})?.currentPrice,100,'same-day last actual trade remains usable with delay metadata');
 assert.equal(marketValuationQuoteFromRow({...quote,sourceQuoteAt:now,sessionDate:'2026-10-08',quoteStatus:'LIVE'},{now,unresolvedSymbols:['0050']})?.currentPrice,100);
 assert.equal(marketValuationQuoteFromRow(quote,{now:Date.parse('2026-10-08T08:30:00+08:00'),unresolvedSymbols:['0050']})?.currentPrice,100,'preopen last-session reference remains available');
