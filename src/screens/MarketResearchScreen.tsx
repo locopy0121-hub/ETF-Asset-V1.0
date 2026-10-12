@@ -244,7 +244,7 @@ export function MarketResearchScreen(){
               {row.premiumPct===null?'折溢價待同日官方收盤價':('同日收盤折溢價 '+(row.premiumPct>0?'+':'')+row.premiumPct.toFixed(2)+'%')}
               {row.reportedPct===null?'':'｜官方報表 '+(row.reportedPct>0?'+':'')+row.reportedPct.toFixed(2)+'%'}
             </Text>
-          </View>)}</View></MarketEditableSurface>
+          </View>)}</View></MarketEditableSurface>}
         <Text style={{color:theme.palette.textSecondary,fontSize:11}}>僅列官方歷史淨值與相同交易日收盤價比較，非即時預估淨值（iNAV）。兩者日期不同時不計算折溢價。</Text>
         <MarketPreviewActionGuard><Pressable onPress={()=>void Linking.openURL('https://www.twse.com.tw/zh/ETFortune/products').catch(()=>{})}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>查看證交所 e添富原始公告 ↗</Text>
