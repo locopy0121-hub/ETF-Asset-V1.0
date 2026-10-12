@@ -42,8 +42,9 @@ assert.match(adapter,/previous\.filter\(old=>!incoming\.has\(old\.symbol\)\)/);
 assert.doesNotMatch(adapter,/incoming\.get\(old\.symbol\)!\.sourceQuoteAt.*old\.sourceQuoteAt/,
   'React Native must not compete with SaiETF native price arbitration');
 const runtime=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
-assert.match(runtime,/if\(saiEtfTransportSnapshotRegressed\(snapshot,quotesRef\.current\)\)return;/,
-  'bridge must drop impossible regressed envelopes before publishing to the UI');
+assert.match(runtime,/omitRegressedTransportQuotes\(snapshot,sessionRows\)/,
+  'a delayed symbol must not suppress newer Fugle trade events for other holdings');
+
 const native=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
 assert.match(native,/val live = center\.memoryQuotes\(symbols\)/);
 assert.match(native,/val missing = if \(sessionActive\) symbols - currentSessionSymbols/);
@@ -53,7 +54,7 @@ assert.match(core,/fun acceptStreamingQuote\(/);
 assert.match(core,/hotStore\.publish\(accepted\.values\)/);
 const packageJson=JSON.parse(fs.readFileSync('package.json','utf8'));
 const appJson=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(packageJson.version,'4.0.45');
-assert.equal(appJson.expo.version,'4.0.45');
-assert.equal(appJson.expo.android.versionCode,40045);
+assert.equal(packageJson.version,'4.0.46');
+assert.equal(appJson.expo.version,'4.0.46');
+assert.equal(appJson.expo.android.versionCode,40046);
 console.log('V4.0.45 SaiETF 2.0.2 primary market authority and live tick acknowledgment PASS');
