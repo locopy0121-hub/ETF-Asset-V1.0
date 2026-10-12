@@ -51,9 +51,10 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
 const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-ai','dividend-calendar','dividend-list','annual-trend']);
+const actualLedgerPreviewKeys=new Set(['quick-entry','ledger-list','monthly-summary']);
 const actualMarketPreviewKeys=new Set(['market-index','market-search','market-summary','market-chart','market-details']);
 const hasRealPreview=(page:MainPageKey,key:string)=>
-  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):page==='market'?actualMarketPreviewKeys.has(key):false);
+  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):page==='market'?actualMarketPreviewKeys.has(key):page==='ledger'?actualLedgerPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
   pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,previewElements,pageTitle,onChangePageTitle,onResetPage,previewFirstMode='list',previewListFallback=false,
@@ -258,6 +259,11 @@ export function PageLayoutToolWorkbench({
     setFrameKey(item.key);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');
   };
   const previewContentFor=(item:PageFrameDefinition)=>{
+    if(pageKey==='ledger'){
+      const actual=previewElements?.find(view=>view.key===item.key)?.element;
+      // Ledger preview renders original real form/list contents, but never submits transactions.
+      return actual?<View pointerEvents="none">{actual.props.children}</View>:null;
+    }
     if(pageKey==='market'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
       // Mount the real market component, not the page-header illustration.
@@ -413,7 +419,7 @@ export function PageLayoutToolWorkbench({
         <Text style={styles.path}>{frame.title} › {selection.label}｜滑到哪裡、點到哪裡，下方就開啟該物件設定</Text>
       </View>
       <Text style={styles.previewScaleText}>實際內容寬度 {actualPageWidth} px · 預覽 {Math.round(previewScale*100)}%</Text>
-      <ScrollView ref={previewScrollRef} key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
+      <ScrollView ref={previewScrollRef} key={pageKey==='dividend'||pageKey==='home'||pageKey==='portfolio'||pageKey==='ledger'?frameKey:'all-frames'} nestedScrollEnabled style={styles.livePageScroll} contentContainerStyle={styles.livePageContent}
         showsVerticalScrollIndicator>
         <View style={styles.previewViewport} onLayout={event=>{
           const width=event.nativeEvent.layout.width;
@@ -427,7 +433,7 @@ export function PageLayoutToolWorkbench({
               setPreviewBounds(previous=>previous.width===actualPageWidth&&previous.height===height?previous:{width:actualPageWidth,height});
             }}>
               <ThemeBackgroundLayer/>
-              {(pageKey==='dividend'||pageKey==='portfolio'||pageKey==='market'||(pageKey==='home'&&frameKey==='holding-quotes')
+              {(pageKey==='dividend'||pageKey==='portfolio'||pageKey==='market'||pageKey==='ledger'||(pageKey==='home'&&frameKey==='holding-quotes')
                 ? previewFrames.filter(item=>item.key===frameKey) : previewFrames).map(renderActualFrame)}
               {pageKey==='home'&&previewBounds.width>0?dashboardCharts.map(chart=>{
                 const data=chartData(chart);
@@ -638,8 +644,8 @@ function FrameTools({frame,frameKey,fx,measured,position,canMoveUp,canMoveDown,o
   const baseGap=frame.layout==='compact'?8:frame.layout==='dense'?6:12;
   const actualWidth=Math.round(frame.width??measured?.width??320);
   const actualHeight=Math.round(frame.height??measured?.height??Math.max(frame.minHeight??0,260));
-  const actualMinHeight=Math.round((frame.minHeight??0)>0?(frame.minHeight??0):actualHeight);
-  const actualMaxWidth=Math.round(fx.maxWidth>0?fx.maxWidth:actualWidth);
+  const actualMinHeight=Math.round(frame.minHeight??0);
+  const actualMaxWidth=Math.round(fx.maxWidth);
   const equalGrid=normalizeEqualGrid(frame.equalGrid??DEFAULT_EQUAL_GRID);
   return <View>
     <Accordion title="排序" subtitle="恢復原有框架順位設定；只改同層顯示順序" open={open==='order'} onPress={()=>toggle('order')}>
@@ -667,11 +673,15 @@ function FrameTools({frame,frameKey,fx,measured,position,canMoveUp,canMoveDown,o
         <Text style={styles.hint}>本列平均分配寬度；最後一排不足時自動擴展補位。不修改單張卡片已儲存的寬高與位置。</Text>
       </>:null}
     </Accordion>:null}
-    <Accordion title="尺寸" subtitle="寬度、高度、最小高度、最大寬度" open={open==='size'} onPress={()=>toggle('size')}>
-      <NumberStep label="寬度" value={actualWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>
-      <NumberStep label="高度" value={actualHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={height=>patch({height})}/>
+    <Accordion title="尺寸" subtitle="實際寬高可自由調整；0 表示解除最小／最大限制" open={open==='size'} onPress={()=>toggle('size')}>
+      <NumberStep label="寬度" value={actualWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px"
+        onChange={width=>patch({width,...(fx.maxWidth>0&&width>fx.maxWidth
+          ?{effects:normalizeFrameEffects({...fx,maxWidth:width},DEFAULT_FRAME_EFFECTS)}:{})})}/>
+      <NumberStep label="高度" value={actualHeight} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px"
+        onChange={height=>patch({height,...(actualMinHeight>height?{minHeight:height}:{})})}/>
       <NumberStep label="最小高度" value={actualMinHeight} min={0} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={minHeight=>patch({minHeight})}/>
       <NumberStep label="最大寬度" value={actualMaxWidth} min={0} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={maxWidth=>patchFx({maxWidth})}/>
+      <Text style={styles.hint}>0 = 不限制，並非元件實際尺寸。未指定寬高時依真實畫面測量；縮小高度會同步降低衝突的最小高度，增大寬度會同步放寬衝突的最大寬度。</Text>
     </Accordion>
     <Accordion title="內距／空間" subtitle="整體內距、四邊內距、內容間距與外距" open={open==='spacing'} onPress={()=>toggle('spacing')}>
       <NumberStep label="整體 Padding" value={frame.padding??16} min={0} max={32} step={1} suffix=" px" onChange={padding=>patch({padding})}/>
