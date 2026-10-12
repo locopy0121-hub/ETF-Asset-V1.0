@@ -5,7 +5,6 @@ import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 import {usePageEditor} from '../editor/pageEditor';
 import {useSystemColors} from '../theme/useSystemColors';
 import {colorWithAlpha} from '../maintenance/frameEffects';
-import type {TargetOverride} from '../maintenance/inspectionModel';
 
 type Tone='gain'|'loss'|'neutral';
 
@@ -16,7 +15,7 @@ function useMarketTarget(id:string){
   return {runtime,override};
 }
 
-function targetColor(override:TargetOverride|undefined,color:string,opacity:number|undefined){
+function targetColor(color:string,opacity:number|undefined){
   return opacity===undefined?color:colorWithAlpha(color,opacity);
 }
 
@@ -32,7 +31,7 @@ export function MarketEditableText({id,label,kind='text',tone='neutral',style,ch
   const gainLoss=tone==='gain'?colors.gain:tone==='loss'?colors.loss:colors.flat;
   const color=override?.textProfitColor===true?gainLoss:override?.textColor;
   const visual:TextStyle={
-    ...(color?{color:targetColor(override,color,override?.textOpacity)}:{}),
+    ...(color?{color:targetColor(color,override?.textOpacity)}:{}),
     ...(override?.fontSize!==undefined?{fontSize:override.fontSize}:{}),
     ...(override?.fontWeight!==undefined?{fontWeight:override.fontWeight}:{}),
     ...(override?.fontStyle!==undefined?{fontStyle:override.fontStyle}:{}),
@@ -44,9 +43,9 @@ export function MarketEditableText({id,label,kind='text',tone='neutral',style,ch
     ...(override?.width!==undefined?{width:override.width}:{}),
     ...(override?.height!==undefined?{height:override.height}:{}),
     ...(override?.padding!==undefined?{padding:override.padding}:{}),
-    ...(override?.backgroundColor!==undefined?{backgroundColor:targetColor(override,override.backgroundColor,override.backgroundOpacity)}:{}),
+    ...(override?.backgroundColor!==undefined?{backgroundColor:targetColor(override.backgroundColor,override.backgroundOpacity)}:{}),
     ...(override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:{}),
-    ...(override?.borderColor!==undefined?{borderColor:targetColor(override,override.borderColor,override.borderOpacity)}:{}),
+    ...(override?.borderColor!==undefined?{borderColor:targetColor(override.borderColor,override.borderOpacity)}:{}),
     ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
     ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
   };
@@ -68,9 +67,9 @@ export function MarketEditableSurface({id,label,style,children}:{
     ...(override?.width!==undefined?{width:override.width}:{}),
     ...(override?.height!==undefined?{height:override.height}:{}),
     ...(override?.padding!==undefined?{padding:override.padding}:{}),
-    ...(override?.backgroundColor!==undefined?{backgroundColor:targetColor(override,override.backgroundColor,override.backgroundOpacity)}:{}),
+    ...(override?.backgroundColor!==undefined?{backgroundColor:targetColor(override.backgroundColor,override.backgroundOpacity)}:{}),
     ...(override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:{}),
-    ...(override?.borderColor!==undefined?{borderColor:targetColor(override,override.borderColor,override.borderOpacity)}:{}),
+    ...(override?.borderColor!==undefined?{borderColor:targetColor(override.borderColor,override.borderOpacity)}:{}),
     ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
     ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
   };
