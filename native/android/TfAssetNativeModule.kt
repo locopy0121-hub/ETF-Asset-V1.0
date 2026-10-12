@@ -45,10 +45,20 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
   private val marketDb by lazy { TfAssetMarketDatabase(reactContext) }
-  private val saietfMarket by lazy { SaiEtfMarketRuntime(reactContext) { payload ->
-    runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-      .emit("SaiEtfMarketSnapshot",payload) }
-  } }
+  private val marketListener:(String)->Unit = { payload ->
+    runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("SaiEtfMarketSnapshot",payload) }
+  }
+  private val saietfMarket get() = TfAssetMarketOwner.runtime(reactContext)
+  private val lifecycleListener=object:com.facebook.react.bridge.LifecycleEventListener{
+    override fun onHostResume(){TfAssetMarketOwner.uiActive=true;TfAssetWidgetLiveService.ensureStarted(reactContext)}
+    override fun onHostPause(){TfAssetMarketOwner.uiActive=false}
+    override fun onHostDestroy(){TfAssetMarketOwner.uiActive=false}
+  }
+  private val widgetStoppedReceiver=object:BroadcastReceiver(){
+    override fun onReceive(context:Context?,intent:Intent?){
+      runCatching{reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("TfAssetWidgetLiveStopped",null)}
+    }
+  }
   private val refreshRequestReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
       if(intent?.action!=ACTION_MARKET_REFRESH_REQUESTED)return
@@ -169,9 +179,18 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       @Suppress("DEPRECATION")
       reactContext.registerReceiver(refreshRequestReceiver,filter)
     }
+    TfAssetMarketOwner.addListener(marketListener)
+    reactContext.addLifecycleEventListener(lifecycleListener)
+    TfAssetMarketOwner.uiActive=reactContext.lifecycleState==com.facebook.react.common.LifecycleState.RESUMED
+    val stopFilter=IntentFilter(TfAssetWidgetLiveService.ACTION_STOPPED)
+    if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(widgetStoppedReceiver,stopFilter,Context.RECEIVER_NOT_EXPORTED)
+    else reactContext.registerReceiver(widgetStoppedReceiver,stopFilter)
     installCrashJournal();TfAssetNotificationCenter.ensureChannels(reactContext)
   }
   override fun invalidate(){
+    TfAssetMarketOwner.removeListener(marketListener)
+    reactContext.removeLifecycleEventListener(lifecycleListener)
+    runCatching{reactContext.unregisterReceiver(widgetStoppedReceiver)}
     runCatching{reactContext.unregisterReceiver(refreshRequestReceiver)}
     super.invalidate()
   }
@@ -276,7 +295,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
 
   @ReactMethod fun pauseUnifiedMarketData(promise:Promise){
-    runCatching{saietfMarket.pause()}
+    runCatching{TfAssetMarketOwner.pauseUi(reactContext)}
       .onSuccess{promise.resolve(true)}
       .onFailure{promise.reject("MARKET_PAUSE",it)}
   }
@@ -304,7 +323,18 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     }.start()
   }
 
+  private fun persistSurfaceSnapshot(snapshotJson:String):Boolean=synchronized(TfAssetNativeModule::class.java){
+    val incoming=runCatching{org.json.JSONObject(snapshotJson)}.getOrNull()?:return@synchronized false
+    val previous=runCatching{org.json.JSONObject(prefs.getString("snapshot","{}")?:"{}")} .getOrElse{org.json.JSONObject()}
+    if(!acceptsSurfaceSnapshot(previous,incoming))return@synchronized false
+    prefs.edit().putString("snapshot",snapshotJson).apply()
+    true
+  }
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
+    if(!persistSurfaceSnapshot(snapshotJson)){
+      prefs.edit().putString("widget_config",configJson).apply()
+      refreshWidget();TfAssetWidgetLiveService.ensureStarted(reactContext);promise.resolve(true);return
+    }
     // Finance amounts always come from the App's canonical snapshot; Native only overlays prices.
     val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
     val canonicalHoldings=canonicalSnapshot.optJSONArray("holdings")?:org.json.JSONArray()
@@ -316,7 +346,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     val nativeQuoteAt=prefs.getLong("wall_market_refreshed_at",0L)
     val hasNativeSource=prefs.contains("wall_market_source_at")
     val nativeOverrides=runCatching{org.json.JSONObject(prefs.getString("wall_market_overrides","{}")?:"{}")}.getOrElse{org.json.JSONObject()}
-    val edit=prefs.edit().putString("widget_config",configJson).putString("snapshot",snapshotJson)
+    val edit=prefs.edit().putString("widget_config",configJson)
     if(!hasNativeSource&&nativeOverrides.length()>0){
       // Migrate legacy v2.1.19 HTTP-receipt timestamps: they are not valid exchange freshness proof.
       edit.remove("wall_market_overrides").remove("wall_market_refreshed_at")
@@ -363,13 +393,16 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     }
     edit.apply()
     refreshWidget()
+    TfAssetWidgetLiveService.ensureStarted(reactContext)
     promise.resolve(true)
   }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
+    persistSurfaceSnapshot(snapshotJson)
+    refreshWidget()
     val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
     val incomingMode=parsed.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
     val previousMode=prefs.getString("monitor_last_config_mode",null)
-    val edit=prefs.edit().putString("monitor_config",configJson).putString("snapshot",snapshotJson).putString("monitor_last_config_mode",incomingMode)
+    val edit=prefs.edit().putString("monitor_config",configJson).putString("monitor_last_config_mode",incomingMode)
     if(previousMode!=null&&previousMode!=incomingMode)edit.remove("monitor_runtime_mode_override")
     edit.apply()
     val enabled=parsed.optBoolean("enabled",false)

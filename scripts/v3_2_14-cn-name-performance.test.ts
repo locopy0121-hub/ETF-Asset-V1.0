@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {resolveEtfDisplayName} from '../src/market/etfDisplayName';
 
 const read=(path:string)=>fs.readFileSync(path,'utf8');
-const finance=read('src/finance/FinanceRuntime.tsx');
+const finance=read('src/finance/FinanceRuntime.tsx')+read('src/finance/holdingProjection.ts');
 const market=read('src/market/MarketRuntime.tsx');
 const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
 const persistenceController=read('native/android/SaiEtfMarketPersistenceController.kt');

@@ -111,11 +111,11 @@ function AppBody(){
   const editor=usePageEditor('home');
   const maintenance=useMaintenance();
   const queueWidgetSync=useLatestAsyncJob<NativeSurfaceSyncJob<WidgetConfig>>(
-    job=>syncNativeWidget(job.config,job.snapshot),
+    job=>AppState.currentState==='active'?syncNativeWidget(job.config,job.snapshot):Promise.resolve(true),
     'Widget',
   );
   const queueMonitorSync=useLatestAsyncJob<NativeSurfaceSyncJob<MonitorConfig>>(
-    job=>syncNativeMonitor(job.config,job.snapshot),
+    job=>AppState.currentState==='active'?syncNativeMonitor(job.config,job.snapshot):Promise.resolve(true),
     'Monitor',
   );
   const {width:screenWidth}=useWindowDimensions();
@@ -198,7 +198,7 @@ function AppBody(){
   },[finance.hydrated,settings.hydrated,settings.prefs.ai.enabled,aiHoldingKey]);
 
   useEffect(()=>{
-    if(!finance.hydrated||!widgetSettings.hydrated)return;
+    if(!finance.hydrated||!widgetSettings.hydrated||AppState.currentState!=='active')return;
     // Last-write-wins queue: a slow native/widget write can never pile up one
     // Promise per 1-second market tick. Intermediate snapshots are coalesced.
     queueWidgetSync({config:widgetSettings.config,snapshot:finance.sharedSnapshot});

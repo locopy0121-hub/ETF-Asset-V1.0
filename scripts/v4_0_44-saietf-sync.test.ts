@@ -5,7 +5,7 @@ import {valuationSessionActive,marketValuationQuoteFromRow} from '../src/market/
 import type {RuntimeQuote} from '../src/finance/financeSeed';
 import type {UnifiedMarketSnapshot,UnifiedMarketRow} from '../src/native/TfAssetNativeBridge';
 
-// V4.0.47 supersedes the prior UI cadence with Fugle subscription updates,
+// V4.0.48 supersedes the prior UI cadence with Fugle subscription updates,
 // but MUST leave provider circuit breakers and source priorities in native.
 const runtime=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
 const native=fs.readFileSync('native/android/SaiEtfMarketDataCenter.kt','utf8');

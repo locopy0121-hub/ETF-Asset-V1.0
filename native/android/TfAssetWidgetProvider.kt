@@ -49,6 +49,7 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
   override fun onDisabled(context:Context){
     val pending=PendingIntent.getBroadcast(context,404,Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_EXPIRE),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pending)
+    context.stopService(Intent(context,TfAssetWidgetLiveService::class.java))
     super.onDisabled(context)
   }
   override fun onUpdate(context:Context,manager:AppWidgetManager,ids:IntArray){ ids.forEach { manager.updateAppWidget(it,buildViews(context,it,manager)) } }

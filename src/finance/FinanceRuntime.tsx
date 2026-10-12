@@ -1,3 +1,4 @@
+import {projectHoldingQuotes} from './holdingProjection';
 import {Alert,AppState} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -34,18 +35,6 @@ import {deviceLocalCalendarDate} from '../dividend/dividendCalendar';
 
 const STORAGE_KEY='@tf-asset/v1.0.2-ledger';
 const SCHEMA=4;
-const holdingQuoteQuality=(quality:RuntimeQuote['quality']|undefined):NonNullable<HoldingQuote['quoteQuality']>=>{
-  switch(quality){
-    case 'trade':
-    case 'backup_realtime':
-    case 'bid_ask':
-    case 'previous_close':
-    case 'official_close':
-      return quality;
-    default:
-      return 'unavailable';
-  }
-};
 
 
 type PersistedFinanceState = {
@@ -193,54 +182,7 @@ export function FinanceProvider({children}:PropsWithChildren){
     market.setTrackedSymbols(snapshot.holdings.map(holding=>holding.etfCode));
   },[snapshot.holdings,market.setTrackedSymbols]);
 
-  const holdings=useMemo<HoldingQuote[]>(()=>snapshot.holdings.map<HoldingQuote>(summary=>{
-    const rawQuote=quoteBySymbol.get(summary.etfCode);
-    const quote=marketQuoteSnapshotFromRow(rawQuote);
-    const valuationQuote=marketValuationQuoteFromRow(rawQuote,valuationContext);
-    const intraday=marketIntradaySeriesFromRow(rawQuote);
-    const verified=Boolean(valuationQuote);
-    const previousClose=valuationQuote?.previousClose&&valuationQuote.previousClose>0?
-      valuationQuote.previousClose:summary.currentPrice;
-    return {
-      symbol:summary.etfCode,
-      name:resolveEtfDisplayName(
-        summary.etfCode,
-        catalogNameBySymbol.get(summary.etfCode),
-        ledgerNameBySymbol.get(summary.etfCode),
-        quote?.name,
-      ),
-      quoteVerified:verified,
-      valuationStatus:verified?(valuationSessionActive(valuationNow)&&valuationQuote?.sessionDate===new Date(valuationNow+8*3_600_000).toISOString().slice(0,10)&&!['STALE','OFFLINE'].includes(valuationQuote?.quoteStatus??'')?'current_session':'reference'):'unavailable',
-      valuationValidUntil:valuationQuote?valuationValidUntil(valuationQuote,valuationNow):null,
-      quoteStatus:!marketStreamHealthy(valuationQuote,valuationNow)&&valuationQuote?.quoteStatus==='LIVE'&&valuationNow-(valuationQuote.sourceQuoteAt??0)>30_000
-        ?'DELAYED':valuationQuote?.quoteStatus,
-      quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
-      quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
-      streamingHealthy:marketStreamHealthy(valuationQuote,valuationNow),
-      ...(typeof valuationQuote?.streamingCheckedAt==='number'?{streamingCheckedAt:valuationQuote.streamingCheckedAt}:{}),
-      marketDataVersion:market.marketDataVersion,
-      previousCloseKnown:verified?valuationQuote?.previousCloseKnown!==false:false,
-      shares:summary.totalShares,
-      price:summary.currentPrice,
-      previousClose,
-      avgCost:summary.averageCostPerShare,
-      tradeAvg:summary.averageTradePrice,
-      costAvg:summary.averageCostPerShare,
-      marketValue:summary.currentMarketValue,
-      pnl:summary.unrealizedProfit,
-      pricePnl:summary.priceUnrealizedProfit,
-      roi:summary.unrealizedROI,
-      weight:summary.portfolioWeight,
-      cumulativeDividend:summary.totalDividendsReceived,
-      realizedPnl:summary.realizedNetPnL,
-      comprehensivePnl:summary.comprehensivePnL,
-      pinned:quote?.pinned??false,
-      sparkline:quote?.sparkline??[summary.currentPrice],
-      intraday:intraday.points,
-      intradayDate:intraday.date,
-      intradayPreviousClose:intraday.previousClose,
-    };
-  }).filter(x=>x.shares>0),[
+  const holdings=useMemo<HoldingQuote[]>(()=>projectHoldingQuotes({snapshot,quotes:market.quotes,now:valuationNow,version:market.marketDataVersion,catalogNames:catalogNameBySymbol,ledgerNames:ledgerNameBySymbol,unresolvedSymbols:market.unresolvedSymbols}),[
     snapshot,quoteBySymbol,catalogNameBySymbol,ledgerNameBySymbol,market.marketDataVersion,valuationContext,valuationNow,
   ]);
   const valuationComplete=holdings.every(row=>row.quoteVerified===true);

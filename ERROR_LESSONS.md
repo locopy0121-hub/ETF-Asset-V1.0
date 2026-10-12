@@ -630,3 +630,9 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Repair: restore authoritative SaiETF market arbitration and center implementation from `locopy0121-hub/Saietf_V1.0.1@main`; use the existing native provider rate limits (TWSE MIS 1s, Yahoo 15s) with 1s active-session UI polling and 30s outside; guard previous-close by exchange session date.
 - Constraints: do not change Ledger, protected Settings, Fugle API key storage, or introduce independent UI price-selection paths. Prior-session cache may be diagnostic, not today's live valuation.
 - Acceptance: V4.0.44 CI quality, backend integration, native build and verified APK; if inherited V4.0.43 gates fail, do not claim V4.0.44 release.
+
+## V4.0.48 — Widget automatic background subscription
+- Root cause: App pause stopped the single market runtime, and canonical Widget synchronization depended on foreground React effects/manual refresh. Android periodic Widget updates cannot deliver direct intraday trades.
+- Repair: process-wide market owner, trading-session foreground Headless JS service, event-driven canonical Widget projection shared with App. No price polling or update-button dependency; connection notification required by chosen background mode. Stop at session close, last Widget removal and platform timeout.
+- Regression guards: newer pending events cannot be replaced by late versions; foreground queued surface writes skip background; native persisted market versions reject regression; bootstrap errors keep listeners alive; official calendar ingestion matches App.
+- Verification boundary: automated projection/task/native gates and QA build do not prove device screen-off, OEM background lifetime, genuine provider credentials or reconnect. These remain device validation pending.

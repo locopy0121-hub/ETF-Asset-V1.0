@@ -49,6 +49,11 @@ if(!manifest.includes('TfAssetWidgetProvider')){
   manifest=manifest.replace('</application>',nativeComponents+'\n  </application>');
 }
 
+for(const permission of ['FOREGROUND_SERVICE','FOREGROUND_SERVICE_DATA_SYNC']){
+  if(!manifest.includes('android.permission.'+permission))manifest=manifest.replace('<application','<uses-permission android:name="android.permission.'+permission+'" />\n  <application');
+}
+if(!manifest.includes('TfAssetWidgetLiveService'))manifest=manifest.replace('</application','    <service android:name=".TfAssetWidgetLiveService" android:exported="false" android:foregroundServiceType="dataSync" android:stopWithTask="false" />\n  </application');
+
 manifest=manifest.replace(
   /\s*<intent-filter>\s*<action android:name="android\.intent\.action\.MAIN"\s*\/>\s*<category android:name="android\.intent\.category\.LAUNCHER"\s*\/>\s*<\/intent-filter>/,
   ''

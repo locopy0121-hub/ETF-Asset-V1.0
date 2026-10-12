@@ -69,3 +69,7 @@ java -cp "$compiler_dir/v447-socket.jar:$stream_cp" com.tfasset.app.saietf.V447S
   scripts/native/V404AndroidStubs.kt scripts/native/V447PresentationTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v447-presentation.jar"
 java -cp "$compiler_dir/v447-presentation.jar:$compile_cp" com.tfasset.app.V447PresentationTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetSurfaceSnapshotPolicy.kt scripts/native/V448SurfaceSnapshotTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v448-surface.jar"
+java -cp "$compiler_dir/v448-surface.jar:$compile_cp" com.tfasset.app.V448SurfaceSnapshotTestKt

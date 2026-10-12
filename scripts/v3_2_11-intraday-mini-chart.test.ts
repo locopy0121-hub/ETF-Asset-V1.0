@@ -89,7 +89,9 @@ for(const token of [
 assert.ok(!mini.includes('holding.sparkline'),'Mini chart must not draw the old rolling quote samples');
 assert.ok(!mini.includes('[previous,holding.price]'),'Mini chart must not synthesize a straight previous-close to current-price path');
 
-const finance=read('src/finance/FinanceRuntime.tsx');
+const financeSource=read('src/finance/FinanceRuntime.tsx');
+assert.match(financeSource,/projectHoldingQuotes/,'App must use shared holding projection');
+const finance=financeSource+read('src/finance/holdingProjection.ts');
 assert.match(finance,/marketIntradaySeries(?:For\(market\.quotes,summary\.etfCode\)|FromRow\(rawQuote\))/,
   'FinanceRuntime must consume the market-center intraday view instead of coupling chart readiness to quote rows');
 assert.match(finance,/intraday:intraday\.points/);
