@@ -11,14 +11,14 @@ compile_cp="$compiler_dir/json.jar:$compiler_dir/kotlinc/lib/kotlinx-coroutines-
 "$compiler_dir/kotlinc/bin/kotlinc" \
   native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketArbitrator.kt \
   native/android/SaiEtfProviderCircuitBreaker.kt native/android/SaiEtfMemoryMarketStore.kt \
-  native/android/SaiEtfMarketDataCenter.kt native/android/SaiEtfRuntimeQuoteMapper.kt \
+  native/android/SaiEtfMarketDataCenter.kt native/android/SaiEtfMarketRestoreAdapter.kt native/android/SaiEtfRuntimeQuoteMapper.kt \
   scripts/native/V402MarketBridgeTest.kt -classpath "$compile_cp" -include-runtime -d "$compiler_dir/bridge-test.jar"
 java -cp "$compiler_dir/bridge-test.jar:$compile_cp" V402MarketBridgeTestKt
 
 "$compiler_dir/kotlinc/bin/kotlinc" \
   native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketArbitrator.kt \
   native/android/SaiEtfProviderCircuitBreaker.kt native/android/SaiEtfMemoryMarketStore.kt \
-  native/android/SaiEtfMarketDataCenter.kt scripts/native/V412AfterHoursStabilityTest.kt \
+  native/android/SaiEtfMarketDataCenter.kt native/android/SaiEtfMarketRestoreAdapter.kt scripts/native/V412AfterHoursStabilityTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v412-after-hours-test.jar"
 java -cp "$compiler_dir/v412-after-hours-test.jar:$compile_cp" V412AfterHoursStabilityTestKt
 

@@ -5,6 +5,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 import tw.saietf.core.market.*
 
+fun seededCenter(providers: List<MarketQuoteProvider>, restored: Collection<MarketQuote>, now: Long): MarketDataCenter =
+    MarketDataCenter(providers, hotStore=MemoryMarketStore(cachedSaiEtfMarketReferences(restored,now)))
+
 fun main() {
     val now = java.time.Instant.parse("2026-10-07T15:07:00Z").toEpochMilli()
     val close = java.time.Instant.parse("2026-10-07T05:30:00Z").toEpochMilli()
@@ -49,23 +52,21 @@ fun main() {
         override val source=MarketSource.TWSE_MIS
         override fun fetch(symbols:Set<String>)=mapOf("0050" to quotes[1].copy(price=115.10,asOfEpochMillis=close+1000,sourceTimestampEpochMillis=close+1000))
     }
-    val center=MarketDataCenter(listOf(provider))
-    center.restorePersistedQuotes(quotes,now)
+    val center=seededCenter(listOf(provider),quotes,now)
     check(center.memoryQuotes().size==9)
     val batch=center.refresh(symbols.toSet(),now,"2026-10-07",false)
-    check(batch.unresolvedSymbols.isEmpty()) { "Partial fetch lost restored symbols" }
+    check(batch.unresolvedSymbols==symbols.toSet()-"0050") { "Uncovered persisted references must remain unresolved in SaiETF's batch contract" }
     check(center.memoryQuotes().size==9)
     check(center.memoryQuotes().getValue("0050").price==115.10)
     check(center.memoryQuotes().getValue("009816").price==9.7)
-    val empty=MarketDataCenter(emptyList())
-    empty.restorePersistedQuotes(listOf(quotes[1].copy(asOfEpochMillis=now-8*86400000L,sourceTimestampEpochMillis=now-8*86400000L)),now)
-    check(empty.memoryQuotes().size==1) { "Last known price was lost by age" }
-    empty.restorePersistedQuotes(listOf(quotes[1].copy(sourceTimestampEpochMillis=now+120001)),now)
-    check(empty.memoryQuotes().values.first().sourceTimestampEpochMillis==now-8*86400000L)
-    val nextSession=MarketDataCenter(emptyList())
-    nextSession.restorePersistedQuotes(quotes,now)
+    val empty=seededCenter(emptyList(),listOf(quotes[1].copy(asOfEpochMillis=now-8*86400000L,sourceTimestampEpochMillis=now-8*86400000L)),now)
+    check(empty.memoryQuotes().isEmpty()) { "SaiETF 7-day restoration limit was bypassed" }
+    val future=seededCenter(emptyList(),listOf(quotes[1].copy(sourceTimestampEpochMillis=now+120001)),now)
+    check(future.memoryQuotes().isEmpty()) { "Future-dated reference was incorrectly restored" }
+    val nextSession=seededCenter(emptyList(),quotes,now)
     val next=nextSession.refresh(symbols.toSet(),now+86400000L,"2026-10-08",true)
-    check(next.quotes.size==9 && next.unresolvedSymbols.isEmpty() && next.quotes.values.all { it.quality != QuoteQuality.LIVE }) { "Old cache must not pretend to be today's live quote" }
+    check(next.quotes.isEmpty() && next.unresolvedSymbols==symbols.toSet() &&
+        nextSession.memoryQuotes().size==9) { "Old cache must be reference-only during the next live session" }
     val oldProvider=object:MarketQuoteProvider {
         override val source=MarketSource.TWSE_MIS
         override fun fetch(symbols:Set<String>)=mapOf("0050" to quotes[1])
@@ -98,14 +99,19 @@ fun main() {
     worker.start()
     try {
         check(fallbackStarted.await(2,java.util.concurrent.TimeUnit.SECONDS))
-        check(incremental.memoryQuotes()["0050"]?.price==116.0) { "Fast live quote blocked behind slow fallback" }
+        check(incremental.memoryQuotes()["0050"]==null) { "Frozen SaiETF core must publish the HTTP batch only after arbitration completes" }
         // Simulate a Fugle tick arriving while the provider batch is still running.
         check(incremental.acceptStreamingQuote(quotes[1].copy(source=MarketSource.FUGLE,
             price=117.0,asOfEpochMillis=now+1000,sourceTimestampEpochMillis=now+1000,
             sessionDate="2026-10-07"),now+1000,"2026-10-07"))
     } finally { releaseFallback.countDown();worker.join(3000) }
-    check(incremental.memoryQuotes()["0050"]?.price==117.0) { "End-of-batch publish rolled back newer stream tick" }
-    println("Native incremental live publish / slow fallback isolation / streaming rollback guard: PASS")
+    // Native runtime reconciles the stream again after a possibly slow HTTP
+    // refresh because the original SaiETF core publishes accepted batches.
+    val newestStream=quotes[1].copy(source=MarketSource.FUGLE,price=117.0,
+        asOfEpochMillis=now+1000,sourceTimestampEpochMillis=now+1000,sessionDate="2026-10-07")
+    check(incremental.acceptStreamingQuote(newestStream,now+1000,"2026-10-07"))
+    check(incremental.memoryQuotes()["0050"]?.price==117.0) { "Fresher stream arbitration failed after batch completion" }
+    println("SaiETF frozen batch publication / native post-refresh streaming recovery: PASS")
     val fixture=JSONObject().put("version",1).put("queriedAt",now).put("quotes",rows)
     java.io.File(argsPath()).writeText(fixture.toString())
     println("Native quote provenance, cold/warm contract, source clock, nine-symbol restoration: PASS")

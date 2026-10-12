@@ -16,6 +16,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import tw.saietf.core.market.MarketBatch
 import tw.saietf.core.market.MarketDataCenter
+import tw.saietf.core.market.MemoryMarketStore
+import tw.saietf.core.market.cachedSaiEtfMarketReferences
 import tw.saietf.core.market.MarketQuote
 import tw.saietf.core.market.MarketSource
 import tw.saietf.core.market.ProviderHealth
@@ -32,11 +34,17 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
     private val keyStore = FugleApiKeyStore(appContext)
     private val persistence = MarketPersistenceRepository(appContext)
     private val fugle = FugleWebSocketProvider(apiKeyProvider = keyStore::load)
+    // SaiETF frozen core takes a MemoryMarketStore at construction; its core
+    // does NOT expose the old TF-only mutable restorePersistedQuotes hook.
+    private val warmStore = MemoryMarketStore(
+        cachedSaiEtfMarketReferences(persistence.persistedQuotes().values),
+    )
     private val center = MarketDataCenter(
         providers = listOf(
             TwseMisQuoteProvider(),
             YahooQuoteProvider(),
         ),
+        hotStore = warmStore,
     )
     private val calendarPrefs = appContext.getSharedPreferences("market-trading-calendar", Context.MODE_PRIVATE)
     init {
@@ -56,7 +64,6 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
                 } finally { connection.disconnect() }
             }
         }
-        center.restorePersistedQuotes(persistence.persistedQuotes().values)
     }
     @Volatile private var latestProviderHealth: List<ProviderHealth> =
         center.providerHealthSnapshot(System.currentTimeMillis())
@@ -132,6 +139,14 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             currentTaipeiDate = taipeiDate(now),
             tradingSessionActive = isLiveSession(now),
         )
+        // Reconcile streaming events that arrived during slower HTTP fallback.
+        // SaiETF core stays byte-identical; never publish an older poll quote
+        // over a newer accepted Fugle trade at the native UI boundary.
+        runCatching {
+            kotlinx.coroutines.runBlocking { fugle.fetchSnapshot(symbols) }.values.forEach {
+                center.acceptStreamingQuote(it)
+            }
+        }
         latestProviderHealth = batch.providerHealth
         version.incrementAndGet()
         scope.launch { persistenceController.flushNow() }

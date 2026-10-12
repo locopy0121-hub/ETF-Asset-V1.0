@@ -6,6 +6,8 @@ import tw.saietf.core.market.MarketQuote
 import tw.saietf.core.market.MarketQuoteProvider
 import tw.saietf.core.market.MarketSource
 import tw.saietf.core.market.QuoteQuality
+import tw.saietf.core.market.MemoryMarketStore
+import tw.saietf.core.market.cachedSaiEtfMarketReferences
 
 private const val SESSION = "2026-10-08"
 private val afterClose = Instant.parse("2026-10-08T06:20:00Z").toEpochMilli()
@@ -39,14 +41,12 @@ fun main() {
             return symbols.associateWith { quote(it, source, 114.8, close + 60_000L) }
         }
     }
-    val coveredCenter = MarketDataCenter(listOf(coveredProvider))
-    coveredCenter.restorePersistedQuotes(
-        listOf(quote("0050", MarketSource.FUGLE, 115.2, close, isClose = true)),
-        afterClose,
-    )
+    val coveredCenter = MarketDataCenter(listOf(coveredProvider),
+        hotStore=MemoryMarketStore(cachedSaiEtfMarketReferences(
+            listOf(quote("0050", MarketSource.FUGLE, 115.2, close, isClose = true)),afterClose)))
     val covered = coveredCenter.refresh(setOf("0050"), afterClose, SESSION, false)
-    check(coveredFetches == 0) { "After close, a trusted same-session trade must not trigger fallback" }
-    check(covered.quotes.getValue("0050").price == 115.2)
+    check(coveredFetches == 1) { "Frozen SaiETF core retries the delayed after-hours candidate" }
+    check("0050" in covered.unresolvedSymbols) { "Rejected fallback must remain unresolved, not masquerade as a new quote" }
     check(coveredCenter.memoryQuotes().getValue("0050").source == MarketSource.FUGLE)
 
     var requested: Set<String> = emptySet()
@@ -57,15 +57,14 @@ fun main() {
             return symbols.associateWith { quote(it, source, 10.18, close) }
         }
     }
-    val partialCenter = MarketDataCenter(listOf(missingProvider))
-    partialCenter.restorePersistedQuotes(
-        listOf(quote("0050", MarketSource.FUGLE, 115.2, close, isClose = true)),
-        afterClose,
-    )
+    val partialCenter = MarketDataCenter(listOf(missingProvider),
+        hotStore=MemoryMarketStore(cachedSaiEtfMarketReferences(
+            listOf(quote("0050", MarketSource.FUGLE, 115.2, close, isClose = true)),afterClose)))
     val partial = partialCenter.refresh(setOf("0050", "00406A"), afterClose, SESSION, false)
-    check(requested == setOf("00406A")) { "After close, fallback must fetch only uncovered symbols: $requested" }
-    check(partial.quotes.getValue("0050").price == 115.2)
+    check(requested == setOf("0050", "00406A")) { "Frozen SaiETF core probes the delayed and uncovered symbols: $requested" }
+    check("0050" in partial.unresolvedSymbols)
     check(partial.quotes.getValue("00406A").price == 10.18)
+    check(partialCenter.memoryQuotes().getValue("0050").price == 115.2)
 
     val fetchStarted = CountDownLatch(1)
     val releaseFetch = CountDownLatch(1)
@@ -85,7 +84,7 @@ fun main() {
     check(fetchStarted.await(2, TimeUnit.SECONDS))
     check(
         racingCenter.acceptStreamingQuote(
-            quote("0050", MarketSource.FUGLE, 115.2, close),
+            quote("0050", MarketSource.FUGLE, 115.2, close, isClose = true),
             afterClose,
             SESSION,
         ),
