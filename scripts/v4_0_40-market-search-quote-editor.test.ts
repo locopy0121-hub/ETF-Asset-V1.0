@@ -26,7 +26,7 @@ assert.match(target,/runtime\.active\?'none':'auto'/,'preview never runs navigat
 assert.match(target,/editor\.displayConfig\.layoutTargets/,'real App reads persisted appearance');
 assert.match(target,/runtime\.onSelect\?\.\(\{id,kind,label\}\)/);
 assert.match(target,/runtime\.onSelect\?\.\(\{id,kind:'card',label\}\)/);
-assert.match(tools,/\['market-index','market-search','market-summary'(?:,'market-chart')?\]\.includes\(item\.key\)\?'auto':'none'/);
+assert.match(tools,/\['market-index','market-search','market-summary'(?:,'market-chart')?(?:,'market-details')?\]\.includes\(item\.key\)\?'auto':'none'/);
 assert.match(tools,/id:'market:summary:price'/);
 assert.match(tools,/id:'market:search:input'/);
 assert.match(tools,/selection\.id\.startsWith\('market:'\)/);
