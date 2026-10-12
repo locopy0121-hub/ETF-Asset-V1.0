@@ -51,8 +51,8 @@ function Chip({label,active,click}:{label:string;active:boolean;click:()=>void})
 function Fact({label,value}:{label:string;value:string}){
   const t=useThemeRuntime();
   return <View style={{flexDirection:'row',gap:8,paddingVertical:10,borderBottomWidth:.5,borderBottomColor:t.palette.border}}>
-    <Text style={{fontSize:12,color:t.palette.textSecondary,flex:1}}>{label}</Text>
-    <Text editorReadOnly style={{fontSize:13,fontWeight:'700',color:t.palette.text,flex:2,textAlign:'right'}}>{value}</Text>
+    <MarketEditableText id={'market:details:fact:'+label+':label'} label={label+'標籤'} style={{fontSize:12,color:t.palette.textSecondary,flex:1}}>{label}</MarketEditableText>
+    <MarketEditableText id={'market:details:fact:'+label+':value'} label={label+'數值'} kind="value" style={{fontSize:13,fontWeight:'700',color:t.palette.text,flex:2,textAlign:'right'}}>{value}</MarketEditableText>
   </View>;
 }
 function IntradayChart({points}:{points:readonly {at:number;price:number}[]}){
@@ -202,27 +202,27 @@ export function MarketResearchScreen(){
           ['產業',info?.industry??'—'],['上市櫃日期',info?.listingDate??'—'],['資本額',amount(info?.paidInCapitalTwd)],
           ['普通股發行量',amount(info?.issuedCommonShares)],['董事長',info?.chairman??'—'],['來源',info?.source??'—']].map(([label,metric])=>
           <Fact key={label} label={label??''} value={metric??'—'}/>)}</View>:null}
-      {tab==='etf'?(isEtfSymbol(symbol)?<EtfConstituentsContent symbol={symbol} name={info?.name??symbol}/>:
+      {tab==='etf'?(isEtfSymbol(symbol)?<MarketEditableSurface id="market:details:etf" label="ETF 成分股清單"><EtfConstituentsContent symbol={symbol} name={info?.name??symbol}/></MarketEditableSurface>:
         <Text style={{color:theme.palette.textSecondary}}>此標的未辨識為 ETF，不顯示不適用的成分資料。</Text>):null}
       {tab==='institution'?<View style={{gap:10}}>
-        <View style={styles.row}>{([1,3,5] as const).map(n=><Chip key={n} label={n+'個交易日'} active={institutionalDays===n} click={()=>setInstitutionalDays(n)}/>)}</View>
+        <MarketEditableSurface id="market:details:institution:controls" label="法人日期切換列"><MarketPreviewActionGuard><View style={styles.row}>{([1,3,5] as const).map(n=><Chip key={n} label={n+'個交易日'} active={institutionalDays===n} click={()=>setInstitutionalDays(n)}/>)}</View></MarketPreviewActionGuard></MarketEditableSurface>
         {!info?.market?<Text style={{color:theme.palette.textSecondary}}>標的市場尚未核實，暫不顯示法人數值。</Text>:
         institutionLoading?<Text style={{color:theme.palette.textSecondary}}>讀取 {info.market==='TPEx'?'櫃買中心':'證交所'}法人逐日資料中…</Text>:
         institutionError?<Text style={{color:theme.palette.textSecondary}}>法人資料暫時無法取得：{institutionError}</Text>:
         institutions.length===0?<Text style={{color:theme.palette.textSecondary}}>所選日期查無已公告法人資料（盤中／休市可能尚未公布）。</Text>:<View style={{gap:6}}>
-          <Text style={{fontSize:11,color:theme.palette.textSecondary}}>{info.market==='TPEx'?'TPEx 三大法人官方日報':'TWSE T86 官方日報'}｜單位：股｜紅＝買超，綠＝賣超（非即時主力分點）</Text>
+          <MarketEditableText id="market:details:institution:heading" label="法人來源說明" style={{fontSize:11,color:theme.palette.textSecondary}}>{info.market==='TPEx'?'TPEx 三大法人官方日報':'TWSE T86 官方日報'}｜單位：股｜紅＝買超，綠＝賣超（非即時主力分點）</MarketEditableText>
           {institutions.map(row=>{
             const mag=Math.max(Math.abs(row.foreign),Math.abs(row.trust),Math.abs(row.dealer),1);
             return <View key={row.date} style={{gap:4,borderBottomWidth:.5,borderBottomColor:theme.palette.border,paddingBottom:9}}>
-              <Text style={{fontSize:12,fontWeight:'800',color:theme.palette.text}}>{row.date}｜{row.source}　三大法人 {row.total>=0?'+':''}{amount(row.total)} 股</Text>
+              <MarketEditableText id="market:details:institution:total" label="三大法人合計" kind="value" tone={row.total>0?'gain':row.total<0?'loss':'neutral'} style={{fontSize:12,fontWeight:'800',color:theme.palette.text}}>{row.date}｜{row.source}　三大法人 {row.total>=0?'+':''}{amount(row.total)} 股</MarketEditableText>
               {([{key:'foreign',title:'外資'},{key:'trust',title:'投信'},{key:'dealer',title:'自營商'}] as const).map(item=>{
                 const v=row[item.key];
                 return <View key={item.key} style={styles.row}>
-                  <Text style={{fontSize:11,color:theme.palette.textSecondary,width:45}}>{item.title}</Text>
+                  <MarketEditableText id={'market:details:institution:'+item.key+':label'} label={item.title+'標籤'} style={{fontSize:11,color:theme.palette.textSecondary,width:45}}>{item.title}</MarketEditableText>
                   <View style={{height:9,flex:1,backgroundColor:theme.palette.surfaceMuted,borderRadius:4,overflow:'hidden'}}>
                     <View style={{height:9,width:Math.max(0,100*Math.abs(v)/mag)+'%' as `${number}%`,backgroundColor:v>=0?system.gain:system.loss}}/>
                   </View>
-                  <Text editorReadOnly style={{fontSize:11,fontWeight:'800',minWidth:87,textAlign:'right',color:v>0?system.gain:v<0?system.loss:system.flat}}>{v>0?'+':''}{amount(v)}</Text>
+                  <MarketEditableText id={'market:details:institution:'+item.key+':value'} label={item.title+'買賣超'} kind="value" tone={v>0?'gain':v<0?'loss':'neutral'} style={{fontSize:11,fontWeight:'800',minWidth:87,textAlign:'right',color:v>0?system.gain:v<0?system.loss:system.flat}}>{v>0?'+':''}{amount(v)}</MarketEditableText>
                 </View>;
               })}
             </View>;
@@ -230,21 +230,21 @@ export function MarketResearchScreen(){
         </View>}
         <Text style={{fontSize:11,color:theme.palette.textSecondary}}>券商分點、主力與大戶資料仍需獨立、合法且具時間戳的來源，不由法人日報推算。</Text>
       </View>:null}
-      {tab==='dividend'?<StockDividendHistoryContent key={symbol} symbol={symbol} isEtf={isEtfSymbol(symbol)} market={info?.market??null}/>:null}
+      {tab==='dividend'?<MarketEditableSurface id="market:details:dividend" label="歷史股利統計與明細"><StockDividendHistoryContent key={symbol} symbol={symbol} isEtf={isEtfSymbol(symbol)} market={info?.market??null}/></MarketEditableSurface>:null}
       {tab==='premium'?<View style={{gap:8}}>
         {!isEtfSymbol(symbol)?<Text style={{color:theme.palette.textSecondary}}>非 ETF 標的不適用折溢價。</Text>:
         info?.market!=='TWSE'?<Text style={{color:theme.palette.textSecondary}}>目前僅支援 TWSE 上市 ETF 的官方參考淨值；上櫃商品不套用上市 ETF 資料。</Text>:
         navLoading?<Text style={{color:theme.palette.textSecondary}}>讀取 TWSE e添富官方 NAV 歷史…</Text>:
         navError?<Text style={{color:theme.palette.textSecondary}}>官方 NAV 來源暫不可用：{navError}</Text>:
         navComparisons.length===0?<Text style={{color:theme.palette.textSecondary}}>尚無可核實的公告淨值資料。</Text>:
-        <View style={{gap:2}}>{navComparisons.slice(0,24).map(row=>
+        <MarketEditableSurface id="market:details:nav-list" label="ETF 淨值折溢價清單"><View style={{gap:2}}>{navComparisons.slice(0,24).map(row=>
           <View key={row.date} style={{paddingVertical:7,borderBottomWidth:.5,borderBottomColor:theme.palette.border}}>
             <Text style={{color:theme.palette.text,fontWeight:'800',fontSize:12}}>{row.date}　NAV {price(row.nav)}　收盤 {price(row.close)}</Text>
             <Text style={{color:theme.palette.textSecondary,fontSize:12}}>
               {row.premiumPct===null?'折溢價待同日官方收盤價':('同日收盤折溢價 '+(row.premiumPct>0?'+':'')+row.premiumPct.toFixed(2)+'%')}
               {row.reportedPct===null?'':'｜官方報表 '+(row.reportedPct>0?'+':'')+row.reportedPct.toFixed(2)+'%'}
             </Text>
-          </View>)}</View>}
+          </View>)}</View></MarketEditableSurface>
         <Text style={{color:theme.palette.textSecondary,fontSize:11}}>僅列官方歷史淨值與相同交易日收盤價比較，非即時預估淨值（iNAV）。兩者日期不同時不計算折溢價。</Text>
         <Pressable onPress={()=>void Linking.openURL('https://www.twse.com.tw/zh/ETFortune/products').catch(()=>{})}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>查看證交所 e添富原始公告 ↗</Text>
