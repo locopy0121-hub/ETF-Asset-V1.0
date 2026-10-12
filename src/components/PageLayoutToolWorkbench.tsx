@@ -171,6 +171,14 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'frame',kind:'frame',label:'框架'});
       setOpenGroup('size');return;
     }
+    else if(pageKey==='market'&&frame.key==='market-search'&&kind==='card')
+      setSelection({id:'market:search:input',kind,label:'搜尋輸入框'});
+    else if(pageKey==='market'&&frame.key==='market-search'&&kind==='text')
+      setSelection({id:'market:search:hint',kind,label:'搜尋說明'});
+    else if(pageKey==='market'&&frame.key==='market-summary'&&kind==='text')
+      setSelection({id:'market:summary:title',kind,label:'行情標的名稱'});
+    else if(pageKey==='market'&&frame.key==='market-summary'&&kind==='value')
+      setSelection({id:'market:summary:price',kind,label:'即時價格'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='card')
       setSelection({id:'market:index:chart',kind,label:'指數走勢圖'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='text')
@@ -243,7 +251,7 @@ export function PageLayoutToolWorkbench({
       // Mount the real market component, not the page-header illustration.
       // Non-index controls are presentation-only here: preview taps must never
       // perform searches, refresh requests, or other production actions.
-      return actual?<View pointerEvents={item.key==='market-index'?'auto':'none'}>{actual.props.children}</View>:null;
+      return actual?<View pointerEvents={['market-index','market-search','market-summary'].includes(item.key)?'auto':'none'}>{actual.props.children}</View>:null;
     }
     if(pageKey==='dividend'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
@@ -355,7 +363,7 @@ export function PageLayoutToolWorkbench({
     </View>;
   };
 
-  const base=selection.id.startsWith('market:index:')?
+  const base=selection.id.startsWith('market:')?
       {...TARGET_APPEARANCE,
         fontSize:selection.kind==='value'?22:selection.kind==='text'?14:12,
         lineHeight:selection.kind==='value'?30:20,
@@ -371,7 +379,7 @@ export function PageLayoutToolWorkbench({
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
-    if(pageKey==='market')return frame.key==='market-index'
+    if(pageKey==='market')return ['market-index','market-search','market-summary'].includes(frame.key)
       ?['frame','card','text','value'].includes(kind):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
@@ -499,7 +507,7 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:index:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
