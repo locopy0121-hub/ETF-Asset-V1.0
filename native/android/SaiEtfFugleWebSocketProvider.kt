@@ -61,7 +61,7 @@ internal class OkHttpFugleSocketTransport(
         .build(),
 ) : FugleSocketTransport {
     override fun connect(url: String, listener: FugleSocketListener): FugleSocket {
-        lateinit var wrapper: OkHttpFugleSocket
+        val wrapper = OkHttpFugleSocket()
         val request = Request.Builder().url(url).build()
         val socket = client.newWebSocket(
             request,
@@ -83,19 +83,23 @@ internal class OkHttpFugleSocketTransport(
                 }
             },
         )
-        wrapper = OkHttpFugleSocket(socket)
+        // Bind after newWebSocket returns. The callback always sees a valid
+        // wrapper even if OkHttp opens immediately on another thread.
+        wrapper.bind(socket)
         return wrapper
     }
 
-    private class OkHttpFugleSocket(
-        private val delegate: WebSocket,
-    ) : FugleSocket {
-        override fun send(text: String): Boolean = delegate.send(text)
+    private class OkHttpFugleSocket : FugleSocket {
+        @Volatile private var delegate: WebSocket? = null
+
+        fun bind(socket: WebSocket) { delegate = socket }
+
+        override fun send(text: String): Boolean = delegate?.send(text) ?: false
 
         override fun close(code: Int, reason: String): Boolean =
-            delegate.close(code, reason)
+            delegate?.close(code, reason) ?: false
 
-        override fun cancel() = delegate.cancel()
+        override fun cancel() { delegate?.cancel() }
     }
 }
 
@@ -294,15 +298,27 @@ internal class FugleWebSocketProvider(
             lastAttemptEpochMillis = clockMillis()
         }
 
+        // OkHttp can call onOpen/onFailure before connect() publishes
+        // the returned socket. Never lose authentication on that race.
+        var openedBeforeRegistration = false
+        var failureBeforeRegistration: Throwable? = null
         val listener = object : FugleSocketListener {
             override fun onOpen(socket: FugleSocket) {
-                synchronized(lock) {
-                    if (this@FugleWebSocketProvider.socket !== socket) return
-                    connecting = false
-                    lastMessageEpochMillis = clockMillis()
+                val registered = synchronized(lock) {
+                    if (this@FugleWebSocketProvider.socket !== socket) {
+                        if (this@FugleWebSocketProvider.socket == null && connecting)
+                            openedBeforeRegistration = true
+                        false
+                    } else {
+                        connecting = false
+                        lastMessageEpochMillis = clockMillis()
+                        true
+                    }
                 }
-                socket.send(authMessage(apiKey))
-                emitHealth()
+                if (registered) {
+                    socket.send(authMessage(apiKey))
+                    emitHealth()
+                }
             }
 
             override fun onText(socket: FugleSocket, text: String) {
@@ -311,11 +327,23 @@ internal class FugleWebSocketProvider(
             }
 
             override fun onClosed(socket: FugleSocket, code: Int, reason: String) {
-                handleDisconnect(socket, null)
+                val early = synchronized(lock) {
+                    if (this@FugleWebSocketProvider.socket == null && connecting) {
+                        failureBeforeRegistration = IllegalStateException("Fugle socket closed before registration")
+                        true
+                    } else false
+                }
+                if (!early) handleDisconnect(socket, null)
             }
 
             override fun onFailure(socket: FugleSocket, error: Throwable) {
-                handleDisconnect(socket, error)
+                val early = synchronized(lock) {
+                    if (this@FugleWebSocketProvider.socket == null && connecting) {
+                        failureBeforeRegistration = error
+                        true
+                    } else false
+                }
+                if (!early) handleDisconnect(socket, error)
             }
         }
 
@@ -330,12 +358,27 @@ internal class FugleWebSocketProvider(
                 return
             }
 
+        val closeWithoutRegister: Boolean
+        val earlyFailure: Throwable?
+        val sendDeferredAuth: Boolean
         synchronized(lock) {
-            if (manualDisconnect) {
-                created.close(NORMAL_CLOSE_CODE, "SaiETF no longer needs stream")
-            } else {
-                socket = created
+            closeWithoutRegister = manualDisconnect
+            earlyFailure = failureBeforeRegistration
+            if (!manualDisconnect) socket = created
+            sendDeferredAuth = !manualDisconnect && earlyFailure == null &&
+                openedBeforeRegistration
+            if (sendDeferredAuth) {
+                connecting = false
+                lastMessageEpochMillis = clockMillis()
             }
+        }
+        if (closeWithoutRegister) {
+            created.close(NORMAL_CLOSE_CODE, "TF Asset stream not required")
+        } else if (earlyFailure != null) {
+            handleDisconnect(created, earlyFailure)
+        } else if (sendDeferredAuth) {
+            created.send(authMessage(apiKey))
+            emitHealth()
         }
     }
 
