@@ -179,6 +179,12 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'market:summary:title',kind,label:'行情標的名稱'});
     else if(pageKey==='market'&&frame.key==='market-summary'&&kind==='value')
       setSelection({id:'market:summary:price',kind,label:'即時價格'});
+    else if(pageKey==='market'&&frame.key==='market-chart'&&kind==='card')
+      setSelection({id:'market:chart:history',kind,label:'歷史 K 線圖'});
+    else if(pageKey==='market'&&frame.key==='market-chart'&&kind==='text')
+      setSelection({id:'market:chart:title',kind,label:'分時走勢標題'});
+    else if(pageKey==='market'&&frame.key==='market-chart'&&kind==='value')
+      setSelection({id:'market:chart:indicator:MA5:value',kind,label:'MA5 數值'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='card')
       setSelection({id:'market:index:chart',kind,label:'指數走勢圖'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='text')
@@ -251,7 +257,7 @@ export function PageLayoutToolWorkbench({
       // Mount the real market component, not the page-header illustration.
       // Non-index controls are presentation-only here: preview taps must never
       // perform searches, refresh requests, or other production actions.
-      return actual?<View pointerEvents={['market-index','market-search','market-summary'].includes(item.key)?'auto':'none'}>{actual.props.children}</View>:null;
+      return actual?<View pointerEvents={['market-index','market-search','market-summary','market-chart'].includes(item.key)?'auto':'none'}>{actual.props.children}</View>:null;
     }
     if(pageKey==='dividend'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
@@ -379,7 +385,7 @@ export function PageLayoutToolWorkbench({
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
-    if(pageKey==='market')return ['market-index','market-search','market-summary'].includes(frame.key)
+    if(pageKey==='market')return ['market-index','market-search','market-summary','market-chart'].includes(frame.key)
       ?['frame','card','text','value'].includes(kind):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
