@@ -246,13 +246,13 @@ export function MarketResearchScreen(){
             </Text>
           </View>)}</View></MarketEditableSurface>
         <Text style={{color:theme.palette.textSecondary,fontSize:11}}>僅列官方歷史淨值與相同交易日收盤價比較，非即時預估淨值（iNAV）。兩者日期不同時不計算折溢價。</Text>
-        <Pressable onPress={()=>void Linking.openURL('https://www.twse.com.tw/zh/ETFortune/products').catch(()=>{})}>
+        <MarketPreviewActionGuard><Pressable onPress={()=>void Linking.openURL('https://www.twse.com.tw/zh/ETFortune/products').catch(()=>{})}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>查看證交所 e添富原始公告 ↗</Text>
-        </Pressable>
+        </Pressable></MarketPreviewActionGuard>
       </View>:null}
-      {tab==='news'?(relatedNews.length?relatedNews.map(n=><Pressable key={n.id} onPress={()=>void Linking.openURL(n.url).catch(()=>{})} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
+      {tab==='news'?(relatedNews.length?<MarketEditableSurface id="market:details:news-list" label="市場新聞清單"><MarketPreviewActionGuard>{relatedNews.map(n=><Pressable key={n.id} onPress={()=>void Linking.openURL(n.url).catch(()=>{})} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{n.title}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{n.source}｜{n.publishedAt}</Text></View>
-        </Pressable>):<Text style={{color:theme.palette.textSecondary}}>目前無此標的經核實新聞。既有新聞來源僅追蹤持股，不用其他標的新聞替代。</Text>):null}
+        </Pressable>)}</MarketPreviewActionGuard></MarketEditableSurface>:<Text style={{color:theme.palette.textSecondary}}>目前無此標的經核實新聞。既有新聞來源僅追蹤持股，不用其他標的新聞替代。</Text>):null}
       {tab==='chart'?<Text style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股、法人、歷史股利、折溢價及新聞。</Text>:null}
     </FrameCard>}]:[]),
   ];
