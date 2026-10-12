@@ -5,7 +5,9 @@ const now=Date.parse('2026-10-09T10:36:00+08:00');
 const row={symbol:'0050',currentPrice:100,sourceQuoteAt:Date.parse('2026-10-08T13:30:00+08:00'),sessionDate:'2026-10-08',quality:'trade',quoteStatus:'STALE'};
 assert.equal(v.valuationSessionActive(now),false,'National Day substitute holiday must be closed');
 assert.equal(v.marketValuationQuoteFromRow(row,{now})?.currentPrice,100,'holiday retains last quote');
-assert.equal(v.marketValuationQuoteFromRow(row,{now:Date.parse('2026-10-12T09:01:00+08:00'),unresolvedSymbols:['0050']})?.currentPrice,100,'opening with no tick retains reference');
+assert.equal(v.marketQuoteSnapshotFromRow(row)?.currentPrice,100,'opening with no tick retains visible last trade as a reference');
+assert.equal(v.marketValuationQuoteFromRow(row,{now:Date.parse('2026-10-12T09:01:00+08:00'),unresolvedSymbols:['0050']}),undefined,
+  'SaiETF opening session must not treat a prior-day reference as today\'s verified valuation');
 assert.equal(v.marketValuationQuoteFromRow(row,{now:Date.parse('2026-10-26T10:00:00+08:00')})?.currentPrice,100,'age changes freshness, not availability');
 assert.equal(v.marketValuationQuoteFromRow({...row,currentPrice:0},{now}),undefined);
 assert.equal(v.marketValuationQuoteFromRow({...row,quality:'bid_ask'},{now}),undefined);
