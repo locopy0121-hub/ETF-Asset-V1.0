@@ -45,11 +45,27 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         ),
         hotStore = warmStore,
     )
+    private val fugleRest = FugleRestQuoteProvider(keyStore::load)
+    private val liveQuotes = FugleLiveQuoteSink(center)
+    @Volatile private var streamWasHealthy = false
     // This socket is owned by TF Asset and talks directly to Fugle.
     // No SaiETF process, app, service, database or network relay participates.
     private val fugle = FugleWebSocketProvider(
         apiKeyProvider = keyStore::load,
-        onTrade = { quote -> center.acceptStreamingQuote(quote) },
+        onTrade = { quote -> liveQuotes.accept(quote) },
+        onHealth = { health ->
+            val healthy = health.circuitState == tw.saietf.core.market.ProviderCircuitState.HEALTHY
+            val recovered = healthy && !streamWasHealthy
+            streamWasHealthy = healthy
+            if (trackedSymbols.isNotEmpty()) scope.launch {
+                version.incrementAndGet()
+                onLiveSnapshot(snapshot(trackedSymbols, includeIntraday = false).toString())
+                if (!paused && recovered && fallbackInFlight.compareAndSet(false, true)) {
+                    try { refresh(trackedSymbols) }
+                    finally { fallbackInFlight.set(false) }
+                }
+            }
+        },
     )
     private val calendarPrefs = appContext.getSharedPreferences("market-trading-calendar", Context.MODE_PRIVATE)
     init {
@@ -82,15 +98,9 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         scope = scope,
         provider = fugle,
         marketDataCenter = center,
-        onProviderDegraded = { _ ->
-            if (!paused && trackedSymbols.isNotEmpty() && isLiveSession(System.currentTimeMillis())
-                && fallbackInFlight.compareAndSet(false, true)) {
-                scope.launch {
-                    try { refresh(trackedSymbols) }
-                    finally { fallbackInFlight.set(false) }
-                }
-            }
-        },
+        // Transport handles reconnect/backoff. No periodic backup price fetch
+        // is allowed to compete with the live Fugle subscription.
+
     )
     init {
         scope.launch {
@@ -138,6 +148,17 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         if (symbols.isEmpty()) return snapshot(symbols)
 
         val now = System.currentTimeMillis()
+        if (isLiveSession(now)) {
+            // Lifecycle/manual/reconnect bootstrap comes from Fugle itself.
+            // HTTP completion uses the SAME SaiETF arbitrator as socket ticks.
+            fugleRest.fetch(symbols).values.forEach { quote ->
+                liveQuotes.acceptBaseline(quote)
+            }
+            version.incrementAndGet()
+            val result = snapshot(symbols)
+            onLiveSnapshot(result.toString())
+            return result
+        }
         val batch = center.refresh(
             symbols = symbols,
             nowEpochMillis = now,
@@ -149,7 +170,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         // over a newer accepted Fugle trade at the native UI boundary.
         runCatching {
             kotlinx.coroutines.runBlocking { fugle.fetchSnapshot(symbols) }.values.forEach {
-                center.acceptStreamingQuote(it)
+                liveQuotes.accept(it)
             }
         }
         latestProviderHealth = batch.providerHealth
@@ -174,15 +195,18 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         live.values.sortedBy { it.symbol }.forEach { quote ->
             val sourceAt = quote.sourceTimestampEpochMillis
             val sameSession = sourceAt > 0L && taipeiDate(sourceAt) == currentTaipeiDate
+            val subscribed = sameSession && sessionActive && quote.source == MarketSource.FUGLE && fugle.isSubscribed(quote.symbol, now)
             val status = when {
+                subscribed -> QuoteQuality.LIVE
                 !sameSession -> QuoteQuality.STALE
+                sessionActive && quote.source == MarketSource.FUGLE -> QuoteQuality.DELAYED
                 now - sourceAt > 30_000L -> QuoteQuality.DELAYED
                 else -> quote.quality
             }
             if (sameSession && status != QuoteQuality.STALE && status != QuoteQuality.OFFLINE) {
                 currentSessionSymbols += quote.symbol
             }
-            rows.put(marketQuoteToRuntimeRow(quote.copy(quality = status)))
+            rows.put(marketQuoteToRuntimeRow(liveQuotes.enrich(quote).copy(quality = status)).put("streamingHealthy", subscribed).put("streamingCheckedAt", now))
         }
         // A previous-session persisted price is visible as last-known data,
         // but it is NOT current-session coverage or a new accepted live trade.

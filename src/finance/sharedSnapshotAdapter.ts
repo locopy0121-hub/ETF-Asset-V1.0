@@ -52,6 +52,8 @@ export function buildSharedSnapshot(input:{
         changePercent:row.quoteVerified===false?null:changePercent,
         marketStatus:row.quoteVerified===false?'unavailable':statusFor(row.price,row.previousClose),
         quoteStatus:row.quoteStatus,
+        streamingHealthy:row.streamingHealthy===true,
+        ...(typeof row.streamingCheckedAt==='number'?{streamingCheckedAt:row.streamingCheckedAt}:{}),
         marketQuality:row.quoteQuality??(row.quoteVerified===false?'unavailable':'trade'),
         updatedAt:row.quoteVerified===false?null:(quoteTimes.get(row.symbol)??0)>0?new Date(quoteTimes.get(row.symbol)!).toISOString():null,
         shares:row.shares,

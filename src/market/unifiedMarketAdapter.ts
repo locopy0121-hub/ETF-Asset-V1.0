@@ -121,6 +121,8 @@ export function marketRowsToRuntimeQuotes(
           ?row.fallbackLevel:old?.fallbackLevel)!} : {}),
       ...(typeof row.sequence==='number'&&Number.isFinite(row.sequence)?{sequence:row.sequence}:{}),
       ...((row.quoteStatus??(sameSession?old?.quoteStatus:null))?{quoteStatus:(row.quoteStatus??old?.quoteStatus)!}:{}),
+      streamingHealthy:row.streamingHealthy===true,
+      ...(typeof row.streamingCheckedAt==='number'?{streamingCheckedAt:row.streamingCheckedAt}:{}),
       previousCloseKnown:knownPreviousClose,
       marketDataVersion:snapshot.version,
       liquidationTradeMode:old?.liquidationTradeMode??'ROUND_LOT',

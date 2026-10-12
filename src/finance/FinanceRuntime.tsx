@@ -13,7 +13,7 @@ import {
 import type { SharedSnapshot } from '../domain/snapshot';
 import type { HoldingQuote } from '../domain/uiModels';
 import { useMarketRuntime } from '../market/MarketRuntime';
-import {marketIntradaySeriesFromRow,marketQuoteSnapshotFromRow,marketValuationQuoteFromRow,valuationSessionActive,valuationValidUntil} from '../market/marketCenterViews';
+import {marketIntradaySeriesFromRow,marketQuoteSnapshotFromRow,marketValuationQuoteFromRow,valuationSessionActive,valuationValidUntil,marketStreamHealthy} from '../market/marketCenterViews';
 import {resolveEtfDisplayName} from '../market/etfDisplayName';
 import {
   calculateCanonicalLedgerSnapshot,
@@ -101,7 +101,7 @@ export function FinanceProvider({children}:PropsWithChildren){
     const now=Date.now();
     const future=market.quotes.flatMap(row=>{
       if(!row.sourceQuoteAt||row.currentPrice<=0)return [];
-      const freshness=row.sourceQuoteAt+30_000;
+      const freshness=marketStreamHealthy(row,now)?row.streamingCheckedAt!+75_000:row.sourceQuoteAt+30_000;
       const validity=valuationValidUntil(row,now);
       return [freshness,validity].filter(at=>at>now);
     });
@@ -212,10 +212,12 @@ export function FinanceProvider({children}:PropsWithChildren){
       quoteVerified:verified,
       valuationStatus:verified?(valuationSessionActive(valuationNow)&&valuationQuote?.sessionDate===new Date(valuationNow+8*3_600_000).toISOString().slice(0,10)&&!['STALE','OFFLINE'].includes(valuationQuote?.quoteStatus??'')?'current_session':'reference'):'unavailable',
       valuationValidUntil:valuationQuote?valuationValidUntil(valuationQuote,valuationNow):null,
-      quoteStatus:valuationQuote?.quoteStatus==='LIVE'&&valuationNow-(valuationQuote.sourceQuoteAt??0)>30_000
+      quoteStatus:!marketStreamHealthy(valuationQuote,valuationNow)&&valuationQuote?.quoteStatus==='LIVE'&&valuationNow-(valuationQuote.sourceQuoteAt??0)>30_000
         ?'DELAYED':valuationQuote?.quoteStatus,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
+      streamingHealthy:marketStreamHealthy(valuationQuote,valuationNow),
+      ...(typeof valuationQuote?.streamingCheckedAt==='number'?{streamingCheckedAt:valuationQuote.streamingCheckedAt}:{}),
       marketDataVersion:market.marketDataVersion,
       previousCloseKnown:verified?valuationQuote?.previousCloseKnown!==false:false,
       shares:summary.totalShares,

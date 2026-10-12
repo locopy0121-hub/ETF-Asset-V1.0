@@ -110,6 +110,7 @@ internal class FugleWebSocketProvider(
     // TF Asset consumes Fugle trades directly on the native socket callback;
     // the diagnostic event buffer is not allowed to gate LIVE valuation.
     private val onTrade: (MarketQuote) -> Unit = {},
+    private val onHealth: (ProviderHealth) -> Unit = {},
 ) : MarketDataProvider {
     override val source: MarketSource = MarketSource.FUGLE
     override val capabilities: Set<MarketProviderCapability> =
@@ -149,6 +150,7 @@ internal class FugleWebSocketProvider(
     private var lastMessageEpochMillis: Long? = null
     private var lastHeartbeatEpochMillis: Long? = null
     private var nextReconnectEpochMillis: Long = 0L
+    private var subscriptionAttemptAt: Long? = null
 
     init {
         scheduler.scheduleAtFixedRate(
@@ -211,6 +213,10 @@ internal class FugleWebSocketProvider(
         return synchronized(lock) {
             latestQuotes.filterKeys { it in requested }.toMap()
         }
+    }
+
+    fun isSubscribed(symbol: String, nowEpochMillis: Long): Boolean = synchronized(lock) {
+        authenticated && !manualDisconnect && heartbeatIsHealthy(nowEpochMillis) && symbol in activeChannelIds
     }
 
     override fun health(nowEpochMillis: Long): ProviderHealth {
@@ -316,7 +322,7 @@ internal class FugleWebSocketProvider(
                     }
                 }
                 if (registered) {
-                    socket.send(authMessage(apiKey))
+                    if (!socket.send(authMessage(apiKey))) reconnectAfterSendFailure(socket)
                     emitHealth()
                 }
             }
@@ -377,7 +383,7 @@ internal class FugleWebSocketProvider(
         } else if (earlyFailure != null) {
             handleDisconnect(created, earlyFailure)
         } else if (sendDeferredAuth) {
-            created.send(authMessage(apiKey))
+            if (!created.send(authMessage(apiKey))) reconnectAfterSendFailure(created)
             emitHealth()
         }
     }
@@ -432,6 +438,7 @@ internal class FugleWebSocketProvider(
 
             val unsubscribeImmediately = synchronized(lock) {
                 pendingSubscribeSymbols.remove(symbol)
+                if (pendingSubscribeSymbols.isEmpty()) subscriptionAttemptAt = null
                 activeChannelIds[symbol] = id
                 symbol !in desiredSymbols
             }
@@ -440,6 +447,7 @@ internal class FugleWebSocketProvider(
             }
         }
         syncSubscriptions()
+        emitHealth()
     }
 
     private fun handleUnsubscribed(data: JsonElement?) {
@@ -450,6 +458,7 @@ internal class FugleWebSocketProvider(
             activeChannelIds.entries.removeAll { it.value in ids }
         }
         syncSubscriptions()
+        emitHealth()
     }
 
     private fun handleMarketData(root: JsonObject) {
@@ -539,6 +548,11 @@ internal class FugleWebSocketProvider(
         emitHealth()
     }
 
+    private fun reconnectAfterSendFailure(failed: FugleSocket) {
+        handleDisconnect(failed, IllegalStateException("Fugle transport send failed"))
+        failed.cancel()
+    }
+
     private fun syncSubscriptions() {
         val currentSocket: FugleSocket
         val subscribeSymbols: List<String>
@@ -552,6 +566,7 @@ internal class FugleWebSocketProvider(
                 .filter { it !in activeChannelIds && it !in pendingSubscribeSymbols }
                 .sorted()
             pendingSubscribeSymbols += subscribeSymbols
+            if (subscribeSymbols.isNotEmpty()) subscriptionAttemptAt = clockMillis()
 
             val removeSymbols = activeChannelIds.keys.filter { it !in desiredSymbols }
             unsubscribeIds = removeSymbols
@@ -563,15 +578,13 @@ internal class FugleWebSocketProvider(
         if (subscribeSymbols.isNotEmpty()) {
             val sent = currentSocket.send(subscribeMessage(subscribeSymbols))
             if (!sent) {
-                synchronized(lock) { pendingSubscribeSymbols.removeAll(subscribeSymbols.toSet()) }
-                scheduleReconnect()
+                reconnectAfterSendFailure(currentSocket)
             }
         }
         if (unsubscribeIds.isNotEmpty()) {
             val sent = currentSocket.send(unsubscribeMessage(unsubscribeIds))
             if (!sent) {
-                synchronized(lock) { pendingUnsubscribeIds.removeAll(unsubscribeIds.toSet()) }
-                scheduleReconnect()
+                reconnectAfterSendFailure(currentSocket)
             }
         }
     }
@@ -583,8 +596,7 @@ internal class FugleWebSocketProvider(
             socket
         } ?: return
         if (!current.send(unsubscribeMessage(ids))) {
-            synchronized(lock) { pendingUnsubscribeIds.removeAll(ids.toSet()) }
-            scheduleReconnect()
+            reconnectAfterSendFailure(current)
         }
     }
 
@@ -620,9 +632,12 @@ internal class FugleWebSocketProvider(
     private fun watchdogTick() {
         val now = clockMillis()
         val action = synchronized(lock) {
-            if (!authenticated || socket == null || manualDisconnect) return
+            if (socket == null || manualDisconnect) return
             val last = lastMessageEpochMillis ?: lastHeartbeatEpochMillis ?: now
             when {
+                !authenticated && now - (lastAttemptEpochMillis ?: now) >= HANDSHAKE_TIMEOUT_MILLIS -> 2
+                !authenticated -> 0
+                pendingSubscribeSymbols.isNotEmpty() && now - (subscriptionAttemptAt ?: now) >= HANDSHAKE_TIMEOUT_MILLIS -> 2
                 now - last >= HEARTBEAT_TIMEOUT_MILLIS -> 2
                 now - last >= PING_AFTER_SILENCE_MILLIS -> 1
                 else -> 0
@@ -658,7 +673,9 @@ internal class FugleWebSocketProvider(
     }
 
     private fun emitHealth() {
-        _events.tryEmit(MarketEvent.ProviderState(health(clockMillis())))
+        val state = health(clockMillis())
+        onHealth(state)
+        _events.tryEmit(MarketEvent.ProviderState(state))
     }
 
     private fun authMessage(apiKey: String): String =
@@ -761,6 +778,7 @@ internal class FugleWebSocketProvider(
             "wss://api.fugle.tw/marketdata/v1.0/stock/streaming"
         private const val TRADE_CHANNEL = "trades"
         private const val WATCHDOG_PERIOD_MILLIS = 15_000L
+        private const val HANDSHAKE_TIMEOUT_MILLIS = 15_000L
         private const val PING_AFTER_SILENCE_MILLIS = 40_000L
         private const val HEARTBEAT_TIMEOUT_MILLIS = 75_000L
         private const val RECONNECT_BASE_MILLIS = 1_000L

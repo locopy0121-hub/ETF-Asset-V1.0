@@ -5,15 +5,13 @@ import {valuationSessionActive,marketValuationQuoteFromRow} from '../src/market/
 import type {RuntimeQuote} from '../src/finance/financeSeed';
 import type {UnifiedMarketSnapshot,UnifiedMarketRow} from '../src/native/TfAssetNativeBridge';
 
-// V4.0.44 mirrors SaiETF's published 1s UI / 1s MIS / 15s Yahoo policy,
+// V4.0.47 supersedes the prior UI cadence with Fugle subscription updates,
 // but MUST leave provider circuit breakers and source priorities in native.
 const runtime=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
 const native=fs.readFileSync('native/android/SaiEtfMarketDataCenter.kt','utf8');
 const nativeRuntime=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
-assert.match(runtime,/setInterval\(\(\)=>\{/);
-assert.match(runtime,/valuationSessionActive\(now\)\|\|now-lastPollAt>=30_000/);
-assert.match(runtime,/\},1_000\)/);
-assert.match(runtime,/clearInterval\(poll\)/);
+assert.doesNotMatch(runtime,/setInterval\(/,'market prices are subscription-driven; no global cadence');
+assert.match(runtime,/subscribeUnifiedMarketData\(applySnapshot\)/);
 assert.match(native,/minFetchIntervalMillis = 1_000L/);
 assert.match(native,/minFetchIntervalMillis = 15_000L/);
 assert.match(nativeRuntime,/FugleStreamingController/);
@@ -52,4 +50,4 @@ assert.equal(official.previousCloseKnown,true);
 const sameDay=marketRowsToRuntimeQuotes(snap(make(81.8,null,current+2000,'2026-10-12'),3),[official],current+2000)[0]!;
 assert.equal(sameDay.previousClose,81.3,'same-session known previous close should survive stream-only updates');
 assert.equal(sameDay.previousCloseKnown,true);
-console.log('V4.0.44 SaiETF market policy, 1s foreground cadence, official holiday, day-roll, previous-close contracts PASS');
+console.log('V4.0.44 SaiETF market policy, subscription lifecycle, official holiday, day-roll, previous-close contracts PASS');

@@ -30,6 +30,8 @@ export type RuntimeQuote = MarketQuoteInput & Readonly<{
   /** SaiETF Market Core metadata; accounting formulas do not consume these fields. */
   marketSource?:'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE'|'FALLBACK';
   quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE';
+  streamingHealthy?:boolean;
+  streamingCheckedAt?:number;
   quoteDate?:string;
   quoteTime?:string;
   receivedAt?:number;

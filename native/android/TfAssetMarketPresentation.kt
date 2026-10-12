@@ -24,7 +24,7 @@ internal object TfAssetMarketPresentation{
     return (0 until holdings.length()).flatMap{i->
       val row=holdings.optJSONObject(i)?:return@flatMap emptyList<Long>()
       val freshness=runCatching{Instant.parse(row.optString("updatedAt","")).toEpochMilli()+30_000L}.getOrNull()
-      listOfNotNull(freshness,row.optLong("valuationValidUntil",0L))
+      listOfNotNull(freshness,row.optLong("valuationValidUntil",0L),row.optLong("streamingCheckedAt",0L).takeIf{it>0L}?.plus(75_000L))
     }.filter{it>now}.minOrNull()
   }
 
@@ -83,7 +83,7 @@ internal object TfAssetMarketPresentation{
           else->"快取／收盤參考"
         }
         val delayed=row.optString("quoteStatus")=="DELAYED" ||
-          (active && at>0L && now-at>30_000L)
+          (active && !(row.optBoolean("streamingHealthy",false) && now-row.optLong("streamingCheckedAt",0L)<=75_000L) && at>0L && now-at>30_000L)
         row.put("marketStatus",if(TradingCalendar.closed(now))"休市｜最後有效行情" else if(!active)"盤外參考價" else if(row.optString("valuationStatus")=="reference"||row.optString("quoteStatus") in listOf("STALE","OFFLINE"))"最後有效行情（未更新）" else label+(if(delayed)"（延遲）" else ""))
       }
       if(!rowUsable){

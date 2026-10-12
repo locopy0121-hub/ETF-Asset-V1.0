@@ -40,3 +40,32 @@ java -cp "$compiler_dir/stability-test.jar:$compile_cp" com.tfasset.app.V411Pres
   scripts/native/V404AndroidStubs.kt scripts/native/V418CalendarTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/calendar-test.jar"
 java -cp "$compiler_dir/calendar-test.jar:$compile_cp" com.tfasset.app.V418CalendarTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketArbitrator.kt \
+  native/android/SaiEtfProviderCircuitBreaker.kt native/android/SaiEtfMemoryMarketStore.kt \
+  native/android/SaiEtfMarketDataCenter.kt native/android/TfAssetFugleRestQuoteProvider.kt native/android/TfAssetFugleLiveQuoteSink.kt scripts/native/V447SubscriptionTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v447-subscription-test.jar"
+java -cp "$compiler_dir/v447-subscription-test.jar:$compile_cp" com.tfasset.app.saietf.V447SubscriptionTestKt
+
+mkdir -p "$compiler_dir/streamdeps"
+for dependency in \
+  org/jetbrains/kotlinx/kotlinx-serialization-core-jvm/1.9.0/kotlinx-serialization-core-jvm-1.9.0.jar \
+  org/jetbrains/kotlinx/kotlinx-serialization-json-jvm/1.9.0/kotlinx-serialization-json-jvm-1.9.0.jar \
+  com/squareup/okhttp3/okhttp/4.12.0/okhttp-4.12.0.jar \
+  com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar; do
+  curl --fail --location --retry 3 --silent --show-error "https://repo.maven.apache.org/maven2/$dependency" -o "$compiler_dir/streamdeps/${dependency##*/}"
+done
+stream_cp="$compiler_dir/kotlinc/lib/kotlinx-coroutines-core-jvm.jar"
+for jar in "$compiler_dir"/streamdeps/*-*.jar; do stream_cp="$stream_cp:$jar"; done
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketDataProviderV2.kt \
+  native/android/SaiEtfFugleWebSocketProvider.kt scripts/native/V447SocketTest.kt \
+  -classpath "$stream_cp" -include-runtime -d "$compiler_dir/v447-socket.jar"
+java -cp "$compiler_dir/v447-socket.jar:$stream_cp" com.tfasset.app.saietf.V447SocketTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/TfAssetMarketPresentation.kt native/android/SaiEtfTradingCalendar.kt \
+  scripts/native/V404AndroidStubs.kt scripts/native/V447PresentationTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v447-presentation.jar"
+java -cp "$compiler_dir/v447-presentation.jar:$compile_cp" com.tfasset.app.V447PresentationTestKt

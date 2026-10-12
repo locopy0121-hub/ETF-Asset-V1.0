@@ -54,6 +54,8 @@ export type UnifiedMarketRow=Readonly<{
   fallbackLevel?:number;
   sequence?:number|null;
   quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE';
+  streamingHealthy?:boolean;
+  streamingCheckedAt?:number;
 }>;
 export type NativeMarketProviderHealth=Readonly<{
   source:'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE';

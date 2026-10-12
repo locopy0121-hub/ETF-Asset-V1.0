@@ -60,7 +60,7 @@ export function valuationSessionActive(now:number){
   return !marketClosed(now)&&minutes>=540&&minutes<810;
 }
 
-export function valuationValidUntil(row:RuntimeQuote,now:number){
+export function nextMarketSessionBoundary(now:number){
   // This clock refreshes status at session boundaries; it never deletes the price.
   const local=new Date(now+8*3_600_000);
   const midnight=Date.UTC(local.getUTCFullYear(),local.getUTCMonth(),local.getUTCDate())-8*3_600_000;
@@ -69,6 +69,15 @@ export function valuationValidUntil(row:RuntimeQuote,now:number){
   if(open<=now)open+=DAY;
   while(marketClosed(open))open+=DAY;
   return Math.min(open,midnight+DAY);
+}
+
+export function valuationValidUntil(row:RuntimeQuote,now:number){
+  return nextMarketSessionBoundary(now);
+}
+
+export function marketStreamHealthy(row:RuntimeQuote|undefined,now:number){
+  return row?.streamingHealthy===true && typeof row.streamingCheckedAt==='number'
+    && row.streamingCheckedAt<=now+120_000 && now-row.streamingCheckedAt<=75_000;
 }
 
 export function marketValuationQuoteFromRow(row:RuntimeQuote|undefined,context:ValuationContext={}):RuntimeQuote|undefined{

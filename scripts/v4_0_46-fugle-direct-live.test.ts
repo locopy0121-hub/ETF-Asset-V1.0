@@ -34,7 +34,7 @@ const core=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
 const provider=fs.readFileSync('native/android/SaiEtfFugleWebSocketProvider.kt','utf8');
 const controller=fs.readFileSync('native/android/SaiEtfFugleStreamingController.kt','utf8');
 const runtime=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
-assert.match(core,/onTrade = \{ quote -> center\.acceptStreamingQuote\(quote\) \}/,
+assert.match(core,/onTrade = \{ quote -> liveQuotes\.accept\(quote\) \}/,
   'TF Asset must accept Fugle socket trades directly into its own in-process hot store');
 assert.match(provider,/onTrade\(quote\)[\s\S]*_events\.tryEmit\(MarketEvent\.Quote\(quote\)\)/,
   'buffer saturation must not discard LIVE prices');
@@ -50,7 +50,7 @@ assert.doesNotMatch(core,/https?:\/\/.*SaiETF/,
   'no external SaiETF App or relay is permitted');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'4.0.46');
-assert.equal(app.expo.version,'4.0.46');
-assert.equal(app.expo.android.versionCode,40046);
-console.log('TF Asset V4.0.46 direct Fugle WebSocket and per-symbol LIVE propagation PASS');
+assert.equal(pkg.version,'4.0.47');
+assert.equal(app.expo.version,'4.0.47');
+assert.equal(app.expo.android.versionCode,40047);
+console.log('TF Asset V4.0.47 direct Fugle WebSocket and per-symbol LIVE propagation PASS');

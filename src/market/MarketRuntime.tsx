@@ -1,4 +1,4 @@
-import {applyMarketClosedDates,valuationSessionActive} from './marketCenterViews';
+import {applyMarketClosedDates,nextMarketSessionBoundary} from './marketCenterViews';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState,type AppStateStatus} from 'react-native';
 import {
@@ -309,34 +309,40 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   // SaiETF Memory Hot Store pushes every accepted quote into this single consumer.
   useEffect(()=>{
-    if(!hydrated||!nativeRuntimeAvailable)return;
+    if(!nativeRuntimeAvailable)return;
     return subscribeUnifiedMarketData(applySnapshot);
-  },[hydrated,applySnapshot]);
+  },[applySnapshot]);
 
-  // SaiETF V1.0.64 contract: 1-second foreground market-center cadence while
-  // trading, 30 seconds outside the session. Native providers retain their own
-  // MIS/Yahoo pacing, circuit breakers, and Fugle streaming priority.
+  // SaiETF subscription model: lifecycle events restore the stream; trades
+  // publish through the native hot store. No fixed price polling cadence.
   useEffect(()=>{
     if(!hydrated||!nativeRuntimeAvailable)return;
-    let foreground=AppState.currentState!=='background'&&AppState.currentState!=='inactive';
-    let lastPollAt=Date.now();
-    const poll=setInterval(()=>{
-      if(!foreground||combinedSymbols().length===0)return;
-      const now=Date.now();
-      if(valuationSessionActive(now)||now-lastPollAt>=30_000){
-        lastPollAt=now;
-        void refresh({silent:true});
-      }
-    },1_000);
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
-      foreground=next==='active';
       if(next==='active'){
-        lastPollAt=Date.now();
         void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
         void refresh({force:true,silent:true});
       }else if(next==='background'||next==='inactive')void pauseNativeMarketStreaming().catch(()=>{});
     });
-    return()=>{clearInterval(poll);sub.remove();};
+    return()=>{sub.remove();};
+  },[hydrated,refresh,combinedSymbols]);
+
+  // A single exchange-session boundary timer is not a price-fetch cadence.
+  useEffect(()=>{
+    if(!hydrated||!nativeRuntimeAvailable)return;
+    let alive=true;
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const schedule=()=>{
+      if(timer!==undefined)clearTimeout(timer);
+      if(!alive||AppState.currentState==='background'||AppState.currentState==='inactive')return;
+      const now=Date.now();
+      timer=setTimeout(()=>{
+        if(alive&&combinedSymbols().length>0)void refresh({silent:true}).finally(schedule);
+        else schedule();
+      },Math.max(1,Math.min(2_147_483_647,nextMarketSessionBoundary(now)-now)));
+    };
+    const sub=AppState.addEventListener('change',schedule);
+    schedule();
+    return()=>{alive=false;if(timer!==undefined)clearTimeout(timer);sub.remove();};
   },[hydrated,refresh,combinedSymbols]);
 
   useEffect(()=>{
