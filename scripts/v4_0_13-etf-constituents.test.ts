@@ -21,7 +21,7 @@ assert.equal(parseYuantaConstituents(yuanta.replace('function(a,b,c,d)','functio
 assert.equal(parseYuantaConstituents(yuanta.replace('function(a,b,c,d)','function(a,b,c,d,e)').replace('"聯發科"));','"聯發科",Array(7)));'),'0050',123)?.rows.length,2,'unused sparse-array markers should not discard stocks');
 
 const dj=`<title>富邦台50〈006208.TW〉</title>資料日期：2026/08/31
-<div>持股明細</div><div>資料日期：2026/10/08</div>
+<div>持股明細</div><div>富邦台50(006208.TW)-全部持股</div><div>資料日期：2026/10/08</div>
 <table><tr><th>個股名稱</th><th>投資比例(%)</th><th>持有股數</th></tr>
 <tr><td><a>聯發科(2454.TW)</a></td><td>6.26</td><td>1,000</td></tr>
 <tr><td><a>台積電(2330.TW)</a></td><td>56.49</td><td>2,000</td></tr></table>`;

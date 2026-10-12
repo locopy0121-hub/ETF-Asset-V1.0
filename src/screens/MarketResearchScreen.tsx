@@ -15,6 +15,7 @@ import {MarketEditableSurface,MarketEditableText,MarketPreviewActionGuard} from 
 import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
 import {StockDividendHistoryContent} from '../components/StockDividendHistoryContent';
 import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
+import {EtfBasicProfileContent} from '../components/EtfBasicProfileContent';
 import {PageGearButton} from '../components/PageGearButton';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
 import {PAGE_FRAMES} from '../domain/frameRegistry';
@@ -197,7 +198,8 @@ export function MarketResearchScreen(){
       </View>:<Text style={{fontSize:12,color:theme.palette.textSecondary}}>目前檢視：{tabs.find(x=>x.key===tab)?.label}</Text>}
     </FrameCard>},
     {key:'market-details',element:<FrameCard title="市場研究">
-      {tab==='profile'?<View>
+      {tab==='profile'&&isEtfSymbol(symbol)?<EtfBasicProfileContent symbol={symbol} market={info?.market??'TWSE'}/>:null}
+      {tab==='profile'&&!isEtfSymbol(symbol)?<View>
         {[['證券代號',info?.symbol??symbol],['公司全名',info?.companyName??'—'],['市場',info?.market??'—'],
           ['產業',info?.industry??'—'],['上市櫃日期',info?.listingDate??'—'],['資本額',amount(info?.paidInCapitalTwd)],
           ['普通股發行量',amount(info?.issuedCommonShares)],['董事長',info?.chairman??'—'],['來源',info?.source??'—']].map(([label,metric])=>
