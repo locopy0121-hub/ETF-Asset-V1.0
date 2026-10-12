@@ -12,7 +12,7 @@ import {
   type UnifiedMarketSnapshot,
 } from '../native/TfAssetNativeBridge';
 import {marketRowsToRuntimeQuotes} from './unifiedMarketAdapter';
-import {saiEtfSnapshotHasAdvancedQuote} from './saiEtfSnapshotContract';
+import {saiEtfSnapshotHasAdvancedQuote,saiEtfTransportSnapshotRegressed} from './saiEtfSnapshotContract';
 import {fetchTaiwanSecurityCatalog,type TaiwanSecurityInfo} from './TaiwanSecurityCatalog';
 
 export type MarketPhase='live'|'afterHours'|'offline';
@@ -160,6 +160,9 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   useEffect(()=>{catalogRef.current=catalog;},[catalog]);
 
   const applySnapshot=useCallback((snapshot:UnifiedMarketSnapshot)=>{
+    // SaiETF's native core is authoritative. Ignore bridge events whose quote
+    // clocks move backwards; never reselect a fallback or invent a price.
+    if(saiEtfTransportSnapshotRegressed(snapshot,quotesRef.current))return;
     const snapshotAt=Number(snapshot.queriedAt)||0;
     const version=Number.isFinite(snapshot.version)?snapshot.version:Date.now();
     if(version<latestSnapshotVersionRef.current||snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;

@@ -53,4 +53,4 @@ function renderFinance(){host=financeHost;ctx=host.run(()=>finance.FinanceProvid
  nativeSnapshot={version:4,queriedAt:clock+3000,quotes:[{...nativeRow,sourceQuoteAt:clock-86400000,sessionDate:'2026-10-07',quoteStatus:'STALE'}],missing:['0050']};
  marketListener(nativeSnapshot);await tick();renderMarket();renderFinance();assert.equal(ctx.valuationComplete,true,'older snapshot must retain the last valid valuation');assert.equal(ctx.snapshot.portfolio.totalMarketValue,1200);
  console.log('Actual MarketRuntime pending HTTP -> hot store -> Finance live totals / next tick / late-response guard / stale rejection PASS');process.exit(0);
-})().catch(e=>{console.error(e);process.exitCode=1;});
+})().catch(e=>{console.error(e);process.exit(1);});

@@ -27,3 +27,32 @@ export function saiEtfSnapshotHasAdvancedQuote(
       && row.sequence>old.sequence;
   });
 }
+
+/**
+ * A newer React Native event may carry an older market quote due to an
+ * asynchronous bridge/read race. SaiETF itself never replaces an accepted
+ * hot-store trade with an older exchange clock or reversed Fugle sequence.
+ *
+ * Reject the entire inconsistent transport envelope before UI publication.
+ * This is NOT a second price-selection mechanism: only SaiETF's native core
+ * selects prices, and a subsequent complete native snapshot can retry.
+ */
+export function saiEtfTransportSnapshotRegressed(
+  snapshot:UnifiedMarketSnapshot,
+  accepted:readonly RuntimeQuote[],
+):boolean{
+  const bySymbol=new Map(accepted.map(row=>[row.symbol,row] as const));
+  return (snapshot.quotes??[]).some(incoming=>{
+    const current=bySymbol.get(incoming.symbol);
+    if(!current)return false;
+    const previousClock=Number(current.sourceQuoteAt);
+    const incomingClock=Number(incoming.sourceQuoteAt);
+    if(!Number.isFinite(previousClock)||previousClock<=0)return false;
+    if(!Number.isFinite(incomingClock)||incomingClock<=0)return false;
+    if(incomingClock<previousClock)return true;
+    // Sequence numbers only have ordering meaning within a single provider.
+    return incomingClock===previousClock && incoming.source===current.source
+      && typeof current.sequence==='number' && typeof incoming.sequence==='number'
+      && incoming.sequence<current.sequence;
+  });
+}

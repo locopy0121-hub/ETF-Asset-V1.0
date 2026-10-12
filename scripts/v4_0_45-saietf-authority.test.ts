@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {saiEtfSnapshotHasAdvancedQuote} from '../src/market/saiEtfSnapshotContract';
+import {saiEtfSnapshotHasAdvancedQuote,saiEtfTransportSnapshotRegressed} from '../src/market/saiEtfSnapshotContract';
 import type {UnifiedMarketSnapshot,UnifiedMarketRow} from '../src/native/TfAssetNativeBridge';
 import type {RuntimeQuote} from '../src/finance/financeSeed';
 
@@ -29,10 +29,21 @@ assert.equal(saiEtfSnapshotHasAdvancedQuote(snap([quote({sourceQuoteAt:at-2_000}
   'a regressed source clock cannot be acknowledged as a new tick');
 assert.equal(saiEtfSnapshotHasAdvancedQuote(snap([quote({quality:'backup_realtime',source:'YAHOO',priceType:'BACKUP_REALTIME'})]),[old]),true,
   'a valid newer fallback trade is acknowledged without overriding native arbitration');
+assert.equal(saiEtfTransportSnapshotRegressed(snap([quote({sourceQuoteAt:at-2_000})]),[old]),true,
+  'a delayed native transport response must not roll back the already displayed SaiETF quote');
+assert.equal(saiEtfTransportSnapshotRegressed(snap([quote({sequence:2})]),[quote() as unknown as RuntimeQuote]),true,
+  'an out-of-order same-provider sequence cannot roll back the display');
+assert.equal(saiEtfTransportSnapshotRegressed(snap([quote({sequence:4})]),[quote() as unknown as RuntimeQuote]),false,
+  'a valid advanced Fugle sequence must pass');
+assert.equal(saiEtfTransportSnapshotRegressed(snap([quote({quoteStatus:'DELAYED'})]),[quote() as unknown as RuntimeQuote]),false,
+  'the same trade is allowed to transition from live to delayed without inventing a new quote');
 const adapter=fs.readFileSync('src/market/unifiedMarketAdapter.ts','utf8');
 assert.match(adapter,/previous\.filter\(old=>!incoming\.has\(old\.symbol\)\)/);
 assert.doesNotMatch(adapter,/incoming\.get\(old\.symbol\)!\.sourceQuoteAt.*old\.sourceQuoteAt/,
   'React Native must not compete with SaiETF native price arbitration');
+const runtime=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
+assert.match(runtime,/if\(saiEtfTransportSnapshotRegressed\(snapshot,quotesRef\.current\)\)return;/,
+  'bridge must drop impossible regressed envelopes before publishing to the UI');
 const native=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
 assert.match(native,/val live = center\.memoryQuotes\(symbols\)/);
 assert.match(native,/val missing = if \(sessionActive\) symbols - currentSessionSymbols/);
