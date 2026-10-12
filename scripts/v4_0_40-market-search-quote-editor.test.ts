@@ -5,12 +5,13 @@ const market=read('src/screens/MarketResearchScreen.tsx');
 const target=read('src/components/MarketEditableContent.tsx');
 const tools=read('src/components/PageLayoutToolWorkbench.tsx');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'4.0.40');
+assert.ok(Number(pkg.version.split('.')[2])>=40,'V4.0.40 market content editor must remain supported');
 assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,40040);
-assert.equal(app.ios.buildNumber,'40040');
-assert.match(read('src/screens/SettingsScreen.tsx'),/const BUILD='40040'/);
-assert.match(read('src/settings/BackupService.ts'),/APP_VERSION='4\.0\.40'/);
+const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
+assert.equal(app.android.versionCode,build);
+assert.equal(app.ios.buildNumber,String(build));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const BUILD='"+build+"'"));
+assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
 
 // Each market visual points to stable persisted page settings, not a fake quote.
 for(const id of ['market:search:input','market:search:hint','market:summary:title',
