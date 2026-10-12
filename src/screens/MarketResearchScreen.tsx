@@ -11,6 +11,7 @@ import {ChartStyleDropdown,MARKET_CHART_STYLES} from '../components/ChartStyleDr
 import {ChartPeriodDropdown} from '../components/ChartPeriodDropdown';
 import type {NativeChartStyle} from '../domain/chartEditor';
 import {TaiexIndexCard} from '../components/TaiexIndexCard';
+import {MarketEditableSurface,MarketEditableText,MarketPreviewActionGuard} from '../components/MarketEditableContent';
 import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
 import {StockDividendHistoryContent} from '../components/StockDividendHistoryContent';
 import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
@@ -137,29 +138,35 @@ export function MarketResearchScreen(){
   const frameData=[
     {key:'market-index',element:<FrameCard title="台股加權指數"><TaiexIndexCard marketVersion={market.marketDataVersion} phase={market.phase}/></FrameCard>},
     {key:'market-search',element:<FrameCard title="全市場搜尋">
-      <TextInput value={query} onChangeText={setQuery} placeholder="2330、00985A、0050、台積電…" autoCapitalize="characters" autoCorrect={false}
-        placeholderTextColor={theme.palette.textSecondary}
-        style={[styles.search,{backgroundColor:theme.palette.surfaceMuted,color:theme.palette.text}]}/>
-      <Text style={{fontSize:11,color:theme.palette.textSecondary}}>可輸入部分代號或中文名稱；查詢不需要持有股票。{market.catalogRefreshing?'官方目錄同步中':''}</Text>
+      <MarketEditableSurface id="market:search:input" label="搜尋輸入框">
+        <MarketPreviewActionGuard><TextInput value={query} onChangeText={setQuery} placeholder="2330、00985A、0050、台積電…" autoCapitalize="characters" autoCorrect={false}
+          placeholderTextColor={theme.palette.textSecondary}
+          style={[styles.search,{backgroundColor:theme.palette.surfaceMuted,color:theme.palette.text}]}/></MarketPreviewActionGuard>
+      </MarketEditableSurface>
+      <MarketEditableText id="market:search:hint" label="搜尋說明" style={{fontSize:11,color:theme.palette.textSecondary}}>可輸入部分代號或中文名稱；查詢不需要持有股票。{market.catalogRefreshing?'官方目錄同步中':''}</MarketEditableText>
       {query.trim()!==''&&query.trim()!==(symbol+' '+(info?.name??''))?
-        results.length?<View>{results.slice(0,35).map(item=><Pressable key={item.symbol} onPress={()=>{
+        results.length?<MarketPreviewActionGuard><View>{results.slice(0,35).map(item=><Pressable key={item.symbol} onPress={()=>{
           setSymbol(item.symbol);setQuery(item.symbol+' '+item.name);setTab('chart');setSelectedCandleDate(null);
         }} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',width:78}}>{item.symbol}</Text>
           <Text style={{color:theme.palette.text,flex:1}} numberOfLines={2}>{item.name}</Text>
           <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{item.market==='TWSE'?'上市':'上櫃'}</Text>
-        </Pressable>)}</View>:<Text style={{color:theme.palette.textSecondary}}>目錄沒有相符標的；請確認名稱或重新同步證券目錄。</Text>:null}
+        </Pressable>)}</View></MarketPreviewActionGuard>:<MarketEditableText id="market:search:empty" label="無搜尋結果訊息" style={{color:theme.palette.textSecondary}}>目錄沒有相符標的；請確認名稱或重新同步證券目錄。</MarketEditableText>:null}
     </FrameCard>},
     ...(symbol?[{key:'market-summary',element:<FrameCard title="標的行情">
-      <Text style={{fontSize:19,fontWeight:'800',color:theme.palette.text}}>{info?.name??symbol}　{symbol}</Text>
-      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>{info?.market==='TPEx'?'上櫃':'上市／待核實'}｜{info?.industry??info?.etfType??'股票／ETF'}｜{market.phase==='live'?'盤中':market.phase==='afterHours'?'休市／盤後':'離線'}</Text>
+      <MarketEditableText id="market:summary:title" label="行情標的名稱" style={{fontSize:19,fontWeight:'800',color:theme.palette.text}}>{info?.name??symbol}　{symbol}</MarketEditableText>
+      <MarketEditableText id="market:summary:context" label="市場與交易狀態" style={{color:theme.palette.textSecondary,fontSize:12}}>{info?.market==='TPEx'?'上櫃':'上市／待核實'}｜{info?.industry??info?.etfType??'股票／ETF'}｜{market.phase==='live'?'盤中':market.phase==='afterHours'?'休市／盤後':'離線'}</MarketEditableText>
       <View style={styles.row}>
-        <Text editorReadOnly style={{fontSize:37,fontWeight:'900',color:tone}}>{price(value)}</Text>
-        <Text editorReadOnly style={{fontSize:15,fontWeight:'700',color:tone}}>{diff===null||percent===null?'漲跌待取得':(diff>0?'+':'')+diff.toFixed(2)+' ('+(percent>0?'+':'')+percent.toFixed(2)+'%)'}</Text>
+        <MarketEditableText id="market:summary:price" label="即時價格" kind="value" tone={diff===null?'neutral':diff>0?'gain':diff<0?'loss':'neutral'} style={{fontSize:37,fontWeight:'900',color:tone}}>{price(value)}</MarketEditableText>
+        <MarketEditableText id="market:summary:change" label="漲跌與百分比" kind="value" tone={diff===null?'neutral':diff>0?'gain':diff<0?'loss':'neutral'} style={{fontSize:15,fontWeight:'700',color:tone}}>{diff===null||percent===null?'漲跌待取得':(diff>0?'+':'')+diff.toFixed(2)+' ('+(percent>0?'+':'')+percent.toFixed(2)+'%)'}</MarketEditableText>
       </View>
-      <Text style={{fontSize:11,color:theme.palette.textSecondary}}>{value===null?'此標的尚無可核實報價；不以其他股票或預設值代填。':(quote?.quoteStatus??'快照')+'｜'+(quote?.source??'來源未註記')+'｜'+time(quote?.sourceQuoteAt)}</Text>
-      <View style={styles.row}><Text style={{color:theme.palette.textSecondary}}>前收 {price(prior)}</Text><Text style={{color:theme.palette.textSecondary}}>總量 {amount(quote?.volume)}</Text>{holding?<Text style={{color:theme.palette.primary}}>已持有 {amount(holding.shares)} 股</Text>:null}</View>
-      <Pressable onPress={()=>void market.refresh({force:true})}><Text style={{fontWeight:'700',color:theme.palette.primary}}>{market.refreshing?'更新中…':'更新行情'}</Text></Pressable>
+      <MarketEditableText id="market:summary:status" label="行情來源與時間" style={{fontSize:11,color:theme.palette.textSecondary}}>{value===null?'此標的尚無可核實報價；不以其他股票或預設值代填。':(quote?.quoteStatus??'快照')+'｜'+(quote?.source??'來源未註記')+'｜'+time(quote?.sourceQuoteAt)}</MarketEditableText>
+      <View style={styles.row}>
+        <MarketEditableText id="market:summary:previous" label="前收價格" kind="value" style={{color:theme.palette.textSecondary}}>前收 {price(prior)}</MarketEditableText>
+        <MarketEditableText id="market:summary:volume" label="成交總量" kind="value" style={{color:theme.palette.textSecondary}}>總量 {amount(quote?.volume)}</MarketEditableText>
+        {holding?<MarketEditableText id="market:summary:holding" label="持有股數" kind="value" style={{color:theme.palette.primary}}>已持有 {amount(holding.shares)} 股</MarketEditableText>:null}
+      </View>
+      <MarketPreviewActionGuard><Pressable onPress={()=>void market.refresh({force:true})}><Text style={{fontWeight:'700',color:theme.palette.primary}}>{market.refreshing?'更新中…':'更新行情'}</Text></Pressable></MarketPreviewActionGuard>
     </FrameCard>},
     {key:'market-chart',element:<FrameCard title="行情圖表">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>{tabs.map(x=>
