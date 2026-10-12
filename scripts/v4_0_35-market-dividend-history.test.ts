@@ -32,7 +32,7 @@ const component=readFileSync('src/components/StockDividendHistoryContent.tsx','u
 const api=readFileSync('src/market/stockDividendHistory.ts','utf8');
 assert.match(model,/'dividend'/);
 assert.match(s,/key:'dividend',label:'歷史股利'/);
-assert.match(s,/tab==='dividend'\?<StockDividendHistoryContent/);
+assert.match(s,/tab==='dividend'\?<(?:MarketEditableSurface[^>]*>)?StockDividendHistoryContent/);
 assert.match(component,/fetchStockDividendHistory/);
 assert.match(component,/isEtf.*return/,'ETF must not pretend to have individual stock policy data');
 assert.match(api,/dataset:'TaiwanStockDividend'/);
