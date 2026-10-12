@@ -1,9 +1,13 @@
 /** Reference holdings only. No quote subscriptions, valuation or ledger writes. */
+import {verifiedReplacement,type OfficialReplacement} from './etfConstituentChanges';
 export type EtfConstituent=Readonly<{symbol:string;name:string;weight:number}>;
 export type EtfConstituentSnapshot=Readonly<{
   symbol:string;asOf:string;fetchedAt:number;source:string;sourceUrl:string;
   basis?:'issuer_disclosed'|'third_party_disclosed'|'pcf_estimated';
   complete:boolean;rows:readonly EtfConstituent[];
+  completenessVerified?:boolean;
+  previous?:Omit<EtfConstituentSnapshot,'previous'|'replacements'>;
+  replacements?:readonly OfficialReplacement[];
 }>;
 export const isEtfSymbol=(symbol:string)=>/^00[0-9A-Z]{2,6}$/.test(symbol);
 const text=(html:string)=>html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,'')
@@ -73,24 +77,46 @@ export function parseMoneyDjConstituents(html:string,symbol:string,fetchedAt:num
   const section=html.slice(start),asOf=dateIn(section);if(!asOf)return null;
   const table=section.match(/<table\b[^>]*>[\s\S]*?<\/table>/i)?.[0];
   if(!table||!text(table).includes('個股名稱')||!text(table).includes('投資比例'))return null;
-  const rows:EtfConstituent[]=[];
+  const rows:EtfConstituent[]=[];let unrecognized=false;
   for(const match of table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)){
     const cells=[...match[1]!.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(m=>text(m[1]!));
-    if(cells.length<2)continue;
+    if(!cells.length)continue;
+    if(cells.length<2){unrecognized=true;continue;}
+    // Futures are explicitly outside this stock-constituent table's scope.
+    if(/\([^()]+\.TF\)$/.test(cells[0]!)||/^(?:臺指|台指)選擇權.+到期契約$/.test(cells[0]!))continue;
     const stock=cells[0]!.match(/^(.+?)\(([A-Z0-9][A-Z0-9._-]*\.([A-Z]{2,4}))\)$/);
-    if(!stock||stock[3]==='TF')continue;
+    if(!stock){unrecognized=true;continue;}
+    if(stock[3]==='TF')continue;
     const number=cells[1]!.replace(/[% ,]/g,'');
     if(!/^\d+(?:\.\d+)?$/.test(number))return null;
     rows.push({name:stock[1]!.trim(),symbol:stock[2]!.replace(/\.(TW|TWO)$/,''),weight:Number(number)});
   }
   const valid=validRows(rows);if(!valid)return null;
-  const complete=!/Basic0007B\.xdjhtm/i.test(section);
-  return {symbol,asOf,fetchedAt,source:'MoneyDJ 理財網',sourceUrl:`https://www.moneydj.com/ETF/X/Basic/Basic0007${complete?'B':''}.xdjhtm?etfid=${symbol}.TW`,complete,rows:valid};
+  const heading=text(section.slice(0,section.indexOf('<table')));
+  const complete=new RegExp(`\\(${symbol}\\.TW\\)\\s*[-－]?\\s*全部持股`).test(heading)&&!unrecognized&&!/Basic0007B\.xdjhtm/i.test(section);
+  return {symbol,asOf,fetchedAt,source:'MoneyDJ 理財網',sourceUrl:`https://www.moneydj.com/ETF/X/Basic/Basic0007${complete?'B':''}.xdjhtm?etfid=${symbol}.TW`,complete,completenessVerified:complete,rows:valid};
 }
 const cache=new Map<string,EtfConstituentSnapshot>();
 const listeners=new Set<()=>void>();
 export function subscribeEtfConstituents(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
 export const allCachedEtfConstituents=()=>[...cache.values()];
+function withBaseline(previous:EtfConstituentSnapshot|undefined,next:EtfConstituentSnapshot):EtfConstituentSnapshot{
+  if(!previous)return next;
+  if(previous.source.includes('MoneyDJ')&&previous.completenessVerified!==true&&next.completenessVerified===true){const {previous:incoming,...rest}=next;return rest;}
+  const same=previous.asOf===next.asOf&&previous.source===next.source&&previous.basis===next.basis&&previous.complete===next.complete&&JSON.stringify(previous.rows)===JSON.stringify(next.rows);
+  if(same){const {previous:incoming,...rest}=next;return previous.previous?{...rest,previous:previous.previous}:rest;}
+  const {previous:unused,replacements:unusedReplacements,...baseline}=previous;
+  return {...next,previous:baseline};
+}
+function storedBaseline(value:unknown,symbol:string):EtfConstituentSnapshot['previous']{
+  if(!value||typeof value!=='object')return undefined;const v=value as EtfConstituentSnapshot;
+  if(v.symbol!==symbol||typeof v.asOf!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v.asOf)||!dateIn('資料日期：'+v.asOf)||!Number.isFinite(v.fetchedAt)||v.fetchedAt<=0||typeof v.complete!=='boolean'||typeof v.source!=='string'||
+    typeof v.sourceUrl!=='string'||!/^https:\/\/www\.(?:(?:yuantaetfs|moneydj)\.com|twse\.com\.tw)\//.test(v.sourceUrl)||!Array.isArray(v.rows)||
+    (v.basis!==undefined&&!['issuer_disclosed','third_party_disclosed','pcf_estimated'].includes(v.basis)))return undefined;
+  if(v.rows.some(r=>!r||typeof r!=='object'))return undefined;
+  const rows=validRows(v.rows.map(r=>({symbol:r.symbol,name:r.name,weight:r.weight})));if(!rows)return undefined;
+  return {symbol:v.symbol,asOf:v.asOf,fetchedAt:v.fetchedAt,source:v.source,sourceUrl:v.sourceUrl,complete:v.complete,rows,...(v.basis?{basis:v.basis}:{}),...(v.completenessVerified===true?{completenessVerified:true}:{})};
+}
 export function restoreEtfConstituents(items:unknown){
   if(!Array.isArray(items))return 0;
   let accepted=0;
@@ -105,7 +131,13 @@ export function restoreEtfConstituents(items:unknown){
     if(!rows)continue;
     accepted++;
     const old=cache.get(item.symbol);
-    if(!old||old.asOf<item.asOf||(old.asOf===item.asOf&&old.fetchedAt<item.fetchedAt&&(!old.complete||item.complete)))cache.set(item.symbol,{...item,rows});
+    if(!old||old.asOf<item.asOf||(old.asOf===item.asOf&&old.fetchedAt<item.fetchedAt&&(!old.complete||item.complete))){
+      const previous=storedBaseline(item.previous,item.symbol);
+      const next:EtfConstituentSnapshot={symbol:item.symbol,asOf:item.asOf,fetchedAt:item.fetchedAt,source:item.source,sourceUrl:item.sourceUrl,complete:item.complete,rows,
+        ...(item.basis?{basis:item.basis}:{}),...(item.completenessVerified===true?{completenessVerified:true}:{}),...(previous&&previous.asOf<=item.asOf?{previous}:{}),
+        ...(Array.isArray(item.replacements)?{replacements:item.replacements.slice(0,2000).filter(verifiedReplacement)}:{})};
+      cache.set(item.symbol,withBaseline(old,next));
+    }
   }
   for(const listener of listeners)listener();
   return accepted;
@@ -153,7 +185,8 @@ export async function fetchEtfConstituents(symbol:string,name:string,signal:Abor
       if(result){
         const previous=cache.get(symbol);
         if(previous&&(previous.asOf>result.asOf||(previous.asOf===result.asOf&&previous.complete&&!result.complete)))return previous;
-        cache.set(symbol,result);for(const listener of listeners)listener();return result;
+        const next=withBaseline(previous,result);
+        cache.set(symbol,next);for(const listener of listeners)listener();return next;
       }
     }catch{if(signal.aborted)throw new Error('已取消');}
     finally{clearTimeout(timer);signal.removeEventListener('abort',abort);}

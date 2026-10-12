@@ -4,6 +4,7 @@ import {Pressable,Text} from './EditableNative';
 import {cachedEtfConstituents,subscribeEtfConstituents,type EtfConstituentSnapshot} from '../market/etfConstituents';
 import {refreshEtfConstituentSnapshot} from '../market/EtfConstituentsRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
+import {EtfConstituentChangeNotice} from './EtfConstituentChangeNotice';
 
 export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}){
   const colors=useSystemColors();
@@ -32,6 +33,7 @@ export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}
     </Pressable>
     {data?<>
       <Text editorId="native:EtfConstituentsContent:meta:3" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>資料日期 {data.asOf} · {data.source}</Text>
+      <EtfConstituentChangeNotice snapshot={data}/>
       {data.basis==='pcf_estimated'?<Text editorId="native:EtfConstituentsContent:meta:4" editorReadOnly={false} style={[styles.meta,{color:colors.textSecondary}]}>PCF 申購組合估算權重，非基金實際持股權重。</Text>:null}
       <Text editorId="native:EtfConstituentsContent:meta:5" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>已取得 {data.rows.length} 檔 · 依權重由高至低排列{data.complete?'':' · 僅部分揭露資料'}</Text>
       <View style={[styles.row,{borderColor:colors.border}]}><Text editorId="native:EtfConstituentsContent:stock:6" editorReadOnly={false} style={[styles.stock,{color:colors.textSecondary}]}>成分股／代號</Text><Text editorId="native:EtfConstituentsContent:text:7" editorReadOnly={false} style={{color:colors.textSecondary}}>權重</Text></View>
