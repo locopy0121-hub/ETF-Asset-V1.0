@@ -336,10 +336,15 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     prefs.edit().putString("snapshot",snapshotJson).apply()
     true
   }
+  private fun refreshBackgroundMonitor(){
+    refreshBackgroundMonitorIfNeeded(TfAssetMarketOwner.uiActive,TfAssetOverlayService.isRunning){
+      reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_BACKGROUND_REFRESH))
+    }
+  }
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
     if(!persistSurfaceSnapshot(snapshotJson)){
       prefs.edit().putString("widget_config",configJson).apply()
-      refreshWidget();TfAssetWidgetLiveService.ensureStarted(reactContext);promise.resolve(true);return
+      refreshWidget();refreshBackgroundMonitor();TfAssetWidgetLiveService.ensureStarted(reactContext);promise.resolve(true);return
     }
     // Finance amounts always come from the App's canonical snapshot; Native only overlays prices.
     val canonicalSnapshot=runCatching{org.json.JSONObject(snapshotJson)}.getOrElse{org.json.JSONObject()}
@@ -399,6 +404,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     }
     edit.apply()
     refreshWidget()
+    refreshBackgroundMonitor()
     TfAssetWidgetLiveService.ensureStarted(reactContext)
     promise.resolve(true)
   }

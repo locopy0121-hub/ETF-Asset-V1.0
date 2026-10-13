@@ -26,7 +26,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class TfAssetOverlayService:Service(){
-  companion object{const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH"}
+  companion object{@Volatile private var running=false;val isRunning:Boolean get()=running;const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH";const val ACTION_BACKGROUND_REFRESH="TF_ASSET_MONITOR_BACKGROUND_REFRESH"}
   private val expiryHandler=Handler(Looper.getMainLooper())
   private val expiryRefresh=Runnable{if(root!=null)render()}
   private fun scheduleExpiry(){
@@ -50,6 +50,10 @@ class TfAssetOverlayService:Service(){
   override fun onBind(intent:Intent?):IBinder?=null
   override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
     val cfg=readConfig()
+    if(intent?.action==ACTION_BACKGROUND_REFRESH&&!backgroundMonitorRefreshAllowed(root!=null&&running,prefs().getBoolean("monitor_user_closed",false))){
+      if(root==null)stopSelf(startId)
+      return START_NOT_STICKY
+    }
     if(!cfg.optBoolean("enabled",false)){
       root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
       writeRuntimeStatus(false,null)
@@ -57,9 +61,14 @@ class TfAssetOverlayService:Service(){
       return START_NOT_STICKY
     }
     if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);stopSelf();return START_NOT_STICKY}
-    ensureView();applyConfiguredLayoutIfChanged(cfg);render();return START_STICKY
+    ensureView();applyConfiguredLayoutIfChanged(cfg);render()
+    running=true
+    TfAssetWidgetLiveService.ensureStarted(this)
+    return START_STICKY
   }
   override fun onDestroy(){
+    running=false
+    if(!TfAssetWidgetLiveService.hasWidgets(this))stopService(Intent(this,TfAssetWidgetLiveService::class.java))
     expiryHandler.removeCallbacks(expiryRefresh)
     root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
     writeRuntimeStatus(false,null)
@@ -229,7 +238,7 @@ class TfAssetOverlayService:Service(){
       render()
     })
     row.addView(control(if(mode=="mini")"□ 放大" else "— 縮小"){toggleMode()})
-    row.addView(control("× 關閉"){prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
+    row.addView(control("× 關閉"){running=false;prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
     root.addView(row,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
   }
 

@@ -85,3 +85,7 @@ java -cp "$compiler_dir/v449-controller.jar:$compile_cp" com.tfasset.app.saietf.
 "$compiler_dir/kotlinc/bin/kotlinc" native/android/SaiEtfMarketModels.kt native/android/TfAssetFugleRestQuoteProvider.kt scripts/native/V449RestScheduleTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v449-rest-schedule.jar"
 java -cp "$compiler_dir/v449-rest-schedule.jar:$compile_cp" com.tfasset.app.saietf.V449RestScheduleTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetBackgroundSurfacePolicy.kt scripts/native/V454BackgroundSurfacesTest.kt \
+  -include-runtime -d "$compiler_dir/v454-background-surfaces.jar"
+java -jar "$compiler_dir/v454-background-surfaces.jar"
