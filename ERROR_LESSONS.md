@@ -1,3 +1,8 @@
+## 2026-10-13｜V4.0.52 Widget 盤中啟動權限
+- 使用者確認 V4.0.51 盤中開啟閃退，移除 Widget 即可啟動。已交付 APK badging 缺 WAKE_LOCK；目前 React Native HeadlessJsTaskService.startTask 必定 acquireWakeLockNow，觸發 PowerManager 權限檢查。尚未取得手機 crash journal，實際例外堆疊待核對。
+- 最小修護：原生 manifest 注入 WAKE_LOCK，保留資料、排程與單一即時行情來源。真實 injector fixture 驗證權限及重跑冪等；GitHub QA 在最終 APK badging 再檢查權限，缺少即停止交付。
+- 權限為 manifest 宣告，無新增設定選項。仍須手機帶 Widget 盤中啟動／回前景／背景更新驗收；CI 通過不等於真機閃退已消失。
+
 ## 2026-10-12｜V4.0.47 盤中訂閱定義取代 V4.0.44 秒數輪詢
 - 使用者要求盤中 TF Asset 自己直接訂閱富果。SaiETF V2.0.2 的凍結仲裁／StateFlow 核心保留；SaiETF App 不參與中繼。
 - 刪除 JS 固定價格輪詢，保留啟動、持股／研究標的、前景恢復、人工更新與交易時段邊界事件。正常盤中不執行 TWSE/Yahoo 價格刷新；富果 REST 僅補取啟動／重連最後成交與當日參考價。
