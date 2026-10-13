@@ -1,3 +1,8 @@
+## 2026-10-13｜V4.0.53 APK 真實入口缺 Headless 任務註冊
+- 使用者確認回桌面／切換 App 後行情牆不自動更新，通知仍在。CI 另產生 TFAssetNative/index.js，只 registerComponent，未複製 repository index.ts 的 TfAssetWidgetLive 註冊。RN 對未知任務不會執行 widgetLiveTask；通知存在不等於 JS writer 已啟動。
+- 修護必須發生在真正打包的入口。測試抽取並執行 workflow 產生的入口，從已註冊 task provider 啟動真實 widgetLiveTask，驗證前景寫入由 App 擁有、回桌面自動同步、背景新行情、回前景交接及清理；直接呼叫函式的測試會漏掉打包缺陷。
+- QA 另執行實際已產生的 native index.js，最終 APK Hermes bundle 檢查 task key。保留 V4.0.52 WAKE_LOCK 與排程，不改 Finance Core。手機背景服務生命週期與實際行情傳輸仍待驗收。
+
 ## 2026-10-13｜V4.0.52 Widget 盤中啟動權限
 - 使用者確認 V4.0.51 盤中開啟閃退，移除 Widget 即可啟動。已交付 APK badging 缺 WAKE_LOCK；目前 React Native HeadlessJsTaskService.startTask 必定 acquireWakeLockNow，觸發 PowerManager 權限檢查。尚未取得手機 crash journal，實際例外堆疊待核對。
 - 最小修護：原生 manifest 注入 WAKE_LOCK，保留資料、排程與單一即時行情來源。真實 injector fixture 驗證權限及重跑冪等；GitHub QA 在最終 APK badging 再檢查權限，缺少即停止交付。

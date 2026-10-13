@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.52",
+  "version": "4.0.53",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_52 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_53 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -337,7 +337,8 @@
     "test:v4_0_49": "npm run test:v4_0_48 && node --import tsx scripts/v4_0_49-market-schedule.test.ts && node scripts/v4_0_49-schedule-ui.test.cjs",
     "test:v4_0_50": "npm run test:v4_0_49 && node scripts/v4_0_50-schedule-settings.test.cjs",
     "test:v4_0_51": "npm run test:v4_0_50 && node --import tsx scripts/v4_0_51-etf-profile.test.cjs && node --import tsx scripts/v4_0_51-etf-profile-runtime.test.cjs && node --import tsx scripts/v4_0_51-constituent-changes.test.cjs && node --import tsx scripts/v4_0_51-etf-ui.test.cjs",
-    "test:v4_0_52": "npm run test:v4_0_51 && node scripts/v4_0_52-widget-permission.test.cjs"
+    "test:v4_0_52": "npm run test:v4_0_51 && node scripts/v4_0_52-widget-permission.test.cjs",
+    "test:v4_0_53": "npm run test:v4_0_52 && node scripts/v4_0_53-native-entrypoint.test.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
