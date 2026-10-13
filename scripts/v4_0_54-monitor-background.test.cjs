@@ -1,0 +1,14 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const service=fs.readFileSync('native/android/TfAssetWidgetLiveService.kt','utf8');
+assert.match(service,/backgroundLiveRequired\(/,'floating-only session must be eligible for the shared foreground writer');
+const overlay=fs.readFileSync('native/android/TfAssetOverlayService.kt','utf8');
+assert.match(overlay,/TfAssetWidgetLiveService\.ensureStarted\(this\)/,'visible floating window starts the shared background writer');
+assert.match(overlay,/ACTION_BACKGROUND_REFRESH.*backgroundMonitorRefreshAllowed/,'delayed background repaint may not open a missing or closed window');
+assert.match(overlay,/running=false/,'destroyed window releases eligibility');
+const moduleSource=fs.readFileSync('native/android/TfAssetNativeModule.kt','utf8');
+const sync=moduleSource.slice(moduleSource.indexOf('@ReactMethod fun syncWidget'),moduleSource.indexOf('@ReactMethod fun syncMonitor'));
+assert.equal((sync.match(/refreshBackgroundMonitor\(\)/g)||[]).length,2,'both accepted and retained surface versions can repaint the active background monitor');
+assert.match(moduleSource,/refreshBackgroundMonitorIfNeeded\(/);
+const provider=fs.readFileSync('native/android/TfAssetWidgetProvider.kt','utf8');
+assert.match(provider,/if\(!TfAssetOverlayService\.isRunning\)context\.stopService/,'removing last desktop Widget must preserve a visible monitor');
+console.log('V4.0.54 native Monitor/background writer wiring smoke PASS; Kotlin policy runtime is a separate gate');

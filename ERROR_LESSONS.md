@@ -1,3 +1,9 @@
+## 2026-10-13｜V4.0.54 浮動行情窗不是桌面 Widget
+- 截圖確認使用者看到的是原生浮動 Monitor；App.tsx 在背景跳過 Monitor 同步，而 headless writer 只呼叫 syncWidget，Native syncWidget 不觸發 Overlay render，且背景服務只允許桌面 Widget。前兩輪修補桌面 Widget 不會補齊浮動視窗的消費路徑。
+- 將實際可見的 Overlay 納入同一背景服務啟動條件；同一 canonical snapshot 的背景 Widget 寫入後，僅重繪仍在運作的 Overlay，不覆寫 Monitor 設定或自行算第二份價格／損益。
+- 移除最後 Widget 不可停掉可見 Overlay 所需 writer；關閉最後 Overlay 且無 Widget 則停止 writer。前景仍由 App 處理設定與同步。背景／休市排程與唯一 Fugle 來源保持。
+- Source wiring smoke 與編譯執行的 Kotlin eligibility/repaint/lifetime policy 分開驗證。Screenshot 單一時點價格一致不代表持續同步；真機後續成交與來源時間、三種 surface 組合及關閉清理仍需驗收。
+
 ## 2026-10-13｜V4.0.53 APK 真實入口缺 Headless 任務註冊
 - 使用者確認回桌面／切換 App 後行情牆不自動更新，通知仍在。CI 另產生 TFAssetNative/index.js，只 registerComponent，未複製 repository index.ts 的 TfAssetWidgetLive 註冊。RN 對未知任務不會執行 widgetLiveTask；通知存在不等於 JS writer 已啟動。
 - 修護必須發生在真正打包的入口。測試抽取並執行 workflow 產生的入口，從已註冊 task provider 啟動真實 widgetLiveTask，驗證前景寫入由 App 擁有、回桌面自動同步、背景新行情、回前景交接及清理；直接呼叫函式的測試會漏掉打包缺陷。
