@@ -40,6 +40,10 @@ function recordFlow(raw:string){
     const row=JSON.parse(raw) as Record<string,unknown>;
     if(typeof row.id!=='string'||seenFlow.has(row.id))return;
     seenFlow.add(row.id);if(seenFlow.size>32)seenFlow.delete(seenFlow.values().next().value!);
+    if(row.kind==='source'){
+      recordDiagnosticEvent({level:row.failure==='NONE'?'info':'warning',code:'MARKET_SOURCE',screen:'market',message:'Fugle 連線、訂閱與接收診斷',detail:JSON.stringify(row)});
+      return;
+    }
     recordDiagnosticEvent({level:'info',code:'MARKET_FLOW',screen:'market',message:'行情牆開關與更新鏈路計數',detail:JSON.stringify({...row,...marketFlowMetrics(),appReceiptAt:Date.now()})});
   }catch{}
 }

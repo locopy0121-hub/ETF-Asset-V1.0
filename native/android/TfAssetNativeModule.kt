@@ -177,7 +177,13 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       if(index>=0&&cursor.moveToFirst())cursor.getString(index) else null
     }?:uri.lastPathSegment?:"TF-Asset-Backup.json"
   }
+  private val sourceDiagnosticListener:(String)->Unit={raw->
+    if(reactContext.hasActiveReactInstance())runCatching{
+      reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("TfAssetMarketFlowDiagnostics",raw)
+    }
+  }
   init{
+    TfAssetMarketFlowDiagnostics.addSourceListener(sourceDiagnosticListener)
     reactContext.addActivityEventListener(activityListener)
     val filter=IntentFilter(ACTION_MARKET_REFRESH_REQUESTED)
     if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(refreshRequestReceiver,filter,Context.RECEIVER_NOT_EXPORTED)
@@ -197,6 +203,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     installCrashJournal();TfAssetNotificationCenter.ensureChannels(reactContext)
   }
   override fun invalidate(){
+    TfAssetMarketFlowDiagnostics.removeSourceListener(sourceDiagnosticListener)
     TfAssetMarketOwner.removeListener(marketListener)
     reactContext.removeLifecycleEventListener(lifecycleListener)
     runCatching{reactContext.unregisterReceiver(flowReceiver)}

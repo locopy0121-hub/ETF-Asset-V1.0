@@ -16,8 +16,13 @@ import java.time.format.DateTimeFormatter
  */
 internal object TfAssetMarketPresentation{
   internal fun sourceTimeLabel(value:String):String = runCatching{
-    DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.of("Asia/Taipei")).format(Instant.parse(value))
+    DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.of("Asia/Taipei")).format(Instant.parse(value))
   }.getOrDefault("--")
+
+  internal fun sourceClockLabel(rows:List<JSONObject>):String {
+    val latest=rows.mapNotNull { row->runCatching { Instant.parse(row.optString("updatedAt","")) }.getOrNull() }.maxOrNull()
+    return latest?.let { sourceTimeLabel(it.toString()) } ?: "--:--:--"
+  }
 
   internal fun nextExpiry(raw:JSONObject,now:Long):Long?{
     val holdings=raw.optJSONArray("holdings")?:return null

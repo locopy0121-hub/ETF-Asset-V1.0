@@ -219,6 +219,8 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     views.setViewVisibility(R.id.widget_wall,if(wallMode)View.VISIBLE else View.GONE)
     views.setTextViewText(R.id.widget_title,if(wallMode&&holdings.size>wallCapacity)"持股行情牆 · ${wallCapacity}/${holdings.size}" else if(wallMode)"持股行情牆" else "TF Asset")
     views.setTextColor(R.id.widget_title,text)
+    views.setTextViewText(R.id.widget_quote_time,TfAssetMarketPresentation.sourceClockLabel(holdings))
+    views.setTextColor(R.id.widget_quote_time,neutral)
     views.setTextColor(R.id.widget_refresh,neutral)
     views.setTextViewText(R.id.widget_refresh,"↻ 更新")
     views.setTextColor(R.id.widget_refresh_status,neutral)

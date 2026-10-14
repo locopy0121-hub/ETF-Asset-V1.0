@@ -245,18 +245,23 @@ class TfAssetOverlayService:Service(){
     val bg=color(style.optString("backgroundColor","#0F172A"),Color.rgb(15,23,42))
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
-    renderWindowControls(r,style)
+    renderWindowControls(r,style,TfAssetMarketPresentation.sourceClockLabel(orderedHoldings(snap,cfg)))
     if(mode=="mini")renderMini(r,cfg,snap,style) else renderNormal(r,cfg,snap,style)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
   }
 
-  private fun renderWindowControls(root:LinearLayout,style:JSONObject){
+  private fun renderWindowControls(root:LinearLayout,style:JSONObject,quoteClock:String){
     val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.END or Gravity.CENTER_VERTICAL}
     val text=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
     fun control(label:String,onClick:()->Unit):TextView=TextView(this).apply{
       this.text=label;setTextColor(text);textSize=10f;setPadding(12,7,12,7);setOnClickListener{onClick()}
     }
+    val clockView=TextView(this).apply{
+      this.text=quoteClock;setTextColor(text);textSize=10f;setPadding(4,2,2,2)
+      contentDescription="行情資料更新時間 $quoteClock"
+    }
+    root.addView(clockView,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
     row.addView(control("↻ 更新行情"){
       prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply()
       sendBroadcast(Intent(TfAssetNativeModule.ACTION_MARKET_REFRESH_REQUESTED).setPackage(packageName))
@@ -631,7 +636,7 @@ class TfAssetOverlayService:Service(){
           val tone=when{useProfit&&numeric.isFinite()&&numeric>0->gain;useProfit&&numeric.isFinite()&&numeric<0->loss;useProfit&&numeric.isFinite()->neutral;customText!=null->customText;else->statusText}
           val valueText=when(field){
             "holdingCount"->rows.size.toString()
-            "updatedAt"->TfAssetMarketPresentation.sourceTimeLabel(snap.optString("generatedAt",""))
+            "updatedAt"->TfAssetMarketPresentation.sourceClockLabel(rows)
             "totalReturn"->signedInteger(asset,"totalReturn")
             "unrealizedPnl"->signedInteger(asset,"unrealizedPnl")
             "realizedPnl"->signedInteger(asset,"realizedPnl")

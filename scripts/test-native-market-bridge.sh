@@ -97,3 +97,15 @@ java -jar "$compiler_dir/v455-render-queue.jar"
 "$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetMonitorFields.kt scripts/native/V456MonitorFieldsTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v456-monitor-fields.jar"
 java -cp "$compiler_dir/v456-monitor-fields.jar:$compile_cp" com.tfasset.app.V456MonitorFieldsTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketDataProviderV2.kt \
+  native/android/SaiEtfFugleWebSocketProvider.kt native/android/TfAssetMarketFlowDiagnostics.kt scripts/native/V457RecoveryTest.kt \
+  -classpath "$stream_cp" -include-runtime -d "$compiler_dir/v457-recovery.jar"
+java -cp "$compiler_dir/v457-recovery.jar:$stream_cp" com.tfasset.app.saietf.V457RecoveryTestKt
+
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/TfAssetMarketPresentation.kt native/android/SaiEtfTradingCalendar.kt \
+  scripts/native/V404AndroidStubs.kt scripts/native/V457QuoteClockTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v457-clock.jar"
+java -cp "$compiler_dir/v457-clock.jar:$compile_cp" com.tfasset.app.V457QuoteClockTestKt
