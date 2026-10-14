@@ -676,3 +676,10 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Release obsolete active AND pending subscriptions before adding replacements. Await unsubscribe ACK with a recovery timeout; otherwise transient subscription overlap or missing ACK can stall the feed.
 - Snapshot/render counts do not count source trades. Preserve separate bounded source-state categories and numeric error/close codes, never raw credentials/payloads, to locate future reception failures.
 - External clock is selected holding source time in Taipei HH:mm:ss, not render/generatedAt time. No timer may make stale prices look newly updated.
+
+# V4.0.58 — Stop streaming only after settling the final canonical surface
+- A cache-only after-hours refresh can preserve a missed intraday quote indefinitely. Closing settlement must use a trusted final trade with its original source timestamp, not a render clock.
+- An empty-symbol cold lifecycle is not a completed reconciliation. Hydration must remain retryable, and actual foreground resumes may retry unconfirmed results through the coordinator's cooldown.
+- A foreground writer must remain until the final canonical surface version is acknowledged or a bounded timeout expires; late close callbacks cannot stop a resumed session.
+- Periodic and shutdown persistence must share one serialized capture/write boundary. An asynchronous previous snapshot must never finish after the final close and overwrite it.
+- Charge cooldown only to dispatched requests. A sequential request budget must not cool down or indefinitely starve unrequested holdings.

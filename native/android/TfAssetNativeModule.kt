@@ -50,7 +50,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val saietfMarket get() = TfAssetMarketOwner.runtime(reactContext)
   private val lifecycleListener=object:com.facebook.react.bridge.LifecycleEventListener{
-    override fun onHostResume(){TfAssetMarketOwner.uiActive=true;TfAssetMarketOwner.applySchedule(reactContext)}
+    override fun onHostResume(){TfAssetMarketOwner.resumeUi(reactContext)}
     override fun onHostPause(){TfAssetMarketOwner.uiActive=false}
     override fun onHostDestroy(){TfAssetMarketOwner.uiActive=false}
   }
@@ -352,6 +352,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     val previous=runCatching{org.json.JSONObject(prefs.getString("snapshot","{}")?:"{}")} .getOrElse{org.json.JSONObject()}
     if(!acceptsSurfaceSnapshot(previous,incoming))return@synchronized false
     prefs.edit().putString("snapshot",snapshotJson).apply()
+    TfAssetMarketOwner.acknowledgeSurface(reactContext,incoming.optLong("marketDataVersion",0L))
     true
   }
   private fun refreshBackgroundMonitor(){

@@ -24,11 +24,11 @@ import tw.saietf.core.market.MarketSource
 import tw.saietf.core.market.ProviderHealth
 import tw.saietf.core.market.QuoteQuality
 
-class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String) -> Unit = {}) {
+class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=System::currentTimeMillis, private val onLiveSnapshot: (String) -> Unit = {}) {
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val taipeiZone = ZoneId.of("Asia/Taipei")
-    private val version = AtomicLong(System.currentTimeMillis())
+    private val version = AtomicLong(clockMillis())
     @Volatile private var trackedSymbols: Set<String> = emptySet()
     @Volatile private var paused = false
     private val fallbackInFlight = AtomicBoolean(false)
@@ -37,7 +37,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
     // SaiETF frozen core takes a MemoryMarketStore at construction; its core
     // does NOT expose the old TF-only mutable restorePersistedQuotes hook.
     private val warmStore = MemoryMarketStore(
-        cachedSaiEtfMarketReferences(persistence.persistedQuotes().values),
+        cachedSaiEtfMarketReferences(persistence.persistedQuotes().values,clockMillis()),
     )
     private val center = MarketDataCenter(
         providers = listOf(
@@ -46,14 +46,26 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         ),
         hotStore = warmStore,
     )
-    private val fugleRest = FugleRestQuoteProvider(keyStore::load)
+    private val fugleRest = FugleRestQuoteProvider(keyStore::load,clockMillis)
     private val liveQuotes = FugleLiveQuoteSink(center)
+    private val closeReconciler = FugleSessionCloseReconciler(
+        fetch = { symbols, withinBudget -> fugleRest.fetch(symbols) {
+            withinBudget() && FugleSessionCloseReconciler.eligible(TfAssetMarketSchedule.load(appContext),clockMillis())
+        } },
+        current = center::memoryQuotes,
+        admit = { quote ->
+            FugleSessionCloseReconciler.eligible(TfAssetMarketSchedule.load(appContext),clockMillis()) &&
+                liveQuotes.acceptBaseline(quote,clockMillis(),taipeiDate(clockMillis()))
+        },
+        clockMillis = clockMillis,
+    )
     @Volatile private var streamWasHealthy = false
     // This socket is owned by TF Asset and talks directly to Fugle.
     // No SaiETF process, app, service, database or network relay participates.
     private val fugle = FugleWebSocketProvider(
         apiKeyProvider = keyStore::load,
-        onTrade = { quote -> if(!paused&&TfAssetMarketSchedule.allows(appContext))liveQuotes.accept(quote) },
+        clockMillis = clockMillis,
+        onTrade = { quote -> if(!paused&&TfAssetMarketSchedule.allows(appContext))liveQuotes.accept(quote,clockMillis(),taipeiDate(clockMillis())) },
         onHealth = { health ->
             val healthy = health.circuitState == tw.saietf.core.market.ProviderCircuitState.HEALTHY
             val recovered = healthy && !streamWasHealthy
@@ -88,7 +100,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         }
     }
     @Volatile private var latestProviderHealth: List<ProviderHealth> =
-        center.providerHealthSnapshot(System.currentTimeMillis())
+        center.providerHealthSnapshot(clockMillis())
 
     private val persistenceController = MarketPersistenceController(
         scope = scope,
@@ -145,19 +157,51 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         scope.launch { persistenceController.flushNow() }
     }
 
+    /** Preserve the writer until the final canonical projection is acknowledged. */
+    fun settleScheduledClose(onSettled:(Long)->Unit):Boolean {
+        val now=clockMillis()
+        if(trackedSymbols.isEmpty() || !FugleSessionCloseReconciler.eligible(TfAssetMarketSchedule.load(appContext),now))return false
+        val end=Instant.ofEpochMilli(now).atZone(taipeiZone).toLocalDate().atTime(13,30).atZone(taipeiZone).toInstant().toEpochMilli()
+        scope.launch {
+            var settledVersion=version.get()
+            try {
+                kotlinx.coroutines.delay((end+FugleSessionCloseReconciler.SETTLEMENT_GRACE_MILLIS-clockMillis()).coerceAtLeast(0L))
+                settledVersion=refresh(trackedSymbols).getLong("version")
+            } finally { onSettled(settledVersion) }
+        }
+        return true
+    }
+
     @Synchronized fun refresh(requested: Collection<String>): JSONObject {
         val symbols = requested
             .map { it.trim().uppercase(Locale.US) }
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }
             .toSet()
-        if (symbols.isEmpty()||!TfAssetMarketSchedule.allows(appContext)) return snapshot(symbols)
+        if (symbols.isEmpty()) return snapshot(symbols)
+        if (!TfAssetMarketSchedule.allows(appContext)) {
+            if(closeReconciler.reconcile(symbols,TfAssetMarketSchedule.load(appContext))) {
+                kotlinx.coroutines.runBlocking { persistenceController.flushNow() }
+            }
+            if(FugleSessionCloseReconciler.eligible(TfAssetMarketSchedule.load(appContext),clockMillis(),FugleSessionCloseReconciler.SETTLEMENT_GRACE_MILLIS)) {
+                val date=taipeiDate(clockMillis())
+                val confirmed=center.memoryQuotes(symbols).values.count{it.isClose&&it.sessionDate==date}
+                com.tfasset.app.TfAssetMarketFlowDiagnostics.sourceCheckpoint(JSONObject()
+                    .put("kind","source").put("reason","SESSION_CLOSE")
+                    .put("failure",if(confirmed==symbols.size)"NONE" else "CLOSE_UNCONFIRMED")
+                    .put("requested",symbols.size).put("confirmed",confirmed))
+            }
+            version.incrementAndGet()
+            val result=snapshot(symbols)
+            onLiveSnapshot(result.toString())
+            return result
+        }
 
-        val now = System.currentTimeMillis()
+        val now = clockMillis()
         if (isLiveSession(now)) {
             // Lifecycle/manual/reconnect bootstrap comes from Fugle itself.
             // HTTP completion uses the SAME SaiETF arbitrator as socket ticks.
             fugleRest.fetch(symbols){!paused&&TfAssetMarketSchedule.allows(appContext)}.values.forEach { quote ->
-                if(TfAssetMarketSchedule.allows(appContext))liveQuotes.acceptBaseline(quote)
+                if(TfAssetMarketSchedule.allows(appContext))liveQuotes.acceptBaseline(quote,clockMillis(),taipeiDate(clockMillis()))
             }
             version.incrementAndGet()
             val result = snapshot(symbols)
@@ -191,7 +235,7 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
         // SaiETF StateFlow / MemoryMarketStore is the only price authority.
         // Presentation may recalculate quote freshness, but MUST NOT alter
         // the native hot store or substitute a price from TF Asset caches.
-        val now = System.currentTimeMillis()
+        val now = clockMillis()
         val currentTaipeiDate = taipeiDate(now)
         val sessionActive = isLiveSession(now)
         val live = center.memoryQuotes(symbols)
@@ -229,12 +273,12 @@ class SaiEtfMarketRuntime(context: Context, private val onLiveSnapshot: (String)
             .put("cachedCount", live.size)
             .put("requestedCount", if (symbols.isEmpty()) live.size else symbols.size)
             .put("missing", JSONArray(missing.toList().sorted()))
-            .put("queriedAt", System.currentTimeMillis())
+            .put("queriedAt", clockMillis())
             .put("providerHealth", health)
             .put("marketCore", "SAIETF_NATIVE")
             .put("closedDates", JSONArray(TradingCalendar.snapshot()))
             .put("holidayNames", JSONObject(TradingCalendar.namesSnapshot()))
-            .put("phase", if (isLiveSession(System.currentTimeMillis())) "live" else "afterHours")
+            .put("phase", if (isLiveSession(clockMillis())) "live" else "afterHours")
             .also { if (includeIntraday) it.put("intraday", persistence.runtimeSnapshot().optJSONObject("intraday") ?: JSONObject()) }
     }
 

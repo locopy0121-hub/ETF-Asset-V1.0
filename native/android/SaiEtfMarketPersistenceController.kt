@@ -1,29 +1,23 @@
 package com.tfasset.app.saietf
 
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import tw.saietf.core.market.MarketDataCenter
-import tw.saietf.core.market.MarketQuote
 
 class MarketPersistenceController(
     private val scope: CoroutineScope,
     private val marketDataCenter: MarketDataCenter,
     private val repository: MarketPersistenceRepository,
 ) {
-    private val latest = AtomicReference<Map<String, MarketQuote>>(emptyMap())
+    private val writes = Mutex()
     private var writerJob: Job? = null
 
     init {
-        scope.launch {
-            marketDataCenter.quotesState.collectLatest { snapshot ->
-                latest.set(snapshot)
-            }
-        }
         writerJob = scope.launch {
             while (isActive) {
                 delay(PERSIST_INTERVAL_MILLIS)
@@ -33,9 +27,11 @@ class MarketPersistenceController(
     }
 
     suspend fun flushNow() {
-        val snapshot = latest.get().values
-        if (snapshot.isNotEmpty()) {
-            repository.persist(snapshot)
+        // Capture inside the same serialized writer as periodic and shutdown
+        // flushes. A delayed previous snapshot may not finish after the close.
+        writes.withLock {
+            val snapshot = marketDataCenter.memoryQuotes().values
+            if (snapshot.isNotEmpty())repository.persist(snapshot)
         }
     }
 

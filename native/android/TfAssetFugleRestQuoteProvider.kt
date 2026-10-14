@@ -10,6 +10,7 @@ import tw.saietf.core.market.MarketSource
 
 /** One-shot lifecycle/reconnect bootstrap, never a price-polling scheduler. */
 internal class FugleRestQuoteProvider(private val apiKeyProvider: () -> String?,
+    private val clockMillis:()->Long=System::currentTimeMillis,
     private val openConnection:(String)->HttpURLConnection={symbol->URL("https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/$symbol").openConnection() as HttpURLConnection}) {
     fun fetch(symbols: Set<String>,shouldContinue:()->Boolean={true}): Map<String, MarketQuote> {
         val key=apiKeyProvider()?.trim().orEmpty()
@@ -25,7 +26,7 @@ internal class FugleRestQuoteProvider(private val apiKeyProvider: () -> String?,
                 connection.setRequestProperty("Accept","application/json")
                 try {
                     if(connection.responseCode!=200) return@runCatching null
-                    parseFugleRestQuote(JSONObject(connection.inputStream.bufferedReader().use { it.readText() }),symbol,System.currentTimeMillis())
+                    parseFugleRestQuote(JSONObject(connection.inputStream.bufferedReader().use { it.readText() }),symbol,clockMillis())
                 } finally { connection.disconnect() }
             }.getOrNull()?.let { symbol to it }
         }.toMap()

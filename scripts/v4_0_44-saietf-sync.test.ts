@@ -15,7 +15,7 @@ assert.match(runtime,/subscribeUnifiedMarketData\(applySnapshot\)/);
 assert.match(native,/minFetchIntervalMillis = 1_000L/);
 assert.match(native,/minFetchIntervalMillis = 15_000L/);
 assert.match(nativeRuntime,/FugleStreamingController/);
-assert.match(nativeRuntime,/cachedSaiEtfMarketReferences\(persistence\.persistedQuotes\(\)\.values\)/);
+assert.match(nativeRuntime,/cachedSaiEtfMarketReferences\(persistence\.persistedQuotes\(\)\.values,clockMillis\(\)\)/);
 assert.match(nativeRuntime,/runBlocking \{ fugle\.fetchSnapshot\(symbols\) \}/);
 assert.doesNotMatch(nativeRuntime,/center\.restorePersistedQuotes/);
 assert.match(nativeRuntime,/TwseMisQuoteProvider\(\)/);
