@@ -9,7 +9,8 @@ import {
   type ItemEffectConfig,
   type ItemVisualOverride,
 } from '../domain/displayItemContract';
-import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig, type HoldingWallFieldConfig } from '../domain/uiModels';
+import {DEFAULT_MONITOR_WALL_CONFIG,type MonitorWallConfig,type MonitorWallFieldConfig} from './monitorDomain';
+import {MONITOR_MODELS} from './monitorModels';
 import {
   DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_ITEMS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,DEFAULT_MINI_COLUMNS,DEFAULT_MINI_HEADER,DEFAULT_MINI_STATUS_BAR,DEFAULT_MINI_STATUS_ITEMS,DEFAULT_MONITOR_WALL_LAYOUT,MONITOR_FIELDS,
   type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorItemConfig,type MonitorSortKey,type MonitorStyle,type MiniColumnConfig,type MiniHeaderStyle,type MiniStatusBarStyle,type MiniStatusItemConfig,type MonitorWallLayout,
@@ -18,7 +19,7 @@ import {
 const STORAGE_KEY='@tf-asset/monitor-settings';
 const VALID_FIELDS:readonly MonitorField[]=MONITOR_FIELDS;
 const VALID_EFFECTS:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change'];
-const VALID_SORTS:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
+const VALID_SORTS:readonly MonitorSortKey[]=['manual','symbol','price','changePercent','pnl','marketValue','volume','roi'];
 const clamp=(v:unknown,min:number,max:number,fallback:number)=>{const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
 const color=(v:unknown,f:string)=>typeof v==='string'&&/^#[0-9A-Fa-f]{6}$/.test(v)?v.toUpperCase():f;
 const nullableColor=(v:unknown)=>v==null?null:typeof v==='string'&&/^#[0-9A-Fa-f]{6}$/.test(v)?v.toUpperCase():null;
@@ -132,8 +133,8 @@ const normWallLayout=(layout:Partial<MonitorWallLayout>|undefined):MonitorWallLa
   columnGap:clamp(layout?.columnGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.columnGap),
   rowGap:clamp(layout?.rowGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.rowGap),
 });
-const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
-  const fallback=DEFAULT_HOLDING_WALL_CONFIG;
+const normWall=(wall:Partial<MonitorWallConfig>|undefined):MonitorWallConfig=>{
+  const fallback=DEFAULT_MONITOR_WALL_CONFIG;
   const input=Array.isArray(wall?.fields)?wall!.fields:[];
   const byField=new Map(input.map(field=>[field.field,field]));
   return {
@@ -146,8 +147,8 @@ const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
       borderWidth:clamp(wall?.header?.borderWidth,0,6,fallback.header.borderWidth),
       effect:normItemEffect(wall?.header?.effect),
     },
-    fields:fallback.fields.map(defaultField=>{
-      const field=byField.get(defaultField.field) as Partial<HoldingWallFieldConfig>|undefined;
+    fields:fallback.fields.map((defaultField):MonitorWallFieldConfig=>{
+      const field=byField.get(defaultField.field) as Partial<MonitorWallFieldConfig>|undefined;
       return {
         field:defaultField.field,
         enabled:field?.enabled??defaultField.enabled,
@@ -161,7 +162,7 @@ const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
         paddingY:clamp(field?.paddingY,0,16,defaultField.paddingY),
         effect:normItemEffect(field?.effect),
       };
-    }),
+    }).sort((a,b)=>{const rank=(field:string)=>{const index=input.findIndex(x=>x.field===field);return index<0?1000:index;};return rank(a.field)-rank(b.field);}),
     style:{
       backgroundColor:color(wall?.style?.backgroundColor,fallback.style.backgroundColor),
       textColor:color(wall?.style?.textColor,fallback.style.textColor),
@@ -185,6 +186,7 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
   return {
     enabled:input?.enabled??false,
     mode:input?.mode==='mini'?'mini':'normal',
+    ...(MONITOR_MODELS.some(model=>model.id===input?.model)?{model:input!.model!}:{}),
     template:['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'].includes(String(input?.template))?input!.template as MonitorConfig['template']:'portfolio',
     fields:fields.length?fields:[...DEFAULT_MONITOR_CONFIG.fields],
     normalItems:normNormalItems(input?.normalItems),

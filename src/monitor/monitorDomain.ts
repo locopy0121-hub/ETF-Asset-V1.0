@@ -5,17 +5,21 @@ import {
   type ItemVisualOverride,
 } from '../domain/displayItemContract';
 import type { SharedSnapshot } from '../domain/snapshot';
-import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig } from '../domain/uiModels';
+import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig, type HoldingWallFieldConfig } from '../domain/uiModels';
+
+export type MonitorModelId='broker'|'triple'|'detail'|'large'|'compact-holdings'|'volume'|'reference'|'cost'|'profit'|'allocation';
+export type MonitorWallFieldConfig=Omit<HoldingWallFieldConfig,'field'>&Readonly<{field:HoldingWallFieldConfig['field']|MonitorField}>;
+export type MonitorWallConfig=Omit<HoldingWallConfig,'fields'>&Readonly<{fields:readonly MonitorWallFieldConfig[]}>;
 
 export type MonitorMode = 'normal' | 'mini';
 export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact' | 'single' | 'dual' | 'advanced' | 'market-wall' | 'heatmap' | 'pnl-wall' | 'weight-wall' | 'ticker' | 'terminal';
-export type MonitorField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'marketValue' | 'weight' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt';
-export type MonitorSortKey = 'manual' | 'symbol' | 'price' | 'changePercent';
+export type MonitorField = 'symbol' | 'name' | 'price' | 'change' | 'changePercent' | 'shares' | 'avgCost' | 'marketValue' | 'weight' | 'pnl' | 'roi' | 'comprehensivePnl' | 'marketStatus' | 'updatedAt' | 'volume' | 'previousClose' | 'quoteStatus';
+export type MonitorSortKey = 'manual' | 'symbol' | 'price' | 'changePercent' | 'pnl' | 'marketValue' | 'volume' | 'roi';
 export type MonitorEffect = 'none' | 'fade' | 'pulse' | 'flash-on-change';
 export type MonitorTextAlign = 'left' | 'center' | 'right';
 
-export const MONITOR_FIELDS:readonly MonitorField[]=['symbol','name','price','change','changePercent','shares','avgCost','marketValue','weight','pnl','roi','comprehensivePnl','marketStatus','updatedAt'];
-export const MONITOR_FIELD_LABELS:Record<MonitorField,string>={symbol:'代號',name:'名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',shares:'股數',avgCost:'成本均',marketValue:'市值',weight:'權重',pnl:'損益',roi:'報酬%',comprehensivePnl:'含息損益',marketStatus:'市場狀態',updatedAt:'更新時間'};
+export const MONITOR_FIELDS:readonly MonitorField[]=['symbol','name','price','change','changePercent','shares','avgCost','marketValue','weight','pnl','roi','comprehensivePnl','marketStatus','updatedAt','volume','previousClose','quoteStatus'];
+export const MONITOR_FIELD_LABELS:Record<MonitorField,string>={symbol:'代號',name:'名稱',price:'價格',change:'漲跌',changePercent:'漲跌%',shares:'股數',avgCost:'成本均',marketValue:'市值',weight:'權重',pnl:'損益',roi:'報酬%',comprehensivePnl:'含息損益',marketStatus:'市場狀態',updatedAt:'更新時間',volume:'成交總量',previousClose:'昨收',quoteStatus:'行情狀態'};
 const PROFIT_FIELDS:readonly MonitorField[]=['change','changePercent','pnl','roi','comprehensivePnl'];
 
 export type MonitorItemConfig=Readonly<{
@@ -119,6 +123,7 @@ export type MonitorConfig = Readonly<{
   enabled: boolean;
   mode: MonitorMode;
   template: MonitorTemplate;
+  model?:MonitorModelId;
   fields: readonly MonitorField[];
   normalItems:readonly MonitorItemConfig[];
   miniFields: readonly MonitorField[];
@@ -133,7 +138,7 @@ export type MonitorConfig = Readonly<{
   miniColumns: readonly MiniColumnConfig[];
   miniStatusBar: MiniStatusBarStyle;
   miniStatusItems: readonly MiniStatusItemConfig[];
-  normalWall: HoldingWallConfig;
+  normalWall: MonitorWallConfig;
   normalWallLayout: MonitorWallLayout;
   effects: MonitorEffects;
   sort: MonitorSort;
@@ -219,6 +224,8 @@ export const DEFAULT_MINI_STATUS_ITEMS:readonly MiniStatusItemConfig[]=[
 export const DEFAULT_MONITOR_WALL_LAYOUT:MonitorWallLayout={columns:2,columnGap:8,rowGap:8};
 export const DEFAULT_MONITOR_SORT:MonitorSort={key:'manual',direction:'asc',manualSymbols:[]};
 
+export const DEFAULT_MONITOR_WALL_CONFIG:MonitorWallConfig={...DEFAULT_HOLDING_WALL_CONFIG,fields:[...DEFAULT_HOLDING_WALL_CONFIG.fields,...MONITOR_FIELDS.filter(field=>!DEFAULT_HOLDING_WALL_CONFIG.fields.some(x=>x.field===field)).map(field=>({...DEFAULT_HOLDING_WALL_CONFIG.fields[0]!,field,label:MONITOR_FIELD_LABELS[field],enabled:false,useProfitColor:PROFIT_FIELDS.includes(field)}))]};
+
 export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   enabled: false,
   mode: 'normal',
@@ -237,7 +244,7 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   miniColumns:DEFAULT_MINI_COLUMNS,
   miniStatusBar:DEFAULT_MINI_STATUS_BAR,
   miniStatusItems:DEFAULT_MINI_STATUS_ITEMS,
-  normalWall:DEFAULT_HOLDING_WALL_CONFIG,
+  normalWall:DEFAULT_MONITOR_WALL_CONFIG,
   normalWallLayout:DEFAULT_MONITOR_WALL_LAYOUT,
   effects:DEFAULT_MONITOR_EFFECTS,
   sort:DEFAULT_MONITOR_SORT,
@@ -298,7 +305,7 @@ export function updateActiveMonitorStyle(config:MonitorConfig,patch:Partial<Moni
 export function updateMonitorFields(config:MonitorConfig,fields:readonly MonitorField[]):MonitorConfig{
   return config.mode==='normal'?{...config,fields:[...fields]}:{...config,miniFields:[...fields]};
 }
-export function updateMonitorWall(config:MonitorConfig,wall:HoldingWallConfig):MonitorConfig{return {...config,normalWall:wall};}
+export function updateMonitorWall(config:MonitorConfig,wall:MonitorWallConfig):MonitorConfig{return {...config,normalWall:wall};}
 export function updateMonitorWallLayout(config:MonitorConfig,patch:Partial<MonitorWallLayout>):MonitorConfig{
   return {...config,normalWallLayout:{...config.normalWallLayout,...patch}};
 }
@@ -311,8 +318,8 @@ export function sortMonitorHoldings(snapshot:SharedSnapshot|null,config:MonitorC
     return rows.sort((a,b)=>(rank.get(a.symbol)??Number.MAX_SAFE_INTEGER)-(rank.get(b.symbol)??Number.MAX_SAFE_INTEGER));
   }
   if(config.sort.key==='symbol')return rows.sort((a,b)=>a.symbol.localeCompare(b.symbol)*d);
-  if(config.sort.key==='price')return rows.sort((a,b)=>((a.price??-Infinity)-(b.price??-Infinity))*d);
-  return rows.sort((a,b)=>((a.changePercent??-Infinity)-(b.changePercent??-Infinity))*d);
+  const key=config.sort.key;
+  return rows.sort((a,b)=>{const av=a[key],bv=b[key];const validA=typeof av==='number'&&Number.isFinite(av),validB=typeof bv==='number'&&Number.isFinite(bv);if(!validA||!validB)return validA?-1:validB?1:0;return (av-bv)*d;});
 }
 
 export function createMonitorRuntimeState(snapshot:SharedSnapshot|null,input:{marketState?:MonitorRuntimeState['marketState'];refreshing?:boolean}={},config:MonitorConfig=DEFAULT_MONITOR_CONFIG):MonitorRuntimeState{

@@ -21,7 +21,9 @@ const protectedSubcomponents=[
   ['src/components/EtfHoldingsApiSettings.tsx','e5734da68b3cf49381a35aba82f08a3557761789'],
   ['src/components/DiagnosticLogPanel.tsx','db3718d192b7c610cf458669023ec298c84e5f60'],
   ['src/components/MarketComparisonPanel.tsx','c0c1d0b49c9726c35d50fa7a3e723de9a10ace1b'],
-  ['src/components/monitor/MonitorControlPanel.tsx','dbb3115e8763d9b101f837682f0027312eb3875b'],
+  // V4.0.56: user explicitly requests ten Monitor models and additional item options.
+  // Only this Monitor child baseline changes; Settings shell and all other children remain locked.
+  ['src/components/monitor/MonitorControlPanel.tsx','abd8cd6aed44927cf05a3e4ba3eccc3777bb24aa'],
   ['src/components/widget/WidgetControlPanel.tsx','b0feb6515a283b5d471bdc3881345ef710fce2e4'],
 ] as const;
 for(const [file,sha] of protectedSubcomponents)assert.equal(blobSha(readFileSync(file,'utf8')),sha,'protected settings child drifted: '+file);
