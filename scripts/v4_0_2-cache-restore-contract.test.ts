@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const runtime=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
 const adapter=fs.readFileSync('native/android/SaiEtfMarketRestoreAdapter.kt','utf8');
 const center=fs.readFileSync('native/android/SaiEtfMarketDataCenter.kt','utf8');
-assert.match(runtime,/MemoryMarketStore\([\s\S]*cachedSaiEtfMarketReferences\(persistence\.persistedQuotes\(\)\.values\)/,
+assert.match(runtime,/MemoryMarketStore\([\s\S]*cachedSaiEtfMarketReferences\(persistence\.persistedQuotes\(\)\.values,clockMillis\(\)\)/,
   'Persisted references hydrate the SaiETF memory SSOT through a constructor adapter');
 assert.match(runtime,/hotStore = warmStore/,'The frozen market center consumes the same hydrated memory store');
 assert.doesNotMatch(runtime,/center\.restorePersistedQuotes/,'The frozen SaiETF MarketDataCenter must not gain TF-only mutations');
