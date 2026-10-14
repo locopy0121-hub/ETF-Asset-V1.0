@@ -14,12 +14,13 @@ export function buildSharedSnapshot(input:{
   holdings:readonly HoldingQuote[];
   generatedAt:number|null;
   /** Display-only exchange timestamps per security; independent of portfolio arithmetic. */
-  quoteSourceTimes?:readonly {symbol:string;sourceQuoteAt?:number|null}[];
+  quoteSourceTimes?:readonly {symbol:string;sourceQuoteAt?:number|null;volume?:number|null}[];
   marketDataVersion?:number;
   valuationComplete?:boolean;
   cashConfigured?:boolean;
 }):SharedSnapshot{
   const portfolio=input.canonical.portfolio;
+  const quoteMetadata=new Map(input.quoteSourceTimes?.map(row=>[row.symbol,row])??[]);
   const quoteTimes=new Map(input.quoteSourceTimes?.map(row=>[row.symbol,row.sourceQuoteAt??null])??[]);
   return {
     contractVersion:1,
@@ -38,6 +39,8 @@ export function buildSharedSnapshot(input:{
       totalReturn:portfolio.totalPnl,
     },
     holdings:input.holdings.map(row=>{
+      const sourceVolume=quoteMetadata.get(row.symbol)?.volume;
+      const volume=row.quoteVerified!==false&&typeof sourceVolume==='number'&&Number.isFinite(sourceVolume)&&sourceVolume>=0?sourceVolume:null;
       const change=row.price-row.previousClose;
       const changePercent=row.previousClose>0?change/row.previousClose*100:0;
       return {
@@ -48,6 +51,7 @@ export function buildSharedSnapshot(input:{
         name:row.name,
         price:row.quoteVerified===false?null:row.price,
         previousClose:row.quoteVerified===false?null:row.previousClose,
+        previousCloseKnown:row.quoteVerified!==false&&row.previousCloseKnown!==false,
         change:row.quoteVerified===false?null:change,
         changePercent:row.quoteVerified===false?null:changePercent,
         marketStatus:row.quoteVerified===false?'unavailable':statusFor(row.price,row.previousClose),
@@ -56,6 +60,7 @@ export function buildSharedSnapshot(input:{
         ...(typeof row.streamingCheckedAt==='number'?{streamingCheckedAt:row.streamingCheckedAt}:{}),
         marketQuality:row.quoteQuality??(row.quoteVerified===false?'unavailable':'trade'),
         updatedAt:row.quoteVerified===false?null:(quoteTimes.get(row.symbol)??0)>0?new Date(quoteTimes.get(row.symbol)!).toISOString():null,
+        volume,
         shares:row.shares,
         avgCost:row.avgCost,
         marketValue:row.marketValue,

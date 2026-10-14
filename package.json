@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.55",
+  "version": "4.0.56",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -340,7 +340,8 @@
     "test:v4_0_52": "npm run test:v4_0_51 && node scripts/v4_0_52-widget-permission.test.cjs",
     "test:v4_0_53": "npm run test:v4_0_52 && node scripts/v4_0_53-native-entrypoint.test.cjs",
     "test:v4_0_54": "npm run test:v4_0_53 && node scripts/v4_0_54-monitor-background.test.cjs",
-    "test:v4_0_55": "npm run test:v4_0_54 && node scripts/v4_0_55-monitor-render.test.cjs && node scripts/v4_0_55-flow-diagnostics.test.cjs"
+    "test:v4_0_55": "npm run test:v4_0_54 && node scripts/v4_0_55-monitor-render.test.cjs && node scripts/v4_0_55-flow-diagnostics.test.cjs",
+    "test:v4_0_56": "npm run test:v4_0_55 && tsx scripts/v4_0_56-monitor-models.test.ts && node scripts/v4_0_56-monitor-runtime.test.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

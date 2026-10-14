@@ -1,3 +1,4 @@
+import {MONITOR_MODELS,applyMonitorModel,monitorMarketFieldText} from '../../monitor/monitorModels';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
@@ -20,8 +21,8 @@ const itemEffectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',p
 const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
 const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
 const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
-const sorts:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
-const sortLabels:Record<MonitorSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
+const sorts:readonly MonitorSortKey[]=['manual','symbol','price','changePercent','pnl','marketValue','volume','roi'];
+const sortLabels:Record<MonitorSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%',pnl:'持股損益',marketValue:'持股市值',volume:'成交總量',roi:'報酬率'};
 
 export function MonitorControlPanel({value,onChange,availableSymbols=[],previewSnapshot=null}:Props){
   const [editingKey,setEditingKey]=useState<string|null>(null);
@@ -56,6 +57,12 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Choice choices={['normal','mini'] as const} value={value.mode} label={x=>x==='normal'?'Normal':'Mini'} onChange={(mode:MonitorMode)=>onChange(setMonitorMode(value,mode))}/>
       {value.mode==='normal'?<Choice choices={['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'] as const} value={value.template} label={(x:MonitorTemplate)=>x==='portfolio'?'投資組合':x==='quotes'?'行情列':x==='compact'?'極簡':x==='single'?'單檔大行情':x==='dual'?'雙檔行情':x==='advanced'?'進階資訊':x==='market-wall'?'行情牆':x==='heatmap'?'漲跌熱圖':x==='pnl-wall'?'損益牆':x==='weight-wall'?'資產權重牆':x==='ticker'?'跑馬行情':'純文字終端'} onChange={template=>patch({template})}/>:null}
       {value.mode==='mini'?<Pressable onPress={()=>onChange(restoreNormalMonitor(value))} style={styles.action}><Text style={styles.actionText}>模擬雙擊還原 Normal</Text></Pressable>:null}
+      {value.mode==='normal'?<View>
+        <Text style={styles.label}>持股行情牆模型（10 種）</Text>
+        <Choice choices={MONITOR_MODELS.map(model=>model.id)} value={value.template==='market-wall'?value.model:undefined} label={id=>MONITOR_MODELS.find(model=>model.id===id)!.label} onChange={id=>onChange(applyMonitorModel(value,id))}/>
+        <Text style={styles.note}>{value.template==='market-wall'&&value.model?MONITOR_MODELS.find(model=>model.id===value.model)?.description:'套用模型會調整主視窗版面與顯示欄位；套用後仍可自行編輯。'}</Text>
+        <Text style={styles.note}>成交總量直接顯示行情來源數值；未提供的資料顯示 --。</Text>
+      </View>:null}
       <MonitorPreview value={value} snapshot={previewSnapshot} rows={previewRows} wallRows={wallRows}/>
     </Section>
 
@@ -261,9 +268,7 @@ function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snap
     const wall=value.normalWall;
     return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:value.normalWallLayout.rowGap}]}>
       {wallRows.map((row,rowIndex)=><View key={'wall-row-'+rowIndex} style={{flexDirection:'row',gap:value.normalWallLayout.columnGap}}>
-        {row.map(holding=><View key={holding.symbol} style={{flex:1,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding}}>
-          {wall.fields.filter(field=>field.enabled).map((field,index)=><Text key={field.field} numberOfLines={1} style={{fontSize:10*style.fontScale*field.fontScale,fontWeight:'800',color:field.useProfitColor?wallProfitTone(fieldNumeric(holding,field.field),wall.style):(field.textColor??wall.style.textColor),backgroundColor:field.backgroundColor??'transparent',textAlign:field.align,marginTop:index===0?0:(field.lineGap??wall.style.rowGap),paddingVertical:field.paddingY}}>{wallFieldText(holding,field.field,field.label)}</Text>)}
-        </View>)}
+        {row.map(holding=><MonitorWallPreviewCard key={holding.symbol} holding={holding} value={value} totalMarketValue={totalMarketValue}/>)}
       </View>)}
       {!rows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
     </View>;
@@ -271,6 +276,21 @@ function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snap
   const holding=rows[0];
   return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>
     {holding?value.fields.map((field,index)=>{const item=monitorItem(value,field);const numeric=fieldNumeric(holding,field,totalMarketValue);return <Text key={field} numberOfLines={1} style={{fontSize:11*style.fontScale*item.visual.fontScale,fontWeight:'800',color:item.visual.useProfitColor?profitTone(numeric,style):(item.visual.textColor??style.textColor),backgroundColor:item.visual.backgroundColor??'transparent',textAlign:item.visual.textAlign??style.textAlign,marginTop:index===0?0:(item.visual.lineGap??style.rowGap),paddingVertical:item.visual.paddingY}}>{monitorFieldText(holding,field,item.label,totalMarketValue)}</Text>;}) : <Text style={styles.note}>尚無持股資料</Text>}
+  </View>;
+}
+
+function MonitorWallPreviewCard({holding,value,totalMarketValue}:{holding:SharedSnapshot['holdings'][number];value:MonitorConfig;totalMarketValue:number}){
+  const wall=value.normalWall,style=value.normalStyle,columns=value.normalWallLayout.columns;
+  const enabled=wall.fields.filter(field=>field.enabled);
+  const header=enabled.filter(field=>['name','symbol'].includes(field.field));
+  const quote=enabled.filter(field=>['price','change','changePercent'].includes(field.field));
+  const detail=enabled.filter(field=>!['name','symbol','price','change','changePercent'].includes(field.field));
+  const fieldStyle=(field:typeof enabled[number],base:number)=>({fontSize:base*style.fontScale*field.fontScale,fontWeight:'800' as const,color:field.useProfitColor?wallProfitTone(fieldNumeric(holding,field.field,totalMarketValue),wall.style):(field.textColor??wall.style.textColor),backgroundColor:field.backgroundColor??'transparent',textAlign:field.align,paddingVertical:field.paddingY,marginTop:field.lineGap??0});
+  const raw=(field:typeof enabled[number])=>['name','symbol'].includes(field.field)?holding[field.field as 'name'|'symbol']:monitorFieldText(holding,field.field as MonitorField,field.label,totalMarketValue).slice(field.label.length+1);
+  return <View style={{flex:1,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding}}>
+    {wall.header.visible&&header.length?<View style={{flexDirection:'row',alignItems:'center',backgroundColor:wall.header.backgroundColor,borderColor:wall.header.borderColor,borderWidth:wall.header.borderWidth}}>{header.map((field,index)=><Text key={field.field} numberOfLines={1} style={[fieldStyle(field,(field.field==='name'?15:11)*wall.header.fontScale),{flex:field.field==='name'?1:undefined,color:field.textColor??wall.header.textColor,marginTop:field.lineGap??(index===0?0:2)}]}>{raw(field)}</Text>)}</View>:null}
+    {quote.length?<View style={{flexDirection:'row',alignItems:'flex-end',marginTop:wall.style.rowGap}}><Text numberOfLines={1} style={[fieldStyle(quote[0]!,columns>=3?18:columns===2?23:36),{flex:1}]}>{raw(quote[0]!)}</Text><View>{quote.slice(1).map(field=><Text key={field.field} numberOfLines={1} style={[fieldStyle(field,11),{marginTop:field.lineGap??wall.style.rowGap}]}>{raw(field)}</Text>)}</View></View>:null}
+    {chunk(detail,columns===1?3:2).map((line,index)=><View key={index} style={{flexDirection:'row',marginTop:wall.style.rowGap}}>{line.map(field=><View key={field.field} style={{flex:1,backgroundColor:field.backgroundColor??'transparent',paddingTop:(field.lineGap??0)+field.paddingY,paddingBottom:field.paddingY}}><Text numberOfLines={1} style={{fontSize:10*style.fontScale,color:wall.style.secondaryTextColor,textAlign:field.align}}>{field.label}</Text><Text numberOfLines={1} style={[fieldStyle(field,12),{marginTop:0,paddingVertical:0}]}>{raw(field)}</Text></View>)}</View>)}
   </View>;
 }
 
@@ -291,7 +311,7 @@ function NullableGap({value,fallback,onChange}:{value:number|null;fallback:numbe
 function EffectEditor({value,onChange}:{value:ItemEffectConfig;onChange:(p:Partial<ItemEffectConfig>)=>void}){return <View style={styles.effectBox}><Text style={styles.label}>單項特效</Text><Choice choices={ITEM_EFFECT_KINDS} value={value.kind} label={x=>itemEffectLabels[x]} onChange={kind=>onChange({kind})}/>{value.kind!=='none'?<><Text style={styles.label}>觸發條件</Text><Choice choices={ITEM_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/><Text style={styles.label}>速度</Text><Choice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={x=>speedLabels[x]} onChange={speed=>onChange({speed})}/><Text style={styles.label}>強度</Text><Choice choices={ITEM_EFFECT_INTENSITIES} value={value.intensity} label={x=>intensityLabels[x]} onChange={intensity=>onChange({intensity})}/></>:null}</View>;}
 function Visibility({active,onPress}:{active:boolean;onPress:()=>void}){return <Pressable onPress={onPress} style={[styles.visibility,active&&styles.visibilityOn]}><Text style={[styles.visibilityText,active&&styles.visibilityTextOn]}>{active?'顯示':'隱藏'}</Text></Pressable>;}
 function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;}
-function Choice<T extends string>({choices,value,label,onChange}:{choices:readonly T[];value:T;label:(x:T)=>string;onChange:(x:T)=>void}){return <View style={styles.row}>{choices.map(x=><Pressable key={x} onPress={()=>onChange(x)} style={[styles.choice,value===x&&styles.choiceActive]}><Text style={[styles.choiceText,value===x&&styles.choiceTextActive]}>{label(x)}</Text></Pressable>)}</View>;}
+function Choice<T extends string>({choices,value,label,onChange}:{choices:readonly T[];value:T|undefined;label:(x:T)=>string;onChange:(x:T)=>void}){return <View style={styles.row}>{choices.map(x=><Pressable key={x} onPress={()=>onChange(x)} style={[styles.choice,value===x&&styles.choiceActive]}><Text style={[styles.choiceText,value===x&&styles.choiceTextActive]}>{label(x)}</Text></Pressable>)}</View>;}
 function Mini({label,onPress}:{label:string;onPress:()=>void}){return <Pressable onPress={onPress} style={styles.mini}><Text style={styles.miniText}>{label}</Text></Pressable>;}
 function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(x:number)=>void}){return <View style={styles.step}><Text style={styles.stepLabel}>{label}</Text><Mini label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.stepValue}>{value}{suffix}</Text><Mini label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
 function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(x:boolean)=>void}){return <Pressable onPress={()=>onChange(!value)} style={styles.toggle}><Text style={styles.stepLabel}>{label}</Text><Text style={[styles.state,value&&styles.stateOn]}>{value?'開':'關'}</Text></Pressable>;}
@@ -315,9 +335,10 @@ const styles=StyleSheet.create({
 
 function profitTone(value:number|null,style:MonitorConfig['normalStyle']){return value==null?style.neutralColor:value>0?style.gainColor:value<0?style.lossColor:style.neutralColor;}
 function wallProfitTone(value:number|null,style:MonitorConfig['normalWall']['style']){return value==null?style.secondaryTextColor:value>0?style.gainColor:value<0?style.lossColor:style.secondaryTextColor;}
-function fieldNumeric(row:SharedSnapshot['holdings'][number],field:string,totalMarketValue=0):number|null{const v=field==='change'?row.change:field==='changePercent'?row.changePercent:field==='pnl'?row.pnl:field==='roi'?row.roi:field==='comprehensivePnl'?row.comprehensivePnl:field==='marketValue'?row.marketValue:field==='weight'&&totalMarketValue>0?(row.marketValue/totalMarketValue)*100:null;return typeof v==='number'&&Number.isFinite(v)?v:null;}
+function fieldNumeric(row:SharedSnapshot['holdings'][number],field:string,totalMarketValue=0):number|null{const v=field==='price'?row.change:field==='change'?row.change:field==='changePercent'?row.changePercent:field==='pnl'?row.pnl:field==='roi'?row.roi:field==='comprehensivePnl'?row.comprehensivePnl:field==='marketValue'?row.marketValue:field==='weight'&&totalMarketValue>0?(row.marketValue/totalMarketValue)*100:null;return typeof v==='number'&&Number.isFinite(v)?v:null;}
 function monitorFieldText(row:SharedSnapshot['holdings'][number],field:MonitorField,label:string,totalMarketValue=0){
-  switch(field){case 'symbol':return row.symbol;case 'name':return row.name;case 'price':return `${label} ${row.price==null?'--':row.price.toFixed(2)}`;case 'change':return `${label} ${signed2(row.change)}`;case 'changePercent':return `${label} ${signed2(row.changePercent,'%')}`;case 'shares':return `${label} ${Math.round(row.shares).toLocaleString('zh-TW')}`;case 'avgCost':return `${label} ${row.avgCost.toFixed(2)}`;case 'marketValue':return `${label} ${Math.round(row.marketValue).toLocaleString('zh-TW')}`;case 'weight':{const weight=totalMarketValue>0?(row.marketValue/totalMarketValue)*100:null;return `${label} ${weight==null?'--':weight.toFixed(2)+'%'}`;}case 'pnl':return `${label} ${signed0(row.pnl)}`;case 'roi':return `${label} ${signed2(row.roi,'%')}`;case 'comprehensivePnl':return `${label} ${signed0(row.comprehensivePnl)}`;case 'marketStatus':return `${label} ${row.marketStatus}`;case 'updatedAt':return `${label} ${row.updatedAt?new Date(row.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}`;}}
+  const marketText=monitorMarketFieldText(row,field);if(marketText!==null)return `${label} ${marketText}`;
+  switch(field){case 'symbol':return row.symbol;case 'name':return row.name;case 'price':return `${label} ${row.price==null?'--':row.price.toFixed(2)}`;case 'change':return `${label} ${signed2(row.change)}`;case 'changePercent':return `${label} ${signed2(row.changePercent,'%')}`;case 'shares':return `${label} ${Math.round(row.shares).toLocaleString('zh-TW')}`;case 'avgCost':return `${label} ${row.avgCost.toFixed(2)}`;case 'marketValue':return `${label} ${Math.round(row.marketValue).toLocaleString('zh-TW')}`;case 'weight':{const weight=totalMarketValue>0?(row.marketValue/totalMarketValue)*100:null;return `${label} ${weight==null?'--':weight.toFixed(2)+'%'}`;}case 'pnl':return `${label} ${signed0(row.pnl)}`;case 'roi':return `${label} ${signed2(row.roi,'%')}`;case 'comprehensivePnl':return `${label} ${signed0(row.comprehensivePnl)}`;case 'marketStatus':return `${label} ${row.marketStatus}`;case 'updatedAt':return `${label} ${row.updatedAt?new Date(row.updatedAt).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}):'--'}`;default:return `${label} --`;}}
 function wallFieldText(row:SharedSnapshot['holdings'][number],field:string,label:string){return monitorFieldText(row,field as MonitorField,label);}
 function miniCellText(row:SharedSnapshot['holdings'][number],field:MonitorField,totalMarketValue=0){return monitorFieldText(row,field,MONITOR_FIELD_LABELS[field],totalMarketValue);}
 function signed2(v:number|null|undefined,suffix=''){return v==null?'--':`${v>=0?'+':''}${v.toFixed(2)}${suffix}`;}

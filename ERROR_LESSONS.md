@@ -665,3 +665,8 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Credential changes must first clear desired subscriptions; otherwise provider reconnect uses retained symbols despite a previous disconnect. Serialize transport commands and discard obsolete queued commands so a late resume cannot undo schedule pause.
 - Only one upcoming start/end boundary is armed while App/Widget owns the runtime. This is connection scheduling, not seconds-based price polling. Outside schedule and with no active owner, no automatic price work runs.
 - Device background restrictions remain: after a resting/background service stops, future sessions resume when the App is opened. UI states this explicitly. QA build is not proof of next-day autonomous background launch.
+# V4.0.56 — Monitor models must reach the real surface
+- Models must have different columns, typography, visible fields or ranking; a new name alone is not a model.
+- Monitor field options need snapshot metadata, persisted config normalization, preview and Android render coverage. Volume is cumulative source metadata; never infer it from shares or sum repeated snapshots.
+- Detail fields must wrap; hardcoded footer lists silently hide newly enabled fields. Null values sort last in both directions on both platforms.
+- Preserve V55 event coalescing and the protected Settings shell; only the Monitor child editor and release constants change.

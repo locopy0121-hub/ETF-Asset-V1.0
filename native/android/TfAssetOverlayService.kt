@@ -199,8 +199,10 @@ class TfAssetOverlayService:Service(){
       return rows
     }
     rows.sortWith(Comparator{a,b->
+      if(key in listOf("price","changePercent","pnl","marketValue","volume","roi")){val av=a.optDouble(key,Double.NaN);val bv=b.optDouble(key,Double.NaN);if(!av.isFinite()||!bv.isFinite())return@Comparator if(av.isFinite())-1 else if(bv.isFinite())1 else 0}
       val result=when(key){
         "symbol"->a.optString("symbol","").compareTo(b.optString("symbol",""))
+        "pnl","marketValue","volume","roi"->compareNumber(a.optDouble(key,Double.NaN),b.optDouble(key,Double.NaN))
         "price"->compareNumber(a.optDouble("price",Double.NaN),b.optDouble("price",Double.NaN))
         else->compareNumber(a.optDouble("changePercent",Double.NaN),b.optDouble("changePercent",Double.NaN))
       }
@@ -354,9 +356,9 @@ class TfAssetOverlayService:Service(){
         val wallBorderWidth=wallStyle.optInt("borderWidth",1).coerceIn(0,6)
         val wallCorner=wallStyle.optInt("cornerRadius",16).coerceIn(0,40)
         val enabled=(0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
-        val headerFields=enabled.filter{it.optString("field")=="name"||it.optString("field")=="symbol"}
-        val quoteFields=enabled.filter{it.optString("field")=="price"||it.optString("field")=="change"||it.optString("field")=="changePercent"}
-        val footerFields=enabled.filter{it.optString("field")=="pnl"||it.optString("field")=="roi"||it.optString("field")=="marketValue"}
+        val headerFields=enabled.filter{TfAssetMonitorFields.section(it.optString("field"))=="header"}
+        val quoteFields=enabled.filter{TfAssetMonitorFields.section(it.optString("field"))=="quote"}
+        val footerFields=enabled.filter{TfAssetMonitorFields.section(it.optString("field"))=="detail"}
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
         var wallLine:LinearLayout?=null
@@ -383,7 +385,7 @@ class TfAssetOverlayService:Service(){
               setPadding(0,0,0,wallGap)
               background=GradientDrawable().apply{setColor(headerBg);if(headerBorderWidth>0)setStroke(headerBorderWidth,headerBorder)}
             }
-            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
             headerFields.forEachIndexed{index,field->
               val key=field.optString("field","symbol")
               val numeric=miniNumeric(row,key)
@@ -396,7 +398,7 @@ class TfAssetOverlayService:Service(){
                 customText!=null->customText
                 else->headerText
               }
-              val base=if(index==0)15f else 11f
+              val base=if(key=="name")15f else 11f
               val view=textView(miniValue(row,key),tone,base*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*headerScale*fs,gravityFor(field.optString("align","left")))
               val customBg=field.optString("backgroundColor","")
               if(customBg.isNotBlank())view.setBackgroundColor(color(customBg,Color.TRANSPARENT))
@@ -404,7 +406,8 @@ class TfAssetOverlayService:Service(){
               val py=field.optInt("paddingY",0).coerceIn(0,16)
               view.setPadding(3,gap+py,3,py)
               applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:header:$key")
-              nameWrap.addView(view)
+              if(key=="name")view.ellipsize=android.text.TextUtils.TruncateAt.END
+              nameWrap.addView(view,if(key=="name")LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f) else LinearLayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
             }
             headerRow.addView(nameWrap,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             headerRow.addView(textView("›",wallSecondary,22*headerScale*fs,Gravity.END))
@@ -426,7 +429,8 @@ class TfAssetOverlayService:Service(){
               primaryCustomText!=null->primaryCustomText
               else->wallText
             }
-            val primaryView=textView(miniValue(row,primaryKey),primaryTone,29*primary.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(primary.optString("align","left")))
+            val primaryBase=if(wallColumns>=3)18f else if(wallColumns==2)23f else 36f
+            val primaryView=textView(miniValue(row,primaryKey),primaryTone,primaryBase*primary.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(primary.optString("align","left")))
             val primaryBg=primary.optString("backgroundColor","")
             if(primaryBg.isNotBlank())primaryView.setBackgroundColor(color(primaryBg,Color.TRANSPARENT))
             val primaryGap=if(primary.has("lineGap")&&!primary.isNull("lineGap"))primary.optInt("lineGap",0).coerceIn(0,32) else 0
@@ -463,8 +467,9 @@ class TfAssetOverlayService:Service(){
           }
 
           if(footerFields.isNotEmpty()){
+            footerFields.chunked(if(wallColumns==1)3 else 2).forEach{detailRow->
             val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.BOTTOM;setPadding(0,wallGap,0,0)}
-            footerFields.forEachIndexed{index,field->
+            detailRow.forEachIndexed{index,field->
               val key=field.optString("field","pnl")
               val numeric=miniNumeric(row,key)
               val useProfit=field.optBoolean("useProfitColor",false)
@@ -493,6 +498,7 @@ class TfAssetOverlayService:Service(){
               footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             }
             card.addView(footer,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+            }
           }
 
           wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap})
@@ -690,7 +696,7 @@ class TfAssetOverlayService:Service(){
   private fun isMonitorValueField(field:String)=field!="symbol"&&field!="name"&&field!="marketStatus"&&field!="updatedAt"
   private fun defaultProfitField(field:String)=field=="change"||field=="changePercent"||field=="pnl"||field=="roi"||field=="comprehensivePnl"
   private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"weight"->"權重";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
-  private fun normalValue(row:JSONObject,field:String,label:String):String=when(field){
+  private fun normalValue(row:JSONObject,field:String,label:String):String{TfAssetMonitorFields.value(row,field)?.let{return "$label $it"};return when(field){
     "symbol"->row.optString("symbol","--")
     "name"->row.optString("name","")
     "price"->"$label "+number2(row,"price")
@@ -706,13 +712,13 @@ class TfAssetOverlayService:Service(){
     "marketStatus"->"$label "+row.optString("marketStatus","--")
     "updatedAt"->"$label "+TfAssetMarketPresentation.sourceTimeLabel(row.optString("updatedAt",""))
     else->"--"
-  }
+  }}
 
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
   private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)}
   private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
-  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);"weight"->row.optDouble("weight",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
-  private fun miniValue(row:JSONObject,field:String):String=when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->TfAssetMarketPresentation.sourceTimeLabel(row.optString("updatedAt",""));else->"--"}
+  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"price"->row.optDouble("change",Double.NaN);"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);"weight"->row.optDouble("weight",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
+  private fun miniValue(row:JSONObject,field:String):String=TfAssetMonitorFields.value(row,field)?:when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->TfAssetMarketPresentation.sourceTimeLabel(row.optString("updatedAt",""));else->"--"}
   private fun number2(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%.2f",v) else "--"}
   private fun signed2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%,.0f",v) else "--"}

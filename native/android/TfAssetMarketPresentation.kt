@@ -72,7 +72,7 @@ internal object TfAssetMarketPresentation{
       val row=JSONObject(original.toString())
       val rowUsable=usable(original)
       if(!rowUsable){
-        listOf("price","previousClose","change","changePercent","updatedAt")
+        listOf("price","previousClose","volume","change","changePercent","updatedAt")
           .forEach{row.put(it,JSONObject.NULL)}
         row.put("marketStatus","行情待取得")
       }else{

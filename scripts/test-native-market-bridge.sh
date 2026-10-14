@@ -93,3 +93,7 @@ java -jar "$compiler_dir/v454-background-surfaces.jar"
 "$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetLatestSurfaceRenderQueue.kt scripts/native/V455RenderQueueTest.kt \
   -include-runtime -d "$compiler_dir/v455-render-queue.jar"
 java -jar "$compiler_dir/v455-render-queue.jar"
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetMonitorFields.kt scripts/native/V456MonitorFieldsTest.kt \
+  -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v456-monitor-fields.jar"
+java -cp "$compiler_dir/v456-monitor-fields.jar:$compile_cp" com.tfasset.app.V456MonitorFieldsTestKt
