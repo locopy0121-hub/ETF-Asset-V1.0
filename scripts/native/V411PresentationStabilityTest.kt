@@ -3,7 +3,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
 fun main(){
-  check(TfAssetMarketPresentation.sourceTimeLabel("2026-10-08T04:55:00Z")=="12:55")
+  check(TfAssetMarketPresentation.sourceTimeLabel("2026-10-08T04:55:00Z")=="12:55:00")
   check(TfAssetMarketPresentation.sourceTimeLabel("invalid")=="--")
   val now=Instant.parse("2026-10-08T04:55:00Z").toEpochMilli()
   fun holding(symbol:String,price:Double)=JSONObject().put("symbol",symbol)

@@ -152,6 +152,26 @@ internal class FugleWebSocketProvider(
     private var lastHeartbeatEpochMillis: Long? = null
     private var nextReconnectEpochMillis: Long = 0L
     private var subscriptionAttemptAt: Long? = null
+    private var receivedMessages = 0L
+    private var receivedData = 0L
+    private var rejectedData = 0L
+    private var lastTradeAt = 0L
+
+    private fun subscriptionsReady(): Boolean =
+        desiredSymbols.isNotEmpty() && desiredSymbols.all { it in activeChannelIds } &&
+            pendingSubscribeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty()
+
+    private fun recordSource(reason: String, code: Int? = null, failure: String = "NONE") {
+        val row = synchronized(lock) {
+            org.json.JSONObject().put("kind", "source").put("reason", reason).put("failure", failure)
+                .put("code", code ?: 0).put("auth", authenticated)
+                .put("desired", desiredSymbols.size).put("active", activeChannelIds.size)
+                .put("pending", pendingSubscribeSymbols.size).put("retry", reconnectAttempt)
+                .put("next", nextReconnectEpochMillis).put("rx", receivedMessages)
+                .put("data", receivedData).put("rejected", rejectedData).put("tradeAt", lastTradeAt)
+        }
+        TfAssetMarketFlowDiagnostics.sourceCheckpoint(row)
+    }
 
     init {
         scheduler.scheduleAtFixedRate(
@@ -180,6 +200,7 @@ internal class FugleWebSocketProvider(
             socket.also { socket = null }
         }
         current?.close(NORMAL_CLOSE_CODE, "SaiETF background/disconnect")
+        recordSource("PAUSED")
         emitHealth()
     }
 
@@ -226,6 +247,8 @@ internal class FugleWebSocketProvider(
             val circuitState = when {
                 !hasCredential || credentialRejected -> ProviderCircuitState.COOLDOWN
                 authenticated && !heartbeatIsHealthy(nowEpochMillis) -> ProviderCircuitState.COOLDOWN
+                socket == null && nowEpochMillis < nextReconnectEpochMillis -> ProviderCircuitState.COOLDOWN
+                authenticated && !subscriptionsReady() -> ProviderCircuitState.DEGRADED
                 authenticated && recovering -> ProviderCircuitState.RECOVERING
                 authenticated -> ProviderCircuitState.HEALTHY
                 consecutiveFailures >= 2 -> ProviderCircuitState.COOLDOWN
@@ -299,7 +322,7 @@ internal class FugleWebSocketProvider(
         }
 
         synchronized(lock) {
-            if (credentialRejected || socket != null || connecting) return
+            if (credentialRejected || socket != null || connecting || clockMillis() < nextReconnectEpochMillis) return
             manualDisconnect = false
             connecting = true
             lastAttemptEpochMillis = clockMillis()
@@ -340,7 +363,7 @@ internal class FugleWebSocketProvider(
                         true
                     } else false
                 }
-                if (!early) handleDisconnect(socket, null)
+                if (!early) handleDisconnect(socket, null, code)
             }
 
             override fun onFailure(socket: FugleSocket, error: Throwable) {
@@ -354,6 +377,7 @@ internal class FugleWebSocketProvider(
             }
         }
 
+        recordSource("CONNECTING")
         val created = runCatching { transport.connect(STREAMING_URL, listener) }
             .getOrElse { error ->
                 synchronized(lock) {
@@ -361,6 +385,7 @@ internal class FugleWebSocketProvider(
                     consecutiveFailures += 1
                 }
                 scheduleReconnect()
+                recordSource("DISCONNECTED", failure = "TRANSPORT_FAILED")
                 emitHealth()
                 return
             }
@@ -390,6 +415,7 @@ internal class FugleWebSocketProvider(
     }
 
     private fun handleMessage(text: String) {
+        synchronized(lock) { receivedMessages += 1 }
         val root = runCatching { json.parseToJsonElement(text).jsonObject }.getOrNull() ?: return
         val event = root.string("event") ?: return
         val now = clockMillis()
@@ -405,12 +431,12 @@ internal class FugleWebSocketProvider(
                     credentialRejected = false
                     recovering = hasAuthenticatedBefore && (consecutiveFailures > 0 || reconnectAttempt > 0)
                     hasAuthenticatedBefore = true
-                    reconnectAttempt = 0
-                    consecutiveFailures = 0
+                    // Authentication is not proof that trades subscriptions recovered.
                     lastSuccessEpochMillis = now
                     lastHeartbeatEpochMillis = now
                 }
                 syncSubscriptions()
+                recordSource("AUTHENTICATED")
                 emitHealth()
             }
 
@@ -439,7 +465,7 @@ internal class FugleWebSocketProvider(
 
             val unsubscribeImmediately = synchronized(lock) {
                 pendingSubscribeSymbols.remove(symbol)
-                if (pendingSubscribeSymbols.isEmpty()) subscriptionAttemptAt = null
+                if (pendingSubscribeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty()) subscriptionAttemptAt = null
                 activeChannelIds[symbol] = id
                 symbol !in desiredSymbols
             }
@@ -447,7 +473,15 @@ internal class FugleWebSocketProvider(
                 sendUnsubscribe(listOf(id))
             }
         }
+        synchronized(lock) {
+            if (subscriptionsReady()) {
+                reconnectAttempt = 0
+                consecutiveFailures = 0
+                recovering = false
+            }
+        }
         syncSubscriptions()
+        recordSource("SUBSCRIBED")
         emitHealth()
     }
 
@@ -457,18 +491,22 @@ internal class FugleWebSocketProvider(
         synchronized(lock) {
             pendingUnsubscribeIds.removeAll(ids)
             activeChannelIds.entries.removeAll { it.value in ids }
+            if (pendingSubscribeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty()) subscriptionAttemptAt = null
         }
         syncSubscriptions()
+        recordSource("UNSUBSCRIBED")
         emitHealth()
     }
 
     private fun handleMarketData(root: JsonObject) {
-        if (root.string("channel") != TRADE_CHANNEL) return
-        val data = root["data"] as? JsonObject ?: return
-        if (data.boolean("isTrial") == true) return
+        synchronized(lock) { receivedData += 1 }
+        fun reject() { synchronized(lock) { rejectedData += 1 } }
+        if (root.string("channel") != TRADE_CHANNEL) { reject(); return }
+        val data = root["data"] as? JsonObject ?: run { reject(); return }
+        if (data.boolean("isTrial") == true) { reject(); return }
 
-        val symbol = data.string("symbol")?.normalizeSymbol() ?: return
-        val price = data.double("price")?.takeIf { it.isFinite() && it > 0.0 } ?: return
+        val symbol = data.string("symbol")?.normalizeSymbol() ?: run { reject(); return }
+        val price = data.double("price")?.takeIf { it.isFinite() && it > 0.0 } ?: run { reject(); return }
         val now = clockMillis()
         val sourceTime = normalizeEpochMillis(data.long("time"), now)
         val sessionDate = Instant.ofEpochMilli(sourceTime)
@@ -499,8 +537,12 @@ internal class FugleWebSocketProvider(
         synchronized(lock) {
             latestQuotes[symbol] = quote
             lastSuccessEpochMillis = now
-            consecutiveFailures = 0
-            recovering = false
+            lastTradeAt = now
+            if (subscriptionsReady()) {
+                consecutiveFailures = 0
+                reconnectAttempt = 0
+                recovering = false
+            }
         }
         // Never gate the price feed on SharedFlow.tryEmit: a saturated buffer
         // would otherwise silently drop a genuine Fugle trade.
@@ -511,7 +553,9 @@ internal class FugleWebSocketProvider(
     }
 
     private fun handleServerError(root: JsonObject) {
-        val message = (root["data"] as? JsonObject)?.string("message").orEmpty()
+        val errorData = root["data"] as? JsonObject
+        val message = errorData?.string("message").orEmpty()
+        val code = errorData?.long("code")?.takeIf { it in 0..999999 }?.toInt()
         val authFailure = message.contains("auth", ignoreCase = true) ||
             message.contains("credential", ignoreCase = true) ||
             message.contains("api key", ignoreCase = true)
@@ -523,6 +567,7 @@ internal class FugleWebSocketProvider(
                 manualDisconnect = true
             }
             authenticated = false
+            connecting = false
             activeChannelIds.clear()
             pendingSubscribeSymbols.clear()
             pendingUnsubscribeIds.clear()
@@ -530,10 +575,18 @@ internal class FugleWebSocketProvider(
         }
         current?.close(POLICY_CLOSE_CODE, "Fugle server error")
         if (!authFailure) scheduleReconnect()
+        val failure = when {
+            authFailure -> "CREDENTIAL_REJECTED"
+            message.contains("subscription", true) -> "SUBSCRIPTION_REJECTED"
+            message.contains("connection", true) -> "CONNECTION_REJECTED"
+            message.contains("limit", true) -> "LIMIT_REJECTED"
+            else -> "SERVER_REJECTED"
+        }
+        recordSource("SERVER_ERROR", code, failure)
         emitHealth()
     }
 
-    private fun handleDisconnect(disconnected: FugleSocket, error: Throwable?) {
+    private fun handleDisconnect(disconnected: FugleSocket, error: Throwable?, closeCode: Int? = null) {
         val shouldReconnect = synchronized(lock) {
             if (socket !== disconnected) return
             socket = null
@@ -547,6 +600,7 @@ internal class FugleWebSocketProvider(
             !manualDisconnect && !credentialRejected && desiredSymbols.isNotEmpty()
         }
         if (shouldReconnect) scheduleReconnect()
+        recordSource("DISCONNECTED", closeCode, failure = if (error == null) "SOCKET_CLOSED" else "TRANSPORT_FAILED")
         emitHealth()
     }
 
@@ -564,17 +618,19 @@ internal class FugleWebSocketProvider(
             if (!authenticated) return
             currentSocket = socket ?: return
 
-            subscribeSymbols = desiredSymbols
-                .filter { it !in activeChannelIds && it !in pendingSubscribeSymbols }
-                .sorted()
+            val removeSymbols = activeChannelIds.keys.filter { it !in desiredSymbols }
+            // A replacement must release its old server-side slot first.
+            // Adding first can exceed a plan's limit even with an unchanged final count.
+            subscribeSymbols = if (removeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty() &&
+                pendingSubscribeSymbols.none { it !in desiredSymbols }) desiredSymbols
+                .filter { it !in activeChannelIds && it !in pendingSubscribeSymbols }.sorted() else emptyList()
             pendingSubscribeSymbols += subscribeSymbols
             if (subscribeSymbols.isNotEmpty()) subscriptionAttemptAt = clockMillis()
-
-            val removeSymbols = activeChannelIds.keys.filter { it !in desiredSymbols }
             unsubscribeIds = removeSymbols
                 .mapNotNull { activeChannelIds[it] }
                 .filter { it !in pendingUnsubscribeIds }
             pendingUnsubscribeIds += unsubscribeIds
+            if (unsubscribeIds.isNotEmpty()) subscriptionAttemptAt = clockMillis()
         }
 
         if (subscribeSymbols.isNotEmpty()) {
@@ -595,6 +651,7 @@ internal class FugleWebSocketProvider(
         if (ids.isEmpty()) return
         val current = synchronized(lock) {
             pendingUnsubscribeIds += ids
+            subscriptionAttemptAt = clockMillis()
             socket
         } ?: return
         if (!current.send(unsubscribeMessage(ids))) {
@@ -639,7 +696,7 @@ internal class FugleWebSocketProvider(
             when {
                 !authenticated && now - (lastAttemptEpochMillis ?: now) >= HANDSHAKE_TIMEOUT_MILLIS -> 2
                 !authenticated -> 0
-                pendingSubscribeSymbols.isNotEmpty() && now - (subscriptionAttemptAt ?: now) >= HANDSHAKE_TIMEOUT_MILLIS -> 2
+                (pendingSubscribeSymbols.isNotEmpty() || pendingUnsubscribeIds.isNotEmpty()) && now - (subscriptionAttemptAt ?: now) >= HANDSHAKE_TIMEOUT_MILLIS -> 2
                 now - last >= HEARTBEAT_TIMEOUT_MILLIS -> 2
                 now - last >= PING_AFTER_SILENCE_MILLIS -> 1
                 else -> 0
@@ -652,6 +709,13 @@ internal class FugleWebSocketProvider(
             }
 
             2 -> {
+                val timeoutFailure = synchronized(lock) {
+                    when {
+                        !authenticated -> "AUTH_TIMEOUT"
+                        pendingSubscribeSymbols.isNotEmpty() || pendingUnsubscribeIds.isNotEmpty() -> "SUBSCRIPTION_ACK_TIMEOUT"
+                        else -> "HEARTBEAT_TIMEOUT"
+                    }
+                }
                 val current = synchronized(lock) {
                     authenticated = false
                     connecting = false
@@ -664,6 +728,7 @@ internal class FugleWebSocketProvider(
                 }
                 current?.cancel()
                 scheduleReconnect()
+                recordSource("TIMEOUT", failure = timeoutFailure)
                 emitHealth()
             }
         }

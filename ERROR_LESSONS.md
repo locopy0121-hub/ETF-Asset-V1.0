@@ -670,3 +670,9 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Monitor field options need snapshot metadata, persisted config normalization, preview and Android render coverage. Volume is cumulative source metadata; never infer it from shares or sum repeated snapshots.
 - Detail fields must wrap; hardcoded footer lists silently hide newly enabled fields. Null values sort last in both directions on both platforms.
 - Preserve V55 event coalescing and the protected Settings shell; only the Monitor child editor and release constants change.
+
+# V4.0.57 — Authentication is not trade subscription recovery
+- Do not reset retry backoff or mark streaming healthy merely on auth/heartbeat. Required trade subscriptions must be acknowledged; symbol updates must respect an existing cooldown.
+- Release obsolete active AND pending subscriptions before adding replacements. Await unsubscribe ACK with a recovery timeout; otherwise transient subscription overlap or missing ACK can stall the feed.
+- Snapshot/render counts do not count source trades. Preserve separate bounded source-state categories and numeric error/close codes, never raw credentials/payloads, to locate future reception failures.
+- External clock is selected holding source time in Taipei HH:mm:ss, not render/generatedAt time. No timer may make stale prices look newly updated.
