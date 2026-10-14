@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.58",
+  "version": "4.0.59",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v4_0_58 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v4_0_59 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -343,7 +343,8 @@
     "test:v4_0_55": "npm run test:v4_0_54 && node scripts/v4_0_55-monitor-render.test.cjs && node scripts/v4_0_55-flow-diagnostics.test.cjs",
     "test:v4_0_56": "npm run test:v4_0_55 && tsx scripts/v4_0_56-monitor-models.test.ts && node scripts/v4_0_56-monitor-runtime.test.cjs",
     "test:v4_0_57": "npm run test:v4_0_56 && node scripts/v4_0_57-source-diagnostics.test.cjs && node scripts/v4_0_57-clock-surface.test.cjs",
-    "test:v4_0_58": "npm run test:v4_0_57 && bash scripts/test-native-close-reconcile.sh && node scripts/v4_0_58-close-wiring.test.cjs"
+    "test:v4_0_58": "npm run test:v4_0_57 && bash scripts/test-native-close-reconcile.sh && node scripts/v4_0_58-close-wiring.test.cjs",
+    "test:v4_0_59": "npm run test:v4_0_58 && node scripts/v4_0_59-monitor-editor.test.cjs && bash scripts/test-native-monitor-format.sh"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

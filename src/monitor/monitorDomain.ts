@@ -7,9 +7,19 @@ import {
 import type { SharedSnapshot } from '../domain/snapshot';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig, type HoldingWallFieldConfig } from '../domain/uiModels';
 
+export type MonitorFormat=Readonly<{
+  fontWeight?:'100'|'200'|'300'|'400'|'500'|'600'|'700'|'800'|'900';
+  lineHeight?:number;
+  profitColors?:readonly string[];
+}>;
+export type MonitorFormatted=Readonly<{format?:MonitorFormat}>;
+export type MonitorVisual=ItemVisualOverride&MonitorFormatted;
+export type MonitorClock=MonitorFormatted&Readonly<{visible:boolean;fontScale:number;textColor:string|null;backgroundColor:string|null;align:MonitorTextAlign;paddingY:number}>;
+export const DEFAULT_MONITOR_CLOCK:MonitorClock={visible:true,fontScale:1,textColor:null,backgroundColor:null,align:'left',paddingY:2};
+
 export type MonitorModelId='broker'|'triple'|'detail'|'large'|'compact-holdings'|'volume'|'reference'|'cost'|'profit'|'allocation';
-export type MonitorWallFieldConfig=Omit<HoldingWallFieldConfig,'field'>&Readonly<{field:HoldingWallFieldConfig['field']|MonitorField}>;
-export type MonitorWallConfig=Omit<HoldingWallConfig,'fields'>&Readonly<{fields:readonly MonitorWallFieldConfig[]}>;
+export type MonitorWallFieldConfig=Omit<HoldingWallFieldConfig,'field'>&MonitorFormatted&Readonly<{field:HoldingWallFieldConfig['field']|MonitorField}>;
+export type MonitorWallConfig=Omit<HoldingWallConfig,'fields'|'header'|'style'>&Readonly<{fields:readonly MonitorWallFieldConfig[];header:HoldingWallConfig['header']&MonitorFormatted;style:HoldingWallConfig['style']&MonitorFormatted}>;
 
 export type MonitorMode = 'normal' | 'mini';
 export type MonitorTemplate = 'portfolio' | 'quotes' | 'compact' | 'single' | 'dual' | 'advanced' | 'market-wall' | 'heatmap' | 'pnl-wall' | 'weight-wall' | 'ticker' | 'terminal';
@@ -25,10 +35,10 @@ const PROFIT_FIELDS:readonly MonitorField[]=['change','changePercent','pnl','roi
 export type MonitorItemConfig=Readonly<{
   field:MonitorField;
   label:string;
-  visual:ItemVisualOverride;
+  visual:MonitorVisual;
 }>;
 
-export type MiniHeaderStyle = Readonly<{
+export type MiniHeaderStyle = MonitorFormatted&Readonly<{
   visible:boolean;
   height:number;
   backgroundColor:string;
@@ -40,7 +50,7 @@ export type MiniHeaderStyle = Readonly<{
   effect:ItemEffectConfig;
 }>;
 
-export type MiniColumnConfig = Readonly<{
+export type MiniColumnConfig = MonitorFormatted&Readonly<{
   field:MonitorField;
   enabled:boolean;
   widthPercent:number;
@@ -56,7 +66,7 @@ export type MiniColumnConfig = Readonly<{
 }>;
 
 export type MiniStatusField = 'totalAssets' | 'marketValue' | 'totalReturn' | 'cash' | 'unrealizedPnl' | 'realizedPnl' | 'dividendIncome' | 'holdingCount' | 'updatedAt';
-export type MiniStatusBarStyle = Readonly<{
+export type MiniStatusBarStyle = MonitorFormatted&Readonly<{
   visible:boolean;
   height:number;
   columns:number;
@@ -67,7 +77,7 @@ export type MiniStatusBarStyle = Readonly<{
   borderColor:string;
   borderWidth:number;
 }>;
-export type MiniStatusItemConfig = Readonly<{
+export type MiniStatusItemConfig = MonitorFormatted&Readonly<{
   field:MiniStatusField;
   enabled:boolean;
   label:string;
@@ -87,7 +97,7 @@ export type MonitorWallLayout = Readonly<{
 }>;
 
 export type MonitorLayout = Readonly<{x:number;y:number;width:number;height:number;}>;
-export type MonitorStyle = Readonly<{
+export type MonitorStyle = MonitorFormatted&Readonly<{
   fontScale:number;
   titleFontScale:number;
   valueFontScale:number;
@@ -132,6 +142,8 @@ export type MonitorConfig = Readonly<{
   alertChangePct: number | null;
   normalLayout: MonitorLayout;
   miniLayout: MonitorLayout;
+  normalClock?:MonitorClock;
+  miniClock?:MonitorClock;
   normalStyle: MonitorStyle;
   miniStyle: MonitorStyle;
   miniHeader: MiniHeaderStyle;
@@ -238,6 +250,7 @@ export const DEFAULT_MONITOR_CONFIG: MonitorConfig = {
   alertChangePct: null,
   normalLayout: { x: 16, y: 120, width: 320, height: 420 },
   miniLayout: { x: 16, y: 120, width: 360, height: 330 },
+  normalClock:DEFAULT_MONITOR_CLOCK,miniClock:{...DEFAULT_MONITOR_CLOCK},
   normalStyle:DEFAULT_MONITOR_STYLE,
   miniStyle:{...DEFAULT_MONITOR_STYLE,fontScale:0.9,titleFontScale:0.9,valueFontScale:0.95,padding:6,rowGap:2,cornerRadius:12},
   miniHeader:DEFAULT_MINI_HEADER,

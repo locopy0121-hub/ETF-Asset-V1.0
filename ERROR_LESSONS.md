@@ -683,3 +683,10 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - A foreground writer must remain until the final canonical surface version is acknowledged or a bounded timeout expires; late close callbacks cannot stop a resumed session.
 - Periodic and shutdown persistence must share one serialized capture/write boundary. An asynchronous previous snapshot must never finish after the final close and overwrite it.
 - Charge cooldown only to dispatched requests. A sequential request budget must not cool down or indefinitely starve unrequested holdings.
+
+# V4.0.59 — Monitor display edits must survive normalization and reach Android
+- Monitor-only format extensions must be normalized at every target: normal fields, Mini fields/status/header, wall header/style/fields and each mode's source clock. UI controls without persisted native consumers are incomplete.
+- Bind each existing display color independently. Profit palette definitions are fixed inputs, never recursively bound. Typography inheritance must not overwrite separately resolved secondary/caption colors.
+- Keep line-height ratio separate from row gap and padding. Source clocks use selected holdings' actual source timestamps in Asia/Taipei HH:mm:ss; generated/render times are not quote freshness.
+- Consolidate overlapping template choices and avoid repeating the aggregate source clock in Mini status when its main clock is visible; retain existing stored template/field configuration.
+- Scope the protected Settings change to its explicitly authorized Monitor child, release constants and backup version; do not relax other child or finance/core locks.
