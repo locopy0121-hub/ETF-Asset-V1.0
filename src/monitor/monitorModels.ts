@@ -35,7 +35,7 @@ export function applyMonitorModel(config:MonitorConfig,id:MonitorModelId):Monito
 
 export function monitorMarketFieldText(row:HoldingSnapshot,field:string):string|null{
  if(field==='volume')return typeof row.volume==='number'&&Number.isFinite(row.volume)&&row.volume>=0?Math.round(row.volume).toLocaleString('zh-TW'):'--';
- if(field==='previousClose')return typeof row.previousClose==='number'&&row.previousClose>0?row.previousClose.toFixed(2):'--';
+ if(field==='previousClose')return row.previousCloseKnown!==false&&typeof row.previousClose==='number'&&row.previousClose>0?row.previousClose.toFixed(2):'--';
  if(field==='quoteStatus')return row.quoteStatus??'--';
  return null;
 }

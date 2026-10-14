@@ -12,6 +12,7 @@ export type HoldingSnapshot = Readonly<{
   name: string;
   price: number | null;
   previousClose: number | null;
+  previousCloseKnown?:boolean;
   /** Cumulative source volume; display-only, not a finance input. */
   volume?:number|null;
   change: number | null;

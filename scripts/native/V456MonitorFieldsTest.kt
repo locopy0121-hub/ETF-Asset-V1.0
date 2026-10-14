@@ -4,6 +4,7 @@ fun main(){
  val row=JSONObject().put("volume",140553).put("previousClose",112.4).put("quoteStatus","LIVE")
  check(TfAssetMonitorFields.value(row,"volume")=="140,553")
  check(TfAssetMonitorFields.value(row,"previousClose")=="112.40")
+ check(TfAssetMonitorFields.value(JSONObject().put("previousClose",112.4).put("previousCloseKnown",false),"previousClose")=="--")
  check(TfAssetMonitorFields.value(row,"quoteStatus")=="LIVE")
  check(TfAssetMonitorFields.value(JSONObject().put("volume",0),"volume")=="0")
  check(TfAssetMonitorFields.value(JSONObject().put("volume",-1),"volume")=="--")

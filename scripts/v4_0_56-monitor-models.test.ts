@@ -26,6 +26,10 @@ async function run(){
   assert.equal(row.volume,140553);assert.equal(row.marketValue,14074);assert.equal(row.pnl,434);
   assert.equal(monitorMarketFieldText(row,'volume'),'140,553');
   assert.equal(monitorMarketFieldText(row,'previousClose'),'112.40');
+  assert.equal(monitorMarketFieldText({...row,previousCloseKnown:false} as never,'previousClose'),'--','Unknown previous close must not be presented as confirmed');
+  const unknown=buildSharedSnapshot({canonical,holdings:[{...holding,previousCloseKnown:false} as never],generatedAt:1000});
+  assert.equal(unknown.holdings[0]!.previousCloseKnown,false);
+  assert.equal(monitorMarketFieldText(unknown.holdings[0]!,'previousClose'),'--');
   assert.equal(monitorMarketFieldText(make(0).holdings[0]!,'volume'),'0');
   assert.equal(monitorMarketFieldText(make(null).holdings[0]!,'volume'),'--');
   assert.equal(monitorMarketFieldText(make(-1).holdings[0]!,'volume'),'--');

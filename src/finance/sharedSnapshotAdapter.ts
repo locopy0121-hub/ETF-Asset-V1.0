@@ -51,6 +51,7 @@ export function buildSharedSnapshot(input:{
         name:row.name,
         price:row.quoteVerified===false?null:row.price,
         previousClose:row.quoteVerified===false?null:row.previousClose,
+        previousCloseKnown:row.quoteVerified!==false&&row.previousCloseKnown!==false,
         change:row.quoteVerified===false?null:change,
         changePercent:row.quoteVerified===false?null:changePercent,
         marketStatus:row.quoteVerified===false?'unavailable':statusFor(row.price,row.previousClose),
