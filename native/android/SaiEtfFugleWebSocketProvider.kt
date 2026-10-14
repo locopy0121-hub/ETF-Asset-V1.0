@@ -1,4 +1,5 @@
 package com.tfasset.app.saietf
+import com.tfasset.app.TfAssetMarketFlowDiagnostics
 
 import java.time.Instant
 import java.time.ZoneId
@@ -503,6 +504,7 @@ internal class FugleWebSocketProvider(
         }
         // Never gate the price feed on SharedFlow.tryEmit: a saturated buffer
         // would otherwise silently drop a genuine Fugle trade.
+        TfAssetMarketFlowDiagnostics.trades.incrementAndGet()
         onTrade(quote)
         _events.tryEmit(MarketEvent.Quote(quote))
         emitHealth()

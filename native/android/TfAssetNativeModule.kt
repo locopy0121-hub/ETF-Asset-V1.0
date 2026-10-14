@@ -46,13 +46,19 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   private val prefs get() = reactContext.getSharedPreferences("tf_asset_native", 0)
   private val marketDb by lazy { TfAssetMarketDatabase(reactContext) }
   private val marketListener:(String)->Unit = { payload ->
-    runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("SaiEtfMarketSnapshot",payload) }
+    runCatching { reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("SaiEtfMarketSnapshot",payload) }.onFailure{TfAssetMarketFlowDiagnostics.emitFailures.incrementAndGet()}
   }
   private val saietfMarket get() = TfAssetMarketOwner.runtime(reactContext)
   private val lifecycleListener=object:com.facebook.react.bridge.LifecycleEventListener{
     override fun onHostResume(){TfAssetMarketOwner.uiActive=true;TfAssetMarketOwner.applySchedule(reactContext)}
     override fun onHostPause(){TfAssetMarketOwner.uiActive=false}
     override fun onHostDestroy(){TfAssetMarketOwner.uiActive=false}
+  }
+  private val flowReceiver=object:BroadcastReceiver(){
+    override fun onReceive(context:Context?,intent:Intent?){
+      val raw=intent?.getStringExtra("payload")?:return
+      runCatching{reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("TfAssetMarketFlowDiagnostics",raw)}
+    }
   }
   private val widgetStoppedReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
@@ -185,17 +191,22 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     val stopFilter=IntentFilter(TfAssetWidgetLiveService.ACTION_STOPPED)
     if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(widgetStoppedReceiver,stopFilter,Context.RECEIVER_NOT_EXPORTED)
     else reactContext.registerReceiver(widgetStoppedReceiver,stopFilter)
+    val flowFilter=IntentFilter(TfAssetMarketFlowDiagnostics.ACTION)
+    if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(flowReceiver,flowFilter,Context.RECEIVER_NOT_EXPORTED)
+    else reactContext.registerReceiver(flowReceiver,flowFilter)
     installCrashJournal();TfAssetNotificationCenter.ensureChannels(reactContext)
   }
   override fun invalidate(){
     TfAssetMarketOwner.removeListener(marketListener)
     reactContext.removeLifecycleEventListener(lifecycleListener)
+    runCatching{reactContext.unregisterReceiver(flowReceiver)}
     runCatching{reactContext.unregisterReceiver(widgetStoppedReceiver)}
     runCatching{reactContext.unregisterReceiver(refreshRequestReceiver)}
     super.invalidate()
   }
   override fun getName() = "TfAssetNative"
 
+  @ReactMethod fun readMarketFlowDiagnostics(promise:Promise){promise.resolve(TfAssetMarketFlowDiagnostics.read())}
   @ReactMethod fun readPendingCrashJournal(promise:Promise){
     promise.resolve(prefs.getString("pending_crash_journal","")?:"")
   }
@@ -338,7 +349,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private fun refreshBackgroundMonitor(){
     refreshBackgroundMonitorIfNeeded(TfAssetMarketOwner.uiActive,TfAssetOverlayService.isRunning){
-      reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_BACKGROUND_REFRESH))
+      TfAssetMarketFlowDiagnostics.renderRequests.incrementAndGet();TfAssetOverlayService.requestRefresh()
     }
   }
   @ReactMethod fun syncWidget(configJson:String,snapshotJson:String,promise:Promise){
@@ -410,13 +421,14 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   @ReactMethod fun syncMonitor(configJson:String,snapshotJson:String,promise:Promise){
     persistSurfaceSnapshot(snapshotJson)
-    refreshWidget()
     val parsed=runCatching{org.json.JSONObject(configJson)}.getOrElse{org.json.JSONObject()}
     val incomingMode=parsed.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
     val previousMode=prefs.getString("monitor_last_config_mode",null)
-    val edit=prefs.edit().putString("monitor_config",configJson).putString("monitor_last_config_mode",incomingMode)
-    if(previousMode!=null&&previousMode!=incomingMode)edit.remove("monitor_runtime_mode_override")
-    edit.apply()
+    if(prefs.getString("monitor_config",null)!=configJson){
+      val edit=prefs.edit().putString("monitor_config",configJson).putString("monitor_last_config_mode",incomingMode)
+      if(previousMode!=null&&previousMode!=incomingMode)edit.remove("monitor_runtime_mode_override")
+      edit.apply()
+    }
     val enabled=parsed.optBoolean("enabled",false)
     if(!enabled){
       prefs.edit().putBoolean("monitor_running",false).putBoolean("monitor_user_closed",false).apply()
@@ -424,7 +436,10 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       promise.resolve(true)
       return
     }
-    if(!prefs.getBoolean("monitor_user_closed",false)) reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
+    if(!prefs.getBoolean("monitor_user_closed",false)){
+      if(TfAssetOverlayService.isRunning){TfAssetMarketFlowDiagnostics.renderRequests.incrementAndGet();TfAssetOverlayService.requestRefresh()}
+      else reactContext.startService(Intent(reactContext,TfAssetOverlayService::class.java).setAction(TfAssetOverlayService.ACTION_REFRESH))
+    }
     promise.resolve(true)
   }
   @ReactMethod fun requestWidgetRefresh(promise:Promise){

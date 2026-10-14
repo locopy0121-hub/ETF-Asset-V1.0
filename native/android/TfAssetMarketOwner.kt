@@ -16,7 +16,7 @@ internal object TfAssetMarketOwner {
     private var boundary:Runnable?=null
     private val listeners=CopyOnWriteArraySet<(String)->Unit>()
     fun runtime(context:Context):SaiEtfMarketRuntime = instance?:synchronized(this){
-        instance?:SaiEtfMarketRuntime(context.applicationContext){raw->listeners.forEach{runCatching{it(raw)}}}.also{instance=it}
+        instance?:SaiEtfMarketRuntime(context.applicationContext){raw->TfAssetMarketFlowDiagnostics.snapshots.incrementAndGet();listeners.forEach{runCatching{it(raw)}}}.also{instance=it}
     }
     fun applySchedule(context:Context,allowStart:Boolean=true){
         val app=context.applicationContext

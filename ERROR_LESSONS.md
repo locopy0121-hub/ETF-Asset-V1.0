@@ -1,3 +1,10 @@
+## 2026-10-14｜V4.0.55 行情牆拖住全 App：主緒重繪排隊與鏈路證據
+- 使用者確認關閉浮動窗後 App 行情恢復。V4.0.54 開窗沒有直接暫停前景訂閱；卻每筆 syncMonitor 都排 Android service intent，promise 先完成，onStartCommand 再於共用主緒 removeAllViews／重建，因此 JS latest-job 並不能限制原生重繪積壓。尚無手機 trace，不把這條負載缺陷偽稱已證實手機唯一原因。
+- 可見 Overlay 改用事件驅動 latest-frame queue：只有一個待繪工作，讀最新 canonical snapshot，關閉取消；控制／首次開啟仍走原服務。syncMonitor 不再額外更新 Widget，設定 JSON 未改不重寫。
+- 1000 burst、繪製期間 burst、8 concurrent producers、關閉與例外恢復，必須編譯執行實際 Kotlin queue。Source smoke 不是 Feature PASS。
+- 增加開窗／2秒一次取樣／關閉／關閉後一次的有界行情鏈路計數，包含原生成交接收、發佈、App 套用、重繪數與主緒延遲；這是診斷，沒有價格輪詢。既有錯誤紀錄匯出可讀，不改受保護設定內容，不記錄行情值、部位或密鑰。
+- 手機全 App 停止現象仍需這些計數驗證。另查到 headless background 會以帳務持股覆寫 research 訂閱，屬不同問題，本輪未冒稱解決。Finance／仲裁／MarketDataCenter 不改。
+
 ## 2026-10-13｜V4.0.54 浮動行情窗不是桌面 Widget
 - 截圖確認使用者看到的是原生浮動 Monitor；App.tsx 在背景跳過 Monitor 同步，而 headless writer 只呼叫 syncWidget，Native syncWidget 不觸發 Overlay render，且背景服務只允許桌面 Widget。前兩輪修補桌面 Widget 不會補齊浮動視窗的消費路徑。
 - 將實際可見的 Overlay 納入同一背景服務啟動條件；同一 canonical snapshot 的背景 Widget 寫入後，僅重繪仍在運作的 Overlay，不覆寫 Monitor 設定或自行算第二份價格／損益。
