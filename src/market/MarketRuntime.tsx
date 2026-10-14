@@ -1,5 +1,6 @@
 import {applyMarketClosedDates,nextMarketSessionBoundary,valuationSessionActive} from './marketCenterViews';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {markMarketFlowApplied} from './marketFlowMetrics';
 import {AppState,type AppStateStatus} from 'react-native';
 import {
   createContext,type PropsWithChildren,useCallback,useContext,useEffect,useMemo,useRef,useState,
@@ -165,6 +166,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     const snapshotAt=Number(snapshot.queriedAt)||0;
     const version=Number.isFinite(snapshot.version)?snapshot.version:Date.now();
     if(version<latestSnapshotVersionRef.current||snapshotAt>0&&snapshotAt<latestSnapshotAtRef.current)return;
+    markMarketFlowApplied(version);
     latestSnapshotVersionRef.current=Math.max(latestSnapshotVersionRef.current,version);
     latestSnapshotAtRef.current=Math.max(latestSnapshotAtRef.current,snapshotAt);
     if(Array.isArray(snapshot.closedDates))applyMarketClosedDates(snapshot.closedDates,snapshot.holidayNames);

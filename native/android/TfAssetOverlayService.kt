@@ -26,7 +26,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class TfAssetOverlayService:Service(){
-  companion object{@Volatile private var running=false;val isRunning:Boolean get()=running;const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH";const val ACTION_BACKGROUND_REFRESH="TF_ASSET_MONITOR_BACKGROUND_REFRESH"}
+  companion object{@Volatile private var running=false;@Volatile private var active:TfAssetOverlayService?=null;fun requestRefresh(){active?.renderQueue?.request()};val isRunning:Boolean get()=running;const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH";const val ACTION_BACKGROUND_REFRESH="TF_ASSET_MONITOR_BACKGROUND_REFRESH"}
   private val expiryHandler=Handler(Looper.getMainLooper())
   private val expiryRefresh=Runnable{if(root!=null)render()}
   private fun scheduleExpiry(){
@@ -39,6 +39,16 @@ class TfAssetOverlayService:Service(){
   }
   private lateinit var wm:WindowManager
   private var root:LinearLayout?=null
+  private val renderHandler=Handler(Looper.getMainLooper())
+  private val renderQueue=LatestSurfaceRenderQueue({renderHandler.postDelayed(it,16L)}){
+    if(backgroundMonitorRefreshAllowed(root!=null&&running,prefs().getBoolean("monitor_user_closed",false))){
+      applyConfiguredLayoutIfChanged(readConfig());render()
+    }
+  }
+  private fun captureFlow(reason:String,probeLagMs:Long=0L){
+    val raw=TfAssetMarketFlowDiagnostics.checkpoint(reason,TfAssetMarketOwner.uiActive,TfAssetMarketOwner.widgetActive,probeLagMs)
+    sendBroadcast(Intent(TfAssetMarketFlowDiagnostics.ACTION).setPackage(packageName).putExtra("payload",raw))
+  }
   private var params:WindowManager.LayoutParams?=null
   private var mode="normal"
   private var lastLayoutSignature:String?=null
@@ -61,13 +71,22 @@ class TfAssetOverlayService:Service(){
       return START_NOT_STICKY
     }
     if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);stopSelf();return START_NOT_STICKY}
+    val newlyOpened=root==null
     ensureView();applyConfiguredLayoutIfChanged(cfg);render()
-    running=true
+    running=true;active=this
+    if(newlyOpened){
+      captureFlow("monitor-open")
+      val due=System.currentTimeMillis()+2000L
+      // One bounded diagnostic sample; never requests prices or repeats.
+      renderHandler.postDelayed({captureFlow("monitor-sample",(System.currentTimeMillis()-due).coerceAtLeast(0L))},2000L)
+    }
     TfAssetWidgetLiveService.ensureStarted(this)
     return START_STICKY
   }
   override fun onDestroy(){
-    running=false
+    running=false;active=null;renderQueue.close()
+    captureFlow("monitor-close")
+    renderHandler.postDelayed({captureFlow("monitor-after-close")},1500L)
     if(!TfAssetWidgetLiveService.hasWidgets(this))stopService(Intent(this,TfAssetWidgetLiveService::class.java))
     expiryHandler.removeCallbacks(expiryRefresh)
     root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
@@ -208,6 +227,10 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun render(){
+    val began=System.nanoTime()
+    try{renderContents()}finally{TfAssetMarketFlowDiagnostics.rendered(System.nanoTime()-began)}
+  }
+  private fun renderContents(){
     val r=root?:return
     scheduleExpiry()
     val cfg=readConfig()

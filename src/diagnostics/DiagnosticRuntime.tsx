@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,useCallback,useContext,useEffect,useState,type PropsWithChildren} from 'react';
+import {marketFlowMetrics} from '../market/marketFlowMetrics';
+import {readNativeMarketFlowDiagnostics,subscribeNativeMarketFlowDiagnostics} from '../native/TfAssetNativeBridge';
 import {acknowledgeNativeCrashJournal,readPendingNativeCrashJournal,saveCriticalNativeDiagnostic} from '../native/TfAssetNativeBridge';
 import {DIAGNOSTIC_STORAGE_KEY,appendDiagnosticEntries,createDiagnosticEntry,
   readDiagnosticEntries,type DiagnosticEntry,type DiagnosticEvent} from './diagnosticModel';
@@ -32,7 +34,18 @@ function enqueueWrite(event:DiagnosticEvent):Promise<void>{
 export function recordDiagnosticEvent(event:DiagnosticEvent):void{
   void enqueueWrite(event).catch(()=>{});
 }
+const seenFlow=new Set<string>();
+function recordFlow(raw:string){
+  try{
+    const row=JSON.parse(raw) as Record<string,unknown>;
+    if(typeof row.id!=='string'||seenFlow.has(row.id))return;
+    seenFlow.add(row.id);if(seenFlow.size>32)seenFlow.delete(seenFlow.values().next().value!);
+    recordDiagnosticEvent({level:'info',code:'MARKET_FLOW',screen:'market',message:'行情牆開關與更新鏈路計數',detail:JSON.stringify({...row,...marketFlowMetrics(),appReceiptAt:Date.now()})});
+  }catch{}
+}
+async function readFlow(){try{const rows=JSON.parse(await readNativeMarketFlowDiagnostics()) as unknown;if(Array.isArray(rows))rows.forEach(row=>recordFlow(JSON.stringify(row)));}catch{}}
 async function reloadEntries():Promise<DiagnosticEntry[]>{
+  await readFlow();
   await queue.catch(()=>{});
   const result=appendDiagnosticEntries(parseStored(await AsyncStorage.getItem(DIAGNOSTIC_STORAGE_KEY)),[]);
   emit(result);
@@ -68,6 +81,7 @@ export function DiagnosticsProvider({children}:PropsWithChildren){
     let alive=true;
     const listener:Listener=next=>{if(alive)setEntries(next);};
     listeners.add(listener);
+    const offFlow=subscribeNativeMarketFlowDiagnostics(recordFlow);
     void reloadEntries().catch(()=>{});
     // Preserve the native fatal marker if AsyncStorage is full or unavailable.
     void readPendingNativeCrashJournal().then(async raw=>{
@@ -94,7 +108,7 @@ export function DiagnosticsProvider({children}:PropsWithChildren){
     };
     if(errorUtils?.setGlobalHandler)errorUtils.setGlobalHandler(handler);
     return ()=>{
-      alive=false;listeners.delete(listener);
+      offFlow();alive=false;listeners.delete(listener);
       if(errorUtils?.setGlobalHandler&&previous)errorUtils.setGlobalHandler(previous);
     };
   },[]);

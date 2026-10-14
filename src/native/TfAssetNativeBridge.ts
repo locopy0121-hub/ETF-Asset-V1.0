@@ -78,6 +78,7 @@ export type UnifiedMarketSnapshot=Readonly<{
   marketCore?:'SAIETF_NATIVE';
 }>;
 type TfAssetNativeModule={
+  readMarketFlowDiagnostics?:()=>Promise<string>;
   readMarketUpdateSchedule:()=>Promise<string>;
   saveMarketUpdateSchedule:(raw:string)=>Promise<boolean>;
   refreshUnifiedMarketData:(symbolsJson:string)=>Promise<string>;
@@ -314,3 +315,6 @@ export async function saveMarketUpdateSchedule(value:MarketUpdateSchedule):Promi
   if(!saved)throw new Error('排程未儲存');
   return true;
 }
+
+export async function readNativeMarketFlowDiagnostics():Promise<string>{return native?.readMarketFlowDiagnostics?native.readMarketFlowDiagnostics():'[]';}
+export function subscribeNativeMarketFlowDiagnostics(listener:(raw:string)=>void){const sub=DeviceEventEmitter.addListener('TfAssetMarketFlowDiagnostics',listener);return()=>sub.remove();}

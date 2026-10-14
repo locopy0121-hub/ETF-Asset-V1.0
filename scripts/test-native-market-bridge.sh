@@ -56,11 +56,11 @@ for dependency in \
   com/squareup/okio/okio-jvm/3.6.0/okio-jvm-3.6.0.jar; do
   curl --fail --location --retry 3 --silent --show-error "https://repo.maven.apache.org/maven2/$dependency" -o "$compiler_dir/streamdeps/${dependency##*/}"
 done
-stream_cp="$compiler_dir/kotlinc/lib/kotlinx-coroutines-core-jvm.jar"
+stream_cp="$compile_cp"
 for jar in "$compiler_dir"/streamdeps/*-*.jar; do stream_cp="$stream_cp:$jar"; done
 "$compiler_dir/kotlinc/bin/kotlinc" \
   native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketDataProviderV2.kt \
-  native/android/SaiEtfFugleWebSocketProvider.kt scripts/native/V447SocketTest.kt \
+  native/android/SaiEtfFugleWebSocketProvider.kt native/android/TfAssetMarketFlowDiagnostics.kt scripts/native/V447SocketTest.kt \
   -classpath "$stream_cp" -include-runtime -d "$compiler_dir/v447-socket.jar"
 java -cp "$compiler_dir/v447-socket.jar:$stream_cp" com.tfasset.app.saietf.V447SocketTestKt
 
@@ -89,3 +89,7 @@ java -cp "$compiler_dir/v449-rest-schedule.jar:$compile_cp" com.tfasset.app.saie
 "$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetBackgroundSurfacePolicy.kt scripts/native/V454BackgroundSurfacesTest.kt \
   -include-runtime -d "$compiler_dir/v454-background-surfaces.jar"
 java -jar "$compiler_dir/v454-background-surfaces.jar"
+
+"$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetLatestSurfaceRenderQueue.kt scripts/native/V455RenderQueueTest.kt \
+  -include-runtime -d "$compiler_dir/v455-render-queue.jar"
+java -jar "$compiler_dir/v455-render-queue.jar"
