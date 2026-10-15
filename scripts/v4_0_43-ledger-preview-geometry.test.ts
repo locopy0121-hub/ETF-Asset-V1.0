@@ -10,7 +10,7 @@ const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo
 const [major,minor,patch]=pkg.version.split('.').map(Number);
 assert.equal(major,4);
 assert.equal(minor,0);
-assert.ok(patch>=43,'V4.0.43 ledger geometry remains required in later versions');
+assert.ok(major>4||(major===4&&(minor>0||(minor===0&&patch>=43))),'V4.0.43 ledger geometry remains required in later versions');
 const build=major*10000+minor*100+patch;
 assert.equal(app.version,pkg.version);
 assert.equal(app.android.versionCode,build);
