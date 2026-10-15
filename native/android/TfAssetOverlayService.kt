@@ -27,6 +27,7 @@ import kotlin.math.roundToInt
 
 class TfAssetOverlayService:Service(){
   companion object{@Volatile private var running=false;@Volatile private var active:TfAssetOverlayService?=null;fun requestRefresh(){active?.renderQueue?.request()};val isRunning:Boolean get()=running;const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH";const val ACTION_BACKGROUND_REFRESH="TF_ASSET_MONITOR_BACKGROUND_REFRESH"}
+  private val fontFit=TfAssetMonitorAutoFitLayout()
   private val expiryHandler=Handler(Looper.getMainLooper())
   private val expiryRefresh=Runnable{if(root!=null)render()}
   private fun scheduleExpiry(){
@@ -84,6 +85,7 @@ class TfAssetOverlayService:Service(){
     return START_STICKY
   }
   override fun onDestroy(){
+    fontFit.clear()
     running=false;active=null;renderQueue.close()
     captureFlow("monitor-close")
     renderHandler.postDelayed({captureFlow("monitor-after-close")},1500L)
@@ -242,6 +244,7 @@ class TfAssetOverlayService:Service(){
     val aggregate=snap.optJSONObject("asset")?.optDouble("totalReturn",Double.NaN)?.takeIf{it.isFinite()}
     val resolvedStyle=JSONObject(style.toString())
     listOf("backgroundColor","textColor","secondaryTextColor","borderColor").forEach{key->resolvedStyle.put(key,TfAssetMonitorFormatting.resolved(style,key,style.optString(key,"#94A3B8"),aggregate,style))}
+    fontFit.begin(style)
     r.removeAllViews()
     val padding=style.optInt("padding",if(mode=="mini")6 else 12)
     r.setPadding(padding,padding,padding,padding)
@@ -251,6 +254,7 @@ class TfAssetOverlayService:Service(){
     renderWindowControls(r,resolvedStyle,TfAssetMarketPresentation.sourceClockLabel(orderedHoldings(snap,cfg)),cfg,aggregate)
     if(mode=="mini")renderMini(r,cfg,snap,resolvedStyle) else renderNormal(r,cfg,snap,resolvedStyle)
     applyMonitorFormat(r,style,style,aggregate,style,false)
+    fontFit.schedule(r)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
   }
@@ -706,6 +710,7 @@ class TfAssetOverlayService:Service(){
       if(TfAssetMonitorFormatting.bound(target,"textColor"))view.setTextColor(color(TfAssetMonitorFormatting.tone(numeric,palette),Color.GRAY))
       TfAssetMonitorFormatting.weight(target,base)?.let{weight->view.typeface=if(android.os.Build.VERSION.SDK_INT>=28)android.graphics.Typeface.create(view.typeface,weight,false) else android.graphics.Typeface.create(view.typeface,if(weight>=600)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
       TfAssetMonitorFormatting.lineHeight(target,base)?.let{multiplier->val height=(view.textSize*multiplier).roundToInt();if(android.os.Build.VERSION.SDK_INT>=28)view.setLineHeight(height);view.minimumHeight=height+view.paddingTop+view.paddingBottom}
+      fontFit.register(view,TfAssetMonitorFormatting.lineHeight(target,base)?:1.2f)
     }
   }
 

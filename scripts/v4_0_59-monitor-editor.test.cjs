@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
 let states=[],index=0,contextValue;
-const react={createContext:()=>({Provider:'Provider'}),useState:initial=>{const i=index++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],next=>states[i]=typeof next==='function'?next(states[i]):next]},useEffect:()=>{},useMemo:fn=>fn(),useContext:()=>contextValue};
+const react={useRef:initial=>{const i=index++;if(!(i in states))states[i]={current:initial};return states[i]},createContext:()=>({Provider:'Provider'}),useState:initial=>{const i=index++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],next=>states[i]=typeof next==='function'?next(states[i]):next]},useEffect:()=>{},useMemo:fn=>fn(),useContext:()=>contextValue};
 function jsx(type,props){if(type==='Provider')contextValue=props.value;return typeof type==='function'?type(props):{type,props};}
 const cache=new Map();
 function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file);const m={exports:{}};
  const req=id=>{
   if(id==='react')return react;if(id==='react/jsx-runtime')return {jsx,jsxs:jsx};
-  if(id==='react-native')return {Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s}};
+  if(id==='react-native')return {Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s,flatten:s=>Array.isArray(s)?Object.assign({},...s):s}};
   if(id.includes('ColorPalettePicker'))return {ColorPalettePicker:props=>({type:'Palette',props})};
   if(id==='@react-native-async-storage/async-storage')return {__esModule:true,default:{getItem:async()=>null,setItem:async()=>{}}};
   if(id.startsWith('.')){const p=path.resolve(path.dirname(file),id);for(const ext of ['.ts','.tsx'])if(fs.existsSync(p+ext))return load(p+ext);}
