@@ -1,3 +1,4 @@
+import type {MonitorAutoFit} from './monitorAutoFit';
 import {
   DEFAULT_ITEM_EFFECT,
   DEFAULT_ITEM_VISUAL,
@@ -98,6 +99,7 @@ export type MonitorWallLayout = Readonly<{
 
 export type MonitorLayout = Readonly<{x:number;y:number;width:number;height:number;}>;
 export type MonitorStyle = MonitorFormatted&Readonly<{
+  autoFit?:MonitorAutoFit;
   fontScale:number;
   titleFontScale:number;
   valueFontScale:number;

@@ -1,3 +1,4 @@
+import {normalizeMonitorAutoFit} from './monitorAutoFit';
 import {normalizeMonitorFormat} from './monitorFormatting';
 import {type MonitorClock,type MonitorVisual} from './monitorDomain';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -43,6 +44,7 @@ const normVisual=(visual:Partial<MonitorVisual>|undefined,fallback:MonitorVisual
   effect:normItemEffect(visual?.effect),
 });
 const normStyle=(s:Partial<MonitorStyle>|undefined,fallback:MonitorStyle):MonitorStyle=>({
+  autoFit:normalizeMonitorAutoFit(s?.autoFit),
   format:normalizeMonitorFormat(s?.format),
   fontScale:clamp(s?.fontScale,.7,1.8,fallback.fontScale),
   titleFontScale:clamp(s?.titleFontScale,.7,1.8,fallback.titleFontScale),

@@ -1,8 +1,10 @@
+import {normalizeMonitorAutoFit} from '../../monitor/monitorAutoFit';
+import {MonitorFitText,useMonitorFit,type MonitorFitController} from './MonitorFitText';
 import {MONITOR_WEIGHTS,monitorTypography,monitorBoundColor,monitorSourceClock} from '../../monitor/monitorFormatting';
 import {DEFAULT_MONITOR_CLOCK,type MonitorFormat,type MonitorFormatted,type MonitorVisual} from '../../monitor/monitorDomain';
 import {MONITOR_MODELS,applyMonitorModel,monitorMarketFieldText} from '../../monitor/monitorModels';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PixelRatio, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,
   type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger,
@@ -29,6 +31,8 @@ const sortLabels:Record<MonitorSortKey,string>={manual:'手動',symbol:'代號',
 export function MonitorControlPanel({value,onChange,availableSymbols=[],previewSnapshot=null}:Props){
   const [editingKey,setEditingKey]=useState<string|null>(null);
   const layout=activeMonitorLayout(value),style=activeMonitorStyle(value);
+  const autoFit=normalizeMonitorAutoFit(style.autoFit);
+  const patchAutoFit=(p:Partial<typeof autoFit>)=>patchStyle({autoFit:normalizeMonitorAutoFit({...autoFit,...p})});
   const previewRows=sortMonitorHoldings(previewSnapshot,value);
   const wall=value.normalWall;
   const clock=value.mode==='mini'?(value.miniClock??DEFAULT_MONITOR_CLOCK):(value.normalClock??DEFAULT_MONITOR_CLOCK);
@@ -230,6 +234,13 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
     </Section>
 
     <Section title="全域字體與版面">
+      <Toggle label="字體自動適配（同列一致）" value={autoFit.enabled} onChange={enabled=>patchAutoFit({enabled})}/>
+      {autoFit.enabled?<>
+        <Step label="最小字級" value={autoFit.minFontSize} min={6} max={autoFit.maxFontSize} step={1} suffix="" onChange={minFontSize=>patchAutoFit({minFontSize})}/>
+        <Step label="最大字級" value={autoFit.maxFontSize} min={autoFit.minFontSize} max={72} step={1} suffix="" onChange={maxFontSize=>patchAutoFit({maxFontSize})}/>
+        <Step label="文字列高" value={autoFit.rowHeight} min={16} max={160} step={1} suffix=" px" onChange={rowHeight=>patchAutoFit({rowHeight})}/>
+        <Text style={styles.note}>依實際文字、欄寬、列高、內距與行距，同列採用可共同容納的字級。達最小字級仍過長時顯示省略；關閉後恢復手動字級。</Text>
+      </>:null}
       <FormatEditor target={style} onChange={format=>patchStyle({format})}/>
       <Step label="全局字體" value={Math.round(style.fontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchStyle({fontScale:n/100})}/>
       <Step label="標題字體" value={Math.round(style.titleFontScale*100)} min={70} max={180} step={5} suffix="%" onChange={n=>patchStyle({titleFontScale:n/100})}/>
@@ -270,43 +281,54 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   </View>;
 }
 
-function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][]}){
+function MonitorPreview(props:Parameters<typeof MonitorPreviewContent>[0]){
+  const [height,setHeight]=useState(0),[width,setWidth]=useState(0);
+  const enabled=normalizeMonitorAutoFit(activeMonitorStyle(props.value).autoFit).enabled;
+  if(!enabled)return <MonitorPreviewContent {...props}/>;
+  const density=PixelRatio.get(),targetWidth=activeMonitorLayout(props.value).width;
+  const scale=Math.min(1/density,width>0?width/targetWidth:1/density);
+  return <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{alignSelf:'stretch',...(height>0?{height:height*scale}:{})}}><View onLayout={e=>setHeight(e.nativeEvent.layout.height)} style={{width:targetWidth,transform:[{scale}],transformOrigin:'top left'}}><MonitorPreviewContent {...props} metricScale={density}/></View></View>;
+}
+function MonitorPreviewContent({value,snapshot,rows,wallRows,metricScale=1}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][];metricScale?:number}){
   const rawStyle=activeMonitorStyle(value);
+  const options=normalizeMonitorAutoFit(rawStyle.autoFit);
+  // Native window/layout dimensions are physical px; fit this virtual canvas in the same units.
+  const fit=useMonitorFit({...options,minFontSize:options.minFontSize*metricScale,maxFontSize:options.maxFontSize*metricScale},JSON.stringify([value.mode,value.template,value.normalLayout,value.miniLayout,rawStyle,value.normalWallLayout,metricScale]));
   const aggregate=snapshot?.asset.totalReturn??null;
   const style={...rawStyle,...previewColors(rawStyle,aggregate,rawStyle)};
   const clock=value.mode==='mini'?(value.miniClock??DEFAULT_MONITOR_CLOCK):(value.normalClock??DEFAULT_MONITOR_CLOCK);
-  const time=clock.visible?<Text style={{fontSize:10*clock.fontScale,color:clock.textColor??style.secondaryTextColor,backgroundColor:clock.backgroundColor??'transparent',textAlign:clock.align,paddingVertical:clock.paddingY,...previewFormat(clock,style,10*clock.fontScale,aggregate,style)}}>{monitorSourceClock(rows)}</Text>:null;
+  const time=clock.visible?<MonitorFitText fit={fit} group="clock" cellKey="clock" style={{fontSize:10*clock.fontScale,color:clock.textColor??style.secondaryTextColor,backgroundColor:clock.backgroundColor??'transparent',textAlign:clock.align,paddingVertical:clock.paddingY,...previewFormat(clock,style,10*clock.fontScale,aggregate,style)}}>{monitorSourceClock(rows)}</MonitorFitText>:null;
   const totalMarketValue=(snapshot?.asset.marketValue??0)>0?(snapshot?.asset.marketValue??0):rows.reduce((sum,row)=>sum+(Number.isFinite(row.marketValue)?row.marketValue:0),0);
   if(value.mode==='mini'){
     const cols=enabledMiniColumns(value),statusItems=enabledMiniStatusItems(value).filter(item=>!(clock.visible&&item.field==='updatedAt'));
-    return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>{time}
+    return <View onLayout={fit.rootLayout} style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>{time}
       {value.miniHeader.visible?<View style={[styles.miniTableRow,{minHeight:value.miniHeader.height,backgroundColor:value.miniHeader.backgroundColor,borderBottomColor:value.miniHeader.borderColor,borderBottomWidth:value.miniHeader.borderWidth,...previewColors(value.miniHeader,aggregate,style)}]}>
-        {cols.map(column=><View key={column.field} style={{flex:column.widthPercent}}><Text style={{color:value.miniHeader.textColor,fontSize:11*value.miniHeader.fontScale,fontWeight:'900',textAlign:column.align,...previewFormat(value.miniHeader,style,11*value.miniHeader.fontScale,aggregate,style)}}>{column.label}</Text></View>)}
+        {cols.map(column=><View key={column.field} style={{flex:column.widthPercent}}><MonitorFitText fit={fit} group="mini-header" cellKey={column.field} style={{color:value.miniHeader.textColor,fontSize:11*value.miniHeader.fontScale,fontWeight:'900',textAlign:column.align,...previewFormat(value.miniHeader,style,11*value.miniHeader.fontScale,aggregate,style)}}>{column.label}</MonitorFitText></View>)}
       </View>:null}
-      {rows.map(row=><View key={row.symbol} style={styles.miniTableRow}>{cols.map(column=><View key={column.field} style={{flex:column.widthPercent,backgroundColor:column.backgroundColor??'transparent',paddingVertical:column.paddingY,marginTop:column.lineGap??style.rowGap,...previewColors(column,fieldNumeric(row,column.field,totalMarketValue),style)}}><Text numberOfLines={1} style={{color:column.useProfitColor?profitTone(fieldNumeric(row,column.field,totalMarketValue),style):(column.textColor??style.textColor),fontSize:11*style.fontScale*column.fontScale,fontWeight:'800',textAlign:column.align,...previewFormat(column,style,11*style.fontScale*column.fontScale,fieldNumeric(row,column.field,totalMarketValue),style)}}>{miniCellText(row,column.field,totalMarketValue)}</Text></View>)}</View>)}
+      {rows.map(row=><View key={row.symbol} style={styles.miniTableRow}>{cols.map(column=><View key={column.field} style={{flex:column.widthPercent,backgroundColor:column.backgroundColor??'transparent',paddingVertical:fit.options.enabled?0:column.paddingY,marginTop:fit.options.enabled?0:(column.lineGap??style.rowGap),...previewColors(column,fieldNumeric(row,column.field,totalMarketValue),style)}}><MonitorFitText fit={fit} group={"mini:"+row.symbol} cellKey={column.field} numberOfLines={1} style={{color:column.useProfitColor?profitTone(fieldNumeric(row,column.field,totalMarketValue),style):(column.textColor??style.textColor),fontSize:11*style.fontScale*column.fontScale,fontWeight:'800',textAlign:column.align,...(fit.options.enabled?{paddingTop:(column.lineGap??style.rowGap)+column.paddingY,paddingBottom:column.paddingY}:{}),...previewFormat(column,style,11*style.fontScale*column.fontScale,fieldNumeric(row,column.field,totalMarketValue),style)}}>{miniCellText(row,column.field,totalMarketValue)}</MonitorFitText></View>)}</View>)}
       {!rows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
       {value.miniStatusBar.visible&&statusItems.length?<View style={[styles.miniStatusPreview,{minHeight:value.miniStatusBar.height,backgroundColor:value.miniStatusBar.backgroundColor,borderTopColor:value.miniStatusBar.borderColor,borderTopWidth:value.miniStatusBar.borderWidth,...previewColors(value.miniStatusBar,aggregate,style)}]}>
-        {chunk(statusItems,value.miniStatusBar.columns).map((statusRow,rowIndex)=><View key={'status-'+rowIndex} style={styles.miniStatusRow}>{statusRow.map(item=><Text key={item.field} numberOfLines={1} style={{flex:1,color:item.useProfitColor?profitTone(miniStatusNumeric(snapshot,item),style):(item.textColor??(bound(value.miniStatusBar,'textColor')?profitTone(aggregate,style):value.miniStatusBar.textColor)),backgroundColor:item.backgroundColor??'transparent',fontSize:9*value.miniStatusBar.fontScale*item.fontScale,fontWeight:'800',textAlign:item.align,paddingVertical:item.paddingY,marginTop:item.lineGap??0,...previewFormat(item,{format:{...style.format,...value.miniStatusBar.format}},9*value.miniStatusBar.fontScale*item.fontScale,miniStatusNumeric(snapshot,item),style)}}>{item.label} {miniStatusPreviewText(snapshot,item.field,rows.length)}</Text>)}</View>)}
+        {chunk(statusItems,value.miniStatusBar.columns).map((statusRow,rowIndex)=><View key={'status-'+rowIndex} style={styles.miniStatusRow}>{statusRow.map(item=><MonitorFitText key={item.field} fit={fit} group={"status:"+rowIndex} cellKey={item.field} numberOfLines={1} style={{flex:1,color:item.useProfitColor?profitTone(miniStatusNumeric(snapshot,item),style):(item.textColor??(bound(value.miniStatusBar,'textColor')?profitTone(aggregate,style):value.miniStatusBar.textColor)),backgroundColor:item.backgroundColor??'transparent',fontSize:9*value.miniStatusBar.fontScale*item.fontScale,fontWeight:'800',textAlign:item.align,paddingVertical:item.paddingY,marginTop:item.lineGap??0,...previewFormat(item,{format:{...style.format,...value.miniStatusBar.format}},9*value.miniStatusBar.fontScale*item.fontScale,miniStatusNumeric(snapshot,item),style)}}>{item.label} {miniStatusPreviewText(snapshot,item.field,rows.length)}</MonitorFitText>)}</View>)}
       </View>:null}
     </View>;
   }
   if(value.template==='market-wall'){
     const wall=value.normalWall;
 
-    return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:value.normalWallLayout.rowGap}]}>{time}
+    return <View onLayout={fit.rootLayout} style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:value.normalWallLayout.rowGap}]}>{time}
       {wallRows.map((row,rowIndex)=><View key={'wall-row-'+rowIndex} style={{flexDirection:'row',gap:value.normalWallLayout.columnGap}}>
-        {row.map(holding=><MonitorWallPreviewCard key={holding.symbol} holding={holding} value={value} totalMarketValue={totalMarketValue}/>)}
+        {row.map(holding=><MonitorWallPreviewCard key={holding.symbol} holding={holding} value={value} totalMarketValue={totalMarketValue} fit={fit}/>)}
       </View>)}
       {!rows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
     </View>;
   }
   const holding=rows[0];
-  return <View style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>{time}
-    {holding?value.fields.map((field,index)=>{const item=monitorItem(value,field);const numeric=fieldNumeric(holding,field,totalMarketValue);return <Text key={field} numberOfLines={1} style={{fontSize:11*style.fontScale*item.visual.fontScale,fontWeight:'800',color:item.visual.useProfitColor?profitTone(numeric,style):(item.visual.textColor??style.textColor),backgroundColor:item.visual.backgroundColor??'transparent',textAlign:item.visual.textAlign??style.textAlign,marginTop:index===0?0:(item.visual.lineGap??style.rowGap),paddingVertical:item.visual.paddingY,...previewFormat(item.visual,style,11*style.fontScale*item.visual.fontScale,numeric,style)}}>{monitorFieldText(holding,field,item.label,totalMarketValue)}</Text>;}) : <Text style={styles.note}>尚無持股資料</Text>}
+  return <View onLayout={fit.rootLayout} style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding}]}>{time}
+    {holding?value.fields.map((field,index)=>{const item=monitorItem(value,field);const numeric=fieldNumeric(holding,field,totalMarketValue);return <MonitorFitText key={field} fit={fit} group={"normal:"+index} cellKey={field} numberOfLines={1} style={{fontSize:11*style.fontScale*item.visual.fontScale,fontWeight:'800',color:item.visual.useProfitColor?profitTone(numeric,style):(item.visual.textColor??style.textColor),backgroundColor:item.visual.backgroundColor??'transparent',textAlign:item.visual.textAlign??style.textAlign,marginTop:index===0?0:(item.visual.lineGap??style.rowGap),paddingVertical:item.visual.paddingY,...previewFormat(item.visual,style,11*style.fontScale*item.visual.fontScale,numeric,style)}}>{monitorFieldText(holding,field,item.label,totalMarketValue)}</MonitorFitText>;}) : <Text style={styles.note}>尚無持股資料</Text>}
   </View>;
 }
 
-function MonitorWallPreviewCard({holding,value,totalMarketValue}:{holding:SharedSnapshot['holdings'][number];value:MonitorConfig;totalMarketValue:number}){
+function MonitorWallPreviewCard({holding,value,totalMarketValue,fit}:{holding:SharedSnapshot['holdings'][number];value:MonitorConfig;totalMarketValue:number;fit:MonitorFitController}){
   const base=value.normalWall,style=value.normalStyle,columns=value.normalWallLayout.columns;
   const numeric=holding.changePercent;
   const resolved=<T extends MonitorFormatted>(target:T):T=>{const c=previewColors(target,numeric,style);return {...target,...c,...(c.color?{textColor:c.color}:{})};};
@@ -318,9 +340,9 @@ function MonitorWallPreviewCard({holding,value,totalMarketValue}:{holding:Shared
   const fieldStyle=(field:typeof enabled[number],base:number)=>({fontSize:base*style.fontScale*field.fontScale,fontWeight:'800' as const,color:field.useProfitColor?wallProfitTone(fieldNumeric(holding,field.field,totalMarketValue),wall.style):(field.textColor??wall.style.textColor),backgroundColor:field.backgroundColor??'transparent',textAlign:field.align,paddingVertical:field.paddingY,marginTop:field.lineGap??0,...previewFormat(field,{format:{...style.format,...wall.style.format,...(['name','symbol'].includes(field.field)?wall.header.format:{})}},base*style.fontScale*field.fontScale,fieldNumeric(holding,field.field,totalMarketValue),style)});
   const raw=(field:typeof enabled[number])=>['name','symbol'].includes(field.field)?holding[field.field as 'name'|'symbol']:monitorFieldText(holding,field.field as MonitorField,field.label,totalMarketValue).slice(field.label.length+1);
   return <View style={{flex:1,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding,...previewColors(wall.style,holding.changePercent,style)}}>
-    {wall.header.visible&&header.length?<View style={{flexDirection:'row',alignItems:'center',backgroundColor:wall.header.backgroundColor,borderColor:wall.header.borderColor,borderWidth:wall.header.borderWidth,...previewColors(wall.header,holding.changePercent,style)}}>{header.map((field,index)=><Text key={field.field} numberOfLines={1} style={[fieldStyle(field,(field.field==='name'?15:11)*wall.header.fontScale),{flex:field.field==='name'?1:undefined,color:field.textColor??wall.header.textColor,marginTop:field.lineGap??(index===0?0:2),...previewFormat(field,wall.header,(field.field==='name'?15:11)*wall.header.fontScale*style.fontScale*field.fontScale,fieldNumeric(holding,field.field,totalMarketValue),style)}]}>{raw(field)}</Text>)}</View>:null}
-    {quote.length?<View style={{flexDirection:'row',alignItems:'flex-end',marginTop:wall.style.rowGap}}><Text numberOfLines={1} style={[fieldStyle(quote[0]!,columns>=3?18:columns===2?23:36),{flex:1}]}>{raw(quote[0]!)}</Text><View>{quote.slice(1).map(field=><Text key={field.field} numberOfLines={1} style={[fieldStyle(field,11),{marginTop:field.lineGap??wall.style.rowGap}]}>{raw(field)}</Text>)}</View></View>:null}
-    {chunk(detail,columns===1?3:2).map((line,index)=><View key={index} style={{flexDirection:'row',marginTop:wall.style.rowGap}}>{line.map(field=><View key={field.field} style={{flex:1,backgroundColor:field.backgroundColor??'transparent',paddingTop:(field.lineGap??0)+field.paddingY,paddingBottom:field.paddingY,...previewColors(field,fieldNumeric(holding,field.field,totalMarketValue),style)}}><Text numberOfLines={1} style={{fontSize:10*style.fontScale,color:wall.style.secondaryTextColor,textAlign:field.align,...monitorTypography(wall.style,style,10*style.fontScale)}}>{field.label}</Text><Text numberOfLines={1} style={[fieldStyle(field,12),{marginTop:0,paddingVertical:0}]}>{raw(field)}</Text></View>)}</View>)}
+    {wall.header.visible&&header.length?<View style={{flexDirection:'row',alignItems:'center',backgroundColor:wall.header.backgroundColor,borderColor:wall.header.borderColor,borderWidth:wall.header.borderWidth,...previewColors(wall.header,holding.changePercent,style)}}>{header.map((field,index)=><MonitorFitText key={field.field} fit={fit} group={"header:"+holding.symbol} cellKey={field.field} reserveWidth={field.field==='symbol'} numberOfLines={1} style={[fieldStyle(field,(field.field==='name'?15:11)*wall.header.fontScale),{flex:field.field==='name'?1:undefined,color:field.textColor??wall.header.textColor,marginTop:field.lineGap??(index===0?0:2),...previewFormat(field,wall.header,(field.field==='name'?15:11)*wall.header.fontScale*style.fontScale*field.fontScale,fieldNumeric(holding,field.field,totalMarketValue),style)}]}>{raw(field)}</MonitorFitText>)}</View>:null}
+    {quote.length?<View style={{flexDirection:'row',alignItems:'flex-end',marginTop:wall.style.rowGap}}><MonitorFitText fit={fit} group={"quote:"+holding.symbol} cellKey={quote[0]!.field} numberOfLines={1} style={[fieldStyle(quote[0]!,columns>=3?18:columns===2?23:36),{flex:1}]}>{raw(quote[0]!)}</MonitorFitText><View>{quote.slice(1).map(field=><MonitorFitText key={field.field} fit={fit} group={"quote:"+holding.symbol} cellKey={field.field} numberOfLines={1} style={[fieldStyle(field,11),{marginTop:field.lineGap??wall.style.rowGap}]}>{raw(field)}</MonitorFitText>)}</View></View>:null}
+    {chunk(detail,columns===1?3:2).map((line,index)=><View key={index} style={{flexDirection:'row',marginTop:wall.style.rowGap}}>{line.map(field=><View key={field.field} style={{flex:1,backgroundColor:field.backgroundColor??'transparent',paddingTop:(field.lineGap??0)+field.paddingY,paddingBottom:field.paddingY,...previewColors(field,fieldNumeric(holding,field.field,totalMarketValue),style)}}><MonitorFitText fit={fit} group={"detail:"+holding.symbol+":"+index} reservedHeight={((field.lineGap??0)+2*field.paddingY)/2} cellKey={field.field} numberOfLines={1} style={{fontSize:10*style.fontScale,color:wall.style.secondaryTextColor,textAlign:field.align,...monitorTypography(wall.style,style,10*style.fontScale)}}>{field.label}</MonitorFitText><MonitorFitText fit={fit} group={"detail:"+holding.symbol+":"+index} reservedHeight={((field.lineGap??0)+2*field.paddingY)/2} cellKey={field.field} numberOfLines={1} style={[fieldStyle(field,12),{marginTop:0,paddingVertical:0}]}>{raw(field)}</MonitorFitText></View>)}</View>)}
   </View>;
 }
 

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {normalizeMonitorAutoFit,fitMonitorRowFont} from '../src/monitor/monitorAutoFit';
+const o=normalizeMonitorAutoFit({enabled:true,minFontSize:8,maxFontSize:24,rowHeight:32});
+assert.equal(fitMonitorRowFont(o,[{width:100,height:32,naturalWidth:200,naturalHeight:24}]),12);
+assert.equal(fitMonitorRowFont(o,[{width:100,height:32,naturalWidth:200,naturalHeight:24},{width:120,height:16,naturalWidth:120,naturalHeight:32}]),12);
+assert.equal(fitMonitorRowFont(o,[{width:100,height:32,naturalWidth:1000,naturalHeight:24}]),8);
+assert.equal(fitMonitorRowFont(o,[{width:300,height:64,naturalWidth:100,naturalHeight:24}]),24);
+assert.equal(fitMonitorRowFont(o,[{width:0,height:32,naturalWidth:200,naturalHeight:24}]),8);
+assert.equal(normalizeMonitorAutoFit(undefined).enabled,false);
+assert.deepEqual(normalizeMonitorAutoFit({enabled:true,minFontSize:48,maxFontSize:5,rowHeight:999}),{enabled:true,minFontSize:48,maxFontSize:48,rowHeight:160});
+assert.equal(normalizeMonitorAutoFit({minFontSize:NaN,maxFontSize:Infinity,rowHeight:null} as never).rowHeight,32);
+console.log('V4.0.60 auto-fit: row minimum, width/height budget, lower/upper limits, invalid/legacy settings PASS');

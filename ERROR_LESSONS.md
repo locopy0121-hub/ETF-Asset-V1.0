@@ -690,3 +690,10 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Keep line-height ratio separate from row gap and padding. Source clocks use selected holdings' actual source timestamps in Asia/Taipei HH:mm:ss; generated/render times are not quote freshness.
 - Consolidate overlapping template choices and avoid repeating the aggregate source clock in Mini status when its main clock is visible; retain existing stored template/field configuration.
 - Scope the protected Settings change to its explicitly authorized Monitor child, release constants and backup version; do not relax other child or finance/core locks.
+
+# V4.0.60 — Fit real glyph metrics into row budgets
+- Measure actual maximum-size text with its face/weight; string length is not a font-width metric. All eligible cells in a row share the tightest width/height bound.
+- Count spacing once: Mini gap/padding belongs inside each text budget; wall detail wrapper padding is shared across its text rows. Minimum-font overflow ellipsizes; enlarge vertical space only when needed to avoid minimum-font clipping.
+- Native fitting uses one pre-draw callback per fresh surface, cleared on rebuild/destroy. Detached/hidden clock views have no layout budget and must be skipped. No timers or new market work.
+- Reject stale preview measurements by layout epoch and text identity. OFF leaves stored manual font settings intact; Normal/Mini keep separate options and old configurations default OFF.
+- Android overlay layout dimensions are physical px, not dp. Do not multiply configured row height by density; scale the preview canvas and its measured sp metrics together so Mini does not lose its data area.
