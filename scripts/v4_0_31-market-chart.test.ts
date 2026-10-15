@@ -42,5 +42,5 @@ assert.match(parser,/資料格式已變更/,'TPEx schema drift must surface an e
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/MarketTechnicalSignals|marketPricePath/);
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/marketPricePath|tpexInstitutional/);
 const identity=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.ok(Number(identity.version.split('.')[2])>=31);assert.ok(identity.android.versionCode>=40031);
+const [vMajor31=0,vMinor31=0,vPatch31=0]=identity.version.split('.').map(Number);assert.ok(vMajor31>4||(vMajor31===4&&(vMinor31>0||(vMinor31===0&&vPatch31>=31))));assert.ok(identity.android.versionCode>=40031);
 console.log('V4.0.31 real line/area chart geometry, scroll/crosshair selection, indicator synchronization, TPEx source safety: PASS');
