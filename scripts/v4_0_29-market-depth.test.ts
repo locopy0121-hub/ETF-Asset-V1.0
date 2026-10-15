@@ -38,5 +38,5 @@ assert.match(market,/MarketTechnicalSignals candles=\{transformed\}/);
 assert.match(technical,/computeTechnicalSignals\(candles\)/);
 assert.doesNotMatch(settings,/MarketTechnicalSignals|fetchOfficialEtfNavHistory/);
 const app=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.ok(Number(app.version.split('.')[2])>=29);assert.ok(app.android.versionCode>=40029);
+const [vMajor29=0,vMinor29=0,vPatch29=0]=app.version.split('.').map(Number);assert.ok(vMajor29>4||(vMajor29===4&&(vMinor29>0||(vMinor29===0&&vPatch29>=29))));assert.ok(app.android.versionCode>=40029);
 console.log('V4.0.29 official T86 dynamic field contract, date-matched ETF NAV and warmup-safe KD/MACD: PASS');
