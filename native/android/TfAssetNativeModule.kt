@@ -143,6 +143,12 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       .onFailure{promise.reject("MARKET_CACHE_LOAD_FAILED",it)}
   }
 
+  @ReactMethod fun loadMarketSnapshots(promise:Promise){
+    runCatching{marketDb.loadSnapshots().toString()}
+      .onSuccess{promise.resolve(it)}
+      .onFailure{promise.reject("MARKET_SNAPSHOT_LOAD_FAILED",it)}
+  }
+
   @ReactMethod fun persistMarketCache(payloadJson:String,promise:Promise){
     runCatching{
       marketDb.persist(org.json.JSONObject(payloadJson))
