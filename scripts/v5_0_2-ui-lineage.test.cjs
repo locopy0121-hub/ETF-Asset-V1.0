@@ -9,9 +9,9 @@ const db=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const manifest=JSON.parse(fs.readFileSync('app.json','utf8'));
 
-assert.equal(pkg.version,'5.0.2');
-assert.equal(manifest.expo.version,'5.0.2');
-assert.equal(manifest.expo.android.versionCode,50002);
+assert.equal(pkg.version,'5.0.3');
+assert.equal(manifest.expo.version,'5.0.3');
+assert.equal(manifest.expo.android.versionCode,50003);
 
 assert.match(home,/title="資產管家"/,'V4.0.65 home presentation must be preserved');
 assert.match(home,/DashboardAssetOverview/);
@@ -29,4 +29,4 @@ assert.match(persistence,/persistedVersions/,'market persistence must persist on
 assert.match(persistence,/writes\.withLock/,'market persistence must remain single-flight');
 assert.match(db,/loadMarketCoreSnapshots\(\)/,'cold start must support snapshot-only hydration');
 
-console.log('TF ASSET V5.0.2 V4.0.65 UI LINEAGE: PASS');
+console.log('TF ASSET V5.0.3 V4.0.65 UI LINEAGE: PASS');

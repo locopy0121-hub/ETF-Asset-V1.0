@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -352,7 +352,9 @@
     "test:v4_0_62": "npm run test:v4_0_61 && node scripts/v4_0_62-priority-runtime.test.cjs && tsx scripts/v4_0_62-wall-agenda.test.ts && node scripts/v4_0_62-agenda-runtime.test.cjs && bash scripts/test-native-subscription-isolation.sh",
     "test:v4_0_65": "npm run test:v4_0_64 && node scripts/v4_0_65-monitor-columns.test.cjs && node scripts/v4_0_65-monitor-runtime.test.cjs && bash scripts/test-native-monitor-columns.sh",
     "test:v5_0_2-ui": "node scripts/v5_0_2-ui-lineage.test.cjs",
-    "test:v5_0_2": "npm run test:v4_0_65 && npm run test:v5_0_2-ui"
+    "test:v5_0_2": "npm run test:v4_0_65 && npm run test:v5_0_2-ui",
+    "test:v5_0_3-backup": "tsx scripts/v5_0_3-backup-storage.test.ts",
+    "test:v5_0_3": "npm run test:v5_0_2 && npm run test:v5_0_3-backup"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

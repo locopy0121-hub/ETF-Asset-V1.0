@@ -12,6 +12,6 @@ const ci=fs.readFileSync('.github/workflows/ci.yml','utf8');
 const pkg=require('../package.json');
 assert.match(pkg.scripts['test:v5_0_2'],/npm run test:v4_0_65/);
 assert.match(ci,/npm run test:v5_0_2/);
-assert.equal(pkg.version,'5.0.2');
-assert.equal(require('../app.json').expo.android.versionCode,50002);
+assert.equal(pkg.version,'5.0.3');
+assert.equal(require('../app.json').expo.android.versionCode,50003);
 console.log('V4.0.58 close reconciliation / persistence / accepted surface ACK / release wiring PASS');

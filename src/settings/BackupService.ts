@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {loadBackupHistory,saveBackupHistory} from './backupHistoryStorage';
 import {
-  buildBackupDocument,parseBackupDocument,validBackupPayload,
+  buildBackupDocument,parseBackupDocument,
   TF_BACKUPS_KEY,TF_LAST_EXTERNAL_BACKUP_KEY,
   type BackupHistoryEntry,type InspectedBackup,
 } from './backupDocumentFormat';
@@ -13,9 +14,7 @@ const BACKUPS_KEY=TF_BACKUPS_KEY;
 const LAST_EXTERNAL_BACKUP_KEY=TF_LAST_EXTERNAL_BACKUP_KEY;
 const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='5.0.2';
-
-const validPayload=validBackupPayload;
+const APP_VERSION='5.0.3';
 
 function sanitizeRestoredPayload(payload:Record<string,string>){
   const next={...payload};
@@ -44,21 +43,12 @@ async function collectPayload(){
 }
 
 async function readBackups():Promise<BackupRecord[]>{
-  try{
-    const raw=await AsyncStorage.getItem(BACKUPS_KEY);
-    if(!raw)return [];
-    const parsed=JSON.parse(raw) as unknown;
-    if(!Array.isArray(parsed))return [];
-    return parsed.filter((item):item is BackupRecord=>{
-      if(!item||typeof item!=='object')return false;
-      const row=item as Partial<BackupRecord>;
-      return typeof row.id==='string'&&typeof row.createdAt==='string'&&validPayload(row.payload);
-    });
-  }catch{return [];}
+  // Surface unreadable history instead of treating it as empty and overwriting it.
+  return loadBackupHistory(AsyncStorage);
 }
 
 async function writeBackups(items:readonly BackupRecord[]){
-  await AsyncStorage.setItem(BACKUPS_KEY,JSON.stringify(items.slice(0,10)));
+  await saveBackupHistory(AsyncStorage,items);
 }
 
 export async function listLocalBackups(){
