@@ -25,5 +25,7 @@ assert.match(stream,/onProviderDegraded\(event\.health\)/,'provider failure must
 assert.match(presentation,/now-at>30_000L/,'native surfaces must label a quiet last trade as delayed');
 assert.match(presentation,/updatedAt[\s\S]*30_000L/,'native floating surfaces must redraw once at the source freshness deadline');
 assert.ok((/^4\.0\.\d+$/.test(pkg.version)&&Number(pkg.version.split('.')[2])>=10)||pkg.version==='5.0.2');
-assert.equal(appIdentity.expo.android.versionCode,40000+Number(pkg.version.split('.')[2]));
+const versionParts=pkg.version.split('.').map(Number);
+const major=versionParts[0]??0,minor=versionParts[1]??0,patch=versionParts[2]??0;
+assert.equal(appIdentity.expo.android.versionCode,major*10000+minor*100+patch);
 console.log('V4.0.10 global event updates contract PASS');
