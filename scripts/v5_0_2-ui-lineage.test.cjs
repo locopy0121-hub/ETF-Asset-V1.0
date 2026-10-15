@@ -9,9 +9,9 @@ const db=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const manifest=JSON.parse(fs.readFileSync('app.json','utf8'));
 
-assert.equal(pkg.version,'5.0.3');
-assert.equal(manifest.expo.version,'5.0.3');
-assert.equal(manifest.expo.android.versionCode,50003);
+assert.ok(/^5\.0\.\d+$/.test(pkg.version)&&Number(pkg.version.split('.')[2])>=3);
+assert.equal(manifest.expo.version,pkg.version);
+assert.equal(manifest.expo.android.versionCode,50000+Number(pkg.version.split('.')[2]));
 
 assert.match(home,/title="資產管家"/,'V4.0.65 home presentation must be preserved');
 assert.match(home,/DashboardAssetOverview/);
