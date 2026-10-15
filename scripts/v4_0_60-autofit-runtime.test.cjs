@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
-let states=[],index=0,contextValue;
+let states=[],index=0,contextValue;let pixelRatio=1;
 const react={useRef:initial=>{const i=index++;if(!(i in states))states[i]={current:initial};return states[i]},createContext:()=>({Provider:'Provider'}),useState:initial=>{const i=index++;if(!(i in states))states[i]=typeof initial==='function'?initial():initial;return [states[i],next=>states[i]=typeof next==='function'?next(states[i]):next]},useEffect:()=>{},useMemo:fn=>fn(),useContext:()=>contextValue};
 function jsx(type,props){if(type==='Provider')contextValue=props.value;return typeof type==='function'?type(props):{type,props};}
 const cache=new Map();
 function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file);const m={exports:{}};
  const req=id=>{
   if(id==='react')return react;if(id==='react/jsx-runtime')return {jsx,jsxs:jsx};
-  if(id==='react-native')return {Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s,flatten:s=>Array.isArray(s)?Object.assign({},...s):s}};
+  if(id==='react-native')return {PixelRatio:{get:()=>pixelRatio},Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s,flatten:s=>Array.isArray(s)?Object.assign({},...s):s}};
   if(id.includes('ColorPalettePicker'))return {ColorPalettePicker:props=>({type:'Palette',props})};
   if(id==='@react-native-async-storage/async-storage')return {__esModule:true,default:{getItem:async()=>null,setItem:async()=>{}}};
   if(id.startsWith('.')){const p=path.resolve(path.dirname(file),id);for(const ext of ['.ts','.tsx'])if(fs.existsSync(p+ext))return load(p+ext);}
@@ -42,3 +42,7 @@ assert.equal(flat(price.props.style).paddingTop,7);assert.equal(flat(price.props
 price.props.onLayout({nativeEvent:{layout:{width:100,height:32}}});measure.props.onTextLayout({nativeEvent:{lines:[{width:50,height:28.8}]}});
 miniUi=miniRender();price=nodes(miniUi).find(x=>x.type==='Text'&&x.props.onLayout&&text(x).includes('113.50'));assert.equal(flat(price.props.style).fontSize,16.6,'actual Mini preview subtracts gap + both paddings inside 32px row');
 console.log('V4.0.60 actual Mini nonzero padding/gap reserved-height regression PASS');
+
+pixelRatio=3;states=[];miniUi=miniRender();const canvas=nodes(miniUi).find(x=>x.type==='View'&&x.props.style?.width===mini.miniLayout.width&&x.props.style?.transform);assert.ok(canvas);assert.equal(canvas.props.style.transform[0].scale,1/3,'physical native width must not expand with screen density');
+price=nodes(miniUi).find(x=>x.type==='Text'&&x.props.onLayout&&text(x).includes('113.50'));measure=nodes(miniUi).find(x=>x.type==='Text'&&x.props.onTextLayout&&text(x).includes('113.50'));assert.equal(measure.props.style.fontSize,72,'virtual canvas measures 24sp × density3');price.props.onLayout({nativeEvent:{layout:{width:80,height:32}}});measure.props.onTextLayout({nativeEvent:{lines:[{width:300,height:86.4}]}});miniUi=miniRender();price=nodes(miniUi).find(x=>x.type==='Text'&&x.props.onLayout&&text(x).includes('113.50'));assert.equal(flat(price.props.style).fontSize/3,8,'preview and Android retain same minimum sp at density3');
+console.log('V4.0.60 density3 physical window / row height / sp preview conversion regression PASS');

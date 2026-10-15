@@ -18,7 +18,6 @@ class TfAssetMonitorAutoFitLayout {
   if(!options.enabled||texts.isEmpty())return
   val current=texts.filter{it.first.parent!=null&&it.first.layoutParams!=null}
   if(current.isEmpty())return
-  val density=root.resources.displayMetrics.density
   val counts=HashMap<android.view.ViewGroup,Int>()
   fun reserve(view:TextView):Double {
    var parent=view.parent;var reserved=0.0
@@ -35,7 +34,7 @@ class TfAssetMonitorAutoFitLayout {
    val metric=view.paint.fontMetrics
    val natural=maxOf(metric.bottom-metric.top,view.textSize*ratio)
    val minimum=natural*options.minFontSize/options.maxFontSize+view.compoundPaddingTop+view.compoundPaddingBottom
-   view.layoutParams=view.layoutParams.apply{height=ceil(maxOf(options.rowHeight*density-reserve(view),minimum)).toInt()}
+   view.layoutParams=view.layoutParams.apply{height=ceil(maxOf(options.rowHeight-reserve(view),minimum)).toInt()}
    view.minimumHeight=0;view.maxLines=1;view.ellipsize=TextUtils.TruncateAt.END
   }
   val callback=object:ViewTreeObserver.OnPreDrawListener {

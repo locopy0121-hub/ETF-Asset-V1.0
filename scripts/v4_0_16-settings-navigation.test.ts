@@ -23,7 +23,7 @@ const protectedSubcomponents=[
   ['src/components/MarketComparisonPanel.tsx','c0c1d0b49c9726c35d50fa7a3e723de9a10ace1b'],
   // V4.0.60: user explicitly approves Monitor font auto-fit; other Settings content remains protected.
   // Only this Monitor child baseline changes; Settings shell and all other children remain locked.
-  ['src/components/monitor/MonitorControlPanel.tsx','111506f78b434a1ecb958f4f006fdd8ed1524d08'],
+  ['src/components/monitor/MonitorControlPanel.tsx','64470159b26900956180782e1de15505e9002a99'],
   ['src/components/widget/WidgetControlPanel.tsx','b0feb6515a283b5d471bdc3881345ef710fce2e4'],
 ] as const;
 for(const [file,sha] of protectedSubcomponents)assert.equal(blobSha(readFileSync(file,'utf8')),sha,'protected settings child drifted: '+file);

@@ -3,7 +3,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import org.json.JSONObject
 fun main(){
- val fit=TfAssetMonitorAutoFitLayout();val root=LinearLayout();val row=LinearLayout().apply{parent=root;orientation=LinearLayout.HORIZONTAL};val nested=LinearLayout().apply{parent=row}
+ val fit=TfAssetMonitorAutoFitLayout();val root=LinearLayout().apply{resources.displayMetrics.density=3f};val row=LinearLayout().apply{parent=root;orientation=LinearLayout.HORIZONTAL};val nested=LinearLayout().apply{parent=row}
  val a=TextView().apply{parent=row;width=100;paint.measuredAtMax=200f};val b=TextView().apply{parent=nested;width=120;paint.measuredAtMax=120f};val hidden=TextView()
  val config=JSONObject("""{"autoFit":{"enabled":true,"minFontSize":8,"maxFontSize":24,"rowHeight":32}}""")
  fit.begin(config);fit.register(a,1.2f);fit.register(b,1.2f);fit.register(hidden,1.2f);fit.schedule(root)

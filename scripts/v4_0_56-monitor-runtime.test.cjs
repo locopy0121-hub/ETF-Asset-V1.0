@@ -6,7 +6,7 @@ const cache=new Map();
 function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file);const m={exports:{}};
  const req=id=>{
   if(id==='react')return react;if(id==='react/jsx-runtime')return {jsx,jsxs:jsx};
-  if(id==='react-native')return {Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s,flatten:s=>Array.isArray(s)?Object.assign({},...s):s}};
+  if(id==='react-native')return {PixelRatio:{get:()=>1},Pressable:'Pressable',Text:'Text',TextInput:'TextInput',View:'View',StyleSheet:{create:s=>s,flatten:s=>Array.isArray(s)?Object.assign({},...s):s}};
   if(id.includes('ColorPalettePicker'))return {ColorPalettePicker:()=>null};
   if(id==='@react-native-async-storage/async-storage')return {__esModule:true,default:{getItem:async()=>null,setItem:async()=>{}}};
   if(id.startsWith('.')){const p=path.resolve(path.dirname(file),id);for(const ext of ['.ts','.tsx'])if(fs.existsSync(p+ext))return load(p+ext);}

@@ -696,3 +696,4 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Count spacing once: Mini gap/padding belongs inside each text budget; wall detail wrapper padding is shared across its text rows. Minimum-font overflow ellipsizes; enlarge vertical space only when needed to avoid minimum-font clipping.
 - Native fitting uses one pre-draw callback per fresh surface, cleared on rebuild/destroy. Detached/hidden clock views have no layout budget and must be skipped. No timers or new market work.
 - Reject stale preview measurements by layout epoch and text identity. OFF leaves stored manual font settings intact; Normal/Mini keep separate options and old configurations default OFF.
+- Android overlay layout dimensions are physical px, not dp. Do not multiply configured row height by density; scale the preview canvas and its measured sp metrics together so Mini does not lose its data area.

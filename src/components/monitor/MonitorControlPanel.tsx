@@ -4,7 +4,7 @@ import {MONITOR_WEIGHTS,monitorTypography,monitorBoundColor,monitorSourceClock} 
 import {DEFAULT_MONITOR_CLOCK,type MonitorFormat,type MonitorFormatted,type MonitorVisual} from '../../monitor/monitorDomain';
 import {MONITOR_MODELS,applyMonitorModel,monitorMarketFieldText} from '../../monitor/monitorModels';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PixelRatio, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,
   type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger,
@@ -281,9 +281,19 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
   </View>;
 }
 
-function MonitorPreview({value,snapshot,rows,wallRows}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][]}){
+function MonitorPreview(props:Parameters<typeof MonitorPreviewContent>[0]){
+  const [height,setHeight]=useState(0),[width,setWidth]=useState(0);
+  const enabled=normalizeMonitorAutoFit(activeMonitorStyle(props.value).autoFit).enabled;
+  if(!enabled)return <MonitorPreviewContent {...props}/>;
+  const density=PixelRatio.get(),targetWidth=activeMonitorLayout(props.value).width;
+  const scale=Math.min(1/density,width>0?width/targetWidth:1/density);
+  return <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{alignSelf:'stretch',...(height>0?{height:height*scale}:{})}}><View onLayout={e=>setHeight(e.nativeEvent.layout.height)} style={{width:targetWidth,transform:[{scale}],transformOrigin:'top left'}}><MonitorPreviewContent {...props} metricScale={density}/></View></View>;
+}
+function MonitorPreviewContent({value,snapshot,rows,wallRows,metricScale=1}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][];metricScale?:number}){
   const rawStyle=activeMonitorStyle(value);
-  const fit=useMonitorFit(normalizeMonitorAutoFit(rawStyle.autoFit),JSON.stringify([value.mode,value.template,value.normalLayout,value.miniLayout,rawStyle,value.normalWallLayout]));
+  const options=normalizeMonitorAutoFit(rawStyle.autoFit);
+  // Native window/layout dimensions are physical px; fit this virtual canvas in the same units.
+  const fit=useMonitorFit({...options,minFontSize:options.minFontSize*metricScale,maxFontSize:options.maxFontSize*metricScale},JSON.stringify([value.mode,value.template,value.normalLayout,value.miniLayout,rawStyle,value.normalWallLayout,metricScale]));
   const aggregate=snapshot?.asset.totalReturn??null;
   const style={...rawStyle,...previewColors(rawStyle,aggregate,rawStyle)};
   const clock=value.mode==='mini'?(value.miniClock??DEFAULT_MONITOR_CLOCK):(value.normalClock??DEFAULT_MONITOR_CLOCK);
