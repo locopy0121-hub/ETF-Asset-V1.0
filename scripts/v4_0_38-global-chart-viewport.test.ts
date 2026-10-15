@@ -31,7 +31,7 @@ for(const screen of [pnl,holdings]){
  assert.match(screen,/summarizePeriods\(chronological,period\)/,'finance source unchanged');
 }
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.ok(Number(pkg.version.split('.')[2])>=38,'later releases must retain V4.0.38 chart behavior');
+const [vMajor38=0,vMinor38=0,vPatch38=0]=pkg.version.split('.').map(Number);assert.ok(vMajor38>4||(vMajor38===4&&(vMinor38>0||(vMinor38===0&&vPatch38>=38))),'later releases must retain V4.0.38 chart behavior');
 assert.equal(app.version,pkg.version);
 assert.ok(app.android.versionCode>=40038);
 assert.equal(Number(app.ios.buildNumber),app.android.versionCode);
