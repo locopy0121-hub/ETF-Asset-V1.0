@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "4.0.64",
+  "version": "4.0.65",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -349,7 +349,8 @@
     "test:v4_0_61": "npm run test:v4_0_60 && tsx scripts/v4_0_61-startup-watchlist.test.ts && node scripts/v4_0_61-runtime.test.cjs && bash scripts/test-native-watchlist.sh",
     "test:v4_0_64": "npm run test:v4_0_63 && node scripts/v4_0_64-news-content.test.cjs && node scripts/v4_0_64-news-reader.test.cjs && node --import tsx scripts/v4_0_64-watchlist.test.ts && node scripts/v4_0_64-watchlist-runtime.test.cjs",
     "test:v4_0_63": "npm run test:v4_0_62 && node --import tsx scripts/v4_0_63-announcements.test.ts && node scripts/v4_0_63-agenda-runtime.test.cjs && node --import tsx scripts/v4_0_63-layout.test.ts",
-    "test:v4_0_62": "npm run test:v4_0_61 && node scripts/v4_0_62-priority-runtime.test.cjs && tsx scripts/v4_0_62-wall-agenda.test.ts && node scripts/v4_0_62-agenda-runtime.test.cjs && bash scripts/test-native-subscription-isolation.sh"
+    "test:v4_0_62": "npm run test:v4_0_61 && node scripts/v4_0_62-priority-runtime.test.cjs && tsx scripts/v4_0_62-wall-agenda.test.ts && node scripts/v4_0_62-agenda-runtime.test.cjs && bash scripts/test-native-subscription-isolation.sh",
+    "test:v4_0_65": "npm run test:v4_0_64 && node scripts/v4_0_65-monitor-columns.test.cjs && node scripts/v4_0_65-monitor-runtime.test.cjs && bash scripts/test-native-monitor-columns.sh"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

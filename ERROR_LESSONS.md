@@ -1,3 +1,9 @@
+# V4.0.65 — 並排欄數擴展單欄卡片，不能均分壓縮
+- 使用者的並排欄數是單欄卡片尺寸的倍數；不能把固定視窗平均分欄，也不能依欄數縮小主價格字體或變更卡片內排列。
+- Normal market-wall 保留 normalLayout.width 作為單欄基準；原生建立、設定更新、Normal/Mini 切換都採同一幾何計算。視窗受螢幕寬度限制，卡片仍固定寬度並可橫向捲動，最後一列不放大。
+- 欄數可直接輸入正整數，不能在設定正規化或 Native 靜默夾回 1~4。避免空值／非整數／溢位；極大欄數只建立實際標的，不配置數十億個空白 View。
+- 檢查實際編輯輸入、保存正規化、預覽卡片及編譯 Kotlin 幾何；原生視窗拖曳、橫縱向手勢和手機邊界仍需實機驗收。此授權只修改 Monitor 子面板相關內容，設定主頁與其他子面板保持保護。
+
 # V4.0.64 — reversible web cleanup and one watchlist across views
 - Ad cleanup must be narrowly identified and reversible. Preserve article-sized wrappers, visible text, tables, nested list lead text and safe responsive images; test actual injected DOM code, not just selector strings. Missing extraction keeps original page and reports failure.
 - Keep JS injection as source literals: Hermes function.toString is not a source serializer. Do not disable all page JS, wipe the body, expose private App data, or claim an untested site's overlay is the proven sole cause.

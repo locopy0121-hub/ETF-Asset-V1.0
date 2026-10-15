@@ -22,9 +22,10 @@ const protectedSubcomponents=[
   ['src/components/EtfHoldingsApiSettings.tsx','e5734da68b3cf49381a35aba82f08a3557761789'],
   ['src/components/DiagnosticLogPanel.tsx','db3718d192b7c610cf458669023ec298c84e5f60'],
   ['src/components/MarketComparisonPanel.tsx','c0c1d0b49c9726c35d50fa7a3e723de9a10ace1b'],
-  // V4.0.61: authorized Monitor source choice; exact wrapper import is normalized above. Other Settings content remains protected.
+  // V4.0.65: user explicitly authorized fixed-size wall columns and direct count input in this Monitor child.
+  // All other Settings shell/child hashes remain unchanged.
   // Only this Monitor child baseline changes; Settings shell and all other children remain locked.
-  ['src/components/monitor/MonitorControlPanel.tsx','195f782a88cd157846a842a1a865daef0f53124e'],
+  ['src/components/monitor/MonitorControlPanel.tsx','2b7fb3f4c638f41387fd0eb375937a5bd347fd73'],
   ['src/components/widget/WidgetControlPanel.tsx','b0feb6515a283b5d471bdc3881345ef710fce2e4'],
 ] as const;
 for(const [file,sha] of protectedSubcomponents)assert.equal(blobSha(readFileSync(file,'utf8')),sha,'protected settings child drifted: '+file);

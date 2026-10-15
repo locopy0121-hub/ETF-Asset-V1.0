@@ -1,10 +1,11 @@
+import {MAX_MONITOR_COLUMNS,parseMonitorColumns,monitorWallGeometry} from '../../monitor/monitorWallGeometry';
 import {normalizeMonitorAutoFit} from '../../monitor/monitorAutoFit';
 import {MonitorFitText,useMonitorFit,type MonitorFitController} from './MonitorFitText';
 import {MONITOR_WEIGHTS,monitorTypography,monitorBoundColor,monitorSourceClock} from '../../monitor/monitorFormatting';
 import {DEFAULT_MONITOR_CLOCK,type MonitorFormat,type MonitorFormatted,type MonitorVisual} from '../../monitor/monitorDomain';
 import {MONITOR_MODELS,applyMonitorModel,monitorMarketFieldText} from '../../monitor/monitorModels';
-import { useState } from 'react';
-import { PixelRatio, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect,useState } from 'react';
+import { PixelRatio, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import {
   ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,
   type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger,
@@ -171,7 +172,7 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
       <Text style={styles.note}>框架只控制行情卡排列；卡片內 A/B 由下一區獨立編輯。</Text>
       <FormatEditor target={wall.style} onChange={format=>patchWall({...wall,style:{...wall.style,format}})}/>
       {(['backgroundColor','textColor','secondaryTextColor','borderColor'] as const).map(key=><ColorPalettePicker key={key} label={{backgroundColor:'卡片背景',textColor:'卡片文字',secondaryTextColor:'卡片說明',borderColor:'卡片邊框'}[key]} value={wall.style[key]} profitColorEnabled={bound(wall.style,key)} onProfitColorChange={enabled=>patchWall({...wall,style:{...wall.style,format:bind(wall.style,key,enabled)}})} onChange={color=>patchWall({...wall,style:{...wall.style,[key]:color}})}/>)}
-      <Step label="並排欄數" value={wallLayout.columns} min={1} max={4} step={1} suffix=" 欄" onChange={columns=>onChange(updateMonitorWallLayout(value,{columns}))}/>
+      <ColumnCountInput value={wallLayout.columns} onChange={columns=>onChange(updateMonitorWallLayout(value,{columns}))}/>
       <Step label="水平間距" value={wallLayout.columnGap} min={0} max={32} step={2} suffix=" px" onChange={columnGap=>onChange(updateMonitorWallLayout(value,{columnGap}))}/>
       <Step label="垂直間距" value={wallLayout.rowGap} min={0} max={32} step={2} suffix=" px" onChange={rowGap=>onChange(updateMonitorWallLayout(value,{rowGap}))}/>
     </Section>:null}
@@ -285,12 +286,16 @@ export function MonitorControlPanel({value,onChange,availableSymbols=[],previewS
 function MonitorPreview(props:Parameters<typeof MonitorPreviewContent>[0]){
   const [height,setHeight]=useState(0),[width,setWidth]=useState(0);
   const enabled=normalizeMonitorAutoFit(activeMonitorStyle(props.value).autoFit).enabled;
-  if(!enabled)return <MonitorPreviewContent {...props}/>;
-  const density=PixelRatio.get(),targetWidth=activeMonitorLayout(props.value).width;
-  const scale=Math.min(1/density,width>0?width/targetWidth:1/density);
-  return <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{alignSelf:'stretch',...(height>0?{height:height*scale}:{})}}><View onLayout={e=>setHeight(e.nativeEvent.layout.height)} style={{width:targetWidth,transform:[{scale}],transformOrigin:'top left'}}><MonitorPreviewContent {...props} metricScale={density}/></View></View>;
+  const screen=useWindowDimensions(),density=PixelRatio.get();
+  const baseWidth=activeMonitorLayout(props.value).width;
+  const wall=props.value.mode==='normal'&&props.value.template==='market-wall';
+  const desiredWidth=wall?monitorWallGeometry(baseWidth,props.value.normalStyle.padding,props.value.normalWallLayout.columns,props.value.normalWallLayout.columnGap,screen.width*density,props.rows.length).windowWidth:baseWidth;
+  if(!enabled)return <MonitorPreviewContent {...props} {...(wall?{viewportWidth:desiredWidth}:{})}/>;
+  const scale=Math.min(1/density,width>0?width/baseWidth:1/density);
+  const targetWidth=Math.min(desiredWidth,width>0?width/scale:desiredWidth);
+  return <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{alignSelf:'stretch',...(height>0?{height:height*scale}:{})}}><View onLayout={e=>setHeight(e.nativeEvent.layout.height)} style={{width:targetWidth,transform:[{scale}],transformOrigin:'top left'}}><MonitorPreviewContent {...props} metricScale={density} viewportWidth={targetWidth}/></View></View>;
 }
-function MonitorPreviewContent({value,snapshot,rows,wallRows,metricScale=1}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][];metricScale?:number}){
+function MonitorPreviewContent({value,snapshot,rows,wallRows,metricScale=1,viewportWidth}:{value:MonitorConfig;snapshot:SharedSnapshot|null;rows:SharedSnapshot['holdings'][number][];wallRows:SharedSnapshot['holdings'][number][][];metricScale?:number;viewportWidth?:number}){
   const rawStyle=activeMonitorStyle(value);
   const options=normalizeMonitorAutoFit(rawStyle.autoFit);
   // Native window/layout dimensions are physical px; fit this virtual canvas in the same units.
@@ -316,11 +321,13 @@ function MonitorPreviewContent({value,snapshot,rows,wallRows,metricScale=1}:{val
   if(value.template==='market-wall'){
     const wall=value.normalWall;
 
-    return <View onLayout={fit.rootLayout} style={[styles.preview,{backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:value.normalWallLayout.rowGap}]}>{time}
+    return <View testID="monitor-wall-viewport" onLayout={fit.rootLayout} style={[styles.preview,{width:viewportWidth??monitorWallGeometry(value.normalLayout.width,style.padding,value.normalWallLayout.columns,value.normalWallLayout.columnGap,Number.MAX_SAFE_INTEGER,rows.length).windowWidth,maxWidth:'100%',backgroundColor:style.backgroundColor,opacity:style.backgroundOpacity,borderRadius:style.cornerRadius,borderWidth:style.borderWidth,borderColor:style.borderColor,padding:style.padding,gap:value.normalWallLayout.rowGap}]}>{time}
+      <ScrollView horizontal nestedScrollEnabled testID="monitor-wall-horizontal"><View style={{width:monitorWallGeometry(value.normalLayout.width,style.padding,value.normalWallLayout.columns,value.normalWallLayout.columnGap,Number.MAX_SAFE_INTEGER,rows.length).contentWidth,gap:value.normalWallLayout.rowGap}}>
       {wallRows.map((row,rowIndex)=><View key={'wall-row-'+rowIndex} style={{flexDirection:'row',gap:value.normalWallLayout.columnGap}}>
         {row.map(holding=><MonitorWallPreviewCard key={holding.symbol} holding={holding} value={value} totalMarketValue={totalMarketValue} fit={fit}/>)}
       </View>)}
       {!rows.length?<Text style={styles.note}>尚無持股資料</Text>:null}
+      </View></ScrollView>
     </View>;
   }
   const holding=rows[0];
@@ -330,7 +337,7 @@ function MonitorPreviewContent({value,snapshot,rows,wallRows,metricScale=1}:{val
 }
 
 function MonitorWallPreviewCard({holding,value,totalMarketValue,fit}:{holding:SharedSnapshot['holdings'][number];value:MonitorConfig;totalMarketValue:number;fit:MonitorFitController}){
-  const base=value.normalWall,style=value.normalStyle,columns=value.normalWallLayout.columns;
+  const base=value.normalWall,style=value.normalStyle;
   const numeric=holding.changePercent;
   const resolved=<T extends MonitorFormatted>(target:T):T=>{const c=previewColors(target,numeric,style);return {...target,...c,...(c.color?{textColor:c.color}:{})};};
   const wall={...base,style:resolved(base.style),header:resolved(base.header)};
@@ -340,10 +347,10 @@ function MonitorWallPreviewCard({holding,value,totalMarketValue,fit}:{holding:Sh
   const detail=enabled.filter(field=>!['name','symbol','price','change','changePercent'].includes(field.field));
   const fieldStyle=(field:typeof enabled[number],base:number)=>({fontSize:base*style.fontScale*field.fontScale,fontWeight:'800' as const,color:field.useProfitColor?wallProfitTone(fieldNumeric(holding,field.field,totalMarketValue),wall.style):(field.textColor??wall.style.textColor),backgroundColor:field.backgroundColor??'transparent',textAlign:field.align,paddingVertical:field.paddingY,marginTop:field.lineGap??0,...previewFormat(field,{format:{...style.format,...wall.style.format,...(['name','symbol'].includes(field.field)?wall.header.format:{})}},base*style.fontScale*field.fontScale,fieldNumeric(holding,field.field,totalMarketValue),style)});
   const raw=(field:typeof enabled[number])=>['name','symbol'].includes(field.field)?holding[field.field as 'name'|'symbol']:monitorFieldText(holding,field.field as MonitorField,field.label,totalMarketValue).slice(field.label.length+1);
-  return <View style={{flex:1,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding,...previewColors(wall.style,holding.changePercent,style)}}>
+  return <View testID={'monitor-wall-card-'+holding.symbol} style={{width:Math.max(1,value.normalLayout.width-2*style.padding),flexShrink:0,backgroundColor:wall.style.backgroundColor,borderColor:wall.style.borderColor,borderWidth:wall.style.borderWidth,borderRadius:wall.style.cornerRadius,padding:wall.style.padding,...previewColors(wall.style,holding.changePercent,style)}}>
     {wall.header.visible&&header.length?<View style={{flexDirection:'row',alignItems:'center',backgroundColor:wall.header.backgroundColor,borderColor:wall.header.borderColor,borderWidth:wall.header.borderWidth,...previewColors(wall.header,holding.changePercent,style)}}>{header.map((field,index)=><MonitorFitText key={field.field} fit={fit} group={"header:"+holding.symbol} cellKey={field.field} reserveWidth={field.field==='symbol'} numberOfLines={1} style={[fieldStyle(field,(field.field==='name'?15:11)*wall.header.fontScale),{flex:field.field==='name'?1:undefined,color:field.textColor??wall.header.textColor,marginTop:field.lineGap??(index===0?0:2),...previewFormat(field,wall.header,(field.field==='name'?15:11)*wall.header.fontScale*style.fontScale*field.fontScale,fieldNumeric(holding,field.field,totalMarketValue),style)}]}>{raw(field)}</MonitorFitText>)}</View>:null}
-    {quote.length?<View style={{flexDirection:'row',alignItems:'flex-end',marginTop:wall.style.rowGap}}><MonitorFitText fit={fit} group={"quote:"+holding.symbol} cellKey={quote[0]!.field} numberOfLines={1} style={[fieldStyle(quote[0]!,columns>=3?18:columns===2?23:36),{flex:1}]}>{raw(quote[0]!)}</MonitorFitText><View>{quote.slice(1).map(field=><MonitorFitText key={field.field} fit={fit} group={"quote:"+holding.symbol} cellKey={field.field} numberOfLines={1} style={[fieldStyle(field,11),{marginTop:field.lineGap??wall.style.rowGap}]}>{raw(field)}</MonitorFitText>)}</View></View>:null}
-    {chunk(detail,columns===1?3:2).map((line,index)=><View key={index} style={{flexDirection:'row',marginTop:wall.style.rowGap}}>{line.map(field=><View key={field.field} style={{flex:1,backgroundColor:field.backgroundColor??'transparent',paddingTop:(field.lineGap??0)+field.paddingY,paddingBottom:field.paddingY,...previewColors(field,fieldNumeric(holding,field.field,totalMarketValue),style)}}><MonitorFitText fit={fit} group={"detail:"+holding.symbol+":"+index} reservedHeight={((field.lineGap??0)+2*field.paddingY)/2} cellKey={field.field} numberOfLines={1} style={{fontSize:10*style.fontScale,color:wall.style.secondaryTextColor,textAlign:field.align,...monitorTypography(wall.style,style,10*style.fontScale)}}>{field.label}</MonitorFitText><MonitorFitText fit={fit} group={"detail:"+holding.symbol+":"+index} reservedHeight={((field.lineGap??0)+2*field.paddingY)/2} cellKey={field.field} numberOfLines={1} style={[fieldStyle(field,12),{marginTop:0,paddingVertical:0}]}>{raw(field)}</MonitorFitText></View>)}</View>)}
+    {quote.length?<View style={{flexDirection:'row',alignItems:'flex-end',marginTop:wall.style.rowGap}}><MonitorFitText fit={fit} group={"quote:"+holding.symbol} cellKey={quote[0]!.field} numberOfLines={1} style={[fieldStyle(quote[0]!,36),{flex:1}]}>{raw(quote[0]!)}</MonitorFitText><View>{quote.slice(1).map(field=><MonitorFitText key={field.field} fit={fit} group={"quote:"+holding.symbol} cellKey={field.field} numberOfLines={1} style={[fieldStyle(field,11),{marginTop:field.lineGap??wall.style.rowGap}]}>{raw(field)}</MonitorFitText>)}</View></View>:null}
+    {chunk(detail,3).map((line,index)=><View key={index} style={{flexDirection:'row',marginTop:wall.style.rowGap}}>{line.map(field=><View key={field.field} style={{flex:1,backgroundColor:field.backgroundColor??'transparent',paddingTop:(field.lineGap??0)+field.paddingY,paddingBottom:field.paddingY,...previewColors(field,fieldNumeric(holding,field.field,totalMarketValue),style)}}><MonitorFitText fit={fit} group={"detail:"+holding.symbol+":"+index} reservedHeight={((field.lineGap??0)+2*field.paddingY)/2} cellKey={field.field} numberOfLines={1} style={{fontSize:10*style.fontScale,color:wall.style.secondaryTextColor,textAlign:field.align,...monitorTypography(wall.style,style,10*style.fontScale)}}>{field.label}</MonitorFitText><MonitorFitText fit={fit} group={"detail:"+holding.symbol+":"+index} reservedHeight={((field.lineGap??0)+2*field.paddingY)/2} cellKey={field.field} numberOfLines={1} style={[fieldStyle(field,12),{marginTop:0,paddingVertical:0}]}>{raw(field)}</MonitorFitText></View>)}</View>)}
   </View>;
 }
 
@@ -373,6 +380,14 @@ function Visibility({active,onPress}:{active:boolean;onPress:()=>void}){return <
 function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;}
 function Choice<T extends string>({choices,value,label,onChange}:{choices:readonly T[];value:T|undefined;label:(x:T)=>string;onChange:(x:T)=>void}){return <View style={styles.row}>{choices.map(x=><Pressable key={x} onPress={()=>onChange(x)} style={[styles.choice,value===x&&styles.choiceActive]}><Text style={[styles.choiceText,value===x&&styles.choiceTextActive]}>{label(x)}</Text></Pressable>)}</View>;}
 function Mini({label,onPress}:{label:string;onPress:()=>void}){return <Pressable onPress={onPress} style={styles.mini}><Text style={styles.miniText}>{label}</Text></Pressable>;}
+function ColumnCountInput({value,onChange}:{value:number;onChange:(n:number)=>void}){
+  const [draft,setDraft]=useState(String(value));
+  const [error,setError]=useState(false);
+  useEffect(()=>{setDraft(String(value));setError(false);},[value]);
+  const commit=()=>{const n=parseMonitorColumns(draft);if(n==null){setError(true);return;}setError(false);onChange(n);};
+  const step=(delta:number)=>{const n=Math.max(1,Math.min(MAX_MONITOR_COLUMNS,(parseMonitorColumns(draft)??value)+delta));setDraft(String(n));setError(false);onChange(n);};
+  return <View><View style={styles.step}><Text style={styles.stepLabel}>並排欄數</Text><Pressable accessibilityLabel="減少並排欄數" onPress={()=>step(-1)} style={styles.mini}><Text>−</Text></Pressable><TextInput accessibilityLabel="自訂並排欄數" value={draft} onChangeText={s=>{setDraft(s);setError(false);}} keyboardType="number-pad" returnKeyType="done" onSubmitEditing={commit} onEndEditing={commit} style={[styles.input,{width:88,textAlign:'center'}]}/><Pressable accessibilityLabel="增加並排欄數" onPress={()=>step(1)} style={styles.mini}><Text>＋</Text></Pressable></View><Text style={styles.note}>{error?'請輸入有效的正整數欄數。':'輸入正整數後完成；每張卡片維持單欄大小，超出螢幕可橫向捲動。'}</Text></View>;
+}
 function Step({label,value,min,max,step,suffix,onChange}:{label:string;value:number;min:number;max:number;step:number;suffix:string;onChange:(x:number)=>void}){return <View style={styles.step}><Text style={styles.stepLabel}>{label}</Text><Mini label="−" onPress={()=>onChange(Math.max(min,value-step))}/><Text style={styles.stepValue}>{value}{suffix}</Text><Mini label="＋" onPress={()=>onChange(Math.min(max,value+step))}/></View>;}
 function Toggle({label,value,onChange}:{label:string;value:boolean;onChange:(x:boolean)=>void}){return <Pressable onPress={()=>onChange(!value)} style={styles.toggle}><Text style={styles.stepLabel}>{label}</Text><Text style={[styles.state,value&&styles.stateOn]}>{value?'開':'關'}</Text></Pressable>;}
 function Effect({label,value,onChange}:{label:string;value:MonitorEffect;onChange:(x:MonitorEffect)=>void}){return <View><Text style={styles.label}>{label}</Text><Choice choices={effects} value={value} label={x=>effectLabels[x]} onChange={onChange}/></View>;}

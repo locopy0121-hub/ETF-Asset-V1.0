@@ -1,3 +1,4 @@
+import {normalizeMonitorColumns} from './monitorWallGeometry';
 import {normalizeMonitorAutoFit} from './monitorAutoFit';
 import {normalizeMonitorFormat} from './monitorFormatting';
 import {type MonitorClock,type MonitorVisual} from './monitorDomain';
@@ -138,7 +139,7 @@ const normMiniStatusItems=(items:readonly Partial<MiniStatusItemConfig>[]|undefi
   });
 };
 const normWallLayout=(layout:Partial<MonitorWallLayout>|undefined):MonitorWallLayout=>({
-  columns:Math.round(clamp(layout?.columns,1,4,DEFAULT_MONITOR_WALL_LAYOUT.columns)),
+  columns:normalizeMonitorColumns(layout?.columns,DEFAULT_MONITOR_WALL_LAYOUT.columns),
   columnGap:clamp(layout?.columnGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.columnGap),
   rowGap:clamp(layout?.rowGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.rowGap),
 });

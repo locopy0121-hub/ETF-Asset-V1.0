@@ -2,6 +2,7 @@ package com.tfasset.app
 
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
@@ -18,6 +19,7 @@ import android.view.animation.Animation
 import android.view.animation.TranslateAnimation
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams as LinearLayoutParams
+import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONArray
@@ -53,12 +55,19 @@ class TfAssetOverlayService:Service(){
   private var params:WindowManager.LayoutParams?=null
   private var mode="normal"
   private var lastLayoutSignature:String?=null
+  private var wallHorizontal:HorizontalScrollView?=null
+  private var wallScrollX=0
+  private var wallScrollY=0
   private var animationsEnabled=true
   private val previousEffectValues=mutableMapOf<String,Double?>()
   private var downX=0f;private var downY=0f;private var startX=0;private var startY=0;private var lastTap=0L
 
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
   override fun onBind(intent:Intent?):IBinder?=null
+  override fun onConfigurationChanged(newConfig:Configuration){
+    super.onConfigurationChanged(newConfig)
+    if(root!=null){applyConfiguredLayoutIfChanged(readConfig());render()}
+  }
   override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
     val cfg=readConfig()
     if(intent?.action==ACTION_BACKGROUND_REFRESH&&!backgroundMonitorRefreshAllowed(root!=null&&running,prefs().getBoolean("monitor_user_closed",false))){
@@ -102,6 +111,20 @@ class TfAssetOverlayService:Service(){
   private fun effectiveMode(cfg:JSONObject)=prefs().getString("monitor_runtime_mode_override",null)?.let{if(it=="mini")"mini" else "normal"}?:cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
   private fun activeLayout(cfg:JSONObject)=cfg.optJSONObject(if(mode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
 
+  private fun wallGeometry(cfg:JSONObject,rowCount:Int=0):TfAssetMonitorWallGeometry.Geometry {
+    val layout=cfg.optJSONObject("normalLayout")?:JSONObject()
+    val style=cfg.optJSONObject("normalStyle")?:JSONObject()
+    val wall=cfg.optJSONObject("normalWallLayout")?:JSONObject()
+    return TfAssetMonitorWallGeometry.calculate(layout.optInt("width",320),style.optInt("padding",12).coerceIn(0,32),TfAssetMonitorWallGeometry.normalizeColumns(wall.optDouble("columns",2.0)),wall.optInt("columnGap",8).coerceIn(0,32),resources.displayMetrics.widthPixels,rowCount)
+  }
+  private fun configuredWidth(cfg:JSONObject,configMode:String):Int =
+    if(configMode=="normal"&&cfg.optString("template")=="market-wall")wallGeometry(cfg).windowWidth
+    else (cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()).optInt("width",if(configMode=="mini")360 else 320)
+  private fun layoutSignatureFor(cfg:JSONObject,configMode:String):String {
+    val layout=cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
+    return configMode+"|"+layout.toString()+"|"+configuredWidth(cfg,configMode)
+  }
+
   private fun ensureView(){
     if(root!=null)return
     val cfg=readConfig()
@@ -111,7 +134,7 @@ class TfAssetOverlayService:Service(){
     val x=if(prefs().contains(pxKey))prefs().getInt(pxKey,layout.optInt("x",16)) else layout.optInt("x",16)
     val y=if(prefs().contains(pyKey))prefs().getInt(pyKey,layout.optInt("y",120)) else layout.optInt("y",120)
     params=WindowManager.LayoutParams(
-      layout.optInt("width",if(mode=="mini")360 else 320),
+      configuredWidth(cfg,mode),
       layout.optInt("height",if(mode=="mini")330 else 420),
       WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -123,21 +146,20 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun layoutSignature(cfg:JSONObject):String{
-    val configMode=effectiveMode(cfg)
-    val layout=cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
-    return configMode+"|"+layout.toString()
+    return layoutSignatureFor(cfg,effectiveMode(cfg))
   }
 
   private fun applyConfiguredLayoutIfChanged(cfg:JSONObject){
     val nextMode=effectiveMode(cfg)
     val nextLayout=cfg.optJSONObject(if(nextMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
-    val signature=nextMode+"|"+nextLayout.toString()
+    val signature=layoutSignatureFor(cfg,nextMode)
     if(signature==lastLayoutSignature)return
+    val retainPosition=lastLayoutSignature?.startsWith(nextMode+"|"+nextLayout.toString()+"|")==true
     mode=nextMode
     val p=params?:return
-    p.width=nextLayout.optInt("width",if(mode=="mini")360 else 320)
+    p.width=configuredWidth(cfg,mode)
     p.height=nextLayout.optInt("height",if(mode=="mini")330 else 420)
-    p.x=nextLayout.optInt("x",16);p.y=nextLayout.optInt("y",120)
+    if(!retainPosition){p.x=nextLayout.optInt("x",16);p.y=nextLayout.optInt("y",120)}
     prefs().edit().putInt("monitor_"+mode+"_x",p.x).putInt("monitor_"+mode+"_y",p.y).apply()
     root?.let{wm.updateViewLayout(it,p)}
     lastLayoutSignature=signature
@@ -159,13 +181,13 @@ class TfAssetOverlayService:Service(){
     prefs().edit().putString("monitor_runtime_mode_override",mode).apply()
     val layout=activeLayout(cfg)
     val p=params?:return
-    p.width=layout.optInt("width",if(mode=="mini")360 else 320)
+    p.width=configuredWidth(cfg,mode)
     p.height=layout.optInt("height",if(mode=="mini")330 else 420)
     val pxKey="monitor_"+mode+"_x";val pyKey="monitor_"+mode+"_y"
     p.x=if(prefs().contains(pxKey))prefs().getInt(pxKey,layout.optInt("x",16)) else layout.optInt("x",16)
     p.y=if(prefs().contains(pyKey))prefs().getInt(pyKey,layout.optInt("y",120)) else layout.optInt("y",120)
     root?.let{wm.updateViewLayout(it,p)}
-    lastLayoutSignature=mode+"|"+layout.toString()
+    lastLayoutSignature=layoutSignatureFor(cfg,mode)
     render()
   }
   private fun savePosition(x:Int,y:Int){
@@ -244,6 +266,8 @@ class TfAssetOverlayService:Service(){
     val resolvedStyle=JSONObject(style.toString())
     listOf("backgroundColor","textColor","secondaryTextColor","borderColor").forEach{key->resolvedStyle.put(key,TfAssetMonitorFormatting.resolved(style,key,style.optString(key,"#94A3B8"),aggregate,style))}
     fontFit.begin(style)
+    wallScrollX=wallHorizontal?.scrollX?:wallScrollX
+    wallHorizontal=null
     r.removeAllViews()
     val padding=style.optInt("padding",if(mode=="mini")6 else 12)
     r.setPadding(padding,padding,padding,padding)
@@ -364,7 +388,8 @@ class TfAssetOverlayService:Service(){
         val wallHeader=wall.optJSONObject("header")?:JSONObject()
         val wallFields=wall.optJSONArray("fields")?:JSONArray()
         val wallLayout=cfg.optJSONObject("normalWallLayout")?:JSONObject()
-        val wallColumns=wallLayout.optInt("columns",2).coerceIn(1,4)
+        val wallColumns=TfAssetMonitorWallGeometry.normalizeColumns(wallLayout.optDouble("columns",2.0))
+        val geometry=wallGeometry(cfg,rows.size)
         val wallColumnGap=wallLayout.optInt("columnGap",8).coerceIn(0,32)
         val wallRowGap=wallLayout.optInt("rowGap",8).coerceIn(0,32)
         val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
@@ -461,7 +486,7 @@ class TfAssetOverlayService:Service(){
               primaryCustomText!=null->primaryCustomText
               else->wallText
             }
-            val primaryBase=if(wallColumns>=3)18f else if(wallColumns==2)23f else 36f
+            val primaryBase=36f
             val primaryView=textView(miniValue(row,primaryKey),primaryTone,primaryBase*primary.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(primary.optString("align","left")))
             val primaryBg=primary.optString("backgroundColor","")
             if(primaryBg.isNotBlank())primaryView.setBackgroundColor(color(primaryBg,Color.TRANSPARENT))
@@ -501,7 +526,7 @@ class TfAssetOverlayService:Service(){
           }
 
           if(footerFields.isNotEmpty()){
-            footerFields.chunked(if(wallColumns==1)3 else 2).forEach{detailRow->
+            footerFields.chunked(3).forEach{detailRow->
             val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.BOTTOM;setPadding(0,wallGap,0,0)}
             detailRow.forEachIndexed{index,field->
               val key=field.optString("field","pnl")
@@ -537,13 +562,16 @@ class TfAssetOverlayService:Service(){
             }
           }
 
-          wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap})
-          if(rowIndex==rows.lastIndex&&wallColumns>1){
-            val missing=wallColumns-1-(rowIndex%wallColumns)
-            repeat(missing){wallLine?.addView(View(this),LinearLayoutParams(0,1,1f).apply{if(it<missing-1)rightMargin=wallColumnGap})}
-          }
+          wallLine?.addView(card,LinearLayoutParams(geometry.cardWidth,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{if((rowIndex%wallColumns)<wallColumns-1&&rowIndex<rows.lastIndex)rightMargin=wallColumnGap})
+
         }
-        val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
+        // Only real cards are allocated. Large user counts never create placeholder Views.
+        val horizontal=HorizontalScrollView(this).apply{isFillViewport=false;addView(body,android.widget.FrameLayout.LayoutParams(geometry.contentWidth,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))}
+        val scroller=ScrollView(this).apply{isFillViewport=true;addView(horizontal)}
+        wallHorizontal=horizontal
+        val restoreX=wallScrollX;val restoreY=wallScrollY
+        scroller.setOnScrollChangeListener{_,_,y,_,_->wallScrollY=y}
+        horizontal.post{if(wallHorizontal===horizontal){horizontal.scrollTo(restoreX,0);scroller.scrollTo(0,restoreY)}}
         root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
       }
       "heatmap"->{
