@@ -5,7 +5,7 @@ const market=read('src/screens/MarketResearchScreen.tsx');
 const target=read('src/components/MarketEditableContent.tsx');
 const tools=read('src/components/PageLayoutToolWorkbench.tsx');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.ok(Number(pkg.version.split('.')[2])>=40,'V4.0.40 market content editor must remain supported');
+const [vMajor40=0,vMinor40=0,vPatch40=0]=pkg.version.split('.').map(Number);assert.ok(vMajor40>4||(vMajor40===4&&(vMinor40>0||(vMinor40===0&&vPatch40>=40))),'V4.0.40 market content editor must remain supported');
 assert.equal(app.version,pkg.version);
 const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
 assert.equal(app.android.versionCode,build);
