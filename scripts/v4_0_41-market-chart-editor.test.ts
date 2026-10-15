@@ -5,7 +5,7 @@ const app=JSON.parse(read('app.json')).expo,pkg=JSON.parse(read('package.json'))
 const market=read('src/screens/MarketResearchScreen.tsx');
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
 const chart=read('src/components/OfficialCandleChart.tsx');
-assert.ok(Number(pkg.version.split('.')[2])>=41,'V4.0.41 chart editor remains supported');
+const [vMajor41=0,vMinor41=0,vPatch41=0]=pkg.version.split('.').map(Number);assert.ok(vMajor41>4||(vMajor41===4&&(vMinor41>0||(vMinor41===0&&vPatch41>=41))),'V4.0.41 chart editor remains supported');
 assert.equal(app.version,pkg.version);
 const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
 assert.equal(app.android.versionCode,build);
