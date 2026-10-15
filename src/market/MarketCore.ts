@@ -187,14 +187,20 @@ export class MemoryMarketStore{
   constructor(initial?:Iterable<readonly [string,MarketQuote]>){
     if(initial)for(const [,quote] of initial)this.setInternal(quote);
   }
-  private setInternal(raw:MarketQuote):void{
+  private setInternal(raw:MarketQuote):boolean{
     const symbol=normalizeSymbol(raw.symbol);
-    if(!symbol||!Number.isFinite(raw.price)||raw.price<=0)return;
-    this.quotes.set(symbol,{...raw,symbol});
+    if(!symbol||!Number.isFinite(raw.price)||raw.price<=0)return false;
+    const next={...raw,symbol};
+    const before=this.quotes.get(symbol);
+    if(before&&before.source===next.source&&before.quality===next.quality&&before.price===next.price&&
+      before.previousClose===next.previousClose&&before.volume===next.volume&&before.bid===next.bid&&before.ask===next.ask&&
+      before.sourceTimestampEpochMillis===next.sourceTimestampEpochMillis&&before.receivedAtEpochMillis===next.receivedAtEpochMillis&&
+      before.fallbackLevel===next.fallbackLevel&&before.sequence===next.sequence)return false;
+    this.quotes.set(symbol,next);return true;
   }
   publish(updates:Iterable<MarketQuote>):ReadonlyMap<string,MarketQuote>{
     let changed=false;
-    for(const quote of updates){const before=this.quotes.get(normalizeSymbol(quote.symbol));this.setInternal(quote);changed=changed||before!==this.quotes.get(normalizeSymbol(quote.symbol));}
+    for(const quote of updates)changed=this.setInternal(quote)||changed;
     if(changed)this.emit();
     return this.snapshot();
   }
@@ -276,7 +282,7 @@ export class MarketDataCenter{
     const jitter=(failures*137)%750;
     return Math.min(delay+jitter,policy.maxBackoffMillis);
   }
-  async refresh(input:{symbols:ReadonlySet<string>;nowEpochMillis:number;currentTaipeiDate:string;tradingSessionActive:boolean}):Promise<MarketBatch>{
+  async refresh(input:{symbols:ReadonlySet<string>;nowEpochMillis:number;currentTaipeiDate:string;tradingSessionActive:boolean;primarySourceHealthy?:boolean}):Promise<MarketBatch>{
     const requested=new Set([...input.symbols].map(normalizeSymbol).filter(Boolean));
     if(!requested.size)return {
       quotes:new Map(),staleQuotes:new Map(),unresolvedSymbols:new Set(),sourcesTried:[],
@@ -286,8 +292,8 @@ export class MarketDataCenter{
     const sourcesTried:MarketSource[]=[];
     for(const raw of this.hotStore.snapshot(pending).values()){
       if(raw.source!=='FUGLE')continue;
-      const normalized={...raw,quality:this.qualityFor(raw.sourceTimestampEpochMillis,input.nowEpochMillis,input.currentTaipeiDate)};
-      if(normalized.sessionDate===input.currentTaipeiDate&&normalized.quality==='LIVE'){
+      const normalized={...raw,quality:input.primarySourceHealthy===true?'LIVE':this.qualityFor(raw.sourceTimestampEpochMillis,input.nowEpochMillis,input.currentTaipeiDate)};
+      if(normalized.sessionDate===input.currentTaipeiDate&&(input.primarySourceHealthy===true||normalized.quality==='LIVE')){
         accepted.set(normalized.symbol,normalized);pending.delete(normalized.symbol);
       }
     }
@@ -316,7 +322,7 @@ export class MarketDataCenter{
         const normalized:MarketQuote={...raw,symbol,sourceTimestampEpochMillis:sourceTime,
           receivedAtEpochMillis:raw.receivedAtEpochMillis>0?raw.receivedAtEpochMillis:input.nowEpochMillis,
           sessionDate:raw.sessionDate||taipeiDate(sourceTime),
-          quality:this.qualityFor(sourceTime,input.nowEpochMillis,input.currentTaipeiDate)};
+          quality:raw.source==='FUGLE'?this.qualityFor(sourceTime,input.nowEpochMillis,input.currentTaipeiDate):raw.quality};
         const existing=this.hotStore.snapshot(new Set([symbol])).get(symbol)??this.cache.get(symbol);
         if(!this.arbitrator.decide(existing,normalized).accepted)continue;
         this.cache.set(symbol,normalized);

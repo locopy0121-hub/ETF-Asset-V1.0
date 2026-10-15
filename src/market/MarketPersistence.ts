@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  clearNativeMarketCache,loadNativeMarketCache,nativeRuntimeAvailable,persistNativeMarketCache,
+  clearNativeMarketCache,loadNativeMarketCache,loadNativeMarketSnapshots,nativeRuntimeAvailable,persistNativeMarketCache,
 } from '../native/TfAssetNativeBridge';
 import type {MarketDataCenter,MarketQuote} from './MarketCore';
 
@@ -32,6 +32,13 @@ export class MarketPersistenceRepository{
   private state:PersistedMarketCache|null|undefined;
 
   async loadSnapshots():Promise<MarketQuote[]>{
+    if(nativeRuntimeAvailable){
+      try{
+        const raw=await loadNativeMarketSnapshots();if(!raw)return [];
+        const parsed=JSON.parse(raw) as {snapshots?:MarketQuote[]};
+        return Array.isArray(parsed.snapshots)?parsed.snapshots:[];
+      }catch{return [];}
+    }
     const state=await this.load();return state?.snapshots?[...state.snapshots]:[];
   }
   async loadCandles(symbol:string,sessionDate:string):Promise<MarketMinuteCandle[]>{
@@ -40,6 +47,12 @@ export class MarketPersistenceRepository{
   }
   async persist(quotes:readonly MarketQuote[],persistedAtEpochMillis=Date.now()):Promise<void>{
     if(!quotes.length)return;
+    if(nativeRuntimeAvailable){
+      const delta:PersistedMarketCache={schema:4,snapshots:[...quotes],candles:[],persistedAtEpochMillis};
+      const ok=await persistNativeMarketCache(JSON.stringify(delta));
+      if(!ok)throw new Error('Android SQLite market persistence failed');
+      return;
+    }
     const previous=await this.load();
     const snapshots=new Map<string,MarketQuote>((previous?.snapshots??[]).map(row=>[row.symbol,row] as const));
     const candles=new Map<string,MarketMinuteCandle>((previous?.candles??[]).map(row=>[`${row.symbol}|${row.bucketEpochMillis}`,row] as const));
@@ -60,13 +73,7 @@ export class MarketPersistenceRepository{
     const candleRows=[...candles.values()].sort((a,b)=>b.bucketEpochMillis-a.bucketEpochMillis).slice(0,MAX_CANDLE_ROWS);
     const next:PersistedMarketCache={schema:4,snapshots:[...snapshots.values()],candles:candleRows,persistedAtEpochMillis};
     this.state=next;
-    const serialized=JSON.stringify(next);
-    if(nativeRuntimeAvailable){
-      const ok=await persistNativeMarketCache(serialized);
-      if(!ok)throw new Error('Android SQLite market persistence failed');
-      return;
-    }
-    await AsyncStorage.setItem(STORAGE_KEY,serialized);
+    await AsyncStorage.setItem(STORAGE_KEY,JSON.stringify(next));
   }
   async clear():Promise<void>{
     this.state=null;
@@ -93,20 +100,37 @@ export class MarketPersistenceRepository{
 }
 
 export class MarketPersistenceController{
-  private latest:ReadonlyMap<string,MarketQuote>=new Map();
+  private readonly dirtyQuotes=new Map<string,MarketQuote>();
+  private readonly versions=new Map<string,string>();
   private readonly unsubscribe:()=>void;
   private timer:ReturnType<typeof setInterval>|null;
+  private flushPromise:Promise<void>|null=null;
   constructor(
     marketDataCenter:MarketDataCenter,
     private readonly repository:MarketPersistenceRepository,
     private readonly persistIntervalMillis=5000,
   ){
-    this.latest=marketDataCenter.memoryQuotes();
-    this.unsubscribe=marketDataCenter.subscribe(snapshot=>{this.latest=snapshot;});
+    const observe=(snapshot:ReadonlyMap<string,MarketQuote>)=>{
+      for(const [symbol,quote] of snapshot){
+        const version=`${quote.source}|${quote.sourceTimestampEpochMillis}|${quote.receivedAtEpochMillis}|${quote.price}|${quote.volume??''}`;
+        if(this.versions.get(symbol)===version)continue;
+        this.versions.set(symbol,version);this.dirtyQuotes.set(symbol,quote);
+      }
+    };
+    observe(marketDataCenter.memoryQuotes());
+    this.unsubscribe=marketDataCenter.subscribe(observe);
     this.timer=setInterval(()=>{void this.flushNow();},this.persistIntervalMillis);
   }
   async flushNow():Promise<void>{
-    if(this.latest.size)await this.repository.persist([...this.latest.values()]);
+    if(this.flushPromise)return this.flushPromise;
+    if(!this.dirtyQuotes.size)return;
+    const batch=[...this.dirtyQuotes.values()];
+    this.dirtyQuotes.clear();
+    this.flushPromise=this.repository.persist(batch).catch(error=>{
+      for(const quote of batch)this.dirtyQuotes.set(quote.symbol,quote);
+      throw error;
+    }).finally(()=>{this.flushPromise=null;});
+    return this.flushPromise;
   }
   dispose():void{
     this.unsubscribe();if(this.timer){clearInterval(this.timer);this.timer=null;}
