@@ -276,12 +276,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
     if(!hydrated)return;
     const payload:PersistedMarketRuntime={schema:4,config,catalog,lastSuccessAt};
     AsyncStorage.setItem(RUNTIME_STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
-  },[hydrated,config,catalog,lastSuccessAt]);
+  },[hydrated,config,catalog]);
 
   const setConfig=useCallback((next:MarketUpdateConfig)=>setConfigState(normalizeConfig(next)),[]);
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
-    const normalized=symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean);
-    setTrackedSymbolsState(current=>Array.from(new Set([...current,...normalized])).sort());
+    const normalizedUnique=Array.from(new Set(symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean))).sort();
+    setTrackedSymbolsState(normalizedUnique);
   },[]);
 
   const phase=resolveMarketPhase(config);
@@ -294,8 +294,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       const now=Date.now(),date=taipeiDate(now);
       try{
         if(options?.force&&fugleRef.current&&fugleKeyRef.current)await fugleRef.current.replaceSubscriptions(new Set(symbolsRef.current));
+        const fugleHealth=fugleRef.current?.health(now);
+        const primarySourceHealthy=!!fugleKeyRef.current&&
+          (fugleHealth?.circuitState==='HEALTHY'||fugleHealth?.circuitState==='RECOVERING');
         const batch=await center.refresh({
-          symbols:new Set(symbolsRef.current),nowEpochMillis:now,currentTaipeiDate:date,tradingSessionActive:resolveMarketPhase(configRef.current)==='live',
+          symbols:new Set(symbolsRef.current),nowEpochMillis:now,currentTaipeiDate:date,
+          tradingSessionActive:resolveMarketPhase(configRef.current)==='live',primarySourceHealthy,
         });
         const health=[...(fugleRef.current?[fugleRef.current.health(Date.now())]:[]),...batch.providerHealth];
         setProviderHealth(health);
@@ -345,12 +349,6 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   },[hydrated,trackedSymbols,refresh]);
 
   useEffect(()=>{
-    if(!hydrated||config.stopAll||!config.scheduleEnabled)return;
-    const seconds=marketRefreshSeconds(config,phase);if(seconds<=0)return;
-    const timer=setInterval(()=>{void refresh();},seconds*1000);return()=>clearInterval(timer);
-  },[hydrated,config,phase,refresh]);
-
-  useEffect(()=>{
     if(!hydrated)return;
     const sub=AppState.addEventListener('change',(next:AppStateStatus)=>{
       if(next==='active'){
@@ -358,7 +356,6 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         if(configRef.current.refreshOnForeground)void refresh({force:true});
       }else{
         void persistenceControllerRef.current?.flushNow();
-        void fugleRef.current?.disconnect();
       }
     });
     return()=>sub.remove();
