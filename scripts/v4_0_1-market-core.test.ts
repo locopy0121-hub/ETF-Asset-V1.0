@@ -26,7 +26,8 @@ const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{version
 
 assert.ok(/^(4\.0\.\d+|5\.0\.2)$/.test(pkg.version));
 assert.equal(app.expo.version,pkg.version);
-const [major,minor,patch]=pkg.version.split('.').map(Number);
+const versionParts=pkg.version.split('.').map(Number);
+const major=versionParts[0]??0,minor=versionParts[1]??0,patch=versionParts[2]??0;
 assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 
 // JS is now an adapter/consumer only. It must not instantiate another quote engine.
