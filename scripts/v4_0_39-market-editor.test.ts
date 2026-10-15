@@ -8,7 +8,7 @@ const taiex=read('src/components/TaiexIndexCard.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
 
-assert.ok(Number(pkg.version.split('.')[2])>=39,'V4.0.39 editor regressions remain required in later versions');
+const [vMajor39=0,vMinor39=0,vPatch39=0]=pkg.version.split('.').map(Number);assert.ok(vMajor39>4||(vMajor39===4&&(vMinor39>0||(vMinor39===0&&vPatch39>=39))),'V4.0.39 editor regressions remain required in later versions');
 assert.equal(app.version,pkg.version);
 const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
 assert.equal(app.android.versionCode,build);
