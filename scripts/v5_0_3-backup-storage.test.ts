@@ -25,7 +25,7 @@ function history(id:string,contents:string):BackupHistoryEntry{
 const sample=history('old','X'.repeat(1_850_000));
 const legacy=new MemorySqlite(64*1024*1024);
 legacy.rows.set(TF_BACKUPS_KEY,JSON.stringify([sample]));
-assert.equal((await loadBackupHistory(legacy))[0].id,'old');
+assert.equal((await loadBackupHistory(legacy))[0]?.id,'old');
 const newer=history('new','中'.repeat(800_000)+'🙂'.repeat(20_000));
 await saveBackupHistory(legacy,[newer,sample]);
 const index=legacy.rows.get(TF_BACKUPS_KEY)!;
@@ -42,7 +42,7 @@ assert.ok(Array.from(legacy.rows.keys()).filter(key=>key.startsWith('@tf-backup-
 const tiny=new MemorySqlite(1_000_000);
 tiny.rows.set(TF_BACKUPS_KEY,JSON.stringify([history('safe','safe')]));
 await assert.rejects(saveBackupHistory(tiny,[sample]),/SQLITE_FULL/);
-assert.equal((await loadBackupHistory(tiny))[0].id,'safe','Quota failure must not overwrite backup index');
+assert.equal((await loadBackupHistory(tiny))[0]?.id,'safe','Quota failure must not overwrite backup index');
 const many=Array.from({length:10},(_,i)=>history('snapshot-'+i,'X'.repeat(1_850_000)));
 const roomy=new MemorySqlite(64*1024*1024);
 await saveBackupHistory(roomy,many);
