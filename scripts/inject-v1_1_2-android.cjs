@@ -23,6 +23,19 @@ if(!manifest.includes('android.permission.SYSTEM_ALERT_WINDOW')){
   );
 }
 
+if(!manifest.includes('android.permission.POST_NOTIFICATIONS')){
+  manifest=manifest.replace(
+    '<application',
+    '<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n  <application'
+  );
+}
+if(!manifest.includes('android.permission.VIBRATE')){
+  manifest=manifest.replace(
+    '<application',
+    '<uses-permission android:name="android.permission.VIBRATE" />\n  <application'
+  );
+}
+
 if(!manifest.includes('TfAssetWidgetProvider')){
   const nativeComponents=[
     '    <receiver android:name=".TfAssetWidgetProvider" android:exported="true">',
@@ -35,6 +48,11 @@ if(!manifest.includes('TfAssetWidgetProvider')){
   ].join('\n');
   manifest=manifest.replace('</application>',nativeComponents+'\n  </application>');
 }
+
+for(const permission of ['WAKE_LOCK','FOREGROUND_SERVICE','FOREGROUND_SERVICE_DATA_SYNC']){
+  if(!manifest.includes('android.permission.'+permission))manifest=manifest.replace('<application','<uses-permission android:name="android.permission.'+permission+'" />\n  <application');
+}
+if(!manifest.includes('TfAssetWidgetLiveService'))manifest=manifest.replace('</application','    <service android:name=".TfAssetWidgetLiveService" android:exported="false" android:foregroundServiceType="dataSync" android:stopWithTask="false" />\n  </application');
 
 manifest=manifest.replace(
   /\s*<intent-filter>\s*<action android:name="android\.intent\.action\.MAIN"\s*\/>\s*<category android:name="android\.intent\.category\.LAUNCHER"\s*\/>\s*<\/intent-filter>/,
@@ -51,13 +69,14 @@ if(!manifest.includes('android:name=".Icon01"')){
       `      android:name=".Icon${key}"`,
       `      android:enabled="${enabled}"`,
       '      android:exported="true"',
-      `      android:icon="@drawable/tf_icon_${key}"`,
+      `      android:icon="@drawable/tf_theme_icon_${key}"`,
       '      android:label="TF Asset 資產管家"',
       '      android:targetActivity=".MainActivity">',
       '      <intent-filter>',
       '        <action android:name="android.intent.action.MAIN" />',
       '        <category android:name="android.intent.category.LAUNCHER" />',
       '      </intent-filter>',
+      '      <meta-data android:name="android.app.shortcuts" android:resource="@xml/tf_asset_shortcuts" />',
       '    </activity-alias>'
     ].join('\n'));
   }
@@ -69,5 +88,10 @@ if(aliasCount!==10)throw new Error(`Expected 10 launcher aliases, found ${aliasC
 for(const key of ['01','10']){
   if(!manifest.includes(`android:name=".Icon${key}"`))throw new Error(`Launcher alias Icon${key} missing`);
 }
+const shortcutMetadataCount=(manifest.match(/android:name="android\.app\.shortcuts"/g)||[]).length;
+if(shortcutMetadataCount!==10)throw new Error(`Expected shortcuts metadata on 10 launcher aliases, found ${shortcutMetadataCount}`);
+
+if(!manifest.includes('android.permission.POST_NOTIFICATIONS'))throw new Error('POST_NOTIFICATIONS permission missing');
+if(!manifest.includes('android.permission.VIBRATE'))throw new Error('VIBRATE permission missing');
 fs.writeFileSync(manifestPath,manifest);
 console.log('V1.1.2 Android native injection: PASS');

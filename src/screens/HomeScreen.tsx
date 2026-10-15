@@ -1,56 +1,117 @@
+import {WatchlistPanel} from '../components/WatchlistPanel';
+import {useDisplayFormat} from '../settings/useDisplayFormat';
+import {portfolioFrameTone,financialTone} from '../theme/financialTone';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {StyleSheet,View} from 'react-native';
+import {Pressable,Text} from '../components/EditableNative';
 
 import { FloatingDashboardChart } from '../components/FloatingDashboardChart';
 import { NewsReaderModal } from '../components/NewsReaderModal';
 import { FrameCard } from '../components/FrameCard';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
-import { MetricTile } from '../components/MetricTile';
+import {DashboardAssetOverview} from '../components/dashboard/DashboardAssetOverview';
+import {PurchasePnlStatsModal} from '../components/dashboard/PurchasePnlStatsModal';
+import {DashboardProfitAnalysis} from '../components/dashboard/DashboardProfitAnalysis';
+import {homeProfitPresentation} from '../components/dashboard/homeProfitPresentation';
+import {DashboardProfitDetail} from '../components/dashboard/DashboardProfitDetail';
+import {DashboardQuickActions} from '../components/dashboard/DashboardQuickActions';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
-import { SegmentedControl } from '../components/SegmentedControl';
+import {PortfolioQuickBar} from '../components/PortfolioQuickBar';
 import { PageShell } from '../components/PageShell';
+import {LayoutTargetProvider} from '../editor/LayoutSelectionContext';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
-import type { DashboardChartConfig, DashboardMetricKey } from '../editor/editorModel';
-import { sortHoldingQuotes } from '../domain/holdingSort';
+import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import type { DashboardChartConfig } from '../editor/editorModel';
+import {nextSortPreset,sortHoldingQuotes,sortPreset} from '../domain/holdingSort';
+import {DEFAULT_ETF_BADGES,todayEtfReminderMap} from '../domain/etfBadges';
+import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingQuote, type HoldingSortKey, type QuoteModuleStyle } from '../domain/uiModels';
+import {DEFAULT_DASHBOARD_LAYOUT} from '../domain/dashboardLayout';
+import type {MainPageKey} from '../domain/pageRegistry';
 import { useFinance } from '../finance/FinanceRuntime';
+import {useDailyPnlHistory} from '../finance/useDailyPnlHistory';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import { useAiNewsRuntime, type AiNewsItem } from '../ai/AiNewsRuntime';
 import { colors, radius, spacing } from '../theme/tokens';
 
-const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
-export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)=>void}) {
+export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void;onNavigate:(page:MainPageKey)=>void}) {
+  const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
+  const [wallSource,setWallSource]=useState<'holdings'|'watchlist'|'all'>('holdings');
   const market=useMarketRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [selectedNews,setSelectedNews]=useState<AiNewsItem|null>(null);
+  const [pnlStatsOpen,setPnlStatsOpen]=useState(false);
   const [chartBounds,setChartBounds]=useState({width:320,height:280});
   const editor=usePageEditor('home');
-  const quoteStyle=(editor.displayConfig.quoteStyle??'quote') as QuoteModuleStyle;
-  const sortKey=(editor.displayConfig.sortKey??'pnl') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
-  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
-  const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
-  const portfolio=finance.snapshot.portfolio;
-  const totalDividend=portfolio.totalDividendsReceived;
-  const dashboardMetrics=(editor.displayConfig.dashboardMetrics??[]) as readonly DashboardMetricKey[];
-  const dashboardCharts=(editor.displayConfig.dashboardCharts??[]) as readonly DashboardChartConfig[];
-  const dashboardMetricInfo:Record<DashboardMetricKey,{label:string;value:number;caption:string;tone?:'gain'|'loss'}>={
-    totalMarketValue:{label:'持股市值',value:portfolio.totalMarketValue,caption:'Finance Core'},
-    totalPnl:{label:'含息總損益',value:portfolio.totalPnl,caption:'含息',tone:portfolio.totalPnl>=0?'gain':'loss'},
-    totalUnrealizedProfit:{label:'未實現損益',value:portfolio.totalUnrealizedProfit,caption:'淨清算',tone:portfolio.totalUnrealizedProfit>=0?'gain':'loss'},
-    realizedNetPnL:{label:'已實現損益',value:portfolio.realizedNetPnL,caption:'歷史賣出',tone:portfolio.realizedNetPnL>=0?'gain':'loss'},
-    totalDividendsReceived:{label:'累積淨股息',value:portfolio.totalDividendsReceived,caption:'V3.7.8'},
-    cashBalance:{label:'現金',value:finance.snapshot.cashBalance,caption:'Ledger'},
-    holdingCount:{label:'持股檔數',value:finance.holdings.length,caption:'檔'},
+  const maintenance=useMaintenance();
+  const effectiveDisplay=maintenance.session?.page==='home'?maintenance.session.draftDisplay:editor.displayConfig;
+  const rawQuoteStyle=(effectiveDisplay.quoteStyle??'quote') as QuoteModuleStyle;
+  const sortKey=(effectiveDisplay.sortKey??'pnl') as HoldingSortKey;
+  const holdingLayoutMode=(effectiveDisplay.holdingLayoutMode??'list') as HoldingLayoutMode;
+  // Legacy saved combinations remain safe: no graph is rendered in three columns.
+  const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
+  const currentSort=sortPreset(sortKey);
+  const [homeFirstMode,setHomeFirstMode]=useState<'quote'|'compact'>(()=>quoteStyle==='compact'?'compact':'quote');
+  const setQuoteStyle=(value:QuoteModuleStyle)=>{
+    if(holdingLayoutMode==='grid3'&&(value==='chart'||value==='advanced'))return;
+    if(value==='quote'||value==='compact')setHomeFirstMode(value);
+    editor.updateDisplayConfig({quoteStyle:value});
   };
+  const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
+  const cycleHomeFirst=()=>setQuoteStyle(homeFirstMode==='quote'?'compact':'quote');
+  const cycleHomeSort=()=>setSortKey(nextSortPreset(sortKey).key);
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({
+    holdingLayoutMode:value,
+    ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{}),
+  });
+  const catalogBySymbol=useMemo(
+    ()=>new Map(market.catalog.map(item=>[item.symbol,item] as const)),
+    [market.catalog],
+  );
+  const dividendReminders=useMemo(
+    ()=>todayEtfReminderMap(
+      finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),
+      undefined,
+      effectiveDisplay.etfBadges?.reminderEvents,
+    ),
+    [finance.entries,effectiveDisplay.etfBadges?.reminderEvents],
+  );
+  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,currentSort.descending).map(item=>({
+    ...item,
+    etfType:catalogBySymbol.get(item.symbol)?.etfType??null,
+    dividendType:catalogBySymbol.get(item.symbol)?.dividendType??null,
+    reminderEvent:dividendReminders.get(item.symbol)??null,
+  })),[finance.holdings,sortKey,currentSort.descending,catalogBySymbol,dividendReminders]);
+  const portfolio=finance.snapshot.portfolio;
+  const valuationComplete=finance.valuationComplete;
+  const pnlHistory=useDailyPnlHistory({
+    hydrated:finance.hydrated,
+    initialCash:finance.initialCash,
+    entries:finance.entries,
+    rawQuotes:finance.quotes,
+    currentSnapshot:finance.snapshot,
+    valuationComplete,
+    marketDataVersion:market.marketDataVersion,
+  });
+  const currentPnl=pnlHistory.current;
+  const dashboardLayout=effectiveDisplay.dashboardLayout??DEFAULT_DASHBOARD_LAYOUT;
+  const dashboardCharts=(effectiveDisplay.dashboardCharts??[]) as readonly DashboardChartConfig[];
+  const {kpis:dashboardKpis,rows:dashboardProfitRows}=homeProfitPresentation(portfolio,valuationComplete,money);
+  const transactionCountBySymbol=useMemo(()=>{
+    const counts=new Map<string,number>();
+    for(const entry of finance.entries){
+      if((entry.kind!=='buy'&&entry.kind!=='sell')||!('symbol' in entry))continue;
+      counts.set(entry.symbol,(counts.get(entry.symbol)??0)+1);
+    }
+    return counts;
+  },[finance.entries]);
   const chartSeries=(chart:DashboardChartConfig)=>{
     const rows=finance.holdings.slice(0,8);
     const labels=rows.map(row=>row.symbol);
@@ -63,7 +124,7 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
       case 'shares':return {labels,values:rows.map(row=>row.shares)};
       case 'realizedPnl':return {labels,values:rows.map(row=>row.realizedPnl)};
       case 'comprehensivePnl':return {labels,values:rows.map(row=>row.comprehensivePnl)};
-      case 'transactions':return {labels,values:rows.map(row=>finance.entries.filter(entry=>'symbol' in entry&&entry.symbol===row.symbol&&(entry.kind==='buy'||entry.kind==='sell')).length)};
+      case 'transactions':return {labels,values:rows.map(row=>transactionCountBySymbol.get(row.symbol)??0)};
       case 'marketValue':
       case 'allocation':
       default:return {labels,values:rows.map(row=>row.marketValue)};
@@ -71,59 +132,87 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
   };
   const moveDashboardChart=(id:string,x:number,y:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,x,y}:chart)});
   const resizeDashboardChart=(id:string,width:number,height:number)=>editor.updateDisplayConfig({dashboardCharts:dashboardCharts.map(chart=>chart.id===id?{...chart,width,height}:chart)});
-  const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??5)));
-  const newsHoldingsOnly=editor.displayConfig.newsHoldingsOnly??true;
+  const newsCount=Math.max(1,Math.min(10,Number(effectiveDisplay.newsVisibleCount??5)));
+  const newsHoldingsOnly=effectiveDisplay.newsHoldingsOnly??true;
   const holdingSymbols=useMemo(()=>new Set(finance.holdings.map(x=>x.symbol.toUpperCase())),[finance.holdings]);
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
   return <>
-    <PageShell title="資產儀表板" subtitle="所有資產與損益來自 V3.7.8 Finance Core" actions={<View style={styles.actions}><Pressable onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+    <PageShell pageKey="home" title="資產管家" subtitle="掌握資產現況・所有損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable editorId="native:HomeScreen:refreshButton:1" onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text editorId="native:HomeScreen:refreshButtonText:2" editorReadOnly={true} style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
       <View
         style={styles.pageLayer}
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
       >
-      <PageEditorStack pageKey="home" frames={[
+      <LayoutTargetProvider targets={effectiveDisplay.layoutTargets??{}}>
+      <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={[
         {key:'asset-dashboard',element:
-          <FrameCard title="資產儀表板">
-            <View style={styles.dashboardTop}>
-              <View style={styles.dashboardSummary}>
-                <Text style={styles.heroLabel}>總資產（持股市值）</Text>
-                <Text style={styles.heroValue}>NT$ {money(portfolio.totalMarketValue)}</Text>
-                <Text style={[styles.heroDelta,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>含息總損益 NT$ {money(portfolio.totalPnl)}</Text>
-              </View>
+          <FrameCard title="資產總覽" tone={portfolioFrameTone('home','asset-dashboard',portfolio,valuationComplete)}>
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardAssetOverview
+                amount={money(portfolio.totalMarketValue)}
+                complete={valuationComplete}
+                caption={valuationComplete?'持股市值＋股數':'待取得可信行情，帳務明細不受影響'}
+                layout={dashboardLayout.overview}
+                yesterdayPnl={pnlHistory.previousTradingDay?.todayPnl??null}
+                todayPnl={currentPnl?.todayPnl??null}
+                totalPnl={portfolio.totalPriceUnrealizedProfit}
+                pnlComplete={valuationComplete}
+                onPressTotalPnl={()=>setPnlStatsOpen(true)}
+              />
             </View>
-            <View style={styles.metricRow}>
-              {dashboardMetrics.map(key=>{const item=dashboardMetricInfo[key];return <MetricTile key={key} label={item.label} value={key==='holdingCount'?String(item.value):money(item.value)} caption={item.caption} {...(item.tone?{tone:item.tone}:{})}/>;})}
+          </FrameCard>
+        },
+        {key:'profit-analysis',element:
+          <FrameCard title="損益分析" tone={portfolioFrameTone('home','profit-analysis',portfolio,valuationComplete)}>
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardProfitAnalysis items={dashboardKpis} layout={dashboardLayout.profitAnalysis}/>
+            </View>
+          </FrameCard>
+        },
+        {key:'pnl-detail',element:
+          <FrameCard title="損益明細" tone={portfolioFrameTone('home','pnl-detail',portfolio,valuationComplete)}>
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardProfitDetail rows={dashboardProfitRows} layout={dashboardLayout.profitDetail} onMore={()=>onNavigate('portfolio')}/>
+            </View>
+          </FrameCard>
+        },
+        {key:'dashboard-quick-actions',element:
+          <FrameCard title="快捷功能">
+            <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
+              <DashboardQuickActions layout={dashboardLayout.quickActions} actions={[
+                {key:'stock-query',label:'持股查詢',glyph:'⌕',onPress:()=>onNavigate('portfolio')},
+                {key:'ledger',label:'交易紀錄',glyph:'▤',onPress:()=>onNavigate('ledger')},
+                {key:'allocation',label:'資產配置',glyph:'◔',onPress:()=>onNavigate('portfolio')},
+                {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>onNavigate('dividend')},
+              ]}/>
             </View>
           </FrameCard>
         },
         {key:'market-news',element:
           <FrameCard title="市場新聞">
-            {newsItems.map(item=><Pressable key={item.id} accessibilityRole="button" onPress={()=>setSelectedNews(item)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed]}>
+            {newsItems.map(item=><Pressable editorId="native:HomeScreen:newsRow:3" key={item.id} accessibilityRole="button" onPress={()=>setSelectedNews(item)} style={({pressed})=>[styles.newsRow,pressed&&styles.newsPressed]}>
               <View style={styles.newsDot}/>
-              <View style={{flex:1}}><Text style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text style={styles.newsMeta}>{item.source} · 點擊於 App 內閱讀</Text></View>
-              <Text style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
+              <View style={{flex:1}}><Text editorId="native:HomeScreen:newsSymbol:4" editorReadOnly={true} style={styles.newsSymbol}>{item.symbol} {item.name}</Text><Text editorId="native:HomeScreen:newsTitle:5" editorReadOnly={true} numberOfLines={2} style={styles.newsTitle}>{item.title}</Text><Text editorId="native:HomeScreen:newsSummary:6" editorReadOnly={true} numberOfLines={2} style={styles.newsSummary}>{item.summary}</Text><Text editorId="native:HomeScreen:newsMeta:7" editorReadOnly={true} style={styles.newsMeta}>{item.source} · 點擊於 App 內閱讀</Text></View>
+              <Text editorId="native:HomeScreen:newsTime:8" editorReadOnly={true} style={styles.newsTime}>{new Date(item.publishedAt).toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'})}</Text>
             </Pressable>)}
-            {!newsItems.length?<Text style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
+            {!newsItems.length?<Text editorId="native:HomeScreen:ruleText:9" editorReadOnly={false} style={styles.ruleText}>尚無持股新聞；請到 AI 助理更新新聞。</Text>:null}
           </FrameCard>
         },
         {key:'holding-quotes',element:
-          <FrameCard title="持股行情模塊">
-            <SegmentedControl
-              items={[{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const}
-              value={quoteStyle}
-              onChange={setQuoteStyle}
-            />
+          <FrameCard title="持股行情模塊" tone={portfolioFrameTone('home','holding-quotes',portfolio,valuationComplete)}>
+            <PortfolioQuickBar firstMode={homeFirstMode} activeMode={quoteStyle} layout={effectiveDisplay.quickBar} firstHint="切換純行情與精簡"
+              sortLabel={currentSort.label} onCycleFirst={cycleHomeFirst}
+              onSelect={setQuoteStyle} onCycleSort={cycleHomeSort}/>
             <View style={styles.sortRow}>
-              <Text style={styles.sortLabel}>條件排序</Text>
+              <Text editorId="native:HomeScreen:sortLabel:10" editorReadOnly={false} style={styles.sortLabel}>條件排序</Text>
               {([{key:'pnl',label:'損益'},{key:'changePct',label:'漲跌'},{key:'marketValue',label:'市值'}] as const).map(x=>
-                <Pressable key={x.key} style={[styles.sortChip,sortKey===x.key&&styles.sortChipActive]} onPress={()=>setSortKey(x.key)}>
-                  <Text style={[styles.sortChipText,sortKey===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                <Pressable editorId="native:HomeScreen:sortChip:11" key={x.key} style={[styles.sortChip,sortKey===x.key&&styles.sortChipActive]} onPress={()=>setSortKey(x.key)}>
+                  <Text editorId="native:HomeScreen:sortChipText:12" editorReadOnly={false} style={[styles.sortChipText,sortKey===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
                 </Pressable>
               )}
             </View>
             <View style={styles.sortRow}>
-              <Text style={styles.sortLabel}>顯示排列</Text>
+              <Text editorId="native:HomeScreen:sortLabel:13" editorReadOnly={false} style={styles.sortLabel}>顯示排列</Text>
               {([
                 {key:'list',label:'單欄'},
                 {key:'grid2',label:'雙欄'},
@@ -131,31 +220,27 @@ export function HomeScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)
                 {key:'horizontal',label:'橫向滑動'},
                 {key:'paged2',label:'雙欄滑動'},
               ] as const).map(x=>
-                <Pressable key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
-                  <Text style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
+                <Pressable editorId="native:HomeScreen:sortChip:14" key={x.key} style={[styles.sortChip,holdingLayoutMode===x.key&&styles.sortChipActive]} onPress={()=>setHoldingLayoutMode(x.key)}>
+                  <Text editorId="native:HomeScreen:sortChipText:15" editorReadOnly={false} style={[styles.sortChipText,holdingLayoutMode===x.key&&styles.sortChipTextActive]}>{x.label}</Text>
                 </Pressable>
               )}
             </View>
-            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} wallConfig={editor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding}/>
-            <Text style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
-          </FrameCard>
-        },
-        {key:'pnl-detail',element:
-          <FrameCard title="損益明細">
-            <View style={styles.metricRow}>
-              <MetricTile label="純價差未實現" value={money(portfolio.totalPriceUnrealizedProfit)} caption="毛市值－純成交成本" tone={portfolio.totalPriceUnrealizedProfit>=0?'gain':'loss'}/>
-              <MetricTile label="淨清算未實現" value={money(portfolio.totalUnrealizedProfit)} caption="扣預估賣出費稅" tone={portfolio.totalUnrealizedProfit>=0?'gain':'loss'}/>
-              <MetricTile label="已實現" value={money(portfolio.realizedNetPnL)} caption="歷史賣出" tone={portfolio.realizedNetPnL>=0?'gain':'loss'}/>
-            </View>
-            <View style={styles.totalPnl}><Text style={styles.totalPnlLabel}>含息總損益</Text><Text style={[styles.totalPnlValue,{color:portfolio.totalPnl>=0?colors.gain:colors.loss}]}>NT$ {money(portfolio.totalPnl)}</Text></View>
+            {holdingLayoutMode==='grid3'?<Text editorId="native:HomeScreen:ruleText:16" editorReadOnly={false} style={styles.ruleText}>三欄自動使用無圖表精簡卡，保留 ETF 代號、名稱、報價、漲跌與損益。</Text>:null}
+            <View style={styles.sortRow}>{(['holdings','watchlist','all'] as const).map(source=><Pressable key={source} onPress={()=>setWallSource(source)} style={[styles.sortChip,wallSource===source&&styles.sortChipActive]}><Text style={[styles.sortChipText,wallSource===source&&styles.sortChipTextActive]}>{source==='holdings'?'持股':source==='watchlist'?'自選':'全部'}</Text></Pressable>)}</View>
+            {wallSource!=='watchlist'?<HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>:null}
+            {wallSource!=='holdings'?<WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={()=>onNavigate('market')}/>:null}
+            <Text editorId="native:HomeScreen:ruleText:17" editorReadOnly={true} style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },
       ]}/>
+      </LayoutTargetProvider>
       {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)} onResize={(width,height)=>resizeDashboardChart(chart.id,width,height)}/>;})}
       </View>
     </PageShell>
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} onClose={()=>setSettingsOpen(false)}/>
+    <PurchasePnlStatsModal visible={pnlStatsOpen} onClose={()=>setPnlStatsOpen(false)}
+      entries={finance.entries} holdings={finance.snapshot.holdings} dailyRecords={pnlHistory.records}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 
@@ -164,11 +249,15 @@ const styles=StyleSheet.create({
   refreshButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},
   refreshButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   heroLabel:{color:colors.textSecondary,fontSize:12,fontWeight:'700'},
-  heroValue:{color:colors.text,fontSize:34,fontWeight:'900',fontVariant:['tabular-nums']},
-  heroDelta:{fontSize:13,fontWeight:'800'},
+  heroAmountShell:{width:'100%',minWidth:0,overflow:'hidden'},
+  heroAmountRow:{flexDirection:'row',alignItems:'flex-end',width:'100%',minWidth:0,overflow:'hidden'},
+  heroPrefix:{color:colors.text,fontSize:18,lineHeight:42,fontWeight:'900',marginRight:8,flexShrink:1,maxWidth:'30%'},
+  heroValue:{color:colors.text,fontSize:42,lineHeight:46,fontWeight:'900',fontVariant:['tabular-nums'],flex:1,minWidth:0,flexShrink:1},
+  heroDelta:{fontSize:13,fontWeight:'800',marginTop:2},
   pageLayer:{position:'relative'},
-  dashboardTop:{minHeight:150,justifyContent:'flex-start'},
-  dashboardSummary:{width:'48%',gap:6},
+  dashboardTop:{minHeight:128,justifyContent:'flex-start'},
+  // The hero amount is one responsive composite row; never position NT$ and the value independently.
+  dashboardSummary:{width:'100%',gap:4,minWidth:0},
   metricRow:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
   newsRow:{flexDirection:'row',gap:spacing.sm,alignItems:'flex-start',paddingVertical:10,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
   newsDot:{width:7,height:7,borderRadius:4,backgroundColor:colors.primary,marginTop:6},

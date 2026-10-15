@@ -1,28 +1,53 @@
 import { freezeTradeEntry, type CanonicalLedgerEntry, type MarketQuoteInput } from './canonicalLedger';
 
-export type RuntimeQuote = MarketQuoteInput & Readonly<{
-  previousClose: number;
-  sparkline: readonly number[];
-  pinned?: boolean|undefined;
-  marketSource?: 'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE'|'FALLBACK'|undefined;
-  quoteStatus?: 'LIVE'|'DELAYED'|'STALE'|'OFFLINE'|undefined;
-  quoteDate?: string|undefined;
-  quoteTime?: string|undefined;
-  receivedAt?: number|undefined;
-  sourceTimestamp?: number|undefined;
-  sessionDate?: string|undefined;
-  fallbackLevel?: number|undefined;
-  sequence?: number|undefined;
-  exchange?: string|undefined;
-  market?: string|undefined;
-  volume?: number|undefined;
-  bid?: number|undefined;
-  ask?: number|undefined;
-  isClose?: boolean|undefined;
-  priceKind?: 'lastTrade'|'bid'|'ask'|'regularMarketPrice'|'none'|undefined;
+export type RuntimeIntradayPoint=Readonly<{
+  at:number;
+  price:number;
+  quality:'trade'|'backup_realtime';
+  source:'TWSE_MIS'|'FUGLE'|'YAHOO';
 }>;
 
-export const INITIAL_CASH=750_000;
+export type RuntimeQuote = MarketQuoteInput & Readonly<{
+  previousClose: number;
+  /** Timestamp from the exchange feed; never the HTTP receipt time. */
+  sourceQuoteAt?:number|null;
+  quality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close';
+  previousCloseKnown?:boolean;
+  source?:'TWSE_MIS'|'FUGLE'|'YAHOO'|'TWSE_DAILY'|'TPEX_DAILY'|'CACHE';
+  priceType?:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE'|'OFFICIAL_CLOSE';
+  isFallback?:boolean;
+  officialTradePrice?:number|null;
+  market?:'TSE'|'OTC'|'UNKNOWN';
+  statusMessage?:string;
+  checkedAt?:number;
+  marketDataVersion?:number;
+  volume?:number|null;
+  sparkline: readonly number[];
+  intraday?:readonly RuntimeIntradayPoint[];
+  intradayDate?:string|null;
+  intradayPreviousClose?:number|null;
+  pinned?: boolean;
+  /** SaiETF Market Core metadata; accounting formulas do not consume these fields. */
+  marketSource?:'FUGLE'|'TWSE_MIS'|'YAHOO'|'CACHE'|'FALLBACK';
+  quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE';
+  streamingHealthy?:boolean;
+  streamingCheckedAt?:number;
+  quoteDate?:string;
+  quoteTime?:string;
+  receivedAt?:number;
+  sourceTimestamp?:number;
+  sessionDate?:string;
+  fallbackLevel?:number;
+  sequence?:number;
+  exchange?:string;
+  bid?:number;
+  ask?:number;
+  isClose?:boolean;
+  priceKind?:'lastTrade'|'bid'|'ask'|'regularMarketPrice'|'none';
+}>;
+
+// New accounts start with zero opening cash; persisted unconfigured opening cash is normalized to zero during hydration.
+export const INITIAL_CASH=0;
 
 /** Emergency/cache bootstrap only. Never treat these values as live market truth. */
 export const FALLBACK_QUOTES:readonly RuntimeQuote[]=[
@@ -47,4 +72,6 @@ const dividends:CanonicalLedgerEntry[]=[
   {id:'seed-d-00919',date:'2026-09-12',kind:'dividend',symbol:'00919',name:'群益台灣精選高息',perShareAmount:0.72,sharesHeld:4000},
 ];
 
-export const SEED_LEDGER:readonly CanonicalLedgerEntry[]=[...trades,...dividends];
+// Retain historical sample data only as explicit test/example fixtures.
+export const EXAMPLE_LEDGER:readonly CanonicalLedgerEntry[]=[...trades,...dividends];
+export const SEED_LEDGER:readonly CanonicalLedgerEntry[]=[];

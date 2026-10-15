@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {normalizeWatchlist,addWatchlistItem,watchlistSnapshot,selectQuoteRows,parseWatchlist} from '../src/market/watchlistModel';
+import {restoreMarketStartup,createLatestWriter} from '../src/market/startupTasks';
+async function main(){
+ const rows=normalizeWatchlist([{symbol:' 00985a ',name:'主動野村臺灣增強50'},{symbol:'00985A',name:'duplicate'},{symbol:'bad!',name:'bad'}]);
+ assert.deepEqual(rows,[{symbol:'00985A',name:'主動野村臺灣增強50'}]);
+ assert.equal(addWatchlistItem(rows,rows[0]!).length,1);
+ assert.deepEqual(normalizeWatchlist(null),[]);
+ const quote={symbol:'00985A',name:'English',liquidationTradeMode:'ODD_LOT' as const,dividendFrequency:4 as const,currentPrice:12,previousClose:10,sourceQuoteAt:1792026000000,volume:123,quality:'trade' as const,quoteStatus:'LIVE' as const,sparkline:[]};
+ const watch=watchlistSnapshot(rows,[quote]);
+ const live=watchlistSnapshot(rows,[{...quote,sourceQuoteAt:Date.parse('2026-10-15T01:05:00Z'),sessionDate:'2026-10-15'}],Date.parse('2026-10-15T01:05:01Z'));
+ assert.equal(live[0]!.valuationStatus,'current_session','live watched quotes must not be labeled as stale references');
+ assert.deepEqual(parseWatchlist('{broken json'),[],'optional damaged watchlist cannot block canonical background updates');
+ assert.equal(watch[0]!.name,'主動野村臺灣增強50');assert.equal(watch[0]!.price,12);assert.equal(watch[0]!.change,2);assert.equal(watch[0]!.volume,123);
+ assert.equal(watchlistSnapshot(rows,[])[0]!.price,null,'missing quote must not fabricate a price');
+ assert.equal(selectQuoteRows([{...watch[0]!,symbol:'0050'}],watch,'all').length,2);
+ assert.equal(selectQuoteRows(watch,watch,'all').length,1,'held and watched duplicates merge once');
+ assert.equal(selectQuoteRows([],watch,'holdings').length,0);
+ let local=false,native=false;
+ const never=new Promise<null>(()=>{});
+ await restoreMarketStartup(async()=>{local=true},()=>never,()=>{native=true});
+ assert.equal(local,true);assert.equal(native,false,'native promise must not block local startup');
+ let complete:(n:number)=>void=()=>{};
+ await restoreMarketStartup(async()=>{},()=>new Promise<number>(r=>{complete=r}),()=>{native=true});
+ complete(1);await new Promise(r=>setTimeout(r,0));assert.equal(native,true,'late native snapshot is still applied');
+ await restoreMarketStartup(async()=>{},async()=>{throw Error('bridge failed')},()=>assert.fail());
+ const writes:number[]=[];let release:()=>void=()=>{};
+ const writer=createLatestWriter(async(n:number)=>{writes.push(n);if(n===1)await new Promise<void>(r=>{release=r});},5);
+ writer.submit(1);await new Promise(r=>setTimeout(r,10));for(let n=2;n<=100;n++)writer.submit(n);release();await new Promise(r=>setTimeout(r,25));
+ assert.deepEqual(writes,[1,100],'slow storage coalesces a hundred live ticks');writer.dispose();
+ console.log('V4.0.61 watchlist validation, real quote projection, source filtering, nonblocking native bootstrap, serial latest persistence PASS');
+}
+void main();

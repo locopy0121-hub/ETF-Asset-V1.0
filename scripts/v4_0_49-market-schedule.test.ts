@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {validateMarketSchedule,DEFAULT_MARKET_SCHEDULE} from '../src/market/marketUpdateSchedule';
+assert.deepEqual(validateMarketSchedule(DEFAULT_MARKET_SCHEDULE),DEFAULT_MARKET_SCHEDULE);
+assert.equal(validateMarketSchedule({...DEFAULT_MARKET_SCHEDULE,start:'08:59'}),null);
+assert.equal(validateMarketSchedule({...DEFAULT_MARKET_SCHEDULE,end:'13:31'}),null);
+assert.equal(validateMarketSchedule({...DEFAULT_MARKET_SCHEDULE,start:'12:00',end:'11:00'}),null);
+assert.equal(validateMarketSchedule({...DEFAULT_MARKET_SCHEDULE,weekdays:[6]}),null);
+assert.equal(validateMarketSchedule({...DEFAULT_MARKET_SCHEDULE,weekdays:[]}),null);
+assert.deepEqual(validateMarketSchedule({...DEFAULT_MARKET_SCHEDULE,weekdays:[5,1,1],start:'10:00',end:'12:00'}),{enabled:true,start:'10:00',end:'12:00',weekdays:[1,5]});
+console.log('Schedule validation/time limits/weekdays PASS');

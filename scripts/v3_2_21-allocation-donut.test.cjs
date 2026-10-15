@@ -1,0 +1,13 @@
+const fs=require('fs');
+const assert=require('assert');
+const screen=fs.readFileSync('src/screens/PortfolioScreen.tsx','utf8');
+const chart=fs.readFileSync('src/components/PortfolioAllocationDonut.tsx','utf8');
+assert.match(screen,/PortfolioAllocationDonut rows=\{sorted\} totalMarketValue=\{portfolio.totalMarketValue\} valuationComplete=\{valuationComplete\}/);
+assert.ok(!screen.includes('sorted.map(item=><View key={item.symbol} style={styles.allocationRow}'),'legacy allocation bars should be removed');
+assert.match(chart,/positive\.reduce\(\(sum,item\)=>sum\+item.marketValue,0\)/);
+assert.match(chart,/!valuationComplete/);
+assert.match(chart,/totalMarketValue/);
+assert.match(chart,/strokeDasharray/);
+assert.match(chart,/allocations\.map/);
+assert.match(chart,/rows.length/);
+console.log('V3.2.21 allocation donut structural regression: PASS');
