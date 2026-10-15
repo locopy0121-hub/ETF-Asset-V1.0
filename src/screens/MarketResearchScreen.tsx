@@ -1,4 +1,6 @@
 
+import {WatchlistPanel} from '../components/WatchlistPanel';
+import {useWatchlist} from '../market/WatchlistRuntime';
 import {useEffect,useMemo,useState} from 'react';
 import {Linking,ScrollView,StyleSheet,View} from 'react-native';
 import Svg,{Line,Polyline} from 'react-native-svg';
@@ -73,6 +75,7 @@ function IntradayChart({points}:{points:readonly {at:number;price:number}[]}){
 export function MarketResearchScreen(){
   const market=useMarketRuntime(),finance=useFinance(),news=useAiNewsRuntime();
   const theme=useThemeRuntime(),system=useSystemColors();
+  const watchlist=useWatchlist();
   const [query,setQuery]=useState('');
   const [symbol,setSymbol]=useState<string|null>(null);
   const [tab,setTab]=useState<ResearchTab>('chart');
@@ -151,11 +154,13 @@ export function MarketResearchScreen(){
         }} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',width:78}}>{item.symbol}</Text>
           <Text style={{color:theme.palette.text,flex:1}} numberOfLines={2}>{item.name}</Text>
-          <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{item.market==='TWSE'?'上市':'上櫃'}</Text>
+          <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{item.market==='TWSE'?'上市':'上櫃'}</Text><Pressable disabled={!watchlist.hydrated} accessibilityLabel={(watchlist.items.some(x=>x.symbol===item.symbol)?'移除自選 ':'加入自選 ')+item.symbol} onPress={event=>{event.stopPropagation();if(watchlist.items.some(x=>x.symbol===item.symbol))watchlist.remove(item.symbol);else watchlist.add({symbol:item.symbol,name:item.name});}} style={{padding:10}}><Text style={{color:theme.palette.primary,fontSize:20}}>{watchlist.items.some(x=>x.symbol===item.symbol)?'★':'☆'}</Text></Pressable>
         </Pressable>)}</View></MarketPreviewActionGuard>:<MarketEditableText id="market:search:empty" label="無搜尋結果訊息" style={{color:theme.palette.textSecondary}}>目錄沒有相符標的；請確認名稱或重新同步證券目錄。</MarketEditableText>:null}
     </FrameCard>},
+    {key:'market-watchlist',element:<FrameCard title="自選清單"><WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={(code,name)=>{setSymbol(code);setQuery(code+' '+name);setTab('chart');setSelectedCandleDate(null);}}/></FrameCard>},
     ...(symbol?[{key:'market-summary',element:<FrameCard title="標的行情">
       <MarketEditableText id="market:summary:title" label="行情標的名稱" style={{fontSize:19,fontWeight:'800',color:theme.palette.text}}>{info?.name??symbol}　{symbol}</MarketEditableText>
+      <MarketPreviewActionGuard><Pressable disabled={!watchlist.hydrated} onPress={()=>watchlist.items.some(x=>x.symbol===symbol)?watchlist.remove(symbol):watchlist.add({symbol,name:info?.name??symbol})}><Text style={{color:theme.palette.primary,fontWeight:'700',paddingVertical:10}}>{watchlist.items.some(x=>x.symbol===symbol)?'★ 移除自選':'☆ 加入自選'}</Text></Pressable></MarketPreviewActionGuard>
       <MarketEditableText id="market:summary:context" label="市場與交易狀態" style={{color:theme.palette.textSecondary,fontSize:12}}>{info?.market==='TPEx'?'上櫃':'上市／待核實'}｜{info?.industry??info?.etfType??'股票／ETF'}｜{market.phase==='live'?'盤中':market.phase==='afterHours'?'休市／盤後':'離線'}</MarketEditableText>
       <View style={styles.row}>
         <MarketEditableText id="market:summary:price" label="即時價格" kind="value" tone={diff===null?'neutral':diff>0?'gain':diff<0?'loss':'neutral'} style={{fontSize:37,fontWeight:'900',color:tone}}>{price(value)}</MarketEditableText>

@@ -208,6 +208,7 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
     fields:fields.length?fields:[...DEFAULT_MONITOR_CONFIG.fields],
     normalItems:normNormalItems(input?.normalItems),
     miniFields:miniFields.length?miniFields:[...DEFAULT_MONITOR_CONFIG.miniFields],
+    quoteListSource:input?.quoteListSource==='watchlist'||input?.quoteListSource==='all'?input.quoteListSource:'holdings',
     selectedSymbols:strings(input?.selectedSymbols),
     showBreathingLight:input?.showBreathingLight??true,
     alertChangePct:Number.isFinite(Number(input?.alertChangePct))?Math.max(0,Number(input?.alertChangePct)):null,

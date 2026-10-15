@@ -1,3 +1,4 @@
+import {restoreMarketStartup,createLatestWriter} from './startupTasks';
 import {applyMarketClosedDates,nextMarketSessionBoundary,valuationSessionActive} from './marketCenterViews';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {markMarketFlowApplied} from './marketFlowMetrics';
@@ -52,6 +53,7 @@ type MarketRuntimeValue=Readonly<{
   fugleConfigured:boolean;
   refresh:(options?:{force?:boolean;silent?:boolean})=>Promise<MarketRefreshResult>;
   refreshCatalog:()=>Promise<void>;
+  setWatchlistSymbols:(symbols:readonly string[])=>void;
   setTrackedSymbols:(symbols:readonly string[])=>void;
   setResearchSymbols:(symbols:readonly string[])=>void;
   saveFugleApiKey:(apiKey:string)=>Promise<boolean>;
@@ -147,9 +149,11 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const [fugleConfigured,setFugleConfigured]=useState(false);
   const [marketDataVersion,setMarketDataVersion]=useState(0);
 
+  const cacheWriterRef=useRef<ReturnType<typeof createLatestWriter<PersistedMarketRuntime>>|null>(null);
   const quotesRef=useRef<RuntimeQuote[]>([]),symbolsRef=useRef<string[]>([]);
   const researchRef=useRef<string[]>([]);
-  const combinedSymbols=useCallback(()=>[...new Set([...symbolsRef.current,...researchRef.current])].sort(),[]);
+  const watchlistRef=useRef<string[]>([]);
+  const combinedSymbols=useCallback(()=>[...new Set([...symbolsRef.current,...researchRef.current,...watchlistRef.current])].sort(),[]);
   const catalogRef=useRef<TaiwanSecurityInfo[]>(fallbackCatalog());
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
   const refreshVisibleRef=useRef(false);
@@ -191,13 +195,12 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
 
   useEffect(()=>{
     let alive=true;
-    void (async()=>{
-      const [runtimeRaw,previousRaw,v3Raw,legacyRaw,nativeKey]=await Promise.all([
+    void restoreMarketStartup(async()=>{
+      const [runtimeRaw,previousRaw,v3Raw,legacyRaw]=await Promise.all([
         AsyncStorage.getItem(RUNTIME_STORAGE_KEY).catch(()=>null),
         AsyncStorage.getItem(PREVIOUS_RUNTIME_STORAGE_KEY).catch(()=>null),
         AsyncStorage.getItem(V3_RUNTIME_STORAGE_KEY).catch(()=>null),
         AsyncStorage.getItem(LEGACY_RUNTIME_STORAGE_KEY).catch(()=>null),
-        loadNativeFugleApiKey().catch(()=>null),
       ]);
       if(!alive)return;
       let persisted:Partial<PersistedMarketRuntime>|null=null;
@@ -212,23 +215,28 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
         const next=[...persisted.catalog];catalogRef.current=next;setCatalog(next);
       }
       if(Number.isFinite(Number(persisted?.lastSuccessAt)))setLastSuccessAt(Number(persisted?.lastSuccessAt));
-      setFugleConfigured(!!nativeKey?.trim());
-      if(nativeRuntimeAvailable){
-        try{
-          const snapshot=await loadUnifiedMarketData();
-          if(alive)applySnapshot(snapshot);
-        }catch{}
-      }
       if(alive)setHydrated(true);
-    })();
+    },async()=>{
+      // Keystore and the native market must not gate the first local screen.
+      void loadNativeFugleApiKey().then(key=>{if(alive)setFugleConfigured(!!key?.trim());}).catch(()=>{});
+      if(!nativeRuntimeAvailable)return null;
+      const snapshot=await loadUnifiedMarketData();
+      return snapshot;
+    },snapshot=>{if(alive&&snapshot)applySnapshot(snapshot);}).catch(()=>{if(alive)setHydrated(true);});
     return()=>{alive=false;};
   },[applySnapshot]);
 
   useEffect(()=>{
+    const writer=createLatestWriter<PersistedMarketRuntime>(payload=>AsyncStorage.setItem(RUNTIME_STORAGE_KEY,JSON.stringify(payload)));
+    cacheWriterRef.current=writer;
+    return()=>{writer.dispose();cacheWriterRef.current=null;};
+  },[]);
+  useEffect(()=>{
     if(!hydrated)return;
     const payload:PersistedMarketRuntime={schema:6,catalog,lastSuccessAt};
-    AsyncStorage.setItem(RUNTIME_STORAGE_KEY,JSON.stringify(payload)).catch(()=>{});
+    cacheWriterRef.current?.submit(payload);
   },[hydrated,catalog,lastSuccessAt]);
+
 
   const setTrackedSymbols=useCallback((symbols:readonly string[])=>{
     const normalized=Array.from(new Set(symbols.map(symbol=>symbol.trim().toUpperCase()).filter(Boolean))).sort();
@@ -353,14 +361,21 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
       void refreshCatalog();
   },[hydrated,catalog.length,refreshCatalog]);
 
+  const setWatchlistSymbols=useCallback((symbols:readonly string[])=>{
+    const next=[...new Set(symbols.map(x=>x.trim().toUpperCase()).filter(Boolean))].sort();
+    if(sameStrings(watchlistRef.current,next))return;
+    watchlistRef.current=next;
+    void updateNativeMarketSymbols(combinedSymbols()).catch(()=>{});
+    void refresh({silent:true});
+  },[combinedSymbols,refresh]);
   const value=useMemo<MarketRuntimeValue>(()=>({
     hydrated,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
     marketDataVersion,missingSymbols:unresolvedSymbols,providerHealth,unresolvedSymbols,
-    fugleConfigured,refresh,refreshCatalog,setTrackedSymbols,setResearchSymbols,saveFugleApiKey,clearFugleApiKey,
+    fugleConfigured,refresh,refreshCatalog,setTrackedSymbols,setWatchlistSymbols,setResearchSymbols,saveFugleApiKey,clearFugleApiKey,
   }),[
     hydrated,quotes,phase,refreshing,lastSuccessAt,lastError,catalog,catalogRefreshing,
     marketDataVersion,providerHealth,unresolvedSymbols,fugleConfigured,refresh,refreshCatalog,
-    setTrackedSymbols,setResearchSymbols,saveFugleApiKey,clearFugleApiKey,
+    setTrackedSymbols,setWatchlistSymbols,setResearchSymbols,saveFugleApiKey,clearFugleApiKey,
   ]);
 
   return <MarketRuntimeContext.Provider value={value}>{children}</MarketRuntimeContext.Provider>;

@@ -9,7 +9,7 @@ const persist=moduleSource.slice(moduleSource.indexOf('private fun persistSurfac
 assert.ok(persist.indexOf('acceptsSurfaceSnapshot')<persist.indexOf('acknowledgeSurface'),'Rejected price versions cannot acknowledge final surface');
 assert.match(persist,/acknowledgeSurface\(reactContext,incoming\.optLong\("marketDataVersion",0L\)\)/);
 const ci=fs.readFileSync('.github/workflows/ci.yml','utf8');
-assert.match(ci,/npm run test:v4_0_60/);
-assert.equal(require('../package.json').version,'4.0.60');
-assert.equal(require('../app.json').expo.android.versionCode,40060);
+assert.match(ci,/npm run test:v4_0_61/);
+assert.equal(require('../package.json').version,'4.0.61');
+assert.equal(require('../app.json').expo.android.versionCode,40061);
 console.log('V4.0.58 close reconciliation / persistence / accepted surface ACK / release wiring PASS');

@@ -1,3 +1,4 @@
+import {selectQuoteRows,type QuoteListSource} from '../market/watchlistModel';
 import type {MonitorAutoFit} from './monitorAutoFit';
 import {
   DEFAULT_ITEM_EFFECT,
@@ -139,6 +140,7 @@ export type MonitorConfig = Readonly<{
   fields: readonly MonitorField[];
   normalItems:readonly MonitorItemConfig[];
   miniFields: readonly MonitorField[];
+  quoteListSource?:QuoteListSource;
   selectedSymbols: readonly string[];
   showBreathingLight: boolean;
   alertChangePct: number | null;
@@ -326,7 +328,9 @@ export function updateMonitorWallLayout(config:MonitorConfig,patch:Partial<Monit
 }
 export function sortMonitorHoldings(snapshot:SharedSnapshot|null,config:MonitorConfig){
   if(!snapshot)return [];
-  const rows=config.selectedSymbols.length?snapshot.holdings.filter(x=>config.selectedSymbols.includes(x.symbol)):[...snapshot.holdings];
+  const held=new Set(snapshot.holdings.map(x=>x.symbol)),watched=new Set((snapshot.watchlist??[]).map(x=>x.symbol));
+  const all=selectQuoteRows(snapshot.holdings,snapshot.watchlist??[],config.quoteListSource??'holdings').map(row=>({...row,name:(watched.has(row.symbol)?held.has(row.symbol)?'[持股＋自選] ':'[自選] ':'[持股] ')+row.name}));
+  const rows=config.selectedSymbols.length?all.filter(x=>config.selectedSymbols.includes(x.symbol)):all;
   const d=config.sort.direction==='desc'?-1:1;
   if(config.sort.key==='manual'){
     const rank=new Map(config.sort.manualSymbols.map((s,i)=>[s,i]));

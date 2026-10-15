@@ -697,3 +697,11 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Native fitting uses one pre-draw callback per fresh surface, cleared on rebuild/destroy. Detached/hidden clock views have no layout budget and must be skipped. No timers or new market work.
 - Reject stale preview measurements by layout epoch and text identity. OFF leaves stored manual font settings intact; Normal/Mini keep separate options and old configurations default OFF.
 - Android overlay layout dimensions are physical px, not dp. Do not multiply configured row height by density; scale the preview canvas and its measured sp metrics together so Mini does not lose its data area.
+
+# V4.0.61 — Native readiness cannot block local startup; optional lists cannot block accounting
+- Local hydration must finish independently of native market and Keystore promises. Apply late native results, but never keep all app navigation behind an unbounded bridge promise. Keep a native-control render boundary outside all providers; never clear accounts or layout settings to recover a screen.
+- Source timestamp ticks are not catalog edits. Serialize market-cache writes only at a bounded, serialized latest-only boundary; do not queue full-catalog JSON once per trade. This write window is not a quote-refresh timer.
+- Holdings, one-off research and persisted watchlist symbols are independent subscription owners; union them on foreground and headless paths. Closing search or removing a watched symbol must not remove another owner's subscription.
+- Keep watchlist rows separate from canonical holdings and totals. Monitor source selection needs persisted normalization, real preview, native rendering, background data, explicit source labels, duplicate merging, and suppression of unavailable accounting fields.
+- LIVE watched trades need the same Taipei session classification as live holdings. Optional corrupt watchlist data must not stop canonical background writes. Preserve malformed foreground data in a recovery copy before allowing an empty replacement.
+- A passing model or cloud build cannot prove the original device's upgrade-time white screen or latency is resolved; retain this as a device acceptance check.

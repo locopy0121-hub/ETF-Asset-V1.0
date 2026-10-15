@@ -21,7 +21,7 @@ import { ColorPalettePicker } from '../components/ColorPalettePicker';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
 import {DiagnosticLogPanel} from '../components/DiagnosticLogPanel';
 import {MarketComparisonPanel} from '../components/MarketComparisonPanel';
-import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';
+import {ConnectedMonitorControlPanel as MonitorControlPanel} from '../components/monitor/ConnectedMonitorControlPanel';
 import { WidgetControlPanel } from '../components/widget/WidgetControlPanel';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { MAIN_PAGES } from '../domain/pageRegistry';
@@ -61,8 +61,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='4.0.60';
-const BUILD='40060';
+const VERSION='4.0.61';
+const BUILD='40061';
 
 export function SettingsScreen(){
   const finance=useFinance();

@@ -11,6 +11,7 @@ const release=JSON.parse(readFileSync('app.json','utf8')).expo as {version:strin
 // V4.0.50: the user explicitly approved relocating the existing schedule here.
 // Strip only that exact addition; all other protected content retains its original hash.
 const protectedBaseline=screen
+  .replace("import {ConnectedMonitorControlPanel as MonitorControlPanel} from '../components/monitor/ConnectedMonitorControlPanel';","import { MonitorControlPanel } from '../components/monitor/MonitorControlPanel';")
   .replace("import {MarketUpdateSchedulePanel} from '../components/MarketUpdateSchedulePanel';\n",'')
   .replace("type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs'|'schedule';","type SystemPanel=null|'engineer'|'permissions'|'diagnostics'|'logs';")
   .replace('      <ChildButton label="行情更新排程" summary="交易星期、盤中開始／結束時間" active={systemPanel===\'schedule\'} onPress={()=>setSystemPanel(systemPanel===\'schedule\'?null:\'schedule\')}/>\n      {systemPanel===\'schedule\'?<MarketUpdateSchedulePanel/>:null}\n','')
@@ -21,9 +22,9 @@ const protectedSubcomponents=[
   ['src/components/EtfHoldingsApiSettings.tsx','e5734da68b3cf49381a35aba82f08a3557761789'],
   ['src/components/DiagnosticLogPanel.tsx','db3718d192b7c610cf458669023ec298c84e5f60'],
   ['src/components/MarketComparisonPanel.tsx','c0c1d0b49c9726c35d50fa7a3e723de9a10ace1b'],
-  // V4.0.60: user explicitly approves Monitor font auto-fit; other Settings content remains protected.
+  // V4.0.61: authorized Monitor source choice; exact wrapper import is normalized above. Other Settings content remains protected.
   // Only this Monitor child baseline changes; Settings shell and all other children remain locked.
-  ['src/components/monitor/MonitorControlPanel.tsx','64470159b26900956180782e1de15505e9002a99'],
+  ['src/components/monitor/MonitorControlPanel.tsx','195f782a88cd157846a842a1a865daef0f53124e'],
   ['src/components/widget/WidgetControlPanel.tsx','b0feb6515a283b5d471bdc3881345ef710fce2e4'],
 ] as const;
 for(const [file,sha] of protectedSubcomponents)assert.equal(blobSha(readFileSync(file,'utf8')),sha,'protected settings child drifted: '+file);

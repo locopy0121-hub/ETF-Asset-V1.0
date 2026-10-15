@@ -7,6 +7,7 @@ export type MarketStatus =
   | 'unavailable';
 
 export type HoldingSnapshot = Readonly<{
+  watchOnly?:boolean;
   id: string;
   symbol: string;
   name: string;
@@ -52,6 +53,7 @@ export type SharedSnapshot = Readonly<{
   source: 'canonical-finance-core';
   asset: AssetSnapshot;
   holdings: readonly HoldingSnapshot[];
+  watchlist?:readonly HoldingSnapshot[];
 }>;
 
 /**

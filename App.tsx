@@ -1,3 +1,6 @@
+import {AppRecoveryBoundary} from './src/components/AppRecoveryBoundary';
+import {WatchlistRuntimeProvider,useWatchlist} from './src/market/WatchlistRuntime';
+import {watchlistSnapshot} from './src/market/watchlistModel';
 import {acceptsEditorSession} from './src/domain/editorSessionScope';
 import {EditorSurface} from './src/components/EditorSurface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -76,8 +79,8 @@ function useLatestAsyncJob<T>(runner:(value:T)=>Promise<unknown>,label:string){
 }
 
 export default function App() {
-  return <SafeAreaProvider>
-    <MarketRuntimeProvider>
+  return <AppRecoveryBoundary><SafeAreaProvider>
+    <MarketRuntimeProvider><WatchlistRuntimeProvider>
       <AiNewsRuntimeProvider>
       <SettingsRuntimeProvider>
       <ThemeRuntimeProvider>
@@ -95,13 +98,15 @@ export default function App() {
       </ThemeRuntimeProvider>
       </SettingsRuntimeProvider>
       </AiNewsRuntimeProvider>
-    </MarketRuntimeProvider>
-  </SafeAreaProvider>;
+    </WatchlistRuntimeProvider></MarketRuntimeProvider>
+  </SafeAreaProvider></AppRecoveryBoundary>;
 }
 
 function AppBody(){
   const finance=useFinance();
+  const watchlist=useWatchlist();
   const market=useMarketRuntime();
+  const monitorSnapshot=useMemo(()=>({...finance.sharedSnapshot,watchlist:watchlistSnapshot(watchlist.items,market.quotes)}),[finance.sharedSnapshot,watchlist.items,market.quotes]);
   const aiNews=useAiNewsRuntime();
   const brokerSettings=useBrokerSettingsRuntime();
   const settings=useSettingsRuntime();
@@ -119,6 +124,13 @@ function AppBody(){
     'Monitor',
   );
   const {width:screenWidth}=useWindowDimensions();
+  const [startupSlow,setStartupSlow]=useState(false);
+  const startupReady=finance.hydrated&&market.hydrated&&brokerSettings.hydrated&&settings.hydrated&&theme.hydrated&&monitorSettings.hydrated&&widgetSettings.hydrated&&editor.hydrated&&maintenance.hydrated;
+  useEffect(()=>{
+    if(startupReady){recordDiagnosticEvent({level:'info',code:'STARTUP_READY',screen:'home',message:'本機資料載入完成'});return;}
+    const timer=setTimeout(()=>{setStartupSlow(true);recordDiagnosticEvent({level:'warning',code:'STARTUP_SLOW',screen:'home',message:'本機資料載入超過 10 秒'});},10_000);
+    return()=>clearTimeout(timer);
+  },[startupReady]);
   const [floatingAiOpen,setFloatingAiOpen]=useState(false);
   const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
   const [active,setActive]=useState<MainPageKey>('home');
@@ -201,8 +213,8 @@ function AppBody(){
     if(!finance.hydrated||!widgetSettings.hydrated||AppState.currentState!=='active')return;
     // Last-write-wins queue: a slow native/widget write can never pile up one
     // Promise per 1-second market tick. Intermediate snapshots are coalesced.
-    queueWidgetSync({config:widgetSettings.config,snapshot:finance.sharedSnapshot});
-  },[finance.hydrated,finance.sharedSnapshot,widgetSettings.hydrated,widgetSettings.config,queueWidgetSync]);
+    queueWidgetSync({config:widgetSettings.config,snapshot:monitorSnapshot});
+  },[finance.hydrated,monitorSnapshot,widgetSettings.hydrated,widgetSettings.config,queueWidgetSync]);
 
   useEffect(()=>{
     if(!market.hydrated)return;
@@ -230,13 +242,13 @@ function AppBody(){
   useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated||monitorSettings.config.enabled)return;
     // Disabled monitor only needs config/state transitions, not every market tick.
-    queueMonitorSync({config:monitorSettings.config,snapshot:finance.sharedSnapshot});
+    queueMonitorSync({config:monitorSettings.config,snapshot:monitorSnapshot});
   },[finance.hydrated,monitorSettings.hydrated,monitorSettings.config,queueMonitorSync]);
 
   useEffect(()=>{
     if(!finance.hydrated||!monitorSettings.hydrated||!monitorSettings.config.enabled)return;
-    queueMonitorSync({config:monitorSettings.config,snapshot:finance.sharedSnapshot});
-  },[finance.hydrated,finance.sharedSnapshot,monitorSettings.hydrated,monitorSettings.config,queueMonitorSync]);
+    queueMonitorSync({config:monitorSettings.config,snapshot:monitorSnapshot});
+  },[finance.hydrated,monitorSnapshot,monitorSettings.hydrated,monitorSettings.config,queueMonitorSync]);
 
   const openHolding=(holding:HoldingQuote)=>{
     recordDiagnosticEvent({level:'info',code:'HOLDING_TAP',screen:active,message:'點擊 ETF 卡片，準備開啟詳情'});
@@ -273,7 +285,7 @@ function AppBody(){
       <StatusBar barStyle={theme.palette.dark?'light-content':'dark-content'}/>
       <ActivityIndicator size="large" color={theme.palette.primary}/>
       <Text editorId="native:App:loadingTitle:1" editorReadOnly={false} style={[styles.loadingTitle,{color:theme.palette.text}]}>TF Asset</Text>
-      <Text editorId="native:App:loadingText:2" editorReadOnly={false} style={[styles.loadingText,{color:theme.palette.textSecondary}]}>正在載入帳務、行情、主題與版面設定…</Text>
+      <Text editorId="native:App:loadingText:2" editorReadOnly={false} style={[styles.loadingText,{color:theme.palette.textSecondary}]}>{startupSlow?'載入時間較長，請稍候；帳務資料仍保留。':'正在載入帳務、行情、主題與版面設定…'}</Text>
     </View>;
   }
 

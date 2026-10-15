@@ -97,6 +97,10 @@ internal object TfAssetMarketPresentation{
       }
       output.put(row)
     }
+    raw.optJSONArray("watchlist")?.let{rows->
+      val watch=decorateSnapshot(JSONObject(),JSONObject().put("holdings",rows),now)
+      decorated.put("watchlist",watch.optJSONArray("holdings"))
+    }
     decorated.put("holdings",output)
     return decorated
   }

@@ -188,8 +188,7 @@ class TfAssetOverlayService:Service(){
   private fun objectMap(array:JSONArray?,key:String):Map<String,JSONObject> = jsonObjects(array).mapNotNull{obj->obj.optString(key,"").takeIf(String::isNotBlank)?.let{it to obj}}.toMap()
 
   private fun orderedHoldings(snapshot:JSONObject,cfg:JSONObject):List<JSONObject>{
-    val array=snapshot.optJSONArray("holdings")?:return emptyList()
-    val all=(0 until array.length()).mapNotNull{array.optJSONObject(it)}
+    val all=TfAssetMonitorQuoteLists.select(snapshot,cfg.optString("quoteListSource","holdings"))
     val selected=jsonStrings(cfg.optJSONArray("selectedSymbols")).toSet()
     val rows=(if(selected.isEmpty())all else all.filter{selected.contains(it.optString("symbol","").uppercase())}).toMutableList()
     val sort=cfg.optJSONObject("sort")?:JSONObject()

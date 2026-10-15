@@ -1,3 +1,4 @@
+import {WatchlistPanel} from '../components/WatchlistPanel';
 import {useDisplayFormat} from '../settings/useDisplayFormat';
 import {portfolioFrameTone,financialTone} from '../theme/financialTone';
 import { useMemo, useState } from 'react';
@@ -41,6 +42,7 @@ import { colors, radius, spacing } from '../theme/tokens';
 export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void;onNavigate:(page:MainPageKey)=>void}) {
   const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
+  const [wallSource,setWallSource]=useState<'holdings'|'watchlist'|'all'>('holdings');
   const market=useMarketRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -224,7 +226,9 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
               )}
             </View>
             {holdingLayoutMode==='grid3'?<Text editorId="native:HomeScreen:ruleText:16" editorReadOnly={false} style={styles.ruleText}>三欄自動使用無圖表精簡卡，保留 ETF 代號、名稱、報價、漲跌與損益。</Text>:null}
-            <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>
+            <View style={styles.sortRow}>{(['holdings','watchlist','all'] as const).map(source=><Pressable key={source} onPress={()=>setWallSource(source)} style={[styles.sortChip,wallSource===source&&styles.sortChipActive]}><Text style={[styles.sortChipText,wallSource===source&&styles.sortChipTextActive]}>{source==='holdings'?'持股':source==='watchlist'?'自選':'全部'}</Text></Pressable>)}</View>
+            {wallSource!=='watchlist'?<HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} refreshToken={finance.sharedSnapshot.generatedAt} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} wallConfig={effectiveDisplay.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>:null}
+            {wallSource!=='holdings'?<WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={()=>onNavigate('market')}/>:null}
             <Text editorId="native:HomeScreen:ruleText:17" editorReadOnly={true} style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },

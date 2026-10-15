@@ -1,3 +1,4 @@
+import {WATCHLIST_KEY,parseWatchlist,watchlistSnapshot} from '../market/watchlistModel';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppState,DeviceEventEmitter} from 'react-native';
 import {loadUnifiedMarketData,refreshUnifiedMarketData,subscribeUnifiedMarketData,syncNativeWidget,updateNativeMarketSymbols,type UnifiedMarketSnapshot} from '../native/TfAssetNativeBridge';
@@ -27,11 +28,14 @@ export async function widgetLiveTask(){
           const raw=await AsyncStorage.getItem('@tf-asset/v1.0.2-ledger');
           if(!active||foreground()||!raw)continue;
           const state=JSON.parse(raw) as unknown;
-          const snapshot=buildBackgroundWidgetSnapshot(state,native,quotes);
+          const canonical=buildBackgroundWidgetSnapshot(state,native,quotes);
+          const rawWatchlist=await AsyncStorage.getItem(WATCHLIST_KEY).catch(()=>null);
+          const watchlist=parseWatchlist(rawWatchlist);
+          const snapshot=canonical?{...canonical,watchlist:watchlistSnapshot(watchlist,marketRowsToRuntimeQuotes(omitRegressedTransportQuotes(native,quotes),quotes))}:null;
           if(!snapshot)continue;
           quotes=marketRowsToRuntimeQuotes(omitRegressedTransportQuotes(native,quotes),quotes);
           lastVersion=native.version;
-          const symbols=snapshot.holdings.filter(row=>(row.shares??0)>0).map(row=>row.symbol).sort();
+          const symbols=[...new Set([...snapshot.holdings.filter(row=>(row.shares??0)>0).map(row=>row.symbol),...watchlist.map(row=>row.symbol)])].sort();
           const key=symbols.join('|');
           if(key!==symbolsKey){symbolsKey=key;await updateNativeMarketSymbols(symbols);}
           if(!active||foreground())continue;
@@ -58,7 +62,9 @@ export async function widgetLiveTask(){
       const native=await loadUnifiedMarketData();
       const snapshot=raw?buildBackgroundWidgetSnapshot(JSON.parse(raw),native):null;
       if(snapshot){
-        const symbols=snapshot.holdings.filter(row=>(row.shares??0)>0).map(row=>row.symbol);
+        const rawWatchlist=await AsyncStorage.getItem(WATCHLIST_KEY).catch(()=>null);
+        const watchlist=parseWatchlist(rawWatchlist);
+        const symbols=[...new Set([...snapshot.holdings.filter(row=>(row.shares??0)>0).map(row=>row.symbol),...watchlist.map(row=>row.symbol)])];
         await updateNativeMarketSymbols(symbols);
         accept(await refreshUnifiedMarketData(symbols));
       }
