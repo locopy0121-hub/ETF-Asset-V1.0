@@ -1,0 +1,43 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),React=require('react');
+const {create,act}=require('react-test-renderer');global.IS_REACT_ACT_ENVIRONMENT=true;
+let override={},targets=[];
+const flat=s=>Array.isArray(s)?Object.assign({},...s.map(flat)):s||{};
+const rn={Text:'NativeText',TextInput:'NativeInput',Pressable:'NativeButton',View:'NativeView',PanResponder:{create:()=>({panHandlers:{}})},StyleSheet:{flatten:flat,create:x=>x,absoluteFill:{}}};
+const cache=new Map();
+function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file);const m={exports:{}};
+const req=id=>id==='react-native'?rn:id.endsWith('/SettingsRuntime')?{useSettingsRuntime:()=>({prefs:{display:{fontScale:1.2}}})}:id.endsWith('/MaintenanceRuntime')?{useMaintenance:()=>({enabled:false,session:null,selection:null,getTargetOverride:()=>override})}:id.endsWith('/WorkspaceSurface')?{useWorkspace:()=>null}:id.endsWith('/ThemeRuntime')?{THEME_BACKGROUNDS:[],useThemeRuntime:()=>({palette:{surface:'#FFFFFF',primary:'#0066FF'}})}:id.endsWith('/TargetSurfaceEffects')?{TargetBackdrop:()=>null,targetShadowStyle:()=>({})}:id.startsWith('.')?load(path.resolve(path.dirname(file),id)+(fs.existsSync(path.resolve(path.dirname(file),id)+'.tsx')?'.tsx':'.ts')):require(id);
+new Function('require','module','exports',ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText)(req,m,m.exports);if(file.endsWith('/InspectableTarget.tsx')){const Component=m.exports.InspectableTarget;m.exports.InspectableTarget=props=>{targets.push(props.target);return React.createElement(Component,props);};}cache.set(file,m.exports);return m.exports;}
+const native=load('src/components/EditableNative.tsx');
+const {FrameEditingProvider}=load('src/editor/FrameEditingContext.tsx');
+const frame={page:'ledger',frameKey:'quick-entry',frameTitle:'建檔'};
+let r;
+function mount(node){act(()=>{r=create(React.createElement(FrameEditingProvider,{frame},node));});}
+override={labelText:'改寫帳務',fontSize:20,textColor:'#123456'};
+mount(React.createElement(native.Text,{editorId:'amount',editorReadOnly:true,style:{fontSize:10}},['NT$ ',1234]));
+assert.deepEqual(r.root.findByType('NativeText').props.children,['NT$ ',1234]);
+assert.equal(flat(r.root.findByType('NativeText').props.style).fontSize,24);
+assert.equal(flat(r.root.findByType('NativeText').props.style).color,'#123456');
+assert.equal(targets.at(-1).kind,'value');act(()=>r.unmount());
+mount(React.createElement(native.Text,{editorId:'label',editorReadOnly:false},'本次成交'));
+assert.equal(r.root.findByType('NativeText').props.children,'改寫帳務');act(()=>r.unmount());
+let entered='';mount(React.createElement(native.TextInput,{editorId:'input',value:'42',onChangeText:v=>entered=v}));
+assert.equal(r.root.findByType('NativeInput').props.value,'42');
+act(()=>r.root.findByType('NativeInput').props.onChangeText('43'));assert.equal(entered,'43');
+assert.ok(!JSON.stringify(targets.at(-1)).includes('42'),'engineering metadata must not contain form values');act(()=>r.unmount());
+let clicks=0;mount(React.createElement(native.Pressable,{editorId:'submit',disabled:true,onPress:()=>clicks++},'送出'));
+assert.equal(r.root.findByType('NativeButton').props.disabled,true);act(()=>r.unmount());
+override={backgroundColor:'#ABCDEF',backgroundOpacity:.5,borderColor:'#123456',borderWidth:2,borderRadius:7,padding:9};
+mount(React.createElement(native.Text,{editorId:'native:label',editorReadOnly:false},'外觀'));
+const surface=flat(r.root.findByType('NativeView').props.style);
+assert.equal(surface.backgroundColor,'rgba(171,205,239,0.500)');assert.equal(surface.borderWidth,2);assert.equal(surface.borderRadius,7);assert.equal(surface.padding,9);
+act(()=>r.unmount());
+override={opacity:.3};mount(React.createElement(native.Text,{editorId:'native:opacity',editorReadOnly:true},'資料'));assert.equal(flat(r.root.findByType('NativeView').props.style).opacity,.3);act(()=>r.unmount());
+override={};mount(React.createElement(native.Text,{editorId:'native:option',editorReadOnly:false},'選項 A'));const first=targets.at(-1).id;act(()=>r.unmount());mount(React.createElement(native.Text,{editorId:'native:option',editorReadOnly:false},'選項 B'));assert.notEqual(targets.at(-1).id,first);act(()=>r.unmount());
+override={backgroundColor:'#FFFFFF'};mount(React.createElement(native.Pressable,{editorId:'native:row-button',style:{flex:1,minWidth:70,alignSelf:'stretch'},onPress:()=>{}},'等寬'));
+assert.equal(flat(r.root.findByType('NativeView').props.style).flex,1);assert.equal(flat(r.root.findByType('NativeButton').props.style).flex,undefined);act(()=>r.unmount());
+override={backgroundColor:'#FFFFFF'};mount(React.createElement(native.Pressable,{editorId:'native:day',style:{width:34,height:34,minHeight:30,justifyContent:'center'}},'9'));
+assert.equal(flat(r.root.findByType('NativeView').props.style).height,34);assert.equal(flat(r.root.findByType('NativeButton').props.style).height,'100%');assert.equal(flat(r.root.findByType('NativeButton').props.style).minHeight,30);assert.equal(flat(r.root.findByType('NativeButton').props.style).justifyContent,'center');act(()=>r.unmount());
+const {PageHeaderVisual}=load('src/components/PageHeaderVisual.tsx');
+const config={visible:true,backgroundColor:'#FFFFFF',borderColor:'#FFFFFF',titleColor:'#000000',titleFontSize:24,backgroundOpacity:1,borderWidth:0,borderRadius:0};
+for(const key of ['chart-header','holding-detail-header']){override={labelText:'錯誤標的'};mount(React.createElement(PageHeaderVisual,{title:'00406A 主動中信台灣收益',frameConfig:config,frame:{...frame,frameKey:key,frameConfig:config}}));assert.ok(r.root.findAllByType('NativeText').some(node=>node.props.children==='00406A 主動中信台灣收益'));assert.equal(targets.findLast(t=>t.id==='header:title').kind,'value');act(()=>r.unmount());}
+console.log('V4.0.15 real editable text/input behavior PASS');

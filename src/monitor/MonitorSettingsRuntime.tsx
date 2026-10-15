@@ -1,3 +1,7 @@
+import {normalizeMonitorColumns} from './monitorWallGeometry';
+import {normalizeMonitorAutoFit} from './monitorAutoFit';
+import {normalizeMonitorFormat} from './monitorFormatting';
+import {type MonitorClock,type MonitorVisual} from './monitorDomain';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
 import {
@@ -7,9 +11,9 @@ import {
   ITEM_EFFECT_SPEEDS,
   ITEM_EFFECT_TRIGGERS,
   type ItemEffectConfig,
-  type ItemVisualOverride,
 } from '../domain/displayItemContract';
-import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingWallConfig, type HoldingWallFieldConfig } from '../domain/uiModels';
+import {DEFAULT_MONITOR_WALL_CONFIG,type MonitorWallConfig,type MonitorWallFieldConfig} from './monitorDomain';
+import {MONITOR_MODELS} from './monitorModels';
 import {
   DEFAULT_MONITOR_CONFIG,DEFAULT_MONITOR_EFFECTS,DEFAULT_MONITOR_ITEMS,DEFAULT_MONITOR_SORT,DEFAULT_MONITOR_STYLE,DEFAULT_MINI_COLUMNS,DEFAULT_MINI_HEADER,DEFAULT_MINI_STATUS_BAR,DEFAULT_MINI_STATUS_ITEMS,DEFAULT_MONITOR_WALL_LAYOUT,MONITOR_FIELDS,
   type MonitorConfig,type MonitorEffect,type MonitorField,type MonitorItemConfig,type MonitorSortKey,type MonitorStyle,type MiniColumnConfig,type MiniHeaderStyle,type MiniStatusBarStyle,type MiniStatusItemConfig,type MonitorWallLayout,
@@ -18,7 +22,7 @@ import {
 const STORAGE_KEY='@tf-asset/monitor-settings';
 const VALID_FIELDS:readonly MonitorField[]=MONITOR_FIELDS;
 const VALID_EFFECTS:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change'];
-const VALID_SORTS:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
+const VALID_SORTS:readonly MonitorSortKey[]=['manual','symbol','price','changePercent','pnl','marketValue','volume','roi'];
 const clamp=(v:unknown,min:number,max:number,fallback:number)=>{const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback;};
 const color=(v:unknown,f:string)=>typeof v==='string'&&/^#[0-9A-Fa-f]{6}$/.test(v)?v.toUpperCase():f;
 const nullableColor=(v:unknown)=>v==null?null:typeof v==='string'&&/^#[0-9A-Fa-f]{6}$/.test(v)?v.toUpperCase():null;
@@ -29,7 +33,8 @@ const normItemEffect=(effect:Partial<ItemEffectConfig>|undefined):ItemEffectConf
   speed:ITEM_EFFECT_SPEEDS.includes(effect?.speed as ItemEffectConfig['speed'])?effect!.speed as ItemEffectConfig['speed']:DEFAULT_ITEM_EFFECT.speed,
   intensity:ITEM_EFFECT_INTENSITIES.includes(effect?.intensity as ItemEffectConfig['intensity'])?effect!.intensity as ItemEffectConfig['intensity']:DEFAULT_ITEM_EFFECT.intensity,
 });
-const normVisual=(visual:Partial<ItemVisualOverride>|undefined,fallback:ItemVisualOverride):ItemVisualOverride=>({
+const normVisual=(visual:Partial<MonitorVisual>|undefined,fallback:MonitorVisual):MonitorVisual=>({
+  format:normalizeMonitorFormat(visual?.format),
   fontScale:clamp(visual?.fontScale,.7,2,fallback.fontScale),
   textColor:nullableColor(visual?.textColor),
   backgroundColor:nullableColor(visual?.backgroundColor),
@@ -40,6 +45,8 @@ const normVisual=(visual:Partial<ItemVisualOverride>|undefined,fallback:ItemVisu
   effect:normItemEffect(visual?.effect),
 });
 const normStyle=(s:Partial<MonitorStyle>|undefined,fallback:MonitorStyle):MonitorStyle=>({
+  autoFit:normalizeMonitorAutoFit(s?.autoFit),
+  format:normalizeMonitorFormat(s?.format),
   fontScale:clamp(s?.fontScale,.7,1.8,fallback.fontScale),
   titleFontScale:clamp(s?.titleFontScale,.7,1.8,fallback.titleFontScale),
   valueFontScale:clamp(s?.valueFontScale,.7,2,fallback.valueFontScale),
@@ -65,6 +72,7 @@ const normNormalItems=(items:readonly Partial<MonitorItemConfig>[]|undefined):re
   });
 };
 const normMiniHeader=(h:Partial<MiniHeaderStyle>|undefined):MiniHeaderStyle=>({
+  format:normalizeMonitorFormat(h?.format),
   visible:h?.visible??DEFAULT_MINI_HEADER.visible,
   height:clamp(h?.height,22,56,DEFAULT_MINI_HEADER.height),
   backgroundColor:color(h?.backgroundColor,DEFAULT_MINI_HEADER.backgroundColor),
@@ -82,6 +90,7 @@ const normMiniColumns=(columns:readonly Partial<MiniColumnConfig>[]|undefined):r
     const column=map.get(defaultColumn.field);
     return {
       field:defaultColumn.field,
+      format:normalizeMonitorFormat(column?.format),
       enabled:column?.enabled??defaultColumn.enabled,
       widthPercent:clamp(column?.widthPercent,10,60,defaultColumn.widthPercent),
       align:column?.align==='center'||column?.align==='right'?column.align:'left',
@@ -97,6 +106,7 @@ const normMiniColumns=(columns:readonly Partial<MiniColumnConfig>[]|undefined):r
   });
 };
 const normMiniStatusBar=(bar:Partial<MiniStatusBarStyle>|undefined):MiniStatusBarStyle=>({
+  format:normalizeMonitorFormat(bar?.format),
   visible:bar?.visible??DEFAULT_MINI_STATUS_BAR.visible,
   height:clamp(bar?.height,24,96,DEFAULT_MINI_STATUS_BAR.height),
   columns:Math.round(clamp(bar?.columns,1,4,DEFAULT_MINI_STATUS_BAR.columns)),
@@ -114,6 +124,7 @@ const normMiniStatusItems=(items:readonly Partial<MiniStatusItemConfig>[]|undefi
     const item=map.get(defaultItem.field);
     return {
       field:defaultItem.field,
+      format:normalizeMonitorFormat(item?.format),
       enabled:item?.enabled??defaultItem.enabled,
       label:typeof item?.label==='string'&&item.label.trim()?item.label.trim().slice(0,12):defaultItem.label,
       useProfitColor:item?.useProfitColor??defaultItem.useProfitColor,
@@ -128,16 +139,17 @@ const normMiniStatusItems=(items:readonly Partial<MiniStatusItemConfig>[]|undefi
   });
 };
 const normWallLayout=(layout:Partial<MonitorWallLayout>|undefined):MonitorWallLayout=>({
-  columns:Math.round(clamp(layout?.columns,1,4,DEFAULT_MONITOR_WALL_LAYOUT.columns)),
+  columns:normalizeMonitorColumns(layout?.columns,DEFAULT_MONITOR_WALL_LAYOUT.columns),
   columnGap:clamp(layout?.columnGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.columnGap),
   rowGap:clamp(layout?.rowGap,0,32,DEFAULT_MONITOR_WALL_LAYOUT.rowGap),
 });
-const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
-  const fallback=DEFAULT_HOLDING_WALL_CONFIG;
+const normWall=(wall:Partial<MonitorWallConfig>|undefined):MonitorWallConfig=>{
+  const fallback=DEFAULT_MONITOR_WALL_CONFIG;
   const input=Array.isArray(wall?.fields)?wall!.fields:[];
   const byField=new Map(input.map(field=>[field.field,field]));
   return {
     header:{
+      format:normalizeMonitorFormat(wall?.header?.format),
       visible:wall?.header?.visible??fallback.header.visible,
       fontScale:clamp(wall?.header?.fontScale,.7,1.8,fallback.header.fontScale),
       backgroundColor:color(wall?.header?.backgroundColor,fallback.header.backgroundColor),
@@ -146,10 +158,11 @@ const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
       borderWidth:clamp(wall?.header?.borderWidth,0,6,fallback.header.borderWidth),
       effect:normItemEffect(wall?.header?.effect),
     },
-    fields:fallback.fields.map(defaultField=>{
-      const field=byField.get(defaultField.field) as Partial<HoldingWallFieldConfig>|undefined;
+    fields:fallback.fields.map((defaultField):MonitorWallFieldConfig=>{
+      const field=byField.get(defaultField.field) as Partial<MonitorWallFieldConfig>|undefined;
       return {
         field:defaultField.field,
+        format:normalizeMonitorFormat(field?.format),
         enabled:field?.enabled??defaultField.enabled,
         label:typeof field?.label==='string'&&field.label.trim()?field.label.trim().slice(0,12):defaultField.label,
         fontScale:clamp(field?.fontScale,.7,2,defaultField.fontScale),
@@ -161,8 +174,9 @@ const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
         paddingY:clamp(field?.paddingY,0,16,defaultField.paddingY),
         effect:normItemEffect(field?.effect),
       };
-    }),
+    }).sort((a,b)=>{const rank=(field:string)=>{const index=input.findIndex(x=>x.field===field);return index<0?1000:index;};return rank(a.field)-rank(b.field);}),
     style:{
+      format:normalizeMonitorFormat(wall?.style?.format),
       backgroundColor:color(wall?.style?.backgroundColor,fallback.style.backgroundColor),
       textColor:color(wall?.style?.textColor,fallback.style.textColor),
       secondaryTextColor:color(wall?.style?.secondaryTextColor,fallback.style.secondaryTextColor),
@@ -177,6 +191,11 @@ const normWall=(wall:Partial<HoldingWallConfig>|undefined):HoldingWallConfig=>{
   };
 };
 
+const normClock=(clock:Partial<MonitorClock>|undefined):MonitorClock=>({
+  visible:clock?.visible??true,fontScale:clamp(clock?.fontScale,.7,2,1),
+  textColor:nullableColor(clock?.textColor),backgroundColor:nullableColor(clock?.backgroundColor),
+  align:clock?.align==='center'||clock?.align==='right'?clock.align:'left',paddingY:clamp(clock?.paddingY,0,16,2),format:normalizeMonitorFormat(clock?.format),
+});
 function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
   const normal=input?.normalLayout, mini=input?.miniLayout;
   const fields=Array.isArray(input?.fields)?input.fields.filter((x):x is MonitorField=>VALID_FIELDS.includes(x as MonitorField)):[...DEFAULT_MONITOR_CONFIG.fields];
@@ -185,15 +204,18 @@ function normalize(input:Partial<MonitorConfig>|null|undefined):MonitorConfig{
   return {
     enabled:input?.enabled??false,
     mode:input?.mode==='mini'?'mini':'normal',
+    ...(MONITOR_MODELS.some(model=>model.id===input?.model)?{model:input!.model!}:{}),
     template:['portfolio','quotes','compact','single','dual','advanced','market-wall','heatmap','pnl-wall','weight-wall','ticker','terminal'].includes(String(input?.template))?input!.template as MonitorConfig['template']:'portfolio',
     fields:fields.length?fields:[...DEFAULT_MONITOR_CONFIG.fields],
     normalItems:normNormalItems(input?.normalItems),
     miniFields:miniFields.length?miniFields:[...DEFAULT_MONITOR_CONFIG.miniFields],
+    quoteListSource:input?.quoteListSource==='watchlist'||input?.quoteListSource==='all'?input.quoteListSource:'holdings',
     selectedSymbols:strings(input?.selectedSymbols),
     showBreathingLight:input?.showBreathingLight??true,
     alertChangePct:Number.isFinite(Number(input?.alertChangePct))?Math.max(0,Number(input?.alertChangePct)):null,
     normalLayout:{x:clamp(normal?.x,-2000,2000,16),y:clamp(normal?.y,-2000,2000,120),width:clamp(normal?.width,120,1200,320),height:clamp(normal?.height,56,1600,420)},
     miniLayout:{x:clamp(mini?.x,-2000,2000,16),y:clamp(mini?.y,-2000,2000,120),width:clamp(mini?.width,220,900,360),height:clamp(mini?.height,120,800,330)},
+    normalClock:normClock(input?.normalClock),miniClock:normClock(input?.miniClock),
     normalStyle:normStyle(input?.normalStyle,DEFAULT_MONITOR_STYLE),
     miniStyle:normStyle(input?.miniStyle,DEFAULT_MONITOR_CONFIG.miniStyle),
     miniHeader:normMiniHeader(input?.miniHeader),

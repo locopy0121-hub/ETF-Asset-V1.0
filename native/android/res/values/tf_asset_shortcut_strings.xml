@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="tf_shortcut_buy_short">新增買進</string>
+  <string name="tf_shortcut_buy_long">新增買進紀錄</string>
+  <string name="tf_shortcut_monitor_short">浮動監視器</string>
+  <string name="tf_shortcut_monitor_long">開啟浮動監視器設定</string>
+  <string name="tf_shortcut_pnl_short">今日損益</string>
+  <string name="tf_shortcut_pnl_long">查看今日損益</string>
+  <string name="tf_shortcut_dividend_short">股息日曆</string>
+  <string name="tf_shortcut_dividend_long">查看股息日曆</string>
+  <string name="tf_shortcut_ai_short">AI 助理</string>
+  <string name="tf_shortcut_ai_long">開啟 TF Asset AI 助理</string>
+</resources>

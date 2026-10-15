@@ -1,87 +1,205 @@
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {EditorSurface} from '../components/EditorSurface';
+import {useDisplayFormat} from '../settings/useDisplayFormat';
+import {portfolioFrameTone,financialTone} from '../theme/financialTone';
+import {useSystemColors} from '../theme/useSystemColors';
+import { useEffect, useMemo, useState } from 'react';
+import {Modal,ScrollView,StyleSheet,View} from 'react-native';
+import {Pressable,Text,TextInput} from '../components/EditableNative';
 
 import { FrameCard } from '../components/FrameCard';
+import {PortfolioAllocationDonut} from '../components/PortfolioAllocationDonut';
+import {PortfolioHoldingTable} from '../components/PortfolioHoldingTable';
+import {DEFAULT_ETF_BADGES,todayEtfReminderMap,type EtfBadgeConfig} from '../domain/etfBadges';
+import {DEFAULT_PORTFOLIO_LIST,type PortfolioListConfig} from '../domain/portfolioList';
+import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 import { HoldingQuoteCollection, type HoldingLayoutMode } from '../components/HoldingQuoteCollection';
 import { MetricTile } from '../components/MetricTile';
 import { PageEditorStack } from '../components/PageEditorStack';
 import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { SegmentedControl } from '../components/SegmentedControl';
+import {PortfolioQuickBar} from '../components/PortfolioQuickBar';
+import {PortfolioSafeList} from '../components/PortfolioSafeList';
+import {PortfolioViewBoundary} from '../components/PortfolioViewBoundary';
+import {normalizePortfolioViewMode,normalizePortfolioLayoutMode,nextPortfolioPrimaryMode,quickModeFromDisplay,quickModePatch,type PortfolioPrimaryMode,type PortfolioQuickMode} from '../domain/portfolioModeSwitch';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
 import { usePageEditor } from '../editor/pageEditor';
-import { sortHoldingQuotes } from '../domain/holdingSort';
+import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import {InspectableTarget} from '../maintenance/InspectableTarget';
+import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionModel';
+import { sortHoldingQuotes,sortPreset,nextSortPreset } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
 import { useFinance } from '../finance/FinanceRuntime';
+import { useMarketRuntime } from '../market/MarketRuntime';
+import {marketIntradaySeriesFor,marketQuoteSnapshotFor} from '../market/marketCenterViews';
 import { colors, radius, spacing } from '../theme/tokens';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
 
-type ViewMode='list'|'wall';
-const money=(v:number)=>Math.round(v).toLocaleString('zh-TW');
 const number=(v:string)=>{const n=Number(v.replace(/,/g,''));return Number.isFinite(n)?n:0;};
 
-export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQuote)=>void}) {
+export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(holding:HoldingQuote)=>void;onOpenChart:(holding:HoldingQuote)=>void}) {
+  const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
+  const market=useMarketRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
   const [calculatorOpen,setCalculatorOpen]=useState(false);
+  // The old full table can fall back to the simple list inside the first shortcut.
+  const [listFallback,setListFallback]=useState(false);
   const editor=usePageEditor('portfolio');
-  const viewMode=(editor.displayConfig.portfolioViewMode??'list') as ViewMode;
-  const quoteStyle=(editor.displayConfig.quoteStyle??'chart') as QuoteModuleStyle;
-  const sortKey=(editor.displayConfig.sortKey??'manual') as HoldingSortKey;
-  const holdingLayoutMode=(editor.displayConfig.holdingLayoutMode??'list') as HoldingLayoutMode;
-  const setViewMode=(value:ViewMode)=>editor.updateDisplayConfig({portfolioViewMode:value});
-  const setQuoteStyle=(value:QuoteModuleStyle)=>editor.updateDisplayConfig({quoteStyle:value});
-  const setSortKey=(value:HoldingSortKey)=>editor.updateDisplayConfig({sortKey:value});
-  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>editor.updateDisplayConfig({holdingLayoutMode:value});
-  const sorted=useMemo(()=>sortHoldingQuotes(finance.holdings,sortKey,true),[finance.holdings,sortKey]);
+  const maintenance=useMaintenance();
+  const effectiveDisplay=maintenance.session?.page==='portfolio'?maintenance.session.draftDisplay:editor.displayConfig;
+  const viewMode=normalizePortfolioViewMode(effectiveDisplay.portfolioViewMode);
+  const rawQuoteStyle=(['quote','chart','compact','advanced'].includes(String(effectiveDisplay.quoteStyle))
+    ?effectiveDisplay.quoteStyle:'quote') as QuoteModuleStyle;
+  const sortKey=sortPreset(effectiveDisplay.sortKey).key as HoldingSortKey;
+  const currentSort=sortPreset(sortKey);
+  const holdingLayoutMode=normalizePortfolioLayoutMode(effectiveDisplay.holdingLayoutMode);
+  // Old saved three-column chart selections also render in safe chart-free mode.
+  const quoteStyle=safeHoldingStyle(holdingLayoutMode,rawQuoteStyle);
+  const activeQuickMode:PortfolioQuickMode=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
+  const simpleList=listFallback;
+  const [firstMode,setFirstMode]=useState<PortfolioPrimaryMode>(()=>{
+    const initial=quickModeFromDisplay(viewMode,quoteStyle,holdingLayoutMode);
+    return initial==='list'||initial==='wall'||initial==='quote'||initial==='compact'?initial:'list';
+  });
+  const patchPortfolioDisplay=(patch:Partial<typeof effectiveDisplay>)=>{
+    if(maintenance.session?.page==='portfolio')maintenance.patchDisplay(patch);
+    else editor.updateDisplayConfig(patch);
+  };
+  const applyQuickMode=(mode:PortfolioQuickMode)=>{
+    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_QUICK_MODE',screen:'portfolio',message:'快捷切換 '+mode});
+    patchPortfolioDisplay(quickModePatch(mode,holdingLayoutMode));
+  };
+  const cycleFirst=()=>{
+    const next=nextPortfolioPrimaryMode(firstMode);
+    setFirstMode(next);
+    setListFallback(false);
+    applyQuickMode(next);
+  };
+  const cycleSort=()=>{
+    const next=nextSortPreset(sortKey);
+    recordDiagnosticEvent({level:'info',code:'PORTFOLIO_SORT',screen:'portfolio',message:'快捷排序 '+next.label});
+    patchPortfolioDisplay({sortKey:next.key});
+  };
+  const setHoldingLayoutMode=(value:HoldingLayoutMode)=>{recordDiagnosticEvent({level:'info',code:'PORTFOLIO_LAYOUT',screen:'portfolio',message:'切換排列 '+value});patchPortfolioDisplay({
+    holdingLayoutMode:value,
+    ...(value==='grid3'&&(rawQuoteStyle==='chart'||rawQuoteStyle==='advanced')?{quoteStyle:'quote' as const}:{})
+  });};
+  const sorted=useMemo(()=>{
+    const tags=new Map(market.catalog.map(item=>[item.symbol,item]));
+    const reminders=todayEtfReminderMap(finance.entries.filter((x):x is DividendLedgerEntry=>x.kind==='dividend'),undefined,effectiveDisplay.etfBadges?.reminderEvents);
+    return sortHoldingQuotes(finance.holdings.map(item=>{
+      const quote=marketQuoteSnapshotFor(market.quotes,item.symbol);
+      const intraday=marketIntradaySeriesFor(market.quotes,item.symbol);
+      return {
+        ...item,
+        ...(quote?{
+          price:quote.currentPrice,
+          previousClose:quote.previousClose,
+          sparkline:[...(quote.sparkline??item.sparkline)],
+        }:{}),
+        intraday:intraday.points,
+        intradayDate:intraday.date,
+        intradayPreviousClose:intraday.previousClose,
+      };
+    }),sortKey,currentSort.descending).map(item=>({
+      ...item,etfType:tags.get(item.symbol)?.etfType??null,
+      dividendType:tags.get(item.symbol)?.dividendType??null,
+      reminderEvent:reminders.get(item.symbol)??null,
+    }));
+  },[finance.holdings,finance.entries,sortKey,currentSort.descending,market.catalog,market.quotes,effectiveDisplay.etfBadges?.reminderEvents]);
+  // Keep the original V3.0.1 list directly mounted while browsing; only wrap it
+  // when its own A target is explicitly edited. This isolates stale generic overrides.
+  const listTarget:InspectedTarget={
+    id:'portfolio:holding-table',kind:'portfolio-list',label:'持股清單',
+    page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
+    properties:[
+      {name:'資料筆數',value:String(sorted.length),readOnly:true},
+      {name:'固定欄寬',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).fixedWidth)+' dp'},
+      {name:'列高',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).rowHeight)+' dp'},
+      {name:'欄位數',value:String((effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST).columns.length)},
+    ],
+    base:{...TARGET_APPEARANCE,backgroundColor:'#FFFFFF',padding:0},
+  };
+  useEffect(()=>{
+    if(!maintenance.enabled||viewMode!=='list')return;
+    maintenance.registerTarget('portfolio','holding-view',{
+      id:listTarget.id,kind:listTarget.kind,label:listTarget.label,
+      properties:listTarget.properties,base:listTarget.base,
+    });
+    return()=>maintenance.unregisterTarget('portfolio','holding-view',listTarget.id);
+  },[maintenance.enabled,maintenance.registerTarget,maintenance.unregisterTarget,
+    viewMode,sorted.length,effectiveDisplay.portfolioList]);
+  const listInspectorActive=maintenance.session?.page==='portfolio'&&
+    maintenance.session.frameKey==='holding-view'&&maintenance.session.scope==='target'&&
+    maintenance.session.target?.id===listTarget.id;
   const portfolio=finance.snapshot.portfolio;
+  const valuationComplete=finance.valuationComplete;
 
   return <>
     <PageShell
+      pageKey="portfolio"
       title="持股分析"
-      subtitle="V3.7.8 Canonical Portfolio"
+      subtitle="正式 Canonical Portfolio"
       actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
     >
       <PageEditorStack pageKey="portfolio" frames={[
         {key:'holding-dashboard',element:
-          <FrameCard title="持股分析儀表板">
+          <FrameCard title="持股分析儀表板" tone={portfolioFrameTone('portfolio','holding-dashboard',portfolio,valuationComplete)}>
             <View style={styles.metrics}>
-              <MetricTile label="總市值" value={money(portfolio.totalMarketValue)} caption="NT$"/>
+              <MetricTile label="總市值" value={valuationComplete?money(portfolio.totalMarketValue):"估值待核對"} caption="NT$"/>
               <MetricTile label="純成交成本" value={money(portfolio.totalTradeCost)} caption="不含費"/>
               <MetricTile label="含費成本" value={money(portfolio.totalInvestmentCost)} caption="Canonical"/>
-              <MetricTile label="含息總損益" value={money(portfolio.totalPnl)} caption="已實現＋未實現＋股息" tone={portfolio.totalPnl>=0?'gain':'loss'}/>
+              <MetricTile label="含息總損益" value={valuationComplete?money(portfolio.totalPnl):"估值待核對"} caption="已實現＋未實現＋股息" tone={financialTone(portfolio.totalPnl,valuationComplete)}/>
             </View>
           </FrameCard>
         },
         {key:'allocation',element:
           <FrameCard title="資產配置">
-            {sorted.map(item=><View key={item.symbol} style={styles.allocationRow}>
-              <View style={styles.allocationLabel}><Text style={styles.allocationSymbol}>{item.symbol}</Text><Text style={styles.allocationPct}>{item.weight.toFixed(1)}%</Text></View>
-              <View style={styles.track}><View style={[styles.fill,{width:`${Math.min(100,Math.max(0,item.weight))}%`}]}/></View>
-            </View>)}
+            <PortfolioAllocationDonut rows={sorted} totalMarketValue={portfolio.totalMarketValue} valuationComplete={valuationComplete}/>
           </FrameCard>
         },
         {key:'holding-view',element:
-          <FrameCard title="持股檢視">
-            <SegmentedControl items={[{key:'list',label:'清單模式'},{key:'wall',label:'行情牆模式'}] as const} value={viewMode} onChange={setViewMode}/>
-            <View style={styles.sortRow}>
-              <Text style={styles.sortTitle}>排序</Text>
-              {([{key:'manual',label:'手動'},{key:'pnl',label:'損益'},{key:'roi',label:'報酬率'},{key:'marketValue',label:'市值'}] as const).map(x=>
-                <Pressable key={x.key} onPress={()=>setSortKey(x.key)} style={[styles.chip,sortKey===x.key&&styles.chipActive]}>
-                  <Text style={[styles.chipText,sortKey===x.key&&styles.chipTextActive]}>{x.label}</Text>
-                </Pressable>
-              )}
-            </View>
+          <FrameCard title="持股檢視" tone={portfolioFrameTone('portfolio','holding-view',portfolio,valuationComplete)}>
+            <PortfolioQuickBar firstMode={firstMode} activeMode={activeQuickMode} layout={effectiveDisplay.quickBar}
+              sortLabel={currentSort.label} onCycleFirst={cycleFirst}
+              onSelect={applyQuickMode} onCycleSort={cycleSort}/>
+            <PortfolioViewBoundary key={viewMode+(listFallback?'-simple':'')}
+              viewMode={viewMode} onUseSafe={()=>{
+                recordDiagnosticEvent({level:'info',code:'PORTFOLIO_SIMPLE_FALLBACK',screen:'portfolio',
+                  message:'返回清單內建簡易樣式'});
+                setFirstMode('list');
+                setListFallback(true);
+                patchPortfolioDisplay(quickModePatch('list',holdingLayoutMode));
+              }}>
+              {viewMode==='list'?<>
+              <Pressable editorId="native:PortfolioScreen:editShortcut:1" accessibilityRole="button" accessibilityLabel="編輯庫存清單與智慧標籤" onPress={()=>setSettingsOpen(true)} style={styles.editShortcut}>
+                <Text editorId="native:PortfolioScreen:editShortcutText:2" editorReadOnly={false} style={styles.editShortcutText}>✎ 編輯清單／標籤／提醒及特效</Text>
+              </Pressable>
+              {simpleList
+                ?<PortfolioSafeList rows={sorted} onOpenHolding={onOpenHolding}/>
+                :listInspectorActive
+                  ?<InspectableTarget frame={{
+                      page:'portfolio',frameKey:'holding-view',frameTitle:'持股檢視',
+                      frameConfig:editor.config['holding-view']!,displayConfig:effectiveDisplay,
+                    }} target={listTarget}>
+                      {()=> <HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
+                        config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                        badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
+                        refreshToken={finance.sharedSnapshot.generatedAt}/>}
+                    </InspectableTarget>
+                  :<HoldingTable rows={sorted} onOpenHolding={onOpenHolding}
+                    config={effectiveDisplay.portfolioList??DEFAULT_PORTFOLIO_LIST}
+                    badges={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES}
+                    refreshToken={finance.sharedSnapshot.generatedAt}/>}
 
-            {viewMode==='list'?<HoldingTable rows={sorted} onOpenHolding={onOpenHolding}/>:<>
-              <SegmentedControl
-                items={[{key:'quote',label:'純行情'},{key:'chart',label:'＋圖表'},{key:'compact',label:'精簡'},{key:'advanced',label:'進階'}] as const}
-                value={quoteStyle}
-                onChange={setQuoteStyle}
-              />
+            </>:<>
+
               <View style={styles.sortRow}>
-                <Text style={styles.sortTitle}>排列</Text>
+                <Text editorId="native:PortfolioScreen:sortTitle:3" editorReadOnly={false} style={styles.sortTitle}>排列</Text>
                 {([
                   {key:'list',label:'單欄'},
                   {key:'grid2',label:'雙欄'},
@@ -89,59 +207,34 @@ export function PortfolioScreen({onOpenHolding}:{onOpenHolding:(holding:HoldingQ
                   {key:'horizontal',label:'橫滑'},
                   {key:'paged2',label:'雙欄滑動'},
                 ] as const).map(x=>
-                  <Pressable key={x.key} onPress={()=>setHoldingLayoutMode(x.key)} style={[styles.chip,holdingLayoutMode===x.key&&styles.chipActive]}>
-                    <Text style={[styles.chipText,holdingLayoutMode===x.key&&styles.chipTextActive]}>{x.label}</Text>
+                  <Pressable editorId="native:PortfolioScreen:chip:4" key={x.key} onPress={()=>setHoldingLayoutMode(x.key)} style={[styles.chip,holdingLayoutMode===x.key&&styles.chipActive]}>
+                    <Text editorId="native:PortfolioScreen:chipText:5" editorReadOnly={false} style={[styles.chipText,holdingLayoutMode===x.key&&styles.chipTextActive]}>{x.label}</Text>
                   </Pressable>
                 )}
               </View>
-              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} onOpenHolding={onOpenHolding}/>
-              <Text style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
+              {holdingLayoutMode==='grid3'?<Text editorId="native:PortfolioScreen:tableRule:6" editorReadOnly={false} style={styles.tableRule}>三欄無圖表：僅顯示報價、漲跌、損益，點選卡片可檢視詳情。</Text>:null}
+              <HoldingQuoteCollection rows={sorted} style={quoteStyle} layoutMode={holdingLayoutMode} badgeConfig={effectiveDisplay.etfBadges??DEFAULT_ETF_BADGES} {...(effectiveDisplay.holdingWall?{wallConfig:effectiveDisplay.holdingWall}:{})} refreshToken={finance.sharedSnapshot.generatedAt} onOpenHolding={onOpenHolding} onOpenChart={onOpenChart}/>
+              <Text editorId="native:PortfolioScreen:tableRule:7" editorReadOnly={true} style={styles.tableRule}>共 {sorted.length} 筆持股；排列模式不限制資料筆數。</Text>
             </>}
+            </PortfolioViewBoundary>
           </FrameCard>
         },
       ]}/>
     </PageShell>
 
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewQuote={sorted[0]} previewRows={sorted} previewFirstMode={firstMode} previewListFallback={listFallback} onClose={()=>setSettingsOpen(false)}/>
     <CalculatorModal visible={calculatorOpen} onClose={()=>setCalculatorOpen(false)}/>
   </>;
 }
 
-function HoldingTable({rows,onOpenHolding}:{rows:HoldingQuote[];onOpenHolding:(row:HoldingQuote)=>void}){
-  const rowHeight=54;
-  return <View style={styles.tableOuter}>
-    <View style={styles.tableSplit}>
-      <View style={styles.fixedColumn}>
-        <View style={[styles.fixedHeader,{height:38}]}><Text style={styles.tableHeadText}>代號｜名稱</Text></View>
-        {rows.map(row=><Pressable key={row.symbol} onPress={()=>onOpenHolding(row)} style={[styles.fixedRow,{height:rowHeight}]}>
-          <Text style={styles.symbolStrong}>{row.symbol}</Text>
-          <Text numberOfLines={1} style={styles.nameSmall}>{row.name}</Text>
-        </Pressable>)}
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.scrollTable}>
-        <View>
-          <View style={[styles.rightHeader,{height:38}]}>
-            <Head width={64} label="股數"/><Head width={70} label="即時"/><Head width={76} label="純均價"/><Head width={76} label="含費均價"/><Head width={92} label="損益"/><Head width={70} label="報酬率"/>
-          </View>
-          {rows.map(row=><Pressable key={row.symbol} onPress={()=>onOpenHolding(row)} style={[styles.rightRow,{height:rowHeight}]}>
-            <Cell width={64} value={money(row.shares)}/>
-            <Cell width={70} value={row.price.toFixed(2)} tone={row.price>row.previousClose?'gain':row.price<row.previousClose?'loss':'flat'}/>
-            <Cell width={76} value={row.tradeAvg.toFixed(2)}/>
-            <Cell width={76} value={row.costAvg.toFixed(2)}/>
-            <Cell width={92} value={`NT$ ${money(row.pnl)}`} tone={row.pnl>=0?'gain':'loss'}/>
-            <Cell width={70} value={`${row.roi>=0?'+':''}${row.roi.toFixed(2)}%`} tone={row.roi>=0?'gain':'loss'}/>
-          </Pressable>)}
-        </View>
-      </ScrollView>
-    </View>
-    <Text style={styles.tableRule}>第一欄固定；右側數值欄獨立水平滑動。純成交均價與含費成本均價不可混用。</Text>
-  </View>;
+function HoldingTable({rows,onOpenHolding,config,badges,refreshToken}:{
+  rows:HoldingQuote[];onOpenHolding:(row:HoldingQuote)=>void;config:PortfolioListConfig;badges:EtfBadgeConfig;refreshToken?:string|number|null;
+}){
+  return <PortfolioHoldingTable rows={rows} onOpenHolding={onOpenHolding} config={config} badges={badges} refreshToken={refreshToken}/>;
 }
-function Head({width,label}:{width:number;label:string}){return <Text style={[styles.tableHeadText,{width,textAlign:'right'}]}>{label}</Text>}
-function Cell({width,value,tone}:{width:number;value:string;tone?:'gain'|'loss'|'flat'}){const color=tone==='gain'?colors.gain:tone==='loss'?colors.loss:tone==='flat'?colors.flat:colors.text;return <Text style={[styles.numberCell,{width,color}]}>{value}</Text>}
 
 function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
+  const {money}=useDisplayFormat();
   const finance=useFinance();
   const [symbol,setSymbol]=useState(finance.holdings[0]?.symbol??'');
   const [price,setPrice]=useState('');
@@ -153,18 +246,18 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
     holding,currentPrice:quote?.currentPrice??holding.currentPrice,addPrice:number(price),addShares:number(shares),tradeMode:mode,
   }):null;
 
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><EditorSurface pageKey="portfolio" frameKey="calculator-modal" title="持股試算" visible={visible}>
     <View style={styles.modalBackdrop}><View style={styles.calculator}>
-      <View style={styles.modalTop}><View><Text style={styles.modalKicker}>庫存工具</Text><Text style={styles.modalTitle}>持股試算</Text></View><Pressable onPress={onClose}><Text style={styles.done}>完成</Text></Pressable></View>
-      <Text style={styles.modalHint}>試算直接呼叫 V3.7.8 Canonical Core；不寫入 Ledger。</Text>
+      <View style={styles.modalTop}><View><Text editorId="native:PortfolioScreen:modalKicker:8" editorReadOnly={false} style={styles.modalKicker}>庫存工具</Text><Text editorId="native:PortfolioScreen:modalTitle:9" editorReadOnly={false} style={styles.modalTitle}>持股試算</Text></View><Pressable editorId="native:PortfolioScreen:pressable:10" onPress={onClose}><Text editorId="native:PortfolioScreen:done:11" editorReadOnly={false} style={styles.done}>完成</Text></Pressable></View>
+      <Text editorId="native:PortfolioScreen:modalHint:12" editorReadOnly={false} style={styles.modalHint}>試算直接呼叫正式 Canonical Core；不寫入 Ledger。</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolChoices}>
-        {finance.holdings.map(item=><Pressable key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}
+        {finance.holdings.map(item=><Pressable editorId="native:PortfolioScreen:chip:13" key={item.symbol} onPress={()=>setSymbol(item.symbol)} style={[styles.chip,symbol===item.symbol&&styles.chipActive]}><Text editorId="native:PortfolioScreen:chipText:14" editorReadOnly={true} style={[styles.chipText,symbol===item.symbol&&styles.chipTextActive]}>{item.symbol}</Text></Pressable>)}
       </ScrollView>
       <SegmentedControl items={[{key:'ODD_LOT',label:'零股／定期定額'},{key:'ROUND_LOT',label:'整股'}] as const} value={mode} onChange={setMode}/>
       <View style={styles.calcGrid}><CalcField label="加碼價格" value={price} onChange={setPrice} placeholder={quote?.currentPrice.toFixed(2)??'0'}/><CalcField label="加碼股數" value={shares} onChange={setShares} placeholder="0"/></View>
 
-      {holding?<View style={styles.currentInfo}><Text style={styles.infoTitle}>目前持股</Text><Text style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
+      {holding?<View style={styles.currentInfo}><Text editorId="native:PortfolioScreen:infoTitle:15" editorReadOnly={false} style={styles.infoTitle}>目前持股</Text><Text editorId="native:PortfolioScreen:infoText:16" editorReadOnly={true} style={styles.infoText}>{money(holding.totalShares)} 股 · 純均價 {holding.averageTradePrice.toFixed(2)} · 含費均價 {holding.averageCostPerShare.toFixed(2)}</Text></View>:null}
 
       {scenario?<View style={styles.scenario}>
         <ResultRow label="本次成交金額" value={money(scenario.addTradeAmount)}/>
@@ -173,14 +266,15 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
         <ResultRow label="試算後股數" value={money(scenario.newShares)}/>
         <ResultRow label="試算後純成交均價" value={scenario.averageTradePrice.toFixed(2)} strong/>
         <ResultRow label="試算後含費成本均價" value={scenario.averageCostPerShare.toFixed(2)} strong/>
-        <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={scenario.priceUnrealizedProfit>=0?'gain':'loss'}/>
-        <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={scenario.cashUnrealizedProfit>=0?'gain':'loss'}/>
-      </View>:<View style={styles.result}><Text style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text style={styles.resultValue}>—</Text></View>}
+        <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={financialTone(scenario.priceUnrealizedProfit)}/>
+        <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={financialTone(scenario.cashUnrealizedProfit)}/>
+      </View>:<View style={styles.result}><Text editorId="native:PortfolioScreen:resultLabel:17" editorReadOnly={false} style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text editorId="native:PortfolioScreen:resultValue:18" editorReadOnly={false} style={styles.resultValue}>—</Text></View>}
     </View></View>
-  </Modal>;
+  </EditorSurface></Modal>;
 }
-function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text style={styles.fieldLabel}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
-function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'}){return <View style={styles.resultRow}><Text style={styles.resultRowLabel}>{label}</Text><Text style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss}]}>{value}</Text></View>}
+function CalcField({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder:string}){return <View style={{width:'48%'}}><Text editorId="native:PortfolioScreen:fieldLabel:19" editorReadOnly={false} style={styles.fieldLabel}>{label}</Text><TextInput editorId="native:PortfolioScreen:input:20" style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder={placeholder} placeholderTextColor="#98A5B8"/></View>}
+function ResultRow({label,value,strong=false,tone}:{label:string;value:string;strong?:boolean;tone?:'gain'|'loss'|'neutral'}){
+  const colors=useSystemColors();return <View style={styles.resultRow}><Text editorId="native:PortfolioScreen:resultRowLabel:21" editorReadOnly={false} style={styles.resultRowLabel}>{label}</Text><Text editorId="native:PortfolioScreen:resultRowValue:22" editorReadOnly={true} style={[styles.resultRowValue,strong&&styles.resultStrong,tone==='gain'&&{color:colors.gain},tone==='loss'&&{color:colors.loss},tone==='neutral'&&{color:colors.flat}]}>{value}</Text></View>}
 
 const styles=StyleSheet.create({
   metrics:{flexDirection:'row',gap:spacing.sm,flexWrap:'wrap'},
@@ -197,6 +291,8 @@ const styles=StyleSheet.create({
   chipText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},
   chipTextActive:{color:'#FFF'},
   quoteList:{gap:spacing.sm},
+  editShortcut:{alignSelf:'flex-start',borderWidth:1,borderColor:colors.primary,backgroundColor:colors.surfaceMuted,paddingVertical:7,paddingHorizontal:12,borderRadius:radius.pill},
+  editShortcutText:{fontSize:11,fontWeight:'900',color:colors.primary},
   tableOuter:{gap:8},
   tableSplit:{flexDirection:'row',borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden'},
   fixedColumn:{width:128,backgroundColor:colors.surface,zIndex:2,borderRightWidth:1,borderRightColor:colors.border},
