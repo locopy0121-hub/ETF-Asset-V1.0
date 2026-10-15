@@ -29,6 +29,7 @@ type TfAssetNativeModule={
   loadFugleApiKey:()=>Promise<string|null>;
   clearFugleApiKey:()=>Promise<boolean>;
   loadMarketCache:()=>Promise<string>;
+  loadMarketSnapshots:()=>Promise<string>;
   persistMarketCache:(payloadJson:string)=>Promise<boolean>;
   clearMarketCache:()=>Promise<boolean>;
 };
@@ -58,5 +59,6 @@ export async function saveNativeFugleApiKey(apiKey:string){return native?native.
 export async function loadNativeFugleApiKey(){return native?native.loadFugleApiKey():null;}
 export async function clearNativeFugleApiKey(){return native?native.clearFugleApiKey():false;}
 export async function loadNativeMarketCache(){return native?native.loadMarketCache():null;}
+export async function loadNativeMarketSnapshots(){return native?native.loadMarketSnapshots():null;}
 export async function persistNativeMarketCache(payloadJson:string){return native?native.persistMarketCache(payloadJson):false;}
 export async function clearNativeMarketCache(){return native?native.clearMarketCache():false;}
