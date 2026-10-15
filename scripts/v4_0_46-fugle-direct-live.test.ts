@@ -50,7 +50,7 @@ assert.doesNotMatch(core,/https?:\/\/.*SaiETF/,
   'no external SaiETF App or relay is permitted');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8'));
-assert.equal(pkg.version,'4.0.65');
-assert.equal(app.expo.version,'4.0.65');
-assert.equal(app.expo.android.versionCode,40065);
+assert.equal(pkg.version,'5.0.2');
+assert.equal(app.expo.version,'5.0.2');
+assert.equal(app.expo.android.versionCode,50002);
 console.log('TF Asset V4.0.57 direct Fugle WebSocket and per-symbol LIVE propagation PASS');
