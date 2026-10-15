@@ -1,7 +1,7 @@
 
 import {WatchlistPanel} from '../components/WatchlistPanel';
 import {useWatchlist} from '../market/WatchlistRuntime';
-import {useEffect,useMemo,useState} from 'react';
+import {memo,useCallback,useEffect,useMemo,useState} from 'react';
 import {Linking,ScrollView,StyleSheet,View} from 'react-native';
 import Svg,{Line,Polyline} from 'react-native-svg';
 import {Pressable,Text,TextInput} from '../components/EditableNative';
@@ -25,6 +25,7 @@ import {useFinance} from '../finance/FinanceRuntime';
 import {useAiNewsRuntime} from '../ai/AiNewsRuntime';
 import {useMarketRuntime} from '../market/MarketRuntime';
 import {searchTaiwanSecurities,aggregateMarketCandles,marketIndicators,type ResearchPeriod,type ResearchTab} from '../market/marketResearchModel';
+import type {TaiwanSecurityInfo} from '../market/TaiwanSecurityCatalog';
 import {fetchOfficialDailyHistory,type DailyCandle} from '../market/twseDailyHistory';
 import {isEtfSymbol} from '../market/etfConstituents';
 import {fetchTwseInstitutionalSeries,type InstitutionalRecord} from '../market/twseInstitutional';
@@ -72,12 +73,44 @@ function IntradayChart({points}:{points:readonly {at:number;price:number}[]}){
   </Svg><Text style={{color:t.palette.textSecondary,fontSize:11}}>當日來源成交點 {valid.length} 筆；{price(min)}–{price(max)} 元</Text></View>;
 }
 
+
+// Keep keystrokes local to this frame: filtering must not re-render the full
+// market chart, index and editor hierarchy for each input character.
+const MarketSearchContent=memo(function MarketSearchContent({catalog,catalogRefreshing,selectedQuery,onSelect}:{
+  catalog:readonly TaiwanSecurityInfo[];catalogRefreshing:boolean;selectedQuery:string;
+  onSelect:(symbol:string,name:string)=>void;
+}){
+  const theme=useThemeRuntime(),watchlist=useWatchlist();
+  const [query,setQuery]=useState('');
+  useEffect(()=>{if(selectedQuery)setQuery(selectedQuery);},[selectedQuery]);
+  const results=useMemo(()=>searchTaiwanSecurities(catalog,query),[catalog,query]);
+  return <>
+    <MarketEditableSurface id="market:search:input" label="搜尋輸入框">
+      <MarketPreviewActionGuard><TextInput value={query} onChangeText={setQuery} placeholder="2330、00985A、0050、台積電…" autoCapitalize="characters" autoCorrect={false}
+        placeholderTextColor={theme.palette.textSecondary}
+        style={[styles.search,{backgroundColor:theme.palette.surfaceMuted,color:theme.palette.text}]}/></MarketPreviewActionGuard>
+    </MarketEditableSurface>
+    <MarketEditableText id="market:search:hint" label="搜尋說明" style={{fontSize:11,color:theme.palette.textSecondary}}>可輸入部分代號或中文名稱；查詢不需要持有股票。{catalogRefreshing?'官方目錄同步中':''}</MarketEditableText>
+    {query.trim()!==''&&query.trim()!==selectedQuery?
+      results.length?<MarketPreviewActionGuard><View>{results.slice(0,35).map(item=><Pressable key={item.symbol} onPress={()=>{
+        setQuery(item.symbol+' '+item.name);onSelect(item.symbol,item.name);
+      }} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
+        <Text style={{color:theme.palette.primary,fontWeight:'800',width:78}}>{item.symbol}</Text>
+        <Text style={{color:theme.palette.text,flex:1}} numberOfLines={2}>{item.name}</Text>
+        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{item.market==='TWSE'?'上市':'上櫃'}</Text><Pressable disabled={!watchlist.hydrated} accessibilityLabel={(watchlist.items.some(x=>x.symbol===item.symbol)?'移除自選 ':'加入自選 ')+item.symbol} onPress={event=>{event.stopPropagation();if(watchlist.items.some(x=>x.symbol===item.symbol))watchlist.remove(item.symbol);else watchlist.add({symbol:item.symbol,name:item.name});}} style={{padding:10}}><Text style={{color:theme.palette.primary,fontSize:20}}>{watchlist.items.some(x=>x.symbol===item.symbol)?'★':'☆'}</Text></Pressable>
+      </Pressable>)}</View></MarketPreviewActionGuard>:<MarketEditableText id="market:search:empty" label="無搜尋結果訊息" style={{color:theme.palette.textSecondary}}>目錄沒有相符標的；請確認名稱或重新同步證券目錄。</MarketEditableText>:null}
+  </>;
+});
+
 export function MarketResearchScreen(){
   const market=useMarketRuntime(),finance=useFinance(),news=useAiNewsRuntime();
   const theme=useThemeRuntime(),system=useSystemColors();
   const watchlist=useWatchlist();
-  const [query,setQuery]=useState('');
   const [symbol,setSymbol]=useState<string|null>(null);
+  const [selectedSearchText,setSelectedSearchText]=useState('');
+  const selectSecurity=useCallback((code:string,name:string)=>{
+    setSymbol(code);setSelectedSearchText(code+' '+name);setTab('chart');setSelectedCandleDate(null);
+  },[]);
   const [tab,setTab]=useState<ResearchTab>('chart');
   const [period,setPeriod]=useState<ResearchPeriod>('day');
   const [range,setRange]=useState<Range>('m3');
@@ -91,7 +124,6 @@ export function MarketResearchScreen(){
   const [institutionLoading,setInstitutionLoading]=useState(false),[institutionError,setInstitutionError]=useState<string|null>(null);
   const [navRows,setNavRows]=useState<NavRecord[]>([]);
   const [navLoading,setNavLoading]=useState(false),[navError,setNavError]=useState<string|null>(null);
-  const results=useMemo(()=>searchTaiwanSecurities(market.catalog,query),[market.catalog,query]);
   const info=market.catalog.find(row=>row.symbol===symbol);
   const quote=market.quotes.find(row=>row.symbol===symbol);
   const holding=finance.holdings.find(row=>row.symbol===symbol);
@@ -142,22 +174,9 @@ export function MarketResearchScreen(){
   const frameData=[
     {key:'market-index',element:<FrameCard title="台股加權指數"><TaiexIndexCard marketVersion={market.marketDataVersion} phase={market.phase}/></FrameCard>},
     {key:'market-search',element:<FrameCard title="全市場搜尋">
-      <MarketEditableSurface id="market:search:input" label="搜尋輸入框">
-        <MarketPreviewActionGuard><TextInput value={query} onChangeText={setQuery} placeholder="2330、00985A、0050、台積電…" autoCapitalize="characters" autoCorrect={false}
-          placeholderTextColor={theme.palette.textSecondary}
-          style={[styles.search,{backgroundColor:theme.palette.surfaceMuted,color:theme.palette.text}]}/></MarketPreviewActionGuard>
-      </MarketEditableSurface>
-      <MarketEditableText id="market:search:hint" label="搜尋說明" style={{fontSize:11,color:theme.palette.textSecondary}}>可輸入部分代號或中文名稱；查詢不需要持有股票。{market.catalogRefreshing?'官方目錄同步中':''}</MarketEditableText>
-      {query.trim()!==''&&query.trim()!==(symbol+' '+(info?.name??''))?
-        results.length?<MarketPreviewActionGuard><View>{results.slice(0,35).map(item=><Pressable key={item.symbol} onPress={()=>{
-          setSymbol(item.symbol);setQuery(item.symbol+' '+item.name);setTab('chart');setSelectedCandleDate(null);
-        }} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
-          <Text style={{color:theme.palette.primary,fontWeight:'800',width:78}}>{item.symbol}</Text>
-          <Text style={{color:theme.palette.text,flex:1}} numberOfLines={2}>{item.name}</Text>
-          <Text style={{color:theme.palette.textSecondary,fontSize:11}}>{item.market==='TWSE'?'上市':'上櫃'}</Text><Pressable disabled={!watchlist.hydrated} accessibilityLabel={(watchlist.items.some(x=>x.symbol===item.symbol)?'移除自選 ':'加入自選 ')+item.symbol} onPress={event=>{event.stopPropagation();if(watchlist.items.some(x=>x.symbol===item.symbol))watchlist.remove(item.symbol);else watchlist.add({symbol:item.symbol,name:item.name});}} style={{padding:10}}><Text style={{color:theme.palette.primary,fontSize:20}}>{watchlist.items.some(x=>x.symbol===item.symbol)?'★':'☆'}</Text></Pressable>
-        </Pressable>)}</View></MarketPreviewActionGuard>:<MarketEditableText id="market:search:empty" label="無搜尋結果訊息" style={{color:theme.palette.textSecondary}}>目錄沒有相符標的；請確認名稱或重新同步證券目錄。</MarketEditableText>:null}
+      <MarketSearchContent catalog={market.catalog} catalogRefreshing={market.catalogRefreshing} selectedQuery={selectedSearchText} onSelect={selectSecurity}/>
     </FrameCard>},
-    {key:'market-watchlist',element:<FrameCard title="自選清單"><WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={(code,name)=>{setSymbol(code);setQuery(code+' '+name);setTab('chart');setSelectedCandleDate(null);}}/></FrameCard>},
+    {key:'market-watchlist',element:<FrameCard title="自選清單"><WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={selectSecurity}/></FrameCard>},
     ...(symbol?[{key:'market-summary',element:<FrameCard title="標的行情">
       <MarketEditableText id="market:summary:title" label="行情標的名稱" style={{fontSize:19,fontWeight:'800',color:theme.palette.text}}>{info?.name??symbol}　{symbol}</MarketEditableText>
       <MarketPreviewActionGuard><Pressable disabled={!watchlist.hydrated} onPress={()=>watchlist.items.some(x=>x.symbol===symbol)?watchlist.remove(symbol):watchlist.add({symbol,name:info?.name??symbol})}><Text style={{color:theme.palette.primary,fontWeight:'700',paddingVertical:10}}>{watchlist.items.some(x=>x.symbol===symbol)?'★ 移除自選':'☆ 加入自選'}</Text></Pressable></MarketPreviewActionGuard>
