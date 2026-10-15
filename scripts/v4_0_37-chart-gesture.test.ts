@@ -21,7 +21,7 @@ const app=JSON.parse(readFileSync('app.json','utf8')).expo;
 const pkg=JSON.parse(readFileSync('package.json','utf8'));
 assert.equal(app.version,pkg.version);
 assert.ok(app.android.versionCode>=40037);
-assert.ok(Number(pkg.version.split('.')[2])>=37);
+const [vMajor37=0,vMinor37=0,vPatch37=0]=pkg.version.split('.').map(Number);assert.ok(vMajor37>4||(vMajor37===4&&(vMinor37>0||(vMinor37===0&&vPatch37>=37))));
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/queuedZoom|pendingZoom/);
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/queuedZoom|pendingZoom/);
 console.log('V4.0.37 pinch final intent, queued layout replay, anchored history, protected Settings/Finance PASS');
