@@ -188,7 +188,7 @@ jobs:
       - name: Freeze V5.0.2 identity
         run: |
           test "$(node -p "require('./package.json').version")" = "5.0.2"
-          test "$(node -p "require('./app.json').expo.version")" = "4.0.65"
+          test "$(node -p "require('./app.json').expo.version")" = "5.0.2"
           test "$(node -p "require('./app.json').expo.android.versionCode")" = "50002"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
