@@ -1,10 +1,10 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {
+  MarketDataCenter,type MarketProviderCapability,type MarketQuote,type MarketQuoteProvider,
+} from '../src/market/MarketCore';
+
 async function main(){
-  import assert from 'node:assert/strict';
-  import fs from 'node:fs';
-  import {
-    MarketDataCenter,type MarketProviderCapability,type MarketQuote,type MarketQuoteProvider,
-  } from '../src/market/MarketCore';
-  
   const date='2026-10-15';
   const now=Date.parse('2026-10-15T10:01:10+08:00');
   const fugle:MarketQuote={
@@ -34,19 +34,19 @@ async function main(){
   });
   assert.equal(fallbackCalls,0,'healthy Fugle must remain the live authority even when the last trade is older than 30 seconds');
   assert.equal(protectedBatch.quotes.get('2330')?.source,'FUGLE');
-  
+
   const degradedBatch=await center.refresh({
     symbols:new Set(['2330']),nowEpochMillis:now+1000,currentTaipeiDate:date,tradingSessionActive:true,
     primarySourceHealthy:false,
   });
   assert.equal(fallbackCalls,1,'fallback may run only after the primary stream is unhealthy');
   assert.equal(degradedBatch.quotes.get('2330')?.source,'TWSE_MIS');
-  
+
   const runtime=fs.readFileSync('src/market/MarketRuntime.tsx','utf8');
   const persistence=fs.readFileSync('src/market/MarketPersistence.ts','utf8');
   const nativeModule=fs.readFileSync('native/android/TfAssetNativeModule.kt','utf8');
   const nativeDb=fs.readFileSync('native/android/TfAssetMarketDatabase.kt','utf8');
-  
+
   assert.doesNotMatch(runtime,/setInterval\s*\(/,'MarketRuntime must not poll REST providers on a seconds timer');
   assert.match(runtime,/setTrackedSymbolsState\(normalizedUnique\)/,'tracked symbols must be replaceable so removed holdings/watchlist items unsubscribe');
   assert.doesNotMatch(runtime,/\.\.\.current,\.\.\.normalized/,'tracked symbols must not be an append-only union');
@@ -57,9 +57,8 @@ async function main(){
   assert.match(persistence,/loadNativeMarketSnapshots/,'cold start quote hydration must not load all candles');
   assert.match(nativeModule,/loadMarketSnapshots/,'native bridge must expose snapshot-only cold-start loading');
   assert.match(nativeDb,/fun loadSnapshots\(/,'native database must support snapshot-only hydration');
-  
+
   console.log('TF ASSET V5.0.1 MARKET ROOT-CAUSE GATES: PASS');
-  
 }
 
 void main().catch(error=>{console.error(error);process.exit(1);});
