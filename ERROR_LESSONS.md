@@ -1,3 +1,9 @@
+# V4.0.63 — daily agenda is an independent card, acquisition is not cash
+- Do not replace or embed into the calendar grid. Register a separate frame, editor catalog and real preview, add after the saved calendar order, and preserve existing dimensions/styles.
+- Fetch public announcements independently of holdings, AI and price subscriptions. Use bounded user-triggered requests, deduplicate symbol/ex-date and display source coverage and last successful acquisition time honestly.
+- Unknown dates stay unknown. An ex-rights/capital-increase row is not a cash dividend. Failures retain prior announcements and timestamps; partial failures and storage errors remain visible and retryable.
+- Public announcement cache never writes FinanceRuntime or local receipt/plan state. Test the actual screen/hook and FinanceProvider, including non-held rows, double-tap, persistence, retry and cash invariance. Cloud build does not replace phone acceptance.
+
 ## 2026-10-14｜V4.0.55 行情牆拖住全 App：主緒重繪排隊與鏈路證據
 - 使用者確認關閉浮動窗後 App 行情恢復。V4.0.54 開窗沒有直接暫停前景訂閱；卻每筆 syncMonitor 都排 Android service intent，promise 先完成，onStartCommand 再於共用主緒 removeAllViews／重建，因此 JS latest-job 並不能限制原生重繪積壓。尚無手機 trace，不把這條負載缺陷偽稱已證實手機唯一原因。
 - 可見 Overlay 改用事件驅動 latest-frame queue：只有一個待繪工作，讀最新 canonical snapshot，關閉取消；控制／首次開啟仍走原服務。syncMonitor 不再額外更新 Widget，設定 JSON 未改不重寫。

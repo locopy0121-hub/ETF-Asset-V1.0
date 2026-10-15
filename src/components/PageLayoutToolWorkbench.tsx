@@ -50,7 +50,7 @@ const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
 const actualPortfolioPreviewKeys=new Set(['holding-view']);
-const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-ai','dividend-calendar','dividend-list','annual-trend']);
+const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-ai','dividend-calendar','dividend-agenda','dividend-list','annual-trend']);
 const actualLedgerPreviewKeys=new Set(['quick-entry','ledger-list','monthly-summary']);
 const actualMarketPreviewKeys=new Set(['market-index','market-search','market-summary','market-chart','market-details']);
 const hasRealPreview=(page:MainPageKey,key:string)=>

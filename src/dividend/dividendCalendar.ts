@@ -2,7 +2,7 @@ import {dividendPlanStatus,isIsoCalendarDate,type DividendPlan} from './dividend
 import type {DividendLedgerEntry} from '../finance/canonicalLedger';
 
 export type DividendCalendarEventType='lastBuyDate'|'exDate'|'recordDate'|'paymentDate';
-export type DividendCalendarStatus=''|'已完成'|'今日'|'預定'|'預告'|'已確定';
+export type DividendCalendarStatus=''|'已完成'|'今日'|'預定'|'預告'|'已確定'|'已公告';
 export type DividendCalendarPrefs=Readonly<{
   showLastBuyDate?:boolean;
   showExDate:boolean;

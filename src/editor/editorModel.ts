@@ -339,7 +339,9 @@ export function normalizeEditorConfig(
     const candidate = draft[frame.key] ?? fallback;
     normalized[frame.key] = {
       visible: typeof candidate.visible==='boolean'?candidate.visible:fallback.visible,
-      order: candidate.behavior === 'auto' ? index : (Number.isFinite(candidate.order)?candidate.order:fallback.order),
+      order: page==='dividend'&&frame.key==='dividend-agenda'&&!draft['dividend-agenda']
+        ?(Number.isFinite(draft['dividend-calendar']?.order)?draft['dividend-calendar']!.order:fallback.order-1)+.5
+        :candidate.behavior === 'auto' ? index : (Number.isFinite(candidate.order)?candidate.order:fallback.order),
       layout: isFrameLayout(candidate.layout)?candidate.layout:fallback.layout,
       appearance: isFrameAppearance(candidate.appearance)?candidate.appearance:fallback.appearance,
       behavior:isFrameBehavior(candidate.behavior)?candidate.behavior:fallback.behavior,

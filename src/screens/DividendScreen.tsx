@@ -2,6 +2,8 @@ import {marketCalendarLabel} from '../market/marketCenterViews';
 import {EditorSurface} from '../components/EditorSurface';
 import {useDisplayFormat} from '../settings/useDisplayFormat';
 import { useEffect, useMemo, useState } from 'react';
+import {useDividendAnnouncements} from '../dividend/useDividendAnnouncements';
+import {announcementCalendarEvents,mergeCalendarCoverage} from '../dividend/dividendAnnouncements';
 import {Alert,Modal,ScrollView,StyleSheet,View} from 'react-native';
 import {Pressable,Text,TextInput} from '../components/EditableNative';
 
@@ -37,6 +39,7 @@ type DividendDatePickerTarget='payment'|'lastBuy'|'ex'|'record';
 export function DividendScreen() {
   const {money,percent,date:displayDate}=useDisplayFormat();
   const finance=useFinance();
+  const announcements=useDividendAnnouncements();
   const aiSettings=useSettingsRuntime();
   const aiNews=useAiNewsRuntime();
   const [settingsOpen,setSettingsOpen]=useState(false);
@@ -65,9 +68,9 @@ export function DividendScreen() {
   const annual=dividends.filter(x=>x.date.startsWith(year)).reduce((s,x)=>s+calculateLedgerCashFlow(x),0);
   const monthlyAverage=annual/12;
   const calendarEvents=useMemo(()=>filterDividendCalendarEvents(
-    [...buildDividendCalendarEvents(dividends,today),...buildDividendPlanCalendarEvents(finance.dividendPlans,dividends)],
+    mergeCalendarCoverage([...buildDividendCalendarEvents(dividends,today),...buildDividendPlanCalendarEvents(finance.dividendPlans,dividends)],announcementCalendarEvents(announcements.rows,today)),
     aiSettings.prefs.dividendCalendar,
-  ),[dividends,today,aiSettings.prefs.dividendCalendar,finance.dividendPlans]);
+  ),[dividends,today,aiSettings.prefs.dividendCalendar,finance.dividendPlans,announcements.rows]);
   const monthEvents=calendarEvents.filter(event=>event.date.startsWith(month));
   const events=useMemo(()=>{
     const map=new Map<number,typeof monthEvents>();
@@ -77,7 +80,7 @@ export function DividendScreen() {
     }
     return map;
   },[calendarEvents,month]);
-  const selectedEvents=useMemo(()=>buildDividendDayAgenda(dividends,finance.dividendPlans,selectedDate,today),[dividends,finance.dividendPlans,selectedDate,today]);
+  const selectedEvents=useMemo(()=>mergeCalendarCoverage(buildDividendDayAgenda(dividends,finance.dividendPlans,selectedDate,today),announcementCalendarEvents(announcements.rows,today).filter(event=>event.date===selectedDate)),[dividends,finance.dividendPlans,selectedDate,today,announcements.rows]);
   const monthDate=new Date(month+'-01T12:00:00');
   const shiftMonth=(delta:number)=>{
     const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);
@@ -281,8 +284,26 @@ export function DividendScreen() {
                 </View>:<View style={styles.eventDotsPlaceholder}/>}
               </Pressable>;
             })}</View>
-            {selectedDate.startsWith(month)?<View style={styles.eventDetails}>
               <Text editorId="native:DividendScreen:holidayRemark:96" editorReadOnly={true} style={[styles.eventDetailTitle,Boolean(marketCalendarLabel(selectedDate))&&styles.closedDayText]}>選取日期備註：{selectedDate}｜{marketCalendarLabel(selectedDate)||'正常交易日'}</Text>
+            <View style={styles.legend}>
+              <Legend color="#8B5CF6" label="最後購買日"/>
+              <Legend color={colors.primary} label="除息日"/>
+              <Legend color={colors.warning} label="收益分配基準日"/>
+              <Legend color={colors.gain} label="股息配發日"/>
+            </View>
+          </FrameCard>
+        },
+        {key:'dividend-agenda',element:
+          <FrameCard title="股息大事記">
+            <View>
+            <View style={styles.planActions}>
+              <Pressable editorId="native:DividendScreen:agendaRefresh:100" accessibilityRole="button" accessibilityLabel={announcements.error?'重試更新股息資料':announcements.updatedAt?'更新股息資料':'取得股息資料'} disabled={!announcements.ready||announcements.loading} onPress={announcements.refresh} style={[styles.planButton,(!announcements.ready||announcements.loading)&&{opacity:.5}]}>
+                <Text editorId="native:DividendScreen:agendaRefreshText:101" editorReadOnly={true}>{announcements.loading?'取得中…':announcements.error?'重試更新':announcements.updatedAt?'更新資料':'取得資料'}</Text>
+              </Pressable>
+            </View>
+            <Text editorId="native:DividendScreen:agendaUpdated:102" editorReadOnly={true} style={styles.eventText}>最後取得時間：{announcements.updatedAt?new Date(announcements.updatedAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'尚未取得官方公告'} · 已快取 {announcements.rows.length} 筆公告</Text>
+            {announcements.error?<Text editorId="native:DividendScreen:agendaError:103" editorReadOnly={true} accessibilityRole="alert" style={styles.formWarning}>{announcements.error} 原有資料保留。</Text>:null}
+            {announcements.warning?<Text editorId="native:DividendScreen:agendaWarning:104" editorReadOnly={true} style={styles.formWarning}>部分更新／儲存提醒：{announcements.warning} 其餘資料保留。</Text>:null}
               <View style={styles.eventDetailHeader}>
                 <View>
                   <Text editorId="native:DividendScreen:eventDetailDate:14" editorReadOnly={true} style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
@@ -291,7 +312,7 @@ export function DividendScreen() {
                 <Pressable editorId="native:DividendScreen:agendaToday:97" accessibilityRole="button" accessibilityLabel="回到今日股息大事記" onPress={()=>{setMonth(today.slice(0,7));setSelectedDate(today);}}><Text editorId="native:DividendScreen:agendaTodayText:98" editorReadOnly={false} style={styles.eventType}>回到今天</Text></Pressable>
                 <Text editorId="native:DividendScreen:eventDetailCount:16" editorReadOnly={true} style={styles.eventDetailCount}>{selectedEvents.length?selectedEvents.length+' 項':'無事件'}</Text>
               </View>
-              <Text editorId="native:DividendScreen:agendaCoverage:99" editorReadOnly={false} style={styles.eventText}>列出已登錄與已匯入的全部當日股息事件，包含預告；不受月曆顯示篩選影響。</Text>
+              <Text editorId="native:DividendScreen:agendaCoverage:99" editorReadOnly={false} style={styles.eventText}>列出已登錄與已取得的全部當日股息事件，包含非持股與預告；不受月曆篩選影響。官方範圍：TWSE 除息預告與 ETF 配息公告，未公告日期不推算。</Text>
               {selectedEvents.length?selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}>
                 <View style={[styles.eventTypeBadge,{backgroundColor:calendarEventColor(event.type)+'18'}]}>
                   <View style={[styles.eventTypeDot,{backgroundColor:calendarEventColor(event.type)}]}/>
@@ -301,13 +322,7 @@ export function DividendScreen() {
                   <Text editorId="native:DividendScreen:eventSymbol:18" editorReadOnly={true} style={styles.eventSymbol}>{event.symbol} · {event.name}</Text>
                   <Text editorId="native:DividendScreen:eventText:19" editorReadOnly={true} style={styles.eventText}>{event.date}{event.status?' · '+event.status:''}</Text>
                 </View>
-              </View>):<Text editorId="native:DividendScreen:noEventText:20" editorReadOnly={false} style={styles.noEventText}>這一天沒有已記錄的股息事件。</Text>}
-            </View>:null}
-            <View style={styles.legend}>
-              <Legend color="#8B5CF6" label="最後購買日"/>
-              <Legend color={colors.primary} label="除息日"/>
-              <Legend color={colors.warning} label="收益分配基準日"/>
-              <Legend color={colors.gain} label="股息配發日"/>
+              </View>):<Text editorId="native:DividendScreen:noEventText:20" editorReadOnly={false} style={styles.noEventText}>這一天尚無已取得或已登錄的股息事件，可按取得／更新資料核對。</Text>}
             </View>
           </FrameCard>
         },
@@ -540,7 +555,7 @@ const styles=StyleSheet.create({
   eventDot:{width:5,height:5,borderRadius:3},
   moreEvents:{fontSize:7,fontWeight:'900',color:colors.textSecondary,marginLeft:1},
   eventDetails:{gap:8,padding:12,borderRadius:14,backgroundColor:colors.surfaceMuted,borderWidth:StyleSheet.hairlineWidth,borderColor:colors.border},
-  eventDetailHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingBottom:3},
+  eventDetailHeader:{flexDirection:'row',flexWrap:'wrap',gap:8,alignItems:'center',justifyContent:'space-between',paddingBottom:3},
   eventDetailDate:{fontSize:15,fontWeight:'900',color:colors.text,fontVariant:['tabular-nums']},
   eventDetailTitle:{fontSize:9,fontWeight:'800',color:colors.textSecondary,marginTop:1},
   eventDetailCount:{fontSize:9,fontWeight:'900',color:colors.primary,backgroundColor:'#FFFFFF',paddingHorizontal:8,paddingVertical:4,borderRadius:999},

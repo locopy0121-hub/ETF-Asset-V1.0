@@ -14,7 +14,7 @@ assert.match(dividend,/const dividendPreviewElements\s*=\s*\[/);
 assert.match(dividend,/<PageEditorStack pageKey="dividend" frames=\{dividendPreviewElements\}/);
 assert.match(dividend,/<PageFrameSettingsModal previewElements=\{dividendPreviewElements\}/);
 assert.match(modal,/previewElements=\{previewElements\}/);
-assert.match(workbench,/actualDividendPreviewKeys=new Set\(\['dividend-summary','dividend-ai','dividend-calendar','dividend-list','annual-trend'\]\)/);
+assert.match(workbench,/actualDividendPreviewKeys=new Set\(\['dividend-summary','dividend-ai','dividend-calendar','dividend-agenda','dividend-list','annual-trend'\]\)/);
 assert.match(dividend,/\{key:'dividend-ai',element:/,'AI must be a separately registered visual frame');
 assert.match(workbench,/selectDividendPreview\(actual\.props\.children/);
 assert.match(workbench,/selectDividendPreview\(dividendAction/);
@@ -23,7 +23,7 @@ assert.match(workbench,/selection\.id\.startsWith\('dividend:'\)/);
 assert.match(workbench,/id\.startsWith\('dividend:metric:'\)/);
 assert.match(workbench,/<FrameCard title=\{item\.title\} editorStyle=\{itemConfig\}[\s\S]*?onMeasuredSize=/);
 
-for(const key of ['dividend-summary','dividend-calendar','dividend-list','annual-trend'])
+for(const key of ['dividend-summary','dividend-calendar','dividend-agenda','dividend-list','annual-trend'])
   assert.match(catalog,new RegExp("'"+key+"':\\["));
 const nativeItems=Array.from(catalog.matchAll(/node\('([^']+)'/g),match=>match[1]);
 for(const item of nativeItems)assert.ok(dividend.includes('editorId="native:DividendScreen:'+item+'"'),

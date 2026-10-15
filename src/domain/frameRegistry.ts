@@ -66,6 +66,7 @@ export const PAGE_FRAMES: Record<MainPageKey, readonly PageFrameDefinition[]> = 
     { key:'dividend-summary', title:'股息摘要', description:'本月、年度、月平均' },
     { key:'dividend-ai', title:'股息 AI 問答', description:'獨立 AI 問答框架，與股息摘要各自排序、尺寸及顯示' },
     { key:'dividend-calendar', title:'股息月曆', description:'必要主框架與事件狀態' },
+    { key:'dividend-agenda', title:'股息大事記', description:'當日全部股息事件與官方資料取得／更新，獨立卡片' },
     { key:'dividend-list', title:'股息清單', description:'日期、標的、金額、狀態' },
     { key:'annual-trend', title:'年度趨勢', description:'1–12 月股息趨勢' },
     {key:'dividend-entry-modal',title:'新增股息',description:'業務視窗獨立外觀設定，原始資料維持唯讀'},
