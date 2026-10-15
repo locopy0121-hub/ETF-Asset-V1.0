@@ -13,6 +13,6 @@ const pkg=require('../package.json');
 assert.match(pkg.scripts['test:v5_0_2'],/npm run test:v4_0_65/);
 assert.match(pkg.scripts['test:v5_0_3'],/npm run test:v5_0_2/);
 assert.match(ci,/npm run test:v5_0_3/);
-assert.equal(pkg.version,'5.0.3');
-assert.equal(require('../app.json').expo.android.versionCode,50003);
+assert.ok(/^5\.0\.\d+$/.test(pkg.version)&&Number(pkg.version.split('.')[2])>=3);
+assert.equal(require('../app.json').expo.android.versionCode,50000+Number(pkg.version.split('.')[2]));
 console.log('V4.0.58 close reconciliation / persistence / accepted surface ACK / release wiring PASS');
