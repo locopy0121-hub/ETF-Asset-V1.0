@@ -22,6 +22,7 @@ function history(id:string,contents:string):BackupHistoryEntry{
     payload:{'@tf-asset/v1.0.2-ledger':'{"schema":4,"entries":[],"initialCash":0}',
       '@tf-asset/market-runtime':contents}};
 }
+async function verify(){
 const sample=history('old','X'.repeat(1_850_000));
 const legacy=new MemorySqlite(64*1024*1024);
 legacy.rows.set(TF_BACKUPS_KEY,JSON.stringify([sample]));
@@ -50,3 +51,5 @@ assert.equal((await loadBackupHistory(roomy)).length,10);
 assert.ok(Array.from(roomy.rows).every(([key])=>!key.startsWith('@tf-asset/')||key===TF_BACKUPS_KEY),
   'Backup segments must never be included in exported app payload');
 console.log('TF Asset V5.0.3 legacy migration, quota failure, segmented history, no recursive export and Unicode PASS');
+}
+void verify().catch(error=>{console.error(error);process.exitCode=1;});
