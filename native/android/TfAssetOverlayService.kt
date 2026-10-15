@@ -85,6 +85,9 @@ class TfAssetOverlayService:Service(){
     ensureView();applyConfiguredLayoutIfChanged(cfg);render()
     running=true;active=this
     if(newlyOpened){
+      // The first render runs before the overlay has been measured. Render one
+      // more frame after attachment so Mini rows are visible without editing a status item.
+      root?.post { if(root!=null&&running)renderQueue.request() }
       captureFlow("monitor-open")
       val due=System.currentTimeMillis()+2000L
       // One bounded diagnostic sample; never requests prices or repeats.
