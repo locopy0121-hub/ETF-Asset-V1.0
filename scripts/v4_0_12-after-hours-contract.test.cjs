@@ -15,7 +15,7 @@ assert.match(runtime,/time\.isBefore\(LocalTime\.of\(13, 30\)\)/,
 assert.doesNotMatch(runtime,/!time\.isAfter\(LocalTime\.of\(13, 30\)\)/,
   'Android must not keep the whole 13:30 minute live');
 
-assert.ok((/^4\.0\.\d+$/.test(pkg.version)&&Number(pkg.version.split('.')[2])>=12)||pkg.version==='5.0.2');
+assert.ok((/^4\.0\.\d+$/.test(pkg.version)&&Number(pkg.version.split('.')[2])>=12)||/^5\.0\.[23]$/.test(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 const parts=pkg.version.split('.').map(Number);
 const major=parts[0]??0,minor=parts[1]??0,patch=parts[2]??0;
