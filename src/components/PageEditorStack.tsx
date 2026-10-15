@@ -1,31 +1,252 @@
-import { cloneElement, type ReactElement } from 'react';
-import { View } from 'react-native';
+import type {FinancialTone} from '../maintenance/workspaceModel';
+import {Children,cloneElement,isValidElement,type ComponentProps,type ReactElement,type ReactNode} from 'react';
+import { Pressable,StyleSheet,Text,type TextStyle,View } from 'react-native';
 
 import type { FrameCardProps } from './FrameCard';
+import { MetricTile } from './MetricTile';
+import {DashboardAssetOverview} from './dashboard/DashboardAssetOverview';
+import {DashboardProfitAnalysis} from './dashboard/DashboardProfitAnalysis';
+import {DashboardProfitDetail} from './dashboard/DashboardProfitDetail';
+import {DashboardQuickActions} from './dashboard/DashboardQuickActions';
+import { HoldingQuoteCollection } from './HoldingQuoteCollection';
+import { SegmentedControl } from './SegmentedControl';
+import {PortfolioModeSwitcher} from './PortfolioModeSwitcher';
+import {PortfolioQuickBar} from './PortfolioQuickBar';
+import {PORTFOLIO_SAFE_SWITCH_ID,PORTFOLIO_QUICK_SWITCH_ID} from '../domain/portfolioModeSwitch';
+import {AiQuestionBox} from './AiQuestionBox';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {InstalledFrameComponents} from '../maintenance/MaintenanceWorkbench';
+import {InspectableTarget} from '../maintenance/InspectableTarget';
+import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
+import {useMaintenance} from '../maintenance/MaintenanceRuntime';
+import {WorkspaceSurface} from '../maintenance/WorkspaceSurface';
+import {useThemeRuntime} from '../theme/ThemeRuntime';
+import {spacing} from '../theme/tokens';
+import {colorWithAlpha} from '../maintenance/frameEffects';
+import {applyConditionalAppearance,activeConditionalRule} from '../maintenance/conditionalVisual';
+import {formatDisplayNumber} from '../maintenance/numberDisplay';
+import {FrameEditingProvider} from '../editor/FrameEditingContext';
+import {Text as EditableText} from './EditableNative';
+import {dividendTargetId} from '../editor/dividendPageLayout';
+import {readableDividendSummaryMetric} from '../dividend/dividendSummaryVisual';
 
-type EditorFrameItem = {
-  key: string;
-  element: ReactElement<FrameCardProps>;
-};
+type EditorFrameItem={key:string;element:ReactElement<FrameCardProps>};
 
-export function PageEditorStack({ pageKey, frames }: { pageKey: MainPageKey; frames: readonly EditorFrameItem[] }) {
-  const { config } = usePageEditor(pageKey);
-
-  const ordered = [...frames]
-    .filter(item => config[item.key]?.visible !== false)
-    .sort((a, b) => (config[a.key]?.order ?? 0) - (config[b.key]?.order ?? 0));
-
-  return <View style={{ gap: 12 }}>
-    {ordered.map(item => {
-      const frameConfig = config[item.key];
-      return cloneElement(item.element, {
-        key: item.key,
-        layout: frameConfig?.layout ?? 'standard',
-        appearance: frameConfig?.appearance ?? 'theme',
-        ...(frameConfig?{editorStyle:frameConfig}:{}),
+function decorateContent(node:ReactNode,frame:FrameMaintenanceContext,path='root',frameTone:FinancialTone='neutral'):ReactNode {
+  return Children.map(node,(child,index)=>{
+    if(!isValidElement(child))return child;
+    const part=child.key!==null?String(child.key):String(index);
+    const nodeId=(path+'/'+part).slice(0,120);
+    if(child.type===DashboardAssetOverview){
+      const props=child.props as ComponentProps<typeof DashboardAssetOverview>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardAssetOverview>>,{...props,maintenance:frame});
+    }
+    if(child.type===DashboardProfitAnalysis){
+      const props=child.props as ComponentProps<typeof DashboardProfitAnalysis>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardProfitAnalysis>>,{...props,maintenance:frame});
+    }
+    if(child.type===DashboardProfitDetail){
+      const props=child.props as ComponentProps<typeof DashboardProfitDetail>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardProfitDetail>>,{...props,maintenance:frame});
+    }
+    if(child.type===DashboardQuickActions){
+      const props=child.props as ComponentProps<typeof DashboardQuickActions>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof DashboardQuickActions>>,{...props,maintenance:frame});
+    }
+    if(child.type===MetricTile){
+      const props=child.props as ComponentProps<typeof MetricTile>;
+      const dividendLayout=frame.page==='dividend'?frame.displayConfig.layoutTargets?.[dividendTargetId('metric:'+props.label)]:undefined;
+      const target:InspectedTarget={
+        id:'metric:'+props.label,kind:'metric',label:props.label,page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        profitTone:props.tone==='gain'?'gain':props.tone==='loss'?'loss':'neutral',
+        properties:[
+          {name:'欄位名稱',value:props.label,readOnly:true},{name:'即時數值（帳務唯讀）',value:props.value,readOnly:true},
+          {name:'原說明',value:props.caption??'無',readOnly:true},{name:'損益狀態',value:props.tone??'default',readOnly:true},
+          {name:'標題字號',value:'11 px'},{name:'數值字號',value:'17 px'},
+        ],
+        base:{...TARGET_APPEARANCE,fontSize:17,labelFontSize:11,captionFontSize:10,fontWeight:'900',labelFontWeight:'700',captionFontWeight:'normal',
+          backgroundColor:'#F4ECFF',textColor:props.tone==='gain'?'#EF4444':props.tone==='loss'?'#10B981':'#0F172A',
+          labelColor:'#64748B',borderWidth:0,borderRadius:12,padding:spacing.md,
+        },
+      };
+      return <InspectableTarget key={child.key??target.id} target={target} frame={frame} flex>
+        {(_appearance,customized,override,render)=>{
+          const customizedStyle=(customized||dividendLayout)?
+            {...(dividendLayout??{}),...(customized?applyConditionalAppearance(override,render.displayTone):{})}:undefined;
+          const visualStyle=frame.page==='dividend'&&frame.frameKey==='dividend-summary'&&customizedStyle?
+            readableDividendSummaryMetric(customizedStyle):customizedStyle;
+          // The inspector wrapper owns XY; do not apply the same translate twice
+          // on the painted card. Measured child layout drives the exact dashed box.
+          const paintedStyle=visualStyle?{...visualStyle}:undefined;
+          if(paintedStyle){delete paintedStyle.offsetX;delete paintedStyle.offsetY;}
+          return <MetricTile {...props} {...(render.onVisualLayout?{onVisualLayout:render.onVisualLayout}:{})}
+            previewTap={render.editing}
+            {...(render.simulated?{simulationTone:render.displayTone}:{})}
+            {...(paintedStyle?{editorStyle:paintedStyle}:{})}/>;
+        }}
+      </InspectableTarget>;
+    }
+    if(child.type===AiQuestionBox){
+      const props=child.props as ComponentProps<typeof AiQuestionBox>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof AiQuestionBox>>,{...props,maintenance:frame});
+    }
+    if(child.type===HoldingQuoteCollection){
+      const props=child.props as ComponentProps<typeof HoldingQuoteCollection>;
+      return cloneElement(child as ReactElement<ComponentProps<typeof HoldingQuoteCollection>>,{
+        ...props,maintenance:frame,
       });
+    }
+    if(child.type===PortfolioQuickBar){
+      const props=child.props as ComponentProps<typeof PortfolioQuickBar>;
+      const target:InspectedTarget={
+        id:PORTFOLIO_QUICK_SWITCH_ID,kind:'control',label:'持股四鍵快捷列',
+        page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        properties:[
+          {name:'目前模式',value:String(props.activeMode)},
+          {name:'第一鍵',value:props.firstMode},
+          {name:'排序',value:props.sortLabel},
+          {name:'可選項目',value:'清單／行情牆／純行情／精簡／圖表／進階／排序',readOnly:true},
+        ],
+        base:{...TARGET_APPEARANCE,backgroundColor:'#F6EAFF',padding:0,borderWidth:0},
+      };
+      return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>{()=>child}</InspectableTarget>;
+    }
+    if(child.type===SegmentedControl||child.type===PortfolioModeSwitcher){
+      const props=child.props as ComponentProps<typeof PortfolioModeSwitcher>;
+      const choices=props.items.map(item=>item.label).join('／');
+      const target:InspectedTarget={
+        id:child.type===PortfolioModeSwitcher?PORTFOLIO_SAFE_SWITCH_ID:'control:'+nodeId,
+        kind:'control',label:child.type===PortfolioModeSwitcher?'持股模式新切換器':'操作模式',page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+        properties:[{name:'目前模式',value:String(props.value)},{name:'可選項目',value:choices,readOnly:true}],
+        base:{...TARGET_APPEARANCE,backgroundColor:'#F6EAFF',padding:0,borderWidth:0},
+      };
+      return <InspectableTarget key={child.key??nodeId} target={target} frame={frame}>{()=>child}</InspectableTarget>;
+    }
+    if(child.type===Text||child.type===EditableText){
+      const props=child.props as ComponentProps<typeof Text>&{editorReadOnly?:boolean;editorSkip?:boolean};
+      const content=typeof props.children==='string'||typeof props.children==='number'?String(props.children):null;
+      if(content&&content.trim().length>=2){
+        const raw=StyleSheet.flatten(props.style) as TextStyle|undefined;
+        const color=typeof raw?.color==='string'&&/^#[0-9a-f]{6}$/i.test(raw.color)?raw.color:'#0F172A';
+        const bg=typeof raw?.backgroundColor==='string'&&/^#[0-9a-f]{6}$/i.test(raw.backgroundColor)?raw.backgroundColor:'#FFFFFF';
+        const size=typeof raw?.fontSize==='number'?raw.fontSize:13;
+        const isPrefix=content.trim()==='NT$'&&frame.page==='home'&&frame.frameKey==='asset-dashboard';
+        const isDataValue=props.editorReadOnly===true||/NT\$\s*[-+]?\s*[\d,]+(?:\.\d+)?|^[+-]?[\d,]+(?:\.\d+)?%?$/.test(content)
+          ||!!raw?.fontVariant?.includes('tabular-nums');
+        const target:InspectedTarget={
+          profitTone:frameTone,id:'text:'+nodeId,kind:isDataValue?'value':'text',label:content.slice(0,24),page:frame.page,frameKey:frame.frameKey,frameTitle:frame.frameTitle,
+          properties:[{name:'原畫面文字',value:content,readOnly:true},{name:'原字號',value:size+' px',readOnly:true},
+            {name:'原文字顏色',value:color,readOnly:true},
+            ...(isDataValue?[{name:'資料保護',value:'原始數值不可由文字工具覆寫',readOnly:true}]:[])],
+          base:{...TARGET_APPEARANCE,fontSize:size,textColor:color,backgroundColor:bg,
+            align:raw?.textAlign==='center'||raw?.textAlign==='right'?raw.textAlign:'left',
+            fontWeight:raw?.fontWeight??'normal',fontStyle:raw?.fontStyle??'normal',
+            fontFamily:['sans-serif','sans-serif-condensed','serif','monospace'].includes(raw?.fontFamily??'')?
+              raw!.fontFamily as 'sans-serif'|'sans-serif-condensed'|'serif'|'monospace':'system',
+            textDecorationLine:raw?.textDecorationLine??'none',
+            letterSpacing:raw?.letterSpacing??0,lineHeight:raw?.lineHeight??0,
+            borderWidth:typeof raw?.borderWidth==='number'?raw.borderWidth:0,
+            padding:typeof raw?.padding==='number'?raw.padding:0,borderRadius:typeof raw?.borderRadius==='number'?raw.borderRadius:0},
+        };
+        const actualTarget:InspectedTarget=isPrefix?{...target,id:'prefix:'+nodeId,kind:'prefix',
+          label:'NT$ 貨幣前綴',properties:[...target.properties,{name:'元件類型',value:'獨立貨幣前綴；金額仍為帳務唯讀',readOnly:true}],
+          base:{...target.base,prefixText:content,prefixGap:8}}:target;
+        return <InspectableTarget key={child.key??nodeId} target={actualTarget} frame={frame}>
+          {(appearance,customized,override,render)=>{const rule=activeConditionalRule(override.conditionalStyles,render.displayTone);
+            return cloneElement(child as ReactElement<ComponentProps<typeof Text>&{editorSkip?:boolean}>,{
+            ...(child.type===EditableText?{editorSkip:true}:{}),
+            ...props,children:customized&&!isDataValue?(isPrefix?
+              (override.prefixText!==undefined?appearance.prefixText:content):
+              (appearance.labelText||appearance.captionText||content)):
+              isDataValue&&customized&&appearance.displayUnit!=='original'?
+                formatDisplayNumber(content,appearance.displayUnit,appearance.displayDigits,true):content,
+            style:customized?[props.style,{
+              ...(override.textColor||override.textProfitColor!==undefined||rule?.textColor?{color:appearance.textColor}:{}),
+              ...(override.fontSize!==undefined?{fontSize:appearance.fontSize}:{}),
+              ...(override.fontWeight!==undefined?{fontWeight:appearance.fontWeight}:{}),
+              ...(override.fontFamily!==undefined?{fontFamily:appearance.fontFamily==='system'?undefined:appearance.fontFamily}:{}),
+              ...(override.fontStyle!==undefined?{fontStyle:appearance.fontStyle}:{}),
+              ...(override.textDecorationLine!==undefined?{textDecorationLine:appearance.textDecorationLine}:{}),
+              ...(override.letterSpacing!==undefined?{letterSpacing:appearance.letterSpacing}:{}),
+              ...(override.lineHeight!==undefined&&appearance.lineHeight>0?{lineHeight:appearance.lineHeight}:{}),
+              ...(isPrefix&&override.prefixGap!==undefined?{marginRight:appearance.prefixGap}:{}),
+              ...(isPrefix&&override.prefixOffsetX!==undefined?{marginLeft:Math.max(-24,Math.min(24,appearance.prefixOffsetX))}:{}),
+              ...(isPrefix&&override.prefixOffsetY!==undefined?{transform:[{translateY:Math.max(-8,Math.min(8,appearance.prefixOffsetY))}]}:{}),
+              ...(override.align?{textAlign:appearance.align}:{}),
+              ...(appearance.backgroundMode==='gradient'&&override.backgroundMode!==undefined?
+                {backgroundColor:'transparent'}:
+                override.backgroundColor||override.backgroundProfitColor!==undefined||override.backgroundOpacity!==undefined?
+                {backgroundColor:colorWithAlpha(appearance.backgroundColor,appearance.backgroundOpacity)}:{}),
+              ...(override.borderColor||override.borderProfitColor!==undefined?{borderColor:appearance.borderColor}:{}),
+              ...(override.borderWidth!==undefined?{borderWidth:appearance.borderWidth}:{}),
+              ...(override.borderRadius!==undefined?{borderRadius:appearance.borderRadius}:{}),
+              ...(override.padding!==undefined?{padding:appearance.padding}:{}),
+            }]:props.style,
+          });}}
+        </InspectableTarget>;
+      }
+    }
+    const props=child.props as {children?:ReactNode};
+    if(props.children!==undefined){
+      return cloneElement(child as ReactElement<{children?:ReactNode}>,{
+        children:decorateContent(props.children,frame,nodeId,frameTone),
+      });
+    }
+    return child;
+  });
+}
+
+export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;frames:readonly EditorFrameItem[];gap?:number}){
+  const {config,displayConfig}=usePageEditor(pageKey);
+  const engineer=useMaintenance();
+  const theme=useThemeRuntime();
+  const session=engineer.session?.page===pageKey?engineer.session:null;
+  const effectiveDisplay=session?session.draftDisplay:displayConfig;
+  const ordered=[...frames]
+    .filter(item => config[item.key]?.visible !== false)
+    .sort((a,b)=>(session&&session.frameKey===a.key?session.draft.order:config[a.key]?.order??0)
+      -(session&&session.frameKey===b.key?session.draft.order:config[b.key]?.order??0));
+
+  return <View style={{gap:Math.max(6,Math.min(32,gap))}}>{ordered.map(item=>{
+    const active=session?.frameKey===item.key;
+    const frameConfig=active&&session?session.draft:config[item.key];
+    const instances=active&&session?session.draftInstances:engineer.getInstances(pageKey,item.key);
+    const workspace=engineer.getWorkspace(pageKey,item.key);
+    const frame:FrameMaintenanceContext={
+      page:pageKey,frameKey:item.key,frameTitle:item.element.props.title,
+      frameConfig:frameConfig!,displayConfig:effectiveDisplay,
+    };
+    const open=(instanceId?:string)=>{
+      const source=config[item.key];if(!source)return;
+      engineer.begin(pageKey,item.key,item.element.props.title,source,instanceId,displayConfig);
+    };
+    const originalAction=item.element.props.action;
+    return <WorkspaceSurface key={item.key} config={active&&frameConfig?.width?{...workspace,width:Math.max(workspace.width,frameConfig.width)}:workspace} active={Boolean(active&&engineer.enabled)}
+      onBounds={bounds=>engineer.reportWorkspaceBounds(pageKey,item.key,bounds)}>
+      {cloneElement(item.element,{
+      key:item.key,
+      layout:frameConfig?.layout??'standard',
+      appearance:frameConfig?.appearance??'theme',
+      ...(frameConfig?{editorStyle:frameConfig}:{}),
+      workActive:active,
+      ...(active&&session?.scope==='frame'?{onResizePreview:(size:{width:number;height:number})=>engineer.patchFrame({
+        width:size.width,height:size.height,
+        ...(session.draft.minHeight!==undefined&&session.draft.minHeight>size.height?{minHeight:size.height}:{})
+      })}:{}),
+      workHidden:active&&session?.scope==='frame'&&!session.draft.visible,
+      action:<View style={{flexDirection:'row',gap:6,alignItems:'center'}}>
+        <FrameEditingProvider frame={frame}>{originalAction}</FrameEditingProvider>
+        {engineer.enabled?<Pressable accessibilityRole="button" accessibilityLabel={'呼叫'+item.element.props.title+'維護工程師'} onPress={()=>open()} style={{minWidth:36,minHeight:36,justifyContent:'center',alignItems:'center',borderWidth:1,borderRadius:18,borderColor:theme.palette.primary}}>
+          <Text style={{fontSize:17}}>🔧</Text>
+        </Pressable>:null}
+      </View>,
+      children:<FrameEditingProvider frame={frame}>{decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
+        {instances.length?<InstalledFrameComponents instances={instances} frame={frame} enabled={engineer.enabled}
+          activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
+          onWrench={id=>open(id)}/>:null}
+      </FrameEditingProvider>,
     })}
-  </View>;
+    </WorkspaceSurface>;
+  })}</View>;
 }

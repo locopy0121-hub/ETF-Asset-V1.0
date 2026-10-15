@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {readWatchlistPresentation,sortWatchlistRows,watchlistIntraday,WATCHLIST_PRESENTATION_KEY,DEFAULT_WATCHLIST_PRESENTATION,createWatchlistPresentationWriter} from '../src/market/watchlistPresentation';
+assert.equal(WATCHLIST_PRESENTATION_KEY,'@tf-asset/watchlist-presentation-v1');
+assert.deepEqual(readWatchlistPresentation('{broken'),DEFAULT_WATCHLIST_PRESENTATION);
+assert.deepEqual(readWatchlistPresentation('{"mode":"wall","sort":"volume","direction":"desc","useWallStyle":true}'),{mode:'wall',sort:'volume',direction:'desc',useWallStyle:true});
+assert.deepEqual(readWatchlistPresentation('{"mode":"fake","sort":"pnl","direction":"sideways"}'),DEFAULT_WATCHLIST_PRESENTATION);
+const rows=[{symbol:'2330',price:100,changePercent:2,volume:50},{symbol:'0050',price:20,changePercent:-1,volume:100},{symbol:'00919',price:null,changePercent:null,volume:null}];
+assert.deepEqual(sortWatchlistRows(rows,'changePercent','desc').map(x=>x.symbol),['2330','0050','00919']);
+assert.deepEqual(sortWatchlistRows(rows,'changePercent','asc').map(x=>x.symbol),['0050','2330','00919']);
+assert.deepEqual(sortWatchlistRows(rows,'volume','desc').map(x=>x.symbol),['0050','2330','00919']);
+assert.deepEqual(rows.map(x=>x.symbol),['2330','0050','00919'],'sorting must never mutate persisted list');
+const at=(time:string)=>Date.parse('2026-10-15T'+time+'+08:00');
+const quote={intradayDate:'2026-10-15',intraday:[{at:at('10:00'),price:12},{at:at('09:00'),price:10},{at:at('08:59'),price:8},{at:at('14:00'),price:15},{at:at('09:00'),price:11},{at:at('11:00'),price:NaN},{at:at('11:01')-86400000,price:99}]};
+assert.deepEqual(watchlistIntraday(quote).map(x=>x.price),[11,12]);
+assert.deepEqual(watchlistIntraday({sparkline:[10,11,12]}),[],'historical sparkline must never stand in for intraday');
+assert.deepEqual(watchlistIntraday(undefined),[]);
+console.log('V4.0.64 watchlist preference recovery, immutable missing-last sorting and genuine session series PASS');
+
+void(async()=>{
+ const started:string[]=[],finished:string[]=[],releases:(()=>void)[]=[];
+ const save=createWatchlistPresentationWriter(raw=>{started.push(raw);return new Promise<void>(resolve=>releases.push(()=>{finished.push(raw);resolve();}));});
+ const first=save('list'),second=save('wall'),third=save('chart');
+ await Promise.resolve();assert.deepEqual(started,['list'],'quick taps cannot start overlapping storage writes');
+ releases.shift()!();await first;await Promise.resolve();assert.deepEqual(started,['list','wall']);
+ releases.shift()!();await second;await Promise.resolve();assert.deepEqual(started,['list','wall','chart']);
+ releases.shift()!();await third;assert.deepEqual(finished,['list','wall','chart'],'newest state must finish last');
+ let attempts=0;const recover=createWatchlistPresentationWriter(async()=>{if(++attempts===1)throw Error('disk');});
+ await assert.rejects(recover('first'));await recover('second');assert.equal(attempts,2,'failed write cannot poison later saves');
+ console.log('V4.0.64 serialized optional preference writes and failure recovery PASS');
+})().catch(error=>{console.error(error);process.exitCode=1;});

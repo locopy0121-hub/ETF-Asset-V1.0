@@ -2,10 +2,13 @@ package com.tfasset.app
 
 import android.app.Service
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -16,6 +19,7 @@ import android.view.animation.Animation
 import android.view.animation.TranslateAnimation
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams as LinearLayoutParams
+import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import android.widget.TextView
 import org.json.JSONArray
@@ -24,20 +28,52 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class TfAssetOverlayService:Service(){
-  companion object{const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH"}
+  companion object{@Volatile private var running=false;@Volatile private var active:TfAssetOverlayService?=null;fun requestRefresh(){active?.renderQueue?.request()};val isRunning:Boolean get()=running;const val ACTION_START="TF_ASSET_MONITOR_START";const val ACTION_REFRESH="TF_ASSET_MONITOR_REFRESH";const val ACTION_BACKGROUND_REFRESH="TF_ASSET_MONITOR_BACKGROUND_REFRESH"}
+  private val fontFit=TfAssetMonitorAutoFitLayout()
+  private val expiryHandler=Handler(Looper.getMainLooper())
+  private val expiryRefresh=Runnable{if(root!=null)render()}
+  private fun scheduleExpiry(){
+    expiryHandler.removeCallbacks(expiryRefresh)
+    val raw=runCatching{JSONObject(prefs().getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+    val now=System.currentTimeMillis()
+    val until=TfAssetMarketPresentation.nextExpiry(raw,now)?:return
+    // Short rechecks also handle wall-clock changes while the floating view is visible.
+    expiryHandler.postDelayed(expiryRefresh,(until-now).coerceAtLeast(1L))
+  }
   private lateinit var wm:WindowManager
   private var root:LinearLayout?=null
+  private val renderHandler=Handler(Looper.getMainLooper())
+  private val renderQueue=LatestSurfaceRenderQueue({renderHandler.postDelayed(it,16L)}){
+    if(backgroundMonitorRefreshAllowed(root!=null&&running,prefs().getBoolean("monitor_user_closed",false))){
+      applyConfiguredLayoutIfChanged(readConfig());render()
+    }
+  }
+  private fun captureFlow(reason:String,probeLagMs:Long=0L){
+    val raw=TfAssetMarketFlowDiagnostics.checkpoint(reason,TfAssetMarketOwner.uiActive,TfAssetMarketOwner.widgetActive,probeLagMs)
+    sendBroadcast(Intent(TfAssetMarketFlowDiagnostics.ACTION).setPackage(packageName).putExtra("payload",raw))
+  }
   private var params:WindowManager.LayoutParams?=null
   private var mode="normal"
   private var lastLayoutSignature:String?=null
+  private var wallHorizontal:HorizontalScrollView?=null
+  private var wallScrollX=0
+  private var wallScrollY=0
   private var animationsEnabled=true
   private val previousEffectValues=mutableMapOf<String,Double?>()
   private var downX=0f;private var downY=0f;private var startX=0;private var startY=0;private var lastTap=0L
 
   override fun onCreate(){super.onCreate();wm=getSystemService(WINDOW_SERVICE) as WindowManager}
   override fun onBind(intent:Intent?):IBinder?=null
+  override fun onConfigurationChanged(newConfig:Configuration){
+    super.onConfigurationChanged(newConfig)
+    if(root!=null){applyConfiguredLayoutIfChanged(readConfig());render()}
+  }
   override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
     val cfg=readConfig()
+    if(intent?.action==ACTION_BACKGROUND_REFRESH&&!backgroundMonitorRefreshAllowed(root!=null&&running,prefs().getBoolean("monitor_user_closed",false))){
+      if(root==null)stopSelf(startId)
+      return START_NOT_STICKY
+    }
     if(!cfg.optBoolean("enabled",false)){
       root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
       writeRuntimeStatus(false,null)
@@ -45,9 +81,25 @@ class TfAssetOverlayService:Service(){
       return START_NOT_STICKY
     }
     if(!Settings.canDrawOverlays(this)){writeRuntimeStatus(false,null);stopSelf();return START_NOT_STICKY}
-    ensureView();applyConfiguredLayoutIfChanged(cfg);render();return START_STICKY
+    val newlyOpened=root==null
+    ensureView();applyConfiguredLayoutIfChanged(cfg);render()
+    running=true;active=this
+    if(newlyOpened){
+      captureFlow("monitor-open")
+      val due=System.currentTimeMillis()+2000L
+      // One bounded diagnostic sample; never requests prices or repeats.
+      renderHandler.postDelayed({captureFlow("monitor-sample",(System.currentTimeMillis()-due).coerceAtLeast(0L))},2000L)
+    }
+    TfAssetWidgetLiveService.ensureStarted(this)
+    return START_STICKY
   }
   override fun onDestroy(){
+    fontFit.clear()
+    running=false;active=null;renderQueue.close()
+    captureFlow("monitor-close")
+    renderHandler.postDelayed({captureFlow("monitor-after-close")},1500L)
+    if(!TfAssetWidgetLiveService.hasWidgets(this))stopService(Intent(this,TfAssetWidgetLiveService::class.java))
+    expiryHandler.removeCallbacks(expiryRefresh)
     root?.let{runCatching{wm.removeViewImmediate(it)}};root=null
     writeRuntimeStatus(false,null)
     super.onDestroy()
@@ -55,9 +107,23 @@ class TfAssetOverlayService:Service(){
 
   private fun prefs()=getSharedPreferences("tf_asset_native",0)
   private fun readConfig()=runCatching{JSONObject(prefs().getString("monitor_config","{}")?:"{}")}.getOrElse{JSONObject()}
-  private fun readSnapshot()=runCatching{JSONObject(prefs().getString("snapshot","{}")?:"{}")}.getOrElse{JSONObject()}
+  private fun readSnapshot()=runCatching{TfAssetMarketPresentation.decorate(this,TfAssetMonitorQuoteLists.withSubscriptionCoverage(JSONObject(prefs().getString("snapshot","{}")?:"{}"),TfAssetMarketOwner.subscriptionLimitedSymbols()))}.getOrElse{JSONObject()}
   private fun effectiveMode(cfg:JSONObject)=prefs().getString("monitor_runtime_mode_override",null)?.let{if(it=="mini")"mini" else "normal"}?:cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
   private fun activeLayout(cfg:JSONObject)=cfg.optJSONObject(if(mode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
+
+  private fun wallGeometry(cfg:JSONObject,rowCount:Int=0):TfAssetMonitorWallGeometry.Geometry {
+    val layout=cfg.optJSONObject("normalLayout")?:JSONObject()
+    val style=cfg.optJSONObject("normalStyle")?:JSONObject()
+    val wall=cfg.optJSONObject("normalWallLayout")?:JSONObject()
+    return TfAssetMonitorWallGeometry.calculate(layout.optInt("width",320),style.optInt("padding",12).coerceIn(0,32),TfAssetMonitorWallGeometry.normalizeColumns(wall.optDouble("columns",2.0)),wall.optInt("columnGap",8).coerceIn(0,32),resources.displayMetrics.widthPixels,rowCount)
+  }
+  private fun configuredWidth(cfg:JSONObject,configMode:String):Int =
+    if(configMode=="normal"&&cfg.optString("template")=="market-wall")wallGeometry(cfg).windowWidth
+    else (cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()).optInt("width",if(configMode=="mini")360 else 320)
+  private fun layoutSignatureFor(cfg:JSONObject,configMode:String):String {
+    val layout=cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
+    return configMode+"|"+layout.toString()+"|"+configuredWidth(cfg,configMode)
+  }
 
   private fun ensureView(){
     if(root!=null)return
@@ -68,7 +134,7 @@ class TfAssetOverlayService:Service(){
     val x=if(prefs().contains(pxKey))prefs().getInt(pxKey,layout.optInt("x",16)) else layout.optInt("x",16)
     val y=if(prefs().contains(pyKey))prefs().getInt(pyKey,layout.optInt("y",120)) else layout.optInt("y",120)
     params=WindowManager.LayoutParams(
-      layout.optInt("width",if(mode=="mini")360 else 320),
+      configuredWidth(cfg,mode),
       layout.optInt("height",if(mode=="mini")330 else 420),
       WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
       WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -80,21 +146,20 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun layoutSignature(cfg:JSONObject):String{
-    val configMode=effectiveMode(cfg)
-    val layout=cfg.optJSONObject(if(configMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
-    return configMode+"|"+layout.toString()
+    return layoutSignatureFor(cfg,effectiveMode(cfg))
   }
 
   private fun applyConfiguredLayoutIfChanged(cfg:JSONObject){
     val nextMode=effectiveMode(cfg)
     val nextLayout=cfg.optJSONObject(if(nextMode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
-    val signature=nextMode+"|"+nextLayout.toString()
+    val signature=layoutSignatureFor(cfg,nextMode)
     if(signature==lastLayoutSignature)return
+    val retainPosition=lastLayoutSignature?.startsWith(nextMode+"|"+nextLayout.toString()+"|")==true
     mode=nextMode
     val p=params?:return
-    p.width=nextLayout.optInt("width",if(mode=="mini")360 else 320)
+    p.width=configuredWidth(cfg,mode)
     p.height=nextLayout.optInt("height",if(mode=="mini")330 else 420)
-    p.x=nextLayout.optInt("x",16);p.y=nextLayout.optInt("y",120)
+    if(!retainPosition){p.x=nextLayout.optInt("x",16);p.y=nextLayout.optInt("y",120)}
     prefs().edit().putInt("monitor_"+mode+"_x",p.x).putInt("monitor_"+mode+"_y",p.y).apply()
     root?.let{wm.updateViewLayout(it,p)}
     lastLayoutSignature=signature
@@ -116,13 +181,13 @@ class TfAssetOverlayService:Service(){
     prefs().edit().putString("monitor_runtime_mode_override",mode).apply()
     val layout=activeLayout(cfg)
     val p=params?:return
-    p.width=layout.optInt("width",if(mode=="mini")360 else 320)
+    p.width=configuredWidth(cfg,mode)
     p.height=layout.optInt("height",if(mode=="mini")330 else 420)
     val pxKey="monitor_"+mode+"_x";val pyKey="monitor_"+mode+"_y"
     p.x=if(prefs().contains(pxKey))prefs().getInt(pxKey,layout.optInt("x",16)) else layout.optInt("x",16)
     p.y=if(prefs().contains(pyKey))prefs().getInt(pyKey,layout.optInt("y",120)) else layout.optInt("y",120)
     root?.let{wm.updateViewLayout(it,p)}
-    lastLayoutSignature=mode+"|"+layout.toString()
+    lastLayoutSignature=layoutSignatureFor(cfg,mode)
     render()
   }
   private fun savePosition(x:Int,y:Int){
@@ -145,8 +210,7 @@ class TfAssetOverlayService:Service(){
   private fun objectMap(array:JSONArray?,key:String):Map<String,JSONObject> = jsonObjects(array).mapNotNull{obj->obj.optString(key,"").takeIf(String::isNotBlank)?.let{it to obj}}.toMap()
 
   private fun orderedHoldings(snapshot:JSONObject,cfg:JSONObject):List<JSONObject>{
-    val array=snapshot.optJSONArray("holdings")?:return emptyList()
-    val all=(0 until array.length()).mapNotNull{array.optJSONObject(it)}
+    val all=TfAssetMonitorQuoteLists.select(snapshot,cfg.optString("quoteListSource","holdings"))
     val selected=jsonStrings(cfg.optJSONArray("selectedSymbols")).toSet()
     val rows=(if(selected.isEmpty())all else all.filter{selected.contains(it.optString("symbol","").uppercase())}).toMutableList()
     val sort=cfg.optJSONObject("sort")?:JSONObject()
@@ -158,8 +222,10 @@ class TfAssetOverlayService:Service(){
       return rows
     }
     rows.sortWith(Comparator{a,b->
+      if(key in listOf("price","changePercent","pnl","marketValue","volume","roi")){val av=a.optDouble(key,Double.NaN);val bv=b.optDouble(key,Double.NaN);if(!av.isFinite()||!bv.isFinite())return@Comparator if(av.isFinite())-1 else if(bv.isFinite())1 else 0}
       val result=when(key){
         "symbol"->a.optString("symbol","").compareTo(b.optString("symbol",""))
+        "pnl","marketValue","volume","roi"->compareNumber(a.optDouble(key,Double.NaN),b.optDouble(key,Double.NaN))
         "price"->compareNumber(a.optDouble("price",Double.NaN),b.optDouble("price",Double.NaN))
         else->compareNumber(a.optDouble("changePercent",Double.NaN),b.optDouble("changePercent",Double.NaN))
       }
@@ -186,32 +252,63 @@ class TfAssetOverlayService:Service(){
   }
 
   private fun render(){
+    val began=System.nanoTime()
+    try{renderContents()}finally{TfAssetMarketFlowDiagnostics.rendered(System.nanoTime()-began)}
+  }
+  private fun renderContents(){
     val r=root?:return
+    scheduleExpiry()
     val cfg=readConfig()
     animationsEnabled=(cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)
     val snap=readSnapshot()
     val style=cfg.optJSONObject(if(mode=="mini")"miniStyle" else "normalStyle")?:JSONObject()
+    val aggregate=snap.optJSONObject("asset")?.optDouble("totalReturn",Double.NaN)?.takeIf{it.isFinite()}
+    val resolvedStyle=JSONObject(style.toString())
+    listOf("backgroundColor","textColor","secondaryTextColor","borderColor").forEach{key->resolvedStyle.put(key,TfAssetMonitorFormatting.resolved(style,key,style.optString(key,"#94A3B8"),aggregate,style))}
+    fontFit.begin(style)
+    wallScrollX=wallHorizontal?.scrollX?:wallScrollX
+    wallHorizontal=null
     r.removeAllViews()
     val padding=style.optInt("padding",if(mode=="mini")6 else 12)
     r.setPadding(padding,padding,padding,padding)
-    val bg=color(style.optString("backgroundColor","#0F172A"),Color.rgb(15,23,42))
+    val bg=color(resolvedStyle.optString("backgroundColor","#0F172A"),Color.rgb(15,23,42))
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
-    renderWindowControls(r,style)
-    if(mode=="mini")renderMini(r,cfg,snap,style) else renderNormal(r,cfg,snap,style)
+    renderWindowControls(r,resolvedStyle,TfAssetMarketPresentation.sourceClockLabel(orderedHoldings(snap,cfg)),cfg,aggregate)
+    val limitedCount=orderedHoldings(snap,cfg).count{it.optBoolean("subscriptionLimited",false)}
+    if(limitedCount>0)r.addView(TextView(this).apply{
+      text="$limitedCount 檔超出目前訂閱額度（保留最後行情）";textSize=11f
+      setTextColor(Color.rgb(251,191,36));setPadding(4,4,4,4)
+    },LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+    if(mode=="mini")renderMini(r,cfg,snap,resolvedStyle) else renderNormal(r,cfg,snap,resolvedStyle)
+    applyMonitorFormat(r,style,style,aggregate,style,false)
+    fontFit.schedule(r)
     val first=orderedHoldings(snap,cfg).firstOrNull()
     writeRuntimeStatus(true,first?.optString("symbol",""))
   }
 
-  private fun renderWindowControls(root:LinearLayout,style:JSONObject){
+  private fun renderWindowControls(root:LinearLayout,style:JSONObject,quoteClock:String,cfg:JSONObject,aggregate:Double?){
+    val clock=cfg.optJSONObject(if(mode=="mini")"miniClock" else "normalClock")?:JSONObject()
     val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.END or Gravity.CENTER_VERTICAL}
     val text=color(style.optString("secondaryTextColor","#CBD5E1"),Color.LTGRAY)
     fun control(label:String,onClick:()->Unit):TextView=TextView(this).apply{
       this.text=label;setTextColor(text);textSize=10f;setPadding(12,7,12,7);setOnClickListener{onClick()}
     }
-    row.addView(control("↻ 更新行情"){prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply();render()})
+    val clockView=TextView(this).apply{
+      this.text=quoteClock;setTextColor(color(TfAssetMonitorFormatting.resolved(clock,"textColor",style.optString("secondaryTextColor","#CBD5E1"),aggregate,style),text));textSize=10f*clock.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat();gravity=gravityFor(clock.optString("align","left"))
+      val py=clock.optInt("paddingY",2).coerceIn(0,16);setPadding(4,py,2,py)
+      val bg=TfAssetMonitorFormatting.resolved(clock,"backgroundColor","",aggregate,style);if(bg.isNotBlank())setBackgroundColor(color(bg,Color.TRANSPARENT))
+      contentDescription="行情資料更新時間 $quoteClock"
+    }
+    applyMonitorFormat(clockView,clock,style,aggregate,style)
+    if(clock.optBoolean("visible",true))root.addView(clockView,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+    row.addView(control("↻ 更新行情"){
+      prefs().edit().putLong("monitor_force_refresh_requested_at",System.currentTimeMillis()).apply()
+      sendBroadcast(Intent(TfAssetNativeModule.ACTION_MARKET_REFRESH_REQUESTED).setPackage(packageName))
+      render()
+    })
     row.addView(control(if(mode=="mini")"□ 放大" else "— 縮小"){toggleMode()})
-    row.addView(control("× 關閉"){prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
+    row.addView(control("× 關閉"){running=false;prefs().edit().putBoolean("monitor_user_closed",true).apply();writeRuntimeStatus(false,null);stopSelf()})
     root.addView(row,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
   }
 
@@ -248,6 +345,7 @@ class TfAssetOverlayService:Service(){
       val gap=if(visual.has("lineGap")&&!visual.isNull("lineGap"))visual.optInt("lineGap",style.optInt("rowGap",6)).coerceIn(0,32) else style.optInt("rowGap",6).coerceIn(0,32)
       val py=visual.optInt("paddingY",0).coerceIn(0,16)
       view.setPadding(3,gap+py,3,py)
+      applyMonitorFormat(view,visual,style,numeric,style)
       applyItemEffect(view,visual.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal:${row.optString("symbol","")}:$field")
       container.addView(view,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
     }
@@ -290,7 +388,8 @@ class TfAssetOverlayService:Service(){
         val wallHeader=wall.optJSONObject("header")?:JSONObject()
         val wallFields=wall.optJSONArray("fields")?:JSONArray()
         val wallLayout=cfg.optJSONObject("normalWallLayout")?:JSONObject()
-        val wallColumns=wallLayout.optInt("columns",2).coerceIn(1,4)
+        val wallColumns=TfAssetMonitorWallGeometry.normalizeColumns(wallLayout.optDouble("columns",2.0))
+        val geometry=wallGeometry(cfg,rows.size)
         val wallColumnGap=wallLayout.optInt("columnGap",8).coerceIn(0,32)
         val wallRowGap=wallLayout.optInt("rowGap",8).coerceIn(0,32)
         val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
@@ -304,13 +403,20 @@ class TfAssetOverlayService:Service(){
         val wallBorderWidth=wallStyle.optInt("borderWidth",1).coerceIn(0,6)
         val wallCorner=wallStyle.optInt("cornerRadius",16).coerceIn(0,40)
         val enabled=(0 until wallFields.length()).mapNotNull{wallFields.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
-        val headerFields=enabled.filter{it.optString("field")=="name"||it.optString("field")=="symbol"}
-        val quoteFields=enabled.filter{it.optString("field")=="price"||it.optString("field")=="change"||it.optString("field")=="changePercent"}
-        val footerFields=enabled.filter{it.optString("field")=="pnl"||it.optString("field")=="roi"||it.optString("field")=="marketValue"}
+        val headerFields=enabled.filter{TfAssetMonitorFields.section(it.optString("field"))=="header"}
+        val quoteFields=enabled.filter{TfAssetMonitorFields.section(it.optString("field"))=="quote"}
+        val footerFields=enabled.filter{TfAssetMonitorFields.section(it.optString("field"))=="detail"}
         val body=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
         if(rows.isEmpty())body.addView(textView("等待資料",neutral,12*fs,Gravity.START))
         var wallLine:LinearLayout?=null
         rows.forEachIndexed{rowIndex,row->
+          val rowNumeric=row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()}
+          val wallStyle=resolveMonitorColors(wall.optJSONObject("style")?:JSONObject(),rowNumeric,style)
+          val wallHeader=resolveMonitorColors(wall.optJSONObject("header")?:JSONObject(),rowNumeric,style)
+          val wallText=color(wallStyle.optString("textColor",style.optString("textColor","#FFFFFF")),text)
+          val wallSecondary=color(wallStyle.optString("secondaryTextColor",style.optString("secondaryTextColor","#CBD5E1")),secondary)
+          val wallBorder=color(wallStyle.optString("borderColor",style.optString("borderColor","#334155")),Color.DKGRAY)
+          val wallBackground=color(wallStyle.optString("backgroundColor",style.optString("backgroundColor","#0F172A")),Color.rgb(15,23,42))
           if(rowIndex%wallColumns==0){
             wallLine=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.TOP}
             body.addView(wallLine,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{bottomMargin=wallRowGap})
@@ -321,6 +427,7 @@ class TfAssetOverlayService:Service(){
             background=GradientDrawable().apply{setColor(wallBackground);cornerRadius=wallCorner.toFloat();if(wallBorderWidth>0)setStroke(wallBorderWidth,wallBorder)}
           }
 
+          applyMonitorFormat(card,wallStyle,style,row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},style,false)
           if(wallHeader.optBoolean("visible",true)&&headerFields.isNotEmpty()){
             val headerBg=color(wallHeader.optString("backgroundColor",wallStyle.optString("backgroundColor","#0C121B")),wallBackground)
             val headerText=color(wallHeader.optString("textColor","#FFFFFF"),wallText)
@@ -333,7 +440,7 @@ class TfAssetOverlayService:Service(){
               setPadding(0,0,0,wallGap)
               background=GradientDrawable().apply{setColor(headerBg);if(headerBorderWidth>0)setStroke(headerBorderWidth,headerBorder)}
             }
-            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+            val nameWrap=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
             headerFields.forEachIndexed{index,field->
               val key=field.optString("field","symbol")
               val numeric=miniNumeric(row,key)
@@ -346,18 +453,21 @@ class TfAssetOverlayService:Service(){
                 customText!=null->customText
                 else->headerText
               }
-              val base=if(index==0)15f else 11f
+              val base=if(key=="name")15f else 11f
               val view=textView(miniValue(row,key),tone,base*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*headerScale*fs,gravityFor(field.optString("align","left")))
               val customBg=field.optString("backgroundColor","")
               if(customBg.isNotBlank())view.setBackgroundColor(color(customBg,Color.TRANSPARENT))
               val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",if(index==0)0 else 2).coerceIn(0,32) else if(index==0)0 else 2
               val py=field.optInt("paddingY",0).coerceIn(0,16)
               view.setPadding(3,gap+py,3,py)
+              applyMonitorFormat(view,field,TfAssetMonitorFormatting.inherited(wallHeader,TfAssetMonitorFormatting.inherited(wallStyle,style)),numeric,style)
               applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:header:$key")
-              nameWrap.addView(view)
+              if(key=="name")view.ellipsize=android.text.TextUtils.TruncateAt.END
+              nameWrap.addView(view,if(key=="name")LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f) else LinearLayoutParams(android.view.ViewGroup.LayoutParams.WRAP_CONTENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
             }
             headerRow.addView(nameWrap,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             headerRow.addView(textView("›",wallSecondary,22*headerScale*fs,Gravity.END))
+            applyMonitorFormat(headerRow,wallHeader,style,row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},style,false)
             applyItemEffect(headerRow,wallHeader.optJSONObject("effect"),row.optDouble("changePercent",Double.NaN).takeIf{it.isFinite()},isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:header")
             card.addView(headerRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
           }
@@ -376,12 +486,14 @@ class TfAssetOverlayService:Service(){
               primaryCustomText!=null->primaryCustomText
               else->wallText
             }
-            val primaryView=textView(miniValue(row,primaryKey),primaryTone,29*primary.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(primary.optString("align","left")))
+            val primaryBase=36f
+            val primaryView=textView(miniValue(row,primaryKey),primaryTone,primaryBase*primary.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,gravityFor(primary.optString("align","left")))
             val primaryBg=primary.optString("backgroundColor","")
             if(primaryBg.isNotBlank())primaryView.setBackgroundColor(color(primaryBg,Color.TRANSPARENT))
             val primaryGap=if(primary.has("lineGap")&&!primary.isNull("lineGap"))primary.optInt("lineGap",0).coerceIn(0,32) else 0
             val primaryPy=primary.optInt("paddingY",0).coerceIn(0,16)
             primaryView.setPadding(3,primaryGap+primaryPy,3,primaryPy)
+            applyMonitorFormat(primaryView,primary,TfAssetMonitorFormatting.inherited(wallStyle,style),primaryNumeric,style)
             applyItemEffect(primaryView,primary.optJSONObject("effect"),primaryNumeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:quote:$primaryKey")
             quoteRow.addView(primaryView,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             if(quoteFields.size>1){
@@ -404,6 +516,7 @@ class TfAssetOverlayService:Service(){
                 val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",wallGap).coerceIn(0,32) else wallGap
                 val py=field.optInt("paddingY",0).coerceIn(0,16)
                 view.setPadding(3,gap+py,3,py)
+                applyMonitorFormat(view,field,TfAssetMonitorFormatting.inherited(wallStyle,style),numeric,style)
                 applyItemEffect(view,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:quote:$key")
                 changeWrap.addView(view)
               }
@@ -413,8 +526,9 @@ class TfAssetOverlayService:Service(){
           }
 
           if(footerFields.isNotEmpty()){
+            footerFields.chunked(3).forEach{detailRow->
             val footer=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.BOTTOM;setPadding(0,wallGap,0,0)}
-            footerFields.forEachIndexed{index,field->
+            detailRow.forEachIndexed{index,field->
               val key=field.optString("field","pnl")
               val numeric=miniNumeric(row,key)
               val useProfit=field.optBoolean("useProfitColor",false)
@@ -436,22 +550,28 @@ class TfAssetOverlayService:Service(){
               val gap=if(field.has("lineGap")&&!field.isNull("lineGap"))field.optInt("lineGap",0).coerceIn(0,32) else 0
               val py=field.optInt("paddingY",0).coerceIn(0,16)
               cell.setPadding(0,gap+py,0,py)
-              cell.addView(textView(field.optString("label",key),wallSecondary,10*fs,fieldGravity))
+              cell.addView(textView(field.optString("label",key),wallSecondary,10*fs,fieldGravity).also{applyMonitorFormat(it,JSONObject().put("format",JSONObject(wallStyle.optJSONObject("format")?.toString()?:"{}").apply{remove("profitColors")}),style,null,style)})
               val valueView=textView(miniValue(row,key),tone,12*field.optDouble("fontScale",1.0).coerceIn(.7,2.0).toFloat()*fs,fieldGravity)
+              applyMonitorFormat(cell,field,wallStyle,numeric,style,false)
+              applyMonitorFormat(valueView,field,TfAssetMonitorFormatting.inherited(wallStyle,style),numeric,style)
               applyItemEffect(valueView,field.optJSONObject("effect"),numeric,isAlert(row,cfg),"normal-wall:${row.optString("symbol","")}:footer:$key")
               cell.addView(valueView)
               footer.addView(cell,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f))
             }
             card.addView(footer,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+            }
           }
 
-          wallLine?.addView(card,LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,1f).apply{if((rowIndex%wallColumns)<wallColumns-1)rightMargin=wallColumnGap})
-          if(rowIndex==rows.lastIndex&&wallColumns>1){
-            val missing=wallColumns-1-(rowIndex%wallColumns)
-            repeat(missing){wallLine?.addView(View(this),LinearLayoutParams(0,1,1f).apply{if(it<missing-1)rightMargin=wallColumnGap})}
-          }
+          wallLine?.addView(card,LinearLayoutParams(geometry.cardWidth,android.view.ViewGroup.LayoutParams.WRAP_CONTENT).apply{if((rowIndex%wallColumns)<wallColumns-1&&rowIndex<rows.lastIndex)rightMargin=wallColumnGap})
+
         }
-        val scroller=ScrollView(this).apply{isFillViewport=true;addView(body)}
+        // Only real cards are allocated. Large user counts never create placeholder Views.
+        val horizontal=HorizontalScrollView(this).apply{isFillViewport=false;addView(body,android.widget.FrameLayout.LayoutParams(geometry.contentWidth,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))}
+        val scroller=ScrollView(this).apply{isFillViewport=true;addView(horizontal)}
+        wallHorizontal=horizontal
+        val restoreX=wallScrollX;val restoreY=wallScrollY
+        scroller.setOnScrollChangeListener{_,_,y,_,_->wallScrollY=y}
+        horizontal.post{if(wallHorizontal===horizontal){horizontal.scrollTo(restoreX,0);scroller.scrollTo(0,restoreY)}}
         root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
       }
       "heatmap"->{
@@ -506,7 +626,8 @@ class TfAssetOverlayService:Service(){
       }
       val headerText=color(header.optString("textColor","#CBD5E1"),Color.LTGRAY)
       val headerScale=header.optDouble("fontScale",.9).coerceIn(.7,1.6).toFloat()
-      columns.forEach{column->headerRow.addView(textView(column.optString("label",column.optString("field","")),headerText,11*headerScale,gravityFor(column.optString("align","left"))),weighted(column.optDouble("widthPercent",20.0).toFloat()))}
+      columns.forEach{column->headerRow.addView(textView(column.optString("label",column.optString("field","")),headerText,11*headerScale,gravityFor(column.optString("align","left"))).also{applyMonitorFormat(it,header,style,snap.optJSONObject("asset")?.optDouble("totalReturn",Double.NaN)?.takeIf{n->n.isFinite()},style)},weighted(column.optDouble("widthPercent",20.0).toFloat()))}
+      applyMonitorFormat(headerRow,header,style,snap.optJSONObject("asset")?.optDouble("totalReturn",Double.NaN)?.takeIf{it.isFinite()},style,false)
       applyItemEffect(headerRow,header.optJSONObject("effect"),null,false,"mini:header")
       root.addView(headerRow)
     }
@@ -532,6 +653,7 @@ class TfAssetOverlayService:Service(){
         val bg=column.optString("backgroundColor","");if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
         val gap=if(column.has("lineGap")&&!column.isNull("lineGap"))column.optInt("lineGap",style.optInt("rowGap",2)).coerceIn(0,32) else style.optInt("rowGap",2).coerceIn(0,32)
         val py=column.optInt("paddingY",0).coerceIn(0,16);view.setPadding(3,gap+py,3,py)
+        applyMonitorFormat(view,column,style,numeric,style)
         applyItemEffect(view,column.optJSONObject("effect"),numeric,isAlert(holding,cfg),"mini:${holding.optString("symbol","")}:$field")
         row.addView(view,weighted(column.optDouble("widthPercent",20.0).toFloat()))
       }
@@ -542,7 +664,7 @@ class TfAssetOverlayService:Service(){
     root.addView(scroller,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,0,1f))
 
     val asset=snap.optJSONObject("asset")?:JSONObject()
-    val statusBar=cfg.optJSONObject("miniStatusBar")?:JSONObject()
+    val statusBar=resolveMonitorColors(cfg.optJSONObject("miniStatusBar")?:JSONObject(),asset.optDouble("totalReturn",Double.NaN).takeIf{it.isFinite()},style)
     val statusItemsJson=cfg.optJSONArray("miniStatusItems")
     val statusItems=if(statusItemsJson==null||statusItemsJson.length()==0){
       listOf(
@@ -550,7 +672,7 @@ class TfAssetOverlayService:Service(){
         JSONObject().put("field","marketValue").put("label","市值").put("enabled",true).put("useProfitColor",false),
         JSONObject().put("field","totalReturn").put("label","總損益").put("enabled",true).put("useProfitColor",true)
       )
-    }else (0 until statusItemsJson.length()).mapNotNull{statusItemsJson.optJSONObject(it)}.filter{it.optBoolean("enabled",true)}
+    }else (0 until statusItemsJson.length()).mapNotNull{statusItemsJson.optJSONObject(it)}.filter{it.optBoolean("enabled",true)&&!(it.optString("field")=="updatedAt"&&(cfg.optJSONObject("miniClock")?:JSONObject()).optBoolean("visible",true))}
     if(statusBar.optBoolean("visible",true)&&statusItems.isNotEmpty()){
       val statusBg=color(statusBar.optString("backgroundColor","#111827"),Color.rgb(17,24,39))
       val statusAlpha=(statusBar.optDouble("backgroundOpacity",.96).coerceIn(.1,1.0)*255).roundToInt()
@@ -569,19 +691,19 @@ class TfAssetOverlayService:Service(){
         items.forEach{item->
           val field=item.optString("field","totalAssets")
           val label=item.optString("label",field)
-          val numeric=when(field){"totalReturn"->asset.optDouble("totalReturn",Double.NaN);"unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN);"realizedPnl"->asset.optDouble("realizedPnl",Double.NaN);else->Double.NaN}
+          val numeric=when(field){"totalReturn"->asset.optDouble("totalReturn",Double.NaN);"unrealizedPnl"->asset.optDouble("unrealizedPnl",Double.NaN);"realizedPnl"->asset.optDouble("realizedPnl",Double.NaN);else->asset.optDouble("totalReturn",Double.NaN)}
           val useProfit=item.optBoolean("useProfitColor",false)
           val customText=item.optString("textColor","").takeIf(String::isNotBlank)?.let{color(it,statusText)}
           val tone=when{useProfit&&numeric.isFinite()&&numeric>0->gain;useProfit&&numeric.isFinite()&&numeric<0->loss;useProfit&&numeric.isFinite()->neutral;customText!=null->customText;else->statusText}
           val valueText=when(field){
             "holdingCount"->rows.size.toString()
-            "updatedAt"->snap.optString("generatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
+            "updatedAt"->TfAssetMarketPresentation.sourceClockLabel(rows)
             "totalReturn"->signedInteger(asset,"totalReturn")
             "unrealizedPnl"->signedInteger(asset,"unrealizedPnl")
             "realizedPnl"->signedInteger(asset,"realizedPnl")
             "totalAssets"->integer(asset,"totalAssets")
             "marketValue"->integer(asset,"marketValue")
-            "cash"->integer(asset,"cash")
+            "cash"->if(asset.optBoolean("cashConfigured",true)) integer(asset,"cash") else "未設定"
             "dividendIncome"->integer(asset,"dividendIncome")
             else->"--"
           }
@@ -589,6 +711,7 @@ class TfAssetOverlayService:Service(){
           val bg=item.optString("backgroundColor","");if(bg.isNotBlank())view.setBackgroundColor(color(bg,Color.TRANSPARENT))
           val gap=if(item.has("lineGap")&&!item.isNull("lineGap"))item.optInt("lineGap",0).coerceIn(0,32) else 0
           val py=item.optInt("paddingY",0).coerceIn(0,16);view.setPadding(3,gap+py,3,py)
+          applyMonitorFormat(view,item,TfAssetMonitorFormatting.inherited(statusBar,style),numeric.takeIf{it.isFinite()},style)
           applyItemEffect(view,item.optJSONObject("effect"),numeric.takeIf{it.isFinite()},false,"mini:status:$field")
           statusRow.addView(view,weighted(1f))
         }
@@ -596,7 +719,30 @@ class TfAssetOverlayService:Service(){
         statusWrap.addView(statusRow,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
       }
       if(statusBorderWidth>0)statusWrap.background=GradientDrawable().apply{setColor(Color.argb(statusAlpha,Color.red(statusBg),Color.green(statusBg),Color.blue(statusBg)));setStroke(statusBorderWidth,statusBorder)}
+      applyMonitorFormat(statusWrap,statusBar,style,asset.optDouble("totalReturn",Double.NaN).takeIf{it.isFinite()},style,false)
       root.addView(statusWrap,LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
+  }
+
+  private fun resolveMonitorColors(target:JSONObject,numeric:Double?,palette:JSONObject):JSONObject=JSONObject(target.toString()).apply{
+    listOf("backgroundColor","textColor","secondaryTextColor","borderColor").forEach{key->if(TfAssetMonitorFormatting.bound(target,key))put(key,TfAssetMonitorFormatting.tone(numeric,palette))}
+  }
+
+  private fun applyMonitorFormat(view:View,target:JSONObject,base:JSONObject,numeric:Double?,palette:JSONObject,decorateText:Boolean=true){
+    val linkedBg=TfAssetMonitorFormatting.bound(target,"backgroundColor")
+    val linkedBorder=TfAssetMonitorFormatting.bound(target,"borderColor")
+    if(linkedBg||linkedBorder){
+      val bg=color(TfAssetMonitorFormatting.resolved(target,"backgroundColor","#000000",numeric,palette),Color.TRANSPARENT)
+      val border=color(TfAssetMonitorFormatting.resolved(target,"borderColor","#334155",numeric,palette),Color.DKGRAY)
+      val width=target.optInt("borderWidth",1).coerceIn(0,6)
+      val alpha=(target.optDouble("backgroundOpacity",1.0).coerceIn(.1,1.0)*255).roundToInt()
+      view.background=GradientDrawable().apply{setColor(if(linkedBg||target.optString("backgroundColor","").startsWith("#"))Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)) else Color.TRANSPARENT);cornerRadius=target.optDouble("cornerRadius",0.0).toFloat();if(width>0&&(linkedBorder||target.has("borderColor")))setStroke(width,border)}
+    }
+    if(view is TextView&&decorateText){
+      if(TfAssetMonitorFormatting.bound(target,"textColor"))view.setTextColor(color(TfAssetMonitorFormatting.tone(numeric,palette),Color.GRAY))
+      TfAssetMonitorFormatting.weight(target,base)?.let{weight->view.typeface=if(android.os.Build.VERSION.SDK_INT>=28)android.graphics.Typeface.create(view.typeface,weight,false) else android.graphics.Typeface.create(view.typeface,if(weight>=600)android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)}
+      TfAssetMonitorFormatting.lineHeight(target,base)?.let{multiplier->val height=(view.textSize*multiplier).roundToInt();if(android.os.Build.VERSION.SDK_INT>=28)view.setLineHeight(height);view.minimumHeight=height+view.paddingTop+view.paddingBottom}
+      fontFit.register(view,TfAssetMonitorFormatting.lineHeight(target,base)?:1.2f)
     }
   }
 
@@ -640,7 +786,7 @@ class TfAssetOverlayService:Service(){
   private fun isMonitorValueField(field:String)=field!="symbol"&&field!="name"&&field!="marketStatus"&&field!="updatedAt"
   private fun defaultProfitField(field:String)=field=="change"||field=="changePercent"||field=="pnl"||field=="roi"||field=="comprehensivePnl"
   private fun defaultMonitorLabel(field:String)=when(field){"symbol"->"代號";"name"->"名稱";"price"->"價格";"change"->"漲跌";"changePercent"->"漲跌%";"shares"->"股數";"avgCost"->"成本均";"marketValue"->"市值";"weight"->"權重";"pnl"->"損益";"roi"->"報酬%";"comprehensivePnl"->"含息損益";"marketStatus"->"市場狀態";"updatedAt"->"更新時間";else->field}
-  private fun normalValue(row:JSONObject,field:String,label:String):String=when(field){
+  private fun normalValue(row:JSONObject,field:String,label:String):String{TfAssetMonitorFields.value(row,field)?.let{return "$label $it"};return when(field){
     "symbol"->row.optString("symbol","--")
     "name"->row.optString("name","")
     "price"->"$label "+number2(row,"price")
@@ -654,15 +800,15 @@ class TfAssetOverlayService:Service(){
     "roi"->"$label "+signed2(row,"roi")+"%"
     "comprehensivePnl"->"$label "+signedInteger(row,"comprehensivePnl")
     "marketStatus"->"$label "+row.optString("marketStatus","--")
-    "updatedAt"->"$label "+row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"}
+    "updatedAt"->"$label "+TfAssetMarketPresentation.sourceTimeLabel(row.optString("updatedAt",""))
     else->"--"
-  }
+  }}
 
   private fun weighted(weight:Float)=LinearLayoutParams(0,android.view.ViewGroup.LayoutParams.WRAP_CONTENT,weight.coerceAtLeast(1f))
   private fun textView(value:String,tone:Int,size:Float,gravity:Int)=TextView(this).apply{text=value;setTextColor(tone);textSize=size;this.gravity=gravity;maxLines=1;setPadding(3,2,3,2)}
   private fun gravityFor(value:String)=when(value){"center"->Gravity.CENTER;"right"->Gravity.END;else->Gravity.START}
-  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);"weight"->row.optDouble("weight",Double.NaN);else->Double.NaN}.takeIf{it.isFinite()}
-  private fun miniValue(row:JSONObject,field:String):String=when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->row.optString("updatedAt","").let{if(it.length>=16)it.substring(11,16) else "--"};else->"--"}
+  private fun miniNumeric(row:JSONObject,field:String):Double?=when(field){"price"->row.optDouble("change",Double.NaN);"change"->row.optDouble("change",Double.NaN);"changePercent"->row.optDouble("changePercent",Double.NaN);"pnl"->row.optDouble("pnl",Double.NaN);"roi"->row.optDouble("roi",Double.NaN);"comprehensivePnl"->row.optDouble("comprehensivePnl",Double.NaN);"marketValue"->row.optDouble("marketValue",Double.NaN);"weight"->row.optDouble("weight",Double.NaN);else->row.optDouble("changePercent",Double.NaN)}.takeIf{it.isFinite()}
+  private fun miniValue(row:JSONObject,field:String):String=TfAssetMonitorFields.value(row,field)?:when(field){"symbol"->row.optString("symbol","--");"name"->row.optString("name","");"price"->number2(row,"price");"change"->signed2(row,"change");"changePercent"->signed2(row,"changePercent")+"%";"shares"->integer(row,"shares");"avgCost"->number2(row,"avgCost");"marketValue"->integer(row,"marketValue");"weight"->number2(row,"weight")+"%";"pnl"->signedInteger(row,"pnl");"roi"->signed2(row,"roi")+"%";"comprehensivePnl"->signedInteger(row,"comprehensivePnl");"marketStatus"->row.optString("marketStatus","--");"updatedAt"->TfAssetMarketPresentation.sourceTimeLabel(row.optString("updatedAt",""));else->"--"}
   private fun number2(row:JSONObject?,key:String):String{val v=row?.optDouble(key,Double.NaN)?:Double.NaN;return if(v.isFinite())String.format("%.2f",v) else "--"}
   private fun signed2(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())(if(v>=0)"+" else "")+String.format("%.2f",v) else "--"}
   private fun integer(row:JSONObject,key:String):String{val v=row.optDouble(key,Double.NaN);return if(v.isFinite())String.format("%,.0f",v) else "--"}

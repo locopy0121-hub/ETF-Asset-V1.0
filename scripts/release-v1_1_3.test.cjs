@@ -13,6 +13,17 @@ assert.match(settings,/const VERSION='1\.1\.3'/);
 assert.match(settings,/const BUILD='10103'/);
 assert.match(backup,/const APP_VERSION='1\.1\.3'/);
 assert.equal(typeof pkg.scripts['test:v1_1_3'],'string');
+assert.ok(pkg.scripts['test:v1_1_3'].includes('test:v1_1_2'));
+for(const gate of [
+  'test:v1_1_3-controls-smoke',
+  'test:v1_1_3-controls-runtime',
+  'test:v1_1_3-ai-holdings',
+  'test:v1_1_3-dividend-calendar',
+  'test:v1_1_3-system-colors',
+  'test:v1_1_3-visible-version',
+  'test:release-v1_1_3',
+]) assert.ok(pkg.scripts['test:v1_1_3'].includes(gate),gate+' missing from aggregate gate');
+
 assert.match(workflow,/TF Asset V1\.1\.3 GitHub APK/);
 assert.match(workflow,/test:v1_1_3/);
 assert.match(workflow,/versionCode 10103/);
@@ -20,7 +31,6 @@ assert.match(workflow,/versionName "1\.1\.3"/);
 assert.match(workflow,/TF-Asset-V1\.1\.3-github\.apk/);
 assert.match(workflow,/TF-Asset-V1\.1\.3-GitHub-APK/);
 assert.match(workflow,/tf_icon_\*\.xml/);
-assert.match(workflow,/node scripts\/inject-v1_1_2-android\.cjs/);
 assert.match(workflow,/activity-alias/);
 assert.match(workflow,/Icon01/);
 assert.match(workflow,/Icon10/);

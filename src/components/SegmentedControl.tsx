@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {StyleSheet,View} from 'react-native';
+import {Pressable,Text} from './EditableNative';
 import { colors, radius, spacing } from '../theme/tokens';
 import { useThemeRuntime } from '../theme/ThemeRuntime';
 
@@ -6,8 +7,8 @@ export function SegmentedControl<T extends string>({items,value,onChange}:{items
   const theme=useThemeRuntime();
   return <View style={[styles.wrap,{backgroundColor:theme.palette.surfaceMuted}]}>{items.map(item=>{
     const active=item.key===value;
-    return <Pressable key={item.key} style={[styles.item,active&&{backgroundColor:theme.palette.primary}]} onPress={()=>onChange(item.key)}>
-      <Text style={[styles.label,{color:active?'#FFFFFF':theme.palette.textSecondary}]}>{item.label}</Text>
+    return <Pressable editorId="native:SegmentedControl:item:1" key={item.key} style={[styles.item,active&&{backgroundColor:theme.palette.primary}]} onPress={()=>onChange(item.key)}>
+      <Text editorId="native:SegmentedControl:label:2" editorReadOnly={false} style={[styles.label,{color:active?'#FFFFFF':theme.palette.textSecondary}]}>{item.label}</Text>
     </Pressable>;
   })}</View>;
 }
