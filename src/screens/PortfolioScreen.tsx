@@ -32,6 +32,7 @@ import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionM
 import { sortHoldingQuotes,sortPreset,nextSortPreset } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
+import {calculateBreakEvenPurchase} from '../finance/breakEvenScenario';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import {marketIntradaySeriesFor,marketQuoteSnapshotFor} from '../market/marketCenterViews';
@@ -239,9 +240,17 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   const [symbol,setSymbol]=useState(finance.holdings[0]?.symbol??'');
   const [price,setPrice]=useState('');
   const [shares,setShares]=useState('');
+  const [exitPrice,setExitPrice]=useState('');
   const [mode,setMode]=useState<'ODD_LOT'|'ROUND_LOT'>('ODD_LOT');
   const holding=finance.snapshot.holdings.find(x=>x.etfCode===symbol)??finance.snapshot.holdings[0];
   const quote=finance.quotes.find(x=>x.symbol===holding?.etfCode);
+  const displayHolding=finance.holdings.find(x=>x.symbol===holding?.etfCode);
+  const currentPrice=displayHolding?.quoteVerified===true&&quote&&Number.isFinite(quote.currentPrice)&&quote.currentPrice>0
+    ?quote.currentPrice:null;
+  const exit=exitPrice.trim()===''?(currentPrice??0):number(exitPrice);
+  const breakEven=holding&&currentPrice!==null?calculateBreakEvenPurchase({
+    holding,buyPrice:currentPrice,exitPrice:exit,tradeMode:mode,
+  }):null;
   const scenario=holding&&number(price)>0&&number(shares)>0?calculateBuyScenario({
     holding,currentPrice:quote?.currentPrice??holding.currentPrice,addPrice:number(price),addShares:number(shares),tradeMode:mode,
   }):null;
@@ -249,6 +258,7 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}><EditorSurface pageKey="portfolio" frameKey="calculator-modal" title="持股試算" visible={visible}>
     <View style={styles.modalBackdrop}><View style={styles.calculator}>
       <View style={styles.modalTop}><View><Text editorId="native:PortfolioScreen:modalKicker:8" editorReadOnly={false} style={styles.modalKicker}>庫存工具</Text><Text editorId="native:PortfolioScreen:modalTitle:9" editorReadOnly={false} style={styles.modalTitle}>持股試算</Text></View><Pressable editorId="native:PortfolioScreen:pressable:10" onPress={onClose}><Text editorId="native:PortfolioScreen:done:11" editorReadOnly={false} style={styles.done}>完成</Text></Pressable></View>
+      <ScrollView style={{flexShrink:1}} contentContainerStyle={{gap:spacing.lg,paddingBottom:spacing.xl}} keyboardShouldPersistTaps="handled">
       <Text editorId="native:PortfolioScreen:modalHint:12" editorReadOnly={false} style={styles.modalHint}>試算直接呼叫正式 Canonical Core；不寫入 Ledger。</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.symbolChoices}>
@@ -269,6 +279,30 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
         <ResultRow label="以目前市價純價差損益" value={money(scenario.priceUnrealizedProfit)} tone={financialTone(scenario.priceUnrealizedProfit)}/>
         <ResultRow label="以淨清算口徑未實現損益" value={money(scenario.cashUnrealizedProfit)} tone={financialTone(scenario.cashUnrealizedProfit)}/>
       </View>:<View style={styles.result}><Text editorId="native:PortfolioScreen:resultLabel:17" editorReadOnly={false} style={styles.resultLabel}>輸入加碼價格與股數後即時計算</Text><Text editorId="native:PortfolioScreen:resultValue:18" editorReadOnly={false} style={styles.resultValue}>—</Text></View>}
+
+      <View style={styles.scenario}>
+        <Text style={styles.breakEvenHeading}>損益平衡反推（未實現淨清算）</Text>
+        <Text style={styles.modalHint}>直接以目前持股的含費成本，及當前有效行情作為加碼買進價，反推目標賣價至少需要加碼多少股。不包含已實現損益、歷史股息，且不會寫入帳務。</Text>
+        <ResultRow label="行情加碼參考價" value={currentPrice===null?'有效行情待取得':currentPrice.toFixed(2)}/>
+        {currentPrice!==null&&displayHolding?.quoteSourceAt?<Text style={styles.modalHint}>行情來源時間：{new Date(displayHolding.quoteSourceAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}（不保證未來成交價格）</Text>:null}
+        <CalcField label="預計賣出價（留空＝目前價）" value={exitPrice} onChange={setExitPrice} placeholder={currentPrice?.toFixed(2)??'有效行情待取得'}/>
+        {currentPrice===null?<Text style={styles.breakEvenNote}>目前沒有可驗證的行情，暫停反推；不使用過期快取冒充市價。</Text>:
+        breakEven?.status==='invalid'?<Text style={styles.breakEvenNote}>請輸入大於 0 的預計賣出價。</Text>:
+        breakEven?.status==='impossible'?<Text style={styles.breakEvenNote}>目前持股仍虧損；若加碼價 {currentPrice.toFixed(2)} 元不低於目標賣價 {exit.toFixed(2)} 元，加碼無法彌補既有虧損（另有買賣費稅）。沒有有限的打平股數。</Text>:
+        breakEven?.status==='limit'?<Text style={styles.breakEvenNote}>在最多 10 億股的試算範圍內，無法達到目標賣價的損益平衡；這不表示永遠不可能。</Text>:
+        breakEven?.scenario?<>
+          <ResultRow label="最低需要加碼" value={money(breakEven.additionalShares)+' 股'} strong/>
+          <ResultRow label="預估加碼成交金額" value={money(breakEven.scenario.addTradeAmount)}/>
+          <ResultRow label="預估買進手續費" value={money(breakEven.scenario.addCommission)}/>
+          <ResultRow label="最低預估現金支出" value={money(breakEven.scenario.addCashOutflow)} strong/>
+          <ResultRow label="加碼後總股數" value={money(breakEven.scenario.newShares)+' 股'}/>
+          <ResultRow label="加碼後含費均價" value={breakEven.scenario.averageCostPerShare.toFixed(4)}/>
+          <ResultRow label="目標賣價淨清算損益" value={money(breakEven.scenario.cashUnrealizedProfit)} tone={financialTone(breakEven.scenario.cashUnrealizedProfit)}/>
+          {breakEven.status==='already'?<Text style={styles.modalHint}>目標賣價下目前持股已達到淨清算損益平衡，無須加碼。</Text>:null}
+        </>:null}
+        <Text style={styles.modalHint}>模擬以指定目標價賣出全部持股，買賣費稅沿用 Canonical 試算規則；整股以 1,000 股為單位，零股以 1 股為單位。實際成交價、費用及最終損益可能不同。</Text>
+      </View>
+      </ScrollView>
     </View></View>
   </EditorSurface></Modal>;
 }
@@ -313,6 +347,8 @@ const styles=StyleSheet.create({
   modalTitle:{fontSize:25,fontWeight:'900',color:colors.text},
   done:{fontSize:14,fontWeight:'900',color:colors.primary},
   modalHint:{fontSize:11,lineHeight:17,color:colors.textSecondary},
+  breakEvenHeading:{fontSize:15,fontWeight:'900',color:colors.text},
+  breakEvenNote:{fontSize:12,lineHeight:19,fontWeight:'700',color:colors.textSecondary},
   symbolChoices:{gap:6},
   calcGrid:{flexDirection:'row',flexWrap:'wrap',gap:spacing.sm},
   fieldLabel:{fontSize:10,fontWeight:'800',color:colors.textSecondary,marginBottom:5},
