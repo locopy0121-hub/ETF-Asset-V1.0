@@ -24,7 +24,7 @@ const portfolioScreen=read('src/screens/PortfolioScreen.tsx');
 const pkg=JSON.parse(read('package.json')) as {version:string};
 const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{versionCode:number}}};
 
-assert.ok(/^(4\.0\.\d+|5\.0\.2)$/.test(pkg.version));
+assert.ok(/^(4\.0\.\d+|5\.0\.[23])$/.test(pkg.version));
 assert.equal(app.expo.version,pkg.version);
 const versionParts=pkg.version.split('.').map(Number);
 const major=versionParts[0]??0,minor=versionParts[1]??0,patch=versionParts[2]??0;
