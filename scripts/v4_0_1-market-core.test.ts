@@ -26,7 +26,8 @@ const app=JSON.parse(read('app.json')) as {expo:{version:string;android:{version
 
 assert.ok(/^(4\.0\.\d+|5\.0\.2)$/.test(pkg.version));
 assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,40000+Number(pkg.version.split('.')[2]));
+const [major,minor,patch]=pkg.version.split('.').map(Number);
+assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 
 // JS is now an adapter/consumer only. It must not instantiate another quote engine.
 assert.match(runtime,/refreshUnifiedMarketData/);
