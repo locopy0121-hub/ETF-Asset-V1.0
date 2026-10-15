@@ -17,6 +17,8 @@ import org.json.JSONObject
 class TfAssetMarketDatabase(context: Context) :
   SQLiteOpenHelper(context, "tf_asset_market_v4.db", null, DATABASE_VERSION) {
 
+  private var persistCount = 0
+
   override fun onCreate(db: SQLiteDatabase) {
     db.execSQL(
       """
@@ -78,6 +80,7 @@ class TfAssetMarketDatabase(context: Context) :
           put("payload_json", row.toString())
         }
         db.insertWithOnConflict("market_quote_snapshots", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        upsertCandleFromQuote(db, row, persistedAt)
       }
 
       for (index in 0 until candles.length()) {
@@ -100,19 +103,84 @@ class TfAssetMarketDatabase(context: Context) :
         db.insertWithOnConflict("market_minute_candles", null, values, SQLiteDatabase.CONFLICT_REPLACE)
       }
 
-      db.execSQL(
-        """
-        DELETE FROM market_minute_candles
-        WHERE rowid NOT IN (
-          SELECT rowid FROM market_minute_candles
-          ORDER BY bucket_epoch_ms DESC
-          LIMIT $MAX_CANDLE_ROWS
+      persistCount += 1
+      if (persistCount % CLEANUP_EVERY_PERSISTS == 0) {
+        db.execSQL(
+          """
+          DELETE FROM market_minute_candles
+          WHERE rowid NOT IN (
+            SELECT rowid FROM market_minute_candles
+            ORDER BY bucket_epoch_ms DESC
+            LIMIT $MAX_CANDLE_ROWS
+          )
+          """.trimIndent(),
         )
-        """.trimIndent(),
-      )
+      }
       db.setTransactionSuccessful()
     } finally {
       db.endTransaction()
+    }
+  }
+
+  private fun upsertCandleFromQuote(db: SQLiteDatabase, row: JSONObject, persistedAt: Long) {
+    val symbol = row.optString("symbol").trim().uppercase()
+    val sourceTime = row.optLong("sourceTimestampEpochMillis", 0L)
+    val price = row.optDouble("price", 0.0)
+    if (symbol.isBlank() || sourceTime <= 0L || !price.isFinite() || price <= 0.0) return
+    val bucket = sourceTime - sourceTime % 60_000L
+    var open = price
+    var high = price
+    var low = price
+    var volume = row.optLong("volume", 0L)
+    readableDatabase.query(
+      "market_minute_candles",
+      arrayOf("open", "high", "low", "volume"),
+      "symbol=? AND bucket_epoch_ms=?",
+      arrayOf(symbol, bucket.toString()),
+      null, null, null,
+      "1",
+    ).use { cursor ->
+      if (cursor.moveToFirst()) {
+        open = cursor.getDouble(0)
+        high = maxOf(cursor.getDouble(1), price)
+        low = minOf(cursor.getDouble(2), price)
+        volume = maxOf(cursor.getLong(3), volume)
+      }
+    }
+    val values = ContentValues().apply {
+      put("symbol", symbol)
+      put("session_date", row.optString("sessionDate"))
+      put("bucket_epoch_ms", bucket)
+      put("open", open)
+      put("high", high)
+      put("low", low)
+      put("close", price)
+      put("volume", volume)
+      put("source", row.optString("source", "CACHE"))
+      put("updated_at_ms", persistedAt)
+    }
+    db.insertWithOnConflict("market_minute_candles", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+  }
+
+  fun loadSnapshots(): JSONObject {
+    val snapshots = JSONArray()
+    readableDatabase.query(
+      "market_quote_snapshots",
+      arrayOf("payload_json"),
+      null, null, null, null,
+      "symbol ASC",
+    ).use { cursor ->
+      val payloadIndex = cursor.getColumnIndexOrThrow("payload_json")
+      while (cursor.moveToNext()) {
+        runCatching { JSONObject(cursor.getString(payloadIndex)) }
+          .getOrNull()
+          ?.let { snapshots.put(it) }
+      }
+    }
+    return JSONObject().apply {
+      put("schema", 4)
+      put("snapshots", snapshots)
+      put("persistedAtEpochMillis", System.currentTimeMillis())
     }
   }
 
@@ -182,5 +250,6 @@ class TfAssetMarketDatabase(context: Context) :
   companion object {
     private const val DATABASE_VERSION = 1
     private const val MAX_CANDLE_ROWS = 12_000
+    private const val CLEANUP_EVERY_PERSISTS = 120
   }
 }
