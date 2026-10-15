@@ -15,7 +15,7 @@ import { PageFrameSettingsModal } from '../components/PageFrameSettingsModal';
 import { PageGearButton } from '../components/PageGearButton';
 import { PageShell } from '../components/PageShell';
 import { PAGE_FRAMES } from '../domain/frameRegistry';
-import {buildDividendCalendarEvents,buildDividendPlanCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents,type DividendCalendarEventType} from '../dividend/dividendCalendar';
+import {buildDividendDayAgenda,buildDividendCalendarEvents,buildDividendPlanCalendarEvents,deviceLocalCalendarDate,dividendCalendarTypeLabel,filterDividendCalendarEvents,type DividendCalendarEventType} from '../dividend/dividendCalendar';
 import { useAiNewsRuntime } from '../ai/AiNewsRuntime';
 import {answerAiQuestion,type AiAssistantAction} from '../ai/aiAssistant';
 import {dividendEventToPlan} from '../ai/dividendAssistant';
@@ -77,7 +77,7 @@ export function DividendScreen() {
     }
     return map;
   },[calendarEvents,month]);
-  const selectedEvents=monthEvents.filter(event=>event.date===selectedDate);
+  const selectedEvents=useMemo(()=>buildDividendDayAgenda(dividends,finance.dividendPlans,selectedDate,today),[dividends,finance.dividendPlans,selectedDate,today]);
   const monthDate=new Date(month+'-01T12:00:00');
   const shiftMonth=(delta:number)=>{
     const d=new Date(monthDate);d.setMonth(d.getMonth()+delta);
@@ -286,10 +286,12 @@ export function DividendScreen() {
               <View style={styles.eventDetailHeader}>
                 <View>
                   <Text editorId="native:DividendScreen:eventDetailDate:14" editorReadOnly={true} style={styles.eventDetailDate}>{shortDate(selectedDate)}</Text>
-                  <Text editorId="native:DividendScreen:eventDetailTitle:15" editorReadOnly={true} style={styles.eventDetailTitle}>{selectedDate===today?'今天':'日期事件'}</Text>
+                  <Text editorId="native:DividendScreen:eventDetailTitle:15" editorReadOnly={true} style={styles.eventDetailTitle}>{selectedDate===today?'今日股息大事記':'當日股息大事記'}</Text>
                 </View>
+                <Pressable editorId="native:DividendScreen:agendaToday:97" accessibilityRole="button" accessibilityLabel="回到今日股息大事記" onPress={()=>{setMonth(today.slice(0,7));setSelectedDate(today);}}><Text editorId="native:DividendScreen:agendaTodayText:98" editorReadOnly={false} style={styles.eventType}>回到今天</Text></Pressable>
                 <Text editorId="native:DividendScreen:eventDetailCount:16" editorReadOnly={true} style={styles.eventDetailCount}>{selectedEvents.length?selectedEvents.length+' 項':'無事件'}</Text>
               </View>
+              <Text editorId="native:DividendScreen:agendaCoverage:99" editorReadOnly={false} style={styles.eventText}>列出已登錄與已匯入的全部當日股息事件，包含預告；不受月曆顯示篩選影響。</Text>
               {selectedEvents.length?selectedEvents.map(event=><View key={event.id} style={styles.eventDetailRow}>
                 <View style={[styles.eventTypeBadge,{backgroundColor:calendarEventColor(event.type)+'18'}]}>
                   <View style={[styles.eventTypeDot,{backgroundColor:calendarEventColor(event.type)}]}/>

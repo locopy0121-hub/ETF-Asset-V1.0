@@ -98,7 +98,7 @@ class TfAssetOverlayService:Service(){
 
   private fun prefs()=getSharedPreferences("tf_asset_native",0)
   private fun readConfig()=runCatching{JSONObject(prefs().getString("monitor_config","{}")?:"{}")}.getOrElse{JSONObject()}
-  private fun readSnapshot()=runCatching{TfAssetMarketPresentation.decorate(this,JSONObject(prefs().getString("snapshot","{}")?:"{}"))}.getOrElse{JSONObject()}
+  private fun readSnapshot()=runCatching{TfAssetMarketPresentation.decorate(this,TfAssetMonitorQuoteLists.withSubscriptionCoverage(JSONObject(prefs().getString("snapshot","{}")?:"{}"),TfAssetMarketOwner.subscriptionLimitedSymbols()))}.getOrElse{JSONObject()}
   private fun effectiveMode(cfg:JSONObject)=prefs().getString("monitor_runtime_mode_override",null)?.let{if(it=="mini")"mini" else "normal"}?:cfg.optString("mode","normal").let{if(it=="mini")"mini" else "normal"}
   private fun activeLayout(cfg:JSONObject)=cfg.optJSONObject(if(mode=="mini")"miniLayout" else "normalLayout")?:JSONObject()
 
@@ -251,6 +251,11 @@ class TfAssetOverlayService:Service(){
     val alpha=(style.optDouble("backgroundOpacity",.92).coerceIn(.1,1.0)*255).roundToInt()
     r.setBackgroundColor(Color.argb(alpha,Color.red(bg),Color.green(bg),Color.blue(bg)))
     renderWindowControls(r,resolvedStyle,TfAssetMarketPresentation.sourceClockLabel(orderedHoldings(snap,cfg)),cfg,aggregate)
+    val limitedCount=orderedHoldings(snap,cfg).count{it.optBoolean("subscriptionLimited",false)}
+    if(limitedCount>0)r.addView(TextView(this).apply{
+      text="$limitedCount 檔超出目前訂閱額度（保留最後行情）";textSize=11f
+      setTextColor(Color.rgb(251,191,36));setPadding(4,4,4,4)
+    },LinearLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT,android.view.ViewGroup.LayoutParams.WRAP_CONTENT))
     if(mode=="mini")renderMini(r,cfg,snap,resolvedStyle) else renderNormal(r,cfg,snap,resolvedStyle)
     applyMonitorFormat(r,style,style,aggregate,style,false)
     fontFit.schedule(r)

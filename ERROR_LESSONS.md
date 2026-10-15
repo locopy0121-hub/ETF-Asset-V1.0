@@ -705,3 +705,10 @@ V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互�
 - Keep watchlist rows separate from canonical holdings and totals. Monitor source selection needs persisted normalization, real preview, native rendering, background data, explicit source labels, duplicate merging, and suppression of unavailable accounting fields.
 - LIVE watched trades need the same Taipei session classification as live holdings. Optional corrupt watchlist data must not stop canonical background writes. Preserve malformed foreground data in a recovery copy before allowing an empty replacement.
 - A passing model or cloud build cannot prove the original device's upgrade-time white screen or latency is resolved; retain this as a device acceptance check.
+
+# V4.0.62 — partial subscription failures must preserve accepted streams
+- Quota rejection is admission evidence, not proof the whole socket is broken. Preserve acknowledged channels, discover capacity serially after bulk denial, and prioritize held/watch/research owners consistently in foreground and headless paths. Never hardcode a plan tier or bypass its cap.
+- Zero accepted subscriptions still require bounded backoff. Preserve serial admission across those retries, but do not gate initial quota discovery on the transport reconnect counter.
+- Mark unsupported subscription coverage honestly without inventing a fresh source timestamp or changing financial quantities.
+- Adding list members must reuse the current presentation; preset application is an explicit user action. Hydration establishes an addition baseline and must not reset saved selection.
+- A daily agenda must not inherit month-dot truncation or visibility filters. Label its registered/imported coverage and never post forecast cash when reading calendar events.

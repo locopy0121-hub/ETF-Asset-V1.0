@@ -100,3 +100,11 @@ export function buildDividendPlanCalendarEvents(plans:readonly DividendPlan[],en
     }));
   }).sort((a,b)=>a.date.localeCompare(b.date)||TYPE_ORDER[a.type]-TYPE_ORDER[b.type]||a.symbol.localeCompare(b.symbol));
 }
+
+/** Daily agenda is complete even when the user hides event dots in the month view. */
+export function buildDividendDayAgenda(entries:readonly DividendLedgerEntry[],plans:readonly DividendPlan[],date:string,today:string):DividendCalendarEvent[]{
+ if(!isIsoCalendarDate(date))return [];
+ return [...buildDividendCalendarEvents(entries,today),...buildDividendPlanCalendarEvents(plans,entries)]
+  .filter(event=>event.date===date)
+  .sort((a,b)=>TYPE_ORDER[a.type]-TYPE_ORDER[b.type]||a.symbol.localeCompare(b.symbol)||a.id.localeCompare(b.id));
+}

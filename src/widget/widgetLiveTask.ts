@@ -35,7 +35,7 @@ export async function widgetLiveTask(){
           if(!snapshot)continue;
           quotes=marketRowsToRuntimeQuotes(omitRegressedTransportQuotes(native,quotes),quotes);
           lastVersion=native.version;
-          const symbols=[...new Set([...snapshot.holdings.filter(row=>(row.shares??0)>0).map(row=>row.symbol),...watchlist.map(row=>row.symbol)])].sort();
+          const symbols=[...new Set([...snapshot.holdings.filter(row=>(row.shares??0)>0).map(row=>row.symbol),...watchlist.map(row=>row.symbol)])];
           const key=symbols.join('|');
           if(key!==symbolsKey){symbolsKey=key;await updateNativeMarketSymbols(symbols);}
           if(!active||foreground())continue;

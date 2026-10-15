@@ -9,5 +9,10 @@ fun main(){
  check(all.first{it.optString("symbol")=="2330"}.optString("name").contains("自選"))
  check(raw.getJSONArray("holdings").getJSONObject(0).getString("name")=="元大台灣50")
  check(TfAssetMonitorFields.value(raw.getJSONArray("watchlist").getJSONObject(0),"pnl")=="--")
+ val limited=TfAssetMonitorQuoteLists.withSubscriptionCoverage(raw,setOf("2330"))
+ check(limited.getJSONArray("watchlist").getJSONObject(0).getBoolean("subscriptionLimited"))
+ check(limited.getJSONArray("watchlist").getJSONObject(0).getString("quoteStatus")=="DELAYED")
+ check(!raw.getJSONArray("watchlist").getJSONObject(0).has("subscriptionLimited"))
+ check(limited.getJSONArray("holdings").getJSONObject(0).getInt("shares")==10)
  println("V4.0.61 native source filter, dedupe, explicit badges, canonical immutability and watch-only accounting suppression PASS")
 }

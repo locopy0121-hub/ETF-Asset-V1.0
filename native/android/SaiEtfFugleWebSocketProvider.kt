@@ -132,6 +132,12 @@ internal class FugleWebSocketProvider(
     private val pendingSubscribeSymbols = linkedSetOf<String>()
     private val pendingUnsubscribeIds = linkedSetOf<String>()
     private val latestQuotes = linkedMapOf<String, MarketQuote>()
+    // Learned only from a server rejection. Never assume a user's account tier.
+    private var subscriptionCapacity: Int? = null
+    private var serialAdmission = false
+    private fun admittedSymbols(): Set<String> = desiredSymbols.take(subscriptionCapacity ?: desiredSymbols.size).toSet()
+    fun subscriptionLimitedSymbols(): Set<String> = synchronized(lock) { desiredSymbols - admittedSymbols() }
+
 
     private val scheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "SaiETF-Fugle-WS").apply { isDaemon = true }
@@ -158,7 +164,7 @@ internal class FugleWebSocketProvider(
     private var lastTradeAt = 0L
 
     private fun subscriptionsReady(): Boolean =
-        desiredSymbols.isNotEmpty() && desiredSymbols.all { it in activeChannelIds } &&
+        admittedSymbols().isNotEmpty() && admittedSymbols().all { it in activeChannelIds } &&
             pendingSubscribeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty()
 
     private fun recordSource(reason: String, code: Int? = null, failure: String = "NONE") {
@@ -167,6 +173,7 @@ internal class FugleWebSocketProvider(
                 .put("code", code ?: 0).put("auth", authenticated)
                 .put("desired", desiredSymbols.size).put("active", activeChannelIds.size)
                 .put("pending", pendingSubscribeSymbols.size).put("retry", reconnectAttempt)
+                .put("limited", (desiredSymbols - admittedSymbols()).size).put("capacity", subscriptionCapacity ?: 0)
                 .put("next", nextReconnectEpochMillis).put("rx", receivedMessages)
                 .put("data", receivedData).put("rejected", rejectedData).put("tradeAt", lastTradeAt)
         }
@@ -248,7 +255,7 @@ internal class FugleWebSocketProvider(
                 !hasCredential || credentialRejected -> ProviderCircuitState.COOLDOWN
                 authenticated && !heartbeatIsHealthy(nowEpochMillis) -> ProviderCircuitState.COOLDOWN
                 socket == null && nowEpochMillis < nextReconnectEpochMillis -> ProviderCircuitState.COOLDOWN
-                authenticated && !subscriptionsReady() -> ProviderCircuitState.DEGRADED
+                authenticated && (desiredSymbols.size > admittedSymbols().size || !subscriptionsReady()) -> ProviderCircuitState.DEGRADED
                 authenticated && recovering -> ProviderCircuitState.RECOVERING
                 authenticated -> ProviderCircuitState.HEALTHY
                 consecutiveFailures >= 2 -> ProviderCircuitState.COOLDOWN
@@ -277,6 +284,8 @@ internal class FugleWebSocketProvider(
     fun onCredentialChanged() {
         val old = synchronized(lock) {
             credentialRejected = false
+            subscriptionCapacity = null
+            serialAdmission = false
             reconnectAttempt = 0
             consecutiveFailures = 0
             manualDisconnect = true
@@ -467,7 +476,7 @@ internal class FugleWebSocketProvider(
                 pendingSubscribeSymbols.remove(symbol)
                 if (pendingSubscribeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty()) subscriptionAttemptAt = null
                 activeChannelIds[symbol] = id
-                symbol !in desiredSymbols
+                symbol !in admittedSymbols()
             }
             if (unsubscribeImmediately) {
                 sendUnsubscribe(listOf(id))
@@ -560,6 +569,40 @@ internal class FugleWebSocketProvider(
             message.contains("credential", ignoreCase = true) ||
             message.contains("api key", ignoreCase = true)
 
+        val subscriptionQuota = !authFailure && message.contains("subscription", true) &&
+            listOf("limit", "maximum", "exceed", "reached").any { message.contains(it, true) }
+        if (subscriptionQuota) {
+            val retained = synchronized(lock) {
+                when {
+                    // A rejected multi-symbol request reveals no capacity. Probe
+                    // one at a time and wait for each real subscription ACK.
+                    authenticated && !serialAdmission && pendingSubscribeSymbols.size > 1 -> {
+                        serialAdmission = true
+                        pendingSubscribeSymbols.clear(); subscriptionAttemptAt = null
+                        true
+                    }
+                    authenticated && pendingSubscribeSymbols.size == 1 && activeChannelIds.isNotEmpty() -> {
+                        subscriptionCapacity = activeChannelIds.size
+                        serialAdmission = true
+                        pendingSubscribeSymbols.clear(); subscriptionAttemptAt = null
+                        true
+                    }
+                    else -> {
+                        // A quota failure with no accepted slot must back off.
+                        // Keep later retries serial even when the desired list grows.
+                        if (authenticated && pendingSubscribeSymbols.size == 1) serialAdmission = true
+                        false
+                    }
+                }
+            }
+            if (retained) {
+                recordSource("SERVER_ERROR", code, "SUBSCRIPTION_LIMIT")
+                syncSubscriptions()
+                emitHealth()
+                return
+            }
+        }
+
         val current = synchronized(lock) {
             consecutiveFailures += 1
             if (authFailure) {
@@ -618,12 +661,14 @@ internal class FugleWebSocketProvider(
             if (!authenticated) return
             currentSocket = socket ?: return
 
-            val removeSymbols = activeChannelIds.keys.filter { it !in desiredSymbols }
+            val admitted = admittedSymbols()
+            val removeSymbols = activeChannelIds.keys.filter { it !in admitted }
             // A replacement must release its old server-side slot first.
             // Adding first can exceed a plan's limit even with an unchanged final count.
             subscribeSymbols = if (removeSymbols.isEmpty() && pendingUnsubscribeIds.isEmpty() &&
-                pendingSubscribeSymbols.none { it !in desiredSymbols }) desiredSymbols
-                .filter { it !in activeChannelIds && it !in pendingSubscribeSymbols }.sorted() else emptyList()
+                pendingSubscribeSymbols.none { it !in admitted } && (!serialAdmission || pendingSubscribeSymbols.isEmpty())) admitted
+                .filter { it !in activeChannelIds && it !in pendingSubscribeSymbols }
+                .let { if (serialAdmission) it.take(1) else it } else emptyList()
             pendingSubscribeSymbols += subscribeSymbols
             if (subscribeSymbols.isNotEmpty()) subscriptionAttemptAt = clockMillis()
             unsubscribeIds = removeSymbols

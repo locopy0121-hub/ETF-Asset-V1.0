@@ -12,7 +12,7 @@ for(const token of [
 assert.match(screen,/dayEvents\.slice\(0,3\)/,'calendar must cap visible dots before +N');
 assert.match(screen,/dayEvents\.length>3/,'calendar must expose multi-event overflow count');
 assert.match(screen,/disabled=\{!valid\}/,'all valid days should remain selectable');
-assert.match(screen,/selectedDate===today\?'今天':'日期事件'/,'today and selected-date semantics must remain distinct');
+assert.match(screen,/selectedDate===today\?'今日股息大事記':'當日股息大事記'/,'today and selected-date semantics must remain distinct');
 assert.match(screen,/setSelectedDate\(next===today\.slice\(0,7\)\?today:next\+'-01'\)/,'month navigation must keep selected date inside visible month');
 assert.match(screen,/flexWrap:'wrap'.*gap:6.*justifyContent:'center'/s,'legend should wrap compactly instead of forcing one long row');
 

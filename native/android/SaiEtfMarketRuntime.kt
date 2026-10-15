@@ -151,6 +151,8 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
 
     fun resumeTrackedSymbols(){updateSymbols(trackedSymbols)}
 
+    fun subscriptionLimitedSymbols(): Set<String> = fugle.subscriptionLimitedSymbols()
+
     fun pause() {
         paused = true
         streamingController.pause()

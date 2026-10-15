@@ -1,6 +1,7 @@
 import {AppRecoveryBoundary} from './src/components/AppRecoveryBoundary';
 import {WatchlistRuntimeProvider,useWatchlist} from './src/market/WatchlistRuntime';
 import {watchlistSnapshot} from './src/market/watchlistModel';
+import {appendMonitorWatchlist} from './src/monitor/monitorListUpdates';
 import {acceptsEditorSession} from './src/domain/editorSessionScope';
 import {EditorSurface} from './src/components/EditorSurface';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -112,6 +113,17 @@ function AppBody(){
   const settings=useSettingsRuntime();
   const theme=useThemeRuntime();
   const monitorSettings=useMonitorSettingsRuntime();
+  const previousMonitorWatchlist=useRef<Set<string>|null>(null);
+  useEffect(()=>{
+    if(!watchlist.hydrated||!monitorSettings.hydrated)return;
+    const current=new Set(watchlist.items.map(item=>item.symbol));
+    const previous=previousMonitorWatchlist.current;
+    previousMonitorWatchlist.current=current;
+    if(!previous)return; // Hydration restores the user's saved selection unchanged.
+    const added=[...current].filter(symbol=>!previous.has(symbol));
+    const next=appendMonitorWatchlist(monitorSettings.config,added);
+    if(next!==monitorSettings.config)monitorSettings.setConfig(next);
+  },[watchlist.hydrated,watchlist.items,monitorSettings.hydrated,monitorSettings.config]);
   const widgetSettings=useWidgetSettingsRuntime();
   const editor=usePageEditor('home');
   const maintenance=useMaintenance();

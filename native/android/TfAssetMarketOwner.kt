@@ -61,6 +61,7 @@ internal object TfAssetMarketOwner {
             }
         }
     }
+    fun subscriptionLimitedSymbols():Set<String> = instance?.subscriptionLimitedSymbols() ?: emptySet()
     fun addListener(listener:(String)->Unit){listeners.add(listener)}
     fun removeListener(listener:(String)->Unit){listeners.remove(listener)}
     fun resumeUi(context:Context){

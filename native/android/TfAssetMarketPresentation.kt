@@ -95,6 +95,7 @@ internal object TfAssetMarketPresentation{
         listOf("marketValue","pnl","roi","comprehensivePnl")
           .forEach{row.put(it,JSONObject.NULL)}
       }
+      if(original.optBoolean("subscriptionLimited",false))row.put("marketStatus","訂閱額度不足｜最後有效行情").put("quoteStatus","DELAYED").put("streamingHealthy",false)
       output.put(row)
     }
     raw.optJSONArray("watchlist")?.let{rows->

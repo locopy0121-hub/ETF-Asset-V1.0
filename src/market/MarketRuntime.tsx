@@ -153,7 +153,7 @@ export function MarketRuntimeProvider({children}:PropsWithChildren){
   const quotesRef=useRef<RuntimeQuote[]>([]),symbolsRef=useRef<string[]>([]);
   const researchRef=useRef<string[]>([]);
   const watchlistRef=useRef<string[]>([]);
-  const combinedSymbols=useCallback(()=>[...new Set([...symbolsRef.current,...researchRef.current,...watchlistRef.current])].sort(),[]);
+  const combinedSymbols=useCallback(()=>[...new Set([...symbolsRef.current,...watchlistRef.current,...researchRef.current])],[]);
   const catalogRef=useRef<TaiwanSecurityInfo[]>(fallbackCatalog());
   const refreshPromiseRef=useRef<Promise<MarketRefreshResult>|null>(null);
   const refreshVisibleRef=useRef(false);
