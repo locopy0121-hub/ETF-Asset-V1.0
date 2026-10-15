@@ -15,10 +15,11 @@ assert.match(runtime,/time\.isBefore\(LocalTime\.of\(13, 30\)\)/,
 assert.doesNotMatch(runtime,/!time\.isAfter\(LocalTime\.of\(13, 30\)\)/,
   'Android must not keep the whole 13:30 minute live');
 
-assert.match(pkg.version,/^4\.0\.\d+$/);
-assert.ok(Number(pkg.version.split('.')[2])>=12);
+assert.ok((/^4\.0\.\d+$/.test(pkg.version)&&Number(pkg.version.split('.')[2])>=12)||pkg.version==='5.0.2');
 assert.equal(app.expo.version,pkg.version);
-assert.equal(app.expo.android.versionCode,40000+Number(pkg.version.split('.')[2]));
+const parts=pkg.version.split('.').map(Number);
+const major=parts[0]??0,minor=parts[1]??0,patch=parts[2]??0;
+assert.equal(app.expo.android.versionCode,major*10000+minor*100+patch);
 assert.equal(app.expo.ios.buildNumber,String(app.expo.android.versionCode));
 assert.ok(workflow.includes(`TF Asset V${pkg.version} CI / QA APK`));
 assert.ok(workflow.includes(`TF-Asset-V${pkg.version}-QA.apk`));
