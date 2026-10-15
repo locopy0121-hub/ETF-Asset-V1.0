@@ -7,7 +7,7 @@ const visual=read('src/components/MarketEditableContent.tsx');
 const constituents=read('src/components/EtfConstituentsContent.tsx');
 const dividend=read('src/components/StockDividendHistoryContent.tsx');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.ok(Number(pkg.version.split('.')[2])>=42,'market research editor remains supported');
+const [vMajor42=0,vMinor42=0,vPatch42=0]=pkg.version.split('.').map(Number);assert.ok(vMajor42>4||(vMajor42===4&&(vMinor42>0||(vMinor42===0&&vPatch42>=42))),'market research editor remains supported');
 assert.equal(app.version,pkg.version);
 const build=Number(pkg.version.split('.')[0])*10000+Number(pkg.version.split('.')[1])*100+Number(pkg.version.split('.')[2]);
 assert.equal(app.android.versionCode,build);
