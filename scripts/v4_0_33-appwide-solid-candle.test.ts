@@ -38,7 +38,7 @@ for(const p of otherFiles){
     'additional hollow bullish candle in '+relative('.',p));
 }
 const app=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.ok(Number(app.version.split('.')[2])>=33);assert.ok(app.android.versionCode>=40033);
+const [vMajor33=0,vMinor33=0,vPatch33=0]=app.version.split('.').map(Number);assert.ok(vMajor33>4||(vMajor33===4&&(vMinor33>0||(vMinor33===0&&vPatch33>=33))));assert.ok(app.android.versionCode>=40033);
 assert.doesNotMatch(readFileSync('src/screens/SettingsScreen.tsx','utf8'),/solidCandleAppearance/,'settings is protected');
 assert.doesNotMatch(readFileSync('src/finance/FinanceRuntime.tsx','utf8'),/solidCandleAppearance/,'financial SSOT is unchanged');
 console.log('V4.0.33 app-wide red/green solid OHLC bodies, wicks, volume, theme and original settings protected: PASS');
