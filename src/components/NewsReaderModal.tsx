@@ -1,9 +1,11 @@
 import {EditorSurface} from './EditorSurface';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,Linking,Modal,StyleSheet,View} from 'react-native';
 import {Pressable,Text} from './EditableNative';
 import {SafeAreaProvider,SafeAreaView} from 'react-native-safe-area-context';
 import {WebView} from 'react-native-webview';
+
+import {buildNewsReaderScript,isNewsAdUrl} from '../news/newsReaderContent';
 
 import type {AiNewsItem} from '../ai/AiNewsRuntime';
 import {spacing} from '../theme/tokens';
@@ -32,7 +34,12 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
   const [loading,setLoading]=useState(Boolean(initialUrl));
   const [error,setError]=useState(initialUrl?'':'新聞連結無效或尚未提供。');
   const [externalError,setExternalError]=useState('');
+  const [adFilter,setAdFilter]=useState(true);
+  const [readerMode,setReaderMode]=useState(false);
+  const [readerNotice,setReaderNotice]=useState('');
+  const pageScript=useMemo(()=>buildNewsReaderScript({filter:adFilter,mode:readerMode?'reader':adFilter?'web':'original',title:item.title}),[adFilter,readerMode,item.title]);
   const web=useRef<WebView>(null);
+  useEffect(()=>{if(!terminated)web.current?.injectJavaScript(pageScript);},[pageScript,terminated]);
   const canGoBack=useRef(false);
   const currentUrl=useRef(initialUrl);
   const failed=useRef(!initialUrl);
@@ -49,6 +56,7 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
     clearTimer();
     failed.current=false;
     setError('');
+    setReaderNotice('');
     setProgress(0);
     setLoading(true);
     timer.current=setTimeout(()=>fail('新聞載入逾時，請重試或檢查網路連線。'),25000);
@@ -74,7 +82,7 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
   };
   const navigateInPlace=(value:string)=>{
     const next=articleUrl(value);
-    if(!next)return;
+    if(!next||(adFilter&&isNewsAdUrl(next)))return;
     // location.assign keeps target=_blank links inside this WebView's back history.
     web.current?.injectJavaScript(`window.location.assign(${JSON.stringify(next)}); true;`);
   };
@@ -110,6 +118,12 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
           {uri?<Pressable editorId="native:NewsReaderModal:tool:8" accessibilityRole="button" accessibilityLabel="重新整理新聞" onPress={retry} style={styles.tool}><Text editorId="native:NewsReaderModal:text:9" editorReadOnly={false} style={{color:palette.primary}}>重新整理</Text></Pressable>:null}
           {uri?<Pressable editorId="native:NewsReaderModal:tool:10" accessibilityRole="button" accessibilityLabel="使用外部瀏覽器查看完整原文" onPress={()=>void openExternal()} style={styles.tool}><Text editorId="native:NewsReaderModal:text:11" editorReadOnly={false} style={{color:palette.textSecondary}}>外部開啟 ↗</Text></Pressable>:null}
         </View>
+        {uri?<View style={[styles.readingTools,{backgroundColor:palette.surface,borderBottomColor:palette.border}]}>
+          <Pressable editorId="native:NewsReaderModal:adFilter:18" accessibilityRole="button" accessibilityLabel="切換廣告過濾" accessibilityState={{selected:adFilter}} onPress={()=>{setReaderNotice('');setAdFilter(value=>!value);}} style={[styles.readingTool,{backgroundColor:adFilter?palette.surfaceMuted:palette.surface}]}><Text editorId="native:NewsReaderModal:adFilterText:19" editorReadOnly={true} style={{color:palette.primary}}>廣告過濾 {adFilter?'✓':'關'}</Text></Pressable>
+          <Pressable editorId="native:NewsReaderModal:readerMode:20" accessibilityRole="button" accessibilityLabel="切換純閱讀模式" accessibilityState={{selected:readerMode}} onPress={()=>{setReaderNotice('');setReaderMode(value=>!value);}} style={[styles.readingTool,{backgroundColor:readerMode?palette.surfaceMuted:palette.surface}]}><Text editorId="native:NewsReaderModal:readerModeText:21" editorReadOnly={true} style={{color:palette.primary}}>{readerMode?'純閱讀 ✓':'純閱讀'}</Text></Pressable>
+          <Pressable editorId="native:NewsReaderModal:restoreOriginal:22" accessibilityRole="button" accessibilityLabel="恢復原網頁" onPress={()=>{setReaderMode(false);setAdFilter(false);setReaderNotice('已恢復原網頁，可重新開啟廣告過濾。');}} style={styles.readingTool}><Text editorId="native:NewsReaderModal:restoreOriginalText:23" editorReadOnly={false} style={{color:palette.textSecondary}}>恢復原網頁</Text></Pressable>
+        </View>:null}
+        {readerNotice?<Text editorId="native:NewsReaderModal:readerNotice:24" editorReadOnly={true} accessibilityRole="alert" style={[styles.notice,{color:palette.textSecondary}]}>{readerNotice}</Text>:null}
         {externalError?<Text editorId="native:NewsReaderModal:notice:12" editorReadOnly={true} accessibilityRole="alert" style={[styles.notice,{color:palette.textSecondary}]}>{externalError}</Text>:null}
         {loading?<View accessibilityRole="progressbar" accessibilityValue={{min:0,max:100,now:Math.round(progress*100)}} style={[styles.progressTrack,{backgroundColor:palette.border}]}><View style={{height:3,width:`${Math.max(3,progress*100)}%`,backgroundColor:palette.primary}}/></View>:null}
         <View style={styles.browserArea}>
@@ -120,7 +134,14 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
             style={[styles.browser,{backgroundColor:palette.background},error?styles.hidden:null]}
             // Catch every scheme here so WebView never auto-launches another app.
             originWhitelist={['*']}
-            onShouldStartLoadWithRequest={request=>Boolean(articleUrl(request.url))}
+            onShouldStartLoadWithRequest={request=>Boolean(articleUrl(request.url))&&!(adFilter&&isNewsAdUrl(request.url))}
+            injectedJavaScript={pageScript}
+            onMessage={event=>{
+              try{const message=JSON.parse(event.nativeEvent.data) as {type?:string;status?:string};
+                if(message.type==='tf-news-reader'&&message.status==='unavailable')setReaderNotice('目前無法辨識完整新聞正文，已保留原網頁；可重新整理或恢復原網頁。');
+              }catch{/* Ignore unrelated webpage messages; no privileged App actions are exposed. */}
+            }}
+            forceDarkOn={false}
             onOpenWindow={event=>navigateInPlace(event.nativeEvent.targetUrl)}
             setSupportMultipleWindows
             javaScriptEnabled
@@ -132,6 +153,7 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
             onLoadProgress={event=>setProgress(event.nativeEvent.progress)}
             onLoadEnd={()=>{
               clearTimer();
+              if(!failed.current)web.current?.injectJavaScript(pageScript);
               setLoading(false);
               if(!failed.current)setProgress(1);
             }}
@@ -167,6 +189,7 @@ const styles=StyleSheet.create({
   heading:{flex:1},kicker:{fontSize:11,fontWeight:'900'},symbol:{fontSize:15,fontWeight:'900',marginTop:3},source:{fontSize:11,marginTop:3},
   close:{width:44,height:44,borderRadius:22,alignItems:'center',justifyContent:'center'},closeText:{fontSize:25,fontWeight:'900'},
   toolbar:{flexDirection:'row',justifyContent:'space-between',paddingHorizontal:spacing.sm,borderBottomWidth:StyleSheet.hairlineWidth},tool:{minHeight:44,paddingHorizontal:8,justifyContent:'center'},
+  readingTools:{flexDirection:'row',flexWrap:'wrap',gap:4,paddingHorizontal:spacing.sm,paddingVertical:4,borderBottomWidth:StyleSheet.hairlineWidth},readingTool:{minHeight:44,paddingHorizontal:10,borderRadius:10,justifyContent:'center'},
   progressTrack:{height:3},browserArea:{flex:1},browser:{flex:1},hidden:{opacity:0},
   loading:{position:'absolute',top:12,alignSelf:'center',flexDirection:'row',gap:8,alignItems:'center',padding:12,borderRadius:16},
   error:{...StyleSheet.absoluteFill,padding:spacing.lg,justifyContent:'center',gap:16},articleTitle:{fontSize:20,lineHeight:29,fontWeight:'800'},errorText:{fontSize:15,lineHeight:24},retry:{alignSelf:'flex-start',padding:14,borderRadius:20},notice:{paddingHorizontal:spacing.lg,paddingVertical:8,fontSize:12},

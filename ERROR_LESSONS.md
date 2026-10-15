@@ -1,3 +1,9 @@
+# V4.0.64 — reversible web cleanup and one watchlist across views
+- Ad cleanup must be narrowly identified and reversible. Preserve article-sized wrappers, visible text, tables, nested list lead text and safe responsive images; test actual injected DOM code, not just selector strings. Missing extraction keeps original page and reports failure.
+- Keep JS injection as source literals: Hermes function.toString is not a source serializer. Do not disable all page JS, wipe the body, expose private App data, or claim an untested site's overlay is the proven sole cause.
+- Display modes consume the same quote/watchlist owners. Persist optional presentation separately and serialize rapid writes; numeric scroll must retain identifiers. Apply existing wall appearance read-only, including opacity and profit-linked colors, with no accounting values invented for non-held instruments.
+- Real chart timestamps and source clocks remain authoritative; absent intraday data cannot become a synthetic line. Preserve all protected Settings content and canonical/native source contracts.
+
 # V4.0.63 — daily agenda is an independent card, acquisition is not cash
 - Do not replace or embed into the calendar grid. Register a separate frame, editor catalog and real preview, add after the saved calendar order, and preserve existing dimensions/styles.
 - Fetch public announcements independently of holdings, AI and price subscriptions. Use bounded user-triggered requests, deduplicate symbol/ex-date and display source coverage and last successful acquisition time honestly.
