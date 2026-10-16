@@ -33,7 +33,7 @@ const selected=[];
 const preview=selectCardContentPreview(card,target=>selected.push(target),null,{
   [byLabel('成交股數').id]:{fontSize:23,textColor:'#123456'},
 });
-const nodes=tree=>tree&&typeof tree==='object'?[tree,...React.Children.toArray(tree.props?.children).flatMap(nodes)]:[];
+const nodes=tree=>Array.isArray(tree)?tree.flatMap(nodes):tree&&typeof tree==='object'?[tree,...React.Children.toArray(tree.props?.children).flatMap(nodes)]:[];
 const all=nodes(preview);
 for(const item of items){
   const selector=all.find(x=>x.props?.accessibilityLabel==='編輯'+item.label);
