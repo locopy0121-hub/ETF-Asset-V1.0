@@ -23,6 +23,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript
         run: npm run typecheck
+      - name: V5.0.6 watchlist inner-card editor regression
+        run: npm run test:v5_0_6-inner-cards
       - name: V4.0.19 dividend content editor regression
         run: node scripts/v4_0_19-dividend-editor.test.cjs
       - name: V4.0.19 calendar digit selection and style persistence
@@ -57,8 +59,6 @@ jobs:
         run: npm run test:v5_0_4-break-even
       - name: V5.0.6 mounted card editor coverage regression
         run: npm run test:v5_0_5-editor
-      - name: V5.0.6 watchlist inner-card editor regression
-        run: npm run test:v5_0_6-inner-cards
       - name: V5.0.6 market research behavior
         run: npx tsx scripts/v4_0_28-market-research.test.ts
       - name: V5.0.6 technical / institutional / ETF NAV data gates
