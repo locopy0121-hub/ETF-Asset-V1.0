@@ -21,6 +21,7 @@ export type FrameCardProps=PropsWithChildren<{
 
 export function FrameCard({title,action,children,layout='standard',appearance='theme',
   editorStyle,titleVisual,fill=false,showTitle=true,tone='neutral',workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
+  const paintedTitle=titleVisual?.labelText||title;
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
@@ -115,10 +116,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const titleMarquee=Boolean(editorStyle&&fx.titleMarqueeEnabled);
   const titleStyle=[
     styles.title,{color:theme.palette.text},
-    titleVisual&&{color:titleVisual.textColor,fontSize:titleVisual.fontSize,fontWeight:titleVisual.fontWeight,
-      ...(titleVisual.letterSpacing!==undefined?{letterSpacing:titleVisual.letterSpacing}:{}),
-      ...(titleVisual.lineHeight!==undefined&&titleVisual.lineHeight>0?{lineHeight:titleVisual.lineHeight}:{}),
-    },
+
     layout==='dense'&&styles.titleDense,
     responsiveDensity==='dense'&&layout!=='dense'&&styles.titleDense,
     editorStyle&&{
@@ -126,6 +124,13 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       color:colorWithAlpha(linkedColor(editorStyle.titleColor??theme.palette.text,
         editorStyle.titleProfitColor,tone,systemColors),editorStyle.titleOpacity??1),
       textAlign:editorStyle.titleAlign,
+    },
+    titleVisual&&{
+      ...(titleVisual.fontSize!==undefined?{fontSize:titleVisual.fontSize}:{}),
+      ...(titleVisual.textColor!==undefined?{color:titleVisual.textColor}:{}),
+      ...(titleVisual.fontWeight!==undefined?{fontWeight:titleVisual.fontWeight}:{}),
+      ...(titleVisual.letterSpacing!==undefined?{letterSpacing:titleVisual.letterSpacing}:{}),
+      ...(titleVisual.lineHeight!==undefined&&titleVisual.lineHeight>0?{lineHeight:titleVisual.lineHeight}:{}),
     },
   ];
   const marqueeActive=titleMarquee&&!reduceMotion&&titleAvailable>0&&titleIntrinsic>titleAvailable+1;
@@ -312,15 +317,15 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
           <Text accessible={false} numberOfLines={1} onLayout={(event:LayoutChangeEvent)=>{
             const width=event.nativeEvent.layout.width;
             setTitleIntrinsic(previous=>Math.abs(previous-width)<1?previous:width);
-          }} style={[titleStyle,{position:'absolute',left:0,top:0,opacity:0,alignSelf:'flex-start'}]}>{title}</Text>
+          }} style={[titleStyle,{position:'absolute',left:0,top:0,opacity:0,alignSelf:'flex-start'}]}>{paintedTitle}</Text>
           <Animated.View pointerEvents="none" style={{flexDirection:'row',alignItems:'center',
             transform:[{translateX:marqueeShift}]}}>
-            <Text numberOfLines={1} style={[titleStyle,{flexShrink:0}]}>{title}</Text>
+            <Text numberOfLines={1} style={[titleStyle,{flexShrink:0}]}>{paintedTitle}</Text>
             {marqueeActive?<Text accessible={false} importantForAccessibility="no-hide-descendants"
-              numberOfLines={1} style={[titleStyle,{flexShrink:0,marginLeft:fx.titleMarqueeGap}]}>{title}</Text>:null}
+              numberOfLines={1} style={[titleStyle,{flexShrink:0,marginLeft:fx.titleMarqueeGap}]}>{paintedTitle}</Text>:null}
           </Animated.View>
         </>:<Text numberOfLines={titleMarquee?1:undefined} ellipsizeMode="tail"
-          style={[titleStyle,{flexShrink:1}]}>{title}</Text>}
+          style={[titleStyle,{flexShrink:1}]}>{paintedTitle}</Text>}
       </Pressable>
       {action}
     </View>:null}

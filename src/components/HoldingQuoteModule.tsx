@@ -340,7 +340,7 @@ function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,
 function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   if(item.quoteVerified===false&&['price','change','changePercent','pnl','roi','marketValue'].includes(field))return '待取得';
   if(item.previousCloseKnown===false&&['change','changePercent'].includes(field))return '前收待取得';
-  if(field==='previousClose')return item.previousCloseKnown===false?'昨收待取得':item.previousClose.toFixed(2);
+  if(field==='previousClose')return item.quoteVerified===false||item.previousCloseKnown===false?'昨收待取得':item.previousClose.toFixed(2);
   if(field==='volume')return typeof item.volume==='number'&&Number.isFinite(item.volume)?Math.round(item.volume).toLocaleString('zh-TW'):'成交量待取得';
   if(field==='quoteTime')return typeof item.quoteSourceAt==='number'&&item.quoteSourceAt>0?
     new Date(item.quoteSourceAt).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'時間待取得';

@@ -113,9 +113,11 @@ export function PageLayoutToolWorkbench({
   const frame=frames.find(item=>item.key===frameKey)??frames[0];
   const frameConfig=frame?draft[frame.key]:undefined;
   if(!frame||!frameConfig)return null;
-  const contentItems=supportsCardContentEditor(pageKey,frame.key)?
-    [{id:'frame-title:'+frame.key,kind:'text' as const,label:'卡片標題 · '+frame.title},
-      ...listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children,'root/'+frame.key)]:[];
+  const contentItems=[
+    ...(frame.key!=='page-header'?[{id:'frame-title:'+frame.key,kind:'text' as const,label:'卡片標題 · '+frame.title}]:[]),
+    ...(supportsCardContentEditor(pageKey,frame.key)?
+      listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children,'root/'+frame.key):[]),
+  ];
 
   const profile=layoutToolProfile(pageKey,frame.key);
   const holding=(pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view');
@@ -529,8 +531,11 @@ export function PageLayoutToolWorkbench({
         </Pressable>)}
       </ScrollView>
     </View>:null}
-    {supportsCardContentEditor(pageKey,frame.key)?<View>
+    {pageKey!=='settings'&&frame.key!=='page-header'?<View>
       <Text style={styles.hint}>框架說明：{frame.description}</Text>
+      {!supportsCardContentEditor(pageKey,frame.key)?<Text style={styles.hint}>
+        此框架內部採專用功能編輯器；卡片標題可在這裡修改，其他未註冊細項仍須在正式頁面的維護工程師選取。
+      </Text>:null}
       <Text style={styles.title}>卡片內容編輯項目 · {contentItems.length} 項</Text>
       <Text style={styles.hint}>點上方內容，或從清單選取文字、數值、按鈕與指標；不會修改原始行情與帳務。</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
@@ -590,7 +595,7 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:')||contentItems.some(item=>item.id===selection.id))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:')||contentItems.some(item=>item.id===selection.id)||selection.id.startsWith('frame-title:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
