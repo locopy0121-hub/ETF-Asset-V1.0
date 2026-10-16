@@ -13,7 +13,7 @@ const old=read('scripts/v5_0_9-three-gates.test.ts');
 assert.ok(!old.includes("assert.equal(packageFile.version,'5.0.10')"),
  'inherited chart regression must accept later patch versions');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.match(pkg.version,/^5\\.0\\.\\d+$/);const build=Number(pkg.version.split('.')[2]);
+assert.match(pkg.version,/^5\.0\.\d+$/);const build=Number(pkg.version.split('.')[2]);
 assert.ok(build>=11,'retain V5.0.11 editor preview fix');assert.equal(app.version,pkg.version);
 assert.equal(app.android.versionCode,50000+build);assert.equal(app.ios.buildNumber,String(50000+build));
 assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='"+pkg.version+"';"));
