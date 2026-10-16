@@ -175,6 +175,10 @@ export function PageLayoutToolWorkbench({
     }
     else if(pageKey==='market'&&frame.key==='market-watchlist'&&kind==='card')
       setSelection({id:'market:watchlist:content',kind,label:'自選清單內容'});
+    else if(pageKey==='market'&&frame.key==='market-watchlist'&&kind==='text')
+      setSelection({id:'market:watchlist:name',kind,label:'自選標的名稱'});
+    else if(pageKey==='market'&&frame.key==='market-watchlist'&&kind==='value')
+      setSelection({id:'market:watchlist:price',kind,label:'自選即時價格'});
     else if(pageKey==='market'&&frame.key==='market-search'&&kind==='card')
       setSelection({id:'market:search:input',kind,label:'搜尋輸入框'});
     else if(pageKey==='market'&&frame.key==='market-search'&&kind==='text')
@@ -279,10 +283,14 @@ export function PageLayoutToolWorkbench({
         </FrameContentEditTarget>:
         <View pointerEvents="none">{actual.props.children}</View>):null;
     }
-    if(pageKey==='market'&&item.key==='market-watchlist')return <MarketEditableSurface
-      id="market:watchlist:content" label="自選清單內容">
+    if(pageKey==='market'&&item.key==='market-watchlist')return <View>
+      <Pressable accessibilityRole="button" accessibilityLabel="編輯自選清單整體"
+        onPress={()=>{setFrameKey(item.key);selectTarget({id:'market:watchlist:content',kind:'card',label:'整張自選清單'});}}
+        style={[styles.kindChip,{alignSelf:'flex-start',marginBottom:5}]}>
+        <Text style={styles.kindText}>✎ 編輯整張自選清單</Text>
+      </Pressable>
       <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)} readOnlyPreview/>
-    </MarketEditableSurface>;
+    </View>;
     if(pageKey==='market'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
       // Mount the real market component, not the page-header illustration.
@@ -428,7 +436,7 @@ export function PageLayoutToolWorkbench({
       (kind==='frame'||kind==='card'||contentItems.some(item=>item.kind===kind));
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(pageKey==='market')return ['market-index','market-watchlist','market-search','market-summary','market-chart','market-details'].includes(frame.key)
-      ?(frame.key==='market-watchlist'?['frame','card'].includes(kind):['frame','card','text','value'].includes(kind)):kind==='frame';
+      ?['frame','card','text','value'].includes(kind):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -506,6 +514,21 @@ export function PageLayoutToolWorkbench({
         </Text>
       </Pressable>)}
     </ScrollView>
+    {pageKey==='market'&&frame.key==='market-watchlist'?<View>
+      <Text style={styles.title}>自選清單內容編輯項目</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+        {([
+          {id:'market:watchlist:symbol',kind:'text' as const,label:'證券代號'},
+          {id:'market:watchlist:name',kind:'text' as const,label:'證券名稱'},
+          {id:'market:watchlist:price',kind:'value' as const,label:'即時價格'},
+          {id:'market:watchlist:change',kind:'value' as const,label:'漲跌與漲跌幅'},
+        ]).map(item=><Pressable key={item.id} accessibilityRole="button" accessibilityLabel={'編輯'+item.label}
+          onPress={()=>selectTarget(item)}
+          style={[styles.kindChip,selection.id===item.id&&styles.kindChipActive]}>
+          <Text style={[styles.kindText,selection.id===item.id&&styles.kindTextActive]}>{item.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+    </View>:null}
     {supportsCardContentEditor(pageKey,frame.key)?<View>
       <Text style={styles.title}>卡片內容編輯項目 · {contentItems.length} 項</Text>
       <Text style={styles.hint}>點上方內容，或從清單選取文字、數值、按鈕與指標；不會修改原始行情與帳務。</Text>
