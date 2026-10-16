@@ -48,3 +48,44 @@ export function calculateBreakEvenPurchase(input:{
   }
   return {status:'reachable',additionalShares:high*step,scenario:evaluate(high)};
 }
+
+/** Minimum additional shares needed to attain an arbitrary NET profit target
+ * at the user's hypothetical exit price. Uses the same immutable Canonical
+ * purchase/sale settlement as the existing break-even calculator. */
+export function calculateTargetProfitPurchase(input:{
+  holding:CanonicalLedgerSnapshot['holdings'][number];
+  buyPrice:number;
+  exitPrice:number;
+  targetNetProfit:number;
+  tradeMode:TradeMode;
+  brokerProfileId?:string;
+}):BreakEvenResult{
+  const {holding,buyPrice,exitPrice,targetNetProfit,tradeMode,brokerProfileId}=input;
+  if(!Number.isFinite(targetNetProfit)||targetNetProfit<0||
+    !Number.isFinite(buyPrice)||buyPrice<=0||!Number.isFinite(exitPrice)||exitPrice<=0||
+    !Number.isFinite(holding.totalShares)||holding.totalShares<=0)
+    return {status:'invalid',additionalShares:0,scenario:null};
+  const step=tradeMode==='ROUND_LOT'?1000:1;
+  const cap=Math.floor(1_000_000_000/step);
+  const evaluate=(units:number)=>calculateBuyScenario({
+    holding,currentPrice:exitPrice,addPrice:buyPrice,addShares:units*step,tradeMode,
+    ...(brokerProfileId?{brokerProfileId}:{}),
+  });
+  const initial=evaluate(0);
+  if(initial.cashUnrealizedProfit>=targetNetProfit)
+    return {status:'already',additionalShares:0,scenario:initial};
+  // A purchase at or above the assumed liquidation price cannot increase
+  // final net proceeds after buying and selling fees / transaction taxes.
+  if(exitPrice<=buyPrice)return {status:'impossible',additionalShares:0,scenario:initial};
+  let low=0,high=1;
+  while(high<cap&&evaluate(high).cashUnrealizedProfit<targetNetProfit){
+    low=high;high=Math.min(high*2,cap);
+  }
+  if(evaluate(high).cashUnrealizedProfit<targetNetProfit)
+    return {status:'limit',additionalShares:0,scenario:null};
+  while(low+1<high){
+    const mid=Math.floor((low+high)/2);
+    if(evaluate(mid).cashUnrealizedProfit>=targetNetProfit)high=mid;else low=mid;
+  }
+  return {status:'reachable',additionalShares:high*step,scenario:evaluate(high)};
+}
