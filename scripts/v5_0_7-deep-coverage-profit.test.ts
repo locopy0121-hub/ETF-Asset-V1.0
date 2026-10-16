@@ -75,5 +75,8 @@ for(const [page,keys] of Object.entries(mounted) as [keyof typeof mounted,readon
 }
 assert.equal(supportsCardContentEditor('settings','system'),false,'system settings remain protected');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'5.0.7');assert.equal(app.version,pkg.version);assert.equal(app.android.versionCode,50007);
+const [major,minor,patch]=pkg.version.split('.').map(Number);
+assert.ok(major>5||(major===5&&(minor>0||(minor===0&&patch>=7))),'at least V5.0.7 behavior must be retained');
+assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,major*10000+minor*100+patch,'identity must follow version code');
 console.log('V5.0.7 target-net-profit solver / quote-field hydration / cross-page content wiring PASS');
