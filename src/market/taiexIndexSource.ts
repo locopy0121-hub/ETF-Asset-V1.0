@@ -1,4 +1,4 @@
-import {parseTaiexMis,parseTaiexFmtqik,type IndexClose,type IndexSnapshot} from './taiexIndex';
+import {parseTaiexMis,parseTaiexFmtqik,parseTaiexDailyOhlc,type IndexClose,type IndexSnapshot,type TaiexDailyOhlc} from './taiexIndex';
 const monthCache=new Map<string,{at:number;rows:IndexClose[]}>();
 export async function fetchTaiexMis(signal?:AbortSignal):Promise<IndexSnapshot|null>{
   const response=await fetch('https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw&json=1&delay=0',
@@ -38,4 +38,37 @@ export async function fetchTaiexHistory(months:number,now=new Date(),signal?:Abo
   }
   if(success===0&&error)throw error;
   return [...new Map(data.map(x=>[x.date,x] as const)).values()].sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+const ohlcCache=new Map<string,{at:number;rows:TaiexDailyOhlc[]}>();
+export async function fetchTaiexOhlcMonth(month:string,signal?:AbortSignal):Promise<TaiexDailyOhlc[]>{
+  if(!/^\d{6}$/.test(month))throw new Error('指數 OHLC 月份不合法');
+  const cached=ohlcCache.get(month);
+  if(cached&&Date.now()-cached.at<6*60*60*1000)return cached.rows;
+  const response=await fetch('https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?response=json&date='+month+'01',
+    {headers:{Accept:'application/json','Cache-Control':'no-cache'},...(signal?{signal}:{})});
+  if(!response.ok)throw new Error('TWSE MI_5MINS_HIST HTTP '+response.status);
+  const payload:unknown=await response.json();
+  if(!payload||typeof payload!=='object'||!Array.isArray((payload as {data?:unknown}).data))
+    throw new Error('TWSE 指數開高低收格式無法辨識');
+  const rows=parseTaiexDailyOhlc(payload);
+  if(rows.length)ohlcCache.set(month,{at:Date.now(),rows});
+  return rows;
+}
+export async function fetchTaiexRecentOhlc(now=new Date(),signal?:AbortSignal):Promise<TaiexDailyOhlc[]>{
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit'}).formatToParts(now);
+  const year=Number(parts.find(x=>x.type==='year')?.value);
+  const month=Number(parts.find(x=>x.type==='month')?.value);
+  const all:TaiexDailyOhlc[]=[];let successes=0;let lastError:Error|null=null;
+  for(let i=0;i<2;i++){
+    if(signal?.aborted)throw new Error('指數 OHLC 查詢已取消');
+    const d=new Date(Date.UTC(year,month-1-i,1));
+    try{
+      all.push(...await fetchTaiexOhlcMonth(d.getUTCFullYear()+String(d.getUTCMonth()+1).padStart(2,'0'),signal));
+      successes++;
+    }catch(e){if(signal?.aborted)throw new Error('指數 OHLC 查詢已取消');
+      lastError=e instanceof Error?e:new Error(String(e));}
+  }
+  if(successes===0&&lastError)throw lastError;
+  return [...new Map(all.map(x=>[x.date,x] as const)).values()].sort((a,b)=>a.date.localeCompare(b.date));
 }

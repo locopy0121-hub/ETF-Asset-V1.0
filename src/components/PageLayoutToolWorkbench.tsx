@@ -7,6 +7,7 @@ import type {MainPageKey} from '../domain/pageRegistry';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,type HoldingWallFieldKey,type QuoteModuleStyle} from '../domain/uiModels';
 import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameBehavior,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
+import {TAIEX_EXPLANATIONS} from './taiexExplanations';
 import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
@@ -201,6 +202,8 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'market:chart:title',kind,label:'分時走勢標題'});
     else if(pageKey==='market'&&frame.key==='market-chart'&&kind==='value')
       setSelection({id:'market:chart:indicator:MA5:value',kind,label:'MA5 數值'});
+    else if(pageKey==='market'&&frame.key==='market-index'&&kind==='button')
+      setSelection({id:'market:index:refresh:button',kind:'card',label:'更新指數按鈕'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='card')
       setSelection({id:'market:index:chart',kind,label:'指數走勢圖'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='text')
@@ -438,7 +441,7 @@ export function PageLayoutToolWorkbench({
       (kind==='frame'||kind==='card'||contentItems.some(item=>item.kind===kind));
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(pageKey==='market')return ['market-index','market-watchlist','market-search','market-summary','market-chart','market-details'].includes(frame.key)
-      ?['frame','card','text','value'].includes(kind):kind==='frame';
+      ?['frame','card','text','value',...(frame.key==='market-index'?['button']:[])].includes(kind):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -600,6 +603,10 @@ export function PageLayoutToolWorkbench({
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:
+          selection.kind==='text'&&Object.prototype.hasOwnProperty.call(TAIEX_EXPLANATIONS,selection.id)?{
+            contentValue:targets[selection.id]?.labelText??TAIEX_EXPLANATIONS[selection.id],
+            onContentChange:(labelText:string)=>patchTarget(selection.id,{labelText}),
+          }:
           contentItems.some(item=>item.id===selection.id)&&selection.kind==='text'?{
             contentValue:targets[selection.id]?.labelText??(selection.id.startsWith('frame-title:')?frame.title:
               readCardStaticText(previewElements?.find(item=>item.key===frame.key)?.element.props.children,

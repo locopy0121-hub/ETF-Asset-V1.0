@@ -222,7 +222,7 @@ export function MarketResearchScreen(){
             <MarketEditableText id={'market:chart:indicator:'+item.label+':label'} label={item.label+' 標籤'} style={{fontSize:11,color:theme.palette.textSecondary}}>{item.label}</MarketEditableText><MarketEditableText id={'market:chart:indicator:'+item.label+':value'} label={item.label+' 數值'} kind="value" style={{color:theme.palette.text,fontWeight:'800'}}>{item.value}</MarketEditableText>
           </View>)}</View>
         <MarketEditableSurface id="market:chart:signals" label="技術指標明細"><MarketTechnicalSignals candles={transformed} selectedDate={selectedCandleDate}/></MarketEditableSurface>
-        <Text style={{fontSize:11,color:theme.palette.textSecondary}}>週月 K 依取得之官方日線聚合，不用瞬間成交價偽造 OHLC／成交量。</Text>
+        <MarketEditableText id="market:chart:ohlc-note" label="週月K資料來源說明" style={{fontSize:11,color:theme.palette.textSecondary}}>週月 K 依取得之官方日線聚合，不用瞬間成交價偽造 OHLC／成交量。</MarketEditableText>
       </View>:<Text style={{fontSize:12,color:theme.palette.textSecondary}}>目前檢視：{tabs.find(x=>x.key===tab)?.label}</Text>}
     </FrameCard>},
     {key:'market-details',element:<FrameCard title="市場研究">
@@ -258,7 +258,7 @@ export function MarketResearchScreen(){
             </View>;
           })}
         </View>}
-        <Text style={{fontSize:11,color:theme.palette.textSecondary}}>券商分點、主力與大戶資料仍需獨立、合法且具時間戳的來源，不由法人日報推算。</Text>
+        <MarketEditableText id="market:details:institution:note" label="法人資料限制說明" style={{fontSize:11,color:theme.palette.textSecondary}}>券商分點、主力與大戶資料仍需獨立、合法且具時間戳的來源，不由法人日報推算。</MarketEditableText>
       </View>:null}
       {tab==='dividend'?<MarketEditableSurface id="market:details:dividend" label="歷史股利統計與明細"><StockDividendHistoryContent key={symbol} symbol={symbol} isEtf={isEtfSymbol(symbol)} market={info?.market??null}/></MarketEditableSurface>:null}
       {tab==='premium'?<View style={{gap:8}}>
@@ -275,7 +275,7 @@ export function MarketResearchScreen(){
               {row.reportedPct===null?'':'｜官方報表 '+(row.reportedPct>0?'+':'')+row.reportedPct.toFixed(2)+'%'}
             </Text>
           </View>)}</View></MarketEditableSurface>}
-        <Text style={{color:theme.palette.textSecondary,fontSize:11}}>僅列官方歷史淨值與相同交易日收盤價比較，非即時預估淨值（iNAV）。兩者日期不同時不計算折溢價。</Text>
+        <MarketEditableText id="market:details:nav:note" label="折溢價計算說明" style={{color:theme.palette.textSecondary,fontSize:11}}>僅列官方歷史淨值與相同交易日收盤價比較，非即時預估淨值（iNAV）。兩者日期不同時不計算折溢價。</MarketEditableText>
         <MarketPreviewActionGuard><Pressable onPress={()=>void Linking.openURL('https://www.twse.com.tw/zh/ETFortune/products').catch(()=>{})}>
           <Text style={{color:theme.palette.primary,fontWeight:'800',fontSize:12}}>查看證交所 e添富原始公告 ↗</Text>
         </Pressable></MarketPreviewActionGuard>
@@ -283,7 +283,7 @@ export function MarketResearchScreen(){
       {tab==='news'?(relatedNews.length?<MarketEditableSurface id="market:details:news-list" label="市場新聞清單"><MarketPreviewActionGuard>{relatedNews.map(n=><Pressable key={n.id} onPress={()=>void Linking.openURL(n.url).catch(()=>{})} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{n.title}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{n.source}｜{n.publishedAt}</Text></View>
         </Pressable>)}</MarketPreviewActionGuard></MarketEditableSurface>:<Text style={{color:theme.palette.textSecondary}}>目前無此標的經核實新聞。既有新聞來源僅追蹤持股，不用其他標的新聞替代。</Text>):null}
-      {tab==='chart'?<Text style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股、法人、歷史股利、折溢價及新聞。</Text>:null}
+      {tab==='chart'?<MarketEditableText id="market:details:tabs:note" label="研究頁籤說明" style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股、法人、歷史股利、折溢價及新聞。</MarketEditableText>:null}
     </FrameCard>}]:[]),
   ];
   return <>

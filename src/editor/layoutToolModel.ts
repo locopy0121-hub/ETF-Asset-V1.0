@@ -7,6 +7,7 @@ const DEFAULT:LayoutToolProfile={label:'一般模組',kinds:['frame','card','tex
 
 const PROFILES:Readonly<Record<string,LayoutToolProfile>>={
   'home:asset-dashboard':{label:'資產儀表板',kinds:['frame','card','text','value','chart','layout']},
+  'market:market-index':{label:'台股加權指數',kinds:['frame','card','button','text','value']},
   'home:profit-analysis':{label:'損益分析',kinds:['frame','card','text','value','layout']},
   'home:pnl-detail':{label:'損益明細',kinds:['frame','card','text','value','data']},
   'home:dashboard-quick-actions':{label:'快捷功能',kinds:['frame','button','text','layout']},

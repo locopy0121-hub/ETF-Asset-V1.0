@@ -102,3 +102,50 @@ export function taiex52WeekCloseRange(history:readonly IndexClose[],today:string
   const x=selectTaiexHistory(history,'y1',today);
   return x.length<180?null:{high:Math.max(...x.map(v=>v.close)),low:Math.min(...x.map(v=>v.close)),days:x.length};
 }
+
+/** Historical index OHLC comes from TWSE's separate official index history;
+ * FMTQIK closes and individual-stock candles are NOT valid substitutes. */
+export type TaiexDailyOhlc=Readonly<{
+  date:string;open:number;high:number;low:number;close:number;source:'TWSE MI_5MINS_HIST'
+}>;
+export type IndexThreeGates=Readonly<{referenceDate:string;upper:number;middle:number;lower:number}>;
+
+export function parseTaiexDailyOhlc(raw:unknown):TaiexDailyOhlc[]{
+  if(!raw||typeof raw!=='object')return [];
+  const payload=raw as {stat?:unknown;fields?:unknown;data?:unknown};
+  if(payload.stat!=='OK'||!Array.isArray(payload.fields)||!Array.isArray(payload.data))return [];
+  const labels=payload.fields.map(x=>String(x).replace(/\s+/g,'').trim());
+  const columns=['日期','開盤指數','最高指數','最低指數','收盤指數'].map(x=>labels.indexOf(x));
+  if(columns.some(x=>x<0))return [];
+  const [d,o,h,l,c]=columns;
+  const result=new Map<string,TaiexDailyOhlc>();
+  for(const row of payload.data){
+    if(!Array.isArray(row))continue;
+    const date=rocDate(row[d!]),open=positive(row[o!]),high=positive(row[h!]),low=positive(row[l!]),close=positive(row[c!]);
+    if(!date||open===null||high===null||low===null||close===null)continue;
+    if(high<low||open<low||open>high||close<low||close>high)continue;
+    result.set(date,{date,open,high,low,close,source:'TWSE MI_5MINS_HIST'});
+  }
+  return [...result.values()].sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+/** Today's three levels are computed from the PREVIOUS completed trading day,
+ * never from today's partial high/low or a different day's market snapshot. */
+export function indexThreeGates(rows:readonly TaiexDailyOhlc[],tradeDate:string):IndexThreeGates|null{
+  if(!isoValid(tradeDate))return null;
+  const prior=[...rows].filter(x=>x.date<tradeDate).sort((a,b)=>a.date.localeCompare(b.date)).at(-1);
+  if(!prior||!(prior.high>=prior.low&&prior.low>0))return null;
+  const span=prior.high-prior.low;
+  return {referenceDate:prior.date,upper:prior.low+span*1.382,
+    middle:(prior.high+prior.low)/2,lower:prior.high-span*1.382};
+}
+
+/** Avoid showing the same trading date twice (ISO date plus localized timestamp). */
+export function taiexStatusLabel(status:string,display:Readonly<{
+  date:string;sourceAt:number;source:string;live:boolean
+}>|null):string{
+  if(!display)return status+'｜交易日尚未確認';
+  const time=Number.isFinite(display.sourceAt)&&taipeiIndexDate(new Date(display.sourceAt))===display.date?
+    new Date(display.sourceAt).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'時間待核實';
+  return status+'｜交易日 '+display.date+'｜'+(display.live?'報價':'收盤')+' '+time+'｜'+display.source;
+}
