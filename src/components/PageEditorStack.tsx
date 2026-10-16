@@ -233,7 +233,7 @@ export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;fra
       appearance:frameConfig?.appearance??'theme',
       ...(frameConfig?{editorStyle:frameConfig}:{}),
       workActive:active,
-      titleVisual={effectiveDisplay.layoutTargets?.['frame-title:'+item.key]},
+      titleVisual:effectiveDisplay.layoutTargets?.['frame-title:'+item.key],
       ...(active&&session?.scope==='frame'?{onResizePreview:(size:{width:number;height:number})=>engineer.patchFrame({
         width:size.width,height:size.height,
         ...(session.draft.minHeight!==undefined&&session.draft.minHeight>size.height?{minHeight:size.height}:{})
