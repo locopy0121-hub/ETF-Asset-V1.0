@@ -270,7 +270,7 @@ export function PageLayoutToolWorkbench({
     }
     if(pageKey==='market'&&item.key==='market-watchlist')return <MarketEditableSurface
       id="market:watchlist:content" label="自選清單內容">
-      <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)}/>
+      <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)} readOnlyPreview/>
     </MarketEditableSurface>;
     if(pageKey==='market'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;

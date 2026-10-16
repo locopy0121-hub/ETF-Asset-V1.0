@@ -42,6 +42,7 @@ const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
 assert.match(workbench,/resolvePreviewFrameKeys/);
 assert.match(workbench,/id:'market:watchlist:content'/);
 assert.match(workbench,/<WatchlistPanel heldSymbols=\{finance.holdings.map\(row=>row.symbol\)\}/);
+assert.match(workbench,/readOnlyPreview\/>/,'preview must opt into read-only rendering');
 assert.match(read('src/components/WatchlistPanel.tsx'),/if\(prefsReady&&!previewMode\)/,
   'preview must never persist watchlist changes');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;

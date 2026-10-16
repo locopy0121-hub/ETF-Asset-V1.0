@@ -13,14 +13,13 @@ import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KE
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {usePageEditor} from '../editor/pageEditor';
-import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 import {MarketPreviewActionGuard} from './MarketEditableContent';
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
-export function WatchlistPanel({onSelect,heldSymbols=[]}:{onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[]}){
+export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];readOnlyPreview?:boolean}){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
- const previewMode=useLayoutRuntime().active;
+ const previewMode=readOnlyPreview;
  // Subscribe to the existing persisted home-wall appearance, without writing it.
  const homeEditor=usePageEditor('home');
  const [presentation,setPresentation]=useState({...DEFAULT_WATCHLIST_PRESENTATION});
