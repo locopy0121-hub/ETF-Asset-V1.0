@@ -57,7 +57,7 @@ export function AiScreen(){
   ];
 
   return <><PageShell pageKey="ai" title="AI 助理" subtitle="Gemini AI × TF Asset 即時資料中心；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-    <PageEditorStack pageKey="ai" frames={previewElements}
+    <PageEditorStack pageKey="ai" frames={previewElements}/>
   </PageShell><PageFrameSettingsModal visible={settingsOpen} pageKey="ai" title="AI 助理" frames={PAGE_FRAMES.ai} previewElements={previewElements} onClose={()=>setSettingsOpen(false)}/></>;
 }
 

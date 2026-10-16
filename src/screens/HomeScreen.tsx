@@ -234,7 +234,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
         onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
       >
       <LayoutTargetProvider targets={effectiveDisplay.layoutTargets??{}}>
-      <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={previewElements}
+      <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={previewElements}/>
       </LayoutTargetProvider>
       {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)} onResize={(width,height)=>resizeDashboardChart(chart.id,width,height)}/>;})}
       </View>

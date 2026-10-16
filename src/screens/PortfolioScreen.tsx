@@ -222,7 +222,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
       subtitle="正式 Canonical Portfolio"
       actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
     >
-      <PageEditorStack pageKey="portfolio" frames={previewElements}
+      <PageEditorStack pageKey="portfolio" frames={previewElements}/>
     </PageShell>
 
     <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewElements={previewElements} previewQuote={sorted[0]} previewRows={sorted} previewFirstMode={firstMode} previewListFallback={listFallback} onClose={()=>setSettingsOpen(false)}/>
