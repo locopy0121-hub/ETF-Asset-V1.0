@@ -13,8 +13,9 @@ const old=read('scripts/v5_0_9-three-gates.test.ts');
 assert.ok(!old.includes("assert.equal(packageFile.version,'5.0.10')"),
  'inherited chart regression must accept later patch versions');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'5.0.11');assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,50011);assert.equal(app.ios.buildNumber,'50011');
-assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='5.0.11';"));
-assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='5.0.11';"));
+assert.match(pkg.version,/^5\.0\.\d+$/);const build=Number(pkg.version.split('.')[2]);
+assert.ok(build>=11,'retain V5.0.11 editor preview fix');assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50000+build);assert.equal(app.ios.buildNumber,String(50000+build));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='"+pkg.version+"';"));
+assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='"+pkg.version+"';"));
 console.log('V5.0.11 ETF editor preview isolation and inherited test: PASS');
