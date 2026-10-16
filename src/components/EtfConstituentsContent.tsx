@@ -5,9 +5,11 @@ import {cachedEtfConstituents,subscribeEtfConstituents,type EtfConstituentSnapsh
 import {refreshEtfConstituentSnapshot} from '../market/EtfConstituentsRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {EtfConstituentChangeNotice} from './EtfConstituentChangeNotice';
+import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 
 export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}){
   const colors=useSystemColors();
+  const editingPreview=useLayoutRuntime().active;
   const [snapshot,setSnapshot]=useState<EtfConstituentSnapshot|null>(()=>cachedEtfConstituents(symbol));
   const [loading,setLoading]=useState(false),[error,setError]=useState<string|null>(null);
   const [expanded,setExpanded]=useState(false),[reload,setReload]=useState(0);
@@ -16,6 +18,8 @@ export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}
     let active=true;const abort=new AbortController();
     const cached=cachedEtfConstituents(symbol);
     setSnapshot(cached);setExpanded(false);setError(null);
+    // Editor preview mounts this real card; do not refresh or persist from preview.
+    if(editingPreview){setLoading(false);return;}
     if(reload===0&&cached&&Date.now()-cached.fetchedAt<6*60*60*1000){setLoading(false);return;}
     setLoading(true);
     refreshEtfConstituentSnapshot(symbol,name,reload>0)
@@ -23,11 +27,11 @@ export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}
       .catch(reason=>{if(active)setError(reason instanceof Error?reason.message:'尚未取得成分股資料');})
       .finally(()=>{if(active)setLoading(false);});
     return()=>{active=false;abort.abort();};
-  },[symbol,name,reload]);
+  },[symbol,name,reload,editingPreview]);
   const data=snapshot?.symbol===symbol?snapshot:null;
   const rows=expanded?data?.rows:data?.rows.slice(0,10);
   return <View style={styles.content}>
-    <Pressable editorId="native:EtfConstituentsContent:button:1" accessibilityRole="button" accessibilityLabel="更新 ETF 成分股" disabled={loading}
+    <Pressable editorId="native:EtfConstituentsContent:button:1" accessibilityRole="button" accessibilityLabel="更新 ETF 成分股" disabled={loading||editingPreview}
       onPress={()=>setReload(value=>value+1)} style={[styles.button,{backgroundColor:colors.surfaceMuted}]}>
       <Text editorId="native:EtfConstituentsContent:text:2" editorReadOnly={true} style={{color:colors.primary,fontWeight:'800'}}>{loading?'更新中…':'更新成分股'}</Text>
     </Pressable>
