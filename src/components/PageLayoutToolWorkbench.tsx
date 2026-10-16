@@ -46,7 +46,6 @@ import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
 import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
 import {ThemeBackgroundLayer} from '../theme/ThemeBackgroundLayer';
-import {MarketEditableSurface} from './MarketEditableContent';
 import {WatchlistPanel} from './WatchlistPanel';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
@@ -289,7 +288,7 @@ export function PageLayoutToolWorkbench({
         style={[styles.kindChip,{alignSelf:'flex-start',marginBottom:5}]}>
         <Text style={styles.kindText}>✎ 編輯整張自選清單</Text>
       </Pressable>
-      <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)} readOnlyPreview/>
+      <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)} readOnlyPreview previewOverrides={targets}/>
     </View>;
     if(pageKey==='market'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
