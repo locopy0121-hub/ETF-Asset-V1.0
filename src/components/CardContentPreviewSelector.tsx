@@ -104,7 +104,8 @@ export function applyCardContentAppearance(content:ReactNode,overrides:Readonly<
          typeof p.children==='string'&&override.labelText?{children:override.labelText}:{})
     };
     const children=contentProps.children!==undefined?contentProps.children:
-      p.children!==undefined?applyCardContentAppearance(p.children,overrides,next):undefined;
+      p.children!==undefined?(isValidElement(p.children)||Array.isArray(p.children)?
+        applyCardContentAppearance(p.children,overrides,next):p.children):undefined;
     return cloneElement(element,{...contentProps,...(children!==undefined?{children}:{})});
   });
 }
