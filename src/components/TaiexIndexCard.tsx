@@ -25,6 +25,17 @@ const ranges:readonly {id:IndexRange;label:string;months:number}[]=[
   {id:'d1',label:'1日',months:2},{id:'d5',label:'5日',months:2},{id:'m1',label:'1月',months:2},
   {id:'m6',label:'6月',months:7},{id:'ytd',label:'今年',months:13},{id:'y1',label:'1年',months:13},
 ];
+function GateAxisValue({gate,position}:{gate:ReturnType<typeof indexFiveGateLevels>[number];position:number}){
+  const [height,setHeight]=useState(12);
+  return <View onLayout={event=>{
+    const next=event.nativeEvent.layout.height;
+    if(Math.abs(next-height)>.5)setHeight(next);
+  }} style={{position:'absolute',right:0,top:position-height/2,maxWidth:'100%'}}>
+    <IndexEditableText id={'market:index:gates:'+gate.id+':left'} label={gate.name+'圖表左側數值'}
+      kind="value" style={{fontSize:10,lineHeight:12,fontWeight:'800',color:gate.color,
+        includeFontPadding:false,textAlign:'right'}}>{format(gate.value)}</IndexEditableText>
+  </View>;
+}
 function PriceLine({values,color,levels,intraday,date}:{
   values:readonly IndexPoint[];color:string;levels:IndexThreeGates|null;intraday:boolean;date:string|null
 }){
@@ -50,22 +61,17 @@ function PriceLine({values,color,levels,intraday,date}:{
   }
   const timeLabels=['09:00','10:00','11:00','12:00','13:00','13:30'];
   return <View style={{gap:4}}>
-    <View style={{flexDirection:'row',gap:2}}>
+    <View style={{flexDirection:'row',gap:0}}>
       <View style={{width:93,height:300,position:'relative'}}>
-        {gates.map(g=><View key={g.id} style={{position:'absolute',left:0,right:0,top:Math.max(0,y(g.value)-12)}}>
-          <IndexEditableText id={'market:index:gates:'+g.id+':left'} label={g.name+'圖表左側數值'}
-            kind="value" style={{fontSize:9,lineHeight:11,fontWeight:'800',color:g.color}}>
-            {g.name+'\n'+format(g.value)}
-          </IndexEditableText>
-        </View>)}
+        {gates.map(g=><GateAxisValue key={g.id} gate={g} position={y(g.value)}/>)}
         {!gates.length?<Text style={{fontSize:9,color:theme.palette.textSecondary}}>指數點位</Text>:null}
       </View>
       <View style={{flex:1,minWidth:0}}>
         <IndexEditableChart>
-          <Svg width="100%" height={300} viewBox="0 0 320 300">
+          <Svg width="100%" height={300} viewBox="0 0 320 300" preserveAspectRatio="none">
             {[top,90,180,bottom].map(gy=><Line key={'grid'+gy} x1={5} x2={315} y1={gy} y2={gy}
               stroke={theme.palette.border} strokeWidth={0.8}/>)}
-            {gates.map(g=><Line key={g.id} x1={5} x2={315} y1={y(g.value)} y2={y(g.value)}
+            {gates.map(g=><Line key={g.id} x1={0} x2={320} y1={y(g.value)} y2={y(g.value)}
               stroke={g.color} strokeWidth={1.3} strokeDasharray="5 4"/>)}
             {segments.filter(segment=>segment.length>=2).map((segment,i)=>{
               const poly=segment.map(p=>x(p.at).toFixed(2)+','+y(p.value).toFixed(2)).join(' ');
