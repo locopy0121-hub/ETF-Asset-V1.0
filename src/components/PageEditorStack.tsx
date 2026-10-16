@@ -1,3 +1,5 @@
+import {supportsCardContentEditor} from '../editor/previewCoverage';
+import {FrameContentEditTarget} from './FrameContentEditTarget';
 import type {FinancialTone} from '../maintenance/workspaceModel';
 import {Children,cloneElement,isValidElement,type ComponentProps,type ReactElement,type ReactNode} from 'react';
 import { Pressable,StyleSheet,Text,type TextStyle,View } from 'react-native';
@@ -241,7 +243,10 @@ export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;fra
           <Text style={{fontSize:17}}>🔧</Text>
         </Pressable>:null}
       </View>,
-      children:<FrameEditingProvider frame={frame}>{decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
+      children:<FrameEditingProvider frame={frame}>
+        {supportsCardContentEditor(pageKey,item.key)?<FrameContentEditTarget page={pageKey} frameKey={item.key}>
+          {decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
+        </FrameContentEditTarget>:decorateContent(item.element.props.children,frame,'root',item.element.props.tone??'neutral')}
         {instances.length?<InstalledFrameComponents instances={instances} frame={frame} enabled={engineer.enabled}
           activeId={active&&session?.scope==='instance'?session.instanceId:undefined}
           onWrench={id=>open(id)}/>:null}

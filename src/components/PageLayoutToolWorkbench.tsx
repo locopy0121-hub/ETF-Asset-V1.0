@@ -35,7 +35,8 @@ import {useFinance} from '../finance/FinanceRuntime';
 import {deriveDailyPnlRecord} from '../finance/dailyPnlHistory';
 import {useMarketRuntime} from '../market/MarketRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
-import {resolvePreviewFrameKeys} from '../editor/previewCoverage';
+import {resolvePreviewFrameKeys,supportsCardContentEditor} from '../editor/previewCoverage';
+import {FrameContentEditTarget} from './FrameContentEditTarget';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
@@ -197,6 +198,8 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'market:index:title',kind,label:'加權指數標題'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='value')
       setSelection({id:'market:index:value',kind,label:'加權指數數值'});
+    else if(supportsCardContentEditor(pageKey,frame.key)&&kind==='card')
+      setSelection({id:'content:'+pageKey+':'+frame.key,kind,label:'內容卡片'});
     else if(holding&&kind==='card')setSelection({id:'card',kind,label:'行情卡片'});
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
@@ -260,8 +263,10 @@ export function PageLayoutToolWorkbench({
   const previewContentFor=(item:PageFrameDefinition)=>{
     if(pageKey==='ledger'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
-      // Ledger preview renders original real form/list contents, but never submits transactions.
-      return actual?<View pointerEvents="none">{actual.props.children}</View>:null;
+      // Ledger preview retains production values but disables all original actions.
+      return actual?(supportsCardContentEditor(pageKey,item.key)?
+        <FrameContentEditTarget page={pageKey} frameKey={item.key}>{actual.props.children}</FrameContentEditTarget>:
+        <View pointerEvents="none">{actual.props.children}</View>):null;
     }
     if(pageKey==='market'&&item.key==='market-watchlist')return <MarketEditableSurface
       id="market:watchlist:content" label="自選清單內容">
@@ -350,8 +355,10 @@ export function PageLayoutToolWorkbench({
       ]}/>
     </View>;
     const actual=previewElements?.find(view=>view.key===item.key)?.element;
-    // Use the actual mounted card children, but never enable its business actions in the preview.
-    return actual?<View pointerEvents="none">{actual.props.children}</View>:null;
+    // Reuse actual mounted contents, selecting only their appearance and never business actions.
+    return actual?(supportsCardContentEditor(pageKey,item.key)?
+      <FrameContentEditTarget page={pageKey} frameKey={item.key}>{actual.props.children}</FrameContentEditTarget>:
+      <View pointerEvents="none">{actual.props.children}</View>):null;
   };
   const renderActualFrame=(item:PageFrameDefinition)=>{
     const itemConfig=draft[item.key];
@@ -386,7 +393,8 @@ export function PageLayoutToolWorkbench({
     </View>;
   };
 
-  const base=selection.id.startsWith('market:')?
+  const base=selection.id.startsWith('content:')?{...TARGET_APPEARANCE,backgroundColor:colors.surface,borderColor:colors.border,borderRadius:10}:
+    selection.id.startsWith('market:')?
       {...TARGET_APPEARANCE,
         fontSize:selection.kind==='value'?22:selection.kind==='text'?14:12,
         lineHeight:selection.kind==='value'?30:20,
@@ -401,6 +409,7 @@ export function PageLayoutToolWorkbench({
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
+    if(supportsCardContentEditor(pageKey,frame.key))return ['frame','card'].includes(kind);
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(pageKey==='market')return ['market-index','market-watchlist','market-search','market-summary','market-chart','market-details'].includes(frame.key)
       ?(frame.key==='market-watchlist'?['frame','card'].includes(kind):['frame','card','text','value'].includes(kind)):kind==='frame';
@@ -530,7 +539,7 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}

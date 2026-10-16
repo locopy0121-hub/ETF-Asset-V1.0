@@ -11,3 +11,14 @@ export function resolvePreviewFrameKeys(page:MainPageKey,orderedKeys:readonly st
   const mounted=new Set(mountedKeys),builtIn=new Set(BUILT_IN[page]??[]);
   return orderedKeys.filter(key=>key==='page-header'||mounted.has(key)||builtIn.has(key));
 }
+
+/** Previously omitted content cards, all backed by live production surfaces. */
+const CONTENT_CARD_KEYS:Readonly<Partial<Record<MainPageKey,readonly string[]>>>={
+  home:['market-news'],
+  ledger:['quick-entry','ledger-list','monthly-summary'],
+  portfolio:['holding-dashboard','allocation'],
+  ai:['ai-news'],
+};
+export function supportsCardContentEditor(page:MainPageKey,key:string):boolean{
+  return CONTENT_CARD_KEYS[page]?.includes(key)??false;
+}

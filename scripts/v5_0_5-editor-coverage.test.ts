@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PAGE_FRAMES} from '../src/domain/frameRegistry';
-import {resolvePreviewFrameKeys} from '../src/editor/previewCoverage';
+import {resolvePreviewFrameKeys,supportsCardContentEditor} from '../src/editor/previewCoverage';
 const mounted={
   home:['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','market-news','holding-quotes'],
   ledger:['quick-entry','ledger-list','monthly-summary'],
@@ -18,6 +18,15 @@ for(const [page,keys] of Object.entries(mounted) as [keyof typeof mounted,readon
   assert.deepEqual(withoutMount,page==='home'?['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']:
     page==='portfolio'?['holding-view']:[],page+': unmounted card must not use fabricated preview');
 }
+for(const [page,keys] of Object.entries({
+  home:['market-news'],ledger:['quick-entry','ledger-list','monthly-summary'],
+  portfolio:['holding-dashboard','allocation'],ai:['ai-news'],
+} as const)){
+  for(const key of keys)assert.equal(supportsCardContentEditor(page as keyof typeof mounted,key),true,page+':'+key);
+}
+assert.equal(supportsCardContentEditor('settings','system'),false);
+assert.match(readFileSync('src/components/PageEditorStack.tsx','utf8'),/supportsCardContentEditor\(pageKey,item.key\)/);
+assert.match(readFileSync('src/components/PageLayoutToolWorkbench.tsx','utf8'),/FrameContentEditTarget/);
 assert.deepEqual(resolvePreviewFrameKeys('settings',PAGE_FRAMES.settings.map(f=>f.key),PAGE_FRAMES.settings.map(f=>f.key)),[],
   'system settings page remains protected');
 assert.ok(!resolvePreviewFrameKeys('portfolio',PAGE_FRAMES.portfolio.map(f=>f.key),mounted.portfolio).includes('calculator-modal'),
