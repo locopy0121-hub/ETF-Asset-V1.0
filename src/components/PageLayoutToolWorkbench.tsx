@@ -201,7 +201,7 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'market:index:title',kind,label:'加權指數標題'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='value')
       setSelection({id:'market:index:value',kind,label:'加權指數數值'});
-    else if(supportsCardContentEditor(pageKey,frame.key)&&kind!=='frame'){
+    else if(supportsCardContentEditor(pageKey,frame.key)){
       const target=kind==='card'?undefined:contentItems.find(item=>item.kind===kind);
       if(target){selectTarget(target);return;}
       if(kind==='card')setSelection({id:'content:'+pageKey+':'+frame.key,kind,label:'內容卡片'});
@@ -234,7 +234,7 @@ export function PageLayoutToolWorkbench({
   };
   const selectTarget=(target:LayoutSelectionTarget)=>{
     const kind:LayoutToolTargetKind=target.kind==='prefix'?'text':target.kind==='button'?'card':
-      target.kind==='card'||target.kind==='text'||target.kind==='value'||target.kind==='chart'||target.kind==='button'?
+      target.kind==='card'||target.kind==='text'||target.kind==='value'||target.kind==='chart'?
         target.kind:'text';
     setSelection({id:target.id,kind,label:target.label,...(target.width!==undefined?{width:target.width}:{}),...(target.height!==undefined?{height:target.height}:{})});
     setOpenGroup(target.id==='header:title'?'content':kind==='card'?'surface':kind==='text'||kind==='value'?'type':'layout');
