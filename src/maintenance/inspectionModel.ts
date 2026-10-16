@@ -108,7 +108,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(['original','yuan','thousand','ten-thousand','million'].includes(String(v.displayUnit)))o.displayUnit=v.displayUnit;
   if(typeof v.displayDigits==='number'&&Number.isFinite(v.displayDigits))o.displayDigits=Math.round(clamp(v.displayDigits,0,4,0));
   for(const field of ['labelText','captionText','prefixText'] as const)
-    if(typeof v[field]==='string')o[field]=v[field].slice(0,120);
+    if(typeof v[field]==='string')o[field]=v[field].slice(0,field==='labelText'?400:120);
   return o as TargetOverride;
 }
 export function normalizeTargetMap(raw:unknown):Record<string,Record<string,TargetOverride>> {

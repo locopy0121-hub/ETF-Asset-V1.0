@@ -5,6 +5,7 @@ import {calculateTargetProfitPurchase,calculateBreakEvenPurchase} from '../src/f
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../src/domain/uiModels';
 import {createInitialDisplayState,mergeDisplayState} from '../src/editor/editorModel';
 import {PAGE_FRAMES} from '../src/domain/frameRegistry';
+import {normalizeTargetOverride} from '../src/maintenance/inspectionModel';
 import {resolvePreviewFrameKeys,supportsCardContentEditor} from '../src/editor/previewCoverage';
 
 const tx=freezeTradeEntry({id:'goal1',date:'2026-10-01',kind:'buy',symbol:'00406A',
@@ -37,6 +38,7 @@ assert.equal(calculateTargetProfitPurchase({holding,buyPrice:9.30,exitPrice:10.5
 assert.equal(JSON.stringify(snapshot),original,'scenario cannot mutate official holdings');
 const newKeys=['previousClose','volume','quoteTime','shares','avgCost','weight',
   'cumulativeDividend','realizedPnl','pricePnl','comprehensivePnl'];
+assert.equal(normalizeTargetOverride({labelText:'說明'.repeat(110)}).labelText?.length,220,'long explanatory text must persist rather than silently truncating');
 const defaults=DEFAULT_HOLDING_WALL_CONFIG.fields;
 for(const key of newKeys){
   const field=defaults.find(row=>row.field===key);
