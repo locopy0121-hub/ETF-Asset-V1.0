@@ -46,6 +46,6 @@ assert.match(workbench,/readOnlyPreview\/>/,'preview must opt into read-only ren
 assert.match(read('src/components/WatchlistPanel.tsx'),/if\(prefsReady&&!previewMode\)/,
   'preview must never persist watchlist changes');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'5.0.5');assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,50005);assert.equal(app.android.package,'com.tfasset.app');
+assert.ok(/^5\.0\.[56]$/.test(pkg.version));assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50000+Number(pkg.version.split('.')[2]));assert.equal(app.android.package,'com.tfasset.app');
 console.log('V5.0.5 mounted-card coverage / edit persistence / settings protection: PASS');

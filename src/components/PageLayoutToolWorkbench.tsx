@@ -37,6 +37,7 @@ import {useMarketRuntime} from '../market/MarketRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {resolvePreviewFrameKeys,supportsCardContentEditor} from '../editor/previewCoverage';
 import {FrameContentEditTarget} from './FrameContentEditTarget';
+import {watchlistEditorCatalog,watchlistTargetByKind} from '../editor/watchlistEditorCatalog';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
@@ -170,8 +171,8 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'frame',kind:'frame',label:'框架'});
       setOpenGroup('size');return;
     }
-    else if(pageKey==='market'&&frame.key==='market-watchlist'&&kind==='card')
-      setSelection({id:'market:watchlist:content',kind,label:'自選清單內容'});
+    else if(pageKey==='market'&&frame.key==='market-watchlist'&&(kind==='card'||kind==='text'||kind==='value'))
+      selectTarget(watchlistTargetByKind(kind));
     else if(pageKey==='market'&&frame.key==='market-search'&&kind==='card')
       setSelection({id:'market:search:input',kind,label:'搜尋輸入框'});
     else if(pageKey==='market'&&frame.key==='market-search'&&kind==='text')
@@ -269,7 +270,7 @@ export function PageLayoutToolWorkbench({
         <View pointerEvents="none">{actual.props.children}</View>):null;
     }
     if(pageKey==='market'&&item.key==='market-watchlist')return <MarketEditableSurface
-      id="market:watchlist:content" label="自選清單內容">
+      id="market:watchlist:content" label="自選清單內容" nestedSelection="children">
       <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)} readOnlyPreview/>
     </MarketEditableSurface>;
     if(pageKey==='market'){
@@ -412,7 +413,7 @@ export function PageLayoutToolWorkbench({
     if(supportsCardContentEditor(pageKey,frame.key))return ['frame','card'].includes(kind);
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(pageKey==='market')return ['market-index','market-watchlist','market-search','market-summary','market-chart','market-details'].includes(frame.key)
-      ?(frame.key==='market-watchlist'?['frame','card'].includes(kind):['frame','card','text','value'].includes(kind)):kind==='frame';
+      ?['frame','card','text','value'].includes(kind):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -496,6 +497,18 @@ export function PageLayoutToolWorkbench({
 
     {holding?<QuickBarLayoutTools layout={quickBar} onChange={patchQuickBar}
       selectedKey={quickEditKey} onSelectKey={setQuickEditKey} open={openGroup} toggle={toggle}/>:null}
+
+    {pageKey==='market'&&frame.key==='market-watchlist'?<View>
+      <Text style={styles.title}>自選清單 · 內容項目</Text>
+      <Text style={styles.hint}>可直接點預覽中的個別按鈕、文字與數值；其他模式的卡片也可在此選取。只改外觀，不改排序動作與真實行情。</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+        {watchlistEditorCatalog.map(target=><Pressable key={target.id} accessibilityRole="button"
+          accessibilityLabel={'編輯'+target.label} onPress={()=>selectTarget(target)}
+          style={[styles.kindChip,selection.id===target.id&&styles.kindChipActive]}>
+          <Text style={[styles.kindText,selection.id===target.id&&styles.kindTextActive]}>{target.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+    </View>:null}
 
     {pageKey==='dividend'&&DIVIDEND_EDITOR_CATALOG[frame.key]?.length?<View>
       <Text style={styles.title}>股息內容編輯項目</Text>

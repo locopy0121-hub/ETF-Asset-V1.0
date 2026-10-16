@@ -22,9 +22,9 @@ function targetColor(color:string,opacity:number|undefined){
 /** Rendering follows the same persisted layoutTargets in the real page and editor.
  * Never accepts or edits a raw quote, original ledger or API response.
  */
-export function MarketEditableText({id,label,kind='text',tone='neutral',style,children}:{
+export function MarketEditableText({id,label,kind='text',tone='neutral',style,children,testID,numberOfLines}:{
   id:string;label:string;kind?:'text'|'value';tone?:Tone;
-  style?:StyleProp<TextStyle>;children:ReactNode;
+  style?:StyleProp<TextStyle>;children:ReactNode;testID?:string;numberOfLines?:number;
 }){
   const {runtime,override}=useMarketTarget(id);
   const colors=useSystemColors();
@@ -49,19 +49,20 @@ export function MarketEditableText({id,label,kind='text',tone='neutral',style,ch
     ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
     ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
   };
-  const child=<Text style={[StyleSheet.flatten(style),visual]}>{children}</Text>;
+  const child=<Text testID={testID} numberOfLines={numberOfLines} style={[StyleSheet.flatten(style),visual]}>{children}</Text>;
   if(!runtime.active)return child;
   const original=StyleSheet.flatten(style) as TextStyle|undefined;
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
-    onPress={()=>runtime.onSelect?.({id,kind,label})}
+    onPress={event=>{event.stopPropagation();runtime.onSelect?.({id,kind,label});}}
     style={[{alignSelf:original?.flex!==undefined?'auto':'flex-start',...(original?.flex!==undefined?{flex:original.flex}:{}),maxWidth:'100%',borderRadius:6},
       runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA'}:undefined]}>
     <View pointerEvents="none">{child}</View>
   </Pressable>;
 }
 
-export function MarketEditableSurface({id,label,style,children}:{
+export function MarketEditableSurface({id,label,style,children,nestedSelection}:{
   id:string;label:string;style?:StyleProp<ViewStyle>;children:ReactNode;
+  nestedSelection?:'children'|'card';
 }){
   const {runtime,override}=useMarketTarget(id);
   const visual:ViewStyle={
@@ -76,10 +77,13 @@ export function MarketEditableSurface({id,label,style,children}:{
   };
   const body=<View style={[style,visual]}>{children}</View>;
   if(!runtime.active)return body;
+  // The watchlist contains selectable children; unlike a leaf control, it must
+  // not blanket-disable touch handling below the container.
+  if(nestedSelection==='children')return <View pointerEvents="box-none">{body}</View>;
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
-    onPress={()=>runtime.onSelect?.({id,kind:'card',label})}
+    onPress={event=>{event.stopPropagation();runtime.onSelect?.({id,kind:'card',label});}}
     style={runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined}>
-    <View pointerEvents="none">{body}</View>
+    <View pointerEvents={nestedSelection==='card'?'auto':'none'}>{body}</View>
   </Pressable>;
 }
 

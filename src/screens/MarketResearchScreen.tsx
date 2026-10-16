@@ -177,7 +177,7 @@ export function MarketResearchScreen(){
       <MarketSearchContent catalog={market.catalog} catalogRefreshing={market.catalogRefreshing} selectedQuery={selectedSearchText} onSelect={selectSecurity}/>
     </FrameCard>},
     {key:'market-watchlist',element:<FrameCard title="自選清單">
-      <MarketEditableSurface id="market:watchlist:content" label="自選清單內容">
+      <MarketEditableSurface id="market:watchlist:content" label="自選清單內容" nestedSelection="children">
         <WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={selectSecurity}/>
       </MarketEditableSurface>
     </FrameCard>},
