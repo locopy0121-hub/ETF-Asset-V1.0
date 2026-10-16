@@ -40,7 +40,8 @@ for(const [page,path] of [['home','HomeScreen'],['portfolio','PortfolioScreen'],
 assert.match(read('src/screens/MarketResearchScreen.tsx'),/id="market:watchlist:content"/);
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
 assert.match(workbench,/resolvePreviewFrameKeys/);
-assert.match(workbench,/id:'market:watchlist:content'/);
+assert.match(read('src/editor/watchlistEditorCatalog.ts'),/id:'market:watchlist:content'/);
+assert.match(workbench,/watchlistTargetByKind\(kind\)/,'watchlist selection must use the registered content catalog');
 assert.match(workbench,/<WatchlistPanel heldSymbols=\{finance.holdings.map\(row=>row.symbol\)\}/);
 assert.match(workbench,/readOnlyPreview\/>/,'preview must opt into read-only rendering');
 assert.match(read('src/components/WatchlistPanel.tsx'),/if\(prefsReady&&!previewMode\)/,
