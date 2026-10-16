@@ -80,10 +80,15 @@ export function MarketEditableSurface({id,label,style,children,nestedSelection}:
   // The watchlist contains selectable children; unlike a leaf control, it must
   // not blanket-disable touch handling below the container.
   if(nestedSelection==='children')return <View pointerEvents="box-none">{body}</View>;
+  if(nestedSelection==='card')return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
+    onPress={event=>{event.stopPropagation();runtime.onSelect?.({id,kind:'card',label});}}
+    style={[style,visual,runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined]}>
+    <View>{children}</View>
+  </Pressable>;
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
     onPress={event=>{event.stopPropagation();runtime.onSelect?.({id,kind:'card',label});}}
     style={runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined}>
-    <View pointerEvents={nestedSelection==='card'?'auto':'none'}>{body}</View>
+    <View pointerEvents="none">{body}</View>
   </Pressable>;
 }
 

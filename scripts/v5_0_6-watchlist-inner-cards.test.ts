@@ -28,7 +28,11 @@ for(const id of ids.filter(id=>id.startsWith('market:watchlist:item:'))){
  assert.ok(component.includes(id),'missing real rendered editable item '+id);
 }
 assert.match(surface,/nestedSelection==='children'/,'container must not intercept internal target taps');
-assert.match(surface,/nestedSelection==='card'\?'auto':'none'/,'card inner items must receive taps');
+assert.match(surface,/if\(nestedSelection==='card'\)return <Pressable/,'card inner items must receive taps');
+assert.match(component,/nestedSelection="card" style=\{presentation\.mode==='wall'\?\{width:'48\.5%'/,
+  'wall layout must retain two full-size columns after adding the edit wrapper');
+assert.match(component,/presentation\.mode==='wall'\?\{width:'100%'/,
+  'card body must fill the existing column without shrinking the quote cards');
 assert.match(surface,/event\.stopPropagation\(\)/,'inner selection cannot bubble into outer card');
 assert.match(component,/previewMode\?contentBody:<MarketPreviewActionGuard>/,
  'preview must allow editing clicks but production actions must retain legacy guarding');

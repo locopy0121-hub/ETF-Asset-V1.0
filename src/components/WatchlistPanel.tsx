@@ -121,8 +121,9 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{
     </View>)}
    </View>
   </ScrollView>
- </View>:<View style={{flexDirection:presentation.mode==='wall'?'row':'column',flexWrap:presentation.mode==='wall'?'wrap':'nowrap',gap:8}}>{rows.map(row=><MarketEditableSurface key={row.symbol} id={'market:watchlist:card:'+presentation.mode} label={presentation.mode==='wall'?'行情牆卡片本體':presentation.mode==='chart'?'走勢圖卡本體':'精簡卡片本體'} nestedSelection="card">
- <View testID={'watchlist-card-'+row.symbol} style={{...(presentation.mode==='wall'?{width:'48.5%' as const}:{}),padding:wall?.padding??(presentation.mode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,backgroundColor:appearance(row).backgroundColor,borderRadius:wall?.cornerRadius??10,overflow:'hidden'}}>
+ </View>:<View style={{flexDirection:presentation.mode==='wall'?'row':'column',flexWrap:presentation.mode==='wall'?'wrap':'nowrap',gap:8}}>{rows.map(row=><MarketEditableSurface key={row.symbol} id={'market:watchlist:card:'+presentation.mode} label={presentation.mode==='wall'?'行情牆卡片本體':presentation.mode==='chart'?'走勢圖卡本體':'精簡卡片本體'}
+  nestedSelection="card" style={presentation.mode==='wall'?{width:'48.5%' as const}:undefined}>
+ <View testID={'watchlist-card-'+row.symbol} style={{...(presentation.mode==='wall'?{width:'100%' as const}:{}),padding:wall?.padding??(presentation.mode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,backgroundColor:appearance(row).backgroundColor,borderRadius:wall?.cornerRadius??10,overflow:'hidden'}}>
   {presentation.mode==='wall'&&!wall?<View pointerEvents="none" style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:tone(row.change),opacity:.1}}/>:null}
   {identity(row)}<View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'wrap'}}>{price(row)}{delta(row)}</View>
   <View style={{flexDirection:'row',flexWrap:'wrap',gap:5}}>
