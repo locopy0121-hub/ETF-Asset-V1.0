@@ -78,11 +78,11 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,pr
   <Pressable accessibilityRole="button" accessibilityLabel={'開啟行情 '+row.symbol+' '+row.name} disabled={!onSelect||previewMode} onPress={()=>onSelect?.(row.symbol,row.name)} style={{flex:1,minHeight:40,justifyContent:'center'}}>
     <MarketEditableText id="market:watchlist:symbol" label="自選代號">
       <Text testID={'watchlist-symbol-'+row.symbol} numberOfLines={fixed?1:undefined}
-        style={[{...fieldStyle(row,'symbol',14),fontWeight:'700'},itemVisual('symbol',row)]}>{row.symbol}</Text>
+        style={{...fieldStyle(row,'symbol',14),fontWeight:'700',...itemVisual('symbol',row)}}>{row.symbol}</Text>
     </MarketEditableText>
     <MarketEditableText id="market:watchlist:name" label="自選名稱">
       <Text testID={'watchlist-name-'+row.symbol} numberOfLines={fixed?1:undefined}
-        style={[fieldStyle(row,'name',12),itemVisual('name',row)]}>{row.name}</Text>
+        style={{...fieldStyle(row,'name',12),...itemVisual('name',row)}}>{row.name}</Text>
     </MarketEditableText>
   </Pressable>
   {heldSymbols.includes(row.symbol)?<Text style={{fontSize:10,color:theme.palette.primary,borderWidth:1,borderColor:theme.palette.primary,padding:3,borderRadius:4}}>持股</Text>:null}
@@ -90,10 +90,10 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,pr
  </View>;
  const price=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:price" label="自選即時價格" kind="value">
   <Text testID={'watchlist-price-'+row.symbol}
-    style={[{...fieldStyle(row,'price',presentation.mode==='wall'?25:20),fontWeight:'800',fontVariant:['tabular-nums']},itemVisual('price',row)]}>{number(row.price)}</Text>
+    style={{...fieldStyle(row,'price',presentation.mode==='wall'?25:20),fontWeight:'800',fontVariant:['tabular-nums'],...itemVisual('price',row)}}>{number(row.price)}</Text>
  </MarketEditableText>;
  const delta=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:change" label="自選漲跌幅" kind="value">
-  <Text style={[{...fieldStyle(row,'change',14),fontWeight:'700',fontVariant:['tabular-nums']},itemVisual('change',row)]}>{row.change===null?'漲跌待取得':<>{number(row.change,true)}  <Text style={fieldStyle(row,'changePercent',14)}>({number(row.changePercent,true)}%)</Text></>}</Text>
+  <Text style={{...fieldStyle(row,'change',14),fontWeight:'700',fontVariant:['tabular-nums'],...itemVisual('change',row)}}>{row.change===null?'漲跌待取得':<>{number(row.change,true)}  <Text style={fieldStyle(row,'changePercent',14)}>({number(row.changePercent,true)}%)</Text></>}</Text>
  </MarketEditableText>;
  const source=(row:typeof rows[number])=>{const quote=bySymbol.get(row.symbol);return <Text testID={'watchlist-source-'+row.symbol} style={{fontSize:10,color:appearance(row).secondaryTextColor}}>來源 {quote?.source??'待取得'}｜{row.updatedAt?new Date(row.updatedAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'尚無行情時間'}{row.valuationStatus!=='current_session'?' · 參考行情':''}</Text>;};
  const remove=(row:typeof rows[number])=><Pressable accessibilityRole="button" accessibilityLabel={'移除自選 '+row.symbol} disabled={previewMode} onPress={()=>list.remove(row.symbol)} style={{minHeight:40,justifyContent:'center',alignSelf:'flex-end',paddingHorizontal:8}}><Text style={{color:appearance(row).secondaryTextColor,fontSize:11}}>移除</Text></Pressable>;
