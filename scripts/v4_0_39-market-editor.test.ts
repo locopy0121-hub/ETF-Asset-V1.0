@@ -36,7 +36,8 @@ assert.match(workbench,/pageKey==='dividend'\|\|pageKey==='portfolio'\|\|pageKey
 assert.match(workbench,/selection\.id\.startsWith\('market:(?:index:)?'\)/);
 assert.match(workbench,/id:'market:index:value'/);
 assert.match(workbench,/id:'market:index:chart'/);
-assert.match(workbench,/selection\.id\.startsWith\('market:(?:index:)?'\)\)/);
+assert.match(workbench,/selection\.id\.startsWith\('market:'\)\|\|selection\.id\.startsWith\('content:'\)/,
+  'existing market edit targets and new cross-page card targets must both reach styling tools');
 for(const id of ['title','subtitle','value','change','status']){
   assert.match(taiex,new RegExp('id="market:index:'+id+'"'));
 }
