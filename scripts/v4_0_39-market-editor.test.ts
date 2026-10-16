@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {resolvePreviewFrameKeys} from '../src/editor/previewCoverage';
+import {PAGE_FRAMES} from '../src/domain/frameRegistry';
 
 const read=(path:string)=>readFileSync(path,'utf8');
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
@@ -19,11 +21,12 @@ assert.ok(settings.includes("const BUILD='"+build+"'"));
 // A real frame from MarketResearchScreen must appear in the independent preview.
 // The background page-header artwork must not replace the selected index card.
 assert.match(screen,/previewElements=\{frameData\}/);
-assert.match(workbench,/actualMarketPreviewKeys=new Set/);
+assert.match(workbench,/resolvePreviewFrameKeys\(pageKey,orderedFrames\.map/);
 for(const key of ['market-index','market-search','market-summary','market-chart','market-details']){
   assert.ok(workbench.includes("'"+key+"'"),'market frame missing from real preview: '+key);
 }
-assert.match(workbench,/page==='market'\?actualMarketPreviewKeys\.has\(key\)/);
+for(const key of ['market-index','market-search','market-watchlist','market-summary','market-chart','market-details'])
+  assert.ok(resolvePreviewFrameKeys('market',PAGE_FRAMES.market.map(frame=>frame.key),[key]).includes(key),'market mounted preview missing '+key);
 assert.match(workbench,/pageKey==='market'\)\{/);
 assert.match(workbench,/actual\.props\.children/);
 assert.match(workbench,/pageKey==='dividend'\|\|pageKey==='portfolio'\|\|pageKey==='market'\|\|pageKey==='ledger'\|\|\(pageKey==='home'&&frameKey==='holding-quotes'\)/,

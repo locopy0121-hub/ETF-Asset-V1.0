@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {PAGE_FRAMES} from '../src/domain/frameRegistry';
+import {resolvePreviewFrameKeys} from '../src/editor/previewCoverage';
 import {mergeEditorState,normalizeEditorConfig} from '../src/editor/editorModel';
 import {readableDividendSummaryMetric,dividendSummaryMetricMinHeight,
   DIVIDEND_SUMMARY_METRIC_MIN_WIDTH,DIVIDEND_SUMMARY_METRIC_MIN_HEIGHT} from '../src/dividend/dividendSummaryVisual';
@@ -34,7 +35,9 @@ assert.match(dividend,/onAsk={askDividend} onAction={runAiAction}/,'existing AI 
 assert.match(dividend,/aiSettings.prefs.ai.enabled\?\[/,'disabled AI should not show an empty card in production');
 assert.match(dividend,/summaryMetricCell:\{flexGrow:1,flexBasis:'46%',minWidth:0,minHeight:0/);
 assert.match(dividend,/<EqualGrid pageKey="dividend" frameKey="dividend-summary">/);
-assert.match(editor,/actualDividendPreviewKeys=new Set\(\['dividend-summary','dividend-ai'/);
+assert.match(editor,/resolvePreviewFrameKeys\(pageKey,orderedFrames\.map/);
+for(const key of ['dividend-summary','dividend-ai','dividend-calendar','dividend-agenda','dividend-list','annual-trend'])
+  assert.ok(resolvePreviewFrameKeys('dividend',PAGE_FRAMES.dividend.map(frame=>frame.key),[key]).includes(key),key+' actual preview missing');
 assert.match(editor,/showTitle={!?\(pageKey==='dividend'&&item.key==='dividend-ai'\)}/);
 assert.doesNotMatch(editor,/minCardWidth={dividendSummaryCard/,'user sizes must not be clamped by card tools');
 assert.doesNotMatch(editor,/minCardHeight={dividendSummaryCard/,'user heights must not be clamped by card tools');

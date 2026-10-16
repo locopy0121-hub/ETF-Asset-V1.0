@@ -14,7 +14,10 @@ assert.match(dividend,/const dividendPreviewElements\s*=\s*\[/);
 assert.match(dividend,/<PageEditorStack pageKey="dividend" frames=\{dividendPreviewElements\}/);
 assert.match(dividend,/<PageFrameSettingsModal previewElements=\{dividendPreviewElements\}/);
 assert.match(modal,/previewElements=\{previewElements\}/);
-assert.match(workbench,/actualDividendPreviewKeys=new Set\(\['dividend-summary','dividend-ai','dividend-calendar','dividend-agenda','dividend-list','annual-trend'\]\)/);
+assert.match(workbench,/resolvePreviewFrameKeys\(pageKey,orderedFrames\.map/);
+assert.match(read('src/editor/previewCoverage.ts'),/mounted\.has\(key\)/);
+for(const key of ['dividend-summary','dividend-ai','dividend-calendar','dividend-agenda','dividend-list','annual-trend'])
+  assert.match(dividend,new RegExp("key:'"+key+"'"));
 assert.match(dividend,/\{key:'dividend-ai',element:/,'AI must be a separately registered visual frame');
 assert.match(workbench,/selectDividendPreview\(actual\.props\.children/);
 assert.match(workbench,/selectDividendPreview\(dividendAction/);

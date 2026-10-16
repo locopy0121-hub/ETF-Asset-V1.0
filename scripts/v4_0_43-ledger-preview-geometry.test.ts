@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {normalizeFrameEffects,DEFAULT_FRAME_EFFECTS} from '../src/maintenance/frameEffects';
 import {normalizeEditorDimension} from '../src/editor/dimensionPolicy';
+import {resolvePreviewFrameKeys} from '../src/editor/previewCoverage';
+import {PAGE_FRAMES} from '../src/domain/frameRegistry';
 const read=(p:string)=>readFileSync(p,'utf8');
 const ledger=read('src/screens/LedgerScreen.tsx');
 const workbench=read('src/components/PageLayoutToolWorkbench.tsx');
@@ -20,8 +22,9 @@ assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.ver
 assert.match(ledger,/const ledgerFrameData=\[/);
 assert.match(ledger,/<PageEditorStack pageKey="ledger" frames=\{ledgerFrameData\}\/>/);
 assert.match(ledger,/previewElements=\{ledgerFrameData\}/);
-assert.match(workbench,/actualLedgerPreviewKeys=new Set/);
-assert.match(workbench,/page==='ledger'\?actualLedgerPreviewKeys\.has\(key\)/);
+assert.match(workbench,/resolvePreviewFrameKeys\(pageKey,orderedFrames\.map/);
+for(const key of ['quick-entry','ledger-list','monthly-summary'])
+  assert.ok(resolvePreviewFrameKeys('ledger',PAGE_FRAMES.ledger.map(frame=>frame.key),[key]).includes(key),'ledger mounted preview missing '+key);
 assert.match(workbench,/if\(pageKey==='ledger'\)\{/);
 assert.match(workbench,/return actual\?<View pointerEvents="none">\{actual\.props\.children\}<\/View>:null/);
 assert.match(workbench,/pageKey==='market'\|\|pageKey==='ledger'\|\|\(pageKey==='home'&&frameKey==='holding-quotes'\)/,
