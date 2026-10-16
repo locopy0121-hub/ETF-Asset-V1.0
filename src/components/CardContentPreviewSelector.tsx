@@ -7,7 +7,7 @@ import {MetricTile} from './MetricTile';
 import {AiQuestionBox} from './AiQuestionBox';
 type Item=LayoutSelectionTarget;
 type P={children?:ReactNode;editorId?:string;editorReadOnly?:boolean;editorSkip?:boolean;label?:string;
-  accessibilityLabel?:string;style?:unknown;onPress?:()=>void;onLongPress?:()=>void;disabled?:boolean;
+  accessibilityLabel?:string;style?:unknown;onPress?:(()=>void)|undefined;onLongPress?:(()=>void)|undefined;disabled?:boolean;
   editable?:boolean;showSoftInputOnFocus?:boolean;editorStyle?:TargetOverride};
 type E=ReactElement<P>;
 const hash=(value:string)=>{let h=2166136261;for(const c of value)h=Math.imul(h^c.charCodeAt(0),16777619);return (h>>>0).toString(36);};
