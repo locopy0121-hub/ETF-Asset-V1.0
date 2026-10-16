@@ -13,11 +13,15 @@ import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KE
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {usePageEditor} from '../editor/pageEditor';
+import type {TargetOverride} from '../maintenance/inspectionModel';
 import {MarketPreviewActionGuard,MarketEditableText} from './MarketEditableContent';
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
-export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];readOnlyPreview?:boolean}){
+export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,previewOverrides}:{
+  onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];
+  readOnlyPreview?:boolean;previewOverrides?:Readonly<Record<string,TargetOverride>>;
+}){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
  const previewMode=readOnlyPreview;
  // Subscribe to the existing persisted home-wall appearance, without writing it.
@@ -57,7 +61,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{
  };
  const tone=(change:number|null)=>change===null?secondary:change>0?colors.gain:change<0?colors.loss:theme.palette.warning;
  const itemVisual=(field:string,row:typeof rows[number])=>{
-  const override=marketEditor.displayConfig.layoutTargets?.['market:watchlist:'+field];
+  const override=(previewMode?previewOverrides?.['market:watchlist:'+field]:undefined)??marketEditor.displayConfig.layoutTargets?.['market:watchlist:'+field];
   const profit=override?.textProfitColor===true;
   const toneColor=row.change===null?theme.palette.textSecondary:row.change>0?colors.gain:row.change<0?colors.loss:colors.flat;
   return {
