@@ -17,11 +17,11 @@ assert.match(chart,/ref=\{scrollViewRef\} horizontal/,'shared historical chart s
 assert.match(chart,/onContentSizeChange=\{\(\)=>\{/,'scroll to most recent chart data only on dataset change');
 assert.match(chart,/autoScrollDataset\.current!==datasetId/,'do not yank chart back to latest on touch/selection re-render');
 assert.match(chart,/scrollViewRef\.current\?\.scrollToEnd\(\{animated:false\}\)/);
-assert.ok(chart.indexOf('<View style={styles.axis}>')<chart.indexOf('<View style={styles.viewport}'),'baseline axis must be left of K chart');
+assert.ok(chart.indexOf('<View style={[styles.axis,showThreeGates')<chart.indexOf('<View style={styles.viewport}'),'baseline axis must be left of K chart');
 assert.ok(chart.indexOf('<View style={styles.actualAxis}>')>chart.indexOf('</ScrollView>'),'selected actual values must be right of chart');
 assert.match(chart,/costAxisLabel/,'cost baseline label stays pinned on left while chart pans');
 assert.match(chart,/styles\.crosshairPrice/,'selected close label remains pinned to actual-value side');
-const baselineBlock=chart.slice(chart.indexOf('<View style={styles.axis}>'),chart.indexOf('<View style={styles.viewport}'));
+const baselineBlock=chart.slice(chart.indexOf('<View style={[styles.axis,showThreeGates'),chart.indexOf('<View style={styles.viewport}'));
 assert.doesNotMatch(baselineBlock,/crosshairPrice/,'do not put actual value inside baseline axis');
 assert.match(chart,/選取值/);
 assert.match(chart,/左右滑動可查看全部歷史 K 棒/);
