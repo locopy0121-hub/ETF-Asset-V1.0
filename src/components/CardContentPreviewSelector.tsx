@@ -20,6 +20,22 @@ const textCopy=(node:ReactNode):string=>{
   }
   return '';
 };
+/** A copy target is editable only when every leaf is literal text, including
+ * nested native Text spans. Numbers and other dynamic children stay read-only. */
+const staticTextCopy=(node:ReactNode):string|null=>{
+  if(typeof node==='string')return node;
+  if(Array.isArray(node)){
+    let copy='';
+    for(const part of node){const value=staticTextCopy(part);if(value===null)return null;copy+=value;}
+    return copy;
+  }
+  if(isValidElement(node)){
+    const element=node as E;
+    if(element.type===EditableText||element.type===NativeText)
+      return staticTextCopy(element.props.children);
+  }
+  return null;
+};
 const hash=(value:string)=>{let h=2166136261;for(const c of value)h=Math.imul(h^c.charCodeAt(0),16777619);return (h>>>0).toString(36);};
 /** Match persisted IDs chosen by the production PageEditorStack / EditableNative renderer. */
 export function contentItem(element:E,path:string):Item|null{
@@ -27,9 +43,12 @@ export function contentItem(element:E,path:string):Item|null{
   if(element.type===MetricTile&&typeof p.label==='string')return {id:'metric:'+p.label,kind:'card',label:'指標 · '+p.label};
   if(element.type===EditableText||element.type===NativeText){
     const value=textCopy(p.children)||null;
-    if(value&&value.trim().length>=2)return {id:'text:'+path,
-      kind:p.editorReadOnly===true||/^[+-]?[\d,.]+%?$/.test(value.trim())?'value':'text',
-      label:(p.editorReadOnly===true?'數值':'文字')+' · '+value.slice(0,22)};
+    if(value&&value.trim().length>=2){
+      const protectedValue=p.editorReadOnly===true||staticTextCopy(p.children)===null||
+        /^[+-]?[\d,.]+%?$/.test(value.trim());
+      return {id:'text:'+path,kind:protectedValue?'value':'text',
+        label:(protectedValue?'數值':'文字')+' · '+value.slice(0,22)};
+    }
     if(p.editorId)return {id:p.editorReadOnly===false?p.editorId+':'+hash(plainText(p.children)):p.editorId,
       kind:p.editorReadOnly===false?'text':'value',label:'欄位 · '+p.editorId.split(':').slice(-2).join(' · ')};
   }
@@ -59,7 +78,7 @@ export function readCardStaticText(content:ReactNode,id:string,path='root'):stri
       const element=child as E,next=(at+'/'+(child.key!==null?String(child.key):String(index))).slice(0,120);
       const item=contentItem(element,next);
       if(item?.id===id&&item.kind==='text'&&element.props.editorReadOnly!==true)
-        found=textCopy(element.props.children)||null;
+        found=staticTextCopy(element.props.children);
       if(element.props.children!==undefined)visit(element.props.children,next);
     });
   };
@@ -101,7 +120,7 @@ export function applyCardContentAppearance(content:ReactNode,overrides:Readonly<
       ...(override?{style:[p.style,isText?typography(override):surfaceVisual(override)]}:{}),
       ...(override&&isMetric?{editorStyle:{...p.editorStyle,...override}}:{}),
       ...(override&&isText&&item?.kind==='text'&&p.editorReadOnly!==true&&
-         typeof p.children==='string'&&override.labelText?{children:override.labelText}:{})
+         staticTextCopy(p.children)!==null&&override.labelText?{children:override.labelText}:{})
     };
     const children=contentProps.children!==undefined?contentProps.children:
       p.children!==undefined?(isValidElement(p.children)||Array.isArray(p.children)?
@@ -122,7 +141,7 @@ export function selectCardContentPreview(node:ReactNode,onSelect:(item:Item)=>vo
       const isText=element.type===EditableText||element.type===NativeText;
       const isInput=element.type===EditableInput||element.type===NativeInput;
       const childProps:P={...(isText?{editorSkip:true,style:[p.style,typography(overrides[target.id])],
-        ...(target.kind==='text'&&p.editorReadOnly!==true&&typeof p.children==='string'&&overrides[target.id]?.labelText?
+        ...(target.kind==='text'&&p.editorReadOnly!==true&&staticTextCopy(p.children)!==null&&overrides[target.id]?.labelText?
           {children:overrides[target.id]!.labelText}:{})}:
         isInput?{editorSkip:true,editable:false,showSoftInputOnFocus:false}:
         {editorSkip:true,disabled:true,onPress:undefined,onLongPress:undefined}),

@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.11",
+  "version": "5.0.12",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_11 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_12 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -368,7 +368,8 @@
     "test:v5_0_9-three-gates": "tsx scripts/v5_0_9-three-gates.test.ts",
     "test:v5_0_9": "npm run test:v5_0_8 && npm run test:v5_0_9-three-gates",
     "test:v5_0_10": "npm run test:v5_0_9",
-    "test:v5_0_11": "npm run test:v5_0_10 && node scripts/v5_0_11-editor-preview-safety.test.cjs"
+    "test:v5_0_11": "npm run test:v5_0_10 && node scripts/v5_0_11-editor-preview-safety.test.cjs",
+    "test:v5_0_12": "npm run test:v5_0_11 && node scripts/v5_0_12-nested-card-labels.test.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
