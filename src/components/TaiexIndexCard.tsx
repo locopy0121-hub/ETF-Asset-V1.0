@@ -74,7 +74,7 @@ function PriceLine({values,color,levels,intraday}:{values:readonly IndexPoint[];
 /** Named targets share the page editor's persisted visual overrides.
  * Values remain read-only; editing only changes appearance, never market data.
  */
-function IndexEditableText({id,label,kind,style,children,profitTone='neutral',editableContent=false'}:{
+function IndexEditableText({id,label,kind,style,children,profitTone='neutral',editableContent=false}:{
   id:string;label:string;kind:'text'|'value';style:StyleProp<TextStyle>;children:ReactNode;
   profitTone?:'gain'|'loss'|'neutral';editableContent?:boolean;
 }){
