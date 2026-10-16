@@ -8,17 +8,19 @@ import {frameResizeDimensions} from '../maintenance/frameResizeGesture';
 import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
+import type {TargetOverride} from '../maintenance/inspectionModel';
 
 export type FrameCardProps=PropsWithChildren<{
   fill?:boolean;showTitle?:boolean;title:string;tone?:FinancialTone;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
   editorStyle?:Partial<FrameEditorConfig>;
+  titleVisual?:TargetOverride;
   workActive?:boolean;workHidden?:boolean;
   onResizePreview?:(size:{width:number;height:number})=>void;
   onMeasuredSize?:(size:{width:number;height:number})=>void;
 }>;
 
 export function FrameCard({title,action,children,layout='standard',appearance='theme',
-  editorStyle,fill=false,showTitle=true,tone='neutral',workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
+  editorStyle,titleVisual,fill=false,showTitle=true,tone='neutral',workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
@@ -113,6 +115,10 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
   const titleMarquee=Boolean(editorStyle&&fx.titleMarqueeEnabled);
   const titleStyle=[
     styles.title,{color:theme.palette.text},
+    titleVisual&&{color:titleVisual.textColor,fontSize:titleVisual.fontSize,fontWeight:titleVisual.fontWeight,
+      ...(titleVisual.letterSpacing!==undefined?{letterSpacing:titleVisual.letterSpacing}:{}),
+      ...(titleVisual.lineHeight!==undefined&&titleVisual.lineHeight>0?{lineHeight:titleVisual.lineHeight}:{}),
+    },
     layout==='dense'&&styles.titleDense,
     responsiveDensity==='dense'&&layout!=='dense'&&styles.titleDense,
     editorStyle&&{

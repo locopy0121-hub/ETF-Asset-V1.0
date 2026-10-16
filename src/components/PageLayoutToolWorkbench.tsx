@@ -37,7 +37,7 @@ import {useMarketRuntime} from '../market/MarketRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {resolvePreviewFrameKeys,supportsCardContentEditor} from '../editor/previewCoverage';
 import {FrameContentEditTarget} from './FrameContentEditTarget';
-import {listCardContentItems,selectCardContentPreview} from './CardContentPreviewSelector';
+import {listCardContentItems,selectCardContentPreview,readCardStaticText} from './CardContentPreviewSelector';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
@@ -114,7 +114,8 @@ export function PageLayoutToolWorkbench({
   const frameConfig=frame?draft[frame.key]:undefined;
   if(!frame||!frameConfig)return null;
   const contentItems=supportsCardContentEditor(pageKey,frame.key)?
-    listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children):[];
+    [{id:'frame-title:'+frame.key,kind:'text' as const,label:'卡片標題 · '+frame.title},
+      ...listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children,'root/'+frame.key)]:[];
 
   const profile=layoutToolProfile(pageKey,frame.key);
   const holding=(pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view');
@@ -278,7 +279,7 @@ export function PageLayoutToolWorkbench({
         <FrameContentEditTarget page={pageKey} frameKey={item.key}>
           {selectCardContentPreview(actual.props.children,
             target=>{setFrameKey(item.key);selectTarget(target);},
-            frameKey===item.key?selection.id:null,targets)}
+            frameKey===item.key?selection.id:null,targets,'root/'+item.key)}
         </FrameContentEditTarget>:
         <View pointerEvents="none">{actual.props.children}</View>):null;
     }
@@ -378,7 +379,7 @@ export function PageLayoutToolWorkbench({
       <FrameContentEditTarget page={pageKey} frameKey={item.key}>
         {selectCardContentPreview(actual.props.children,
           target=>{setFrameKey(item.key);selectTarget(target);},
-          frameKey===item.key?selection.id:null,targets)}
+          frameKey===item.key?selection.id:null,targets,'root/'+item.key)}
       </FrameContentEditTarget>:
       <View pointerEvents="none">{actual.props.children}</View>):null;
   };
@@ -389,7 +390,7 @@ export function PageLayoutToolWorkbench({
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
     const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
-    const frameContent=<FrameCard title={item.title} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
+    const frameContent=<FrameCard title={item.title} titleVisual={targets['frame-title:'+item.key]} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
       tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
       onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
         previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>
@@ -529,6 +530,7 @@ export function PageLayoutToolWorkbench({
       </ScrollView>
     </View>:null}
     {supportsCardContentEditor(pageKey,frame.key)?<View>
+      <Text style={styles.hint}>框架說明：{frame.description}</Text>
       <Text style={styles.title}>卡片內容編輯項目 · {contentItems.length} 項</Text>
       <Text style={styles.hint}>點上方內容，或從清單選取文字、數值、按鈕與指標；不會修改原始行情與帳務。</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
@@ -592,7 +594,13 @@ export function PageLayoutToolWorkbench({
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
-        {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:{})}/>:null}
+        {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:
+          contentItems.some(item=>item.id===selection.id)&&selection.kind==='text'?{
+            contentValue:selection.id.startsWith('frame-title:')?frame.title:
+              readCardStaticText(previewElements?.find(item=>item.key===frame.key)?.element.props.children,
+                selection.id,'root/'+frame.key)??undefined,
+            onContentChange:(labelText:string)=>patchTarget(selection.id,{labelText}),
+          }: {})}/>:null}
 
     {!holding&&selection.kind==='layout'&&pageKey==='home'?
       <DashboardLayoutTools frameKey={frame.key} value={dashboard} open={openGroup} toggle={toggle} onChange={patchDashboard}/>:null}

@@ -10,13 +10,23 @@ type P={children?:ReactNode;editorId?:string;editorReadOnly?:boolean;editorSkip?
   accessibilityLabel?:string;style?:unknown;onPress?:(()=>void)|undefined;onLongPress?:(()=>void)|undefined;disabled?:boolean;
   editable?:boolean;showSoftInputOnFocus?:boolean;editorStyle?:TargetOverride};
 type E=ReactElement<P>;
+/** Only collect display copy from native text descendants; do not infer hidden business data. */
+const textCopy=(node:ReactNode):string=>{
+  if(typeof node==='string'||typeof node==='number')return String(node);
+  if(Array.isArray(node))return node.map(textCopy).join('');
+  if(isValidElement(node)){
+    const element=node as E;
+    return (element.type===EditableText||element.type===NativeText)?textCopy(element.props.children):'';
+  }
+  return '';
+};
 const hash=(value:string)=>{let h=2166136261;for(const c of value)h=Math.imul(h^c.charCodeAt(0),16777619);return (h>>>0).toString(36);};
 /** Match persisted IDs chosen by the production PageEditorStack / EditableNative renderer. */
 export function contentItem(element:E,path:string):Item|null{
   const p=element.props;
   if(element.type===MetricTile&&typeof p.label==='string')return {id:'metric:'+p.label,kind:'card',label:'指標 · '+p.label};
   if(element.type===EditableText||element.type===NativeText){
-    const value=typeof p.children==='string'||typeof p.children==='number'?String(p.children):null;
+    const value=textCopy(p.children)||null;
     if(value&&value.trim().length>=2)return {id:'text:'+path,
       kind:p.editorReadOnly===true||/^[+-]?[\d,.]+%?$/.test(value.trim())?'value':'text',
       label:(p.editorReadOnly===true?'數值':'文字')+' · '+value.slice(0,22)};
@@ -36,10 +46,25 @@ function traverse(node:ReactNode,path:string,visit:(item:Item)=>void):void{
     else if(el.props.children!==undefined)traverse(el.props.children,next,visit);
   });
 }
-export function listCardContentItems(content:ReactNode):Item[]{
+export function listCardContentItems(content:ReactNode,path='root'):Item[]{
   const out:Item[]=[],seen=new Set<string>();
-  traverse(content,'root',item=>{if(!seen.has(item.id)){seen.add(item.id);out.push(item);}});
+  traverse(content,path,item=>{if(!seen.has(item.id)){seen.add(item.id);out.push(item);}});
   return out;
+}
+export function readCardStaticText(content:ReactNode,id:string,path='root'):string|null{
+  let found:string|null=null;
+  const visit=(node:ReactNode,at:string):void=>{
+    Children.forEach(node,(child,index)=>{
+      if(!isValidElement(child))return;
+      const element=child as E,next=(at+'/'+(child.key!==null?String(child.key):String(index))).slice(0,120);
+      const item=contentItem(element,next);
+      if(item?.id===id&&item.kind==='text'&&element.props.editorReadOnly!==true)
+        found=textCopy(element.props.children)||null;
+      if(element.props.children!==undefined)visit(element.props.children,next);
+    });
+  };
+  visit(content,path);
+  return found;
 }
 const typography=(o:TargetOverride|undefined):TextStyle=>({
   ...(o?.fontSize!==undefined?{fontSize:o.fontSize}:{}),
@@ -50,7 +75,40 @@ const typography=(o:TargetOverride|undefined):TextStyle=>({
   ...(o?.letterSpacing!==undefined?{letterSpacing:o.letterSpacing}:{}),
   ...(o?.lineHeight!==undefined&&o.lineHeight>0?{lineHeight:o.lineHeight}:{}),
   ...(o?.align!==undefined?{textAlign:o.align}:{}),
+  ...(o?.textOpacity!==undefined?{opacity:o.textOpacity}:{}),
 });
+const surfaceVisual=(o:TargetOverride|undefined)=>({
+  ...(o?.backgroundColor!==undefined?{backgroundColor:o.backgroundColor}:{}),
+  ...(o?.borderColor!==undefined?{borderColor:o.borderColor}:{}),
+  ...(o?.borderWidth!==undefined?{borderWidth:o.borderWidth}:{}),
+  ...(o?.borderRadius!==undefined?{borderRadius:o.borderRadius}:{}),
+  ...(o?.padding!==undefined?{padding:o.padding}:{}),
+  ...(o?.width!==undefined?{width:o.width}:{}),
+  ...(o?.height!==undefined?{height:o.height}:{}),
+  ...(o?.opacity!==undefined?{opacity:o.opacity}:{}),
+});
+/** Actual screen consumes the same saved target IDs as the editor preview.
+ * Leaf values and action handlers are never rewritten. */
+export function applyCardContentAppearance(content:ReactNode,overrides:Readonly<Record<string,TargetOverride>>,path='root'):ReactNode{
+  return Children.map(content,(child,index)=>{
+    if(!isValidElement(child))return child;
+    const element=child as E,p=element.props;
+    const next=(path+'/'+(child.key!==null?String(child.key):String(index))).slice(0,120);
+    const item=contentItem(element,next),override=item?overrides[item.id]:undefined;
+    const isText=element.type===EditableText||element.type===NativeText;
+    const isMetric=element.type===MetricTile;
+    const contentProps:P={
+      ...(override?{style:[p.style,isText?typography(override):surfaceVisual(override)]}:{}),
+      ...(override&&isMetric?{editorStyle:{...p.editorStyle,...override}}:{}),
+      ...(override&&isText&&item?.kind==='text'&&p.editorReadOnly!==true&&
+         typeof p.children==='string'&&override.labelText?{children:override.labelText}:{})
+    };
+    const children=contentProps.children!==undefined?contentProps.children:
+      p.children!==undefined?applyCardContentAppearance(p.children,overrides,next):undefined;
+    return cloneElement(element,{...contentProps,...(children!==undefined?{children}:{})});
+  });
+}
+
 /** Select inside the real JSX tree, but never invoke a form, refresh, navigation or financial action. */
 export function selectCardContentPreview(node:ReactNode,onSelect:(item:Item)=>void,
   selectedId:string|null,overrides:Readonly<Record<string,TargetOverride>>,path='root'):ReactNode{
@@ -62,7 +120,9 @@ export function selectCardContentPreview(node:ReactNode,onSelect:(item:Item)=>vo
     if(target){
       const isText=element.type===EditableText||element.type===NativeText;
       const isInput=element.type===EditableInput||element.type===NativeInput;
-      const childProps:P={...(isText?{editorSkip:true,style:[p.style,typography(overrides[target.id])]}:
+      const childProps:P={...(isText?{editorSkip:true,style:[p.style,typography(overrides[target.id])],
+        ...(target.kind==='text'&&p.editorReadOnly!==true&&typeof p.children==='string'&&overrides[target.id]?.labelText?
+          {children:overrides[target.id]!.labelText}:{})}:
         isInput?{editorSkip:true,editable:false,showSoftInputOnFocus:false}:
         {editorSkip:true,disabled:true,onPress:undefined,onLongPress:undefined}),
         ...(element.type===MetricTile&&overrides[target.id]?{editorStyle:overrides[target.id]}:{})};
