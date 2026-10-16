@@ -13,7 +13,7 @@ import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KE
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {usePageEditor} from '../editor/pageEditor';
-import {MarketPreviewActionGuard} from './MarketEditableContent';
+import {MarketPreviewActionGuard,MarketEditableText} from './MarketEditableContent';
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
@@ -22,6 +22,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{
  const previewMode=readOnlyPreview;
  // Subscribe to the existing persisted home-wall appearance, without writing it.
  const homeEditor=usePageEditor('home');
+ const marketEditor=usePageEditor('market');
  const [presentation,setPresentation]=useState({...DEFAULT_WATCHLIST_PRESENTATION});
  const [prefsReady,setPrefsReady]=useState(false),[prefsError,setPrefsError]=useState<string|null>(null);
  useEffect(()=>{let alive=true;void AsyncStorage.getItem(WATCHLIST_PRESENTATION_KEY).then(raw=>{if(alive)setPresentation(readWatchlistPresentation(raw));}).catch(()=>{if(alive)setPrefsError('顯示偏好讀取失敗，仍可切換檢視。');}).finally(()=>{if(alive)setPrefsReady(true);});return()=>{alive=false;};},[]);
@@ -55,16 +56,43 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{
   };
  };
  const tone=(change:number|null)=>change===null?secondary:change>0?colors.gain:change<0?colors.loss:theme.palette.warning;
- const chip=(label:string,selected:boolean,action:()=>void,icon?:string)=><Pressable key={label} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected,disabled:!prefsReady}} disabled={!prefsReady} onPress={action} style={{minHeight:40,paddingHorizontal:10,paddingVertical:9,borderWidth:1,borderRadius:8,borderColor:selected?theme.palette.primary:theme.palette.border,backgroundColor:selected?theme.palette.surfaceMuted:theme.palette.surface}}><Text style={{color:selected?theme.palette.primary:theme.palette.text,fontSize:12,fontWeight:selected?'700':'400'}}>{icon?icon+' ':''}{label.replace('自選顯示：','').replace('排序：','')}</Text></Pressable>;
+ const itemVisual=(field:string,row:typeof rows[number])=>{
+  const override=marketEditor.displayConfig.layoutTargets?.['market:watchlist:'+field];
+  const profit=override?.textProfitColor===true;
+  const toneColor=row.change===null?theme.palette.textSecondary:row.change>0?colors.gain:row.change<0?colors.loss:colors.flat;
+  return {
+    ...(override?.fontSize!==undefined?{fontSize:override.fontSize}:{}),
+    ...(override?.fontWeight!==undefined?{fontWeight:override.fontWeight}:{}),
+    ...(override?.lineHeight!==undefined&&override.lineHeight>0?{lineHeight:override.lineHeight}:{}),
+    ...(override?.letterSpacing!==undefined?{letterSpacing:override.letterSpacing}:{}),
+    ...(override?.align!==undefined?{textAlign:override.align}:{}),
+    ...(profit?{color:toneColor}:override?.textColor?{color:override.textColor}:{}),
+  };
+ };
+ const chip=(label:string,selected:boolean,action:()=>void,icon?:string)=><Pressable key={label} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected,disabled:!prefsReady||previewMode}} disabled={!prefsReady||previewMode} onPress={action} style={{minHeight:40,paddingHorizontal:10,paddingVertical:9,borderWidth:1,borderRadius:8,borderColor:selected?theme.palette.primary:theme.palette.border,backgroundColor:selected?theme.palette.surfaceMuted:theme.palette.surface}}><Text style={{color:selected?theme.palette.primary:theme.palette.text,fontSize:12,fontWeight:selected?'700':'400'}}>{icon?icon+' ':''}{label.replace('自選顯示：','').replace('排序：','')}</Text></Pressable>;
  const identity=(row:typeof rows[number],fixed=false)=><View style={{flexDirection:'row',alignItems:'center',gap:5,flexWrap:'wrap'}}>
-  <Pressable accessibilityRole="button" accessibilityLabel={'開啟行情 '+row.symbol+' '+row.name} disabled={!onSelect} onPress={()=>onSelect?.(row.symbol,row.name)} style={{flex:1,minHeight:40,justifyContent:'center'}}><Text testID={'watchlist-symbol-'+row.symbol} numberOfLines={fixed?1:undefined} style={{...fieldStyle(row,'symbol',14),fontWeight:'700'}}>{row.symbol}</Text><Text testID={'watchlist-name-'+row.symbol} numberOfLines={fixed?1:undefined} style={fieldStyle(row,'name',12)}>{row.name}</Text></Pressable>
+  <Pressable accessibilityRole="button" accessibilityLabel={'開啟行情 '+row.symbol+' '+row.name} disabled={!onSelect||previewMode} onPress={()=>onSelect?.(row.symbol,row.name)} style={{flex:1,minHeight:40,justifyContent:'center'}}>
+    <MarketEditableText id="market:watchlist:symbol" label="自選代號">
+      <Text testID={'watchlist-symbol-'+row.symbol} numberOfLines={fixed?1:undefined}
+        style={[{...fieldStyle(row,'symbol',14),fontWeight:'700'},itemVisual('symbol',row)]}>{row.symbol}</Text>
+    </MarketEditableText>
+    <MarketEditableText id="market:watchlist:name" label="自選名稱">
+      <Text testID={'watchlist-name-'+row.symbol} numberOfLines={fixed?1:undefined}
+        style={[fieldStyle(row,'name',12),itemVisual('name',row)]}>{row.name}</Text>
+    </MarketEditableText>
+  </Pressable>
   {heldSymbols.includes(row.symbol)?<Text style={{fontSize:10,color:theme.palette.primary,borderWidth:1,borderColor:theme.palette.primary,padding:3,borderRadius:4}}>持股</Text>:null}
   <Text style={{fontSize:10,color:appearance(row).secondaryTextColor,borderWidth:1,borderColor:theme.palette.border,padding:3,borderRadius:4}}>自選</Text>
  </View>;
- const price=(row:typeof rows[number])=><Text testID={'watchlist-price-'+row.symbol} style={{...fieldStyle(row,'price',presentation.mode==='wall'?25:20),fontWeight:'800',fontVariant:['tabular-nums']}}>{number(row.price)}</Text>;
- const delta=(row:typeof rows[number])=><Text style={{...fieldStyle(row,'change',14),fontWeight:'700',fontVariant:['tabular-nums']}}>{row.change===null?'漲跌待取得':<>{number(row.change,true)}  <Text style={fieldStyle(row,'changePercent',14)}>({number(row.changePercent,true)}%)</Text></>}</Text>;
+ const price=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:price" label="自選即時價格" kind="value">
+  <Text testID={'watchlist-price-'+row.symbol}
+    style={[{...fieldStyle(row,'price',presentation.mode==='wall'?25:20),fontWeight:'800',fontVariant:['tabular-nums']},itemVisual('price',row)]}>{number(row.price)}</Text>
+ </MarketEditableText>;
+ const delta=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:change" label="自選漲跌幅" kind="value">
+  <Text style={[{...fieldStyle(row,'change',14),fontWeight:'700',fontVariant:['tabular-nums']},itemVisual('change',row)]}>{row.change===null?'漲跌待取得':<>{number(row.change,true)}  <Text style={fieldStyle(row,'changePercent',14)}>({number(row.changePercent,true)}%)</Text></>}</Text>
+ </MarketEditableText>;
  const source=(row:typeof rows[number])=>{const quote=bySymbol.get(row.symbol);return <Text testID={'watchlist-source-'+row.symbol} style={{fontSize:10,color:appearance(row).secondaryTextColor}}>來源 {quote?.source??'待取得'}｜{row.updatedAt?new Date(row.updatedAt).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'尚無行情時間'}{row.valuationStatus!=='current_session'?' · 參考行情':''}</Text>;};
- const remove=(row:typeof rows[number])=><Pressable accessibilityRole="button" accessibilityLabel={'移除自選 '+row.symbol} onPress={()=>list.remove(row.symbol)} style={{minHeight:40,justifyContent:'center',alignSelf:'flex-end',paddingHorizontal:8}}><Text style={{color:appearance(row).secondaryTextColor,fontSize:11}}>移除</Text></Pressable>;
+ const remove=(row:typeof rows[number])=><Pressable accessibilityRole="button" accessibilityLabel={'移除自選 '+row.symbol} disabled={previewMode} onPress={()=>list.remove(row.symbol)} style={{minHeight:40,justifyContent:'center',alignSelf:'flex-end',paddingHorizontal:8}}><Text style={{color:appearance(row).secondaryTextColor,fontSize:11}}>移除</Text></Pressable>;
  const chart=(row:typeof rows[number])=>{
   const quote=bySymbol.get(row.symbol),points=watchlistIntraday(quote),chartSecondary=appearance(row).secondaryTextColor;
   const chartColor=!wall?tone(row.change):row.change===null?chartSecondary:row.change===0?colorWithAlpha(colors.flat,1):colorWithAlpha(row.change>0?wall.gainColor:wall.lossColor,row.change>0?wall.gainOpacity??1:wall.lossOpacity??1);
@@ -103,12 +131,13 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false}:{
   <Text style={{fontSize:11,color:appearance(row).secondaryTextColor}}>成交量 {row.volume?.toLocaleString('zh-TW')??'—'}｜昨收 {number(row.previousClose)}</Text>
   {presentation.mode==='chart'?chart(row):null}{source(row)}{row.price===null?<Text style={{color:appearance(row).secondaryTextColor,fontSize:12}}>行情尚未取得</Text>:null}{remove(row)}
  </View>)}</View>;
- return <MarketPreviewActionGuard><View style={{gap:8}}>
+ const panel=<View style={{gap:8}}>
   <View accessibilityLabel="自選顯示模式" style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{WATCHLIST_MODES.map(mode=>chip('自選顯示：'+mode.label,presentation.mode===mode.key,()=>setPresentation(p=>({...p,mode:mode.key})),mode.icon))}</View>
   <View style={{flexDirection:'row',gap:5,flexWrap:'wrap',alignItems:'center'}}>{SORTS.map(sort=>chip('排序：'+sort.label,presentation.sort===sort.key,()=>setPresentation(p=>({...p,sort:sort.key}))))}{chip(presentation.direction==='asc'?'排序方向：升冪':'排序方向：降冪',false,()=>setPresentation(p=>({...p,direction:p.direction==='asc'?'desc':'asc'})))}</View>
   <View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{chip('套用目前行情牆樣式',presentation.useWallStyle,()=>setPresentation(p=>({...p,useWallStyle:true})))}{presentation.useWallStyle?chip('使用預設樣式',false,()=>setPresentation(p=>({...p,useWallStyle:false}))):null}</View>
   {prefsError?<Text style={{color:theme.palette.textSecondary,fontSize:11}}>{prefsError}</Text>:null}
   {list.error?<Text style={{color:colors.loss}}>{list.error}</Text>:null}
   {!list.hydrated?<Text style={{color:theme.palette.textSecondary}}>載入自選清單…</Text>:!rows.length?<Text style={{color:theme.palette.textSecondary}}>尚無自選標的，請在市場搜尋後點「加入自選」。</Text>:content}
- </View></MarketPreviewActionGuard>;
+ </View>;
+ return previewMode?panel:<MarketPreviewActionGuard>{panel}</MarketPreviewActionGuard>;
 }
