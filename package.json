@@ -359,7 +359,7 @@
     "test:v5_0_4": "npm run test:v5_0_3 && npm run test:v5_0_4-break-even",
     "test:v5_0_5-editor": "tsx scripts/v5_0_5-editor-coverage.test.ts",
     "test:v5_0_5": "npm run test:v5_0_4 && npm run test:v5_0_5-editor",
-    "test:v5_0_6-content": "tsx scripts/v5_0_6-content-items.test.ts",
+    "test:v5_0_6-content": "node scripts/v5_0_6-content-items.test.cjs",
     "test:v5_0_6": "npm run test:v5_0_5 && npm run test:v5_0_6-content"
   },
   "dependencies": {
