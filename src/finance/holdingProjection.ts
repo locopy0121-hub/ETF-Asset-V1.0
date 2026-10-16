@@ -47,6 +47,7 @@ export function projectHoldingQuotes(input:{snapshot:CanonicalLedgerSnapshot;quo
         ?'DELAYED':valuationQuote?.quoteStatus,
       quoteQuality:holdingQuoteQuality(valuationQuote?.quality),
       quoteSourceAt:valuationQuote?.sourceQuoteAt??null,
+      volume:typeof valuationQuote?.volume==='number'&&Number.isFinite(valuationQuote.volume)&&valuationQuote.volume>=0?valuationQuote.volume:null,
       streamingHealthy:marketStreamHealthy(valuationQuote,valuationNow),
       ...(typeof valuationQuote?.streamingCheckedAt==='number'?{streamingCheckedAt:valuationQuote.streamingCheckedAt}:{}),
       marketDataVersion:market.marketDataVersion,

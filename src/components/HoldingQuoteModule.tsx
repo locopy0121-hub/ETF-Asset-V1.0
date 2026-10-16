@@ -69,8 +69,8 @@ export function HoldingQuoteModule({
   const cardSecondary=linkedColor(cardStyle.secondaryTextColor,cardStyle.secondaryTextProfitColor,cardTone,systemColors);
   const groups={
     header:cfg.fields.filter(field=>field.enabled&&(field.field==='name'||field.field==='symbol')),
-    quote:cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent')),
-    footer:cfg.fields.filter(field=>field.enabled&&(field.field==='pnl'||field.field==='roi'||field.field==='marketValue')),
+    quote:cfg.fields.filter(field=>field.enabled&&(field.field==='price'||field.field==='change'||field.field==='changePercent'||field.field==='previousClose'||field.field==='volume'||field.field==='quoteTime')),
+    footer:cfg.fields.filter(field=>field.enabled&&(['pnl','roi','marketValue','shares','avgCost','weight','cumulativeDividend','realizedPnl','pricePnl','comprehensivePnl'] as readonly string[]).includes(field.field)),
   };
 
   return <View style={[
@@ -334,12 +334,23 @@ function resolveWallBackground(field:HoldingWallFieldConfig,item:HoldingQuote,ch
   return linkedColor(field.backgroundColor??system.neutralColor,true,financialTone(value,item.quoteVerified!==false&&(['pnl','roi','marketValue'].includes(field.field)||(item.previousClose>0&&item.previousCloseKnown!==false))),system);
 }
 function fieldNumeric(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
-  const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:null;
+  const value=field==='pnl'?item.pnl:field==='roi'?item.roi:field==='marketValue'?item.marketValue:field==='changePercent'?changePct:field==='change'?change:field==='price'?item.price:field==='previousClose'?item.previousClose:field==='volume'?item.volume??null:field==='shares'?item.shares:field==='avgCost'?item.avgCost:field==='weight'?item.weight:field==='cumulativeDividend'?item.cumulativeDividend:field==='realizedPnl'?item.realizedPnl:field==='pricePnl'?item.pricePnl:field==='comprehensivePnl'?item.comprehensivePnl:null;
   return typeof value==='number'&&Number.isFinite(value)?value:null;
 }
 function fieldValue(field:HoldingWallFieldKey,item:HoldingQuote,change:number,changePct:number){
   if(item.quoteVerified===false&&['price','change','changePercent','pnl','roi','marketValue'].includes(field))return '待取得';
   if(item.previousCloseKnown===false&&['change','changePercent'].includes(field))return '前收待取得';
+  if(field==='previousClose')return item.previousCloseKnown===false?'昨收待取得':item.previousClose.toFixed(2);
+  if(field==='volume')return typeof item.volume==='number'&&Number.isFinite(item.volume)?Math.round(item.volume).toLocaleString('zh-TW'):'成交量待取得';
+  if(field==='quoteTime')return typeof item.quoteSourceAt==='number'&&item.quoteSourceAt>0?
+    new Date(item.quoteSourceAt).toLocaleTimeString('zh-TW',{timeZone:'Asia/Taipei',hour12:false}):'時間待取得';
+  if(field==='shares')return item.shares.toLocaleString('zh-TW',{maximumFractionDigits:4})+' 股';
+  if(field==='avgCost')return item.avgCost.toFixed(4);
+  if(field==='weight')return pct(item.weight);
+  if(field==='cumulativeDividend')return 'NT$ '+money(item.cumulativeDividend);
+  if(field==='realizedPnl')return 'NT$ '+money(item.realizedPnl);
+  if(field==='pricePnl')return item.quoteVerified===false?'待取得':'NT$ '+money(item.pricePnl);
+  if(field==='comprehensivePnl')return item.quoteVerified===false?'待取得':'NT$ '+money(item.comprehensivePnl);
   if(field==='name')return item.name;
   if(field==='symbol')return item.symbol;
   if(field==='etfType')return item.etfType?.trim().replace(/型$/u,'')||'類別待確認';

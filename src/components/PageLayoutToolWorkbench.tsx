@@ -49,7 +49,7 @@ import {ThemeBackgroundLayer} from '../theme/ThemeBackgroundLayer';
 import {WatchlistPanel} from './WatchlistPanel';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
-const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
+const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue','previousClose','volume','shares','avgCost','weight','cumulativeDividend','realizedPnl','pricePnl','comprehensivePnl'];
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
 
 export function PageLayoutToolWorkbench({

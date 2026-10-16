@@ -3,7 +3,7 @@ import type {EtfReminderType} from './etfBadges';
 export type QuoteModuleStyle = 'quote' | 'chart' | 'compact' | 'advanced';
 export type HoldingSortKey = 'manual' | 'changePct' | 'change' | 'symbol' | 'name' | 'pnl' | 'roi' | 'marketValue' | 'weight' | 'price' | 'dividend';
 
-export type HoldingWallFieldKey = 'name' | 'symbol' | 'price' | 'change' | 'changePercent' | 'pnl' | 'roi' | 'marketValue' | 'etfType' | 'dividendType';
+export type HoldingWallFieldKey = 'name' | 'symbol' | 'price' | 'change' | 'changePercent' | 'pnl' | 'roi' | 'marketValue' | 'etfType' | 'dividendType' | 'previousClose' | 'volume' | 'quoteTime' | 'shares' | 'avgCost' | 'weight' | 'cumulativeDividend' | 'realizedPnl' | 'pricePnl' | 'comprehensivePnl';
 export type HoldingWallAlign = 'left' | 'center' | 'right';
 export type HoldingWallFieldConfig = Readonly<{
   field: HoldingWallFieldKey;
@@ -88,6 +88,17 @@ export const DEFAULT_HOLDING_WALL_CONFIG: HoldingWallConfig = {
     {field:'pnl',enabled:true,label:'損益',fontScale:1,align:'right',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
     {field:'roi',enabled:false,label:'報酬率',fontScale:1,align:'right',useProfitColor:true,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
     {field:'marketValue',enabled:false,label:'市值',fontScale:1,align:'right',useProfitColor:false,textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,paddingY:0,effect:{...DEFAULT_ITEM_EFFECT}},
+    ...([
+      ['previousClose','昨收','quote'],['volume','成交量','quote'],['quoteTime','行情時間','quote'],
+      ['shares','持股股數','footer'],['avgCost','含費均價','footer'],['weight','庫存權重','footer'],
+      ['cumulativeDividend','已領股息','footer'],['realizedPnl','已實現損益','footer'],
+      ['pricePnl','純價差損益','footer'],['comprehensivePnl','含息總損益','footer'],
+    ] as const).map(([field,label,group]):HoldingWallFieldConfig=>({
+      field,enabled:false,label,fontScale:1,align:group==='quote'?'right':'left',
+      useProfitColor:['realizedPnl','pricePnl','comprehensivePnl'].includes(field),
+      textColor:null,textOpacity:1,backgroundColor:null,backgroundOpacity:1,lineGap:null,
+      paddingY:0,effect:{...DEFAULT_ITEM_EFFECT},
+    })),
   ],
   ticker:{enabled:false,direction:'left',speed:55,itemGap:24,showPrice:true,showChange:true,textColor:'#DCEAFE',textOpacity:1,backgroundColor:'#101B2B',backgroundOpacity:1},
   style:{backgroundColor:'#0C121B',backgroundOpacity:1,backgroundProfitColor:false,textColor:'#FFFFFF',textOpacity:1,textProfitColor:false,secondaryTextColor:'#91A0B5',secondaryTextOpacity:1,secondaryTextProfitColor:false,gainColor:'#EF5B64',gainOpacity:1,lossColor:'#10B981',lossOpacity:1,borderColor:'#263343',borderOpacity:1,borderProfitColor:false,borderWidth:1,cornerRadius:16,padding:10,rowGap:6},
@@ -113,6 +124,7 @@ export type HoldingQuote = {
   quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE'|undefined;
   streamingHealthy?:boolean;
   streamingCheckedAt?:number;
+  volume?:number|null;
   quoteQuality?: 'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close'|'unavailable';
   quoteSourceAt?: number|null;
   marketDataVersion?:number;

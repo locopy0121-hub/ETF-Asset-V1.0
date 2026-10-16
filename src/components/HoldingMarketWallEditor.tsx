@@ -24,8 +24,8 @@ import { ColorPalettePicker } from './ColorPalettePicker';
 
 const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}[]=[
   {title:'標題區',fields:['name','symbol']},
-  {title:'行情區',fields:['price','change','changePercent']},
-  {title:'損益區',fields:['pnl','roi','marketValue']},
+  {title:'行情區',fields:['price','change','changePercent','previousClose','volume','quoteTime']},
+  {title:'損益區／帳務',fields:['pnl','roi','marketValue','shares','avgCost','weight','cumulativeDividend','realizedPnl','pricePnl','comprehensivePnl']},
 ];
 const effectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
 const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
