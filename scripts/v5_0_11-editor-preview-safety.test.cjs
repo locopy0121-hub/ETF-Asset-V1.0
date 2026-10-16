@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const source=read('src/components/EtfConstituentsContent.tsx');
+const guard=source.indexOf('if(editingPreview){setLoading(false);return;}');
+const refresh=source.indexOf('refreshEtfConstituentSnapshot(symbol,name,reload>0)');
+assert.ok(source.includes('const editingPreview=useLayoutRuntime().active;'));
+assert.ok(guard>=0&&refresh>guard,'editor preview must never request ETF holdings');
+assert.ok(source.includes('[symbol,name,reload,editingPreview]'),'preview must be an effect dependency');
+assert.ok(source.includes('disabled={loading||editingPreview}'),'preview must disable refresh');
+assert.ok(refresh>0,'live card still supports real refresh');
+const old=read('scripts/v5_0_9-three-gates.test.ts');
+assert.ok(!old.includes("assert.equal(packageFile.version,'5.0.10')"),
+ 'inherited chart regression must accept later patch versions');
+const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
+assert.equal(pkg.version,'5.0.11');assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50011);assert.equal(app.ios.buildNumber,'50011');
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("const VERSION='5.0.11';"));
+assert.ok(read('src/settings/BackupService.ts').includes("const APP_VERSION='5.0.11';"));
+console.log('V5.0.11 ETF editor preview isolation and inherited test: PASS');

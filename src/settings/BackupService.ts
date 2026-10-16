@@ -14,7 +14,7 @@ const BACKUPS_KEY=TF_BACKUPS_KEY;
 const LAST_EXTERNAL_BACKUP_KEY=TF_LAST_EXTERNAL_BACKUP_KEY;
 const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='5.0.10';
+const APP_VERSION='5.0.11';
 
 function sanitizeRestoredPayload(payload:Record<string,string>){
   const next={...payload};
