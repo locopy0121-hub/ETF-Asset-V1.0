@@ -595,15 +595,15 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:')||contentItems.some(item=>item.id===selection.id)||selection.id.startsWith('frame-title:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {(selection.id.startsWith('frame-title:')||(!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:')||contentItems.some(item=>item.id===selection.id))))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
         {...(selection.id==='header:title'?{contentValue:pageTitle,onContentChange:onChangePageTitle}:
           contentItems.some(item=>item.id===selection.id)&&selection.kind==='text'?{
-            contentValue:selection.id.startsWith('frame-title:')?frame.title:
+            contentValue:targets[selection.id]?.labelText??(selection.id.startsWith('frame-title:')?frame.title:
               readCardStaticText(previewElements?.find(item=>item.key===frame.key)?.element.props.children,
-                selection.id,'root/'+frame.key)??undefined,
+                selection.id,'root/'+frame.key)??undefined),
             onContentChange:(labelText:string)=>patchTarget(selection.id,{labelText}),
           }: {})}/>:null}
 
