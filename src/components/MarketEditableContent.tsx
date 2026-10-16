@@ -24,7 +24,7 @@ function targetColor(color:string,opacity:number|undefined){
  */
 export function MarketEditableText({id,label,kind='text',tone='neutral',style,children,testID,numberOfLines}:{
   id:string;label:string;kind?:'text'|'value';tone?:Tone;
-  style?:StyleProp<TextStyle>;children:ReactNode;testID?:string;numberOfLines?:number;
+  style?:StyleProp<TextStyle>;children:ReactNode;testID?:string;numberOfLines?:number|undefined;
 }){
   const {runtime,override}=useMarketTarget(id);
   const colors=useSystemColors();
