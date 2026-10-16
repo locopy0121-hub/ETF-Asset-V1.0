@@ -54,7 +54,7 @@ export function AiScreen(){
           <Pressable editorId="native:AiScreen:refresh:12" disabled={ai.refreshing} onPress={()=>void ai.refresh()} style={[styles.refresh,ai.refreshing&&styles.disabled]}><Text editorId="native:AiScreen:refreshText:13" editorReadOnly={true} style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
         </View>
       </FrameCard>
-  ];
+    }];
 
   return <><PageShell pageKey="ai" title="AI 助理" subtitle="Gemini AI × TF Asset 即時資料中心；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
     <PageEditorStack pageKey="ai" frames={previewElements}/>
