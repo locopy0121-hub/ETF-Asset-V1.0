@@ -32,7 +32,7 @@ import {TARGET_APPEARANCE,type InspectedTarget} from '../maintenance/inspectionM
 import { sortHoldingQuotes,sortPreset,nextSortPreset } from '../domain/holdingSort';
 import type { HoldingQuote, HoldingSortKey, QuoteModuleStyle } from '../domain/uiModels';
 import { calculateBuyScenario } from '../finance/canonicalLedger';
-import {calculateBreakEvenPurchase} from '../finance/breakEvenScenario';
+import {calculateBreakEvenPurchase,calculateTargetProfitPurchase} from '../finance/breakEvenScenario';
 import { useFinance } from '../finance/FinanceRuntime';
 import { useMarketRuntime } from '../market/MarketRuntime';
 import {marketIntradaySeriesFor,marketQuoteSnapshotFor} from '../market/marketCenterViews';
@@ -243,6 +243,7 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   const [price,setPrice]=useState('');
   const [shares,setShares]=useState('');
   const [exitPrice,setExitPrice]=useState('');
+  const [targetProfit,setTargetProfit]=useState('1000');
   const [mode,setMode]=useState<'ODD_LOT'|'ROUND_LOT'>('ODD_LOT');
   const holding=finance.snapshot.holdings.find(x=>x.etfCode===symbol)??finance.snapshot.holdings[0];
   const quote=finance.quotes.find(x=>x.symbol===holding?.etfCode);
@@ -252,6 +253,10 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
   const exit=exitPrice.trim()===''?(currentPrice??0):number(exitPrice);
   const breakEven=holding&&currentPrice!==null?calculateBreakEvenPurchase({
     holding,buyPrice:currentPrice,exitPrice:exit,tradeMode:mode,
+  }):null;
+  const desiredProfit=targetProfit.trim()===''?Number.NaN:number(targetProfit);
+  const profitGoal=holding&&currentPrice!==null?calculateTargetProfitPurchase({
+    holding,buyPrice:currentPrice,exitPrice:exit,tradeMode:mode,targetNetProfit:desiredProfit,
   }):null;
   const scenario=holding&&number(price)>0&&number(shares)>0?calculateBuyScenario({
     holding,currentPrice:quote?.currentPrice??holding.currentPrice,addPrice:number(price),addShares:number(shares),tradeMode:mode,
@@ -303,6 +308,34 @@ function CalculatorModal({visible,onClose}:{visible:boolean;onClose:()=>void}){
           {breakEven.status==='already'?<Text style={styles.modalHint}>目標賣價下目前持股已達到淨清算損益平衡，無須加碼。</Text>:null}
         </>:null}
         <Text style={styles.modalHint}>模擬以指定目標價賣出全部持股，買賣費稅沿用 Canonical 試算規則；整股以 1,000 股為單位，零股以 1 股為單位。實際成交價、費用及最終損益可能不同。</Text>
+      </View>
+
+      <View style={styles.scenario}>
+        <Text editorId="native:PortfolioScreen:profitTitle:27" editorReadOnly={false} style={styles.breakEvenHeading}>目標獲利反推｜最低股數及資金</Text>
+        <Text editorId="native:PortfolioScreen:profitNote:28" editorReadOnly={false} style={styles.modalHint}>
+          依目前持股含費成本、有效市價與預計賣出價，試算達到指定淨獲利至少需加碼的股數及現金。這不是買進建議，也不會更動帳務。
+        </Text>
+        <CalcField label="希望淨賺多少元" value={targetProfit} onChange={setTargetProfit} placeholder="例如 5000"/>
+        {currentPrice===null?<Text style={styles.breakEvenNote}>有效行情尚未取得，無法推算加碼金額。</Text>:
+        profitGoal?.status==='invalid'?<Text style={styles.breakEvenNote}>請輸入零以上的目標獲利與大於零的目標賣價。</Text>:
+        profitGoal?.status==='impossible'?<Text style={styles.breakEvenNote}>
+          假設賣價 {exit.toFixed(2)} 元不高於加碼價 {currentPrice.toFixed(2)} 元，額外加碼無法達到這個淨獲利目標，因為還有交易費稅。
+        </Text>:
+        profitGoal?.status==='limit'?<Text style={styles.breakEvenNote}>最多試算十億股，仍無法達到指定淨獲利目標；請調整目標賣價或獲利金額。</Text>:
+        profitGoal?.scenario?<>
+          <ResultRow label="目標淨獲利" value={money(desiredProfit)+' 元'} strong/>
+          <ResultRow label="最低需加碼股數" value={money(profitGoal.additionalShares)+' 股'} strong/>
+          <ResultRow label="加碼成交金額" value={money(profitGoal.scenario.addTradeAmount)+' 元'}/>
+          <ResultRow label="預估買入手續費" value={money(profitGoal.scenario.addCommission)+' 元'}/>
+          <ResultRow label="需要準備的現金" value={money(profitGoal.scenario.addCashOutflow)+' 元'} strong/>
+          <ResultRow label="加碼後總股數" value={money(profitGoal.scenario.newShares)+' 股'}/>
+          <ResultRow label="預計賣出價下淨損益" value={money(profitGoal.scenario.cashUnrealizedProfit)+' 元'}
+            tone={financialTone(profitGoal.scenario.cashUnrealizedProfit)}/>
+          {profitGoal.status==='already'?<Text style={styles.modalHint}>現有持股在這個假設賣價下已達獲利目標，不需再投入資金。</Text>:null}
+        </>:null}
+        <Text editorId="native:PortfolioScreen:profitDisclosure:29" editorReadOnly={false} style={styles.modalHint}>
+          假設全部持股依目標價出售，計算淨清算價差；不包含已領股息、歷史已實現損益或未來股價變化。僅試算，不保證成交或獲利。
+        </Text>
       </View>
       </ScrollView>
     </View></View>
