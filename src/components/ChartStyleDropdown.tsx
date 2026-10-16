@@ -3,7 +3,7 @@ import {View,StyleSheet} from 'react-native';
 import {Pressable,Text} from './EditableNative';
 import {NATIVE_CHART_STYLES,type NativeChartStyle} from '../domain/chartEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
-export const MARKET_CHART_STYLES:readonly NativeChartStyle[]=['candlestick','ohlc','line','area','column','price-volume'];
+export const MARKET_CHART_STYLES:readonly NativeChartStyle[]=['candlestick','ohlc','line','area','column','price-volume','three-gates'];
 /** Collapsible chart-type selector shared by stock, holding and market chart entry points. */
 export function ChartStyleDropdown({value,onChange,allowedStyles}:{value:NativeChartStyle;onChange:(next:NativeChartStyle)=>void;allowedStyles?:readonly NativeChartStyle[]}){
  const theme=useThemeRuntime(),[expanded,setExpanded]=useState(false);

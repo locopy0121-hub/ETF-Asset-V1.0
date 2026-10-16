@@ -1,4 +1,4 @@
-import {parseTaiexMis,parseTaiexFmtqik,parseTaiexDailyOhlc,type IndexClose,type IndexSnapshot,type TaiexDailyOhlc} from './taiexIndex';
+import {parseTaiexMis,parseTaiexFmtqik,parseTaiexDailyOhlc,parseTaiexIntraday,type TaiexIntraday,type IndexClose,type IndexSnapshot,type TaiexDailyOhlc} from './taiexIndex';
 const monthCache=new Map<string,{at:number;rows:IndexClose[]}>();
 export async function fetchTaiexMis(signal?:AbortSignal):Promise<IndexSnapshot|null>{
   const response=await fetch('https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw&json=1&delay=0',
@@ -71,4 +71,18 @@ export async function fetchTaiexRecentOhlc(now=new Date(),signal?:AbortSignal):P
   }
   if(successes===0&&lastError)throw lastError;
   return [...new Map(all.map(x=>[x.date,x] as const)).values()].sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+const tapeCache=new Map<string,{at:number;data:TaiexIntraday}>();
+export async function fetchTaiexIntraday(date:string,signal?:AbortSignal):Promise<TaiexIntraday|null>{
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('指數日期格式不合法');
+  const cached=tapeCache.get(date);
+  if(cached&&Date.now()-cached.at<5*60*1000)return cached.data;
+  const response=await fetch('https://www.twse.com.tw/exchangeReport/MI_5MINS_INDEX?response=json&date='+date.replace(/-/g,''),
+    {headers:{Accept:'application/json'},...(signal?{signal}:{})});
+  if(!response.ok)throw new Error('TWSE MI_5MINS_INDEX HTTP '+response.status);
+  const payload:unknown=await response.json();
+  const data=parseTaiexIntraday(payload,date);
+  if(data)tapeCache.set(date,{at:Date.now(),data});
+  return data;
 }

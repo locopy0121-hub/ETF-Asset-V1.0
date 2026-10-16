@@ -108,7 +108,47 @@ export function taiex52WeekCloseRange(history:readonly IndexClose[],today:string
 export type TaiexDailyOhlc=Readonly<{
   date:string;open:number;high:number;low:number;close:number;source:'TWSE MI_5MINS_HIST'
 }>;
-export type IndexThreeGates=Readonly<{referenceDate:string;upper:number;middle:number;lower:number}>;
+export type IndexThreeGates=Readonly<{
+  referenceDate:string;
+  upper2:number;upper1:number;middle:number;lower1:number;lower2:number;
+  /** Retained for existing three-line callers / v5.0.8 tests. */
+  upper:number;lower:number;
+}>;
+export const indexFiveGateLevels=(g:IndexThreeGates)=>[
+  {id:'upper2',name:'上關價2',value:g.upper2,color:'#A6323D'},
+  {id:'upper1',name:'上關價1',value:g.upper1,color:'#D9454F'},
+  {id:'middle',name:'中關價',value:g.middle,color:'#2754BE'},
+  {id:'lower1',name:'下關價1',value:g.lower1,color:'#37B84D'},
+  {id:'lower2',name:'下關價2',value:g.lower2,color:'#198441'},
+] as const;
+export type TaiexIntraday=Readonly<{date:string;points:readonly IndexPoint[];source:'TWSE MI_5MINS_INDEX'}>;
+/** The public post-trade index tape contains actual 5-second TAIEX values. */
+export function parseTaiexIntraday(raw:unknown,date:string):TaiexIntraday|null{
+  if(!isoValid(date)||!raw||typeof raw!=='object')return null;
+  const p=raw as {stat?:unknown;fields?:unknown;data?:unknown;date?:unknown};
+  if(p.stat!=='OK'||!Array.isArray(p.fields)||!Array.isArray(p.data))return null;
+  const keys=p.fields.map(x=>String(x).replace(/\s+/g,'').trim());
+  const iTime=keys.indexOf('時間'),iIndex=keys.indexOf('發行量加權股價指數');
+  if(iTime<0||iIndex<0)return null;
+  const unique=new Map<number,IndexPoint>();
+  for(const record of p.data){
+    if(!Array.isArray(record))continue;
+    const clock=String(record[iTime]??'');
+    if(!/^\d\d:\d\d:\d\d$/.test(clock)||clock<'09:00:00'||clock>'13:30:00')continue;
+    const value=positive(record[iIndex]);
+    if(value===null)continue;
+    const at=Date.parse(date+'T'+clock+'+08:00');
+    if(Number.isFinite(at))unique.set(at,{at,value});
+  }
+  const points=[...unique.values()].sort((a,b)=>a.at-b.at);
+  return points.length?{date,points,source:'TWSE MI_5MINS_INDEX'}:null;
+}
+/** Fixed 09:00–13:30 X coordinates irrespective of sampling density. */
+export function taiexSessionX(at:number,date:string,left=0,width=320):number{
+  const start=Date.parse(date+'T09:00:00+08:00'),end=Date.parse(date+'T13:30:00+08:00');
+  return left+Math.max(0,Math.min(1,(at-start)/(end-start)))*width;
+}
+
 
 export function parseTaiexDailyOhlc(raw:unknown):TaiexDailyOhlc[]{
   if(!raw||typeof raw!=='object')return [];
@@ -136,8 +176,10 @@ export function indexThreeGates(rows:readonly TaiexDailyOhlc[],tradeDate:string)
   const prior=[...rows].filter(x=>x.date<tradeDate).sort((a,b)=>a.date.localeCompare(b.date)).at(-1);
   if(!prior||!(prior.high>=prior.low&&prior.low>0))return null;
   const span=prior.high-prior.low;
-  return {referenceDate:prior.date,upper:prior.low+span*1.382,
-    middle:(prior.high+prior.low)/2,lower:prior.high-span*1.382};
+  const upper2=prior.low+span*1.382,lower2=prior.high-span*1.382;
+  return {referenceDate:prior.date,upper2,upper1:prior.high,
+    middle:(prior.high+prior.low)/2,lower1:prior.low,lower2,
+    upper:upper2,lower:lower2};
 }
 
 /** Avoid showing the same trading date twice (ISO date plus localized timestamp). */

@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {StyleSheet,View,type StyleProp,type TextStyle} from 'react-native';
-import Svg,{Circle,Line,Polyline} from 'react-native-svg';
+import Svg,{Circle,Line,Polyline,Polygon} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
 import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
@@ -8,15 +8,16 @@ import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {colorWithAlpha} from '../maintenance/frameEffects';
-import {fetchTaiexHistory,fetchTaiexMis,fetchTaiexRecentOhlc} from '../market/taiexIndexSource';
+import {fetchTaiexHistory,fetchTaiexMis,fetchTaiexRecentOhlc,fetchTaiexIntraday} from '../market/taiexIndexSource';
 import {TAIEX_EXPLANATIONS} from './taiexExplanations';
-import {indexThreeGates,pickTaiexDisplay,selectTaiexHistory,taiex52WeekCloseRange,taipeiIndexDate,taiexStatusLabel,
-  type TaiexDailyOhlc,type IndexThreeGates,type IndexClose,type IndexPoint,type IndexRange,type IndexSnapshot} from '../market/taiexIndex';
+import {indexThreeGates,indexFiveGateLevels,taiexSessionX,pickTaiexDisplay,selectTaiexHistory,taiex52WeekCloseRange,taipeiIndexDate,taiexStatusLabel,
+  type TaiexDailyOhlc,type TaiexIntraday,type IndexThreeGates,type IndexClose,type IndexPoint,type IndexRange,type IndexSnapshot} from '../market/taiexIndex';
 
 const CACHE='@tf-asset/market-taiex-index-v1';
 const HISTORY='@tf-asset/market-taiex-history-v1';
 const POINTS='@tf-asset/market-taiex-points-v1';
 const OHLC='@tf-asset/market-taiex-daily-ohlc-v1';
+const TAPE='@tf-asset/market-taiex-intraday-tape-v1';
 const format=(n:number|null|undefined)=>typeof n==='number'&&Number.isFinite(n)?
   n.toLocaleString('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
 const signed=(n:number|null|undefined)=>typeof n==='number'&&Number.isFinite(n)?(n>0?'+':'')+format(n):'—';
@@ -24,51 +25,73 @@ const ranges:readonly {id:IndexRange;label:string;months:number}[]=[
   {id:'d1',label:'1日',months:2},{id:'d5',label:'5日',months:2},{id:'m1',label:'1月',months:2},
   {id:'m6',label:'6月',months:7},{id:'ytd',label:'今年',months:13},{id:'y1',label:'1年',months:13},
 ];
-function PriceLine({values,color,levels,intraday}:{values:readonly IndexPoint[];color:string;levels:IndexThreeGates|null;intraday:boolean}){
+function PriceLine({values,color,levels,intraday,date}:{
+  values:readonly IndexPoint[];color:string;levels:IndexThreeGates|null;intraday:boolean;date:string|null
+}){
   const theme=useThemeRuntime();
   const sorted=[...values].filter(x=>Number.isFinite(x.at)&&Number.isFinite(x.value)&&x.value>0)
     .sort((a,b)=>a.at-b.at);
   if(!sorted.length&&!levels)return <Text style={{color:theme.palette.textSecondary,fontSize:12,paddingVertical:20}}>
-    尚無可核實的當日走勢或三關價資料，不以模擬點填補。</Text>;
-  const prices=sorted.map(x=>x.value);
-  const all=[...prices,...(levels?[levels.upper,levels.middle,levels.lower]:[])];
-  const rawMin=Math.min(...all),rawMax=Math.max(...all);
-  const padding=Math.max(1,(rawMax-rawMin)*.07);
-  const min=rawMin-padding,max=rawMax+padding;
-  const y=(v:number)=>118-101*(v-min)/(max-min);
-  const at0=sorted[0]?.at??0;
-  const chartEnd=sorted[sorted.length-1]?.at??at0;
-  // Isolated or sparse app snapshots are points, never a fabricated all-day trend.
-  // Disconnected segments must not be bridged across a sampling gap > ten minutes.
+    尚無可核實的日內走勢或三關價，不以模擬點填補。</Text>;
+  const gates=levels?indexFiveGateLevels(levels):[];
+  const pricePool=[...sorted.map(p=>p.value),...gates.map(g=>g.value)];
+  const high=Math.max(...pricePool),low=Math.min(...pricePool);
+  const pad=Math.max(0.5,(high-low)*.055),bottom=272,top=16;
+  const y=(v:number)=>top+(high+pad-v)/(high-low+pad*2)*(bottom-top);
+  const at0=sorted[0]?.at??0,atEnd=sorted[sorted.length-1]?.at??0;
+  const x=(at:number)=>intraday&&date?taiexSessionX(at,date,5,310):
+    atEnd<=at0?160:5+310*(at-at0)/(atEnd-at0);
   const segments:IndexPoint[][]=[];
   for(const sample of sorted){
-    const latest=segments[segments.length-1];
-    if(!latest||(intraday&&sample.at-latest[latest.length-1]!.at>10*60*1000))segments.push([sample]);
-    else latest.push(sample);
+    const previous=segments[segments.length-1];
+    if(!previous||(intraday&&sample.at-previous[previous.length-1]!.at>10*60*1000))
+      segments.push([sample]);
+    else previous.push(sample);
   }
-  const x=(at:number)=>sorted.length<2||chartEnd===at0?160:8+304*(at-at0)/(chartEnd-at0);
-  const gates=levels?[
-    {name:'上關',value:levels.upper,color:'#DA3A40'},
-    {name:'中關',value:levels.middle,color:'#B68A21'},
-    {name:'下關',value:levels.lower,color:'#169C64'},
-  ]:[];
-  return <View style={{gap:5}}>
-    <Svg width="100%" height={134} viewBox="0 0 320 134">
-      {[17,67,118].map(gy=><Line key={'grid'+gy} x1={6} x2={314} y1={gy} y2={gy} stroke={theme.palette.border}/>)}
-      {gates.map(g=><Line key={g.name} x1={6} x2={314} y1={y(g.value)} y2={y(g.value)}
-        stroke={g.color} strokeWidth={1.4} strokeDasharray="5 4"/>)}
-      {segments.filter(segment=>segment.length>1).map((segment,i)=><Polyline key={'segment'+i}
-        points={segment.map(p=>x(p.at).toFixed(1)+','+y(p.value).toFixed(1)).join(' ')}
-        stroke={color} strokeWidth={2.2} fill="none" strokeLinejoin="round" strokeLinecap="round"/>)}
-      {sorted.map((p,i)=><Circle key={'quote'+i} cx={x(p.at)} cy={y(p.value)}
-        r={sorted.length<4?3:1.25} fill={color}/>)}
-    </Svg>
-    {prices.length?<View style={{flexDirection:'row',justifyContent:'space-between'}}>
-      <Text style={{fontSize:10,color:theme.palette.textSecondary}}>已蒐集點位低 {format(Math.min(...prices))}</Text>
-      <Text style={{fontSize:10,color:theme.palette.textSecondary}}>已蒐集點位高 {format(Math.max(...prices))}</Text>
+  const timeLabels=['09:00','10:00','11:00','12:00','13:00','13:30'];
+  return <View style={{gap:4}}>
+    <View style={{flexDirection:'row',gap:2}}>
+      <View style={{width:93,height:300,position:'relative'}}>
+        {gates.map(g=><View key={g.id} style={{position:'absolute',left:0,right:0,top:Math.max(0,y(g.value)-12)}}>
+          <IndexEditableText id={'market:index:gates:'+g.id+':left'} label={g.name+'圖表左側數值'}
+            kind="value" style={{fontSize:9,lineHeight:11,fontWeight:'800',color:g.color}}>
+            {g.name+'\n'+format(g.value)}
+          </IndexEditableText>
+        </View>)}
+        {!gates.length?<Text style={{fontSize:9,color:theme.palette.textSecondary}}>指數點位</Text>:null}
+      </View>
+      <View style={{flex:1,minWidth:0}}>
+        <IndexEditableChart>
+          <Svg width="100%" height={300} viewBox="0 0 320 300">
+            {[top,90,180,bottom].map(gy=><Line key={'grid'+gy} x1={5} x2={315} y1={gy} y2={gy}
+              stroke={theme.palette.border} strokeWidth={0.8}/>)}
+            {gates.map(g=><Line key={g.id} x1={5} x2={315} y1={y(g.value)} y2={y(g.value)}
+              stroke={g.color} strokeWidth={1.3} strokeDasharray="5 4"/>)}
+            {segments.filter(segment=>segment.length>=2).map((segment,i)=>{
+              const poly=segment.map(p=>x(p.at).toFixed(2)+','+y(p.value).toFixed(2)).join(' ');
+              const fill=segment.length>2?
+                x(segment[0]!.at).toFixed(2)+','+bottom+' '+poly+' '+
+                x(segment[segment.length-1]!.at).toFixed(2)+','+bottom:null;
+              return <>{fill?<Polygon key={'fill'+i} points={fill} fill={color} opacity={.13}/>:null}
+                <Polyline key={'line'+i} points={poly} stroke={color} strokeWidth={1.55}
+                  strokeLinejoin="round" strokeLinecap="round" fill="none"/></>;
+
+            })}
+            {sorted.length>0?<Circle cx={x(sorted[sorted.length-1]!.at)}
+              cy={y(sorted[sorted.length-1]!.value)} r={2.8} fill={color}/>:null}
+          </Svg>
+        </IndexEditableChart>
+      </View>
+    </View>
+    {intraday?<View style={{marginLeft:95,flexDirection:'row',justifyContent:'space-between'}}>
+      {timeLabels.map(s=><Text key={s} style={{fontSize:8,color:theme.palette.textSecondary}}>{s}</Text>)}
     </View>:null}
-    {sorted.length<2?<Text style={{fontSize:10,color:theme.palette.textSecondary}}>
-      走勢快照不足，僅顯示可核實參考關卡，不連接不存在的行情。</Text>:null}
+    {sorted.length?<View style={{flexDirection:'row',justifyContent:'space-between'}}>
+      <Text style={{fontSize:9,color:theme.palette.textSecondary}}>當日已核實低點 {format(Math.min(...sorted.map(x=>x.value)))}</Text>
+      <Text style={{fontSize:9,color:theme.palette.textSecondary}}>當日已核實高點 {format(Math.max(...sorted.map(x=>x.value)))}</Text>
+    </View>:null}
+    {intraday&&sorted.length<2?<Text style={{fontSize:10,color:theme.palette.textSecondary}}>
+      當日資料不足，僅顯示實際點位與前一交易日關價。</Text>:null}
   </View>;
 }
 /** Named targets share the page editor's persisted visual overrides.
@@ -185,6 +208,8 @@ export function TaiexIndexCard({marketVersion,phase}:{
   const [mis,setMis]=useState<IndexSnapshot|null>(null);
   const [history,setHistory]=useState<IndexClose[]>([]);
   const [points,setPoints]=useState<IndexPoint[]>([]);
+  const [officialTape,setOfficialTape]=useState<TaiexIntraday|null>(null);
+  const [tapeReload,setTapeReload]=useState(0);
   const [ohlc,setOhlc]=useState<TaiexDailyOhlc[]>([]);
   const [gatesOn,setGatesOn]=useState(true);
   const [busy,setBusy]=useState(false),[historyBusy,setHistoryBusy]=useState(false);
@@ -205,8 +230,9 @@ export function TaiexIndexCard({marketVersion,phase}:{
   const dailyOhlc=useMemo(()=>ohlc.find(x=>x.date===display?.date&&
     Math.abs(x.close-(display?.value??0))<0.1)??null,[ohlc,display?.date,display?.value]);
   const plotPoints=useMemo(()=>range==='d1'?
-    chartData.filter(p=>display?.date===taipeiIndexDate(new Date(p.at))):chartData,
-    [range,chartData,display?.date]);
+    (officialTape?.date===display?.date?officialTape.points:
+      chartData.filter(p=>display?.date===taipeiIndexDate(new Date(p.at)))):chartData,
+    [range,chartData,display?.date,officialTape]);
 
   useEffect(()=>{
     let alive=true;
@@ -257,6 +283,32 @@ export function TaiexIndexCard({marketVersion,phase}:{
     }).catch(()=>{});
     return()=>{alive=false;abort.abort();};
   },[layoutPreview.active,today]);
+
+  // The exchange's 09:00–13:30 tape is retrieved as a complete official report.
+  // During trading hours, before its publication, local MIS snapshots remain an
+  // explicitly incomplete fallback. No per-second REST polling or invented ticks.
+  useEffect(()=>{
+    let mounted=true;
+    void AsyncStorage.getItem(TAPE).then(raw=>{
+      if(!mounted||!raw)return;
+      const record=JSON.parse(raw) as TaiexIntraday;
+      if(record?.source==='TWSE MI_5MINS_INDEX'&&record.date===display?.date&&
+        Array.isArray(record.points)&&record.points.length)
+        setOfficialTape(record);
+    }).catch(()=>{});
+    return()=>{mounted=false;};
+  },[display?.date]);
+  useEffect(()=>{
+    if(layoutPreview.active||range!=='d1'||!display?.date)return;
+    let mounted=true;
+    const controller=new AbortController();
+    void fetchTaiexIntraday(display.date,controller.signal).then(tape=>{
+      if(!mounted||!tape)return;
+      setOfficialTape(tape);
+      void AsyncStorage.setItem(TAPE,JSON.stringify(tape)).catch(()=>{});
+    }).catch(()=>{});
+    return()=>{mounted=false;controller.abort();};
+  },[display?.date,range,phase,layoutPreview.active,tapeReload]);
   const refresh=useCallback(async(force=false)=>{
     if(inFlight.current||!force&&Date.now()-lastReq.current<20000)return;
     inFlight.current=true;lastReq.current=Date.now();setBusy(true);
@@ -319,7 +371,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
         <IndexEditableText id="market:index:title" label="加權指數標題" kind="text" style={{color:theme.palette.text,fontSize:16,fontWeight:'900'}}>臺灣加權股價指數（TAIEX）</IndexEditableText>
         <IndexEditableText id="market:index:subtitle" label="指數副標題" kind="text" style={{color:theme.palette.textSecondary,fontSize:11}}>TWSE TAIEX｜非交易標的</IndexEditableText>
       </View>
-      <IndexEditableButton id="market:index:refresh:button" label="更新加權指數" onPress={()=>{if(!layoutPreview.active)void refresh(true);}}>
+      <IndexEditableButton id="market:index:refresh:button" label="更新加權指數" onPress={()=>{if(!layoutPreview.active)void refresh(true);if(!layoutPreview.active)setTapeReload(v=>v+1);}}>
         {busy?'更新中…':'更新'}
       </IndexEditableButton>
     </View>
@@ -334,7 +386,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
     </IndexEditableText>
     <IndexEditableText id="market:index:source-list" label="指數資料來源總覽" kind="text"
       style={{fontSize:10,color:theme.palette.textSecondary}}>
-      官方行情來源：TWSE MIS／FMTQIK；三關價：TWSE MI_5MINS_HIST
+      官方行情來源：TWSE MIS／FMTQIK；當日走勢：TWSE MI_5MINS_INDEX；關價：MI_5MINS_HIST
     </IndexEditableText>
     <View style={{flexDirection:'row',flexWrap:'wrap',gap:5}}>
       {ranges.map(item=><IndexEditableButton key={item.id} id={'market:index:range:'+item.id+':button'}
@@ -347,25 +399,29 @@ export function TaiexIndexCard({marketVersion,phase}:{
       </IndexEditableButton>
     </View>
     {historyBusy?<IndexEditableText id="market:index:note:loading" label="讀取進度說明" kind="text" style={{color:theme.palette.textSecondary,fontSize:10}}>讀取官方歷史收盤指數中…</IndexEditableText>:null}
-    <IndexEditableChart><PriceLine values={plotPoints} color={tone}
-      levels={range==='d1'&&gatesOn?gates:null} intraday={range==='d1'}/></IndexEditableChart>
+    <PriceLine values={plotPoints} color={tone} levels={range==='d1'&&gatesOn?gates:null}
+      intraday={range==='d1'} date={display?.date??null}/>
     {range==='d1'&&gatesOn?<View style={{gap:3}}>
       <IndexEditableText id="market:index:gates:title" label="三關價標題" kind="text"
         style={{color:theme.palette.text,fontWeight:'800',fontSize:12}}>三關價（前一交易日高低推算）</IndexEditableText>
       {gates?<View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:6}}>
-        {[{id:'upper',title:'上關價',value:gates.upper,color:'#DA3A40'},
-          {id:'middle',title:'中關價',value:gates.middle,color:'#B68A21'},
-          {id:'lower',title:'下關價',value:gates.lower,color:'#169C64'}].map(g=><View key={g.id} style={{gap:2}}>
-          <IndexEditableText id={'market:index:gates:'+g.id+':label'} label={g.title+'標籤'} kind="text"
-            style={{fontSize:10,color:g.color}}>{g.title}</IndexEditableText>
-          <IndexEditableText id={'market:index:gates:'+g.id+':value'} label={g.title+'數值'} kind="value"
-            style={{fontSize:13,fontWeight:'800',color:g.color}}>{format(g.value)}</IndexEditableText>
+        {indexFiveGateLevels(gates).map(g=><View key={g.id} style={{gap:2}}>
+          <IndexEditableText id={'market:index:gates:'+g.id+':label'} label={g.name+'標籤'} kind="text"
+            style={{fontSize:10,color:g.color}}>{g.name}</IndexEditableText>
+          <IndexEditableText id={'market:index:gates:'+g.id+':value'} label={g.name+'數值'} kind="value"
+            style={{fontSize:12,fontWeight:'800',color:g.color}}>{format(g.value)}</IndexEditableText>
         </View>)}
       </View>:<IndexEditableText id="market:index:gates:unavailable" label="三關價資料不足訊息" kind="text"
         style={{fontSize:11,color:theme.palette.textSecondary}}>上一交易日官方高低指數尚未核實，不顯示假設關卡。</IndexEditableText>}
       <IndexEditableText id="market:index:gates:reference" label="三關價計算基準日期" kind="text"
         style={{fontSize:10,color:theme.palette.textSecondary}}>基準交易日：{gates?.referenceDate??'待核實'}｜來源 TWSE MI_5MINS_HIST</IndexEditableText>
     </View>:null}
+    <IndexEditableText id="market:index:note:tape" label="指數走勢覆蓋範圍" kind="text"
+      style={{fontSize:10,color:theme.palette.textSecondary}}>
+      {officialTape?.date===display?.date?
+        '證交所每 5 秒指數紀錄，'+officialTape.points.length+' 筆（09:00–13:30），已核實官方交易日。':
+        '完整盤中報表尚未取得，目前僅顯示 App 實際收集的 MIS 快照，不代表完整日內曲線。'}
+    </IndexEditableText>
     <IndexEditableText id="market:index:note:gates" label="三關價公式說明" kind="text" editableContent
       style={{color:theme.palette.textSecondary,fontSize:10}}>{TAIEX_EXPLANATIONS['market:index:note:gates']}</IndexEditableText>
     {range==='d1'?<IndexEditableText id="market:index:note:live" label="盤中走勢說明" kind="text" editableContent

@@ -1,6 +1,6 @@
-export type ChartDataKey='open'|'high'|'low'|'close'|'volume'|'price'|'change'|'changePct'|'cost'|'pnl'|'comprehensivePnl'|'roi'|'marketValue'|'dividend';
+export type ChartDataKey='open'|'high'|'low'|'close'|'volume'|'price'|'change'|'changePct'|'cost'|'pnl'|'comprehensivePnl'|'roi'|'marketValue'|'dividend'|'threeGates';
 export type ChartDataSource='market'|'holding';
-export type NativeChartStyle='candlestick'|'ohlc'|'line'|'area'|'column'|'price-volume'|'cost-price'|'pnl'|'roi';
+export type NativeChartStyle='candlestick'|'ohlc'|'line'|'area'|'column'|'price-volume'|'cost-price'|'pnl'|'roi'|'three-gates';
 export type HoldingChartRange='1月'|'3月'|'6月'|'1年';
 export type HoldingChartConfig=Readonly<{
   style:NativeChartStyle;
@@ -15,6 +15,7 @@ export type ChartLibraryItem=Readonly<{id:string;label:string;family:string;stat
 export const MARKET_CHART_DATA_OPTIONS:readonly Readonly<{key:ChartDataKey;label:string}>[]=[
   {key:'open',label:'開盤價'},{key:'high',label:'最高價'},{key:'low',label:'最低價'},{key:'close',label:'收盤價'},
   {key:'volume',label:'成交量'},{key:'price',label:'行情走勢'},{key:'change',label:'漲跌額'},{key:'changePct',label:'漲跌幅'},
+  {key:'threeGates',label:'三關價五線'},
 ];
 
 export const HOLDING_CHART_DATA_OPTIONS:readonly Readonly<{key:ChartDataKey;label:string}>[]=[
@@ -37,6 +38,7 @@ export const NATIVE_CHART_STYLES:readonly Readonly<{id:NativeChartStyle;label:st
   {id:'cost-price',label:'成本/市價'},
   {id:'pnl',label:'持股損益'},
   {id:'roi',label:'報酬率'},
+  {id:'three-gates',label:'三關價（五線）'},
 ];
 export const HOLDING_CHART_RANGES:readonly HoldingChartRange[]=['1月','3月','6月','1年'];
 export const DEFAULT_HOLDING_CHART:HoldingChartConfig={
@@ -64,6 +66,7 @@ export const CHART_LIBRARY:readonly ChartLibraryItem[]=[
   {id:'sparkline',label:'迷你走勢圖',family:'價格與趨勢',status:'native'},
   {id:'candlestick',label:'K 線',family:'行情',status:'native'},
   {id:'ohlc',label:'OHLC',family:'行情',status:'native'},
+  {id:'three-gates',label:'三關價（五線）',family:'行情',status:'native'},
   {id:'heikin-ashi',label:'平均 K 線',family:'行情',status:'pending-adapter'},
   {id:'price-volume',label:'價量組合',family:'行情',status:'native'},
   {id:'column',label:'直條圖',family:'比較',status:'native'},

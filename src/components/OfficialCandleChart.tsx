@@ -91,7 +91,18 @@ export function OfficialCandleChart({
   const secSpan=Math.max(.0001,secMax-secMin);
   const secY=(value:number)=>(secMax-value)/secSpan*SECONDARY_HEIGHT;
 
+  const showThreeGates=chartStyle==='three-gates'||dataKeys.includes('threeGates');
+  const refCandle=showThreeGates&&ordered.length>1?ordered[ordered.length-2]:null;
+  const gateSpan=refCandle?refCandle.high-refCandle.low:0;
+  const gateLevels=refCandle&&gateSpan>=0&&refCandle.low>0?[
+    {id:'upper2',name:'上關價2',value:refCandle.low+gateSpan*1.382,color:'#A6323D'},
+    {id:'upper1',name:'上關價1',value:refCandle.high,color:'#D9454F'},
+    {id:'middle',name:'中關價',value:(refCandle.high+refCandle.low)/2,color:'#2754BE'},
+    {id:'lower1',name:'下關價1',value:refCandle.low,color:'#37B84D'},
+    {id:'lower2',name:'下關價2',value:refCandle.high-gateSpan*1.382,color:'#198441'},
+  ]:[];
   const pricePool=ordered.flatMap(x=>[x.high,x.low]);
+  pricePool.push(...gateLevels.map(g=>g.value));
   if(showCost&&holding)pricePool.push(holding.costAvg);
   const highest=Math.max(...pricePool,1);
   const lowest=Math.min(...pricePool,highest);
@@ -197,13 +208,21 @@ export function OfficialCandleChart({
       {showVolume?<Text style={styles.volumeText}>成交量 {selected.volume.toLocaleString('zh-TW')} 股</Text>:null}
       {selectedMetrics.length?<Text style={styles.metricText}>{selectedMetrics.join('　')}</Text>:null}
     </View>:null}
+    {showThreeGates?<Text style={styles.caption}>{refCandle?
+      '三關價五線基準：'+refCandle.date+'（前一交易日高低）｜以最後一根日K為比較日，非日內逐筆資料':
+      '三關價需有前一交易日官方 OHLC 才能計算，不以今日高低冒充'}</Text>:null}
     <View style={styles.plotRow}>
-      <View style={styles.axis}>
+      <View style={[styles.axis,showThreeGates?{width:94}:undefined]}>
         <Text style={[styles.axisText,{top:0}]}>{price(axisHigh)}</Text>
         {!(showCost&&holding&&Math.abs(y(holding.costAvg)-PLOT_HEIGHT/2)<14)?
           <Text style={[styles.axisText,{top:PLOT_HEIGHT/2-6}]}>{price((axisHigh+axisLow)/2)}</Text>:null}
         <Text style={[styles.axisText,{top:PLOT_HEIGHT-14}]}>{price(axisLow)}</Text>
-        <Text style={styles.axisTitle}>基準</Text>
+        <Text style={styles.axisTitle}>{showThreeGates?'前日關價':'基準'}</Text>
+        {gateLevels.map(g=><View key={'axis:'+g.id} pointerEvents="none" style={{
+          position:'absolute',left:0,top:clamp(y(g.value)-11,0,PLOT_HEIGHT-20)}}>
+          <Text style={{fontSize:8,fontWeight:'800',color:g.color}}>{g.name}</Text>
+          <Text style={{fontSize:8,color:g.color}}>{price(g.value)}</Text>
+        </View>)}
         {showCost&&holding?<Text style={[styles.costAxisLabel,{top:clamp(y(holding.costAvg)-11,15,PLOT_HEIGHT-34)}]}>
           成本 {price(holding.costAvg)}
         </Text>:null}
@@ -282,6 +301,9 @@ export function OfficialCandleChart({
               {chartStyle==='area'?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
               <Polyline points={lineGeometry.line} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
             </Svg>:null}
+          {gateLevels.map(g=><View pointerEvents="none" key={'gate:'+g.id} style={{
+            position:'absolute',left:0,width:fullWidth,top:y(g.value),borderTopWidth:1,
+            borderStyle:'dashed',borderColor:g.color,zIndex:3}}/>)}
           {showCost&&holding?<View pointerEvents="none" style={[styles.costLine,{top:y(holding.costAvg),width:fullWidth}]}/>:null}
           {crosshairEnabled&&selected?<View pointerEvents="none" style={[styles.crosshairLayer,{height:PLOT_HEIGHT+(showVolume?VOLUME_HEIGHT:0)+(secondaryKey?SECONDARY_HEIGHT:0)+20}]}>
             <View style={[styles.verticalCrosshair,{left:LEFT_PAD+selectedIndex*step+step/2}]}/>

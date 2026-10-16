@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.8",
+  "version": "5.0.9",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_8 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_9 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -364,7 +364,9 @@
     "test:v5_0_7-deep": "tsx scripts/v5_0_7-deep-coverage-profit.test.ts",
     "test:v5_0_7": "npm run test:v5_0_6 && npm run test:v5_0_7-deep",
     "test:v5_0_8-index": "tsx scripts/v5_0_8-market-gates.test.ts",
-    "test:v5_0_8": "npm run test:v5_0_7 && npm run test:v5_0_8-index"
+    "test:v5_0_8": "npm run test:v5_0_7 && npm run test:v5_0_8-index",
+    "test:v5_0_9-three-gates": "tsx scripts/v5_0_9-three-gates.test.ts",
+    "test:v5_0_9": "npm run test:v5_0_8 && npm run test:v5_0_9-three-gates"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
