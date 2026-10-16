@@ -13,7 +13,7 @@ import type {TargetOverride} from '../maintenance/inspectionModel';
 export type FrameCardProps=PropsWithChildren<{
   fill?:boolean;showTitle?:boolean;title:string;tone?:FinancialTone;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
   editorStyle?:Partial<FrameEditorConfig>;
-  titleVisual?:TargetOverride;
+  titleVisual?:TargetOverride|undefined;
   workActive?:boolean;workHidden?:boolean;
   onResizePreview?:(size:{width:number;height:number})=>void;
   onMeasuredSize?:(size:{width:number;height:number})=>void;
