@@ -987,9 +987,9 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
   const effectiveHeight=Math.round(current.height??actualHeight??Math.max(24,current.lineHeight||current.fontSize*1.35));
   const effectiveLineHeight=Math.round(current.lineHeight>0?current.lineHeight:Math.max(current.fontSize*1.2,actualHeight??0));
   return <View>
-    {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="直接修改本頁實際標題；套用後寫入既有 pageTitles" open={open==='content'} onPress={()=>toggle('content')}>
-      <TextInput accessibilityLabel="頁面標題" value={contentValue} onChangeText={onContentChange}
-        maxLength={48} style={styles.textInput}/>
+    {contentValue!==undefined&&onContentChange?<Accordion title="文字內容" subtitle="僅靜態說明或卡片標題可修改；行情、交易和計算數值保持唯讀" open={open==='content'} onPress={()=>toggle('content')}>
+      <TextInput accessibilityLabel={id.startsWith('header:')?'頁面標題':'靜態文字內容'} value={contentValue} onChangeText={onContentChange}
+        maxLength={id.startsWith('header:')?48:400} style={styles.textInput}/>
     </Accordion>:null}
     {card?<Accordion title="尺寸／空間" subtitle="卡片實際尺寸、內距與外距" open={open==='surface'} onPress={()=>toggle('surface')}>
       <NumberStep label="寬度" value={effectiveWidth} min={EDITOR_DIMENSION_MIN} max={EDITOR_DIMENSION_MAX} step={1} suffix=" px" onChange={width=>patch({width})}/>

@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.6",
+  "version": "5.0.7",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_6 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_7 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -360,7 +360,9 @@
     "test:v5_0_5-editor": "tsx scripts/v5_0_5-editor-coverage.test.ts",
     "test:v5_0_5": "npm run test:v5_0_4 && npm run test:v5_0_5-editor",
     "test:v5_0_6-content": "node scripts/v5_0_6-content-items.test.cjs",
-    "test:v5_0_6": "npm run test:v5_0_5 && npm run test:v5_0_6-content"
+    "test:v5_0_6": "npm run test:v5_0_5 && npm run test:v5_0_6-content",
+    "test:v5_0_7-deep": "tsx scripts/v5_0_7-deep-coverage-profit.test.ts",
+    "test:v5_0_7": "npm run test:v5_0_6 && npm run test:v5_0_7-deep"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

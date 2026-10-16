@@ -297,7 +297,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
     {showTitle?<View style={styles.header}>
       <Pressable disabled={!editorStyle||!fx.frameInteractionEnabled}
         accessibilityRole={fx.frameInteractionEnabled?'button':undefined}
-        accessibilityLabel={'框架標題：'+title}
+        accessibilityLabel={'框架標題：'+paintedTitle}
         accessibilityHint="僅標題區域回應點擊或長按；右側功能按鈕及內容不受影響"
         onPressIn={()=>{longPressConsumed.current=false;}}
         onLongPress={()=>{
