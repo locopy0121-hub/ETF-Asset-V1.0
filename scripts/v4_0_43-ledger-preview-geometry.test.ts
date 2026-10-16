@@ -26,7 +26,10 @@ assert.match(workbench,/resolvePreviewFrameKeys\(pageKey,orderedFrames\.map/);
 for(const key of ['quick-entry','ledger-list','monthly-summary'])
   assert.ok(resolvePreviewFrameKeys('ledger',PAGE_FRAMES.ledger.map(frame=>frame.key),[key]).includes(key),'ledger mounted preview missing '+key);
 assert.match(workbench,/if\(pageKey==='ledger'\)\{/);
-assert.match(workbench,/return actual\?<View pointerEvents="none">\{actual\.props\.children\}<\/View>:null/);
+assert.match(workbench,/supportsCardContentEditor\(pageKey,item\.key\)/,
+  'ledger preview must mount persisted content-card editor for real ledger widgets');
+assert.match(read('src/components/FrameContentEditTarget.tsx'),/pointerEvents="none"/,
+  'the content card preview must not invoke transaction controls');
 assert.match(workbench,/pageKey==='market'\|\|pageKey==='ledger'\|\|\(pageKey==='home'&&frameKey==='holding-quotes'\)/,
   'ledger preview must preserve edit targets alongside the existing market and home views');
 // Manual dimensions have only a positive, physical minimum; inactive bounds must display 0.
