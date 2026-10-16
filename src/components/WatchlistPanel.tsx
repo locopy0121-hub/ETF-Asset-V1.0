@@ -13,19 +13,21 @@ import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KE
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {usePageEditor} from '../editor/pageEditor';
+import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 import {MarketPreviewActionGuard} from './MarketEditableContent';
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
 export function WatchlistPanel({onSelect,heldSymbols=[]}:{onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[]}){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
+ const previewMode=useLayoutRuntime().active;
  // Subscribe to the existing persisted home-wall appearance, without writing it.
  const homeEditor=usePageEditor('home');
  const [presentation,setPresentation]=useState({...DEFAULT_WATCHLIST_PRESENTATION});
  const [prefsReady,setPrefsReady]=useState(false),[prefsError,setPrefsError]=useState<string|null>(null);
  useEffect(()=>{let alive=true;void AsyncStorage.getItem(WATCHLIST_PRESENTATION_KEY).then(raw=>{if(alive)setPresentation(readWatchlistPresentation(raw));}).catch(()=>{if(alive)setPrefsError('顯示偏好讀取失敗，仍可切換檢視。');}).finally(()=>{if(alive)setPrefsReady(true);});return()=>{alive=false;};},[]);
  const persist=useMemo(()=>createWatchlistPresentationWriter(raw=>AsyncStorage.setItem(WATCHLIST_PRESENTATION_KEY,raw)),[]);
- useEffect(()=>{if(prefsReady)void persist(JSON.stringify(presentation)).catch(()=>setPrefsError('顯示偏好未能儲存，本次檢視仍可使用。'));},[presentation,prefsReady,persist]);
+ useEffect(()=>{if(prefsReady&&!previewMode)void persist(JSON.stringify(presentation)).catch(()=>setPrefsError('顯示偏好未能儲存，本次檢視仍可使用。'));},[presentation,prefsReady,persist,previewMode]);
  const rows=useMemo(()=>sortWatchlistRows(watchlistSnapshot(list.items,market.quotes),presentation.sort,presentation.direction),[list.items,market.quotes,presentation.sort,presentation.direction]);
  const bySymbol=useMemo(()=>new Map(market.quotes.map(q=>[q.symbol,q])),[market.quotes]);
  const wallConfig=presentation.useWallStyle?(homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):undefined;

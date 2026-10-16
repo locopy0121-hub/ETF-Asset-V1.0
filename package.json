@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.4",
+  "version": "5.0.5",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_4 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_5 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -356,7 +356,9 @@
     "test:v5_0_3-backup": "tsx scripts/v5_0_3-backup-storage.test.ts",
     "test:v5_0_3": "npm run test:v5_0_2 && npm run test:v5_0_3-backup",
     "test:v5_0_4-break-even": "tsx scripts/v5_0_4-break-even.test.ts",
-    "test:v5_0_4": "npm run test:v5_0_3 && npm run test:v5_0_4-break-even"
+    "test:v5_0_4": "npm run test:v5_0_3 && npm run test:v5_0_4-break-even",
+    "test:v5_0_5-editor": "tsx scripts/v5_0_5-editor-coverage.test.ts",
+    "test:v5_0_5": "npm run test:v5_0_4 && npm run test:v5_0_5-editor"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

@@ -176,7 +176,11 @@ export function MarketResearchScreen(){
     {key:'market-search',element:<FrameCard title="全市場搜尋">
       <MarketSearchContent catalog={market.catalog} catalogRefreshing={market.catalogRefreshing} selectedQuery={selectedSearchText} onSelect={selectSecurity}/>
     </FrameCard>},
-    {key:'market-watchlist',element:<FrameCard title="自選清單"><WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={selectSecurity}/></FrameCard>},
+    {key:'market-watchlist',element:<FrameCard title="自選清單">
+      <MarketEditableSurface id="market:watchlist:content" label="自選清單內容">
+        <WatchlistPanel heldSymbols={finance.holdings.map(x=>x.symbol)} onSelect={selectSecurity}/>
+      </MarketEditableSurface>
+    </FrameCard>},
     ...(symbol?[{key:'market-summary',element:<FrameCard title="標的行情">
       <MarketEditableText id="market:summary:title" label="行情標的名稱" style={{fontSize:19,fontWeight:'800',color:theme.palette.text}}>{info?.name??symbol}　{symbol}</MarketEditableText>
       <MarketPreviewActionGuard><Pressable disabled={!watchlist.hydrated} onPress={()=>watchlist.items.some(x=>x.symbol===symbol)?watchlist.remove(symbol):watchlist.add({symbol,name:info?.name??symbol})}><Text style={{color:theme.palette.primary,fontWeight:'700',paddingVertical:10}}>{watchlist.items.some(x=>x.symbol===symbol)?'★ 移除自選':'☆ 加入自選'}</Text></Pressable></MarketPreviewActionGuard>

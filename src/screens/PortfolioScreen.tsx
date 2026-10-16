@@ -140,14 +140,7 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
   const portfolio=finance.snapshot.portfolio;
   const valuationComplete=finance.valuationComplete;
 
-  return <>
-    <PageShell
-      pageKey="portfolio"
-      title="持股分析"
-      subtitle="正式 Canonical Portfolio"
-      actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
-    >
-      <PageEditorStack pageKey="portfolio" frames={[
+  const previewElements=[
         {key:'holding-dashboard',element:
           <FrameCard title="持股分析儀表板" tone={portfolioFrameTone('portfolio','holding-dashboard',portfolio,valuationComplete)}>
             <View style={styles.metrics}>
@@ -220,10 +213,19 @@ export function PortfolioScreen({onOpenHolding,onOpenChart}:{onOpenHolding:(hold
             </PortfolioViewBoundary>
           </FrameCard>
         },
-      ]}/>
+  ];
+
+  return <>
+    <PageShell
+      pageKey="portfolio"
+      title="持股分析"
+      subtitle="正式 Canonical Portfolio"
+      actions={<><PageGearButton label="🧮" onPress={()=>setCalculatorOpen(true)}/><PageGearButton onPress={()=>setSettingsOpen(true)}/></>}
+    >
+      <PageEditorStack pageKey="portfolio" frames={previewElements}
     </PageShell>
 
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewQuote={sorted[0]} previewRows={sorted} previewFirstMode={firstMode} previewListFallback={listFallback} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="portfolio" title="庫存" frames={PAGE_FRAMES.portfolio} previewElements={previewElements} previewQuote={sorted[0]} previewRows={sorted} previewFirstMode={firstMode} previewListFallback={listFallback} onClose={()=>setSettingsOpen(false)}/>
     <CalculatorModal visible={calculatorOpen} onClose={()=>setCalculatorOpen(false)}/>
   </>;
 }

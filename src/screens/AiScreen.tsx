@@ -28,8 +28,7 @@ export function AiScreen(){
   const newsCount=Math.max(1,Math.min(10,Number(editor.displayConfig.newsVisibleCount??10)));
   const holdingsOnly=editor.displayConfig.newsHoldingsOnly??true;
 
-  return <><PageShell pageKey="ai" title="AI 助理" subtitle="Gemini AI × TF Asset 即時資料中心；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
-    <PageEditorStack pageKey="ai" frames={[{key:'ai-news',element:
+  const previewElements=[{key:'ai-news',element:
       <FrameCard title="AI 財務管家">
         <View style={styles.overview}>
           <View style={styles.overviewTile}><Text editorId="native:AiScreen:overviewLabel:1" editorReadOnly={false} style={styles.overviewLabel}>持股</Text><Text editorId="native:AiScreen:overviewValue:2" editorReadOnly={true} style={styles.overviewValue}>{finance.holdings.length} 檔</Text></View>
@@ -55,8 +54,11 @@ export function AiScreen(){
           <Pressable editorId="native:AiScreen:refresh:12" disabled={ai.refreshing} onPress={()=>void ai.refresh()} style={[styles.refresh,ai.refreshing&&styles.disabled]}><Text editorId="native:AiScreen:refreshText:13" editorReadOnly={true} style={styles.refreshText}>{ai.refreshing?'更新中':'更新新聞'}</Text></Pressable>
         </View>
       </FrameCard>
-    }]}/>
-  </PageShell><PageFrameSettingsModal visible={settingsOpen} pageKey="ai" title="AI 助理" frames={PAGE_FRAMES.ai} onClose={()=>setSettingsOpen(false)}/></>;
+  ];
+
+  return <><PageShell pageKey="ai" title="AI 助理" subtitle="Gemini AI × TF Asset 即時資料中心；新聞只是其中一個資料來源" actions={<PageGearButton onPress={()=>setSettingsOpen(true)}/>}>
+    <PageEditorStack pageKey="ai" frames={previewElements}
+  </PageShell><PageFrameSettingsModal visible={settingsOpen} pageKey="ai" title="AI 助理" frames={PAGE_FRAMES.ai} previewElements={previewElements} onClose={()=>setSettingsOpen(false)}/></>;
 }
 
 const styles=StyleSheet.create({

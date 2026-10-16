@@ -35,6 +35,7 @@ import {useFinance} from '../finance/FinanceRuntime';
 import {deriveDailyPnlRecord} from '../finance/dailyPnlHistory';
 import {useMarketRuntime} from '../market/MarketRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
+import {resolvePreviewFrameKeys} from '../editor/previewCoverage';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
@@ -43,18 +44,12 @@ import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
 import {THEME_BACKGROUNDS} from '../theme/ThemeRuntime';
 import {ThemeBackgroundLayer} from '../theme/ThemeBackgroundLayer';
+import {MarketEditableSurface} from './MarketEditableContent';
+import {WatchlistPanel} from './WatchlistPanel';
 
 type Selection={id:string;kind:LayoutToolTargetKind;label:string;field?:HoldingWallFieldKey;width?:number;height?:number};
 const numericFields:readonly HoldingWallFieldKey[]=['price','change','changePercent','pnl','roi','marketValue'];
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
-
-const actualHomePreviewKeys=new Set(['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions','holding-quotes']);
-const actualPortfolioPreviewKeys=new Set(['holding-view']);
-const actualDividendPreviewKeys=new Set(['dividend-summary','dividend-ai','dividend-calendar','dividend-agenda','dividend-list','annual-trend']);
-const actualLedgerPreviewKeys=new Set(['quick-entry','ledger-list','monthly-summary']);
-const actualMarketPreviewKeys=new Set(['market-index','market-search','market-summary','market-chart','market-details']);
-const hasRealPreview=(page:MainPageKey,key:string)=>
-  key==='page-header'||(page==='home'?actualHomePreviewKeys.has(key):page==='portfolio'?actualPortfolioPreviewKeys.has(key):page==='dividend'?actualDividendPreviewKeys.has(key):page==='market'?actualMarketPreviewKeys.has(key):page==='ledger'?actualLedgerPreviewKeys.has(key):false);
 
 export function PageLayoutToolWorkbench({
   pageKey,frames,draft,displayDraft,onPatchFrame,onMoveFrame,onSetFrameBehavior,onChangeDisplay,previewQuote,previewRows,previewElements,pageTitle,onChangePageTitle,onResetPage,previewFirstMode='list',previewListFallback=false,
@@ -91,7 +86,9 @@ export function PageLayoutToolWorkbench({
     finance.valuationComplete,market.marketDataVersion,
   ]);
   const orderedFrames=useMemo(()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),[frames,draft]);
-  const previewFrames=useMemo(()=>orderedFrames.filter(frame=>hasRealPreview(pageKey,frame.key)),[orderedFrames,pageKey]);
+  const previewKeys=useMemo(()=>resolvePreviewFrameKeys(pageKey,orderedFrames.map(frame=>frame.key),
+    previewElements?.map(item=>item.key)??[]),[orderedFrames,pageKey,previewElements]);
+  const previewFrames=useMemo(()=>orderedFrames.filter(frame=>previewKeys.includes(frame.key)),[orderedFrames,previewKeys]);
   const initial=useMemo(()=>pageKey==='market'&&previewFrames.some(f=>f.key==='market-index')?'market-index':
     pageKey==='home'&&previewFrames.some(f=>f.key==='asset-dashboard')?'asset-dashboard':
     pageKey==='portfolio'&&previewFrames.some(f=>f.key==='holding-view')?'holding-view':
@@ -172,6 +169,8 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'frame',kind:'frame',label:'框架'});
       setOpenGroup('size');return;
     }
+    else if(pageKey==='market'&&frame.key==='market-watchlist'&&kind==='card')
+      setSelection({id:'market:watchlist:content',kind,label:'自選清單內容'});
     else if(pageKey==='market'&&frame.key==='market-search'&&kind==='card')
       setSelection({id:'market:search:input',kind,label:'搜尋輸入框'});
     else if(pageKey==='market'&&frame.key==='market-search'&&kind==='text')
@@ -264,6 +263,10 @@ export function PageLayoutToolWorkbench({
       // Ledger preview renders original real form/list contents, but never submits transactions.
       return actual?<View pointerEvents="none">{actual.props.children}</View>:null;
     }
+    if(pageKey==='market'&&item.key==='market-watchlist')return <MarketEditableSurface
+      id="market:watchlist:content" label="自選清單內容">
+      <WatchlistPanel heldSymbols={finance.holdings.map(row=>row.symbol)}/>
+    </MarketEditableSurface>;
     if(pageKey==='market'){
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
       // Mount the real market component, not the page-header illustration.
@@ -346,7 +349,9 @@ export function PageLayoutToolWorkbench({
         {key:'dividend',label:'股息資訊',glyph:'＄',onPress:()=>{}},
       ]}/>
     </View>;
-    return null;
+    const actual=previewElements?.find(view=>view.key===item.key)?.element;
+    // Use the actual mounted card children, but never enable its business actions in the preview.
+    return actual?<View pointerEvents="none">{actual.props.children}</View>:null;
   };
   const renderActualFrame=(item:PageFrameDefinition)=>{
     const itemConfig=draft[item.key];
@@ -397,8 +402,8 @@ export function PageLayoutToolWorkbench({
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
-    if(pageKey==='market')return ['market-index','market-search','market-summary','market-chart','market-details'].includes(frame.key)
-      ?['frame','card','text','value'].includes(kind):kind==='frame';
+    if(pageKey==='market')return ['market-index','market-watchlist','market-search','market-summary','market-chart','market-details'].includes(frame.key)
+      ?(frame.key==='market-watchlist'?['frame','card'].includes(kind):['frame','card','text','value'].includes(kind)):kind==='frame';
     if(frame.key==='page-header')return kind==='frame'||kind==='text';
     if(kind==='layout')return pageKey==='home'&&['asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frame.key);
     if(portfolioListMode&&holding)return kind==='frame';
@@ -476,7 +481,7 @@ export function PageLayoutToolWorkbench({
         </Text>
       </Pressable>)}
     </ScrollView>
-    {!hasRealPreview(pageKey,frame.key)?<Text style={styles.hint}>
+    {!previewKeys.includes(frame.key)?<Text style={styles.hint}>
       此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
     </Text>:null}
 

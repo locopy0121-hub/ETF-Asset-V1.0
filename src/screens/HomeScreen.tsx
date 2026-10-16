@@ -137,14 +137,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
   const holdingSymbols=useMemo(()=>new Set(finance.holdings.map(x=>x.symbol.toUpperCase())),[finance.holdings]);
   const newsItems=useMemo(()=>aiNews.items.filter(item=>!newsHoldingsOnly||holdingSymbols.has(item.symbol.toUpperCase())).slice(0,newsCount),[aiNews.items,newsHoldingsOnly,holdingSymbols,newsCount]);
 
-  return <>
-    <PageShell pageKey="home" title="資產管家" subtitle="掌握資產現況・所有損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable editorId="native:HomeScreen:refreshButton:1" onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text editorId="native:HomeScreen:refreshButtonText:2" editorReadOnly={true} style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
-      <View
-        style={styles.pageLayer}
-        onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
-      >
-      <LayoutTargetProvider targets={effectiveDisplay.layoutTargets??{}}>
-      <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={[
+  const previewElements=[
         {key:'asset-dashboard',element:
           <FrameCard title="資產總覽" tone={portfolioFrameTone('home','asset-dashboard',portfolio,valuationComplete)}>
             <View style={{paddingHorizontal:dashboardLayout.contentPadding}}>
@@ -232,7 +225,16 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
             <Text editorId="native:HomeScreen:ruleText:17" editorReadOnly={true} style={styles.ruleText}>共 {sorted.length} 筆持股；排序只改順序，排列只改畫面，不裁切資料。主體行情牆卡片共用同一份 A/B 編輯設定；首頁與庫存各自保存顯示設定。</Text>
           </FrameCard>
         },
-      ]}/>
+  ];
+
+  return <>
+    <PageShell pageKey="home" title="資產管家" subtitle="掌握資產現況・所有損益來自正式帳務核心" actions={<View style={styles.actions}><Pressable editorId="native:HomeScreen:refreshButton:1" onPress={()=>void market.refresh({force:true})} style={styles.refreshButton}><Text editorId="native:HomeScreen:refreshButtonText:2" editorReadOnly={true} style={styles.refreshButtonText}>{market.refreshing?'更新中':'更新行情'}</Text></Pressable><PageGearButton onPress={()=>setSettingsOpen(true)}/></View>}>
+      <View
+        style={styles.pageLayer}
+        onLayout={event=>setChartBounds({width:event.nativeEvent.layout.width,height:event.nativeEvent.layout.height})}
+      >
+      <LayoutTargetProvider targets={effectiveDisplay.layoutTargets??{}}>
+      <PageEditorStack pageKey="home" gap={dashboardLayout.sectionGap} frames={previewElements}
       </LayoutTargetProvider>
       {dashboardCharts.map(chart=>{const series=chartSeries(chart);return <FloatingDashboardChart key={chart.id} config={chart} values={series.values} labels={series.labels} bounds={chartBounds} onMove={(x,y)=>moveDashboardChart(chart.id,x,y)} onResize={(width,height)=>resizeDashboardChart(chart.id,width,height)}/>;})}
       </View>
@@ -240,7 +242,7 @@ export function HomeScreen({onOpenHolding,onOpenChart,onNavigate}:{onOpenHolding
     <NewsReaderModal item={selectedNews} onClose={()=>setSelectedNews(null)}/>
     <PurchasePnlStatsModal visible={pnlStatsOpen} onClose={()=>setPnlStatsOpen(false)}
       entries={finance.entries} holdings={finance.snapshot.holdings} dailyRecords={pnlHistory.records}/>
-    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
+    <PageFrameSettingsModal visible={settingsOpen} pageKey="home" title="首頁" frames={PAGE_FRAMES.home} previewElements={previewElements} previewQuote={sorted[0]} previewRows={sorted} onClose={()=>setSettingsOpen(false)}/>
   </>;
 }
 
