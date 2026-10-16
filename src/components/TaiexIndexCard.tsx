@@ -230,7 +230,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
   const dailyOhlc=useMemo(()=>ohlc.find(x=>x.date===display?.date&&
     Math.abs(x.close-(display?.value??0))<0.1)??null,[ohlc,display?.date,display?.value]);
   const plotPoints=useMemo(()=>range==='d1'?
-    (officialTape?.date===display?.date?officialTape.points:
+    (officialTape!==null&&officialTape.date===display?.date?officialTape.points:
       chartData.filter(p=>display?.date===taipeiIndexDate(new Date(p.at)))):chartData,
     [range,chartData,display?.date,officialTape]);
 
@@ -418,7 +418,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
     </View>:null}
     <IndexEditableText id="market:index:note:tape" label="指數走勢覆蓋範圍" kind="text"
       style={{fontSize:10,color:theme.palette.textSecondary}}>
-      {officialTape?.date===display?.date?
+      {officialTape!==null&&officialTape.date===display?.date?
         '證交所每 5 秒指數紀錄，'+officialTape.points.length+' 筆（09:00–13:30），已核實官方交易日。':
         '完整盤中報表尚未取得，目前僅顯示 App 實際收集的 MIS 快照，不代表完整日內曲線。'}
     </IndexEditableText>
