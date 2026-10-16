@@ -24,9 +24,13 @@ export function FrameContentEditTarget({page,frameKey,children}:PropsWithChildre
   };
   const content=<View style={style}>{children}</View>;
   if(!runtime.active)return content;
-  return <Pressable accessibilityRole="button" accessibilityLabel="選取內容卡片"
-    onPress={()=>runtime.onSelect?.({id,kind:'card',label:'內容卡片'})}
-    style={runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined}>
-    <View pointerEvents="none">{content}</View>
-  </Pressable>;
+  return <View>
+    <Pressable accessibilityRole="button" accessibilityLabel="編輯整張內容卡片"
+      onPress={()=>runtime.onSelect?.({id,kind:'card',label:'整張內容卡片'})}
+      style={{alignSelf:'flex-start',paddingHorizontal:10,paddingVertical:5,marginBottom:6,
+        borderColor:'#0969DA',borderWidth:1,borderRadius:12}}>
+      <View pointerEvents="none" style={{height:4,width:64,backgroundColor:'#0969DA'}}/>
+    </Pressable>
+    {content}
+  </View>;
 }

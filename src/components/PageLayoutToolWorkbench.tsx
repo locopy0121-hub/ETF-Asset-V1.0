@@ -37,6 +37,7 @@ import {useMarketRuntime} from '../market/MarketRuntime';
 import {LayoutSelectionProvider,type LayoutSelectionTarget} from '../editor/LayoutSelectionContext';
 import {resolvePreviewFrameKeys,supportsCardContentEditor} from '../editor/previewCoverage';
 import {FrameContentEditTarget} from './FrameContentEditTarget';
+import {listCardContentItems,selectCardContentPreview} from './CardContentPreviewSelector';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
@@ -113,6 +114,8 @@ export function PageLayoutToolWorkbench({
   const frame=frames.find(item=>item.key===frameKey)??frames[0];
   const frameConfig=frame?draft[frame.key]:undefined;
   if(!frame||!frameConfig)return null;
+  const contentItems=supportsCardContentEditor(pageKey,frame.key)?
+    listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children):[];
 
   const profile=layoutToolProfile(pageKey,frame.key);
   const holding=(pageKey==='home'&&frame.key==='holding-quotes')||(pageKey==='portfolio'&&frame.key==='holding-view');
@@ -198,8 +201,12 @@ export function PageLayoutToolWorkbench({
       setSelection({id:'market:index:title',kind,label:'加權指數標題'});
     else if(pageKey==='market'&&frame.key==='market-index'&&kind==='value')
       setSelection({id:'market:index:value',kind,label:'加權指數數值'});
-    else if(supportsCardContentEditor(pageKey,frame.key)&&kind==='card')
-      setSelection({id:'content:'+pageKey+':'+frame.key,kind,label:'內容卡片'});
+    else if(supportsCardContentEditor(pageKey,frame.key)&&kind!=='frame'){
+      const target=kind==='card'?undefined:contentItems.find(item=>item.kind===kind);
+      if(target){selectTarget(target);return;}
+      if(kind==='card')setSelection({id:'content:'+pageKey+':'+frame.key,kind,label:'內容卡片'});
+      else {setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');return;}
+    }
     else if(holding&&kind==='card')setSelection({id:'card',kind,label:'行情卡片'});
     else if(holding&&kind==='text')setSelection({id:'field:name',kind,label:'名稱',field:'name'});
     else if(holding&&kind==='value')setSelection({id:'field:price',kind,label:'即時價格',field:'price'});
@@ -226,7 +233,7 @@ export function PageLayoutToolWorkbench({
     }
   };
   const selectTarget=(target:LayoutSelectionTarget)=>{
-    const kind:LayoutToolTargetKind=target.kind==='prefix'?'text':
+    const kind:LayoutToolTargetKind=target.kind==='prefix'?'text':target.kind==='button'?'card':
       target.kind==='card'||target.kind==='text'||target.kind==='value'||target.kind==='chart'||target.kind==='button'?
         target.kind:'text';
     setSelection({id:target.id,kind,label:target.label,...(target.width!==undefined?{width:target.width}:{}),...(target.height!==undefined?{height:target.height}:{})});
@@ -265,7 +272,11 @@ export function PageLayoutToolWorkbench({
       const actual=previewElements?.find(view=>view.key===item.key)?.element;
       // Ledger preview retains production values but disables all original actions.
       return actual?(supportsCardContentEditor(pageKey,item.key)?
-        <FrameContentEditTarget page={pageKey} frameKey={item.key}>{actual.props.children}</FrameContentEditTarget>:
+        <FrameContentEditTarget page={pageKey} frameKey={item.key}>
+          {selectCardContentPreview(actual.props.children,
+            target=>{setFrameKey(item.key);selectTarget(target);},
+            frameKey===item.key?selection.id:null,targets)}
+        </FrameContentEditTarget>:
         <View pointerEvents="none">{actual.props.children}</View>):null;
     }
     if(pageKey==='market'&&item.key==='market-watchlist')return <MarketEditableSurface
@@ -357,7 +368,11 @@ export function PageLayoutToolWorkbench({
     const actual=previewElements?.find(view=>view.key===item.key)?.element;
     // Reuse actual mounted contents, selecting only their appearance and never business actions.
     return actual?(supportsCardContentEditor(pageKey,item.key)?
-      <FrameContentEditTarget page={pageKey} frameKey={item.key}>{actual.props.children}</FrameContentEditTarget>:
+      <FrameContentEditTarget page={pageKey} frameKey={item.key}>
+        {selectCardContentPreview(actual.props.children,
+          target=>{setFrameKey(item.key);selectTarget(target);},
+          frameKey===item.key?selection.id:null,targets)}
+      </FrameContentEditTarget>:
       <View pointerEvents="none">{actual.props.children}</View>):null;
   };
   const renderActualFrame=(item:PageFrameDefinition)=>{
@@ -393,7 +408,7 @@ export function PageLayoutToolWorkbench({
     </View>;
   };
 
-  const base=selection.id.startsWith('content:')?{...TARGET_APPEARANCE,backgroundColor:colors.surface,borderColor:colors.border,borderRadius:10}:
+  const base=(selection.id.startsWith('content:')||contentItems.some(item=>item.id===selection.id))?{...TARGET_APPEARANCE,backgroundColor:colors.surface,borderColor:colors.border,borderRadius:10}:
     selection.id.startsWith('market:')?
       {...TARGET_APPEARANCE,
         fontSize:selection.kind==='value'?22:selection.kind==='text'?14:12,
@@ -409,7 +424,8 @@ export function PageLayoutToolWorkbench({
   const visibleKinds=profile.kinds.filter(kind=>{
     if(kind==='chart')return holding||(pageKey==='home'&&frame.key==='asset-dashboard'&&Boolean((displayDraft.dashboardCharts??[]).length));
     if(kind==='data')return holding;
-    if(supportsCardContentEditor(pageKey,frame.key))return ['frame','card'].includes(kind);
+    if(supportsCardContentEditor(pageKey,frame.key))return ['frame','card','text','value','button'].includes(kind) &&
+      (kind==='frame'||kind==='card'||contentItems.some(item=>item.kind===kind));
     if(pageKey==='dividend')return ['frame','card','text','value'].includes(kind);
     if(pageKey==='market')return ['market-index','market-watchlist','market-search','market-summary','market-chart','market-details'].includes(frame.key)
       ?(frame.key==='market-watchlist'?['frame','card'].includes(kind):['frame','card','text','value'].includes(kind)):kind==='frame';
@@ -490,6 +506,17 @@ export function PageLayoutToolWorkbench({
         </Text>
       </Pressable>)}
     </ScrollView>
+    {supportsCardContentEditor(pageKey,frame.key)?<View>
+      <Text style={styles.title}>卡片內容編輯項目 · {contentItems.length} 項</Text>
+      <Text style={styles.hint}>點上方內容，或從清單選取文字、數值、按鈕與指標；不會修改原始行情與帳務。</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kindRow}>
+        {contentItems.map(item=><Pressable key={'content:'+item.id} accessibilityRole="button"
+          accessibilityLabel={'編輯'+item.label} onPress={()=>selectTarget(item)}
+          style={[styles.kindChip,selection.id===item.id&&styles.kindChipActive]}>
+          <Text style={[styles.kindText,selection.id===item.id&&styles.kindTextActive]}>{item.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+    </View>:null}
     {!previewKeys.includes(frame.key)?<Text style={styles.hint}>
       此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
     </Text>:null}
@@ -539,7 +566,7 @@ export function PageLayoutToolWorkbench({
       {wall.fields.map(field=><SwitchRow key={field.field} label={field.label} value={field.enabled} onChange={enabled=>patchField(field.field,{enabled})}/>)}
     </Accordion>:null}
 
-    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:'))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
+    {!holding&&(selection.id.startsWith('dashboard:')||selection.id.startsWith('header:')||selection.id.startsWith('dividend:')||selection.id.startsWith('market:')||selection.id.startsWith('content:')||contentItems.some(item=>item.id===selection.id))&&(selection.kind==='text'||selection.kind==='value'||selection.kind==='card')?
       <TargetTools kind={selection.kind} id={selection.id} current={current} actualWidth={selection.width} actualHeight={selection.height}
         open={openGroup} toggle={toggle}
         patch={next=>patchTarget(selection.id,next)} reset={()=>resetTarget(selection.id)}
