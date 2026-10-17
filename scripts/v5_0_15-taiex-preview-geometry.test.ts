@@ -48,6 +48,9 @@ assert.ok(editor.includes("{actual.props.children}"),
 assert.ok(market.includes('<TaiexIndexCard marketVersion={market.marketDataVersion} phase={market.phase}/>'));
 assert.ok(!readFileSync('src/finance/FinanceRuntime.tsx','utf8').includes('market:index:axis:left'));
 const pkg=JSON.parse(readFileSync('package.json','utf8')),app=JSON.parse(readFileSync('app.json','utf8')).expo;
-assert.equal(pkg.version,'5.0.15');assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,50015);assert.equal(app.ios.buildNumber,'50015');
+assert.match(pkg.version,/^5\.0\.\d+$/);
+assert.ok(Number(pkg.version.split('.')[2])>=15);
+assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50000+Number(pkg.version.split('.')[2]));
+assert.equal(app.ios.buildNumber,String(app.android.versionCode));
 console.log('V5.0.15 TAIEX shared geometry, genuine content-target catalog, market preview parity PASS');
