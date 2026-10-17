@@ -297,7 +297,8 @@ export function OfficialCandleChart({
           {(showThreeGates||(chartStyle==='line'||chartStyle==='area')&&lineGeometry)?
             <Svg pointerEvents="none" style={{position:'absolute',left:0,top:0}} width={fullWidth} height={PLOT_HEIGHT} viewBox={'0 0 '+fullWidth+' '+PLOT_HEIGHT}>
               {chartStyle==='area'&&lineGeometry?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
-              <Polyline points={showThreeGates?gateTrendLine:lineGeometry?.line??''} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
+              {showThreeGates?<Polyline points={gateTrendLine} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>:
+                lineGeometry?<Polyline points={lineGeometry.line} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>:null}
             </Svg>:null}
           {gateLevels.map(g=><View pointerEvents="none" key={'gate:'+g.id} style={{
             position:'absolute',left:0,width:fullWidth,top:y(g.value),borderTopWidth:1,
