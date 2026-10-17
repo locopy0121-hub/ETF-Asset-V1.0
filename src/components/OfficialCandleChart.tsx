@@ -214,7 +214,7 @@ export function OfficialCandleChart({
       '三關價五線基準：'+refCandle.date+'（前一交易日高低）｜以最後一根日K為比較日，非日內逐筆資料':
       '三關價需有前一交易日官方 OHLC 才能計算，不以今日高低冒充'}</Text>:null}
     <View style={styles.plotRow}>
-      <View style={styles.axis}>
+      <View style={[styles.axis,showThreeGates?{width:PRICE_AXIS_WIDTH}:undefined]}>
         <Text style={[styles.axisText,{top:0}]}>{price(axisHigh)}</Text>
         {!(showCost&&holding&&Math.abs(y(holding.costAvg)-PLOT_HEIGHT/2)<14)?
           <Text style={[styles.axisText,{top:PLOT_HEIGHT/2-6}]}>{price((axisHigh+axisLow)/2)}</Text>:null}
