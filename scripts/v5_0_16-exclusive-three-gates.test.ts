@@ -18,8 +18,10 @@ assert.ok(c.includes('const secondaryKey=showThreeGates?undefined:'),
   'standalone gate chart excludes candlestick secondary plots');
 assert.ok(c.includes('{showThreeGates?null:\n                columnMode?'),
   'no K-body/wick rendering while gate mode is active');
-assert.ok(c.includes("showThreeGates?gateTrendLine:lineGeometry?.line??''"),
-  'gate chart shows a closing-price line rather than candlesticks');
+assert.ok(c.includes("showThreeGates?<Polyline points={gateTrendLine}"),
+  'gate chart shows a dedicated closing-price line rather than K-bars');
+assert.ok(c.includes("Polyline points={lineGeometry.line}"),
+  'ordinary line and area charts retain their original price-line renderer');
 assert.ok(c.includes("gateLevels.map(g=><View key={'legend:'+g.id}"),
   'five gate labels should be under plot rather than stacked on y-axis');
 assert.ok(!c.includes("position:'absolute',left:0,top:clamp(y(g.value)-11"),
