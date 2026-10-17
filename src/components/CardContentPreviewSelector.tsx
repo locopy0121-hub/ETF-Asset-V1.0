@@ -43,7 +43,7 @@ export function contentItem(element:E,path:string):Item|null{
   if(element.type===MetricTile&&typeof p.label==='string')return {id:'metric:'+p.label,kind:'card',label:'指標 · '+p.label};
   if(element.type===EditableText||element.type===NativeText){
     const value=textCopy(p.children)||null;
-    if(value&&value.trim().length>=2){
+    if(value&&value.trim().length>=1){
       const protectedValue=p.editorReadOnly===true||staticTextCopy(p.children)===null||
         /^[+-]?[\d,.]+%?$/.test(value.trim());
       return {id:'text:'+path,kind:protectedValue?'value':'text',
@@ -121,7 +121,7 @@ export function applyCardContentAppearance(content:ReactNode,overrides:Readonly<
       ...(override?{style:[p.style,isText?typography(override):surfaceVisual(override)]}:{}),
       ...(override&&isMetric?{editorStyle:{...p.editorStyle,...override}}:{}),
       ...(override&&isText&&item?.kind==='text'&&p.editorReadOnly!==true&&
-         staticTextCopy(p.children)!==null&&override.labelText?{children:override.labelText}:{})
+         staticTextCopy(p.children)!==null&&override.labelText!==undefined?{children:override.labelText}:{})
     };
     const children=contentProps.children!==undefined?contentProps.children:
       p.children!==undefined?(isValidElement(p.children)||Array.isArray(p.children)?
@@ -142,7 +142,7 @@ export function selectCardContentPreview(node:ReactNode,onSelect:(item:Item)=>vo
       const isText=element.type===EditableText||element.type===NativeText;
       const isInput=element.type===EditableInput||element.type===NativeInput;
       const childProps:P={...(isText?{editorSkip:true,style:[p.style,typography(overrides[target.id])],
-        ...(target.kind==='text'&&p.editorReadOnly!==true&&staticTextCopy(p.children)!==null&&overrides[target.id]?.labelText?
+        ...(target.kind==='text'&&p.editorReadOnly!==true&&staticTextCopy(p.children)!==null&&overrides[target.id]?.labelText!==undefined?
           {children:overrides[target.id]!.labelText}:{})}:
         isInput?{editorSkip:true,editable:false,showSoftInputOnFocus:false}:
         {editorSkip:true,disabled:true,onPress:undefined,onLongPress:undefined}),

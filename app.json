@@ -3,17 +3,17 @@
     "name": "TF Asset 資產管家",
     "slug": "tf-asset",
     "owner": "deken4908",
-    "version": "5.0.13",
+    "version": "5.0.14",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "tfasset",
     "android": {
       "package": "com.tfasset.app",
-      "versionCode": 50013
+      "versionCode": 50014
     },
     "ios": {
       "bundleIdentifier": "com.tfasset.app",
-      "buildNumber": "50013"
+      "buildNumber": "50014"
     },
     "extra": {
       "eas": {

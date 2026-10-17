@@ -61,6 +61,8 @@ assert.equal(inert.props.disabled,true);assert.equal(inert.props.onPress,undefin
 assert.equal(called,0);
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
-assert.equal(pkg.version,'5.0.13');assert.equal(app.version,'5.0.13');
-assert.equal(app.android.versionCode,50013);assert.equal(app.ios.buildNumber,'50013');
+assert.match(pkg.version,/^5\.0\.\d+$/);assert.ok(Number(pkg.version.split('.')[2])>=13);
+assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50000+Number(pkg.version.split('.')[2]));
+assert.equal(app.ios.buildNumber,String(app.android.versionCode));
 console.log('V5.0.13 nested button captions and readonly quote copy isolation PASS');
