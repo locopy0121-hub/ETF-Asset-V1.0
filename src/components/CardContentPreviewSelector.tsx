@@ -31,7 +31,7 @@ const staticTextCopy=(node:ReactNode):string|null=>{
   }
   if(isValidElement(node)){
     const element=node as E;
-    if(element.type===EditableText||element.type===NativeText)
+    if((element.type===EditableText||element.type===NativeText)&&element.props.editorReadOnly!==true)
       return staticTextCopy(element.props.children);
   }
   return null;
@@ -62,7 +62,8 @@ function traverse(node:ReactNode,path:string,visit:(item:Item)=>void):void{
     if(!isValidElement(child))return;
     const el=child as E,next=(path+'/'+(child.key!==null?String(child.key):String(index))).slice(0,120),item=contentItem(el,next);
     if(item)visit(item);
-    else if(el.props.children!==undefined)traverse(el.props.children,next,visit);
+    // Buttons are containers too: their visible captions need independent edit targets.
+    if(el.props.children!==undefined&&(!item||item.kind==='button'))traverse(el.props.children,next,visit);
   });
 }
 export function listCardContentItems(content:ReactNode,path='root'):Item[]{
