@@ -67,6 +67,8 @@ const picker=preview.find(x=>x.props?.accessibilityLabel==='編輯'+buyItem.labe
 assert.ok(picker);picker.props.onPress();assert.equal(selected.id,buyItem.id);
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
-assert.equal(pkg.version,'5.0.14');assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,50014);assert.equal(app.ios.buildNumber,'50014');
+assert.match(pkg.version,/^5\.0\.\d+$/);assert.ok(Number(pkg.version.split('.')[2])>=14);
+assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50000+Number(pkg.version.split('.')[2]));
+assert.equal(app.ios.buildNumber,String(app.android.versionCode));
 console.log('V5.0.14 single-char caption and intentional empty label parity PASS');

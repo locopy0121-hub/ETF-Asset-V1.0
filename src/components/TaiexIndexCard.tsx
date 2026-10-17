@@ -4,6 +4,8 @@ import Svg,{Circle,Line,Polyline,Polygon} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
 import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
+import {taiexAxisWidth,taiexPlotLeftInset,taiexTimeAxisLeft} from '../editor/taiexIndexChartLayout';
+import {MarketEditableSurface} from './MarketEditableContent';
 import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
@@ -40,6 +42,10 @@ function PriceLine({values,color,levels,intraday,date}:{
   values:readonly IndexPoint[];color:string;levels:IndexThreeGates|null;intraday:boolean;date:string|null
 }){
   const theme=useThemeRuntime();
+  const runtime=useLayoutRuntime(),editor=usePageEditor('market');
+  const targetOverrides=runtime.active?runtime.targets:editor.displayConfig.layoutTargets;
+  const axisWidth=taiexAxisWidth(targetOverrides?.['market:index:axis:left']?.width);
+  const plotInset=taiexPlotLeftInset(targetOverrides?.['market:index:plot:left-inset']?.width);
   const sorted=[...values].filter(x=>Number.isFinite(x.at)&&Number.isFinite(x.value)&&x.value>0)
     .sort((a,b)=>a.at-b.at);
   if(!sorted.length&&!levels)return <Text style={{color:theme.palette.textSecondary,fontSize:12,paddingVertical:20}}>
@@ -62,11 +68,16 @@ function PriceLine({values,color,levels,intraday,date}:{
   const timeLabels=['09:00','10:00','11:00','12:00','13:00','13:30'];
   return <View style={{gap:4}}>
     <View style={{flexDirection:'row',gap:0}}>
-      <View style={{width:93,height:300,position:'relative'}}>
+      <View style={{width:axisWidth,height:300,position:'relative'}}>
+        {runtime.active?<Pressable accessibilityRole="button" accessibilityLabel="編輯左側數值欄寬度"
+          onPress={()=>runtime.onSelect?.({id:'market:index:axis:left',kind:'card',label:'圖表左側數值欄',width:axisWidth})}
+          style={{position:'absolute',top:0,right:0,zIndex:2,padding:2}}>
+          <Text style={{fontSize:10,color:theme.palette.primary}}>↔</Text>
+        </Pressable>:null}
         {gates.map(g=><GateAxisValue key={g.id} gate={g} position={y(g.value)}/>)}
         {!gates.length?<Text style={{fontSize:9,color:theme.palette.textSecondary}}>指數點位</Text>:null}
       </View>
-      <View style={{flex:1,minWidth:0}}>
+      <View style={{flex:1,minWidth:0,paddingLeft:plotInset}}>
         <IndexEditableChart>
           <Svg width="100%" height={300} viewBox="0 0 320 300" preserveAspectRatio="none">
             {[top,90,180,bottom].map(gy=><Line key={'grid'+gy} x1={5} x2={315} y1={gy} y2={gy}
@@ -89,9 +100,11 @@ function PriceLine({values,color,levels,intraday,date}:{
         </IndexEditableChart>
       </View>
     </View>
-    {intraday?<View style={{marginLeft:95,flexDirection:'row',justifyContent:'space-between'}}>
-      {timeLabels.map(s=><Text key={s} style={{fontSize:8,color:theme.palette.textSecondary}}>{s}</Text>)}
-    </View>:null}
+    {intraday?<MarketEditableSurface id="market:index:time-axis" label="圖表時間軸">
+      <View style={{marginLeft:taiexTimeAxisLeft(axisWidth,plotInset),flexDirection:'row',justifyContent:'space-between'}}>
+        {timeLabels.map(s=><Text key={s} style={{fontSize:8,color:theme.palette.textSecondary}}>{s}</Text>)}
+      </View>
+    </MarketEditableSurface>:null}
     {sorted.length?<View style={{flexDirection:'row',justifyContent:'space-between'}}>
       <Text style={{fontSize:9,color:theme.palette.textSecondary}}>當日已核實低點 {format(Math.min(...sorted.map(x=>x.value)))}</Text>
       <Text style={{fontSize:9,color:theme.palette.textSecondary}}>當日已核實高點 {format(Math.max(...sorted.map(x=>x.value)))}</Text>
