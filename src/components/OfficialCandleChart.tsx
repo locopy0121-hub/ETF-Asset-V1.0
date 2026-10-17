@@ -70,11 +70,12 @@ export function OfficialCandleChart({
   const autoScrollDataset=useRef<string|null>(null);
   const ordered=useMemo(()=>[...candles].sort((a,b)=>a.date.localeCompare(b.date)),[candles]);
   const {step,width:candleWidth,bodyWidth,volumeWidth}=chartCandleMetrics(zoom);
-  const showVolume=dataKeys.includes('volume')||chartStyle==='price-volume';
+  const showThreeGates=chartStyle==='three-gates';
+  const showVolume=!showThreeGates&&(dataKeys.includes('volume')||chartStyle==='price-volume');
   const showOpen=dataKeys.includes('open'),showHigh=dataKeys.includes('high'),showLow=dataKeys.includes('low');
   const showClose=dataKeys.includes('close')||dataKeys.includes('price');
-  const showCost=Boolean(holding&&holding.costAvg>0&&(costLineEnabled||dataKeys.includes('cost')||chartStyle==='cost-price'));
-  const secondaryKey=chartStyle==='pnl'?'pnl':chartStyle==='roi'?'roi':(['change','changePct','pnl','comprehensivePnl','roi','marketValue'] as const).find(key=>dataKeys.includes(key));
+  const showCost=!showThreeGates&&Boolean(holding&&holding.costAvg>0&&(costLineEnabled||dataKeys.includes('cost')||chartStyle==='cost-price'));
+  const secondaryKey=showThreeGates?undefined:chartStyle==='pnl'?'pnl':chartStyle==='roi'?'roi':(['change','changePct','pnl','comprehensivePnl','roi','marketValue'] as const).find(key=>dataKeys.includes(key));
   const secondaryValue=(candle:DailyCandle,index:number,key:typeof secondaryKey):number=>{
     if(!key)return 0;
     const prior=index>0?ordered[index-1]!.close:candle.open;
@@ -91,7 +92,7 @@ export function OfficialCandleChart({
   const secSpan=Math.max(.0001,secMax-secMin);
   const secY=(value:number)=>(secMax-value)/secSpan*SECONDARY_HEIGHT;
 
-  const showThreeGates=chartStyle==='three-gates'||dataKeys.includes('threeGates');
+  // Independent five-gate graph, never a K-line data overlay.
   const refCandle=showThreeGates&&ordered.length>1?ordered[ordered.length-2]:null;
   const gateSpan=refCandle?refCandle.high-refCandle.low:0;
   const gateLevels=refCandle&&gateSpan>=0&&refCandle.low>0?[
@@ -101,7 +102,7 @@ export function OfficialCandleChart({
     {id:'lower1',name:'下關價1',value:refCandle.low,color:'#37B84D'},
     {id:'lower2',name:'下關價2',value:refCandle.high-gateSpan*1.382,color:'#198441'},
   ]:[];
-  const pricePool=ordered.flatMap(x=>[x.high,x.low]);
+  const pricePool=showThreeGates?ordered.map(x=>x.close):ordered.flatMap(x=>[x.high,x.low]);
   pricePool.push(...gateLevels.map(g=>g.value));
   if(showCost&&holding)pricePool.push(holding.costAvg);
   const highest=Math.max(...pricePool,1);
@@ -112,6 +113,7 @@ export function OfficialCandleChart({
   const selected=ordered.find(x=>x.date===selectedDate)??ordered[ordered.length-1];
   const selectedIndex=selected?ordered.findIndex(x=>x.date===selected.date):-1;
   const y=(value:number)=>(axisHigh-value)/span*PLOT_HEIGHT;
+  const gateTrendLine=ordered.map((candle,index)=>(LEFT_PAD+index*step+step/2).toFixed(2)+','+y(candle.close).toFixed(2)).join(' ');
   const fullWidth=LEFT_PAD+ordered.length*step+4;
   // Changing symbol or range presents the latest trade; subsequent user panning
   // must never be forcibly snapped back by an ordinary state update.
@@ -212,17 +214,12 @@ export function OfficialCandleChart({
       '三關價五線基準：'+refCandle.date+'（前一交易日高低）｜以最後一根日K為比較日，非日內逐筆資料':
       '三關價需有前一交易日官方 OHLC 才能計算，不以今日高低冒充'}</Text>:null}
     <View style={styles.plotRow}>
-      <View style={[styles.axis,showThreeGates?{width:94}:undefined]}>
+      <View style={styles.axis}>
         <Text style={[styles.axisText,{top:0}]}>{price(axisHigh)}</Text>
         {!(showCost&&holding&&Math.abs(y(holding.costAvg)-PLOT_HEIGHT/2)<14)?
           <Text style={[styles.axisText,{top:PLOT_HEIGHT/2-6}]}>{price((axisHigh+axisLow)/2)}</Text>:null}
         <Text style={[styles.axisText,{top:PLOT_HEIGHT-14}]}>{price(axisLow)}</Text>
-        <Text style={styles.axisTitle}>{showThreeGates?'前日關價':'基準'}</Text>
-        {gateLevels.map(g=><View key={'axis:'+g.id} pointerEvents="none" style={{
-          position:'absolute',left:0,top:clamp(y(g.value)-11,0,PLOT_HEIGHT-20)}}>
-          <Text style={{fontSize:8,fontWeight:'800',color:g.color}}>{g.name}</Text>
-          <Text style={{fontSize:8,color:g.color}}>{price(g.value)}</Text>
-        </View>)}
+        <Text style={styles.axisTitle}>{showThreeGates?'關價基準':'基準'}</Text>
         {showCost&&holding?<Text style={[styles.costAxisLabel,{top:clamp(y(holding.costAvg)-11,15,PLOT_HEIGHT-34)}]}>
           成本 {price(holding.costAvg)}
         </Text>:null}
@@ -276,7 +273,7 @@ export function OfficialCandleChart({
             const bodyHeight=Math.max(2,candleBottom-candleTop);
             const bodyLeft=Math.max(0,(candleWidth-bodyWidth)/2);
             const showTick=index===0||index===ordered.length-1||candle.date.slice(0,7)!==ordered[index-1]?.date.slice(0,7)||index%Math.max(1,Math.ceil(ordered.length/5))===0;
-            const lineMode=chartStyle==='line'||chartStyle==='area'||chartStyle==='cost-price'||chartStyle==='pnl'||chartStyle==='roi'||(!showOpen&&!showHigh&&!showLow&&showClose);
+            const lineMode=showThreeGates||chartStyle==='line'||chartStyle==='area'||chartStyle==='cost-price'||chartStyle==='pnl'||chartStyle==='roi'||(!showOpen&&!showHigh&&!showLow&&showClose);
             const columnMode=chartStyle==='column';
             const ohlcMode=chartStyle==='ohlc';
             const sec=secondaryKey?secondaryValues[index]??0:0;
@@ -286,7 +283,8 @@ export function OfficialCandleChart({
               key={candle.date} onPress={()=>chooseCandle(candle)}
               style={[styles.candleColumn,{width:step,backgroundColor:selected?.date===candle.date&&crosshairEnabled?'rgba(148,163,184,.12)':'transparent'}]}>
               <View style={[styles.pricePlot,{width:candleWidth}]}>
-                {columnMode?<View style={{position:'absolute',left:2,right:2,top:y(candle.close),height:Math.max(2,PLOT_HEIGHT-y(candle.close)),backgroundColor:tone,opacity:.78}}/>:
+                {showThreeGates?null:
+                columnMode?<View style={{position:'absolute',left:2,right:2,top:y(candle.close),height:Math.max(2,PLOT_HEIGHT-y(candle.close)),backgroundColor:tone,opacity:.78}}/>:
                 lineMode?(chartStyle==='line'||chartStyle==='area'?null:<View style={{position:'absolute',left:3,right:3,top:y(candle.close),height:3,backgroundColor:tone}}/>):
                 ohlcMode?<><View style={[styles.wick,{left:candleWidth/2,top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={{position:'absolute',left:2,top:y(candle.open),width:5,height:1,backgroundColor:tone}}/><View style={{position:'absolute',right:1,top:y(candle.close),width:5,height:1,backgroundColor:tone}}/></>:
                 <><View style={[styles.wick,{left:candleWidth/2,top:wickTop,height:Math.max(1,wickBottom-wickTop),backgroundColor:tone}]}/><View style={[styles.body,{left:bodyLeft,width:bodyWidth,top:candleTop,height:bodyHeight,backgroundColor:candlePaint.bodyFill,borderColor:candlePaint.bodyBorder}]}/></>}
@@ -296,10 +294,10 @@ export function OfficialCandleChart({
               <Text style={[styles.tick,{width:step}]}>{showTick?candle.date.slice(5).replace('-','/'):''}</Text>
             </Pressable>;
           })}
-          {(chartStyle==='line'||chartStyle==='area')&&lineGeometry?
+          {(showThreeGates||(chartStyle==='line'||chartStyle==='area')&&lineGeometry)?
             <Svg pointerEvents="none" style={{position:'absolute',left:0,top:0}} width={fullWidth} height={PLOT_HEIGHT} viewBox={'0 0 '+fullWidth+' '+PLOT_HEIGHT}>
-              {chartStyle==='area'?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
-              <Polyline points={lineGeometry.line} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
+              {chartStyle==='area'&&lineGeometry?<Polygon points={lineGeometry.area} fill={lineColor} opacity={.15}/>:null}
+              <Polyline points={showThreeGates?gateTrendLine:lineGeometry?.line??''} fill="none" stroke={lineColor} strokeWidth={2.1} strokeLinejoin="round" strokeLinecap="round"/>
             </Svg>:null}
           {gateLevels.map(g=><View pointerEvents="none" key={'gate:'+g.id} style={{
             position:'absolute',left:0,width:fullWidth,top:y(g.value),borderTopWidth:1,
@@ -325,6 +323,12 @@ export function OfficialCandleChart({
         <Text style={styles.actualAxisTitle}>{crosshairEnabled?'選取值':'實際值'}</Text>
       </View>
     </View>
+    {showThreeGates&&gateLevels.length?<View style={styles.gateLegend}>
+      {gateLevels.map(g=><View key={'legend:'+g.id} style={styles.gateLegendItem}>
+        <Text style={{fontSize:10,fontWeight:'800',color:g.color}}>{g.name}</Text>
+        <Text style={{fontSize:11,fontWeight:'800',color:g.color}}>{price(g.value)}</Text>
+      </View>)}
+    </View>:null}
     {secondaryKey?<Text style={styles.caption}>副圖：{secondaryLabel[secondaryKey]} · {number(secMin)} ～ {number(secMax)}</Text>:null}
     {holding&&(dataKeys.some(key=>['pnl','comprehensivePnl','roi','marketValue'].includes(key))||chartStyle==='pnl'||chartStyle==='roi'||chartStyle==='cost-price')?<Text style={styles.estimateNote}>歷史持股績效使用目前股數與含費成本套入各日歷史收盤價估值；正式當前損益仍取帳務核心。</Text>:null}
     <Text style={styles.caption}>圖表可用＋／－放大縮小，點擊比例還原，支援雙指縮放。{crosshairEnabled?(cursorDragMode?'拖動十字線選取日期；切回「左右滑動圖表」可查看歷史':'左右滑動可查看全部歷史 K 棒，輕點查看選取日期'):'左右滑動瀏覽所有歷史行情'}</Text>
@@ -359,6 +363,8 @@ const styles=StyleSheet.create({
   axisTitle:{position:'absolute',left:0,top:PLOT_HEIGHT+3,fontSize:9,color:colors.textSecondary},
   costAxisLabel:{position:'absolute',left:0,fontSize:8,fontWeight:'800',color:colors.primary,backgroundColor:colors.surface,paddingRight:3},
   actualAxis:{width:PRICE_AXIS_WIDTH,height:PLOT_HEIGHT,position:'relative',alignItems:'flex-end'},
+  gateLegend:{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',gap:8,paddingVertical:4},
+  gateLegendItem:{minWidth:73,gap:2},
   actualAxisTitle:{position:'absolute',top:PLOT_HEIGHT+3,right:0,fontSize:9,color:colors.textSecondary},
   costLine:{position:'absolute',left:0,borderTopWidth:1,borderStyle:'dashed',borderColor:colors.primary,zIndex:3},
   crosshairLayer:{position:'absolute',top:0,left:0,width:'100%'},
