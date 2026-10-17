@@ -32,7 +32,7 @@ function GateAxisValue({gate,position}:{gate:ReturnType<typeof indexFiveGateLeve
   return <View onLayout={event=>{
     const next=event.nativeEvent.layout.height;
     if(Math.abs(next-height)>.5)setHeight(next);
-  }} style={{position:'absolute',right:0,top:position-height/2,maxWidth:'100%'}}>
+  }} style={{position:'absolute',left:0,right:0,top:position-height/2,alignItems:'flex-end'}}>
     <IndexEditableText id={'market:index:gates:'+gate.id+':left'} label={gate.name+'圖表左側數值'}
       kind="value" style={{fontSize:10,lineHeight:12,fontWeight:'800',color:gate.color,
         includeFontPadding:false,textAlign:'right'}}>{format(gate.value)}</IndexEditableText>
@@ -151,7 +151,7 @@ function IndexEditableText({id,label,kind,style,children,profitTone='neutral',ed
   if(!runtime.active)return content;
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
     onPress={()=>runtime.onSelect?.({id,label,kind})}
-    style={[{borderRadius:5,alignSelf:'flex-start',maxWidth:'100%'},
+    style={[{borderRadius:5,alignSelf:id.endsWith(':left')?'flex-end':'flex-start',maxWidth:'100%'},
       runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA'}:undefined]}>
     <View pointerEvents="none">{content}</View>
   </Pressable>;

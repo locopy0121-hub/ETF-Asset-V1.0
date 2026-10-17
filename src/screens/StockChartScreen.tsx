@@ -65,6 +65,7 @@ export function StockChartScreen({holding:initialHolding,onBack}:{holding:Holdin
     setInputError(null);setSymbol(normalized);setQuery(normalized);
   };
   const toggleData=(key:ChartDataKey)=>{
+    if(key==='threeGates'){setStyle(current=>current==='three-gates'?'candlestick':'three-gates');return;}
     if(HOLDING_CHART_DATA_OPTIONS.some(item=>item.key===key)&&!currentHolding)return;
     setDataKeys(current=>{
       if(current.includes(key))return current.length===1?current:current.filter(item=>item!==key);
@@ -127,7 +128,7 @@ export function StockChartScreen({holding:initialHolding,onBack}:{holding:Holdin
           <View style={styles.sourceCard}>
             <Text editorId="native:StockChartScreen:sourceTitle:13" editorReadOnly={false} style={styles.sourceTitle}>市場數據</Text>
             <Text editorId="native:StockChartScreen:sourceHint:14" editorReadOnly={false} style={styles.sourceHint}>交易所行情與歷史資料</Text>
-            <View style={styles.wrap}>{MARKET_CHART_DATA_OPTIONS.map(item=><Chip key={item.key} label={item.label} active={dataKeys.includes(item.key)} onPress={()=>toggleData(item.key)}/>)}</View>
+            <View style={styles.wrap}>{MARKET_CHART_DATA_OPTIONS.map(item=><Chip key={item.key} label={item.label} active={item.key==='threeGates'?style==='three-gates':dataKeys.includes(item.key)} onPress={()=>toggleData(item.key)}/>)}</View>
           </View>
           <View style={[styles.sourceCard,!currentHolding&&styles.sourceDisabled]}>
             <Text editorId="native:StockChartScreen:sourceTitle:15" editorReadOnly={false} style={styles.sourceTitle}>持股相關數據</Text>
