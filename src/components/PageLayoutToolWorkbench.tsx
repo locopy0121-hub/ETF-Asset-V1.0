@@ -8,6 +8,7 @@ import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingQuote,type HoldingWallConfig,typ
 import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,FrameBehavior,FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
 import {TAIEX_EXPLANATIONS} from './taiexExplanations';
+import {TAIEX_INDEX_EDITOR_ITEMS,taiexAxisWidth,taiexPlotLeftInset} from '../editor/taiexIndexChartLayout';
 import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
@@ -116,8 +117,9 @@ export function PageLayoutToolWorkbench({
   if(!frame||!frameConfig)return null;
   const contentItems=[
     ...(frame.key!=='page-header'?[{id:'frame-title:'+frame.key,kind:'text' as const,label:'卡片標題 · '+frame.title}]:[]),
-    ...(supportsCardContentEditor(pageKey,frame.key)?
-      listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children,'root/'+frame.key):[]),
+    ...(pageKey==='market'&&frame.key==='market-index'?TAIEX_INDEX_EDITOR_ITEMS:
+      supportsCardContentEditor(pageKey,frame.key)?
+        listCardContentItems(previewElements?.find(item=>item.key===frame.key)?.element.props.children,'root/'+frame.key):[]),
   ];
 
   const profile=layoutToolProfile(pageKey,frame.key);
@@ -536,7 +538,7 @@ export function PageLayoutToolWorkbench({
     </View>:null}
     {pageKey!=='settings'&&frame.key!=='page-header'?<View>
       <Text style={styles.hint}>框架說明：{frame.description}</Text>
-      {!supportsCardContentEditor(pageKey,frame.key)?<Text style={styles.hint}>
+      {!supportsCardContentEditor(pageKey,frame.key)&&!(pageKey==='market'&&frame.key==='market-index')?<Text style={styles.hint}>
         此框架內部採專用功能編輯器；卡片標題可在這裡修改，其他未註冊細項仍須在正式頁面的維護工程師選取。
       </Text>:null}
       <Text style={styles.title}>卡片內容編輯項目 · {contentItems.length} 項</Text>
@@ -549,7 +551,19 @@ export function PageLayoutToolWorkbench({
         </Pressable>)}
       </ScrollView>
     </View>:null}
-    {!previewKeys.includes(frame.key)?<Text style={styles.hint}>
+    {pageKey==='market'&&frame.key==='market-index'?<Accordion
+        title="三關價圖表座標與繪圖空間"
+        subtitle="縮小左側數值欄後，圖表可向左延伸；實際頁與預覽共用座標"
+        open={openGroup==='index-plot'} onPress={()=>toggle('index-plot')}>
+        <NumberStep label="左側數值欄寬度" value={taiexAxisWidth(targets['market:index:axis:left']?.width)}
+          min={56} max={150} step={1} suffix=" px"
+          onChange={width=>patchTarget('market:index:axis:left',{width})}/>
+        <NumberStep label="繪圖區左內距" value={taiexPlotLeftInset(targets['market:index:plot:left-inset']?.width)}
+          min={0} max={40} step={1} suffix=" px"
+          onChange={width=>patchTarget('market:index:plot:left-inset',{width})}/>
+        <Text style={styles.hint}>預設為 93 px／0 px，數值基準線和時間軸按相同水平空間定位。預覽使用實際內容寬度排版後等比縮放。</Text>
+      </Accordion>:null}
+     {!previewKeys.includes(frame.key)?<Text style={styles.hint}>
       此框架可編輯排序、尺寸、外觀與顯示。內容細項請在實際頁面開啟維護工程師選取；此處尚未提供內容預覽。
     </Text>:null}
 
