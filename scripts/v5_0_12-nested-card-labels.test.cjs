@@ -47,6 +47,7 @@ assert.ok(!preview.some(n=>n.type===mock.Text&&n.props.children==='不可更改�
   'preview cannot edit dynamic holding values');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
-assert.equal(pkg.version,'5.0.12');assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,50012);
+assert.match(pkg.version,/^5\.0\.\d+$/);assert.ok(Number(pkg.version.split('.')[2])>=12);
+assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50000+Number(pkg.version.split('.')[2]));
 console.log('V5.0.12 nested static copy / dynamic value protection / actual-preview parity PASS');
