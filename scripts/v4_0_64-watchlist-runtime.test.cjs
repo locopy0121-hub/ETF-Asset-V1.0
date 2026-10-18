@@ -60,6 +60,9 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  panelProps={heldSymbols:['2330'],excludeSymbols:['2330','0050'],hideWhenEmpty:true,onSelect:()=>{}};
  tree=render();assert.equal(tree,null,'no extra panel when every self-picked instrument is already shown as holding');
  panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
+ // Drain previously queued standalone preference writes before seeding a known saved state.
+ // Otherwise an older async writer can overwrite the test fixture after it is reset.
+ await flush();await flush();
  // A combined view must read the live home-wall editor settings without modifying
  // the independently persisted watchlist presentation preferences.
  failRead=false;
@@ -67,6 +70,7 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  homeDisplay={};
  const inheritedWall={style:{backgroundColor:'#123456',backgroundOpacity:.42,textColor:'#ffffff',secondaryTextColor:'#eeeeee',borderColor:'#abcdef',borderWidth:2,cornerRadius:18,padding:14,rowGap:7},header:{fontScale:1},fields:[{field:'name',fontScale:1.5,textColor:'#336699',textOpacity:.5}]};
  panelProps={heldSymbols:['2330'],excludeSymbols:['2330'],hideWhenEmpty:true,inheritHomeWallStyle:true,sourceWallConfig:inheritedWall,onSelect:()=>{}};
+ const writesBeforeInherited=writes.length;
  host=newHost();render();await flush();tree=render();
  const inheritedCard=nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050');
  assert.ok(inheritedCard,'actual nonheld row exists in combined view');
@@ -75,6 +79,16 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  assert.ok(Math.abs(nodes(tree).find(x=>x.props?.testID==='watchlist-name-0050').props.style.fontSize-18)<1e-8,'combined watchlist inherits field font scaling');
  assert.ok(!nodes(tree).some(x=>x.props?.accessibilityLabel==='套用目前行情牆樣式'),'combined view requires no manual copy button');
  assert.equal(JSON.parse(storage.get('@tf-asset/watchlist-presentation-v1')).useWallStyle,false,'temporary inherited appearance must not mutate standalone watchlist preference');
+ panelProps={...panelProps,inheritedMode:'chart',inheritedColumns:2};tree=render();
+ assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050').props.style.width,'48.5%','home grid2 gives watch-only card same column width');
+ assert.ok(nodes(tree).some(x=>x.props?.accessibilityLabel?.includes('實際分時點'))===false,'chart mode never fabricates intraday data for missing watched quote');
+ panelProps={...panelProps,inheritedMode:'compact',inheritedColumns:3};tree=render();
+ assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050').props.style.width,'31.2%','home grid3 gives watch-only card same column width');
+ assert.ok(!nodes(tree).some(x=>x.props?.accessibilityLabel==='自選顯示：清單'),'combined mode disables independent mode controls');
+ panelProps={...panelProps,inheritedMode:'wall',inheritedColumns:1};tree=render();
+ assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050').props.style.width,'100%','home single column gives a full-width watched card');
+ assert.equal(JSON.parse(storage.get('@tf-asset/watchlist-presentation-v1')).mode,'wall','combined mode does not persist overrides');
+ assert.equal(writes.length,writesBeforeInherited,'combined mode does not start any preference write');
  panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
  list.items=[];tree=render();assert.match(text(tree),/尚無自選標的/);list.hydrated=false;tree=render();assert.match(text(tree),/載入自選清單/);
  console.log('V4.0.64 actual WatchlistPanel mode/sort actions, genuine chart, independent persistence, optional storage failure and states PASS');

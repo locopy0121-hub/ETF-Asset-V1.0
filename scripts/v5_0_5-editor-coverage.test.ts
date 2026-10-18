@@ -43,8 +43,8 @@ assert.match(workbench,/resolvePreviewFrameKeys/);
 assert.match(workbench,/id:'market:watchlist:content'/);
 assert.match(workbench,/<WatchlistPanel heldSymbols=\{finance.holdings.map\(row=>row.symbol\)\}/);
 assert.match(workbench,/readOnlyPreview previewOverrides=\{targets\}\/>/,'preview must be read-only and consume unsaved appearance draft');
-assert.match(read('src/components/WatchlistPanel.tsx'),/if\(prefsReady&&!previewMode\)/,
-  'preview must never persist watchlist changes');
+assert.match(read('src/components/WatchlistPanel.tsx'),/if\(prefsReady&&!previewMode&&!inheritHomeWallStyle\)/,
+  'editor preview and merged home mode must never persist independent watchlist preferences');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
 assert.match(pkg.version,/^5\.0\.\d+$/);assert.ok(Number(pkg.version.split('.')[2])>=5);
 assert.equal(app.version,pkg.version);
