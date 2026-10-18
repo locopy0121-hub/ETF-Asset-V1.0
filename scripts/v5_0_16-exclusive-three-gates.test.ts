@@ -38,6 +38,6 @@ assert.ok(editor.includes('TAIEX_INDEX_EDITOR_ITEMS')&&editor.includes('taiexAxi
 assert.ok(c.includes('onTouchMove=')&&c.includes('onScroll={event=>{scrollX.current='),
   'chart pan, zoom and crosshair must stay intact');
 const pkg=JSON.parse(read('package.json')),app=JSON.parse(read('app.json')).expo;
-assert.equal(pkg.version,'5.0.18');assert.equal(app.version,pkg.version);
-assert.equal(app.android.versionCode,50018);assert.equal(app.ios.buildNumber,'50018');
-console.log('V5.0.18 dedicated three-gate chart, independent K-line and index label alignment PASS');
+assert.equal(pkg.version,'5.0.19');assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50019);assert.equal(app.ios.buildNumber,'50019');
+console.log('V5.0.19 dedicated three-gate chart, independent K-line and index label alignment PASS');

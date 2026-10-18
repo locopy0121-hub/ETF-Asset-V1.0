@@ -1,4 +1,4 @@
-name: TF Asset V5.0.18 CI / QA APK
+name: TF Asset V5.0.19 CI / QA APK
 
 on:
   push:
@@ -29,77 +29,77 @@ jobs:
         run: npx tsx scripts/v4_0_19-calendar-text-selector.test.ts
       - name: V4.0.19 fixed split preview and compact toolbar regression
         run: node scripts/v4_0_19-fixed-preview-layout.test.cjs
-      - name: V5.0.18 quick bar visual editor regression
+      - name: V5.0.19 quick bar visual editor regression
         run: npx tsx scripts/v4_0_20-quickbar-editor.test.ts
-      - name: V5.0.18 real home KPI preview / flex regression
+      - name: V5.0.19 real home KPI preview / flex regression
         run: npx tsx scripts/v4_0_21-home-profit-preview.test.ts
-      - name: V5.0.18 dividend summary readability and independent AI frame
+      - name: V5.0.19 dividend summary readability and independent AI frame
         run: npx tsx scripts/v4_0_22-dividend-summary-separate-ai.test.ts
-      - name: V5.0.18 unrestricted saved dimensions and actual preview regression
+      - name: V5.0.19 unrestricted saved dimensions and actual preview regression
         run: npx tsx scripts/v4_0_23-unrestricted-dimensions.test.ts
-      - name: V5.0.18 equal columns and engineer overlay bounds regression
+      - name: V5.0.19 equal columns and engineer overlay bounds regression
         run: npx tsx scripts/v4_0_24-equal-grid-engineer.test.ts
-      - name: V5.0.18 live equal-grid XY isolation and automatic row refill
+      - name: V5.0.19 live equal-grid XY isolation and automatic row refill
         run: npx tsx scripts/v4_0_25-equal-grid-live-parity.test.ts
-      - name: V5.0.18 day month year PnL charts and pagination regression
+      - name: V5.0.19 day month year PnL charts and pagination regression
         run: npx tsx scripts/v4_0_26-daily-pnl-stats.test.ts
-      - name: V5.0.18 holding market-value daily tab pagination / chart regression
+      - name: V5.0.19 holding market-value daily tab pagination / chart regression
         run: npx tsx scripts/v4_0_27-holding-market-value-history.test.ts
-      - name: V5.0.18 inherited ledger pagination regression
+      - name: V5.0.19 inherited ledger pagination regression
         run: npx tsx scripts/v3_1_17-ledger-pagination.test.ts
-      - name: V5.0.18 inherited dashboard content editing regression
+      - name: V5.0.19 inherited dashboard content editing regression
         run: npx tsx scripts/v3_1_17-dashboard-content.test.ts
-      - name: V5.0.18 inherited holding detail editor / Android safe-area regression
+      - name: V5.0.19 inherited holding detail editor / Android safe-area regression
         run: npx tsx scripts/v3_1_18-holding-detail-safearea.test.ts
-      - name: V5.0.18 full inherited + Market Core gates
+      - name: V5.0.19 full inherited + Market Core gates
         run: npm run test:v5_0_3
-      - name: V5.0.18 break-even minimum-shares behavior
+      - name: V5.0.19 break-even minimum-shares behavior
         run: npm run test:v5_0_4-break-even
-      - name: V5.0.18 mounted card editor coverage regression
+      - name: V5.0.19 mounted card editor coverage regression
         run: npm run test:v5_0_5-editor
-      - name: V5.0.18 actual nested card content editor behavior
+      - name: V5.0.19 actual nested card content editor behavior
         run: npm run test:v5_0_6-content
-      - name: V5.0.18 deep page content + market-wall + profit-goal regression
+      - name: V5.0.19 deep page content + market-wall + profit-goal regression
         run: npm run test:v5_0_7-deep
-      - name: V5.0.18 market research behavior
+      - name: V5.0.19 market research behavior
         run: npx tsx scripts/v4_0_28-market-research.test.ts
-      - name: V5.0.18 technical / institutional / ETF NAV data gates
+      - name: V5.0.19 technical / institutional / ETF NAV data gates
         run: npx tsx scripts/v4_0_29-market-depth.test.ts
-      - name: V5.0.18 TPEx institutional parser integrity and market isolation
+      - name: V5.0.19 TPEx institutional parser integrity and market isolation
         run: npx tsx scripts/v4_0_30-tpex-institutional.test.ts
-      - name: V5.0.18 chart geometry and synchronized indicator regression
+      - name: V5.0.19 chart geometry and synchronized indicator regression
         run: npx tsx scripts/v4_0_31-market-chart.test.ts
-      - name: V5.0.18 official TAIEX index model and market header gate
+      - name: V5.0.19 official TAIEX index model and market header gate
         run: npx tsx scripts/v4_0_32-market-taiex.test.ts
-      - name: V5.0.18 TAIEX three-gate parser, date and editor regression
+      - name: V5.0.19 TAIEX three-gate parser, date and editor regression
         run: npm run test:v5_0_8-index
-      - name: V5.0.18 full-session TAIEX five-line gate and chart selector regression
+      - name: V5.0.19 full-session TAIEX five-line gate and chart selector regression
         run: npm run test:v5_0_9-three-gates
-      - name: V5.0.18 app-wide solid red/green OHLC regression
+      - name: V5.0.19 app-wide solid red/green OHLC regression
         run: npx tsx scripts/v4_0_33-appwide-solid-candle.test.ts
-      - name: V5.0.18 app-wide price axis and pan/cursor modes
+      - name: V5.0.19 app-wide price axis and pan/cursor modes
         run: npx tsx scripts/v4_0_34-chart-pan-axis.test.ts
-      - name: V5.0.18 market individual stock dividend history regression
+      - name: V5.0.19 market individual stock dividend history regression
         run: npx tsx scripts/v4_0_35-market-dividend-history.test.ts
-      - name: V5.0.18 dropdown selection / zoom / pan anchor regressions
+      - name: V5.0.19 dropdown selection / zoom / pan anchor regressions
         run: npx tsx scripts/v4_0_36-chart-dropdown-zoom.test.ts
-      - name: V5.0.18 inherited pinch queue / final scale contract
+      - name: V5.0.19 inherited pinch queue / final scale contract
         run: npx tsx scripts/v4_0_37-chart-gesture.test.ts
-      - name: V5.0.18 global chart pan/zoom fixed-axis regression
+      - name: V5.0.19 global chart pan/zoom fixed-axis regression
         run: npx tsx scripts/v4_0_38-global-chart-viewport.test.ts
-      - name: V5.0.18 market editor content and preview coverage
+      - name: V5.0.19 market editor content and preview coverage
         run: npx tsx scripts/v4_0_39-market-editor.test.ts
-      - name: V5.0.18 market search and live quote editor regression
+      - name: V5.0.19 market search and live quote editor regression
         run: npx tsx scripts/v4_0_40-market-search-quote-editor.test.ts
-      - name: V5.0.18 market chart editor and zoom pan isolation
+      - name: V5.0.19 market chart editor and zoom pan isolation
         run: npx tsx scripts/v4_0_41-market-chart-editor.test.ts
-      - name: V5.0.18 market research cards and list editor regression
+      - name: V5.0.19 market research cards and list editor regression
         run: npx tsx scripts/v4_0_42-market-research-editor.test.ts
-      - name: V5.0.18 actual ledger preview and unconstrained frame geometry
+      - name: V5.0.19 actual ledger preview and unconstrained frame geometry
         run: npx tsx scripts/v4_0_43-ledger-preview-geometry.test.ts
-      - name: V5.0.18 SaiETF locked-core, Taipei-session and subscription lifecycle regressions
+      - name: V5.0.19 SaiETF locked-core, Taipei-session and subscription lifecycle regressions
         run: npx tsx scripts/v4_0_44-saietf-sync.test.ts
-      - name: V5.0.18 SaiETF exclusive price authority and source-clock gate
+      - name: V5.0.19 SaiETF exclusive price authority and source-clock gate
         run: npx tsx scripts/v4_0_45-saietf-authority.test.ts
       - name: Native market bridge behavior and nine-symbol App valuation
         run: bash scripts/test-native-market-bridge.sh
@@ -113,43 +113,45 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: V5.0.18 inherited controls source smoke
+      - name: V5.0.19 inherited controls source smoke
         run: npm run test:v1_1_3-controls-smoke
-      - name: V5.0.18 inherited controls runtime behavior
+      - name: V5.0.19 inherited controls runtime behavior
         run: npm run test:v1_1_3-controls-runtime
-      - name: V5.0.18 inherited AI holdings behavior
+      - name: V5.0.19 inherited AI holdings behavior
         run: npm run test:v1_1_3-ai-holdings
-      - name: V5.0.18 inherited dividend calendar behavior
+      - name: V5.0.19 inherited dividend calendar behavior
         run: npm run test:v1_1_3-dividend-calendar
-      - name: V5.0.18 inherited system profit colors
+      - name: V5.0.19 inherited system profit colors
         run: npm run test:v1_1_3-system-colors
-      - name: V5.0.18 inherited integration smoke
+      - name: V5.0.19 inherited integration smoke
         run: node scripts/v2_1_1-release.test.cjs
-      - name: V5.0.18 inherited UX controls
+      - name: V5.0.19 inherited UX controls
         run: node scripts/v2_1_1-release.test.cjs
       - name: V5.0.11 inherited ETF editor preview safety
         run: node scripts/v5_0_11-editor-preview-safety.test.cjs
-      - name: V5.0.18 nested card text edit and data isolation
+      - name: V5.0.19 nested card text edit and data isolation
         run: node scripts/v5_0_12-nested-card-labels.test.cjs
-      - name: V5.0.18 button caption and readonly descendant editor gate
+      - name: V5.0.19 button caption and readonly descendant editor gate
         run: node scripts/v5_0_13-button-label-guard.test.cjs
-      - name: V5.0.18 one-character labels and explicit cleared copy
+      - name: V5.0.19 one-character labels and explicit cleared copy
         run: node scripts/v5_0_14-short-caption-clear.test.cjs
-      - name: V5.0.18 TAIEX shared axis geometry and editor targets
+      - name: V5.0.19 TAIEX shared axis geometry and editor targets
         run: npx tsx scripts/v5_0_15-taiex-preview-geometry.test.ts
-      - name: V5.0.18 independent three-gate graph and aligned preview labels
+      - name: V5.0.19 independent three-gate graph and aligned preview labels
         run: npx tsx scripts/v5_0_16-exclusive-three-gates.test.ts
-      - name: V5.0.18 native holding/watchlist priority behavior
+      - name: V5.0.19 native holding/watchlist priority behavior
         run: bash scripts/test-native-watchlist.sh
-      - name: V5.0.18 home holding-watchlist one-card behavior
-        run: node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_18-home-wall-source.test.cjs
+      - name: V5.0.19 home holding-watchlist one-card behavior
+        run: node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_18-home-wall-source.test.cjs && node scripts/v5_0_19-home-wall-style.test.cjs
+      - name: V5.0.19 combined home wall appearance inheritance
+        run: node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_19-home-wall-style.test.cjs
       - name: Expo dependency check
         run: npm run check:expo
       - name: Expo Doctor
         run: npm run doctor
 
   backend-quality:
-    name: V5.0.18 Node/Redis/PostgreSQL inherited integration
+    name: V5.0.19 Node/Redis/PostgreSQL inherited integration
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -187,7 +189,7 @@ jobs:
         run: node --check src/index.mjs && node --test --test-concurrency=1 test/*.test.mjs
 
   qa-apk:
-    name: V5.0.18 QA APK / native integration
+    name: V5.0.19 QA APK / native integration
     # This is an acceptance artifact, not the official release or permanent download.
     # Build from PR head to avoid a stale, canceled push-run backend blocking the APK queue.
     if: (github.event_name == 'push' && (startsWith(github.ref_name, 'v4.0.') || startsWith(github.ref_name, 'v5.0.'))) || (github.event_name == 'pull_request' && ((startsWith(github.head_ref, 'v4.0.') || startsWith(github.head_ref, 'v5.0.')) || startsWith(github.head_ref, 'go-v3.2.') || startsWith(github.head_ref, 'go-v3.1.') || startsWith(github.head_ref, 'go-v3.0.')))
@@ -213,17 +215,17 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V5.0.18 identity
+      - name: Freeze V5.0.19 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "5.0.18"
-          test "$(node -p "require('./app.json').expo.version")" = "5.0.18"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50018"
+          test "$(node -p "require('./package.json').version")" = "5.0.19"
+          test "$(node -p "require('./app.json').expo.version")" = "5.0.19"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50019"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V5.0.18 Hard Gates
+      - name: V5.0.19 Hard Gates
         run: npm run test:v4_0_65 && npm run test:v5_0_3-backup && npm run test:v5_0_4-break-even && npm run test:v5_0_8-index && npm run test:v5_0_9-three-gates && bash scripts/test-native-watchlist.sh && node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_18-home-wall-source.test.cjs
 
       - name: Generate declared skill coverage matrix for APK evidence
@@ -262,8 +264,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 50018');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "5.0.18"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 50019');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "5.0.19"');
           g=g.replace(/dependencies\s*\{/,'dependencies {\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")\n    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")\n    implementation("com.squareup.okhttp3:okhttp:4.12.0")');
           if(!g.includes('kotlinx-coroutines-android:1.10.2')||!g.includes('kotlinx-serialization-json:1.9.0')||!g.includes('com.squareup.okhttp3:okhttp:4.12.0')) throw new Error('SaiETF native market Gradle dependencies were not injected');
           fs.writeFileSync(gradle,g);
@@ -335,30 +337,30 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V5.0.18-QA.apk
-          test "$(stat -c%s TF-Asset-V5.0.18-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V5.0.18-QA.apk
-          sha256sum TF-Asset-V5.0.18-QA.apk | tee TF-Asset-V5.0.18-QA.sha256
+          cp "$APK_PATH" TF-Asset-V5.0.19-QA.apk
+          test "$(stat -c%s TF-Asset-V5.0.19-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V5.0.19-QA.apk
+          sha256sum TF-Asset-V5.0.19-QA.apk | tee TF-Asset-V5.0.19-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V5.0.18-QA.apk | tee TF-Asset-V5.0.18-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V5.0.18-badging.txt
-          grep "versionCode='50018'" TF-Asset-V5.0.18-badging.txt
-          grep "versionName='5.0.18'" TF-Asset-V5.0.18-badging.txt
+          "$AAPT" dump badging TF-Asset-V5.0.19-QA.apk | tee TF-Asset-V5.0.19-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V5.0.19-badging.txt
+          grep "versionCode='50019'" TF-Asset-V5.0.19-badging.txt
+          grep "versionName='5.0.19'" TF-Asset-V5.0.19-badging.txt
           # Verify the merged binary manifest, not just the source scaffold.
-          grep -F "uses-permission: name='android.permission.WAKE_LOCK'" TF-Asset-V5.0.18-badging.txt
-          unzip -p TF-Asset-V5.0.18-QA.apk assets/index.android.bundle > /tmp/tfasset-widget-bundle
+          grep -F "uses-permission: name='android.permission.WAKE_LOCK'" TF-Asset-V5.0.19-badging.txt
+          unzip -p TF-Asset-V5.0.19-QA.apk assets/index.android.bundle > /tmp/tfasset-widget-bundle
           node -e "const fs=require('fs');if(!fs.readFileSync('/tmp/tfasset-widget-bundle').includes(Buffer.from('TfAssetWidgetLive')))throw Error('Widget headless task missing from APK bundle');"
-          file TF-Asset-V5.0.18-QA.apk
+          file TF-Asset-V5.0.19-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V5.0.18-QA-APK
+          name: TF-Asset-V5.0.19-QA-APK
           path: |
-            TF-Asset-V5.0.18-QA.apk
-            TF-Asset-V5.0.18-QA.sha256
-            TF-Asset-V5.0.18-badging.txt
+            TF-Asset-V5.0.19-QA.apk
+            TF-Asset-V5.0.19-QA.sha256
+            TF-Asset-V5.0.19-badging.txt
             reports/V3.2.49-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
