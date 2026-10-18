@@ -60,6 +60,9 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  panelProps={heldSymbols:['2330'],excludeSymbols:['2330','0050'],hideWhenEmpty:true,onSelect:()=>{}};
  tree=render();assert.equal(tree,null,'no extra panel when every self-picked instrument is already shown as holding');
  panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
+ // Drain previously queued standalone preference writes before seeding a known saved state.
+ // Otherwise an older async writer can overwrite the test fixture after it is reset.
+ await flush();await flush();
  // A combined view must read the live home-wall editor settings without modifying
  // the independently persisted watchlist presentation preferences.
  failRead=false;
