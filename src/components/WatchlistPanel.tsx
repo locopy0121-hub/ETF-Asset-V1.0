@@ -1,7 +1,7 @@
 import {linkedColor} from '../maintenance/workspaceModel';
 import {colorWithAlpha} from '../maintenance/frameEffects';
 import {financialTone} from '../theme/financialTone';
-import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingWallFieldKey} from '../domain/uiModels';
+import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingWallFieldKey,type HoldingWallConfig} from '../domain/uiModels';
 import {useEffect,useMemo,useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {View,Text,Pressable,ScrollView} from 'react-native';
@@ -18,9 +18,10 @@ import {MarketPreviewActionGuard,MarketEditableText} from './MarketEditableConte
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
-export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,readOnlyPreview=false,previewOverrides}:{
+export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,inheritHomeWallStyle=false,sourceWallConfig,readOnlyPreview=false,previewOverrides}:{
   onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];
   excludeSymbols?:readonly string[];hideWhenEmpty?:boolean;
+  inheritHomeWallStyle?:boolean;sourceWallConfig?:HoldingWallConfig;
   readOnlyPreview?:boolean;previewOverrides?:Readonly<Record<string,TargetOverride>>;
 }){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
@@ -38,7 +39,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
   return sortWatchlistRows(watchlistSnapshot(list.items.filter(item=>!excluded.has(item.symbol.toUpperCase())),market.quotes),presentation.sort,presentation.direction);
  },[list.items,market.quotes,presentation.sort,presentation.direction,excludeSymbols]);
  const bySymbol=useMemo(()=>new Map(market.quotes.map(q=>[q.symbol,q])),[market.quotes]);
- const wallConfig=presentation.useWallStyle?(homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):undefined;
+ const wallConfig=inheritHomeWallStyle?(sourceWallConfig??homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):presentation.useWallStyle?(homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):undefined;
  const wall=wallConfig?.style,secondary=theme.palette.textSecondary;
  // Feed already-resolved system colors to the same resolver used by holding cards.
  const systemPalette={gainColor:colors.gain,lossColor:colors.loss,neutralColor:colors.flat};
@@ -141,7 +142,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  const panel=<View style={{gap:8}}>
   <View accessibilityLabel="自選顯示模式" style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{WATCHLIST_MODES.map(mode=>chip('自選顯示：'+mode.label,presentation.mode===mode.key,()=>setPresentation(p=>({...p,mode:mode.key})),mode.icon))}</View>
   <View style={{flexDirection:'row',gap:5,flexWrap:'wrap',alignItems:'center'}}>{SORTS.map(sort=>chip('排序：'+sort.label,presentation.sort===sort.key,()=>setPresentation(p=>({...p,sort:sort.key}))))}{chip(presentation.direction==='asc'?'排序方向：升冪':'排序方向：降冪',false,()=>setPresentation(p=>({...p,direction:p.direction==='asc'?'desc':'asc'})))}</View>
-  <View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{chip('套用目前行情牆樣式',presentation.useWallStyle,()=>setPresentation(p=>({...p,useWallStyle:true})))}{presentation.useWallStyle?chip('使用預設樣式',false,()=>setPresentation(p=>({...p,useWallStyle:false}))):null}</View>
+  {!inheritHomeWallStyle?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{chip('套用目前行情牆樣式',presentation.useWallStyle,()=>setPresentation(p=>({...p,useWallStyle:true})))}{presentation.useWallStyle?chip('使用預設樣式',false,()=>setPresentation(p=>({...p,useWallStyle:false}))):null}</View>:null}
   {prefsError?<Text style={{color:theme.palette.textSecondary,fontSize:11}}>{prefsError}</Text>:null}
   {list.error?<Text style={{color:colors.loss}}>{list.error}</Text>:null}
   {!list.hydrated?<Text style={{color:theme.palette.textSecondary}}>載入自選清單…</Text>:!rows.length?<Text style={{color:theme.palette.textSecondary}}>尚無自選標的，請在市場搜尋後點「加入自選」。</Text>:content}

@@ -2,7 +2,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const home=fs.readFileSync('src/screens/HomeScreen.tsx','utf8');
 const watch=fs.readFileSync('src/components/WatchlistPanel.tsx','utf8');
-assert.ok(home.includes("wallSource==='all'?{excludeSymbols:heldQuoteSymbols,hideWhenEmpty:true}"),'home all-mode must suppress duplicate watchlist cards without removing membership');
+assert.ok(home.includes("wallSource==='all'?{excludeSymbols:heldQuoteSymbols,hideWhenEmpty:true"),'home all-mode must suppress duplicate watchlist cards without removing membership');
 assert.ok(home.includes("wallSource!=='watchlist'?<HoldingQuoteCollection rows={sorted}"),'held canonical card remains authoritative');
 assert.ok(watch.includes('const excluded=new Set(excludeSymbols.map('),'filter precedes quote projection');
 assert.ok(watch.includes("heldSymbols.includes(row.symbol)?'◆':'☆'"),'only one compact marker, holding wins');

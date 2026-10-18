@@ -60,6 +60,22 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  panelProps={heldSymbols:['2330'],excludeSymbols:['2330','0050'],hideWhenEmpty:true,onSelect:()=>{}};
  tree=render();assert.equal(tree,null,'no extra panel when every self-picked instrument is already shown as holding');
  panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
+ // A combined view must read the live home-wall editor settings without modifying
+ // the independently persisted watchlist presentation preferences.
+ failRead=false;
+ storage.set('@tf-asset/watchlist-presentation-v1',JSON.stringify({mode:'wall',sort:'symbol',direction:'asc',useWallStyle:false}));
+ homeDisplay={};
+ const inheritedWall={style:{backgroundColor:'#123456',backgroundOpacity:.42,textColor:'#ffffff',secondaryTextColor:'#eeeeee',borderColor:'#abcdef',borderWidth:2,cornerRadius:18,padding:14,rowGap:7},header:{fontScale:1},fields:[{field:'name',fontScale:1.5,textColor:'#336699',textOpacity:.5}]};
+ panelProps={heldSymbols:['2330'],excludeSymbols:['2330'],hideWhenEmpty:true,inheritHomeWallStyle:true,sourceWallConfig:inheritedWall,onSelect:()=>{}};
+ host=newHost();render();await flush();tree=render();
+ const inheritedCard=nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050');
+ assert.ok(inheritedCard,'actual nonheld row exists in combined view');
+ assert.equal(inheritedCard.props.style.backgroundColor,'rgba(18,52,86,0.420)','combined watchlist inherits home draft background and opacity');
+ assert.equal(inheritedCard.props.style.borderColor,'rgba(171,205,239,1.000)','combined watchlist inherits home card border');
+ assert.ok(Math.abs(nodes(tree).find(x=>x.props?.testID==='watchlist-name-0050').props.style.fontSize-18)<1e-8,'combined watchlist inherits field font scaling');
+ assert.ok(!nodes(tree).some(x=>x.props?.accessibilityLabel==='套用目前行情牆樣式'),'combined view requires no manual copy button');
+ assert.equal(JSON.parse(storage.get('@tf-asset/watchlist-presentation-v1')).useWallStyle,false,'temporary inherited appearance must not mutate standalone watchlist preference');
+ panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
  list.items=[];tree=render();assert.match(text(tree),/尚無自選標的/);list.hydrated=false;tree=render();assert.match(text(tree),/載入自選清單/);
  console.log('V4.0.64 actual WatchlistPanel mode/sort actions, genuine chart, independent persistence, optional storage failure and states PASS');
 })().catch(e=>{console.error(e);process.exit(1);});
