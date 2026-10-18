@@ -9,7 +9,7 @@ import Svg,{Line,Polyline} from 'react-native-svg';
 import {useWatchlist} from '../market/WatchlistRuntime';
 import {useMarketRuntime} from '../market/MarketRuntime';
 import {watchlistSnapshot} from '../market/watchlistModel';
-import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KEY,readWatchlistPresentation,createWatchlistPresentationWriter,sortWatchlistRows,watchlistIntraday,type WatchlistSort} from '../market/watchlistPresentation';
+import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KEY,readWatchlistPresentation,createWatchlistPresentationWriter,sortWatchlistRows,watchlistIntraday,type WatchlistSort,type WatchlistMode} from '../market/watchlistPresentation';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {usePageEditor} from '../editor/pageEditor';
@@ -18,10 +18,11 @@ import {MarketPreviewActionGuard,MarketEditableText} from './MarketEditableConte
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
-export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,inheritHomeWallStyle=false,sourceWallConfig,readOnlyPreview=false,previewOverrides}:{
+export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,inheritHomeWallStyle=false,sourceWallConfig,inheritedMode,inheritedColumns,readOnlyPreview=false,previewOverrides}:{
   onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];
   excludeSymbols?:readonly string[];hideWhenEmpty?:boolean;
   inheritHomeWallStyle?:boolean;sourceWallConfig?:HoldingWallConfig;
+  inheritedMode?:WatchlistMode;inheritedColumns?:1|2|3;
   readOnlyPreview?:boolean;previewOverrides?:Readonly<Record<string,TargetOverride>>;
 }){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
@@ -41,12 +42,16 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  const bySymbol=useMemo(()=>new Map(market.quotes.map(q=>[q.symbol,q])),[market.quotes]);
  const wallConfig=inheritHomeWallStyle?(sourceWallConfig??homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):presentation.useWallStyle?(homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):undefined;
  const wall=wallConfig?.style,secondary=theme.palette.textSecondary;
+ const displayMode=inheritHomeWallStyle?(inheritedMode??'wall'):presentation.mode;
+ const displayColumns=inheritHomeWallStyle?(inheritedColumns??1):2;
+ const useCardGrid=displayMode==='wall'||inheritHomeWallStyle;
+ const cardWidth=displayColumns===3?'31.2%':displayColumns===2?'48.5%':'100%';
  // Feed already-resolved system colors to the same resolver used by holding cards.
  const systemPalette={gainColor:colors.gain,lossColor:colors.loss,neutralColor:colors.flat};
  const linked=(color:string,enabled:boolean|undefined,row:typeof rows[number])=>linkedColor(color,enabled,financialTone(row.change??0,row.change!==null),systemPalette);
  const appearance=(row:typeof rows[number])=>({
   backgroundColor:wall?colorWithAlpha(linked(wall.backgroundColor,wall.backgroundProfitColor,row),wall.backgroundOpacity??1):theme.palette.surface,
-  borderColor:wall?colorWithAlpha(linked(wall.borderColor,wall.borderProfitColor,row),wall.borderOpacity??1):presentation.mode==='wall'?tone(row.change):theme.palette.border,
+  borderColor:wall?colorWithAlpha(linked(wall.borderColor,wall.borderProfitColor,row),wall.borderOpacity??1):displayMode==='wall'?tone(row.change):theme.palette.border,
   textColor:wall?colorWithAlpha(linked(wall.textColor,wall.textProfitColor,row),wall.textOpacity??1):theme.palette.text,
   secondaryTextColor:wall?colorWithAlpha(linked(wall.secondaryTextColor,wall.secondaryTextProfitColor,row),wall.secondaryTextOpacity??1):secondary,
  });
@@ -94,7 +99,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  </View>;
  const price=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:price" label="自選即時價格" kind="value">
   <Text testID={'watchlist-price-'+row.symbol}
-    style={{...fieldStyle(row,'price',presentation.mode==='wall'?25:20),fontWeight:'800',fontVariant:['tabular-nums'],...itemVisual('price',row)}}>{number(row.price)}</Text>
+    style={{...fieldStyle(row,'price',displayMode==='wall'?25:20),fontWeight:'800',fontVariant:['tabular-nums'],...itemVisual('price',row)}}>{number(row.price)}</Text>
  </MarketEditableText>;
  const delta=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:change" label="自選漲跌幅" kind="value">
   <Text style={{...fieldStyle(row,'change',14),fontWeight:'700',fontVariant:['tabular-nums'],...itemVisual('change',row)}}>{row.change===null?'漲跌待取得':<>{number(row.change,true)}  <Text style={fieldStyle(row,'changePercent',14)}>({number(row.changePercent,true)}%)</Text></>}</Text>
@@ -120,7 +125,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  };
  // The two panes share fixed header/row heights and one vertical parent scroll.
  // Only the quote columns scroll sideways, so identity never leaves the viewport.
- const content=presentation.mode==='list'?<View style={{flexDirection:'row',width:'100%'}}>
+ const content=displayMode==='list'?<View style={{flexDirection:'row',width:'100%'}}>
   <View style={{width:142,borderRightWidth:1,borderColor:theme.palette.border}}>
    <View style={{height:34,padding:8,borderBottomWidth:1,borderColor:theme.palette.border}}><Text style={{color:secondary,fontSize:11}}>標的／身分</Text></View>
    {rows.map(row=><View key={row.symbol} testID={'watchlist-identity-row-'+row.symbol} style={{height:112,padding:8,borderBottomWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,backgroundColor:appearance(row).backgroundColor,justifyContent:'center'}}>{identity(row,true)}{remove(row)}</View>)}
@@ -133,14 +138,14 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
     </View>)}
    </View>
   </ScrollView>
- </View>:<View style={{flexDirection:presentation.mode==='wall'?'row':'column',flexWrap:presentation.mode==='wall'?'wrap':'nowrap',gap:8}}>{rows.map(row=><View key={row.symbol} testID={'watchlist-card-'+row.symbol} style={{...(presentation.mode==='wall'?{width:'48.5%' as const}:{}),padding:wall?.padding??(presentation.mode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,borderRadius:wall?.cornerRadius??10,backgroundColor:appearance(row).backgroundColor,overflow:'hidden'}}>
-  {presentation.mode==='wall'&&!wall?<View pointerEvents="none" style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:tone(row.change),opacity:.1}}/>:null}
+ </View>:<View style={{flexDirection:useCardGrid?'row':'column',flexWrap:useCardGrid?'wrap':'nowrap',gap:8}}>{rows.map(row=><View key={row.symbol} testID={'watchlist-card-'+row.symbol} style={{...(useCardGrid?{width:inheritHomeWallStyle?cardWidth:'48.5%' as const}:{}),padding:wall?.padding??(displayMode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,borderRadius:wall?.cornerRadius??10,backgroundColor:appearance(row).backgroundColor,overflow:'hidden'}}>
+  {displayMode==='wall'&&!wall?<View pointerEvents="none" style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:tone(row.change),opacity:.1}}/>:null}
   {identity(row)}<View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'wrap'}}>{price(row)}{delta(row)}</View>
   <Text style={{fontSize:11,color:appearance(row).secondaryTextColor}}>成交量 {row.volume?.toLocaleString('zh-TW')??'—'}｜昨收 {number(row.previousClose)}</Text>
-  {presentation.mode==='chart'?chart(row):null}{source(row)}{row.price===null?<Text style={{color:appearance(row).secondaryTextColor,fontSize:12}}>行情尚未取得</Text>:null}{remove(row)}
+  {displayMode==='chart'?chart(row):null}{source(row)}{row.price===null?<Text style={{color:appearance(row).secondaryTextColor,fontSize:12}}>行情尚未取得</Text>:null}{remove(row)}
  </View>)}</View>;
  const panel=<View style={{gap:8}}>
-  <View accessibilityLabel="自選顯示模式" style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{WATCHLIST_MODES.map(mode=>chip('自選顯示：'+mode.label,presentation.mode===mode.key,()=>setPresentation(p=>({...p,mode:mode.key})),mode.icon))}</View>
+  {!inheritHomeWallStyle?<View accessibilityLabel="自選顯示模式" style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{WATCHLIST_MODES.map(mode=>chip('自選顯示：'+mode.label,presentation.mode===mode.key,()=>setPresentation(p=>({...p,mode:mode.key})),mode.icon))}</View>:null}
   <View style={{flexDirection:'row',gap:5,flexWrap:'wrap',alignItems:'center'}}>{SORTS.map(sort=>chip('排序：'+sort.label,presentation.sort===sort.key,()=>setPresentation(p=>({...p,sort:sort.key}))))}{chip(presentation.direction==='asc'?'排序方向：升冪':'排序方向：降冪',false,()=>setPresentation(p=>({...p,direction:p.direction==='asc'?'desc':'asc'})))}</View>
   {!inheritHomeWallStyle?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{chip('套用目前行情牆樣式',presentation.useWallStyle,()=>setPresentation(p=>({...p,useWallStyle:true})))}{presentation.useWallStyle?chip('使用預設樣式',false,()=>setPresentation(p=>({...p,useWallStyle:false}))):null}</View>:null}
   {prefsError?<Text style={{color:theme.palette.textSecondary,fontSize:11}}>{prefsError}</Text>:null}
