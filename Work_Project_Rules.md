@@ -3,7 +3,7 @@
 ## 0. 受保護設定主頁（V4.0.16 起不可修改）
 
 - TF Asset 的「控制中心／系統設定」主頁為受保護區域，不能修改其既有頁面結構、分類、內容、選項、文案、交互與內部子面板；V4.0.15 引入的全頁編輯器不得覆蓋或改造設定主頁。
-- 固定基準為 V4.0.14 的 `src/screens/SettingsScreen.tsx`，其他被 V4.0.15 適配改動的設定專用子元件亦以 V4.0.14 為基準。只有必要的 `VERSION` / `BUILD` 發行識別可更新。
+- 固定基準為 V4.0.14 的 `src/screens/SettingsScreen.tsx`，其他被 V4.0.15 適配改動的設定專用子元件亦以 V4.0.14 為基準。必要的 `VERSION` / `BUILD` 發行識別可更新。**2026-10-19 使用者明確追加的唯一範圍例外：既有「版本資訊／更新資訊」面板須呈現最新版真實更新明細與說明；其餘設定頁 byte-level 保護、分類、版面、互動及子元件均不得鬆綁。對這兩處僅允許有可驗證且版本一致的更新說明。**
 - `scripts/v4_0_16-settings-navigation.test.ts` 的 Git blob SHA 守門測試必須維持；若有任何內容變動，CI 應直接失敗，不得透過降低驗證門檻繞過。
 - 設定頁問題應先在共用導航、頁面框架、設定資料 migration 或原生 crash 診斷處理；未經使用者明確授權，不可重構設定主頁。
 - 不得刪除使用者已儲存偏好、帳務、行情快取來掩蓋頁面閃退。任何 Android APK CI 通過也不能替代真機導航驗收。
@@ -536,3 +536,16 @@ GO 執行途中若追加新需求：
 5. **GO 最終報告強制包含：**起點版本 → 新版版本、備份 ref、修改及未完成 Checklist 數、CI／APK Action run URL 與結論、APK artifact ID／檔案大小／SHA-256／badging、實際下載連結、尚待真機驗收範圍。未取得新版本可用 APK，GO 狀態只能是**未完成／被阻斷**。
 
 以上規則優先適用於後續 GO 的交付目標，**但不取消 immutable Finance Core、正式 Release 全項驗收、真機未驗證不得偽稱 PASS 等既有安全約束**。
+
+---
+
+## 27. App 版本資訊必須逐版顯示真實更新說明（2026-10-19 使用者強制規則）
+
+**每一次更新 App 版本，當版 APK 的「設定 → 版本資訊」必須直接呈現該版本的實際變動及每一項的用途／影響說明。缺漏時視為 Version Identity FAIL，不得交付該版 APK。**
+
+1. 同一份 `src/settings/appReleaseNotes.ts` 是最新版更新說明的唯一資料來源；包含 `version`、Android `versionCode`、簡短版本主旨、逐項「變動名稱 + 說明」及 QA／未驗證資訊。不得沿用舊版說明、空白或 placeholder，也不得把未驗證功能寫成已完成。
+2. 既有「版本資訊」展開後應直接顯示當版所有更新項目，既有「更新資訊」入口亦須同步顯示相同版本和內容；不得繼續固定顯示 V3.2.49。文字可換行及垂直捲動，不新增設定首頁的導航／分類。
+3. 每次升版的同一個 commit 必須同步更新 `package.json`、`app.json`、Android `versionCode`／iOS buildNumber、`SettingsScreen` VERSION／BUILD、備份版本、GitHub CI／APK 名稱，以及 `appReleaseNotes.ts`。若版本號不一致、更新項目缺失或沿用上版描述，CI 品質與原生 QA Hard Gate 均應失敗。
+4. 本項需求明確授權對**既有版本資訊與更新資訊兩區塊**做最小必要內容變更。設定主頁整體保護 Gate 保留；只可將已明確授權的 release-note import、顯示內容還原成原始 baseline 後，比對其餘全部原始 byte-level SHA，禁止停用 Hash Gate 或擴大例外。
+5. 發布資料必須如實區分 QA BUILD PASS、真機待驗、正式 RELEASE PASS；更新說明不得聲稱 APK 成功即代表 Live／Widget／Mini／全部頁面已驗證。
+6. 單純新增或修正此專案規則、且未修改 App 的行政性工作不自行升版；**實際修改 App 並交付 APK 則遵循第 26 節 Ver +1**。後續每一新版本都要新增當版更新說明及對應行為／回歸測試，未通過則原地修正，不跳版。
