@@ -131,7 +131,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  };
  // The two panes share fixed header/row heights and one vertical parent scroll.
  // Only the quote columns scroll sideways, so identity never leaves the viewport.
- const renderCard=(row:typeof rows[number],width?:string)=><View key={row.symbol} testID={'watchlist-card-'+row.symbol} style={{...(width?{width}:(useCardGrid?{width:inheritHomeWallStyle?cardWidth:'48.5%' as const}:{})),padding:wall?.padding??(displayMode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,borderRadius:wall?.cornerRadius??10,backgroundColor:appearance(row).backgroundColor,overflow:'hidden'}}>
+ const renderCard=(row:typeof rows[number],width?:'100%')=><View key={row.symbol} testID={'watchlist-card-'+row.symbol} style={{...(width?{width}:(useCardGrid?{width:inheritHomeWallStyle?cardWidth:'48.5%' as const}:{})),padding:wall?.padding??(displayMode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,borderRadius:wall?.cornerRadius??10,backgroundColor:appearance(row).backgroundColor,overflow:'hidden'}}>
   {displayMode==='wall'&&!wall?<View pointerEvents="none" style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:tone(row.change),opacity:.1}}/>:null}
   {identity(row)}<View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'wrap'}}>{price(row)}{delta(row)}</View>
   <Text style={{fontSize:11,color:appearance(row).secondaryTextColor}}>成交量 {row.volume?.toLocaleString('zh-TW')??'—'}｜昨收 {number(row.previousClose)}</Text>
