@@ -18,8 +18,9 @@ import {MarketPreviewActionGuard,MarketEditableText} from './MarketEditableConte
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
-export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,previewOverrides}:{
+export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,readOnlyPreview=false,previewOverrides}:{
   onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];
+  excludeSymbols?:readonly string[];hideWhenEmpty?:boolean;
   readOnlyPreview?:boolean;previewOverrides?:Readonly<Record<string,TargetOverride>>;
 }){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
@@ -32,7 +33,10 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,pr
  useEffect(()=>{let alive=true;void AsyncStorage.getItem(WATCHLIST_PRESENTATION_KEY).then(raw=>{if(alive)setPresentation(readWatchlistPresentation(raw));}).catch(()=>{if(alive)setPrefsError('顯示偏好讀取失敗，仍可切換檢視。');}).finally(()=>{if(alive)setPrefsReady(true);});return()=>{alive=false;};},[]);
  const persist=useMemo(()=>createWatchlistPresentationWriter(raw=>AsyncStorage.setItem(WATCHLIST_PRESENTATION_KEY,raw)),[]);
  useEffect(()=>{if(prefsReady&&!previewMode)void persist(JSON.stringify(presentation)).catch(()=>setPrefsError('顯示偏好未能儲存，本次檢視仍可使用。'));},[presentation,prefsReady,persist,previewMode]);
- const rows=useMemo(()=>sortWatchlistRows(watchlistSnapshot(list.items,market.quotes),presentation.sort,presentation.direction),[list.items,market.quotes,presentation.sort,presentation.direction]);
+ const rows=useMemo(()=>{
+  const excluded=new Set(excludeSymbols.map(symbol=>symbol.toUpperCase()));
+  return sortWatchlistRows(watchlistSnapshot(list.items.filter(item=>!excluded.has(item.symbol.toUpperCase())),market.quotes),presentation.sort,presentation.direction);
+ },[list.items,market.quotes,presentation.sort,presentation.direction,excludeSymbols]);
  const bySymbol=useMemo(()=>new Map(market.quotes.map(q=>[q.symbol,q])),[market.quotes]);
  const wallConfig=presentation.useWallStyle?(homeEditor.displayConfig.holdingWall??DEFAULT_HOLDING_WALL_CONFIG):undefined;
  const wall=wallConfig?.style,secondary=theme.palette.textSecondary;
@@ -85,8 +89,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,pr
         style={{...fieldStyle(row,'name',12),...itemVisual('name',row)}}>{row.name}</Text>
     </MarketEditableText>
   </Pressable>
-  {heldSymbols.includes(row.symbol)?<Text style={{fontSize:10,color:theme.palette.primary,borderWidth:1,borderColor:theme.palette.primary,padding:3,borderRadius:4}}>持股</Text>:null}
-  <Text style={{fontSize:10,color:appearance(row).secondaryTextColor,borderWidth:1,borderColor:theme.palette.border,padding:3,borderRadius:4}}>自選</Text>
+  <Text testID={'watchlist-status-'+row.symbol} accessibilityLabel={heldSymbols.includes(row.symbol)?'持股':'自選'} style={{fontSize:10,color:heldSymbols.includes(row.symbol)?theme.palette.primary:appearance(row).secondaryTextColor,borderWidth:1,borderColor:heldSymbols.includes(row.symbol)?theme.palette.primary:theme.palette.border,padding:3,borderRadius:4}}>{heldSymbols.includes(row.symbol)?'◆':'☆'}</Text>
  </View>;
  const price=(row:typeof rows[number])=><MarketEditableText id="market:watchlist:price" label="自選即時價格" kind="value">
   <Text testID={'watchlist-price-'+row.symbol}
@@ -143,5 +146,6 @@ export function WatchlistPanel({onSelect,heldSymbols=[],readOnlyPreview=false,pr
   {list.error?<Text style={{color:colors.loss}}>{list.error}</Text>:null}
   {!list.hydrated?<Text style={{color:theme.palette.textSecondary}}>載入自選清單…</Text>:!rows.length?<Text style={{color:theme.palette.textSecondary}}>尚無自選標的，請在市場搜尋後點「加入自選」。</Text>:content}
  </View>;
+ if(hideWhenEmpty&&!previewMode&&list.hydrated&&!rows.length)return null;
  return previewMode?panel:<MarketPreviewActionGuard>{panel}</MarketPreviewActionGuard>;
 }
