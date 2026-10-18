@@ -1,15 +1,10 @@
-/**
- * SSOT for the currently packaged build's user-visible release explanation.
- * Each version bump MUST change this content and pass the version identity gate.
- */
+/** SSOT for current packaged release explanation. Update every version. */
 export const APP_RELEASE_NOTES={
-  version:'5.0.21',
-  androidVersionCode:50021,
-  headline:'版本資訊同步與更新明細',
-  changes:[
-    {id:'version-details',title:'版本資訊新增本版更新內容',detail:'在設定 → 版本資訊中逐項說明本次修改與用途，不必離開 App 查詢 GitHub 紀錄。'},
-    {id:'updates-current',title:'更新資訊自動對應目前版本',detail:'修正更新資訊長期顯示 V3.2.49 的問題；兩個既有入口共用最新版說明。'},
-    {id:'release-gate',title:'版本說明納入發行驗證',detail:'每次升版必須同步更新版本號、變更摘要及說明，版本不符或缺漏時阻擋 QA 建置。'},
-  ],
-  notice:'目前為 QA 驗收版本；設定頁實際操作仍須真機確認，其他歷史待驗項目不因 APK 建置成功而自動視為完成。',
+ version:'5.0.22',androidVersionCode:50022,headline:'首頁混合行情牆滑動排列一致性',
+ changes:[
+  {id:'horizontal',title:'橫向滑動自選卡',detail:'首頁橫向滑動時，純自選卡沿用持股行情牆的單卡寬度計算及滑動步距，避免維持固定雙欄排列。'},
+  {id:'paged',title:'雙欄分頁自選卡',detail:'純自選卡每頁兩張，依實際可見寬度同步分頁與滑動位置，最後一頁單卡不被強制放大。'},
+  {id:'safe-preferences',title:'維持持股優先與偏好隔離',detail:'混合模式持股優先且代號去重，自選卡的排列不會寫入獨立自選清單的設定。'},
+ ],
+ notice:'目前為 QA 驗收版本；持股和自選仍是分開的滑動區域，共用滑動軌道及真機手勢驗收未完成，不宣稱正式 Release PASS。',
 } as const;

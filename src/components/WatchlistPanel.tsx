@@ -4,13 +4,15 @@ import {financialTone} from '../theme/financialTone';
 import {DEFAULT_HOLDING_WALL_CONFIG,type HoldingWallFieldKey,type HoldingWallConfig} from '../domain/uiModels';
 import {useEffect,useMemo,useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {View,Text,Pressable,ScrollView} from 'react-native';
+import {View,Text,Pressable,ScrollView,useWindowDimensions} from 'react-native';
 import Svg,{Line,Polyline} from 'react-native-svg';
 import {useWatchlist} from '../market/WatchlistRuntime';
 import {useMarketRuntime} from '../market/MarketRuntime';
 import {watchlistSnapshot} from '../market/watchlistModel';
 import {DEFAULT_WATCHLIST_PRESENTATION,WATCHLIST_MODES,WATCHLIST_PRESENTATION_KEY,readWatchlistPresentation,createWatchlistPresentationWriter,sortWatchlistRows,watchlistIntraday,type WatchlistSort,type WatchlistMode} from '../market/watchlistPresentation';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
+import {spacing} from '../theme/tokens';
+import {holdingPageWidth,holdingPages} from '../domain/holdingLayoutPolicy';
 import {useSystemColors} from '../theme/useSystemColors';
 import {usePageEditor} from '../editor/pageEditor';
 import type {TargetOverride} from '../maintenance/inspectionModel';
@@ -18,15 +20,19 @@ import {MarketPreviewActionGuard,MarketEditableText} from './MarketEditableConte
 
 const SORTS:readonly {key:WatchlistSort;label:string}[]=[{key:'symbol',label:'代號'},{key:'price',label:'現價'},{key:'changePercent',label:'漲跌幅'},{key:'volume',label:'成交量'}];
 const number=(value:number|null,sign=false)=>value===null?'—':`${sign&&value>0?'+':''}${value.toFixed(2)}`;
-export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,inheritHomeWallStyle=false,sourceWallConfig,inheritedMode,inheritedColumns,readOnlyPreview=false,previewOverrides}:{
+export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWhenEmpty=false,inheritHomeWallStyle=false,sourceWallConfig,inheritedMode,inheritedColumns,inheritedLayout,readOnlyPreview=false,previewOverrides}:{
   onSelect?:(symbol:string,name:string)=>void;heldSymbols?:readonly string[];
   excludeSymbols?:readonly string[];hideWhenEmpty?:boolean;
   inheritHomeWallStyle?:boolean;sourceWallConfig?:HoldingWallConfig;
   inheritedMode?:WatchlistMode;inheritedColumns?:1|2|3;
+  inheritedLayout?:'list'|'grid2'|'grid3'|'horizontal'|'paged2';
   readOnlyPreview?:boolean;previewOverrides?:Readonly<Record<string,TargetOverride>>;
 }){
  const list=useWatchlist(),market=useMarketRuntime(),theme=useThemeRuntime(),colors=useSystemColors();
  const previewMode=readOnlyPreview;
+ const {width:windowWidth}=useWindowDimensions();
+ const [viewportWidth,setViewportWidth]=useState(0);
+ const pageWidth=holdingPageWidth(viewportWidth,windowWidth);
  // Subscribe to the existing persisted home-wall appearance, without writing it.
  const homeEditor=usePageEditor('home');
  const marketEditor=usePageEditor('market');
@@ -125,6 +131,30 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  };
  // The two panes share fixed header/row heights and one vertical parent scroll.
  // Only the quote columns scroll sideways, so identity never leaves the viewport.
+ const renderCard=(row:typeof rows[number],width?:string)=><View key={row.symbol} testID={'watchlist-card-'+row.symbol} style={{...(width?{width}:(useCardGrid?{width:inheritHomeWallStyle?cardWidth:'48.5%' as const}:{})),padding:wall?.padding??(displayMode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,borderRadius:wall?.cornerRadius??10,backgroundColor:appearance(row).backgroundColor,overflow:'hidden'}}>
+  {displayMode==='wall'&&!wall?<View pointerEvents="none" style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:tone(row.change),opacity:.1}}/>:null}
+  {identity(row)}<View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'wrap'}}>{price(row)}{delta(row)}</View>
+  <Text style={{fontSize:11,color:appearance(row).secondaryTextColor}}>成交量 {row.volume?.toLocaleString('zh-TW')??'—'}｜昨收 {number(row.previousClose)}</Text>
+  {displayMode==='chart'?chart(row):null}{source(row)}{row.price===null?<Text style={{color:appearance(row).secondaryTextColor,fontSize:12}}>行情尚未取得</Text>:null}{remove(row)}
+ </View>;
+ const homeCardContent=inheritHomeWallStyle&&inheritedLayout==='horizontal'?(()=>{
+  const itemWidth=Math.max(230,Math.min(pageWidth-18,windowWidth*.78));
+  return <ScrollView testID="watchlist-home-horizontal" horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast"
+   snapToInterval={itemWidth+spacing.sm} snapToAlignment="start" contentContainerStyle={{gap:spacing.sm,paddingRight:spacing.md}}>
+   {rows.map(row=><View key={row.symbol} testID={'watchlist-swipe-item-'+row.symbol} style={{width:itemWidth}}>{renderCard(row,'100%')}</View>)}
+  </ScrollView>;
+ })():inheritHomeWallStyle&&inheritedLayout==='paged2'?<View testID="watchlist-home-paged-viewport" style={{width:'100%',overflow:'hidden'}} onLayout={event=>{
+  const measured=Math.round(event.nativeEvent.layout.width);
+  if(measured>0)setViewportWidth(old=>old===measured?old:measured);
+ }}>
+  <ScrollView testID="watchlist-home-pages" horizontal pagingEnabled showsHorizontalScrollIndicator={false} decelerationRate="fast"
+   snapToInterval={pageWidth} contentContainerStyle={{gap:0}}>
+   {holdingPages(rows,2).map((page,index)=><View key={index} testID={'watchlist-home-page-'+index}
+    style={{width:pageWidth,flexDirection:'row',gap:spacing.sm,alignItems:'stretch'}}>
+    {page.map(row=><View key={row.symbol} testID={'watchlist-page-item-'+row.symbol} style={{width:'48.5%'}}>{renderCard(row,'100%')}</View>)}
+   </View>)}
+  </ScrollView>
+ </View>:<View style={{flexDirection:useCardGrid?'row':'column',flexWrap:useCardGrid?'wrap':'nowrap',gap:8}}>{rows.map(row=>renderCard(row))}</View>;
  const content=displayMode==='list'?<View style={{flexDirection:'row',width:'100%'}}>
   <View style={{width:142,borderRightWidth:1,borderColor:theme.palette.border}}>
    <View style={{height:34,padding:8,borderBottomWidth:1,borderColor:theme.palette.border}}><Text style={{color:secondary,fontSize:11}}>標的／身分</Text></View>
@@ -138,15 +168,10 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
     </View>)}
    </View>
   </ScrollView>
- </View>:<View style={{flexDirection:useCardGrid?'row':'column',flexWrap:useCardGrid?'wrap':'nowrap',gap:8}}>{rows.map(row=><View key={row.symbol} testID={'watchlist-card-'+row.symbol} style={{...(useCardGrid?{width:inheritHomeWallStyle?cardWidth:'48.5%' as const}:{}),padding:wall?.padding??(displayMode==='compact'?8:12),gap:wall?.rowGap??5,borderWidth:wall?.borderWidth??1,borderColor:appearance(row).borderColor,borderRadius:wall?.cornerRadius??10,backgroundColor:appearance(row).backgroundColor,overflow:'hidden'}}>
-  {displayMode==='wall'&&!wall?<View pointerEvents="none" style={{position:'absolute',top:0,right:0,bottom:0,left:0,backgroundColor:tone(row.change),opacity:.1}}/>:null}
-  {identity(row)}<View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:6,flexWrap:'wrap'}}>{price(row)}{delta(row)}</View>
-  <Text style={{fontSize:11,color:appearance(row).secondaryTextColor}}>成交量 {row.volume?.toLocaleString('zh-TW')??'—'}｜昨收 {number(row.previousClose)}</Text>
-  {displayMode==='chart'?chart(row):null}{source(row)}{row.price===null?<Text style={{color:appearance(row).secondaryTextColor,fontSize:12}}>行情尚未取得</Text>:null}{remove(row)}
- </View>)}</View>;
+ </View>:homeCardContent;
  const panel=<View style={{gap:8}}>
   {!inheritHomeWallStyle?<View accessibilityLabel="自選顯示模式" style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{WATCHLIST_MODES.map(mode=>chip('自選顯示：'+mode.label,presentation.mode===mode.key,()=>setPresentation(p=>({...p,mode:mode.key})),mode.icon))}</View>:null}
-  <View style={{flexDirection:'row',gap:5,flexWrap:'wrap',alignItems:'center'}}>{SORTS.map(sort=>chip('排序：'+sort.label,presentation.sort===sort.key,()=>setPresentation(p=>({...p,sort:sort.key}))))}{chip(presentation.direction==='asc'?'排序方向：升冪':'排序方向：降冪',false,()=>setPresentation(p=>({...p,direction:p.direction==='asc'?'desc':'asc'})))}</View>
+  {!inheritHomeWallStyle?<View style={{flexDirection:'row',gap:5,flexWrap:'wrap',alignItems:'center'}}>{SORTS.map(sort=>chip('排序：'+sort.label,presentation.sort===sort.key,()=>setPresentation(p=>({...p,sort:sort.key}))))}{chip(presentation.direction==='asc'?'排序方向：升冪':'排序方向：降冪',false,()=>setPresentation(p=>({...p,direction:p.direction==='asc'?'desc':'asc'})))}</View>:null}
   {!inheritHomeWallStyle?<View style={{flexDirection:'row',gap:6,flexWrap:'wrap'}}>{chip('套用目前行情牆樣式',presentation.useWallStyle,()=>setPresentation(p=>({...p,useWallStyle:true})))}{presentation.useWallStyle?chip('使用預設樣式',false,()=>setPresentation(p=>({...p,useWallStyle:false}))):null}</View>:null}
   {prefsError?<Text style={{color:theme.palette.textSecondary,fontSize:11}}>{prefsError}</Text>:null}
   {list.error?<Text style={{color:colors.loss}}>{list.error}</Text>:null}
