@@ -44,6 +44,7 @@ import {
   type VerifiedExternalBackup,
 } from '../settings/BackupService';
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
+import {APP_RELEASE_NOTES} from '../settings/appReleaseNotes';
 import { toggleExclusivePanel } from '../settings/settingsControlBehavior';
 import { colors, radius, spacing } from '../theme/tokens';
 import { APP_ICON_KEYS, APP_ICON_PREVIEWS, THEME_BACKGROUNDS, THEME_PRESETS, useThemeRuntime, type AppIconKey, type ThemeBackgroundMode } from '../theme/ThemeRuntime';
@@ -61,8 +62,8 @@ type DisplayPanel=null|'titles'|'theme'|'font'|'amount'|'percent'|'date'|'pnl'|'
 type AppPanel=null|'reset'|'version'|'updates';
 type LegalPanel=null|'disclaimer'|'market'|'calculator'|'privacy'|'about';
 
-const VERSION='5.0.20';
-const BUILD='50020';
+const VERSION='5.0.21';
+const BUILD='50021';
 
 export function SettingsScreen(){
   const finance=useFinance();
@@ -585,10 +586,14 @@ export function SettingsScreen(){
         <StatusRow label="Version" value={VERSION}/>
         <StatusRow label="Android versionCode" value={BUILD}/>
         <StatusRow label="設定 Schema" value={String(settings.prefs.schema)}/>
+        <Text style={styles.rowTitle}>本版更新內容</Text>
+        {APP_RELEASE_NOTES.changes.map((item,index)=><Text key={item.id} style={styles.infoText}>{index+1}. {item.title}：{item.detail}</Text>)}
+        <Text style={styles.note}>{APP_RELEASE_NOTES.notice}</Text>
       </Panel>:null}
-      <ChildButton label="更新資訊" summary="V3.2.49 成交價同步修護" active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
-      {appPanel==='updates'?<Panel title="V3.2.49 更新資訊">
-        <Text style={styles.infoText}>成交價同步修護：持股主卡 currentPrice 僅接受成交型價格。TWSE MIS 僅採 z；pz、bid、ask、y 不再進入主價格、損益與市值。z 缺值時改由零成本 Yahoo backup realtime 接手；TWSE trade 與 Yahoo backup realtime 同為成交型來源時，以較新的 source timestamp 為準，同時間才由來源品質決勝。SQLite V8 清除舊 bid/ask 主價。</Text>
+      <ChildButton label="更新資訊" summary={'V'+VERSION+' '+APP_RELEASE_NOTES.headline} active={appPanel==='updates'} onPress={()=>setAppPanel(toggleExclusivePanel(appPanel,'updates'))}/>
+      {appPanel==='updates'?<Panel title={'V'+VERSION+' 更新資訊'}>
+        {APP_RELEASE_NOTES.changes.map((item,index)=><Text key={item.id} style={styles.infoText}>{index+1}. {item.title}：{item.detail}</Text>)}
+        <Text style={styles.note}>{APP_RELEASE_NOTES.notice}</Text>
       </Panel>:null}
     </View>;
   }
