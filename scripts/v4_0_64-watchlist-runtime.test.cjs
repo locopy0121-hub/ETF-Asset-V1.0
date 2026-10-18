@@ -67,6 +67,7 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  homeDisplay={};
  const inheritedWall={style:{backgroundColor:'#123456',backgroundOpacity:.42,textColor:'#ffffff',secondaryTextColor:'#eeeeee',borderColor:'#abcdef',borderWidth:2,cornerRadius:18,padding:14,rowGap:7},header:{fontScale:1},fields:[{field:'name',fontScale:1.5,textColor:'#336699',textOpacity:.5}]};
  panelProps={heldSymbols:['2330'],excludeSymbols:['2330'],hideWhenEmpty:true,inheritHomeWallStyle:true,sourceWallConfig:inheritedWall,onSelect:()=>{}};
+ const writesBeforeInherited=writes.length;
  host=newHost();render();await flush();tree=render();
  const inheritedCard=nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050');
  assert.ok(inheritedCard,'actual nonheld row exists in combined view');
@@ -84,6 +85,7 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  panelProps={...panelProps,inheritedMode:'wall',inheritedColumns:1};tree=render();
  assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050').props.style.width,'100%','home single column gives a full-width watched card');
  assert.equal(JSON.parse(storage.get('@tf-asset/watchlist-presentation-v1')).mode,'wall','combined mode does not persist overrides');
+ assert.equal(writes.length,writesBeforeInherited,'combined mode does not start any preference write');
  panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
  list.items=[];tree=render();assert.match(text(tree),/尚無自選標的/);list.hydrated=false;tree=render();assert.match(text(tree),/載入自選清單/);
  console.log('V4.0.64 actual WatchlistPanel mode/sort actions, genuine chart, independent persistence, optional storage failure and states PASS');

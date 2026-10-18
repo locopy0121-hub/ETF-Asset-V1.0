@@ -34,7 +34,7 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  const [prefsReady,setPrefsReady]=useState(false),[prefsError,setPrefsError]=useState<string|null>(null);
  useEffect(()=>{let alive=true;void AsyncStorage.getItem(WATCHLIST_PRESENTATION_KEY).then(raw=>{if(alive)setPresentation(readWatchlistPresentation(raw));}).catch(()=>{if(alive)setPrefsError('顯示偏好讀取失敗，仍可切換檢視。');}).finally(()=>{if(alive)setPrefsReady(true);});return()=>{alive=false;};},[]);
  const persist=useMemo(()=>createWatchlistPresentationWriter(raw=>AsyncStorage.setItem(WATCHLIST_PRESENTATION_KEY,raw)),[]);
- useEffect(()=>{if(prefsReady&&!previewMode)void persist(JSON.stringify(presentation)).catch(()=>setPrefsError('顯示偏好未能儲存，本次檢視仍可使用。'));},[presentation,prefsReady,persist,previewMode]);
+ useEffect(()=>{if(prefsReady&&!previewMode&&!inheritHomeWallStyle)void persist(JSON.stringify(presentation)).catch(()=>setPrefsError('顯示偏好未能儲存，本次檢視仍可使用。'));},[presentation,prefsReady,persist,previewMode,inheritHomeWallStyle]);
  const rows=useMemo(()=>{
   const excluded=new Set(excludeSymbols.map(symbol=>symbol.toUpperCase()));
   return sortWatchlistRows(watchlistSnapshot(list.items.filter(item=>!excluded.has(item.symbol.toUpperCase())),market.quotes),presentation.sort,presentation.direction);
