@@ -171,3 +171,12 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - **完成**：固定項目、主要檔案、驗收門檻、依賴關係、跨界測試與後續追蹤格式已建立。
 - **未完成**：所有實作、修復驗證、正式 CI 及真機 Release Acceptance。
 - **建置接續指令**：先確認最新 HEAD，再執行 G0，從 M11 開始；所有失敗原地修護與記錄，不得將未證實標為 PASS。
+
+## 7. GO G0 / M11 進度紀錄（2026-10-19）
+- **GO 起點**：`v5.0.30-motion-editor-selection` HEAD `a08ca8a1052c77198e32abe5dfc61759f2386046`；來源包含執行書行政文件，App 原始基底仍為 V5.0.30。
+- **保護備份分支**：`backup-v5.0.30-before-m11-20261019`，指向原始 GO HEAD；**修復分支**：`repair-v5.0.31-m11-backup-integrity`。
+- **G0 CODE/範圍**：已讀 `AGENTS.md`、`ERROR_LESSONS.md`、`Work_Project_Rules.md`；建立備份 ref；未改動 SettingsScreen、Finance Core、Native Market Data Center 及原 UI。
+- **M11 進行中**：新增 `src/settings/backupStorageTransaction.ts`，將還原 Key 完整替換並校驗，失敗嘗試回滾並校驗；`BackupService.ts` 的本地還原與外部匯入接入，歷史儲存失敗時回復 active data；建立行為測試 `scripts/v5_0_31-backup-transaction.test.ts` 並接入 `test:v5_0_30` 繼承測試鏈。
+- **未證實**：測試尚待 CI 執行；原生真機資料恢復、歷史備份回滾及 Crash Injection 仍待核對；尚未升版、建立 APK 或驗證簽章。**M11 不得標為 PASS**。
+- **下一步**：啟動 PR 觸發品質 Gate，確認問題與測試結果；若失敗即在修復分支原地修正；符合規範後升版 V5.0.31 並進行 QA APK。
+- **剩餘工作包**：12/12 尚未完成；M11=進行中，其餘 11 項=未開始。正式 Release Gate 關閉。
