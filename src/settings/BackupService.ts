@@ -102,6 +102,8 @@ export async function importTfAssetData(text:string){
   const incoming=sanitizeRestoredPayload(parsed.payload);
   const before=await collectPayload();
   await createLocalBackup();
+  // Preserve the local safety snapshot even if imported history cannot be committed.
+  const safetyHistory=await readBackups();
   await applyBackupPayload(AsyncStorage,before,incoming);
   try{
     if(parsed.history.length){
@@ -114,9 +116,25 @@ export async function importTfAssetData(text:string){
       }));
     }
   }catch(error){
-    // History is separate from application state. Restore app keys on history failure.
-    await applyBackupPayload(AsyncStorage,incoming,before);
-    throw new Error('歷史備份寫入失敗，已還原原本資料：'+String(error));
+    // Verify and, if needed, restore the safety history independently from live state.
+    // Never claim rollback succeeded unless both namespaces have been verified.
+    const failures:string[]=[];
+    try{
+      const current=await readBackups();
+      if(JSON.stringify(current)!==JSON.stringify(safetyHistory)){
+        await writeBackups(safetyHistory);
+        const verified=await readBackups();
+        if(JSON.stringify(verified)!==JSON.stringify(safetyHistory)){
+          throw new Error('備份歷史回滾校驗不一致');
+        }
+      }
+    }catch(historyError){failures.push('歷史備份：'+String(historyError));}
+    try{await applyBackupPayload(AsyncStorage,incoming,before);}
+    catch(payloadError){failures.push('使用中資料：'+String(payloadError));}
+    if(failures.length){
+      throw new Error('匯入失敗且回滾未完全證實：'+failures.join('；')+'；原始錯誤：'+String(error));
+    }
+    throw new Error('歷史備份寫入失敗，已校驗回復原本資料：'+String(error));
   }
   return Object.keys(incoming).length;
 }
