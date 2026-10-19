@@ -70,7 +70,7 @@ function useMotion(effect:RuntimeMotionConfig,value:unknown,numeric:number|null,
     return()=>{active=false;listener.remove();};
   },[effect.kind]);
   useEffect(()=>{
-    if(effect.kind==='none'||(!(effect.loop||effect.trigger==='always')))return;
+    if(effect.kind==='none')return;
     const listener=AppState?.addEventListener?.('change',state=>setForeground(state==='active'));
     return()=>listener?.remove?.();
   },[effect.kind,effect.loop,effect.trigger]);
@@ -90,7 +90,7 @@ function useMotion(effect:RuntimeMotionConfig,value:unknown,numeric:number|null,
     return()=>{running.current?.stop();p.setValue(1);};
   // Compare primitive effect properties; changes to unrelated quote fields do not restart animations.
   },[p,motionValue,numeric,effect.kind,effect.trigger,effect.speed,effect.intensity,effect.durationMs,effect.strengthPercent,effect.loop,reduceMotion,foreground]);
-  return {p,strength,run:()=>{if(!reduceMotion&&foreground)run();},reduceMotion};
+  return {p,strength,run:()=>{if(!reduceMotion&&foreground)run();},reduceMotion,foreground};
 }
 
 function parseNumeric(text:string){
@@ -145,8 +145,8 @@ function Decoration({effect,progress,strength,color}:{effect:RuntimeMotionConfig
 }
 
 export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,refreshToken,inlineBackgroundColor}:{text:string;effect:RuntimeMotionConfig;numeric:number|null;style:any;numberOfLines?:number|undefined;color?:string|undefined;refreshToken?:string|number|null|undefined;inlineBackgroundColor?:string|null|undefined}){
-  const {p,strength,run,reduceMotion}=useMotion(effect,text,numeric,refreshToken);
-  const displayed=useNumberTransition(text,effect,!reduceMotion&&effect.kind!=='none');
+  const {p,strength,run,reduceMotion,foreground}=useMotion(effect,text,numeric,refreshToken);
+  const displayed=useNumberTransition(text,effect,!reduceMotion&&foreground&&effect.kind!=='none');
   const [drag]=useState(()=>new Animated.ValueXY());
   const pan=useRef<ReturnType<typeof PanResponder.create>|null>(null);
   if(effect.kind==='drag-snap'&&!pan.current)pan.current=PanResponder.create({
