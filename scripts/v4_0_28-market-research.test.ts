@@ -29,7 +29,7 @@ const source=readFileSync('src/screens/MarketResearchScreen.tsx','utf8');
 const app=readFileSync('App.tsx','utf8');
 const market=readFileSync('src/market/MarketRuntime.tsx','utf8');
 const settings=readFileSync('src/screens/SettingsScreen.tsx','utf8');
-assert.match(app,/case 'market': return <MarketResearchScreen\/>/);
+assert.match(app,/case 'market': return <MarketResearchScreen initialSelection=\{researchRequest\}\/>/,'market navigation must forward selected watchlist symbol');
 assert.match(source,/searchTaiwanSecurities\(catalog,query\)/);
 assert.match(source,/const MarketSearchContent=memo\(/,'Search input must be isolated from heavyweight market frames');
 assert.match(source,/<MarketSearchContent catalog=\{market\.catalog\}/,'Search must retain the live market catalog');
