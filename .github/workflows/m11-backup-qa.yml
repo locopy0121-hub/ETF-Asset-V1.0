@@ -20,5 +20,7 @@ jobs:
         run: npm run typecheck
       - name: M11 behavioral backup transaction
         run: npm run test:m11-backup-transaction
+      - name: M11 backup history failure injection
+        run: npm run test:m11-backup-history
       - name: Financial Golden regression
         run: npm run test:finance
