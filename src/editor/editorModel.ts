@@ -11,7 +11,7 @@ import {DEFAULT_HOLDING_CHART,normalizeHoldingChart,type HoldingChartConfig} fro
 import type { MainPageKey } from '../domain/pageRegistry';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingSortKey, type HoldingWallConfig, type HoldingWallFieldConfig, type HoldingWallFieldKey, type QuoteModuleStyle } from '../domain/uiModels';
 import {DEFAULT_DASHBOARD_LAYOUT,normalizeDashboardLayout,type DashboardLayoutConfig} from '../domain/dashboardLayout';
-import { DEFAULT_ITEM_EFFECT, ITEM_EFFECT_INTENSITIES, ITEM_EFFECT_KINDS, ITEM_EFFECT_SPEEDS, ITEM_EFFECT_TRIGGERS, type ItemEffectConfig } from '../domain/displayItemContract';
+import { DEFAULT_ITEM_EFFECT, ITEM_EFFECT_INTENSITIES, ITEM_ALL_EFFECT_KINDS, ITEM_EFFECT_SPEEDS, ITEM_ALL_EFFECT_TRIGGERS, type ItemEffectConfig } from '../domain/displayItemContract';
 import {normalizeTargetOverride,type TargetOverride} from '../maintenance/inspectionModel';
 
 export type FrameLayout = 'standard' | 'compact' | 'dense';
@@ -190,8 +190,8 @@ const wallNullableColor=(value:unknown,fallback:string|null)=>value===undefined?
 const normalizeWallEffect=(raw:unknown,fallback:ItemEffectConfig=DEFAULT_ITEM_EFFECT):ItemEffectConfig=>{
   const effect=(raw&&typeof raw==='object'?raw:{}) as Partial<ItemEffectConfig>;
   return {
-    kind:ITEM_EFFECT_KINDS.includes(effect.kind as ItemEffectConfig['kind'])?effect.kind as ItemEffectConfig['kind']:fallback.kind,
-    trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
+    kind:ITEM_ALL_EFFECT_KINDS.includes(effect.kind as ItemEffectConfig['kind'])?effect.kind as ItemEffectConfig['kind']:fallback.kind,
+    trigger:ITEM_ALL_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
     speed:ITEM_EFFECT_SPEEDS.includes(effect.speed as ItemEffectConfig['speed'])?effect.speed as ItemEffectConfig['speed']:fallback.speed,
     intensity:ITEM_EFFECT_INTENSITIES.includes(effect.intensity as ItemEffectConfig['intensity'])?effect.intensity as ItemEffectConfig['intensity']:fallback.intensity,
     ...(typeof effect.durationMs==='number'&&Number.isFinite(effect.durationMs)?{durationMs:clamp(effect.durationMs,100,1200,300)}:{}),
