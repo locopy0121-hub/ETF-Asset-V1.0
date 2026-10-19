@@ -146,18 +146,19 @@ export function ItemMotionText({text,effect,numeric,style,numberOfLines,color}:{
   const {p,strength,run,reduceMotion}=useMotion(effect,text,numeric);
   const displayed=useNumberTransition(text,effect,!reduceMotion&&effect.kind!=='none');
   const [drag]=useState(()=>new Animated.ValueXY());
-  const pan=useRef(PanResponder.create({
+  const pan=useRef<ReturnType<typeof PanResponder.create>|null>(null);
+  if(effect.kind==='drag-snap'&&!pan.current)pan.current=PanResponder.create({
     onMoveShouldSetPanResponder:(_,gesture)=>Math.abs(gesture.dx)>8||Math.abs(gesture.dy)>8,
     onPanResponderMove:Animated.event([null,{dx:drag.x,dy:drag.y}],{useNativeDriver:false}),
     onPanResponderRelease:()=>Animated.spring(drag,{toValue:{x:0,y:0},useNativeDriver:false}).start(),
     onPanResponderTerminate:()=>Animated.spring(drag,{toValue:{x:0,y:0},useNativeDriver:false}).start(),
-  })).current;
+  });
   const interactive=interactiveKinds.includes(effect.kind)||effect.trigger==='press'||effect.trigger==='longPress';
   const needsDecoration=['halo-pulse','pnl-glow','border-flow','gradient-flow','shimmer','sparkle','ripple','bg-pulse','change-flash','flash-on-change'].includes(effect.kind);
   const label=<Animated.Text numberOfLines={numberOfLines} style={[style,makeMotionStyle(effect.kind,p,strength)]}>{displayed}</Animated.Text>;
   // Preserve exact Text layout for legacy fields and non-decorative effects.
   if(!interactive&&!needsDecoration)return label;
-  const props=effect.kind==='drag-snap'?pan.panHandlers:{};
+  const props=effect.kind==='drag-snap'?(pan.current?.panHandlers??{}):{};
   const body=<Animated.View {...props} style={[effect.kind==='drag-snap'&&{transform:drag.getTranslateTransform()}]}>
     <Decoration effect={effect} progress={p} strength={strength} color={color??(numeric!==null&&numeric<0?'#10B981':'#EF5B64')}/>
     {label}
