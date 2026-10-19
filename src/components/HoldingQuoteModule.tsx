@@ -46,7 +46,11 @@ export function HoldingQuoteModule({
     narrow&&styles.narrowCard,
     {backgroundColor:cardStyle.backgroundColor,borderColor:cardStyle.borderColor,borderWidth:cardStyle.borderWidth,borderRadius:cardStyle.cornerRadius},
   ]}>
-    {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
+    {showChart?(cfg.header.effect.kind==='trend-draw'
+      ? <ItemMotionView effect={cfg.header.effect} value={item.sparkline.join(',')} numeric={change} color={change>=0?cardStyle.gainColor:cardStyle.lossColor}>
+          <Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>
+        </ItemMotionView>
+      : <Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>):null}
     <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
       {cfg.header.visible&&groups.header.length?<ItemMotionView effect={cfg.header.effect} value={item.price} numeric={changePct} color={change>=0?cardStyle.gainColor:cardStyle.lossColor}>
         <View style={[
