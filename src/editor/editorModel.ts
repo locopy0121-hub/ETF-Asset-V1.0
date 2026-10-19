@@ -89,6 +89,7 @@ export type FrameEditorConfig = Readonly<{
   borderRadius:number;
   shadowEnabled:boolean;
   shadowOpacity:number;
+  motion?:ItemEffectConfig;
 }>;
 
 export type PageEditorState = Readonly<Record<MainPageKey, Readonly<Record<string, FrameEditorConfig>>>>;
@@ -110,7 +111,7 @@ export type PageDisplayState = Readonly<Record<MainPageKey, PageDisplayConfig>>;
 export const makePageConfig = (page: MainPageKey): Record<string, FrameEditorConfig> =>
   Object.fromEntries(PAGE_FRAMES[page].map((frame, index) => [
     frame.key,
-    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12} satisfies FrameEditorConfig,
+    {visible:true,order:index,layout:'standard',appearance:'theme',behavior:'manual',titleFontSize:17,titleColor:'#0F172A',titleAlign:'left',backgroundColor:'#FFFFFF',backgroundOpacity:1,borderColor:'#E2E8F0',borderWidth:1,borderRadius:16,shadowEnabled:false,shadowOpacity:.12,motion:{...DEFAULT_ITEM_EFFECT}} satisfies FrameEditorConfig,
   ]));
 
 export function createInitialEditorState(): PageEditorState {
@@ -275,6 +276,7 @@ export function normalizeEditorConfig(
       backgroundColor:wallColor(candidate.backgroundColor,fallback.backgroundColor),backgroundOpacity:clamp(candidate.backgroundOpacity,0,1,fallback.backgroundOpacity),
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
+      motion:normalizeWallEffect(candidate.motion,fallback.motion??DEFAULT_ITEM_EFFECT),
     };
   });
 
