@@ -193,6 +193,9 @@ const normalizeWallEffect=(raw:unknown,fallback:ItemEffectConfig=DEFAULT_ITEM_EF
     trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
     speed:ITEM_EFFECT_SPEEDS.includes(effect.speed as ItemEffectConfig['speed'])?effect.speed as ItemEffectConfig['speed']:fallback.speed,
     intensity:ITEM_EFFECT_INTENSITIES.includes(effect.intensity as ItemEffectConfig['intensity'])?effect.intensity as ItemEffectConfig['intensity']:fallback.intensity,
+    durationMs:clamp(effect.durationMs,100,1200,fallback.durationMs??300),
+    strengthPercent:clamp(effect.strengthPercent,0,100,fallback.strengthPercent??40),
+    loop:typeof effect.loop==='boolean'?effect.loop:(fallback.loop??false),
   };
 };
 const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
