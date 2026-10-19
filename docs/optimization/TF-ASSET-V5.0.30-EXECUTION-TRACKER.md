@@ -243,3 +243,9 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 6. 連續接續是本次 GO 執行期間的要求；對話結束後不會無工具自行修正程式。跨對話持續監看需另設可運作的排程或工作代理。
 
 本次核對：Action #39251745987 completed/success。M11 尚待完整驗收與版本／APK 證據，不得宣告 Release PASS。
+
+## 13. GO 連續執行機制修正（2026-10-19）
+- 確認原因：原 M11 workflow 只有單一 job，專項 QA 成功就結束；正式 release-v1 workflow 限定 main/手動，並凍結 5.0.30，不能拿來充當 V5.0.31 QA。
+- 已在 `.github/workflows/m11-backup-qa.yml` 增加 `inherited-regression` 相依 job：只有 M11 專項 PASS 才自動執行 `npm run test:v5_0_30` 完整繼承回歸，並確認 5.0.30 身分與受保護 Settings 無改動。任一步 FAIL 即停止升級發布；通過也只完成該測試 Gate。
+- 提交 `d65a88f996ec2594cf3f31f5a996d5f0f9a569a9`；GitHub Action `#39254962329` 已觸發，首次查詢 `in_progress`。https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39254962329
+- **邊界**：這是 Actions 內的 CI job 自動銜接，不是程式碼自主修復代理；M11 仍待版本 +1、完整升級/真機驗收；請勿自動跑舊 5.0.30 正式 APK。
