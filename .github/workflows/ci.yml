@@ -359,28 +359,28 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V5.0.30-QA.apk
-          test "$(stat -c%s TF-Asset-V5.0.30-QA.apk)" -gt 1000000
-          unzip -t TF-Asset-V5.0.30-QA.apk
-          sha256sum TF-Asset-V5.0.30-QA.apk | tee TF-Asset-V5.0.30-QA.sha256
+          cp "$APK_PATH" TF-Asset-V5.0.31-QA.apk
+          test "$(stat -c%s TF-Asset-V5.0.31-QA.apk)" -gt 1000000
+          unzip -t TF-Asset-V5.0.31-QA.apk
+          sha256sum TF-Asset-V5.0.31-QA.apk | tee TF-Asset-V5.0.30-QA.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
           test -n "$AAPT"
-          "$AAPT" dump badging TF-Asset-V5.0.30-QA.apk | tee TF-Asset-V5.0.30-badging.txt
+          "$AAPT" dump badging TF-Asset-V5.0.31-QA.apk | tee TF-Asset-V5.0.30-badging.txt
           grep "package: name='com.tfasset.app'" TF-Asset-V5.0.30-badging.txt
           grep "versionCode='50030'" TF-Asset-V5.0.30-badging.txt
           grep "versionName='5.0.30'" TF-Asset-V5.0.30-badging.txt
           # Verify the merged binary manifest, not just the source scaffold.
           grep -F "uses-permission: name='android.permission.WAKE_LOCK'" TF-Asset-V5.0.30-badging.txt
-          unzip -p TF-Asset-V5.0.30-QA.apk assets/index.android.bundle > /tmp/tfasset-widget-bundle
+          unzip -p TF-Asset-V5.0.31-QA.apk assets/index.android.bundle > /tmp/tfasset-widget-bundle
           node -e "const fs=require('fs');if(!fs.readFileSync('/tmp/tfasset-widget-bundle').includes(Buffer.from('TfAssetWidgetLive')))throw Error('Widget headless task missing from APK bundle');"
-          file TF-Asset-V5.0.30-QA.apk
+          file TF-Asset-V5.0.31-QA.apk
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: TF-Asset-V5.0.30-QA-APK
           path: |
-            TF-Asset-V5.0.30-QA.apk
+            TF-Asset-V5.0.31-QA.apk
             TF-Asset-V5.0.30-QA.sha256
             TF-Asset-V5.0.30-badging.txt
             reports/V3.2.49-full-skill-matrix.json
