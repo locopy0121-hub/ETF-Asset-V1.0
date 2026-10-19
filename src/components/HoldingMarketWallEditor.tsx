@@ -2,16 +2,13 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import {
-  ITEM_EFFECT_CATALOG,
-  ITEM_EFFECT_GROUPS,
-  itemEffectGroup,
-  itemEffectLabel,
   ITEM_EFFECT_INTENSITIES,
+  ITEM_EFFECT_KINDS,
   ITEM_EFFECT_SPEEDS,
   ITEM_EFFECT_TRIGGERS,
   type ItemEffectConfig,
-  type ItemEffectGroup,
   type ItemEffectIntensity,
+  type ItemEffectKind,
   type ItemEffectSpeed,
   type ItemEffectTrigger,
 } from '../domain/displayItemContract';
@@ -24,14 +21,14 @@ import {
 } from '../domain/uiModels';
 import { colors, radius, spacing } from '../theme/tokens';
 import { ColorPalettePicker } from './ColorPalettePicker';
-import {ItemMotionText} from './ItemMotion';
 
 const FIELD_GROUPS:readonly {title:string;fields:readonly HoldingWallFieldKey[]}[]=[
   {title:'標題區',fields:['name','symbol']},
   {title:'行情區',fields:['price','change','changePercent']},
   {title:'損益區',fields:['pnl','roi','marketValue']},
 ];
-const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報',mount:'首次顯示',press:'點擊',longPress:'長按'};
+const effectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
+const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
 const WALL_EFFECT_TRIGGERS=ITEM_EFFECT_TRIGGERS.filter(trigger=>trigger!=='alert');
 const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
 const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
@@ -164,28 +161,17 @@ export function HoldingMarketWallEditor({
   </View>;
 }
 
-export function EffectControls({value,onChange}:{value:ItemEffectConfig;onChange:(patch:Partial<ItemEffectConfig>)=>void}){
-  const [group,setGroup]=useState<ItemEffectGroup>(()=>itemEffectGroup(value.kind));
-  const [preview,setPreview]=useState(0);
-  const visibleKinds=ITEM_EFFECT_CATALOG.filter(item=>item.group===group).map(item=>item.id);
+function EffectControls({value,onChange}:{value:ItemEffectConfig;onChange:(patch:Partial<ItemEffectConfig>)=>void}){
   return <View style={styles.effectBox}>
-    <Text style={styles.label}>單項特效 · 動畫分類</Text>
-    <StringChoice choices={ITEM_EFFECT_GROUPS.map(item=>item.id)} value={group} label={item=>ITEM_EFFECT_GROUPS.find(group=>group.id===item)?.label??item} onChange={setGroup}/>
-    <StringChoice choices={visibleKinds} value={value.kind} label={itemEffectLabel} onChange={kind=>onChange({kind})}/>
+    <Text style={styles.label}>單項特效</Text>
+    <StringChoice choices={ITEM_EFFECT_KINDS} value={value.kind} label={x=>effectLabels[x]} onChange={kind=>onChange({kind})}/>
     {value.kind!=='none'?<>
       <Text style={styles.label}>觸發條件</Text>
-      <StringChoice choices={WALL_EFFECT_TRIGGERS} value={value.trigger} label={item=>triggerLabels[item]} onChange={trigger=>onChange({trigger})}/>
+      <StringChoice choices={WALL_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/>
       <Text style={styles.label}>速度</Text>
-      <StringChoice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={item=>speedLabels[item]} onChange={speed=>onChange({speed,durationMs:speed==='slow'?1000:speed==='fast'?200:500})}/>
-      <Text style={styles.label}>強度等級</Text>
-      <StringChoice choices={ITEM_EFFECT_INTENSITIES} value={value.intensity} label={item=>intensityLabels[item]} onChange={intensity=>onChange({intensity,strengthPercent:intensity==='soft'?25:intensity==='strong'?80:50})}/>
-      <Step label="動畫時間" value={value.durationMs??300} min={100} max={1200} step={50} suffix=" ms" onChange={durationMs=>onChange({durationMs})}/>
-      <Step label="強度百分比" value={value.strengthPercent??40} min={0} max={100} step={5} suffix=" %" onChange={strengthPercent=>onChange({strengthPercent})}/>
-      <Toggle label="允許循環（請避免行情牆大量常駐）" value={value.loop??false} onChange={loop=>onChange({loop})}/>
-      <View style={{padding:8,backgroundColor:'#101827',borderRadius:8}}>
-        <ItemMotionText text={preview%2===0?'1,285.00':'1,286.50'} numeric={preview%2===0?1285:1286.5} effect={{...value,trigger:'change',loop:false}} color="#EF5B64" style={{color:'#FFFFFF',fontSize:21,fontWeight:'900',fontVariant:['tabular-nums']}}/>
-        <Pressable onPress={()=>setPreview(current=>current+1)} style={{paddingVertical:8}}><Text style={{color:"#FFFFFF",fontSize:12}}>▶ 模擬更新預覽</Text></Pressable>
-      </View>
+      <StringChoice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={x=>speedLabels[x]} onChange={speed=>onChange({speed})}/>
+      <Text style={styles.label}>強度</Text>
+      <StringChoice choices={ITEM_EFFECT_INTENSITIES} value={value.intensity} label={x=>intensityLabels[x]} onChange={intensity=>onChange({intensity})}/>
     </>:null}
   </View>;
 }
