@@ -16,7 +16,7 @@ import {
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
 import { ColorPalettePicker } from '../ColorPalettePicker';
-import {EffectControls as MotionControls} from '../HoldingMarketWallEditor';
+import {MotionControls} from '../MotionControls';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[];previewSnapshot?:SharedSnapshot|null};
