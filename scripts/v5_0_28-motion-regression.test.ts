@@ -35,7 +35,7 @@ assert.equal(migrated.home.holdingWall?.fields.find(field=>field.field==='price'
 assert.equal(migrated.home.holdingWall?.style.backgroundColor,wall.style.backgroundColor);
 const renderer=readFileSync('src/components/ItemMotion.tsx','utf8');
 assert.match(renderer,/reduceMotionChanged/);
-assert.match(renderer,/AppState\.addEventListener/);
+assert.match(renderer,/AppState\?\.addEventListener\?\.\('change'/,'native lifecycle listener must remain guarded in pure render tests');
 assert.match(renderer,/Object\.is/);
 assert.match(renderer,/useNativeDriver:true/);
 assert.equal(APP_RELEASE_NOTES.version,'5.0.28');
