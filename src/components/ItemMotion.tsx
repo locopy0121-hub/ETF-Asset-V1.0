@@ -59,7 +59,7 @@ function useMotion(effect:ItemEffectConfig,value:unknown,numeric:number|null){
   const first=useRef(true);
   const running=useRef<Animated.CompositeAnimation|null>(null);
   const [reduceMotion,setReduceMotion]=useState(false);
-  const [foreground,setForeground]=useState(AppState.currentState==='active');
+  const [foreground,setForeground]=useState(AppState.currentState!=='background'&&AppState.currentState!=='inactive');
   useEffect(()=>{
     if(effect.kind==='none')return;
     let active=true;
@@ -153,10 +153,14 @@ export function ItemMotionText({text,effect,numeric,style,numberOfLines,color}:{
     onPanResponderTerminate:()=>Animated.spring(drag,{toValue:{x:0,y:0},useNativeDriver:false}).start(),
   })).current;
   const interactive=interactiveKinds.includes(effect.kind)||effect.trigger==='press'||effect.trigger==='longPress';
+  const needsDecoration=['halo-pulse','pnl-glow','border-flow','gradient-flow','shimmer','sparkle','ripple','bg-pulse','change-flash','flash-on-change'].includes(effect.kind);
+  const label=<Animated.Text numberOfLines={numberOfLines} style={[style,makeMotionStyle(effect.kind,p,strength)]}>{displayed}</Animated.Text>;
+  // Preserve exact Text layout for legacy fields and non-decorative effects.
+  if(!interactive&&!needsDecoration)return label;
   const props=effect.kind==='drag-snap'?pan.panHandlers:{};
-  const body=<Animated.View {...props} style={[{alignSelf:'stretch'},effect.kind==='drag-snap'&&{transform:drag.getTranslateTransform()}]}>
+  const body=<Animated.View {...props} style={[effect.kind==='drag-snap'&&{transform:drag.getTranslateTransform()}]}>
     <Decoration effect={effect} progress={p} strength={strength} color={color??(numeric!==null&&numeric<0?'#10B981':'#EF5B64')}/>
-    <Animated.Text numberOfLines={numberOfLines} style={[style,makeMotionStyle(effect.kind,p,strength)]}>{displayed}</Animated.Text>
+    {label}
   </Animated.View>;
   if(interactive)return <Pressable onPressIn={effect.trigger==='longPress'?undefined:run} onLongPress={run} delayLongPress={380}>{body}</Pressable>;
   return body;
@@ -164,6 +168,7 @@ export function ItemMotionText({text,effect,numeric,style,numberOfLines,color}:{
 
 export function ItemMotionView({effect,value,numeric,children,color}:{effect:ItemEffectConfig;value:unknown;numeric:number|null;children:ReactNode;color?:string}){
   const {p,strength,run}=useMotion(effect,value,numeric);
+  if(effect.kind==='none')return <>{children}</>;
   const body=<Animated.View style={makeMotionStyle(effect.kind,p,strength)}>
     <Decoration effect={effect} progress={p} strength={strength} color={color??(numeric!==null&&numeric<0?'#10B981':'#EF5B64')}/>
     {children}
