@@ -210,3 +210,16 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - `#39250139396`：completed / success。
 - `#39250184733`：completed / success，對應 commit `f5b61f2bbeb1cb7e807490d3a9f7331cca40ad0c`。
 - 以上僅 M11 專用 TypeScript / backup / finance QA，**不是完整 RELEASE PASS**；尚未升版或建置正式 APK。
+
+## 10. GO Action 完成後自動銜接建置規則（2026-10-19）
+**使用者授權：GO 執行中 Action 已到終態，不必再要求下一次 GO，直接按照進度執行書繼續。**
+1. 確認 Action `status=completed`、`conclusion` 及 `head_sha` 對應當次正確分支/提交，避免拿前一次成功當本次成功。
+2. **success**：僅標記該 Action 涵蓋的 Gate PASS；讀取本執行書的第一個未完成驗收條件，在同一次可用的工具執行流程中繼續修復、補測試、提交，必要時觸發下一個 QA Action 並監控。不把 CI success 當成整組 M11 或正式 Release PASS。
+3. **failure / cancelled / timed_out / startup_failure / action_required**：立即取得失敗 Job/Step/Log，原工作包定點修正、重跑同組必要 Gate；不得跳到另一模組、跳版本或變更受保護範圍。
+4. 循環條件：`修復 → push → 確認 run → 監控終態 → 對照 Gate → 接續下一未完成工作`；遇規範阻斷、測試未證實、真機必要驗收無法取得時，記錄阻斷並保留後續交接點。
+5. **能力界線**：這是 GO 對話執行期間的連續作業規則，不代表回答完畢後可在無排程/無工具執行的情況下自主背景工作。需跨對話定期檢查者使用正式條件監控排程。
+6. 每次迴圈更新當前工作包、Run URL、Commit、實際已完成的驗收與未完成條件，直至符合當次任務的停止 Gate。
+
+### 當次 Action 結果
+- `#39250697790` 已查得 `completed / success`；Commit `d3cfdc171fb4474ea35234caff97fd50fed05ac3`；https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250697790
+- 已通過的是 M11 專項 QA 內容，不是 M11 全功能 PASS；後續執行點：補齊 history 異常與資料回滾故障注入、V5.0.31 的版本一致性及 Android QA Gate。
