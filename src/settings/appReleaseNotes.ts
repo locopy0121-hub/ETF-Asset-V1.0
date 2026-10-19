@@ -1,10 +1,10 @@
 /** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.29',androidVersionCode:50029,headline:'動畫前景／背景生命週期與數值顯示安全修正',
+ version:'5.0.30',androidVersionCode:50030,headline:'動畫編輯器跨卡片選擇與分類同步修正',
  changes:[
-  {id:'motion-foreground-state',title:'所有動畫尊重 App 前景／背景狀態',detail:'單次進場、行情變動及循環動畫均在 App 退至背景或進入 inactive 時停止；回到前景時不重播已過期的單次更新，僅依目前效果條件繼續。'},
-  {id:'motion-number-foreground',title:'數值過渡動畫於背景回復最新文字',detail:'數字滾動、遞增、遞減及漸變等效果在 App 不可見時停止過渡，以當前行情文字為準；降低動態效果設定同樣不啟動過渡。'},
-  {id:'motion-lifecycle-qa',title:'動畫狀態切換行為回歸',detail:'加入執行中的動畫 Hook 模擬測試，檢查退背景停止、回前景、降低動態效果、數字更新及監聽器清理；不變更行情來源或帳務資料。'},
+  {id:'motion-category-switch',title:'切換卡片時顯示已儲存的動畫分類',detail:'同一個動畫選擇器接續編輯其他卡片或欄位時，依新的動畫效果切換分類，不再沿用上一張卡片的分類。'},
+  {id:'motion-category-browse',title:'手動瀏覽動畫分類不覆寫設定',detail:'瀏覽分類只變更列表顯示，不會更改保存的動畫；必須選取特效或調整參數才會更新，模擬行情預覽也不改寫任何實際報價。'},
+  {id:'motion-picker-regression',title:'新增動畫分類切換互動測試',detail:'檢查切換編輯對象、套用效果、保存舊值、預覽隔離及恢復「無」效果，並延續前版完整回歸。'},
  ],
- notice:'本版為 QA 驗收版。自動測試不等於 Android 真機實際動畫驗收。Monitor／Mini／Widget 受保護設定子面板維持既有項目，並未宣稱完整開放 42 種效果；桌面 RemoteViews 的動態效果仍有限制。',
+ notice:'本版為 QA 驗收版。Android 真機的動畫播放及編輯操作仍須確認；系統設定首頁及 Monitor／Mini／Widget 受保護編輯面板均未改動，42 種動畫尚未於所有原生介面開放。',
 } as const;

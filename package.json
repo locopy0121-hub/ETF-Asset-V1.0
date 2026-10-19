@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.29",
+  "version": "5.0.30",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_29 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_30 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -388,6 +388,8 @@
     "test:v5_0_28": "npm run test:v5_0_27 && npm run test:motion-v5_0_28",
     "test:motion-v5_0_29": "node scripts/v5_0_29-motion-lifecycle.test.cjs",
     "test:v5_0_29": "npm run test:v5_0_28 && npm run test:motion-v5_0_29",
+    "test:motion-v5_0_30": "node scripts/v5_0_30-motion-picker.test.cjs",
+    "test:v5_0_30": "npm run test:v5_0_29 && npm run test:motion-v5_0_30",
     "test:v5_0_27": "npm run test:v5_0_26 && node scripts/v4_0_64-news-content.test.cjs && node scripts/v4_0_64-news-reader.test.cjs"
   },
   "dependencies": {

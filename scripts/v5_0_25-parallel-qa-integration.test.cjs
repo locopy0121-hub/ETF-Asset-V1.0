@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs');
 const holding=fs.readFileSync('src/components/HoldingQuoteCollection.tsx','utf8');
 const watch=fs.readFileSync('src/components/WatchlistPanel.tsx','utf8');
 const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
-assert.equal(pkg.version,'5.0.29');
+assert.equal(pkg.version,'5.0.30');
 assert.ok(holding.includes('testID="holding-home-horizontal"'),'retains measured holding component');
 assert.ok(holding.includes('if(actual>0)setViewportWidth(old=>old===actual?old:actual)'),'retains guarded viewport measurements');
 assert.ok(watch.includes('const remove=(row:typeof rows[number])=>inheritHomeWallStyle?null:<Pressable'),'retains non-destructive combined home view');
