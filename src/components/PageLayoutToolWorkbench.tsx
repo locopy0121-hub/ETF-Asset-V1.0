@@ -1216,7 +1216,7 @@ function defaultDashboardSelection(frameKey:string,kind:'card'|'text'|'value'):S
 }
 
 function effectLabel(v:ItemEffectConfig['kind']){return itemEffectLabel(v);}
-function triggerLabel(v:ItemEffectConfig['trigger']){return v==='always'?'持續':v==='refresh'?'刷新':v==='change'?'數值變化':v==='gain'?'上漲':v==='loss'?'下跌':v==='mount'?'首次顯示':v==='press'?'點擊':v==='longPress'?'長按':'警示';}
+function triggerLabel(v:string){return v==='always'?'持續':v==='refresh'?'刷新':v==='change'?'數值變化':v==='gain'?'上漲':v==='loss'?'下跌':v==='mount'?'首次顯示':v==='press'?'點擊':v==='longPress'?'長按':'警示';}
 
 function Accordion({title,subtitle,open,onPress,children}:{title:string;subtitle:string;open:boolean;onPress:()=>void;children:any}){
   return <View style={styles.accordion}><Pressable onPress={onPress} style={styles.accordionHead}><View style={{flex:1}}><Text style={styles.accordionTitle}>{title}</Text><Text style={styles.rowHint}>{subtitle}</Text></View><Text style={styles.chev}>{open?'−':'＋'}</Text></Pressable>{open?<View style={styles.accordionBody}>{children}</View>:null}</View>;
