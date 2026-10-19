@@ -67,7 +67,7 @@ const legacyHorizontal=`      return <ScrollView horizontal showsHorizontalScrol
 assert.ok(updatedCollection.includes(measuredHorizontal),'actual authorized viewport change must exist');
 const restoredCollection=updatedCollection.replace(measuredHorizontal,legacyHorizontal);
 const restoredBytes=Buffer.from(restoredCollection,'utf8');
-assert.equal(createHash('sha1').update('blob '+restoredBytes.length+'\\0'.replace('\\0','\0')).update(restoredBytes).digest('hex'),
+assert.equal(createHash('sha1').update('blob '+restoredBytes.length+'\0').update(restoredBytes).digest('hex'),
  '2cda7a131c60f985cc0342bcf11394caa1895c81','all other original holding-wall bytes must stay frozen');
 assert.equal(gitBlob('src/components/FloatingHoldingCardPreview.tsx'),'951e2ab7f04fb1b000aef7377d4df5327187a488');
 const uiModels=read('src/domain/uiModels.ts');
