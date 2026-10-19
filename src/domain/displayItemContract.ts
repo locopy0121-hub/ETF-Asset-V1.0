@@ -46,17 +46,17 @@ export const ITEM_EFFECT_CATALOG = [
 ] as const;
 
 // Legacy editor labels are hash-locked: retain its five-element key type.
-export type ItemEffectKind=string; // Frozen legacy editors use an open label dictionary.
+export type ItemEffectKind='none'|'fade'|'pulse'|'flash-on-change'|'bounce'; // Frozen editor key type.
 export type ItemEffectExtendedKind = typeof ITEM_EFFECT_CATALOG[number]['id'];
 export type ItemEffectGroup = typeof ITEM_EFFECT_CATALOG[number]['group'];
-export type ItemEffectTrigger=string; // Frozen legacy editors use an open label dictionary.
+export type ItemEffectTrigger='always'|'refresh'|'change'|'gain'|'loss'|'alert'; // Frozen editor trigger type.
 export type ItemEffectExtendedTrigger='always'|'refresh'|'change'|'gain'|'loss'|'alert'|'mount'|'press'|'longPress';
 export type ItemEffectSpeed='slow'|'normal'|'fast';
 export type ItemEffectIntensity='soft'|'medium'|'strong';
 export type ItemTextAlign='left'|'center'|'right';
 export type ItemEffectConfig=Readonly<{
-  kind:ItemEffectExtendedKind;
-  trigger:ItemEffectExtendedTrigger;
+  kind:ItemEffectKind;
+  trigger:ItemEffectTrigger;
   speed:ItemEffectSpeed;
   intensity:ItemEffectIntensity;
   durationMs?:number;
