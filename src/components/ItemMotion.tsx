@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {AccessibilityInfo,Animated,AppState,Easing,PanResponder,Pressable,Text,View} from 'react-native';
-import type {ItemEffectConfig,ItemEffectExtendedKind as ItemEffectKind} from '../domain/displayItemContract';
+import type {ItemEffectConfig,ItemEffectExtendedKind as ItemEffectKind,ItemEffectExtendedTrigger} from '../domain/displayItemContract';
+type RuntimeMotionConfig=Omit<ItemEffectConfig,'kind'|'trigger'>&{kind:ItemEffectKind;trigger:ItemEffectExtendedTrigger};
 
 // Animation-only changes: transformations never mutate the source quote, card size or layout.
 const numericKinds:readonly ItemEffectKind[]=['number-roll','count-up','count-down','numeric-tween','flip-number','digit-slide','quote-flip'];
@@ -9,8 +10,8 @@ const middle=(progress:Animated.Value,from:number,peak:number,to:number)=>progre
 const end=(progress:Animated.Value,from:number,to:number)=>progress.interpolate({inputRange:[0,1],outputRange:[from,to]});
 const middleAngle=(progress:Animated.Value,from:string,peak:string,to:string)=>progress.interpolate({inputRange:[0,.5,1],outputRange:[from,peak,to]});
 const endAngle=(progress:Animated.Value,from:string,to:string)=>progress.interpolate({inputRange:[0,1],outputRange:[from,to]});
-const safeStrength=(effect:ItemEffectConfig)=>Math.max(0,Math.min(100,effect.strengthPercent??(effect.intensity==='soft'?25:effect.intensity==='strong'?80:50)))/100;
-const duration=(effect:ItemEffectConfig)=>Math.max(100,Math.min(1200,effect.durationMs??(effect.speed==='slow'?1200:effect.speed==='fast'?360:700)));
+const safeStrength=(effect:RuntimeMotionConfig)=>Math.max(0,Math.min(100,effect.strengthPercent??(effect.intensity==='soft'?25:effect.intensity==='strong'?80:50)))/100;
+const duration=(effect:RuntimeMotionConfig)=>Math.max(100,Math.min(1200,effect.durationMs??(effect.speed==='slow'?1200:effect.speed==='fast'?360:700)));
 
 function makeMotionStyle(kind:ItemEffectKind,p:Animated.Value,strength:number){
   const distance=5+strength*22;
@@ -43,7 +44,7 @@ function makeMotionStyle(kind:ItemEffectKind,p:Animated.Value,strength:number){
   return {opacity,transform:[{perspective:900},{translateX},{translateY},{scale},{scaleX},{rotateY},{rotateZ}]};
 }
 
-function shouldRun(effect:ItemEffectConfig,first:boolean,changed:boolean,numeric:number|null){
+function shouldRun(effect:RuntimeMotionConfig,first:boolean,changed:boolean,numeric:number|null){
   if(effect.kind==='none')return false;
   if(effect.trigger==='press'||effect.trigger==='longPress'||effect.trigger==='alert')return false;
   if(effect.trigger==='always')return true;
@@ -53,7 +54,7 @@ function shouldRun(effect:ItemEffectConfig,first:boolean,changed:boolean,numeric
   return changed;
 }
 
-function useMotion(effect:ItemEffectConfig,value:unknown,numeric:number|null,refreshToken?:string|number|null){
+function useMotion(effect:RuntimeMotionConfig,value:unknown,numeric:number|null,refreshToken?:string|number|null){
   const p=useRef(new Animated.Value(1)).current;
   const motionValue=effect.trigger==='refresh'?refreshToken:value;
   const previous=useRef(motionValue);
@@ -103,7 +104,7 @@ function tweenText(template:string,parsed:NonNullable<ReturnType<typeof parseNum
   const formatted=parsed.comma?amount.toLocaleString('en-US',{minimumFractionDigits:parsed.decimals,maximumFractionDigits:parsed.decimals}):amount.toFixed(parsed.decimals);
   return template.slice(0,parsed.index)+formatted+template.slice(parsed.index+parsed.match.length);
 }
-function useNumberTransition(text:string,effect:ItemEffectConfig,enabled:boolean){
+function useNumberTransition(text:string,effect:RuntimeMotionConfig,enabled:boolean){
   const previous=useRef(text);
   const [displayed,setDisplayed]=useState(text);
   const value=useRef(new Animated.Value(0)).current;
@@ -129,7 +130,7 @@ function useNumberTransition(text:string,effect:ItemEffectConfig,enabled:boolean
   return displayed;
 }
 
-function Decoration({effect,progress,strength,color}:{effect:ItemEffectConfig;progress:Animated.Value;strength:number;color:string}){
+function Decoration({effect,progress,strength,color}:{effect:RuntimeMotionConfig;progress:Animated.Value;strength:number;color:string}){
   const kind=effect.kind;
   if(!['halo-pulse','pnl-glow','border-flow','gradient-flow','shimmer','sparkle','ripple','bg-pulse','change-flash','flash-on-change'].includes(kind))return null;
   const opacity=middle(progress,0,.2+strength*.5,0);
@@ -143,7 +144,7 @@ function Decoration({effect,progress,strength,color}:{effect:ItemEffectConfig;pr
     ...(kind==='halo-pulse'||kind==='pnl-glow'||kind==='border-flow'?{borderWidth:kind==='border-flow'?2:1,borderColor:color}:{backgroundColor:color})}}/>;
 }
 
-export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,refreshToken,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;style:any;numberOfLines?:number|undefined;color?:string|undefined;refreshToken?:string|number|null|undefined;inlineBackgroundColor?:string|null|undefined}){
+export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,refreshToken,inlineBackgroundColor}:{text:string;effect:RuntimeMotionConfig;numeric:number|null;style:any;numberOfLines?:number|undefined;color?:string|undefined;refreshToken?:string|number|null|undefined;inlineBackgroundColor?:string|null|undefined}){
   const {p,strength,run,reduceMotion}=useMotion(effect,text,numeric,refreshToken);
   const displayed=useNumberTransition(text,effect,!reduceMotion&&effect.kind!=='none');
   const [drag]=useState(()=>new Animated.ValueXY());
@@ -168,7 +169,7 @@ export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,re
   return body;
 }
 
-export function ItemMotionView({effect,value,numeric,children,color,refreshToken}:{effect:ItemEffectConfig;value:unknown;numeric:number|null;children:ReactNode;color?:string|undefined;refreshToken?:string|number|null|undefined}){
+export function ItemMotionView({effect,value,numeric,children,color,refreshToken}:{effect:RuntimeMotionConfig;value:unknown;numeric:number|null;children:ReactNode;color?:string|undefined;refreshToken?:string|number|null|undefined}){
   const {p,strength,run}=useMotion(effect,value,numeric,refreshToken);
   if(effect.kind==='none')return <>{children}</>;
   const body=<Animated.View style={makeMotionStyle(effect.kind,p,strength)}>
@@ -181,7 +182,7 @@ export function ItemMotionView({effect,value,numeric,children,color,refreshToken
 }
 
 // For existing Animated.View cards: apply transforms without adding a layout wrapper.
-export function useItemMotionStyle(effect:ItemEffectConfig,value:unknown,numeric:number|null){
+export function useItemMotionStyle(effect:RuntimeMotionConfig,value:unknown,numeric:number|null){
   const {p,strength,reduceMotion}=useMotion(effect,value,numeric);
   return effect.kind==='none'||reduceMotion?null:makeMotionStyle(effect.kind,p,strength);
 }
