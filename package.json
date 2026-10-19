@@ -389,9 +389,10 @@
     "test:motion-v5_0_29": "node scripts/v5_0_29-motion-lifecycle.test.cjs",
     "test:v5_0_29": "npm run test:v5_0_28 && npm run test:motion-v5_0_29",
     "test:motion-v5_0_30": "node scripts/v5_0_30-motion-picker.test.cjs",
-    "test:v5_0_30": "npm run test:v5_0_29 && npm run test:motion-v5_0_30 && npm run test:m11-backup-transaction",
+    "test:v5_0_30": "npm run test:v5_0_29 && npm run test:motion-v5_0_30 && npm run test:m11-backup-transaction && npm run test:m11-backup-history",
     "test:v5_0_27": "npm run test:v5_0_26 && node scripts/v4_0_64-news-content.test.cjs && node scripts/v4_0_64-news-reader.test.cjs",
-    "test:m11-backup-transaction": "tsx scripts/v5_0_31-backup-transaction.test.ts"
+    "test:m11-backup-transaction": "tsx scripts/v5_0_31-backup-transaction.test.ts",
+    "test:m11-backup-history": "tsx scripts/v5_0_31-backup-history-fault.test.ts"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
