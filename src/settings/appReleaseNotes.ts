@@ -1,10 +1,11 @@
-/** SSOT for current packaged release explanation. Update every version. */
+/** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.24',androidVersionCode:50024,headline:'持股橫向行情卡使用實際容器寬度',
+ version:'5.0.25',androidVersionCode:50025,headline:'整合持股滑動與自選操作保護',
  changes:[
-  {id:'measured-holding',title:'持股橫向卡片寬度修正',detail:'首頁選擇橫向滑動時，持股卡片以實際可見容器的寬度計算，避免與已修正的純自選卡片寬度不一致。'},
-  {id:'snap-holding',title:'持股滑動步距與尺寸變更同步',detail:'框架縮放或手機方向改變時，同步更新持股單卡大小與滑動定位；忽略無效的零寬量測。'},
-  {id:'regression-holding',title:'新增實際卡片行為驗證',detail:'使用真實 HoldingQuoteCollection 元件測試初始寬度、容器縮放、無效量測及雙欄分頁互不干擾。'},
+  {id:'unify-parallel-qa',title:'整合兩條 V5.0.24 QA 修正',detail:'以已通過 QA 的持股橫向容器量測為基底，併入另一條同版分支的首頁自選移除防誤觸保護，避免不同 APK 互相覆蓋成果。'},
+  {id:'holding-viewport',title:'保留持股橫向量測',detail:'橫向持股卡片依目前可見容器寬度調整卡寬與滑動步距，保留零寬防護及雙欄分頁原有行為。'},
+  {id:'watchlist-readonly',title:'首頁混合自選卡僅能查看',detail:'持股加自選的首頁混合行情牆不提供移除自選按鈕；獨立自選清單維持可移除功能，不修改原始持股、自選或報價資料。'},
+  {id:'both-regressions',title:'合併回歸驗證',detail:'同一個建置驗證持股橫向量測、首頁自選操作隔離、獨立清單刪除與版本資訊一致性。'},
  ],
- notice:'目前為 QA 驗收版本；持股與純自選仍為兩條獨立滑動區域，共用滑動軌道及真機拖曳／旋轉／窄版實測仍待完成，不宣稱正式 Release PASS。',
+ notice:'此版本為 QA 驗收用途；持股與純自選的滑動區塊仍分開，真機手勢、即時 Live、Mini 和 Widget 未完成全面驗收，不可宣稱正式 Release PASS。',
 } as const;
