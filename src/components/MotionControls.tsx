@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {
  DEFAULT_ITEM_EFFECT,ITEM_EFFECT_CATALOG,ITEM_EFFECT_GROUPS,
@@ -11,6 +11,8 @@ import {ItemMotionText} from './ItemMotion';
 // Standalone extension. The inherited HoldingMarketWallEditor is hash-locked.
 export function MotionControls({value,onChange}:{value:ItemEffectConfig;onChange:(next:Partial<ItemEffectConfig>)=>void}){
  const [group,setGroup]=useState<ItemEffectGroup>(()=>itemEffectGroup(value.kind));
+ // Follow the selected item's saved effect when this editor is reused for another card.
+ useEffect(()=>setGroup(itemEffectGroup(value.kind)),[value.kind]);
  const [preview,setPreview]=useState(0);
  const effects=ITEM_EFFECT_CATALOG.filter(effect=>effect.group===group);
  return <View style={styles.root}>
