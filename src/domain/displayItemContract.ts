@@ -74,7 +74,6 @@ export type ItemVisualOverride=Readonly<{
 
 export const DEFAULT_ITEM_EFFECT:ItemEffectConfig={
   kind:'none',trigger:'change',speed:'normal',intensity:'medium',
-  durationMs:300,strengthPercent:40,loop:false,
 };
 export const DEFAULT_ITEM_VISUAL:ItemVisualOverride={
   fontScale:1,textColor:null,backgroundColor:null,textAlign:null,
