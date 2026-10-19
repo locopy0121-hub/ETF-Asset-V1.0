@@ -95,6 +95,16 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  assert.equal(swipe.props.pagingEnabled,undefined,'horizontal one-card scroll must not force two-card paging');
  assert.equal(nodes(tree).filter(x=>String(x.props?.testID??'').startsWith('watchlist-swipe-item-')).length,3);
  assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-swipe-item-0050').props.style.width,306,'horizontal uses same single-item width policy');
+ swipe.props.onLayout({nativeEvent:{layout:{width:280}}});tree=render();
+ let actualSwipe=nodes(tree).find(x=>x.props?.testID==='watchlist-home-horizontal');
+ assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-swipe-item-0050').props.style.width,262,'horizontal item width follows real 280px container');
+ assert.equal(actualSwipe.props.snapToInterval,270,'horizontal snap follows measured container + existing 8px spacing');
+ actualSwipe.props.onLayout({nativeEvent:{layout:{width:340}}});tree=render();
+ actualSwipe=nodes(tree).find(x=>x.props?.testID==='watchlist-home-horizontal');
+ assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-swipe-item-0050').props.style.width,322,'resize updates horizontal card width');
+ assert.equal(actualSwipe.props.snapToInterval,330,'resize updates snap without persisting any mode');
+ actualSwipe.props.onLayout({nativeEvent:{layout:{width:0}}});tree=render();
+ assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-swipe-item-0050').props.style.width,322,'invalid zero-width events retain last valid geometry');
  panelProps={...panelProps,inheritedLayout:'paged2',inheritedColumns:2};tree=render();
  const viewport=nodes(tree).find(x=>x.props?.testID==='watchlist-home-paged-viewport');
  assert.ok(viewport,'page layout has measured viewport');

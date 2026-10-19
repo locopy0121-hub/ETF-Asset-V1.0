@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.22",
+  "version": "5.0.23",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_22 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_23 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -379,7 +379,8 @@
     "test:v5_0_19": "npm run test:v5_0_18 && node scripts/v5_0_19-home-wall-style.test.cjs",
     "test:v5_0_20": "npm run test:v5_0_19 && node scripts/v5_0_20-home-wall-display.test.cjs",
     "test:v5_0_21": "npm run test:v5_0_20 && tsx scripts/v5_0_21-release-notes.test.ts",
-    "test:v5_0_22": "npm run test:v5_0_21 && node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_22-home-wall-swipe.test.cjs"
+    "test:v5_0_22": "npm run test:v5_0_21 && node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_22-home-wall-swipe.test.cjs",
+    "test:v5_0_23": "npm run test:v5_0_22 && node scripts/v5_0_23-measured-swipe.test.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

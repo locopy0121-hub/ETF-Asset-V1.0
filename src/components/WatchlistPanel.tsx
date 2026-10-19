@@ -140,6 +140,10 @@ export function WatchlistPanel({onSelect,heldSymbols=[],excludeSymbols=[],hideWh
  const homeCardContent=inheritHomeWallStyle&&inheritedLayout==='horizontal'?(()=>{
   const itemWidth=Math.max(230,Math.min(pageWidth-18,windowWidth*.78));
   return <ScrollView testID="watchlist-home-horizontal" horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast"
+   onLayout={event=>{
+    const measured=Math.round(event.nativeEvent.layout.width);
+    if(measured>0)setViewportWidth(old=>old===measured?old:measured);
+   }}
    snapToInterval={itemWidth+spacing.sm} snapToAlignment="start" contentContainerStyle={{gap:spacing.sm,paddingRight:spacing.md}}>
    {rows.map(row=><View key={row.symbol} testID={'watchlist-swipe-item-'+row.symbol} style={{width:itemWidth}}>{renderCard(row,'100%')}</View>)}
   </ScrollView>;
