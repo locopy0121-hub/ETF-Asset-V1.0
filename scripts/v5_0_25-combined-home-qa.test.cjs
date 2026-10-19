@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const holding=fs.readFileSync('src/components/HoldingQuoteCollection.tsx','utf8');
+const watch=fs.readFileSync('src/components/WatchlistPanel.tsx','utf8');
+const home=fs.readFileSync('src/screens/HomeScreen.tsx','utf8');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+assert.equal(pkg.version,'5.0.25');
+assert.ok(holding.includes('<ScrollView testID="holding-home-horizontal"'));
+assert.ok(holding.includes("if(actual>0)setViewportWidth(old=>old===actual?old:actual)"));
+assert.ok(watch.includes("const remove=(row:typeof rows[number])=>inheritHomeWallStyle?null:<Pressable"),'mixed home must not delete watchlist entries');
+assert.ok(home.includes("wallSource==='all'?{excludeSymbols:heldQuoteSymbols"),'held symbols still take precedence over watched rows');
+assert.ok(watch.includes('watchlist-home-horizontal')&&watch.includes('watchlist-home-pages'),'watched horizontal and paged layouts are kept');
+console.log('V5.0.25 unified home QA guard smoke PASS; real behavior tested separately');

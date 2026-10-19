@@ -78,6 +78,10 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  assert.equal(inheritedCard.props.style.borderColor,'rgba(171,205,239,1.000)','combined watchlist inherits home card border');
  assert.ok(Math.abs(nodes(tree).find(x=>x.props?.testID==='watchlist-name-0050').props.style.fontSize-18)<1e-8,'combined watchlist inherits field font scaling');
  assert.ok(!nodes(tree).some(x=>x.props?.accessibilityLabel==='套用目前行情牆樣式'),'combined view requires no manual copy button');
+ assert.ok(!nodes(tree).some(x=>String(x.props?.accessibilityLabel??'').startsWith('移除自選 ')),
+  'combined home view has no destructive remove button');
+ assert.ok(nodes(tree).some(x=>String(x.props?.accessibilityLabel??'').startsWith('開啟行情 0050')),
+  'combined view keeps non-destructive quote navigation');
  assert.equal(JSON.parse(storage.get('@tf-asset/watchlist-presentation-v1')).useWallStyle,false,'temporary inherited appearance must not mutate standalone watchlist preference');
  panelProps={...panelProps,inheritedMode:'chart',inheritedColumns:2};tree=render();
  assert.equal(nodes(tree).find(x=>x.props?.testID==='watchlist-card-0050').props.style.width,'48.5%','home grid2 gives watch-only card same column width');
@@ -120,6 +124,10 @@ function newHost(){return {cursor:0,values:[],deps:[],effects:[]};}function rend
  list.items=list.items.slice(0,2);panelProps={heldSymbols:['2330'],excludeSymbols:['2330'],hideWhenEmpty:true,inheritHomeWallStyle:true,sourceWallConfig:inheritedWall,onSelect:()=>{}};tree=render();
  assert.equal(writes.length,writesBeforeInherited,'combined mode does not start any preference write');
  panelProps={heldSymbols:['2330'],onSelect:()=>{}};tree=render();
+ assert.ok(nodes(tree).some(x=>x.props?.accessibilityLabel==='移除自選 0050'),
+  'standalone watchlist keeps its remove action');
+ const beforeRemove=list.items.length;button(tree,'移除自選 0050').props.onPress();
+ assert.equal(list.items.length,beforeRemove-1,'standalone remove still operates on watchlist');
  list.items=[];tree=render();assert.match(text(tree),/尚無自選標的/);list.hydrated=false;tree=render();assert.match(text(tree),/載入自選清單/);
  console.log('V4.0.64 actual WatchlistPanel mode/sort actions, genuine chart, independent persistence, optional storage failure and states PASS');
 })().catch(e=>{console.error(e);process.exit(1);});
