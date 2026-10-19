@@ -4,7 +4,7 @@ import {
  DEFAULT_ITEM_EFFECT,ITEM_EFFECT_CATALOG,ITEM_EFFECT_GROUPS,
  ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_SPEEDS,ITEM_ALL_EFFECT_TRIGGERS,
  itemEffectGroup,itemEffectLabel,
- type ItemEffectConfig,type ItemEffectGroup,
+ type ItemEffectConfig,type ItemEffectGroup,type ItemEffectKind,type ItemEffectTrigger,type ItemEffectExtendedTrigger,
 } from '../domain/displayItemContract';
 import {ItemMotionText} from './ItemMotion';
 
@@ -17,10 +17,10 @@ export function MotionControls({value,onChange}:{value:ItemEffectConfig;onChange
   <Text style={styles.heading}>動畫分類</Text>
   <View style={styles.row}>{ITEM_EFFECT_GROUPS.map(item=><Chip key={item.id} label={item.label} active={group===item.id} onPress={()=>setGroup(item.id)}/>)}</View>
   <Text style={styles.heading}>動畫效果</Text>
-  <View style={styles.row}>{effects.map(item=><Chip key={item.id} label={item.label} active={value.kind===item.id} onPress={()=>onChange({kind:item.id})}/>)}</View>
+  <View style={styles.row}>{effects.map(item=><Chip key={item.id} label={item.label} active={value.kind===item.id} onPress={()=>onChange({kind:item.id as ItemEffectKind})}/>)}</View>
   {value.kind!=='none'?<>
    <Text style={styles.heading}>觸發條件</Text>
-   <View style={styles.row}>{ITEM_ALL_EFFECT_TRIGGERS.filter(item=>item!=='alert').map(item=><Chip key={item} label={triggerName(item)} active={value.trigger===item} onPress={()=>onChange({trigger:item})}/>)}</View>
+   <View style={styles.row}>{ITEM_ALL_EFFECT_TRIGGERS.filter(item=>item!=='alert').map(item=><Chip key={item} label={triggerName(item)} active={value.trigger===item} onPress={()=>onChange({trigger:item as ItemEffectTrigger})}/>)}</View>
    <Text style={styles.heading}>速度</Text>
    <View style={styles.row}>{ITEM_EFFECT_SPEEDS.map(item=><Chip key={item} label={item==='slow'?'慢速':item==='fast'?'快速':'標準'} active={value.speed===item} onPress={()=>onChange({speed:item,durationMs:item==='slow'?1000:item==='fast'?200:500})}/>)}</View>
    <Text style={styles.heading}>強度</Text>
@@ -37,8 +37,8 @@ export function MotionControls({value,onChange}:{value:ItemEffectConfig;onChange
   </>:null}
  </View>;
 }
-function triggerName(name:ItemEffectConfig['trigger']){
- const labels:Record<ItemEffectConfig['trigger'],string>={
+function triggerName(name:ItemEffectExtendedTrigger){
+ const labels:Record<ItemEffectExtendedTrigger,string>={
   always:'持續',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報',mount:'首次顯示',press:'點擊',longPress:'長按',
  };
  return labels[name];
