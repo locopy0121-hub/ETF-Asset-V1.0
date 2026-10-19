@@ -43,7 +43,7 @@ import {listCardContentItems,selectCardContentPreview,readCardStaticText} from '
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
 import {DEFAULT_ITEM_EFFECT,ITEM_EFFECT_KINDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig,itemEffectLabel} from '../domain/displayItemContract';
-import {EffectControls as MotionControls} from './HoldingMarketWallEditor';
+import {MotionControls} from './MotionControls';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
