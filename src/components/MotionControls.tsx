@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {Pressable,StyleSheet,Text,View} from 'react-native';
 import {
  DEFAULT_ITEM_EFFECT,ITEM_EFFECT_CATALOG,ITEM_EFFECT_GROUPS,
- ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,
+ ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_SPEEDS,ITEM_ALL_EFFECT_TRIGGERS,
  itemEffectGroup,itemEffectLabel,
  type ItemEffectConfig,type ItemEffectGroup,
 } from '../domain/displayItemContract';
@@ -20,7 +20,7 @@ export function MotionControls({value,onChange}:{value:ItemEffectConfig;onChange
   <View style={styles.row}>{effects.map(item=><Chip key={item.id} label={item.label} active={value.kind===item.id} onPress={()=>onChange({kind:item.id})}/>)}</View>
   {value.kind!=='none'?<>
    <Text style={styles.heading}>觸發條件</Text>
-   <View style={styles.row}>{ITEM_EFFECT_TRIGGERS.filter(item=>item!=='alert').map(item=><Chip key={item} label={triggerName(item)} active={value.trigger===item} onPress={()=>onChange({trigger:item})}/>)}</View>
+   <View style={styles.row}>{ITEM_ALL_EFFECT_TRIGGERS.filter(item=>item!=='alert').map(item=><Chip key={item} label={triggerName(item)} active={value.trigger===item} onPress={()=>onChange({trigger:item})}/>)}</View>
    <Text style={styles.heading}>速度</Text>
    <View style={styles.row}>{ITEM_EFFECT_SPEEDS.map(item=><Chip key={item} label={item==='slow'?'慢速':item==='fast'?'快速':'標準'} active={value.speed===item} onPress={()=>onChange({speed:item,durationMs:item==='slow'?1000:item==='fast'?200:500})}/>)}</View>
    <Text style={styles.heading}>強度</Text>
