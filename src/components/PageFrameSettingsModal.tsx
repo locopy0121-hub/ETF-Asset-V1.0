@@ -20,8 +20,7 @@ import {
 import {AB_COLLAPSE_RULES,getComponentCapabilities} from '../editor/componentCapabilities';
 import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
-import {HoldingMarketWallEditor,EffectControls} from './HoldingMarketWallEditor';
-import {DEFAULT_ITEM_EFFECT} from '../domain/displayItemContract';
+import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
   {key:'standard',label:'標準'},{key:'compact',label:'緊湊'},{key:'dense',label:'密集'},
@@ -142,10 +141,6 @@ export function PageFrameSettingsModal({
                 <EditorRow title="邊框粗細" subtitle={`${Math.round(value.borderWidth)} px`}><NumberStep label="px" value={value.borderWidth} min={0} max={8} step={1} onChange={borderWidth=>patch(frame.key,{borderWidth})}/></EditorRow>
                 <EditorRow title="圓角" subtitle={`${Math.round(value.borderRadius)} px`}><NumberStep label="px" value={value.borderRadius} min={0} max={48} step={2} onChange={borderRadius=>patch(frame.key,{borderRadius})}/></EditorRow>
               </AccordionGroup>
-
-              {pageKey!=='settings'?<AccordionGroup title="動畫" subtitle="進退場／數值／視覺／互動／行情，框架獨立設定" expanded={openGroup===`${frame.key}:motion`} onPress={()=>toggleGroup(frame.key,'motion')}>
-                <EffectControls value={value.motion??DEFAULT_ITEM_EFFECT} onChange={motionPatch=>patch(frame.key,{motion:{...(value.motion??DEFAULT_ITEM_EFFECT),...motionPatch}})}/>
-              </AccordionGroup>:null}
 
               {hasContentTools(pageKey,frame.key)?<AccordionGroup title="資料／內容" subtitle="只顯示目前框架真正可用的內容工具" expanded={openGroup===`${frame.key}:content`} onPress={()=>toggleGroup(frame.key,'content')}>
                 {((pageKey==='home'&&frame.key==='market-news')||(pageKey==='ai'&&frame.key==='ai-news'))?<View style={styles.newsEditor}>

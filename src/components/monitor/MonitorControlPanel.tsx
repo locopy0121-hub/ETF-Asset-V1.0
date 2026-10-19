@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  type ItemEffectConfig,type ItemVisualOverride,
+  ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,
+  type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger,type ItemVisualOverride,
 } from '../../domain/displayItemContract';
 import {
   MONITOR_FIELDS,MONITOR_FIELD_LABELS,activeMonitorLayout,activeMonitorStyle,enabledMiniColumns,enabledMiniStatusItems,monitorItem,moveMiniColumn,moveMiniStatusItem,restoreNormalMonitor,setMonitorMode,sortMonitorHoldings,
@@ -10,12 +11,15 @@ import {
 } from '../../monitor/monitorDomain';
 import type { SharedSnapshot } from '../../domain/snapshot';
 import { ColorPalettePicker } from '../ColorPalettePicker';
-import {EffectControls as MotionControls} from '../HoldingMarketWallEditor';
 import { colors, radius, spacing } from '../../theme/tokens';
 
 type Props={value:MonitorConfig;onChange:(value:MonitorConfig)=>void;availableSymbols?:readonly {symbol:string;name?:string}[];previewSnapshot?:SharedSnapshot|null};
 const effects:readonly MonitorEffect[]=['none','fade','pulse','flash-on-change'];
 const effectLabels:Record<MonitorEffect,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍'};
+const itemEffectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
+const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
+const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
+const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
 const sorts:readonly MonitorSortKey[]=['manual','symbol','price','changePercent'];
 const sortLabels:Record<MonitorSortKey,string>={manual:'手動',symbol:'代號',price:'價格',changePercent:'漲跌%'};
 
@@ -284,7 +288,7 @@ function ItemVisualEditor({visual,baseStyle,onChange,onEffect}:{visual:ItemVisua
 }
 function NullableColor({label,value,fallback,onChange}:{label:string;value:string|null;fallback:string;onChange:(value:string|null)=>void}){return <View style={{gap:6}}><Toggle label={'自訂'+label} value={value!=null} onChange={enabled=>onChange(enabled?fallback:null)}/>{value?<ColorPalettePicker label={label} value={value} onChange={onChange}/>:null}</View>;}
 function NullableGap({value,fallback,onChange}:{value:number|null;fallback:number;onChange:(value:number|null)=>void}){return <View style={{gap:6}}><Toggle label="自訂行距" value={value!=null} onChange={enabled=>onChange(enabled?fallback:null)}/>{value!=null?<Step label="單項行距" value={value} min={0} max={32} step={1} suffix=" px" onChange={onChange}/>:null}</View>;}
-function EffectEditor({value,onChange}:{value:ItemEffectConfig;onChange:(p:Partial<ItemEffectConfig>)=>void}){return <MotionControls value={value} onChange={onChange}/>;}
+function EffectEditor({value,onChange}:{value:ItemEffectConfig;onChange:(p:Partial<ItemEffectConfig>)=>void}){return <View style={styles.effectBox}><Text style={styles.label}>單項特效</Text><Choice choices={ITEM_EFFECT_KINDS} value={value.kind} label={x=>itemEffectLabels[x]} onChange={kind=>onChange({kind})}/>{value.kind!=='none'?<><Text style={styles.label}>觸發條件</Text><Choice choices={ITEM_EFFECT_TRIGGERS} value={value.trigger} label={x=>triggerLabels[x]} onChange={trigger=>onChange({trigger})}/><Text style={styles.label}>速度</Text><Choice choices={ITEM_EFFECT_SPEEDS} value={value.speed} label={x=>speedLabels[x]} onChange={speed=>onChange({speed})}/><Text style={styles.label}>強度</Text><Choice choices={ITEM_EFFECT_INTENSITIES} value={value.intensity} label={x=>intensityLabels[x]} onChange={intensity=>onChange({intensity})}/></>:null}</View>;}
 function Visibility({active,onPress}:{active:boolean;onPress:()=>void}){return <Pressable onPress={onPress} style={[styles.visibility,active&&styles.visibilityOn]}><Text style={[styles.visibilityText,active&&styles.visibilityTextOn]}>{active?'顯示':'隱藏'}</Text></Pressable>;}
 function Section({title,children}:{title:string;children:React.ReactNode}){return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;}
 function Choice<T extends string>({choices,value,label,onChange}:{choices:readonly T[];value:T;label:(x:T)=>string;onChange:(x:T)=>void}){return <View style={styles.row}>{choices.map(x=><Pressable key={x} onPress={()=>onChange(x)} style={[styles.choice,value===x&&styles.choiceActive]}><Text style={[styles.choiceText,value===x&&styles.choiceTextActive]}>{label(x)}</Text></Pressable>)}</View>;}
