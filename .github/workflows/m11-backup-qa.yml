@@ -1,0 +1,24 @@
+name: TF Asset M11 Backup Integrity QA
+on:
+  push:
+    branches:
+      - repair-v5.0.31-m11-backup-integrity
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  m11-backup-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript
+        run: npm run typecheck
+      - name: M11 behavioral backup transaction
+        run: npm run test:m11-backup-transaction
+      - name: Financial Golden regression
+        run: npm run test:finance
