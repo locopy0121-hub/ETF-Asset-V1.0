@@ -179,3 +179,9 @@ export function ItemMotionView({effect,value,numeric,children,color,refreshToken
     return <Pressable onPressIn={run} onLongPress={run}>{body}</Pressable>;
   return body;
 }
+
+// For existing Animated.View cards: apply transforms without adding a layout wrapper.
+export function useItemMotionStyle(effect:ItemEffectConfig,value:unknown,numeric:number|null){
+  const {p,strength,reduceMotion}=useMotion(effect,value,numeric);
+  return effect.kind==='none'||reduceMotion?null:makeMotionStyle(effect.kind,p,strength);
+}
