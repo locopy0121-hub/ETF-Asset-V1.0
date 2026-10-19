@@ -39,14 +39,15 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Full inherited V5.0.30 QA regression
+      - name: Full inherited V5.0.31 QA regression
         run: npm run test:v5_0_30
       - name: Confirm source identity and protected Settings untouched
         run: |
-          test "$(node -p "require('./package.json').version")" = "5.0.30"
-          test "$(node -p "require('./app.json').expo.version")" = "5.0.30"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50030"
-          test "$(git diff --name-only origin/v5.0.30-motion-editor-selection...HEAD -- src/screens/SettingsScreen.tsx)" = ""
+          test "$(node -p "require('./package.json').version")" = "5.0.31"
+          test "$(node -p "require('./app.json').expo.version")" = "5.0.31"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50031"
+          git show origin/v5.0.30-motion-editor-selection:src/screens/SettingsScreen.tsx | sed -e "s/5.0.30/5.0.31/g" -e "s/50030/50031/g" > /tmp/settings-allowed-version-only.tsx
+          cmp /tmp/settings-allowed-version-only.tsx src/screens/SettingsScreen.tsx
       - name: Next safe GO checkpoint
         run: |
           echo 'M11 dedicated checks and full inherited regression completed.' >> "$GITHUB_STEP_SUMMARY"
