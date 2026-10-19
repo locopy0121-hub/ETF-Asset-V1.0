@@ -24,7 +24,7 @@ async function main(){
  const storage=new MemoryHistory();
  await saveBackupHistory(storage,[entry('before')]);
  const snapshot=await loadBackupHistory(storage);
- assert.equal(snapshot[0].id,'before');
+ assert.equal(snapshot[0]?.id,'before');
  const index=await storage.getItem(TF_BACKUPS_KEY);
  storage.failWrite=true;
  await assert.rejects(()=>saveBackupHistory(storage,[entry('after')]),/transaction rejected/);
