@@ -230,3 +230,16 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - 初始 CI `#39251528033` / 後續更新 run 失敗，取 log 查得 **TS2532** `scripts/v5_0_31-backup-history-fault.test.ts(27,15)` 第一筆紀錄可能 undefined。已最小修正為 optional property，commit `71ed0d04194b82fd59f301f71cbdd3cdb74b81a6`。
 - 最新本次修復 Action：`#39251668619`（https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39251668619），首次查詢 in_progress / dependency install；不得先宣告 PASS。
 - **當前 M11 狀態**：進行中，尚需新 CI 最終結論、歷史匯入完整性、正式版本身分與 APK 原地升級驗收。正式 Release Gate 關閉，其餘 11 個工作包未開始。
+
+## 12. GO 失敗修復與連續接續（2026-10-19）
+
+本規則適用所有 GO，與第 9、10 節一併執行：
+
+1. Action 失敗、逾時或取消時，立即定位對應 run、job、step 及 log；當次工作優先修護原項目，不得直接跳過。
+2. 修改後提交新的 commit，確認新 run 確實啟動，持續檢查直至取得終態；再次失敗則繼續同一修護迴圈。
+3. Action 成功後先確認各項 CODE、RUNTIME、UI、RESULT、BUILD 與必要的真機驗收。只有該工作包達到其驗收條件，才接續下一工作包。
+4. 不可關閉失敗測試、繞過保護 Gate、偷換版本，或將 QA 成功視為 Release 完成。完整保護設定主頁、財務核心、行情權威與使用者原 UI。
+5. 每輪須保留失敗證據、修護 commit、重新執行的 run、最後結論、剩餘項目與接續位置；因外部權限、真機、服務或工具限制受阻時，明確標為 BLOCKED。
+6. 連續接續是本次 GO 執行期間的要求；對話結束後不會無工具自行修正程式。跨對話持續監看需另設可運作的排程或工作代理。
+
+本次核對：Action #39251745987 completed/success。M11 尚待完整驗收與版本／APK 證據，不得宣告 Release PASS。
