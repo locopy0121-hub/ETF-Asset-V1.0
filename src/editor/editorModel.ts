@@ -117,6 +117,7 @@ export type FrameEditorConfig = Readonly<{
   minHeight?:number;
   equalGrid?:EqualGridConfig; // Explicit opt-in; only frames rendering EqualGrid consume this visual rule.
   effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
+  motion?:ItemEffectConfig; // Optional, disabled for existing saved layouts
 }>;
 
 export type PageEditorState = Readonly<Record<MainPageKey, Readonly<Record<string, FrameEditorConfig>>>>;
@@ -356,6 +357,7 @@ export function normalizeEditorConfig(
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderOpacity:clamp(candidate.borderOpacity,0,1,fallback.borderOpacity??1),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       equalGrid:normalizeEqualGrid(candidate.equalGrid),
+      motion:normalizeWallEffect(candidate.motion,DEFAULT_ITEM_EFFECT),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
       ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,320)}:{}),
