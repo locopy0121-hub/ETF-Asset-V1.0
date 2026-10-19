@@ -61,7 +61,7 @@ function useMotion(effect:RuntimeMotionConfig,value:unknown,numeric:number|null,
   const first=useRef(true);
   const running=useRef<Animated.CompositeAnimation|null>(null);
   const [reduceMotion,setReduceMotion]=useState(false);
-  const [foreground,setForeground]=useState(AppState.currentState!=='background'&&AppState.currentState!=='inactive');
+  const [foreground,setForeground]=useState(AppState?.currentState!=='background'&&AppState?.currentState!=='inactive');
   useEffect(()=>{
     if(effect.kind==='none')return;
     let active=true;
@@ -71,8 +71,8 @@ function useMotion(effect:RuntimeMotionConfig,value:unknown,numeric:number|null,
   },[effect.kind]);
   useEffect(()=>{
     if(effect.kind==='none'||(!(effect.loop||effect.trigger==='always')))return;
-    const listener=AppState.addEventListener('change',state=>setForeground(state==='active'));
-    return()=>listener.remove();
+    const listener=AppState?.addEventListener?.('change',state=>setForeground(state==='active'));
+    return()=>listener?.remove?.();
   },[effect.kind,effect.loop,effect.trigger]);
   const strength=safeStrength(effect);
   const run=()=>{
