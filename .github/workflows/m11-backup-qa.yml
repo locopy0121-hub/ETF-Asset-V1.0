@@ -24,3 +24,29 @@ jobs:
         run: npm run test:m11-backup-history
       - name: Financial Golden regression
         run: npm run test:finance
+
+  inherited-regression:
+    needs: m11-backup-integrity
+    if: ${{ needs.m11-backup-integrity.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Full inherited V5.0.30 QA regression
+        run: npm run test:v5_0_30
+      - name: Confirm source identity and protected Settings untouched
+        run: |
+          test "$(node -p "require('./package.json').version")" = "5.0.30"
+          test "$(node -p "require('./app.json').expo.version")" = "5.0.30"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50030"
+          test "$(git diff --name-only origin/v5.0.30-motion-editor-selection...HEAD -- src/screens/SettingsScreen.tsx)" = ""
+      - name: Next safe GO checkpoint
+        run: |
+          echo 'M11 dedicated checks and full inherited regression completed.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'STOP: Full M11 feature acceptance, version increment, APK signing and device upgrade validation remain required.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Do not automatically publish a V5.0.30 APK as V5.0.31.' >> "$GITHUB_STEP_SUMMARY"
