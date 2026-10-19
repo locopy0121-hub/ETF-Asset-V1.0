@@ -42,7 +42,8 @@ import {FrameContentEditTarget} from './FrameContentEditTarget';
 import {listCardContentItems,selectCardContentPreview,readCardStaticText} from './CardContentPreviewSelector';
 import {TARGET_APPEARANCE,mergeTargetAppearance,normalizeTargetOverride,type FrameMaintenanceContext,type TargetAppearance,type TargetOverride} from '../maintenance/inspectionModel';
 import {DEFAULT_FRAME_EFFECTS,normalizeFrameEffects,type FrameEffects} from '../maintenance/frameEffects';
-import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig} from '../domain/displayItemContract';
+import {DEFAULT_ITEM_EFFECT,ITEM_EFFECT_KINDS,ITEM_EFFECT_TRIGGERS,type ItemEffectConfig,itemEffectLabel} from '../domain/displayItemContract';
+import {EffectControls as MotionControls} from './HoldingMarketWallEditor';
 import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
 import {safeHoldingStyle} from '../domain/holdingLayoutPolicy';
 import {FloatingDashboardChart} from './FloatingDashboardChart';
@@ -847,6 +848,9 @@ function FrameTools({frame,frameKey,fx,measured,position,canMoveUp,canMoveDown,o
       {(['cornerTopLeft','cornerTopRight','cornerBottomRight','cornerBottomLeft'] as const).map((key,i)=><NumberStep key={key} label={['左上角','右上角','右下角','左下角'][i]!}
         value={fx[key]>=0?fx[key]:frame.borderRadius} min={0} max={48} step={1} suffix=" px" onChange={v=>patchFx({[key]:v} as Partial<FrameEffects>)}/>)}
     </Accordion>
+    <Accordion title="動畫" subtitle="42 種動效，各框架獨立設定，不改原始寬高及位置" open={open==='motion'} onPress={()=>toggle('motion')}>
+      <MotionControls value={frame.motion??DEFAULT_ITEM_EFFECT} onChange={next=>patch({motion:{...(frame.motion??DEFAULT_ITEM_EFFECT),...next}})}/>
+    </Accordion>
     <Accordion title="陰影／光效" subtitle="原生陰影、Glow、外光暈" open={open==='effects'} onPress={()=>toggle('effects')}>
       <SwitchRow label="陰影" value={frame.shadowEnabled} onChange={shadowEnabled=>patch({shadowEnabled})}/>
       {frame.shadowEnabled?<><ColorPalettePicker label="陰影顏色" value={fx.shadowColor} onChange={shadowColor=>patchFx({shadowColor})} opacity={frame.shadowOpacity} onOpacityChange={shadowOpacity=>patch({shadowOpacity})}/>
@@ -993,11 +997,8 @@ function HoldingFieldTools({field,open,toggle,patch,move}:{field:HoldingWallConf
       <NumberStep label="上下內距" value={field.paddingY} min={0} max={16} step={1} suffix=" px" onChange={paddingY=>patch({paddingY})}/>
       <NumberStep label="行距" value={field.lineGap??0} min={0} max={32} step={1} suffix=" px" onChange={lineGap=>patch({lineGap})}/>
     </Accordion>
-    <Accordion title="特效" subtitle="實際 EffectText 支援的動畫" open={open==='effect'} onPress={()=>toggle('effect')}>
-      <ChoiceRow label="效果" value={field.effect.kind} items={ITEM_EFFECT_KINDS.map(v=>[v,effectLabel(v)] as [string,string])} onChange={v=>patch({effect:{...field.effect,kind:v as ItemEffectConfig['kind']}})}/>
-      <ChoiceRow label="觸發" value={field.effect.trigger} items={ITEM_EFFECT_TRIGGERS.map(v=>[v,triggerLabel(v)] as [string,string])} onChange={v=>patch({effect:{...field.effect,trigger:v as ItemEffectConfig['trigger']}})}/>
-      <ChoiceRow label="速度" value={field.effect.speed} items={ITEM_EFFECT_SPEEDS.map(v=>[v,v==='slow'?'慢':v==='fast'?'快':'正常'] as [string,string])} onChange={v=>patch({effect:{...field.effect,speed:v as ItemEffectConfig['speed']}})}/>
-      <ChoiceRow label="強度" value={field.effect.intensity} items={ITEM_EFFECT_INTENSITIES.map(v=>[v,v==='soft'?'柔和':v==='strong'?'強':'中'] as [string,string])} onChange={v=>patch({effect:{...field.effect,intensity:v as ItemEffectConfig['intensity']}})}/>
+    <Accordion title="特效" subtitle="42 種效果：分類、時間、強度與觸發條件" open={open==='effect'} onPress={()=>toggle('effect')}>
+      <MotionControls value={field.effect} onChange={next=>patch({effect:{...field.effect,...next}})}/>
     </Accordion>
   </View>;
 }
@@ -1214,8 +1215,8 @@ function defaultDashboardSelection(frameKey:string,kind:'card'|'text'|'value'):S
   return {id:'frame',kind:'frame',label:'框架'};
 }
 
-function effectLabel(v:ItemEffectConfig['kind']){return v==='none'?'無':v==='fade'?'淡入淡出':v==='pulse'?'呼吸':v==='flash-on-change'?'變化閃爍':'跳動';}
-function triggerLabel(v:ItemEffectConfig['trigger']){return v==='always'?'持續':v==='refresh'?'刷新':v==='change'?'數值變化':v==='gain'?'上漲':v==='loss'?'下跌':'警示';}
+function effectLabel(v:ItemEffectConfig['kind']){return itemEffectLabel(v);}
+function triggerLabel(v:ItemEffectConfig['trigger']){return v==='always'?'持續':v==='refresh'?'刷新':v==='change'?'數值變化':v==='gain'?'上漲':v==='loss'?'下跌':v==='mount'?'首次顯示':v==='press'?'點擊':v==='longPress'?'長按':'警示';}
 
 function Accordion({title,subtitle,open,onPress,children}:{title:string;subtitle:string;open:boolean;onPress:()=>void;children:any}){
   return <View style={styles.accordion}><Pressable onPress={onPress} style={styles.accordionHead}><View style={{flex:1}}><Text style={styles.accordionTitle}>{title}</Text><Text style={styles.rowHint}>{subtitle}</Text></View><Text style={styles.chev}>{open?'−':'＋'}</Text></Pressable>{open?<View style={styles.accordionBody}>{children}</View>:null}</View>;
