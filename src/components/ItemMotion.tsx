@@ -7,6 +7,8 @@ const numericKinds:readonly ItemEffectKind[]=['number-roll','count-up','count-do
 const interactiveKinds:readonly ItemEffectKind[]=['press-scale','long-press','drag-snap','toggle-slide','card-flip'];
 const middle=(progress:Animated.Value,from:number,peak:number,to:number)=>progress.interpolate({inputRange:[0,.5,1],outputRange:[from,peak,to]});
 const end=(progress:Animated.Value,from:number,to:number)=>progress.interpolate({inputRange:[0,1],outputRange:[from,to]});
+const middleAngle=(progress:Animated.Value,from:string,peak:string,to:string)=>progress.interpolate({inputRange:[0,.5,1],outputRange:[from,peak,to]});
+const endAngle=(progress:Animated.Value,from:string,to:string)=>progress.interpolate({inputRange:[0,1],outputRange:[from,to]});
 const safeStrength=(effect:ItemEffectConfig)=>Math.max(0,Math.min(100,effect.strengthPercent??(effect.intensity==='soft'?25:effect.intensity==='strong'?80:50)))/100;
 const duration=(effect:ItemEffectConfig)=>Math.max(100,Math.min(1200,effect.durationMs??(effect.speed==='slow'?1200:effect.speed==='fast'?360:700)));
 
@@ -16,6 +18,8 @@ function makeMotionStyle(kind:ItemEffectKind,p:Animated.Value,strength:number){
   let scale:Animated.AnimatedInterpolation<number>|number=1;
   let translateX:Animated.AnimatedInterpolation<number>|number=0;
   let translateY:Animated.AnimatedInterpolation<number>|number=0;
+  let scaleX:Animated.AnimatedInterpolation<number>|number=1;
+  if(kind==='trend-draw')scaleX=end(p,.01,1);
   let rotateY:Animated.AnimatedInterpolation<string>|string='0deg';
   let rotateZ:Animated.AnimatedInterpolation<string>|string='0deg';
   if(['fade','flash-on-change','change-flash','bg-pulse','pnl-glow','halo-pulse'].includes(kind))
@@ -27,16 +31,16 @@ function makeMotionStyle(kind:ItemEffectKind,p:Animated.Value,strength:number){
   if(['shake','sway'].includes(kind))
     translateX=middle(p,-distance/2,distance/2,0);
   if(['sway','elastic'].includes(kind))
-    rotateZ=middle(p,'0deg',`${Math.round(3+strength*9)}deg`,'0deg');
+    rotateZ=middleAngle(p,'0deg',`${Math.round(3+strength*9)}deg`,'0deg');
   if(['zoom-in','expand','spring-in'].includes(kind))
     scale=end(p,kind==='expand'?.55:.65,1);
-  if(['pulse','breathe','elastic','halo-pulse','pnl-glow','ripple','sparkle','bg-pulse','press-scale','long-press','drag-snap','price-pop','volume-pulse','toggle-slide','trend-draw'].includes(kind))
+  if(['pulse','breathe','elastic','halo-pulse','pnl-glow','ripple','sparkle','bg-pulse','press-scale','long-press','drag-snap','price-pop','volume-pulse','toggle-slide'].includes(kind))
     scale=middle(p,1,1+strength*(kind==='price-pop'?.18:.11),1);
   if(['shrink-out','collapse'].includes(kind))
     scale=middle(p,1,Math.max(.4,1-strength*.65),1);
   if(['flip-in','flip-out','flip-number','quote-flip','card-flip'].includes(kind))
-    rotateY=kind==='flip-in'?end(p,'-85deg','0deg'):middle(p,'0deg','-85deg','0deg');
-  return {opacity,transform:[{perspective:900},{translateX},{translateY},{scale},{rotateY},{rotateZ}]};
+    rotateY=kind==='flip-in'?endAngle(p,'-85deg','0deg'):middleAngle(p,'0deg','-85deg','0deg');
+  return {opacity,transform:[{perspective:900},{translateX},{translateY},{scale},{scaleX},{rotateY},{rotateZ}]};
 }
 
 function shouldRun(effect:ItemEffectConfig,first:boolean,changed:boolean,numeric:number|null){
