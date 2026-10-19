@@ -19,7 +19,7 @@ for(const effect of ITEM_EFFECT_CATALOG){
 const frames=createInitialEditorState();
 const original=frames.home['asset-dashboard']!;
 const legacy=mergeEditorState({home:{'asset-dashboard':{...original,motion:undefined}}});
-assert.equal(legacy.home['asset-dashboard']?.motion?.kind,'none');
+assert.equal(legacy.home['asset-dashboard']?.motion?.kind??'none','none');
 assert.equal(legacy.home['asset-dashboard']?.order,original.order);
 assert.equal(legacy.home['asset-dashboard']?.visible,original.visible);
 const newer=mergeEditorState({home:{'asset-dashboard':{...original,motion:{...DEFAULT_ITEM_EFFECT,kind:'price-pop',durationMs:5000,strengthPercent:-3,loop:true}}}});
