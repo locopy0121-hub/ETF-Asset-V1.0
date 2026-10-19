@@ -193,3 +193,20 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - `M11 QA run #39250047338` **completed/success**：https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250047338 （TypeScript、備份交易行為、財務 Golden）。
 - 此結果僅是 **指定自動測試通過**，非整包 M11 通過，未完成 history 故障注入、正式全量 CI、APK、Android 原地升級與 Device Validation。
 - 文件更新觸發的 `#39250139396` 首次查詢為 in_progress；不得預設其結果。
+
+## 9. GO 期間 GitHub Actions 強制監控規則（2026-10-19 使用者追加）
+**適用所有後續 GO、接續建置、QA 與正式 Release。此規則為鎖定工作清單的一部分。**
+1. 每次 GO 開始先查正確工作分支 HEAD、相關 PR、最近一次 GitHub Actions 的 `run_id`、`head_sha`、`status`、`conclusion`，不得誤用舊版 main 或其他 run 的結果。
+2. 每次 push / workflow_dispatch 後立即確認 **是否真的產生 run**；若沒有 run，查觸發條件、工作流程分支與權限，記錄「未觸發」，**絕不寫成 BUILD PASS**。
+3. 在 GO 當次工具工作期間，持續查 `queued` / `in_progress` / `completed`；有任何 FAIL/CANCEL/TIMED_OUT/STARTUP_FAILURE/ACTION_REQUIRED 即抓對應 job 與 step，以及可取得的失敗 log，定點修護再重跑，不得跳過。
+4. 每次回報須對照 `head_sha` 與正確 commit，列明 workflow 名稱、run URL、job/step 結論、產物 Artifact ID、APK SHA-256、badging 和簽章驗證（尚未產生時明確標示）。
+5. **GO 對話當次必須盡可能監看到 Action 終態才回報該 run 結論**。若工具呼叫或執行時間限制無法取得終態，明確標示「仍執行中／無法確認」，保存 run URL、當前階段及下一個檢查點；不得冒稱完成或聲稱會在聊天結束後自主持續監控。若使用者另行要求排程監控，需建立明確可執行的排程工作。
+6. 成功的 CI/QA 只證明相應自動化 Gate；不得將 QA BUILD PASS 改稱 RELEASE PASS，仍需完整 CODE/RUNTIME/UI/RESULT 與實機必要驗收。
+7. 每輪 GO 結束前把最新監控狀態、是否需要修復、下一執行項目和原始 Checklist 未完成數寫入本檔。此規則不可因版本增加而遺失。
+
+### 啟用時 GitHub Actions 快照
+- 分支：`repair-v5.0.31-m11-backup-integrity`。
+- `#39250047338`：completed / success。
+- `#39250139396`：completed / success。
+- `#39250184733`：completed / success，對應 commit `f5b61f2bbeb1cb7e807490d3a9f7331cca40ad0c`。
+- 以上僅 M11 專用 TypeScript / backup / finance QA，**不是完整 RELEASE PASS**；尚未升版或建置正式 APK。
