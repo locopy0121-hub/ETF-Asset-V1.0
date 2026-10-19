@@ -1,5 +1,4 @@
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   DEFAULT_HOLDING_WALL_CONFIG,
@@ -9,7 +8,7 @@ import {
   type HoldingWallFieldKey,
   type QuoteModuleStyle,
 } from '../domain/uiModels';
-import type { ItemEffectConfig } from '../domain/displayItemContract';
+import {ItemMotionText,ItemMotionView} from './ItemMotion';
 import { radius, spacing } from '../theme/tokens';
 
 const money=(value:number)=>Math.round(value).toLocaleString('zh-TW');
@@ -49,7 +48,7 @@ export function HoldingQuoteModule({
   ]}>
     {showChart?<Sparkline values={item.sparkline} positive={change>=0} narrow={narrow} gainColor={cardStyle.gainColor} lossColor={cardStyle.lossColor}/>:null}
     <View style={[styles.body,{padding:cardStyle.padding,gap:cardStyle.rowGap}]}>
-      {cfg.header.visible&&groups.header.length?<EffectView effect={cfg.header.effect} numeric={changePct}>
+      {cfg.header.visible&&groups.header.length?<ItemMotionView effect={cfg.header.effect} value={item.price} numeric={changePct} color={change>=0?cardStyle.gainColor:cardStyle.lossColor}>
         <View style={[
           styles.head,
           {backgroundColor:cfg.header.backgroundColor,borderBottomColor:cfg.header.borderColor,borderBottomWidth:cfg.header.borderWidth},
@@ -69,7 +68,7 @@ export function HoldingQuoteModule({
           </View>
           <Text style={[styles.chevron,{color:cardStyle.secondaryTextColor}]}>›</Text>
         </View>
-      </EffectView>:null}
+      </ItemMotionView>:null}
 
       {groups.quote.length?<View style={styles.quoteRow}>
         <View style={{flex:1}}>
@@ -111,11 +110,12 @@ function WallText({
   const fontSize=header
     ?(primary?(narrow?12:15):11)*field.fontScale*wall.header.fontScale
     :(quotePrimary?(narrow?21:29):11)*field.fontScale;
-  return <EffectText
+  return <ItemMotionText
     text={value}
     effect={field.effect}
     numeric={numeric}
     numberOfLines={1}
+    color={tone}
     style={{
       color:header&&!field.useProfitColor?(field.textColor??wall.header.textColor):tone,
       backgroundColor:field.backgroundColor??'transparent',
@@ -142,10 +142,11 @@ function WallMetric({
   const numeric=fieldNumeric(field.field,item,change,changePct);
   return <View style={[right?styles.rightMetric:undefined,{backgroundColor:field.backgroundColor??'transparent',paddingVertical:field.paddingY,marginTop:field.lineGap??0}]}>
     <Text style={[styles.footerLabel,{color:field.textColor??wall.style.secondaryTextColor,textAlign:field.align}]}>{field.label}</Text>
-    <EffectText
+    <ItemMotionText
       text={fieldValue(field.field,item,change,changePct)}
       effect={field.effect}
       numeric={numeric}
+      color={fieldColor(field,item,change,wall)}
       style={{
         color:fieldColor(field,item,change,wall),
         fontSize:12*field.fontScale,
@@ -156,56 +157,6 @@ function WallMetric({
       }}
     />
   </View>;
-}
-
-function EffectText({text,effect,numeric,style,numberOfLines}:{text:string;effect:ItemEffectConfig;numeric:number|null;style:any;numberOfLines?:number}){
-  const anim=useRef(new Animated.Value(1)).current;
-  const translate=useRef(new Animated.Value(0)).current;
-  useEffect(()=>{
-    anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
-    if(effect.kind==='none'||!effectActive(effect,numeric))return;
-    const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
-    const low=effect.intensity==='soft'?.78:effect.intensity==='strong'?.24:.48;
-    let runner:Animated.CompositeAnimation;
-    if(effect.kind==='bounce'){
-      const distance=effect.intensity==='soft'?-3:effect.intensity==='strong'?-10:-6;
-      runner=Animated.sequence([
-        Animated.timing(translate,{toValue:distance,duration:Math.round(duration/2),useNativeDriver:true}),
-        Animated.timing(translate,{toValue:0,duration:Math.round(duration/2),useNativeDriver:true}),
-      ]);
-    }else if(effect.kind==='fade'){
-      anim.setValue(low);
-      runner=Animated.timing(anim,{toValue:1,duration,useNativeDriver:true});
-    }else{
-      runner=Animated.sequence([
-        Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),
-        Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true}),
-      ]);
-    }
-    const actual=effect.trigger==='always'?Animated.loop(runner):runner;
-    actual.start();
-    return()=>actual.stop();
-  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
-  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]}>{text}</Animated.Text>;
-}
-
-function EffectView({effect,numeric,children}:{effect:ItemEffectConfig;numeric:number|null;children:ReactNode}){
-  const anim=useRef(new Animated.Value(1)).current;
-  useEffect(()=>{
-    anim.stopAnimation();anim.setValue(1);
-    if(effect.kind==='none'||!effectActive(effect,numeric))return;
-    const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
-    const low=effect.intensity==='soft'?.82:effect.intensity==='strong'?.3:.55;
-    const runner=Animated.sequence([Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true})]);
-    const actual=effect.trigger==='always'?Animated.loop(runner):runner;actual.start();return()=>actual.stop();
-  },[anim,effect.kind,effect.trigger,effect.speed,effect.intensity,numeric]);
-  return <Animated.View style={{opacity:anim}}>{children}</Animated.View>;
-}
-function effectActive(effect:ItemEffectConfig,numeric:number|null){
-  if(effect.trigger==='gain')return numeric!=null&&numeric>0;
-  if(effect.trigger==='loss')return numeric!=null&&numeric<0;
-  if(effect.trigger==='alert')return false;
-  return true;
 }
 
 function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig){
