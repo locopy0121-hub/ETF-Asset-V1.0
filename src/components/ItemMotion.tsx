@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {AccessibilityInfo,Animated,AppState,Easing,PanResponder,Pressable,Text,View} from 'react-native';
-import type {ItemEffectConfig,ItemEffectKind} from '../domain/displayItemContract';
+import type {ItemEffectConfig,ItemEffectExtendedKind as ItemEffectKind} from '../domain/displayItemContract';
 
 // Animation-only changes: transformations never mutate the source quote, card size or layout.
 const numericKinds:readonly ItemEffectKind[]=['number-roll','count-up','count-down','numeric-tween','flip-number','digit-slide','quote-flip'];
