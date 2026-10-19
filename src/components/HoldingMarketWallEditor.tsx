@@ -144,7 +144,7 @@ export function HoldingMarketWallEditor({
   </View>;
 }
 
-function EffectControls({value,onChange}:{value:ItemEffectConfig;onChange:(patch:Partial<ItemEffectConfig>)=>void}){
+export function EffectControls({value,onChange}:{value:ItemEffectConfig;onChange:(patch:Partial<ItemEffectConfig>)=>void}){
   const [group,setGroup]=useState<ItemEffectGroup>(()=>itemEffectGroup(value.kind));
   const [preview,setPreview]=useState(0);
   const visibleKinds=ITEM_EFFECT_CATALOG.filter(item=>item.group===group).map(item=>item.id);
@@ -164,7 +164,7 @@ function EffectControls({value,onChange}:{value:ItemEffectConfig;onChange:(patch
       <Toggle label="允許循環（請避免行情牆大量常駐）" value={value.loop??false} onChange={loop=>onChange({loop})}/>
       <View style={{padding:8,backgroundColor:'#101827',borderRadius:8}}>
         <ItemMotionText text={preview%2===0?'1,285.00':'1,286.50'} numeric={preview%2===0?1285:1286.5} effect={{...value,trigger:'change',loop:false}} color="#EF5B64" style={{color:'#FFFFFF',fontSize:21,fontWeight:'900',fontVariant:['tabular-nums']}}/>
-        <Mini label="▶ 預覽" onPress={()=>setPreview(current=>current+1)}/>
+        <Pressable onPress={()=>setPreview(current=>current+1)} style={{paddingVertical:8}}><Text style={{color:"#FFFFFF",fontSize:12}}>▶ 模擬更新預覽</Text></Pressable>
       </View>
     </>:null}
   </View>;
