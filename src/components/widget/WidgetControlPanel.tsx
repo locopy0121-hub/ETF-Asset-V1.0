@@ -19,7 +19,7 @@ import {
   type WidgetTemplate,
 } from '../../widget/widgetDomain';
 import { ColorPalettePicker } from '../ColorPalettePicker';
-import {EffectControls as MotionControls} from '../HoldingMarketWallEditor';
+import {MotionControls} from '../MotionControls';
 import { wallGridRows } from '../../widget/wallGridRows';
 import { colors, radius, spacing } from '../../theme/tokens';
 
