@@ -375,6 +375,14 @@ jobs:
           node -e "const fs=require('fs');if(!fs.readFileSync('/tmp/tfasset-widget-bundle').includes(Buffer.from('TfAssetWidgetLive')))throw Error('Widget headless task missing from APK bundle');"
           file TF-Asset-V5.0.31-QA.apk
 
+      - name: Verify QA APK signature and certificate evidence
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs TF-Asset-V5.0.31-QA.apk | tee TF-Asset-V5.0.31-signature.txt
+          grep -q '^Signer #1 certificate SHA-256 digest:' TF-Asset-V5.0.31-signature.txt
+          sha256sum -c TF-Asset-V5.0.31-QA.sha256
+
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -383,6 +391,7 @@ jobs:
             TF-Asset-V5.0.31-QA.apk
             TF-Asset-V5.0.31-QA.sha256
             TF-Asset-V5.0.31-badging.txt
+            TF-Asset-V5.0.31-signature.txt
             reports/V3.2.49-full-skill-matrix.json
           if-no-files-found: error
           retention-days: 30
