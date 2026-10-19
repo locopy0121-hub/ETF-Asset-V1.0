@@ -1,0 +1,55 @@
+name: TF Asset M11 Backup Integrity QA
+on:
+  push:
+    branches:
+      - repair-v5.0.31-m11-backup-integrity
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  m11-backup-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript
+        run: npm run typecheck
+      - name: M11 behavioral backup transaction
+        run: npm run test:m11-backup-transaction
+      - name: M11 backup history failure injection
+        run: npm run test:m11-backup-history
+      - name: Financial Golden regression
+        run: npm run test:finance
+
+  inherited-regression:
+    needs: m11-backup-integrity
+    if: ${{ needs.m11-backup-integrity.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Full inherited V5.0.31 QA regression
+        run: npm run test:v5_0_30
+      - name: Confirm source identity and protected Settings untouched
+        run: |
+          test "$(node -p "require('./package.json').version")" = "5.0.31"
+          test "$(node -p "require('./app.json').expo.version")" = "5.0.31"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50031"
+          git show origin/v5.0.30-motion-editor-selection:src/screens/SettingsScreen.tsx | sed -e "s/5.0.30/5.0.31/g" -e "s/50030/50031/g" > /tmp/settings-allowed-version-only.tsx
+          cmp /tmp/settings-allowed-version-only.tsx src/screens/SettingsScreen.tsx
+      - name: Next safe GO checkpoint
+        run: |
+          echo 'M11 dedicated checks and full inherited regression completed.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'STOP: Full M11 feature acceptance, version increment, APK signing and device upgrade validation remain required.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Do not automatically publish a V5.0.30 APK as V5.0.31.' >> "$GITHUB_STEP_SUMMARY"

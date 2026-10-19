@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {loadBackupHistory,saveBackupHistory} from './backupHistoryStorage';
+import {applyBackupPayload} from './backupStorageTransaction';
 import {
   buildBackupDocument,parseBackupDocument,
   TF_BACKUPS_KEY,TF_LAST_EXTERNAL_BACKUP_KEY,
@@ -14,7 +15,7 @@ const BACKUPS_KEY=TF_BACKUPS_KEY;
 const LAST_EXTERNAL_BACKUP_KEY=TF_LAST_EXTERNAL_BACKUP_KEY;
 const THEME_KEY='@tf-asset/theme-runtime';
 const PREFIX='@tf-asset/';
-const APP_VERSION='5.0.30';
+const APP_VERSION='5.0.31';
 
 function sanitizeRestoredPayload(payload:Record<string,string>){
   const next={...payload};
@@ -78,8 +79,9 @@ export async function restoreLocalBackup(id:string){
   const selected=backups.find(item=>item.id===id);
   if(!selected)throw new Error('找不到指定備份');
   buildBackupDocument({payload:selected.payload,history:[],appVersion:selected.appVersion,exportedAt:selected.createdAt});
+  const before=await collectPayload();
   await createLocalBackup();
-  await AsyncStorage.multiSet(Object.entries(sanitizeRestoredPayload(selected.payload)));
+  await applyBackupPayload(AsyncStorage,before,sanitizeRestoredPayload(selected.payload));
   return selected;
 }
 
@@ -100,10 +102,10 @@ export async function importTfAssetData(text:string){
   const incoming=sanitizeRestoredPayload(parsed.payload);
   const before=await collectPayload();
   await createLocalBackup();
+  // Preserve the local safety snapshot even if imported history cannot be committed.
+  const safetyHistory=await readBackups();
+  await applyBackupPayload(AsyncStorage,before,incoming);
   try{
-    await AsyncStorage.multiSet(Object.entries(incoming));
-    const verify=await AsyncStorage.multiGet(Object.keys(incoming));
-    if(verify.some(([key,value])=>value!==incoming[key]))throw new Error('寫入後校驗不一致');
     if(parsed.history.length){
       const local=await readBackups();
       const merged=[...local,...parsed.history];
@@ -113,14 +115,28 @@ export async function importTfAssetData(text:string){
         seen.add(row.id);return true;
       }));
     }
-    return Object.keys(incoming).length;
   }catch(error){
-    // Best effort rollback when a storage failure interrupts import.
-    const introduced=Object.keys(incoming).filter(key=>!(key in before));
-    if(introduced.length)await AsyncStorage.multiRemove(introduced);
-    if(Object.keys(before).length)await AsyncStorage.multiSet(Object.entries(before));
-    throw new Error('匯入中止，已嘗試回復匯入前資料：'+(error instanceof Error?error.message:String(error)));
+    // Verify and, if needed, restore the safety history independently from live state.
+    // Never claim rollback succeeded unless both namespaces have been verified.
+    const failures:string[]=[];
+    try{
+      const current=await readBackups();
+      if(JSON.stringify(current)!==JSON.stringify(safetyHistory)){
+        await writeBackups(safetyHistory);
+        const verified=await readBackups();
+        if(JSON.stringify(verified)!==JSON.stringify(safetyHistory)){
+          throw new Error('備份歷史回滾校驗不一致');
+        }
+      }
+    }catch(historyError){failures.push('歷史備份：'+String(historyError));}
+    try{await applyBackupPayload(AsyncStorage,incoming,before);}
+    catch(payloadError){failures.push('使用中資料：'+String(payloadError));}
+    if(failures.length){
+      throw new Error('匯入失敗且回滾未完全證實：'+failures.join('；')+'；原始錯誤：'+String(error));
+    }
+    throw new Error('歷史備份寫入失敗，已校驗回復原本資料：'+String(error));
   }
+  return Object.keys(incoming).length;
 }
 
 /** This receipt is recorded ONLY after Android SAF has written AND byte-for-byte read back the external file. */

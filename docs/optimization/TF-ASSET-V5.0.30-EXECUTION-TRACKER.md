@@ -171,3 +171,81 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - **完成**：固定項目、主要檔案、驗收門檻、依賴關係、跨界測試與後續追蹤格式已建立。
 - **未完成**：所有實作、修復驗證、正式 CI 及真機 Release Acceptance。
 - **建置接續指令**：先確認最新 HEAD，再執行 G0，從 M11 開始；所有失敗原地修護與記錄，不得將未證實標為 PASS。
+
+## 7. GO G0 / M11 進度紀錄（2026-10-19）
+- **GO 起點**：`v5.0.30-motion-editor-selection` HEAD `a08ca8a1052c77198e32abe5dfc61759f2386046`；來源包含執行書行政文件，App 原始基底仍為 V5.0.30。
+- **保護備份分支**：`backup-v5.0.30-before-m11-20261019`，指向原始 GO HEAD；**修復分支**：`repair-v5.0.31-m11-backup-integrity`。
+- **G0 CODE/範圍**：已讀 `AGENTS.md`、`ERROR_LESSONS.md`、`Work_Project_Rules.md`；建立備份 ref；未改動 SettingsScreen、Finance Core、Native Market Data Center 及原 UI。
+- **M11 進行中**：新增 `src/settings/backupStorageTransaction.ts`，將還原 Key 完整替換並校驗，失敗嘗試回滾並校驗；`BackupService.ts` 的本地還原與外部匯入接入，歷史儲存失敗時回復 active data；建立行為測試 `scripts/v5_0_31-backup-transaction.test.ts` 並接入 `test:v5_0_30` 繼承測試鏈。
+- **未證實**：測試尚待 CI 執行；原生真機資料恢復、歷史備份回滾及 Crash Injection 仍待核對；尚未升版、建立 APK 或驗證簽章。**M11 不得標為 PASS**。
+- **下一步**：啟動 PR 觸發品質 Gate，確認問題與測試結果；若失敗即在修復分支原地修正；符合規範後升版 V5.0.31 並進行 QA APK。
+- **剩餘工作包**：12/12 尚未完成；M11=進行中，其餘 11 項=未開始。正式 Release Gate 關閉。
+
+## 8. GO 接續紀錄：M11 自動測試啟動（2026-10-19）
+- PR：#227（Draft）— https://github.com/locopy0121-hub/ETF-Asset-V1.0/pull/227
+- 先確認 PR/Branch 仍為 `repair-v5.0.31-m11-backup-integrity`、未合併；原版 `main` 與受保護設定主頁未改。
+- 發現原 `.github/workflows/ci.yml` 的 pull_request 目標分支不含 `v5.0.*`，原 repair 分支 push 也不符合 push 模式；因此 PR 建立後沒有自動 QA run，不能把缺失的 CI 當成 PASS。
+- 在修復分支新增 **`.github/workflows/m11-backup-qa.yml`**，獨立執行 TypeScript、`test:m11-backup-transaction` 與 `test:finance`。觸發 run：**https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250047338**，首次查詢為 **in_progress**。
+- **當前狀態**：M11 仍在進行中，CODE 已提交；RUNTIME/RESULT/BUILD 未得到測試成功證據；DEVICE/簽章未驗；12/12 工作包均未 RELEASE PASS。
+- **下一步**：獲取這次 Actions 最終結論，FAIL 即原地修改；其後處理匯入 history 局部失敗一致性與 Android 同簽章升級；通過安全前置 Gate 才允許 V5.0.31 QA APK。
+
+### CI 補充證據（2026-10-19）
+- `M11 QA run #39250047338` **completed/success**：https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250047338 （TypeScript、備份交易行為、財務 Golden）。
+- 此結果僅是 **指定自動測試通過**，非整包 M11 通過，未完成 history 故障注入、正式全量 CI、APK、Android 原地升級與 Device Validation。
+- 文件更新觸發的 `#39250139396` 首次查詢為 in_progress；不得預設其結果。
+
+## 9. GO 期間 GitHub Actions 強制監控規則（2026-10-19 使用者追加）
+**適用所有後續 GO、接續建置、QA 與正式 Release。此規則為鎖定工作清單的一部分。**
+1. 每次 GO 開始先查正確工作分支 HEAD、相關 PR、最近一次 GitHub Actions 的 `run_id`、`head_sha`、`status`、`conclusion`，不得誤用舊版 main 或其他 run 的結果。
+2. 每次 push / workflow_dispatch 後立即確認 **是否真的產生 run**；若沒有 run，查觸發條件、工作流程分支與權限，記錄「未觸發」，**絕不寫成 BUILD PASS**。
+3. 在 GO 當次工具工作期間，持續查 `queued` / `in_progress` / `completed`；有任何 FAIL/CANCEL/TIMED_OUT/STARTUP_FAILURE/ACTION_REQUIRED 即抓對應 job 與 step，以及可取得的失敗 log，定點修護再重跑，不得跳過。
+4. 每次回報須對照 `head_sha` 與正確 commit，列明 workflow 名稱、run URL、job/step 結論、產物 Artifact ID、APK SHA-256、badging 和簽章驗證（尚未產生時明確標示）。
+5. **GO 對話當次必須盡可能監看到 Action 終態才回報該 run 結論**。若工具呼叫或執行時間限制無法取得終態，明確標示「仍執行中／無法確認」，保存 run URL、當前階段及下一個檢查點；不得冒稱完成或聲稱會在聊天結束後自主持續監控。若使用者另行要求排程監控，需建立明確可執行的排程工作。
+6. 成功的 CI/QA 只證明相應自動化 Gate；不得將 QA BUILD PASS 改稱 RELEASE PASS，仍需完整 CODE/RUNTIME/UI/RESULT 與實機必要驗收。
+7. 每輪 GO 結束前把最新監控狀態、是否需要修復、下一執行項目和原始 Checklist 未完成數寫入本檔。此規則不可因版本增加而遺失。
+
+### 啟用時 GitHub Actions 快照
+- 分支：`repair-v5.0.31-m11-backup-integrity`。
+- `#39250047338`：completed / success。
+- `#39250139396`：completed / success。
+- `#39250184733`：completed / success，對應 commit `f5b61f2bbeb1cb7e807490d3a9f7331cca40ad0c`。
+- 以上僅 M11 專用 TypeScript / backup / finance QA，**不是完整 RELEASE PASS**；尚未升版或建置正式 APK。
+
+## 10. GO Action 完成後自動銜接建置規則（2026-10-19）
+**使用者授權：GO 執行中 Action 已到終態，不必再要求下一次 GO，直接按照進度執行書繼續。**
+1. 確認 Action `status=completed`、`conclusion` 及 `head_sha` 對應當次正確分支/提交，避免拿前一次成功當本次成功。
+2. **success**：僅標記該 Action 涵蓋的 Gate PASS；讀取本執行書的第一個未完成驗收條件，在同一次可用的工具執行流程中繼續修復、補測試、提交，必要時觸發下一個 QA Action 並監控。不把 CI success 當成整組 M11 或正式 Release PASS。
+3. **failure / cancelled / timed_out / startup_failure / action_required**：立即取得失敗 Job/Step/Log，原工作包定點修正、重跑同組必要 Gate；不得跳到另一模組、跳版本或變更受保護範圍。
+4. 循環條件：`修復 → push → 確認 run → 監控終態 → 對照 Gate → 接續下一未完成工作`；遇規範阻斷、測試未證實、真機必要驗收無法取得時，記錄阻斷並保留後續交接點。
+5. **能力界線**：這是 GO 對話執行期間的連續作業規則，不代表回答完畢後可在無排程/無工具執行的情況下自主背景工作。需跨對話定期檢查者使用正式條件監控排程。
+6. 每次迴圈更新當前工作包、Run URL、Commit、實際已完成的驗收與未完成條件，直至符合當次任務的停止 Gate。
+
+### 當次 Action 結果
+- `#39250697790` 已查得 `completed / success`；Commit `d3cfdc171fb4474ea35234caff97fd50fed05ac3`；https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250697790
+- 已通過的是 M11 專項 QA 內容，不是 M11 全功能 PASS；後續執行點：補齊 history 異常與資料回滾故障注入、V5.0.31 的版本一致性及 Android QA Gate。
+
+## 11. GO M11 歷史備份故障注入（2026-10-19）
+- 已檢查 PR #227 最新狀態及前次專項 QA `#39251294891` success；此成功仍非 M11 整體 PASS。
+- 新增 `scripts/v5_0_31-backup-history-fault.test.ts`：對 `saveBackupHistory` 真實實作模擬拒絕原子寫入、既有索引/歷史保留與遺失分段拒絕覆寫；在 `package.json` 的 `test:v5_0_30` 繼承鏈及 `.github/workflows/m11-backup-qa.yml` 納入驗證。
+- 初始 CI `#39251528033` / 後續更新 run 失敗，取 log 查得 **TS2532** `scripts/v5_0_31-backup-history-fault.test.ts(27,15)` 第一筆紀錄可能 undefined。已最小修正為 optional property，commit `71ed0d04194b82fd59f301f71cbdd3cdb74b81a6`。
+- 最新本次修復 Action：`#39251668619`（https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39251668619），首次查詢 in_progress / dependency install；不得先宣告 PASS。
+- **當前 M11 狀態**：進行中，尚需新 CI 最終結論、歷史匯入完整性、正式版本身分與 APK 原地升級驗收。正式 Release Gate 關閉，其餘 11 個工作包未開始。
+
+## 12. GO 失敗修復與連續接續（2026-10-19）
+
+本規則適用所有 GO，與第 9、10 節一併執行：
+
+1. Action 失敗、逾時或取消時，立即定位對應 run、job、step 及 log；當次工作優先修護原項目，不得直接跳過。
+2. 修改後提交新的 commit，確認新 run 確實啟動，持續檢查直至取得終態；再次失敗則繼續同一修護迴圈。
+3. Action 成功後先確認各項 CODE、RUNTIME、UI、RESULT、BUILD 與必要的真機驗收。只有該工作包達到其驗收條件，才接續下一工作包。
+4. 不可關閉失敗測試、繞過保護 Gate、偷換版本，或將 QA 成功視為 Release 完成。完整保護設定主頁、財務核心、行情權威與使用者原 UI。
+5. 每輪須保留失敗證據、修護 commit、重新執行的 run、最後結論、剩餘項目與接續位置；因外部權限、真機、服務或工具限制受阻時，明確標為 BLOCKED。
+6. 連續接續是本次 GO 執行期間的要求；對話結束後不會無工具自行修正程式。跨對話持續監看需另設可運作的排程或工作代理。
+
+本次核對：Action #39251745987 completed/success。M11 尚待完整驗收與版本／APK 證據，不得宣告 Release PASS。
+
+## 13. GO 連續執行機制修正（2026-10-19）
+- 確認原因：原 M11 workflow 只有單一 job，專項 QA 成功就結束；正式 release-v1 workflow 限定 main/手動，並凍結 5.0.30，不能拿來充當 V5.0.31 QA。
+- 已在 `.github/workflows/m11-backup-qa.yml` 增加 `inherited-regression` 相依 job：只有 M11 專項 PASS 才自動執行 `npm run test:v5_0_30` 完整繼承回歸，並確認 5.0.30 身分與受保護 Settings 無改動。任一步 FAIL 即停止升級發布；通過也只完成該測試 Gate。
+- 提交 `d65a88f996ec2594cf3f31f5a996d5f0f9a569a9`；GitHub Action `#39254962329` 已觸發，首次查詢 `in_progress`。https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39254962329
+- **邊界**：這是 Actions 內的 CI job 自動銜接，不是程式碼自主修復代理；M11 仍待版本 +1、完整升級/真機驗收；請勿自動跑舊 5.0.30 正式 APK。
