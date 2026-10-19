@@ -1,10 +1,10 @@
 /** SSOT for current packaged release explanation. Update every version. */
 export const APP_RELEASE_NOTES={
- version:'5.0.23',androidVersionCode:50023,headline:'首頁自選橫向滑動依實際容器寬度調整',
+ version:'5.0.24',androidVersionCode:50024,headline:'持股橫向行情卡使用實際容器寬度',
  changes:[
-  {id:'measured-horizontal',title:'橫向行情卡量測修正',detail:'首頁持股與自選混合模式下，純自選橫向卡片依實際顯示區域寬度計算，不再只使用螢幕寬度回退值。'},
-  {id:'snap-resize',title:'滑動步距同步更新',detail:'當容器尺寸改變或縮放時，重新計算卡片寬度與滑動步距，減少在窄卡片或旋轉畫面出現裁切及錯位。'},
-  {id:'regression',title:'新增容器量測回歸測試',detail:'加入實際渲染的寬度、滑動間距、尺寸變更與無效量測測試，繼續保護獨立自選清單偏好。'},
+  {id:'measured-holding',title:'持股橫向卡片寬度修正',detail:'首頁選擇橫向滑動時，持股卡片以實際可見容器的寬度計算，避免與已修正的純自選卡片寬度不一致。'},
+  {id:'snap-holding',title:'持股滑動步距與尺寸變更同步',detail:'框架縮放或手機方向改變時，同步更新持股單卡大小與滑動定位；忽略無效的零寬量測。'},
+  {id:'regression-holding',title:'新增實際卡片行為驗證',detail:'使用真實 HoldingQuoteCollection 元件測試初始寬度、容器縮放、無效量測及雙欄分頁互不干擾。'},
  ],
- notice:'目前為 QA 驗收版本；首頁持股與純自選仍是不同滑動區塊，真機手勢、效能和共同滑動軌道仍待驗收，不能視為正式 Release PASS。',
+ notice:'目前為 QA 驗收版本；持股與純自選仍為兩條獨立滑動區域，共用滑動軌道及真機拖曳／旋轉／窄版實測仍待完成，不宣稱正式 Release PASS。',
 } as const;
