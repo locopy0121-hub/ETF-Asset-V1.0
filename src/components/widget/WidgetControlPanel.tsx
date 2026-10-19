@@ -6,8 +6,8 @@ import {
   ITEM_EFFECT_KINDS,
   ITEM_EFFECT_SPEEDS,
   ITEM_EFFECT_TRIGGERS,
+  itemEffectLabel,
   type ItemEffectIntensity,
-  type ItemEffectKind,
   type ItemEffectSpeed,
   type ItemEffectTrigger,
   type ItemVisualOverride,
@@ -41,8 +41,7 @@ const sizes: readonly WidgetSize[] = ['2x2','small', 'medium', 'large'];
 const templates: readonly WidgetTemplate[] = ['asset-summary','quote-summary','compact','advanced','minimal','transparent','quote-wall'];
 const effects:readonly WidgetEffect[]=['none','fade','pulse','flash-on-change'];
 const effectLabels:Record<WidgetEffect,string>={none:'無',fade:'淡入',pulse:'脈衝', 'flash-on-change':'變動閃爍'};
-const itemEffectLabels:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'脈衝','flash-on-change':'變動閃爍',bounce:'跳動'};
-const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報'};
+const triggerLabels:Record<ItemEffectTrigger,string>={always:'常駐',refresh:'刷新',change:'數值變動',gain:'上漲',loss:'下跌',alert:'警報',mount:'首次顯示',press:'點擊',longPress:'長按'};
 const WIDGET_EFFECT_TRIGGERS=ITEM_EFFECT_TRIGGERS.filter(trigger=>trigger!=='alert');
 const speedLabels:Record<ItemEffectSpeed,string>={slow:'慢',normal:'正常',fast:'快'};
 const intensityLabels:Record<ItemEffectIntensity,string>={soft:'弱',medium:'中',strong:'強'};
@@ -193,7 +192,7 @@ export function WidgetControlPanel({ value, onChange, availableSymbols=[], previ
             {config.visual.lineGap!=null?<Step label="單項行距" value={config.visual.lineGap} min={0} max={32} step={1} suffix=" px" onChange={lineGap=>patchVisual(field,{lineGap})}/>:null}
             <Step label="上下內距" value={config.visual.paddingY} min={0} max={16} step={1} suffix=" px" onChange={paddingY=>patchVisual(field,{paddingY})}/>
             <Text style={styles.label}>單項特效</Text>
-            <Choice choices={ITEM_EFFECT_KINDS} value={config.visual.effect.kind} label={x=>itemEffectLabels[x]} onChange={kind=>patchItemEffect(field,{kind})}/>
+            <Choice choices={ITEM_EFFECT_KINDS} value={config.visual.effect.kind} label={itemEffectLabel} onChange={kind=>patchItemEffect(field,{kind})}/>
             {config.visual.effect.kind!=='none'?<>
               <Text style={styles.label}>觸發條件</Text>
               <Choice choices={WIDGET_EFFECT_TRIGGERS} value={config.visual.effect.trigger} label={x=>triggerLabels[x]} onChange={trigger=>patchItemEffect(field,{trigger})}/>
