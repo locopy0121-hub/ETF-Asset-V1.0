@@ -188,3 +188,8 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - 在修復分支新增 **`.github/workflows/m11-backup-qa.yml`**，獨立執行 TypeScript、`test:m11-backup-transaction` 與 `test:finance`。觸發 run：**https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250047338**，首次查詢為 **in_progress**。
 - **當前狀態**：M11 仍在進行中，CODE 已提交；RUNTIME/RESULT/BUILD 未得到測試成功證據；DEVICE/簽章未驗；12/12 工作包均未 RELEASE PASS。
 - **下一步**：獲取這次 Actions 最終結論，FAIL 即原地修改；其後處理匯入 history 局部失敗一致性與 Android 同簽章升級；通過安全前置 Gate 才允許 V5.0.31 QA APK。
+
+### CI 補充證據（2026-10-19）
+- `M11 QA run #39250047338` **completed/success**：https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250047338 （TypeScript、備份交易行為、財務 Golden）。
+- 此結果僅是 **指定自動測試通過**，非整包 M11 通過，未完成 history 故障注入、正式全量 CI、APK、Android 原地升級與 Device Validation。
+- 文件更新觸發的 `#39250139396` 首次查詢為 in_progress；不得預設其結果。
