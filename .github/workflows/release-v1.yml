@@ -1,4 +1,4 @@
-name: TF Asset V5.0.16 GitHub APK
+name: TF Asset V5.0.27 GitHub APK
 
 on:
   push:
@@ -32,25 +32,25 @@ jobs:
       - name: Install source dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Freeze V5.0.16 identity
+      - name: Freeze V5.0.27 identity
         run: |
-          test "$(node -p "require('./package.json').version")" = "5.0.16"
-          test "$(node -p "require('./app.json').expo.version")" = "5.0.16"
-          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50016"
+          test "$(node -p "require('./package.json').version")" = "5.0.27"
+          test "$(node -p "require('./app.json').expo.version")" = "5.0.27"
+          test "$(node -p "require('./app.json').expo.android.versionCode")" = "50027"
           test "$(node -p "require('./app.json').expo.android.package")" = "com.tfasset.app"
 
       - name: TypeScript
         run: npm run typecheck
 
-      - name: V5.0.16 Hard Gates
-        run: npm run test:v5_0_16
+      - name: V5.0.27 Hard Gates
+        run: npm run test:v5_0_27
 
       - name: Create React Native Android build workspace
         run: |
           cd ..
           npx --yes @react-native-community/cli@latest init TFAssetNative             --version 0.86.3             --package-name com.tfasset.app             --skip-install
 
-      - name: Inject TF Asset V5.0.16 source and dependencies
+      - name: Inject TF Asset V5.0.27 source and dependencies
         run: |
           cp App.tsx ../TFAssetNative/App.tsx
           rm -rf ../TFAssetNative/src
@@ -75,8 +75,8 @@ jobs:
 
           const gradle='../TFAssetNative/android/app/build.gradle';
           let g=fs.readFileSync(gradle,'utf8');
-          g=g.replace(/versionCode\s+\d+/,'versionCode 50016');
-          g=g.replace(/versionName\s+"[^"]+"/,'versionName "5.0.16"');
+          g=g.replace(/versionCode\s+\d+/,'versionCode 50027');
+          g=g.replace(/versionName\s+"[^"]+"/,'versionName "5.0.27"');
           g=g.replace(/dependencies\s*\{/,'dependencies {\n    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")\n    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")\n    implementation("com.squareup.okhttp3:okhttp:4.12.0")');
           fs.writeFileSync(gradle,g);
 
@@ -130,33 +130,33 @@ jobs:
         run: |
           APK_PATH="$(find ../TFAssetNative/android/app/build/outputs/apk/release -name '*.apk' | head -n 1)"
           test -n "$APK_PATH"
-          cp "$APK_PATH" TF-Asset-V5.0.16-github.apk
-          test "$(stat -c%s TF-Asset-V5.0.16-github.apk)" -gt 1000000
-          unzip -t TF-Asset-V5.0.16-github.apk
-          sha256sum TF-Asset-V5.0.16-github.apk | tee TF-Asset-V5.0.16-github.sha256
+          cp "$APK_PATH" TF-Asset-V5.0.27-github.apk
+          test "$(stat -c%s TF-Asset-V5.0.27-github.apk)" -gt 1000000
+          unzip -t TF-Asset-V5.0.27-github.apk
+          sha256sum TF-Asset-V5.0.27-github.apk | tee TF-Asset-V5.0.27-github.sha256
           AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
-          "$AAPT" dump badging TF-Asset-V5.0.16-github.apk | tee TF-Asset-V5.0.16-badging.txt
-          grep "package: name='com.tfasset.app'" TF-Asset-V5.0.16-badging.txt
-          grep "versionCode='50016'" TF-Asset-V5.0.16-badging.txt
-          grep "versionName='5.0.16'" TF-Asset-V5.0.16-badging.txt
-          unzip -p TF-Asset-V5.0.16-github.apk assets/index.android.bundle > /tmp/tfasset-bundle
+          "$AAPT" dump badging TF-Asset-V5.0.27-github.apk | tee TF-Asset-V5.0.27-badging.txt
+          grep "package: name='com.tfasset.app'" TF-Asset-V5.0.27-badging.txt
+          grep "versionCode='50027'" TF-Asset-V5.0.27-badging.txt
+          grep "versionName='5.0.27'" TF-Asset-V5.0.27-badging.txt
+          unzip -p TF-Asset-V5.0.27-github.apk assets/index.android.bundle > /tmp/tfasset-bundle
           node -e "const fs=require('fs');const b=fs.readFileSync('/tmp/tfasset-bundle');if(!b.includes(Buffer.from('掌握資產現況')))throw Error('V4.0.65 Home UI lineage missing');if(b.includes(Buffer.from('所有資產與損益來自 V3.7.8 Finance Core')))throw Error('legacy V3.7.8 subtitle returned');if(!b.includes(Buffer.from('TfAssetWidgetLive')))throw Error('Widget headless task missing');"
 
       - name: Upload validated APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TF-Asset-V5.0.16-GitHub-APK
+          name: TF-Asset-V5.0.27-GitHub-APK
           path: |
-            TF-Asset-V5.0.16-github.apk
-            TF-Asset-V5.0.16-github.sha256
-            TF-Asset-V5.0.16-badging.txt
+            TF-Asset-V5.0.27-github.apk
+            TF-Asset-V5.0.27-github.sha256
+            TF-Asset-V5.0.27-badging.txt
           if-no-files-found: error
           retention-days: 30
 
       - name: Publish permanent APK download
         run: |
           mkdir -p /tmp/tfasset-v5_0_2
-          cp TF-Asset-V5.0.16-github.* /tmp/tfasset-v5_0_2/
+          cp TF-Asset-V5.0.27-github.* /tmp/tfasset-v5_0_2/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if git ls-remote --exit-code --heads origin apk-release >/dev/null 2>&1; then
@@ -169,5 +169,5 @@ jobs:
           mkdir -p downloads
           cp /tmp/tfasset-v5_0_2/* downloads/
           git add downloads
-          git commit -m "publish: TF Asset V5.0.16 APK" || true
+          git commit -m "publish: TF Asset V5.0.27 APK" || true
           git push origin apk-release

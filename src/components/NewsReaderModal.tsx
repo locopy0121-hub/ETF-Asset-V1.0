@@ -37,7 +37,7 @@ function NewsBrowser({item,onClose}:{item:AiNewsItem;onClose:()=>void}){
   const [adFilter,setAdFilter]=useState(true);
   const [readerMode,setReaderMode]=useState(false);
   const [readerNotice,setReaderNotice]=useState('');
-  const pageScript=useMemo(()=>buildNewsReaderScript({filter:adFilter,mode:readerMode?'reader':adFilter?'web':'original',title:item.title}),[adFilter,readerMode,item.title]);
+  const pageScript=useMemo(()=>buildNewsReaderScript({filter:adFilter,mode:readerMode?'reader':adFilter?'web':'original',title:item.title,backgroundColor:palette.background}),[adFilter,readerMode,item.title,palette.background]);
   const web=useRef<WebView>(null);
   useEffect(()=>{if(!terminated)web.current?.injectJavaScript(pageScript);},[pageScript,terminated]);
   const canGoBack=useRef(false);
