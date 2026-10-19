@@ -223,3 +223,10 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 ### 當次 Action 結果
 - `#39250697790` 已查得 `completed / success`；Commit `d3cfdc171fb4474ea35234caff97fd50fed05ac3`；https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250697790
 - 已通過的是 M11 專項 QA 內容，不是 M11 全功能 PASS；後續執行點：補齊 history 異常與資料回滾故障注入、V5.0.31 的版本一致性及 Android QA Gate。
+
+## 11. GO M11 歷史備份故障注入（2026-10-19）
+- 已檢查 PR #227 最新狀態及前次專項 QA `#39251294891` success；此成功仍非 M11 整體 PASS。
+- 新增 `scripts/v5_0_31-backup-history-fault.test.ts`：對 `saveBackupHistory` 真實實作模擬拒絕原子寫入、既有索引/歷史保留與遺失分段拒絕覆寫；在 `package.json` 的 `test:v5_0_30` 繼承鏈及 `.github/workflows/m11-backup-qa.yml` 納入驗證。
+- 初始 CI `#39251528033` / 後續更新 run 失敗，取 log 查得 **TS2532** `scripts/v5_0_31-backup-history-fault.test.ts(27,15)` 第一筆紀錄可能 undefined。已最小修正為 optional property，commit `71ed0d04194b82fd59f301f71cbdd3cdb74b81a6`。
+- 最新本次修復 Action：`#39251668619`（https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39251668619），首次查詢 in_progress / dependency install；不得先宣告 PASS。
+- **當前 M11 狀態**：進行中，尚需新 CI 最終結論、歷史匯入完整性、正式版本身分與 APK 原地升級驗收。正式 Release Gate 關閉，其餘 11 個工作包未開始。
