@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
- ITEM_EFFECT_CATALOG,ITEM_EFFECT_KINDS,ITEM_EFFECT_GROUPS,DEFAULT_ITEM_EFFECT,
+ ITEM_EFFECT_CATALOG,ITEM_ALL_EFFECT_KINDS,ITEM_EFFECT_GROUPS,DEFAULT_ITEM_EFFECT,
  itemEffectLabel,itemEffectGroup,
 } from '../src/domain/displayItemContract';
 import {createInitialEditorState,createInitialDisplayState,mergeEditorState,mergeDisplayState} from '../src/editor/editorModel';
@@ -10,7 +10,7 @@ import {APP_RELEASE_NOTES} from '../src/settings/appReleaseNotes';
 const ids=ITEM_EFFECT_CATALOG.map(effect=>effect.id);
 assert.equal(ids.length,42,'Exactly 42 effects are registered');
 assert.equal(new Set(ids).size,42,'Every persisted animation ID must be unique');
-assert.deepEqual(ids,ITEM_EFFECT_KINDS,'Picker matches core runtime');
+assert.deepEqual(ids,ITEM_ALL_EFFECT_KINDS,'Picker matches core runtime');
 for(const effect of ITEM_EFFECT_CATALOG){
  assert.ok(ITEM_EFFECT_GROUPS.some(group=>group.id===effect.group),'A visible animation category exists');
  assert.equal(itemEffectLabel(effect.id),effect.label);
