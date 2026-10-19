@@ -1,5 +1,6 @@
 import {AppRecoveryBoundary} from './src/components/AppRecoveryBoundary';
 import {WatchlistRuntimeProvider,useWatchlist} from './src/market/WatchlistRuntime';
+import {makeResearchSelection,type ResearchSelection} from './src/market/researchNavigation';
 import {watchlistSnapshot} from './src/market/watchlistModel';
 import {appendMonitorWatchlist} from './src/monitor/monitorListUpdates';
 import {acceptsEditorSession} from './src/domain/editorSessionScope';
@@ -146,6 +147,8 @@ function AppBody(){
   const [floatingAiOpen,setFloatingAiOpen]=useState(false);
   const [aiCollapseSignal,setAiCollapseSignal]=useState(0);
   const [active,setActive]=useState<MainPageKey>('home');
+  const [researchRequest,setResearchRequest]=useState<ResearchSelection|null>(null);
+  useEffect(()=>{if(active!=='market')setResearchRequest(null);},[active]);
   const [detail,setDetail]=useState<HoldingQuote|null>(null);
   const [chartHolding,setChartHolding]=useState<HoldingQuote|null>(null);
   const pageHistory=useRef<MainPageKey[]>([]);
@@ -165,7 +168,13 @@ function AppBody(){
     }
     return true;
   },[]);
-  const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setActive(next);};
+  const navigatePage=(next:MainPageKey)=>{if(next===active)return;pageHistory.current.push(active);setResearchRequest(null);setActive(next);};
+  const openResearch=(symbol:string,name:string)=>{
+    const selection=makeResearchSelection(symbol,name);
+    if(!selection)return;
+    navigatePage('market');
+    setResearchRequest(selection);
+  };
   const aiUi=deriveAiUiState(settings.prefs.ai,active);
   const swipeToAdjacent=(direction:-1|1)=>{
     const pages=NAV_PAGES.filter(page=>page.key!=='ai'||aiUi.showAiTab);
@@ -283,14 +292,14 @@ function AppBody(){
     switch(active){
       case 'ledger': return <LedgerScreen/>;
       case 'portfolio': return <PortfolioScreen onOpenHolding={openHolding} onOpenChart={openChart}/>;
-      case 'market': return <MarketResearchScreen/>;
+      case 'market': return <MarketResearchScreen initialSelection={researchRequest}/>;
       case 'dividend': return <DividendScreen/>;
       case 'ai': return <AiScreen/>;
       case 'settings': return <SettingsScreen/>;
       case 'home':
-      default: return <HomeScreen onOpenHolding={openHolding} onOpenChart={openChart} onNavigate={navigatePage}/>;
+      default: return <HomeScreen onOpenHolding={openHolding} onOpenChart={openChart} onNavigate={navigatePage} onOpenResearch={openResearch}/>;
     }
-  },[active,detail,chartHolding]);
+  },[active,detail,chartHolding,researchRequest]);
 
   if(!finance.hydrated||!market.hydrated||!brokerSettings.hydrated||!settings.hydrated||!theme.hydrated||!monitorSettings.hydrated||!widgetSettings.hydrated||!editor.hydrated||!maintenance.hydrated){
     return <View style={[styles.loading,{backgroundColor:theme.palette.background}]}>

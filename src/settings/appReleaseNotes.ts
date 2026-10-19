@@ -1,11 +1,10 @@
 /** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.25',androidVersionCode:50025,headline:'整合持股滑動與自選操作保護',
+ version:'5.0.26',androidVersionCode:50026,headline:'首頁自選股票直達市場標的',
  changes:[
-  {id:'unify-parallel-qa',title:'整合兩條 V5.0.24 QA 修正',detail:'以已通過 QA 的持股橫向容器量測為基底，併入另一條同版分支的首頁自選移除防誤觸保護，避免不同 APK 互相覆蓋成果。'},
-  {id:'holding-viewport',title:'保留持股橫向量測',detail:'橫向持股卡片依目前可見容器寬度調整卡寬與滑動步距，保留零寬防護及雙欄分頁原有行為。'},
-  {id:'watchlist-readonly',title:'首頁混合自選卡僅能查看',detail:'持股加自選的首頁混合行情牆不提供移除自選按鈕；獨立自選清單維持可移除功能，不修改原始持股、自選或報價資料。'},
-  {id:'both-regressions',title:'合併回歸驗證',detail:'同一個建置驗證持股橫向量測、首頁自選操作隔離、獨立清單刪除與版本資訊一致性。'},
+  {id:'research-route',title:'首頁自選卡片直達指定股票',detail:'從首頁的自選股票卡片開啟市場頁時，連同代號與名稱傳遞，直接載入該股票的行情與圖表，不再只切換到空白市場頁。'},
+  {id:'selection-validation',title:'標的識別與一般導航隔離',detail:'點擊前檢查股票代號格式，從底部導覽直接進入市場頁時不沿用先前從首頁點選的股票。'},
+  {id:'market-source-safety',title:'沿用唯一行情與帳務資料來源',detail:'股票詳細行情仍由原有市場 Runtime 訂閱，本版只修正導覽選取，不修改報價、成本、持股、備份及自選清單內容。'},
  ],
- notice:'此版本為 QA 驗收用途；持股與純自選的滑動區塊仍分開，真機手勢、即時 Live、Mini 和 Widget 未完成全面驗收，不可宣稱正式 Release PASS。',
+ notice:'目前為 QA 驗收版本；導覽操作及市場頁實際載入需 Android 真機確認。Live、Widget、Mini 與跨區滑動仍有其他待驗事項，不能宣稱正式 Release PASS。',
 } as const;

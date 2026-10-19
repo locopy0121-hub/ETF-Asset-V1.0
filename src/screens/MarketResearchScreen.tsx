@@ -2,6 +2,7 @@
 import {WatchlistPanel} from '../components/WatchlistPanel';
 import {useWatchlist} from '../market/WatchlistRuntime';
 import {memo,useCallback,useEffect,useMemo,useState} from 'react';
+import type {ResearchSelection} from '../market/researchNavigation';
 import {Linking,ScrollView,StyleSheet,View} from 'react-native';
 import Svg,{Line,Polyline} from 'react-native-svg';
 import {Pressable,Text,TextInput} from '../components/EditableNative';
@@ -102,12 +103,12 @@ const MarketSearchContent=memo(function MarketSearchContent({catalog,catalogRefr
   </>;
 });
 
-export function MarketResearchScreen(){
+export function MarketResearchScreen({initialSelection=null}:{initialSelection?:ResearchSelection|null}){
   const market=useMarketRuntime(),finance=useFinance(),news=useAiNewsRuntime();
   const theme=useThemeRuntime(),system=useSystemColors();
   const watchlist=useWatchlist();
-  const [symbol,setSymbol]=useState<string|null>(null);
-  const [selectedSearchText,setSelectedSearchText]=useState('');
+  const [symbol,setSymbol]=useState<string|null>(initialSelection?.symbol??null);
+  const [selectedSearchText,setSelectedSearchText]=useState(initialSelection?initialSelection.symbol+' '+initialSelection.name:'');
   const selectSecurity=useCallback((code:string,name:string)=>{
     setSymbol(code);setSelectedSearchText(code+' '+name);setTab('chart');setSelectedCandleDate(null);
   },[]);
