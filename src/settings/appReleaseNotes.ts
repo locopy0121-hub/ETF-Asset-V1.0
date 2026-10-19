@@ -1,10 +1,10 @@
-/** SSOT for current packaged release explanation. Update every version. */
+/** SSOT for current packaged release explanation; update on every version. */
 export const APP_RELEASE_NOTES={
- version:'5.0.23',androidVersionCode:50023,headline:'首頁自選橫向滑動依實際容器寬度調整',
+ version:'5.0.24',androidVersionCode:50024,headline:'首頁混合行情牆自選資料安全保護',
  changes:[
-  {id:'measured-horizontal',title:'橫向行情卡量測修正',detail:'首頁持股與自選混合模式下，純自選橫向卡片依實際顯示區域寬度計算，不再只使用螢幕寬度回退值。'},
-  {id:'snap-resize',title:'滑動步距同步更新',detail:'當容器尺寸改變或縮放時，重新計算卡片寬度與滑動步距，減少在窄卡片或旋轉畫面出現裁切及錯位。'},
-  {id:'regression',title:'新增容器量測回歸測試',detail:'加入實際渲染的寬度、滑動間距、尺寸變更與無效量測測試，繼續保護獨立自選清單偏好。'},
+  {id:'home-read-only',title:'首頁自選卡移除操作保護',detail:'首頁選擇持股與自選的混合行情牆時，不再顯示可直接刪除自選項目的操作，避免查閱報價時誤觸變更清單。'},
+  {id:'independent-edit',title:'保留獨立自選管理功能',detail:'單獨查看自選清單時仍能使用移除操作；首頁純自選行情卡仍可開啟標的行情。'},
+  {id:'regression',title:'資料與顯示回歸測試',detail:'新增混合模式不得出現移除按鈕、獨立自選管理仍可操作的實際元件行為測試，保留原有去重與滑動排列。'},
  ],
- notice:'目前為 QA 驗收版本；首頁持股與純自選仍是不同滑動區塊，真機手勢、效能和共同滑動軌道仍待驗收，不能視為正式 Release PASS。',
+ notice:'本版為 QA 驗收版；手機上的實際觸控、Live、Mini、Widget、跨區共用滑動軌道仍有待驗證，不代表正式 Release PASS。',
 } as const;
