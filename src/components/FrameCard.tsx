@@ -9,6 +9,8 @@ import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {THEME_BACKGROUNDS,useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 import type {TargetOverride} from '../maintenance/inspectionModel';
+import {DEFAULT_ITEM_EFFECT} from '../domain/displayItemContract';
+import {useItemMotionStyle} from './ItemMotion';
 
 export type FrameCardProps=PropsWithChildren<{
   fill?:boolean;showTitle?:boolean;title:string;tone?:FinancialTone;action?:ReactNode;layout?:FrameLayout;appearance?:FrameAppearance;
@@ -22,6 +24,7 @@ export type FrameCardProps=PropsWithChildren<{
 export function FrameCard({title,action,children,layout='standard',appearance='theme',
   editorStyle,titleVisual,fill=false,showTitle=true,tone='neutral',workActive=false,workHidden=false,onResizePreview,onMeasuredSize}:FrameCardProps){
   const paintedTitle=titleVisual?.labelText||title;
+  const customMotion=useItemMotionStyle(editorStyle?.motion??DEFAULT_ITEM_EFFECT,paintedTitle,null);
   const theme=useThemeRuntime();
   const systemColors=useSettingsRuntime().prefs.display;
   const fx=normalizeFrameEffects(editorStyle?.effects,DEFAULT_FRAME_EFFECTS);
@@ -222,6 +225,7 @@ export function FrameCard({title,action,children,layout='standard',appearance='t
       }:{elevation:0,shadowOpacity:0}),
     },
     editorStyle&&fx.entranceEnabled&&!reduceMotion&&{transform:entranceTransform},
+    editorStyle?.motion?.kind!=='none'&&!workActive&&customMotion,
     workHidden&&{opacity:.5},
   ]} onLayout={(event:LayoutChangeEvent)=>{
     const {width,height}=event.nativeEvent.layout;
