@@ -103,14 +103,20 @@ export async function importTfAssetData(text:string){
   const before=await collectPayload();
   await createLocalBackup();
   await applyBackupPayload(AsyncStorage,before,incoming);
-  if(parsed.history.length){
-    const local=await readBackups();
-    const merged=[...local,...parsed.history];
-    const seen=new Set<string>();
-    await writeBackups(merged.filter(row=>{
-      if(seen.has(row.id))return false;
-      seen.add(row.id);return true;
-    }));
+  try{
+    if(parsed.history.length){
+      const local=await readBackups();
+      const merged=[...local,...parsed.history];
+      const seen=new Set<string>();
+      await writeBackups(merged.filter(row=>{
+        if(seen.has(row.id))return false;
+        seen.add(row.id);return true;
+      }));
+    }
+  }catch(error){
+    // History is separate from application state. Restore app keys on history failure.
+    await applyBackupPayload(AsyncStorage,incoming,before);
+    throw new Error('歷史備份寫入失敗，已還原原本資料：'+String(error));
   }
   return Object.keys(incoming).length;
 }
