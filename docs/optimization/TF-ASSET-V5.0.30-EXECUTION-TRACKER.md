@@ -180,3 +180,11 @@ Android QA APK：artifact ID / SHA-256 / badging / 同簽章升級結果：
 - **未證實**：測試尚待 CI 執行；原生真機資料恢復、歷史備份回滾及 Crash Injection 仍待核對；尚未升版、建立 APK 或驗證簽章。**M11 不得標為 PASS**。
 - **下一步**：啟動 PR 觸發品質 Gate，確認問題與測試結果；若失敗即在修復分支原地修正；符合規範後升版 V5.0.31 並進行 QA APK。
 - **剩餘工作包**：12/12 尚未完成；M11=進行中，其餘 11 項=未開始。正式 Release Gate 關閉。
+
+## 8. GO 接續紀錄：M11 自動測試啟動（2026-10-19）
+- PR：#227（Draft）— https://github.com/locopy0121-hub/ETF-Asset-V1.0/pull/227
+- 先確認 PR/Branch 仍為 `repair-v5.0.31-m11-backup-integrity`、未合併；原版 `main` 與受保護設定主頁未改。
+- 發現原 `.github/workflows/ci.yml` 的 pull_request 目標分支不含 `v5.0.*`，原 repair 分支 push 也不符合 push 模式；因此 PR 建立後沒有自動 QA run，不能把缺失的 CI 當成 PASS。
+- 在修復分支新增 **`.github/workflows/m11-backup-qa.yml`**，獨立執行 TypeScript、`test:m11-backup-transaction` 與 `test:finance`。觸發 run：**https://github.com/locopy0121-hub/ETF-Asset-V1.0/actions/runs/39250047338**，首次查詢為 **in_progress**。
+- **當前狀態**：M11 仍在進行中，CODE 已提交；RUNTIME/RESULT/BUILD 未得到測試成功證據；DEVICE/簽章未驗；12/12 工作包均未 RELEASE PASS。
+- **下一步**：獲取這次 Actions 最終結論，FAIL 即原地修改；其後處理匯入 history 局部失敗一致性與 Android 同簽章升級；通過安全前置 Gate 才允許 V5.0.31 QA APK。
