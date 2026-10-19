@@ -88,7 +88,11 @@ export function HoldingQuoteCollection({
   const content=(()=>{
     if(layoutMode==='horizontal'){
       const itemWidth=Math.max(230,Math.min(pageWidth-18,width*.78));
-      return <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast"
+      return <ScrollView testID="holding-home-horizontal" horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast"
+        onLayout={event=>{
+          const actual=Math.round(event.nativeEvent.layout.width);
+          if(actual>0)setViewportWidth(old=>old===actual?old:actual);
+        }}
         snapToInterval={itemWidth+spacing.sm} snapToAlignment="start" contentContainerStyle={styles.horizontal}>
         {rows.map(item=><View key={item.symbol} style={{width:itemWidth}}>{renderHolding(item)}</View>)}
       </ScrollView>;

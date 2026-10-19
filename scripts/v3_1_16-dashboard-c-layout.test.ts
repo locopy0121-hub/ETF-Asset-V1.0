@@ -53,7 +53,22 @@ assert.match(layoutTool,/wallConfig=\{wall\}/,'holding wall keeps its independen
 // collection visual-tone/override path; actual render coverage is in test:v4_0_7.
 // Accounting core and layout boundaries remain frozen.
 assert.equal(gitBlob('src/components/HoldingMarketWallEditor.tsx'),'e8f4d4ba19bec21e79d6b8e0ca8e3ca0241a8466');
-assert.equal(gitBlob('src/components/HoldingQuoteCollection.tsx'),'2cda7a131c60f985cc0342bcf11394caa1895c81');
+// V5.0.24 user-authorized horizontal geometry: normalize ONLY the measured
+// horizontal ScrollView change, then still require the historic exact blob hash.
+const updatedCollection=read('src/components/HoldingQuoteCollection.tsx');
+const measuredHorizontal=`      return <ScrollView testID="holding-home-horizontal" horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast"
+        onLayout={event=>{
+          const actual=Math.round(event.nativeEvent.layout.width);
+          if(actual>0)setViewportWidth(old=>old===actual?old:actual);
+        }}
+        snapToInterval={itemWidth+spacing.sm} snapToAlignment="start" contentContainerStyle={styles.horizontal}>`;
+const legacyHorizontal=`      return <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast"
+        snapToInterval={itemWidth+spacing.sm} snapToAlignment="start" contentContainerStyle={styles.horizontal}>`;
+assert.ok(updatedCollection.includes(measuredHorizontal),'actual authorized viewport change must exist');
+const restoredCollection=updatedCollection.replace(measuredHorizontal,legacyHorizontal);
+const restoredBytes=Buffer.from(restoredCollection,'utf8');
+assert.equal(createHash('sha1').update('blob '+restoredBytes.length+'\0').update(restoredBytes).digest('hex'),
+ '2cda7a131c60f985cc0342bcf11394caa1895c81','all other original holding-wall bytes must stay frozen');
 assert.equal(gitBlob('src/components/FloatingHoldingCardPreview.tsx'),'951e2ab7f04fb1b000aef7377d4df5327187a488');
 const uiModels=read('src/domain/uiModels.ts');
 for(const visualFlag of ['backgroundProfitColor','textProfitColor','secondaryTextProfitColor','borderProfitColor','useProfitColor','useProfitBackground'])
