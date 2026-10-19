@@ -1,8 +1,7 @@
 import {marketClosed} from '../market/marketCenterViews';
 import {financialTone} from '../theme/financialTone';
-import {Animated,Pressable,StyleSheet,View} from 'react-native';
+import {Pressable,StyleSheet,View} from 'react-native';
 import {Text} from './EditableNative';
-import { type ReactNode, useEffect, useRef } from 'react';
 
 import {
   DEFAULT_HOLDING_WALL_CONFIG,
@@ -13,6 +12,7 @@ import {
   type QuoteModuleStyle,
 } from '../domain/uiModels';
 import type { ItemEffectConfig } from '../domain/displayItemContract';
+import {ItemMotionText,ItemMotionView} from './ItemMotion';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {EtfBadgeRow} from './EtfBadgeRow';
 import {MiniHoldingChart} from './MiniHoldingChart';
@@ -250,75 +250,11 @@ function WallMetric({
 }
 
 function EffectText({text,effect,numeric,refreshToken,style,numberOfLines,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;style:any;numberOfLines?:number;inlineBackgroundColor?:string|null}){
-  const anim=useRef(new Animated.Value(1)).current;
-  const translate=useRef(new Animated.Value(0)).current;
-  const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
-  useEffect(()=>{
-    anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
-    if(effect.kind==='none'||!effectActive(effect,numeric))return;
-    const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
-    const low=effect.intensity==='soft'?.78:effect.intensity==='strong'?.24:.48;
-    let runner:Animated.CompositeAnimation;
-    if(effect.kind==='bounce'){
-      const distance=effect.intensity==='soft'?-3:effect.intensity==='strong'?-10:-6;
-      runner=Animated.sequence([
-        Animated.timing(translate,{toValue:distance,duration:Math.round(duration/2),useNativeDriver:true}),
-        Animated.timing(translate,{toValue:0,duration:Math.round(duration/2),useNativeDriver:true}),
-      ]);
-    }else if(effect.kind==='fade'){
-      anim.setValue(low);
-      runner=Animated.timing(anim,{toValue:1,duration,useNativeDriver:true});
-    }else{
-      runner=Animated.sequence([
-        Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),
-        Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true}),
-      ]);
-    }
-    const actual=effect.trigger==='always'?Animated.loop(runner):runner;
-    actual.start();
-    return()=>actual.stop();
-  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,triggerToken]);
-  return <Animated.Text numberOfLines={numberOfLines} style={[style,{opacity:anim,transform:[{translateY:translate}]}]} >{inlineBackgroundColor?<Text style={{backgroundColor:inlineBackgroundColor}}>{text}</Text>:text}</Animated.Text>;
+  return <ItemMotionText text={text} effect={effect} numeric={numeric} refreshToken={refreshToken} style={style} numberOfLines={numberOfLines} inlineBackgroundColor={inlineBackgroundColor}/>;
 }
-
-function EffectView({effect,numeric,refreshToken,children}:{effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;children:ReactNode}){
-  const anim=useRef(new Animated.Value(1)).current;
-  const translate=useRef(new Animated.Value(0)).current;
-  const triggerToken=effect.trigger==='refresh'?refreshToken:numeric;
-  useEffect(()=>{
-    anim.stopAnimation();translate.stopAnimation();anim.setValue(1);translate.setValue(0);
-    if(effect.kind==='none'||!effectActive(effect,numeric))return;
-    const duration=effect.speed==='slow'?1200:effect.speed==='fast'?360:700;
-    const low=effect.intensity==='soft'?.82:effect.intensity==='strong'?.3:.55;
-    let runner:Animated.CompositeAnimation;
-    if(effect.kind==='bounce'){
-      const distance=effect.intensity==='soft'?-3:effect.intensity==='strong'?-10:-6;
-      runner=Animated.sequence([
-        Animated.timing(translate,{toValue:distance,duration:Math.round(duration/2),useNativeDriver:true}),
-        Animated.timing(translate,{toValue:0,duration:Math.round(duration/2),useNativeDriver:true}),
-      ]);
-    }else if(effect.kind==='fade'){
-      anim.setValue(low);
-      runner=Animated.timing(anim,{toValue:1,duration,useNativeDriver:true});
-    }else{
-      runner=Animated.sequence([
-        Animated.timing(anim,{toValue:low,duration:Math.round(duration/2),useNativeDriver:true}),
-        Animated.timing(anim,{toValue:1,duration:Math.round(duration/2),useNativeDriver:true}),
-      ]);
-    }
-    const actual=effect.trigger==='always'?Animated.loop(runner):runner;
-    actual.start();
-    return()=>actual.stop();
-  },[anim,translate,effect.kind,effect.trigger,effect.speed,effect.intensity,triggerToken]);
-  return <Animated.View style={{opacity:anim,transform:[{translateY:translate}]}}>{children}</Animated.View>;
+function EffectView({effect,numeric,refreshToken,children}:{effect:ItemEffectConfig;numeric:number|null;refreshToken?:string|number|null|undefined;children:React.ReactNode}){
+  return <ItemMotionView effect={effect} value={numeric} numeric={numeric} refreshToken={refreshToken}>{children}</ItemMotionView>;
 }
-function effectActive(effect:ItemEffectConfig,numeric:number|null){
-  if(effect.trigger==='gain')return numeric!=null&&numeric>0;
-  if(effect.trigger==='loss')return numeric!=null&&numeric<0;
-  if(effect.trigger==='alert')return false;
-  return true;
-}
-
 function fieldColor(field:HoldingWallFieldConfig,item:HoldingQuote,change:number,wall:HoldingWallConfig,system:DisplayPrefs){
   const value=field.field==='pnl'||field.field==='roi'?item.pnl:field.field==='marketValue'?item.marketValue:change;
   const tone=financialTone(value,item.quoteVerified!==false&&(['pnl','roi','marketValue'].includes(field.field)||(item.previousClose>0&&item.previousCloseKnown!==false)));

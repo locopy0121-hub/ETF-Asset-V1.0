@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.27",
+  "version": "5.0.28",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_27 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_28 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -384,6 +384,8 @@
     "test:v5_0_24": "npm run test:v5_0_23 && node scripts/v5_0_24-holding-horizontal-runtime.test.cjs",
     "test:v5_0_25": "npm run test:v5_0_24 && node scripts/v4_0_64-watchlist-runtime.test.cjs && node scripts/v5_0_24-home-wall-actions.test.cjs && node scripts/v5_0_25-parallel-qa-integration.test.cjs",
     "test:v5_0_26": "npm run test:v5_0_25 && tsx scripts/v5_0_26-home-research-navigation.test.ts",
+    "test:motion-v5_0_28": "tsx scripts/v5_0_28-motion-regression.test.ts",
+    "test:v5_0_28": "npm run test:v5_0_27 && npm run test:motion-v5_0_28",
     "test:v5_0_27": "npm run test:v5_0_26 && node scripts/v4_0_64-news-content.test.cjs && node scripts/v4_0_64-news-reader.test.cjs"
   },
   "dependencies": {

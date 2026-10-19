@@ -3,14 +3,14 @@ import {Linking,Pressable,StyleSheet,Switch,Text,TextInput,View} from 'react-nat
 import {
   DEFAULT_ETF_BADGES,type EtfBadgeConfig,type EtfBadgeKey,type EtfBadgeStyle,type EtfReminderType,
 } from '../domain/etfBadges';
-import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,type ItemEffectSpeed,type ItemEffectTrigger} from '../domain/displayItemContract';
+import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,type ItemEffectConfig,type ItemEffectIntensity,type ItemEffectKind,itemEffectLabel,type ItemEffectSpeed,type ItemEffectTrigger} from '../domain/displayItemContract';
 import {colors,spacing} from '../theme/tokens';
 import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from '../market/issuerDividendPolicies';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {EtfBadgeRow} from './EtfBadgeRow';
 
 const LABELS:Record<EtfBadgeKey,string>={etfType:'ETF 分類',dividendType:'配息頻率',reminder:'事件提醒'};
-const EFFECTS:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'呼吸燈','flash-on-change':'閃爍',bounce:'跳動'};
+const EFFECTS:Record<ItemEffectKind,string>=Object.fromEntries(ITEM_EFFECT_KINDS.map(kind=>[kind,itemEffectLabel(kind)])) as Record<ItemEffectKind,string>;
 const TRIGGERS:Record<'always'|'change'|'refresh'|'alert',string>={always:'持續',change:'內容變動',refresh:'行情刷新',alert:'事件當日'};
 const SPEEDS:Record<ItemEffectSpeed,string>={slow:'慢',normal:'一般',fast:'快'};
 const INTENSITIES:Record<ItemEffectIntensity,string>={soft:'柔和',medium:'中',strong:'強'};

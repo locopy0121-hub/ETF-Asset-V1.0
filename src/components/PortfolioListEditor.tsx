@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {Pressable,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
-import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,type ItemEffectConfig,type ItemEffectKind,type ItemEffectIntensity,type ItemEffectSpeed,type ItemEffectTrigger} from '../domain/displayItemContract';
+import {ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_KINDS,ITEM_EFFECT_SPEEDS,type ItemEffectConfig,type ItemEffectKind,itemEffectLabel,type ItemEffectIntensity,type ItemEffectSpeed,type ItemEffectTrigger} from '../domain/displayItemContract';
 import {DEFAULT_ETF_BADGES,type EtfBadgeConfig} from '../domain/etfBadges';
 import {DEFAULT_PORTFOLIO_LIST,PORTFOLIO_FIXED_WIDTH_MAX,PORTFOLIO_FIXED_WIDTH_MIN,type PortfolioColumnConfig,type PortfolioColumnKey,type PortfolioListConfig} from '../domain/portfolioList';
 import type {HoldingQuote} from '../domain/uiModels';
@@ -8,7 +8,7 @@ import {colors,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {PortfolioHoldingTable} from './PortfolioHoldingTable';
 
-const EFFECTS:Record<ItemEffectKind,string>={none:'無',fade:'淡入',pulse:'呼吸燈','flash-on-change':'變動閃爍',bounce:'跳動'};
+const EFFECTS:Record<ItemEffectKind,string>=Object.fromEntries(ITEM_EFFECT_KINDS.map(kind=>[kind,itemEffectLabel(kind)])) as Record<ItemEffectKind,string>;
 const TRIGGERS:Record<'always'|'change'|'refresh'|'gain'|'loss',string>={always:'持續',change:'數值變動',refresh:'資料刷新',gain:'正值',loss:'負值'};
 const SPEEDS:Record<ItemEffectSpeed,string>={slow:'慢',normal:'一般',fast:'快'};
 const INTENSITIES:Record<ItemEffectIntensity,string>={soft:'柔和',medium:'中',strong:'強'};

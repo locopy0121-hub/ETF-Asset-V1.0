@@ -11,7 +11,7 @@ import {DEFAULT_HOLDING_CHART,normalizeHoldingChart,type HoldingChartConfig} fro
 import type { MainPageKey } from '../domain/pageRegistry';
 import { DEFAULT_HOLDING_WALL_CONFIG, type HoldingSortKey, type HoldingWallConfig, type HoldingWallFieldConfig, type HoldingWallFieldKey, type QuoteModuleStyle } from '../domain/uiModels';
 import {DEFAULT_DASHBOARD_LAYOUT,normalizeDashboardLayout,type DashboardLayoutConfig} from '../domain/dashboardLayout';
-import { DEFAULT_ITEM_EFFECT, ITEM_EFFECT_INTENSITIES, ITEM_EFFECT_KINDS, ITEM_EFFECT_SPEEDS, ITEM_EFFECT_TRIGGERS, type ItemEffectConfig } from '../domain/displayItemContract';
+import { DEFAULT_ITEM_EFFECT, ITEM_EFFECT_INTENSITIES, ITEM_ALL_EFFECT_KINDS, ITEM_EFFECT_SPEEDS, ITEM_ALL_EFFECT_TRIGGERS, type ItemEffectConfig } from '../domain/displayItemContract';
 import {normalizeTargetOverride,type TargetOverride} from '../maintenance/inspectionModel';
 
 export type FrameLayout = 'standard' | 'compact' | 'dense';
@@ -117,6 +117,7 @@ export type FrameEditorConfig = Readonly<{
   minHeight?:number;
   equalGrid?:EqualGridConfig; // Explicit opt-in; only frames rendering EqualGrid consume this visual rule.
   effects?:FrameEffects; // Optional for v3.0.6 saved frame migration
+  motion?:ItemEffectConfig; // Optional, disabled for existing saved layouts
 }>;
 
 export type PageEditorState = Readonly<Record<MainPageKey, Readonly<Record<string, FrameEditorConfig>>>>;
@@ -189,10 +190,13 @@ const wallNullableColor=(value:unknown,fallback:string|null)=>value===undefined?
 const normalizeWallEffect=(raw:unknown,fallback:ItemEffectConfig=DEFAULT_ITEM_EFFECT):ItemEffectConfig=>{
   const effect=(raw&&typeof raw==='object'?raw:{}) as Partial<ItemEffectConfig>;
   return {
-    kind:ITEM_EFFECT_KINDS.includes(effect.kind as ItemEffectConfig['kind'])?effect.kind as ItemEffectConfig['kind']:fallback.kind,
-    trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
+    kind:ITEM_ALL_EFFECT_KINDS.includes(effect.kind as ItemEffectConfig['kind'])?effect.kind as ItemEffectConfig['kind']:fallback.kind,
+    trigger:ITEM_ALL_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
     speed:ITEM_EFFECT_SPEEDS.includes(effect.speed as ItemEffectConfig['speed'])?effect.speed as ItemEffectConfig['speed']:fallback.speed,
     intensity:ITEM_EFFECT_INTENSITIES.includes(effect.intensity as ItemEffectConfig['intensity'])?effect.intensity as ItemEffectConfig['intensity']:fallback.intensity,
+    ...(typeof effect.durationMs==='number'&&Number.isFinite(effect.durationMs)?{durationMs:clamp(effect.durationMs,100,1200,300)}:{}),
+    ...(typeof effect.strengthPercent==='number'&&Number.isFinite(effect.strengthPercent)?{strengthPercent:clamp(effect.strengthPercent,0,100,40)}:{}),
+    ...(typeof effect.loop==='boolean'?{loop:effect.loop}:{}),
   };
 };
 const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
@@ -353,6 +357,7 @@ export function normalizeEditorConfig(
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderOpacity:clamp(candidate.borderOpacity,0,1,fallback.borderOpacity??1),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       equalGrid:normalizeEqualGrid(candidate.equalGrid),
+      ...(candidate.motion?{motion:normalizeWallEffect(candidate.motion,DEFAULT_ITEM_EFFECT)}:{}),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
       ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,320)}:{}),
