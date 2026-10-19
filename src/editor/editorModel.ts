@@ -194,9 +194,9 @@ const normalizeWallEffect=(raw:unknown,fallback:ItemEffectConfig=DEFAULT_ITEM_EF
     trigger:ITEM_EFFECT_TRIGGERS.includes(effect.trigger as ItemEffectConfig['trigger'])?(effect.trigger==='alert'?'change':effect.trigger as ItemEffectConfig['trigger']):fallback.trigger,
     speed:ITEM_EFFECT_SPEEDS.includes(effect.speed as ItemEffectConfig['speed'])?effect.speed as ItemEffectConfig['speed']:fallback.speed,
     intensity:ITEM_EFFECT_INTENSITIES.includes(effect.intensity as ItemEffectConfig['intensity'])?effect.intensity as ItemEffectConfig['intensity']:fallback.intensity,
-    durationMs:clamp(effect.durationMs,100,1200,fallback.durationMs??300),
-    strengthPercent:clamp(effect.strengthPercent,0,100,fallback.strengthPercent??40),
-    loop:typeof effect.loop==='boolean'?effect.loop:(fallback.loop??false),
+    ...(typeof effect.durationMs==='number'&&Number.isFinite(effect.durationMs)?{durationMs:clamp(effect.durationMs,100,1200,300)}:{}),
+    ...(typeof effect.strengthPercent==='number'&&Number.isFinite(effect.strengthPercent)?{strengthPercent:clamp(effect.strengthPercent,0,100,40)}:{}),
+    ...(typeof effect.loop==='boolean'?{loop:effect.loop}:{}),
   };
 };
 const normalizeHoldingWall=(raw:unknown):HoldingWallConfig=>{
@@ -357,7 +357,7 @@ export function normalizeEditorConfig(
       borderColor:wallColor(candidate.borderColor,fallback.borderColor),borderOpacity:clamp(candidate.borderOpacity,0,1,fallback.borderOpacity??1),borderWidth:clamp(candidate.borderWidth,0,8,fallback.borderWidth),borderRadius:clamp(candidate.borderRadius,0,48,fallback.borderRadius),
       shadowEnabled:candidate.shadowEnabled===true,shadowOpacity:clamp(candidate.shadowOpacity,0,.8,fallback.shadowOpacity),
       equalGrid:normalizeEqualGrid(candidate.equalGrid),
-      motion:normalizeWallEffect(candidate.motion,DEFAULT_ITEM_EFFECT),
+      ...(candidate.motion?{motion:normalizeWallEffect(candidate.motion,DEFAULT_ITEM_EFFECT)}:{}),
       effects:normalizeFrameEffects(candidate.effects,DEFAULT_FRAME_EFFECTS),
       ...(typeof candidate.padding==='number'&&Number.isFinite(candidate.padding)?{padding:clamp(candidate.padding,0,32,16)}:{}),
       ...(typeof candidate.width==='number'&&Number.isFinite(candidate.width)&&candidate.width>0?{width:clamp(candidate.width,EDITOR_DIMENSION_MIN,EDITOR_DIMENSION_MAX,320)}:{}),
