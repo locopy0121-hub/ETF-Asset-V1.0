@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {loadBackupHistory,saveBackupHistory} from './backupHistoryStorage';
+import {applyBackupPayload} from './backupStorageTransaction';
 import {
   buildBackupDocument,parseBackupDocument,
   TF_BACKUPS_KEY,TF_LAST_EXTERNAL_BACKUP_KEY,
@@ -78,8 +79,9 @@ export async function restoreLocalBackup(id:string){
   const selected=backups.find(item=>item.id===id);
   if(!selected)throw new Error('找不到指定備份');
   buildBackupDocument({payload:selected.payload,history:[],appVersion:selected.appVersion,exportedAt:selected.createdAt});
+  const before=await collectPayload();
   await createLocalBackup();
-  await AsyncStorage.multiSet(Object.entries(sanitizeRestoredPayload(selected.payload)));
+  await applyBackupPayload(AsyncStorage,before,sanitizeRestoredPayload(selected.payload));
   return selected;
 }
 
@@ -100,27 +102,17 @@ export async function importTfAssetData(text:string){
   const incoming=sanitizeRestoredPayload(parsed.payload);
   const before=await collectPayload();
   await createLocalBackup();
-  try{
-    await AsyncStorage.multiSet(Object.entries(incoming));
-    const verify=await AsyncStorage.multiGet(Object.keys(incoming));
-    if(verify.some(([key,value])=>value!==incoming[key]))throw new Error('寫入後校驗不一致');
-    if(parsed.history.length){
-      const local=await readBackups();
-      const merged=[...local,...parsed.history];
-      const seen=new Set<string>();
-      await writeBackups(merged.filter(row=>{
-        if(seen.has(row.id))return false;
-        seen.add(row.id);return true;
-      }));
-    }
-    return Object.keys(incoming).length;
-  }catch(error){
-    // Best effort rollback when a storage failure interrupts import.
-    const introduced=Object.keys(incoming).filter(key=>!(key in before));
-    if(introduced.length)await AsyncStorage.multiRemove(introduced);
-    if(Object.keys(before).length)await AsyncStorage.multiSet(Object.entries(before));
-    throw new Error('匯入中止，已嘗試回復匯入前資料：'+(error instanceof Error?error.message:String(error)));
+  await applyBackupPayload(AsyncStorage,before,incoming);
+  if(parsed.history.length){
+    const local=await readBackups();
+    const merged=[...local,...parsed.history];
+    const seen=new Set<string>();
+    await writeBackups(merged.filter(row=>{
+      if(seen.has(row.id))return false;
+      seen.add(row.id);return true;
+    }));
   }
+  return Object.keys(incoming).length;
 }
 
 /** This receipt is recorded ONLY after Android SAF has written AND byte-for-byte read back the external file. */
