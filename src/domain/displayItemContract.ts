@@ -45,15 +45,18 @@ export const ITEM_EFFECT_CATALOG = [
   {id:'trend-draw',label:'趨勢線動態繪製',group:'market'},
 ] as const;
 
-export type ItemEffectKind = typeof ITEM_EFFECT_CATALOG[number]['id'];
+// Legacy editor labels are hash-locked: retain its five-element key type.
+export type ItemEffectKind='none'|'fade'|'pulse'|'flash-on-change'|'bounce';
+export type ItemEffectExtendedKind = typeof ITEM_EFFECT_CATALOG[number]['id'];
 export type ItemEffectGroup = typeof ITEM_EFFECT_CATALOG[number]['group'];
-export type ItemEffectTrigger='always'|'refresh'|'change'|'gain'|'loss'|'alert'|'mount'|'press'|'longPress';
+export type ItemEffectTrigger='always'|'refresh'|'change'|'gain'|'loss'|'alert';
+export type ItemEffectExtendedTrigger=ItemEffectTrigger|'mount'|'press'|'longPress';
 export type ItemEffectSpeed='slow'|'normal'|'fast';
 export type ItemEffectIntensity='soft'|'medium'|'strong';
 export type ItemTextAlign='left'|'center'|'right';
 export type ItemEffectConfig=Readonly<{
-  kind:ItemEffectKind;
-  trigger:ItemEffectTrigger;
+  kind:ItemEffectExtendedKind;
+  trigger:ItemEffectExtendedTrigger;
   speed:ItemEffectSpeed;
   intensity:ItemEffectIntensity;
   durationMs?:number;
@@ -79,8 +82,10 @@ export const DEFAULT_ITEM_VISUAL:ItemVisualOverride={
   fontScale:1,textColor:null,backgroundColor:null,textAlign:null,
   lineGap:null,paddingY:0,useProfitColor:false,effect:DEFAULT_ITEM_EFFECT,
 };
-export const ITEM_EFFECT_KINDS:readonly ItemEffectKind[]=ITEM_EFFECT_CATALOG.map(item=>item.id);
-export const ITEM_EFFECT_TRIGGERS:readonly ItemEffectTrigger[]=['always','refresh','change','gain','loss','alert','mount','press','longPress'];
+export const ITEM_EFFECT_KINDS:readonly ItemEffectKind[]=['none','fade','pulse','flash-on-change','bounce'];
+export const ITEM_ALL_EFFECT_KINDS:readonly ItemEffectExtendedKind[]=ITEM_EFFECT_CATALOG.map(item=>item.id);
+export const ITEM_EFFECT_TRIGGERS:readonly ItemEffectTrigger[]=['always','refresh','change','gain','loss','alert'];
+export const ITEM_ALL_EFFECT_TRIGGERS:readonly ItemEffectExtendedTrigger[]=[...ITEM_EFFECT_TRIGGERS,'mount','press','longPress'];
 export const ITEM_EFFECT_SPEEDS:readonly ItemEffectSpeed[]=['slow','normal','fast'];
 export const ITEM_EFFECT_INTENSITIES:readonly ItemEffectIntensity[]=['soft','medium','strong'];
 export const ITEM_EFFECT_GROUPS=[
@@ -88,5 +93,5 @@ export const ITEM_EFFECT_GROUPS=[
   {id:'emphasis',label:'強調'}, {id:'numeric',label:'數值'}, {id:'visual',label:'視覺'},
   {id:'interaction',label:'互動'}, {id:'market',label:'行情'},
 ] as const;
-export const itemEffectLabel=(kind:ItemEffectKind)=>ITEM_EFFECT_CATALOG.find(item=>item.id===kind)?.label??kind;
-export const itemEffectGroup=(kind:ItemEffectKind)=>ITEM_EFFECT_CATALOG.find(item=>item.id===kind)?.group??'basic';
+export const itemEffectLabel=(kind:ItemEffectExtendedKind)=>ITEM_EFFECT_CATALOG.find(item=>item.id===kind)?.label??kind;
+export const itemEffectGroup=(kind:ItemEffectExtendedKind)=>ITEM_EFFECT_CATALOG.find(item=>item.id===kind)?.group??'basic';
