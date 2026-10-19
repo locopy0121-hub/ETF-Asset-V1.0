@@ -143,7 +143,7 @@ function Decoration({effect,progress,strength,color}:{effect:ItemEffectConfig;pr
     ...(kind==='halo-pulse'||kind==='pnl-glow'||kind==='border-flow'?{borderWidth:kind==='border-flow'?2:1,borderColor:color}:{backgroundColor:color})}}/>;
 }
 
-export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,refreshToken,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;style:any;numberOfLines?:number;color?:string;refreshToken?:string|number|null;inlineBackgroundColor?:string|null}){
+export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,refreshToken,inlineBackgroundColor}:{text:string;effect:ItemEffectConfig;numeric:number|null;style:any;numberOfLines?:number|undefined;color?:string|undefined;refreshToken?:string|number|null|undefined;inlineBackgroundColor?:string|null|undefined}){
   const {p,strength,run,reduceMotion}=useMotion(effect,text,numeric,refreshToken);
   const displayed=useNumberTransition(text,effect,!reduceMotion&&effect.kind!=='none');
   const [drag]=useState(()=>new Animated.ValueXY());
@@ -168,7 +168,7 @@ export function ItemMotionText({text,effect,numeric,style,numberOfLines,color,re
   return body;
 }
 
-export function ItemMotionView({effect,value,numeric,children,color,refreshToken}:{effect:ItemEffectConfig;value:unknown;numeric:number|null;children:ReactNode;color?:string;refreshToken?:string|number|null}){
+export function ItemMotionView({effect,value,numeric,children,color,refreshToken}:{effect:ItemEffectConfig;value:unknown;numeric:number|null;children:ReactNode;color?:string|undefined;refreshToken?:string|number|null|undefined}){
   const {p,strength,run}=useMotion(effect,value,numeric,refreshToken);
   if(effect.kind==='none')return <>{children}</>;
   const body=<Animated.View style={makeMotionStyle(effect.kind,p,strength)}>
