@@ -10,7 +10,7 @@ type PickerMode='wheel'|'classic'|'palette';
 type PaletteProps={
   label:string; value:string; onChange:(value:string)=>void;
   opacity?:number|undefined; onOpacityChange?:((value:number)=>void)|undefined;
-  profitColorEnabled?:boolean; onProfitColorChange?:(value:boolean)=>void;
+  profitColorEnabled?:boolean|undefined; onProfitColorChange?:((value:boolean)=>void)|undefined;
 };
 type PaletteHost={open:(props:PaletteProps)=>void;close:()=>void};
 const PaletteContext=createContext<PaletteHost|null>(null);
