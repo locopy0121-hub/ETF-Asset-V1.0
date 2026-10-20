@@ -1,10 +1,11 @@
-import {useCallback,useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode} from 'react';
 import {StyleSheet,View,type StyleProp,type TextStyle} from 'react-native';
 import Svg,{Circle,Line,Polyline,Polygon} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
 import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 import {taiexAxisWidth,taiexChartHeight,taiexPlotLeftInset,taiexTimeAxisLeft} from '../editor/taiexIndexChartLayout';
+import {getTaiexPreviewSnapshot,subscribeTaiexPreviewSnapshot,publishTaiexPreviewSnapshot,subscribeNoTaiexPreview,noTaiexPreviewSnapshot} from '../editor/taiexPreviewSnapshot';
 import {MarketEditableSurface} from './MarketEditableContent';
 import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
@@ -194,21 +195,30 @@ function IndexEditableChart({children}:{children:ReactNode}){
   const editor=usePageEditor('market');
   const id='market:index:chart';
   const override=(runtime.active?runtime.targets:editor.displayConfig.layoutTargets)?.[id];
-  const body=<View style={[
+  const [measured,setMeasured]=useState<{width:number;height:number}|null>(null);
+  const chartStyle=[
     override?.width!==undefined?{width:override.width}:undefined,
-    override?.height!==undefined?{height:override.height,overflow:'hidden'}:undefined,
+    override?.height!==undefined?{height:override.height,overflow:'hidden' as const}:undefined,
     override?.backgroundColor!==undefined?{backgroundColor:colorWithAlpha(override.backgroundColor,override.backgroundOpacity??1)}:undefined,
     override?.borderWidth!==undefined?{borderWidth:override.borderWidth}:undefined,
     override?.borderColor!==undefined?{borderColor:colorWithAlpha(override.borderColor,override.borderOpacity??1)}:undefined,
     override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:undefined,
     override?.padding!==undefined?{padding:override.padding}:undefined,
     override?.opacity!==undefined?{opacity:override.opacity}:undefined,
-  ]}>{children}</View>;
-  if(!runtime.active)return body;
+  ];
+  // The editor and production use an identical native box. Inserting an extra
+  // outer Pressable changed the flex width for percentage-based SVG charts.
+  if(!runtime.active)return <View style={chartStyle}>{children}</View>;
   return <Pressable accessibilityRole="button" accessibilityLabel="編輯加權指數走勢圖"
-    onPress={()=>runtime.onSelect?.({id,kind:'card',label:'加權指數走勢圖'})}
-    style={runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined}>
-      <View pointerEvents="none">{body}</View>
+    style={chartStyle} onLayout={event=>{
+      const {width,height}=event.nativeEvent.layout;
+      setMeasured(previous=>previous?.width===width&&previous.height===height?previous:{width,height});
+    }}
+    onPress={()=>runtime.onSelect?.({id,kind:'card',label:'加權指數走勢圖',
+      ...(measured?{width:measured.width,height:measured.height}:{})})}>
+    <View pointerEvents="none" style={{width:'100%'}}>{children}</View>
+    {runtime.selectedId===id?<View pointerEvents="none"
+      style={[StyleSheet.absoluteFillObject,{borderWidth:2,borderColor:'#0969DA',borderRadius:8}]}/>:null}
   </Pressable>;
 }
 function IndexMetric({id,label,value}:{id:string;label:string;value:string}){
@@ -226,17 +236,39 @@ export function TaiexIndexCard({marketVersion,phase}:{
 }){
   const theme=useThemeRuntime(),system=useSystemColors();
   const layoutPreview=useLayoutRuntime();
-  const [range,setRange]=useState<IndexRange>('d1');
-  const [mis,setMis]=useState<IndexSnapshot|null>(null);
-  const [history,setHistory]=useState<IndexClose[]>([]);
-  const [points,setPoints]=useState<IndexPoint[]>([]);
-  const [officialTape,setOfficialTape]=useState<TaiexIntraday|null>(null);
+  const [localRange,setRange]=useState<IndexRange>('d1');
+  const [localMis,setMis]=useState<IndexSnapshot|null>(null);
+  const [localHistory,setHistory]=useState<IndexClose[]>([]);
+  const [localPoints,setPoints]=useState<IndexPoint[]>([]);
+  const [localOfficialTape,setOfficialTape]=useState<TaiexIntraday|null>(null);
   const [tapeReload,setTapeReload]=useState(0);
-  const [ohlc,setOhlc]=useState<TaiexDailyOhlc[]>([]);
-  const [gatesOn,setGatesOn]=useState(true);
-  const [busy,setBusy]=useState(false),[historyBusy,setHistoryBusy]=useState(false);
-  const [error,setError]=useState<string|null>(null);
+  const [localOhlc,setOhlc]=useState<TaiexDailyOhlc[]>([]);
+  const [localGatesOn,setGatesOn]=useState(true);
+  const [localBusy,setBusy]=useState(false),[localHistoryBusy,setHistoryBusy]=useState(false);
+  const [localError,setError]=useState<string|null>(null);
+  const shared=useSyncExternalStore(
+    layoutPreview.active?subscribeTaiexPreviewSnapshot:subscribeNoTaiexPreview,
+    layoutPreview.active?getTaiexPreviewSnapshot:noTaiexPreviewSnapshot);
+  const preview=layoutPreview.active?shared:null;
+  const range=preview?.range??localRange,gatesOn=preview?.gatesOn??localGatesOn;
+  const mis=preview?.mis??localMis,history=preview?.history??localHistory;
+  const points=preview?.points??localPoints,officialTape=preview?.officialTape??localOfficialTape;
+  const ohlc=preview?.ohlc??localOhlc,busy=preview?.busy??localBusy;
+  const historyBusy=preview?.historyBusy??localHistoryBusy,error=preview?.error??localError;
   const lastReq=useRef(0),inFlight=useRef(false);
+  useEffect(()=>{
+    if(layoutPreview.active)return;
+    publishTaiexPreviewSnapshot({
+      range:localRange,gatesOn:localGatesOn,mis:localMis,history:localHistory,points:localPoints,
+      officialTape:localOfficialTape,ohlc:localOhlc,
+      busy:localBusy,historyBusy:localHistoryBusy,error:localError,
+    });
+  },[layoutPreview.active,localRange,localGatesOn,localMis,localHistory,localPoints,
+    localOfficialTape,localOhlc,localBusy,localHistoryBusy,localError]);
+  useEffect(()=>{
+    if(layoutPreview.active)return;
+    return()=>publishTaiexPreviewSnapshot(null);
+  },[layoutPreview.active]);
   const today=taipeiIndexDate();
   const display=useMemo(()=>pickTaiexDisplay(mis,history,today,phase),[mis,history,today,phase]);
   const chartData=useMemo<IndexPoint[]>(()=>range==='d1'?points:

@@ -74,12 +74,15 @@ export function MarketEditableSurface({id,label,style,children}:{
     ...(override?.borderRadius!==undefined?{borderRadius:override.borderRadius}:{}),
     ...(override?.opacity!==undefined?{opacity:override.opacity}:{}),
   };
-  const body=<View style={[style,visual]}>{children}</View>;
-  if(!runtime.active)return body;
+  const surfaceStyle=[style,visual];
+  if(!runtime.active)return <View style={surfaceStyle}>{children}</View>;
+  // Preview selection paints over the same box instead of nesting an extra
+  // zero-width wrapper around responsive chart viewports.
   return <Pressable accessibilityRole="button" accessibilityLabel={'編輯'+label}
-    onPress={()=>runtime.onSelect?.({id,kind:'card',label})}
-    style={runtime.selectedId===id?{borderWidth:2,borderColor:'#0969DA',borderRadius:8}:undefined}>
-    <View pointerEvents="none">{body}</View>
+    onPress={()=>runtime.onSelect?.({id,kind:'card',label})} style={surfaceStyle}>
+    <View pointerEvents="none" style={{width:'100%'}}>{children}</View>
+    {runtime.selectedId===id?<View pointerEvents="none"
+      style={[StyleSheet.absoluteFillObject,{borderWidth:2,borderColor:'#0969DA',borderRadius:8}]}/>:null}
   </Pressable>;
 }
 

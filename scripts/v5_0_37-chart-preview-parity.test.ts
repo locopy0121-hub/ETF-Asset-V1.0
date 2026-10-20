@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {frameVisualProps} from '../src/editor/frameVisualParity';
+import {publishTaiexPreviewSnapshot,getTaiexPreviewSnapshot,subscribeTaiexPreviewSnapshot} from '../src/editor/taiexPreviewSnapshot';
 import {taiexChartHeight,taiexAxisWidth,taiexPlotLeftInset,taiexTimeAxisLeft} from '../src/editor/taiexIndexChartLayout';
 import {createInitialEditorState,mergeEditorState,mergeDisplayState} from '../src/editor/editorModel';
 const read=(p:string)=>readFileSync(p,'utf8');
@@ -41,4 +42,25 @@ const app=JSON.parse(read('app.json')).expo,pkg=JSON.parse(read('package.json'))
 assert.equal(app.version,pkg.version);
 assert.equal(app.android.versionCode,50037);
 assert.equal(app.ios.buildNumber,'50037');
-console.log('V5.0.37 chart preview real-frame parity, persisted index geometry and empty graph tests PASS');
+let notifications=0;
+const unsubscribe=subscribeTaiexPreviewSnapshot(()=>notifications++);
+const consistent={
+ range:'d1' as const,gatesOn:true,mis:null,history:[],points:[],
+ officialTape:null,ohlc:[],busy:false,historyBusy:false,error:null,
+};
+publishTaiexPreviewSnapshot(consistent);
+assert.strictEqual(getTaiexPreviewSnapshot(),consistent,'preview must use the actual live state object');
+publishTaiexPreviewSnapshot(consistent);
+assert.equal(notifications,1,'unchanged source must not replay');
+unsubscribe();
+publishTaiexPreviewSnapshot(null);
+assert.equal(notifications,1,'unmounted editor has no listener');
+assert.equal(getTaiexPreviewSnapshot(),null,'closed market page cannot retain stale live data');
+assert.match(chart,/useSyncExternalStore/);
+assert.match(chart,/publishTaiexPreviewSnapshot/);
+assert.match(chart,/onPress=\{\(\)=>runtime\.onSelect\?\.\(\{id,kind:'card',label:'加權指數走勢圖'/);
+assert.match(chart,/width:measured\.width,height:measured\.height/,'editor must receive the measured chart bounds');
+assert.match(chart,/StyleSheet\.absoluteFillObject/,'selection border cannot alter chart width');
+const surfaces=read('src/components/MarketEditableContent.tsx');
+assert.match(surfaces,/const surfaceStyle=\[style,visual\]/,'other market charts share the actual surface styles');
+console.log('V5.0.37 chart preview real-frame parity, live source snapshot, measured chart geometry and empty graph tests PASS');
