@@ -14,7 +14,8 @@ assert.match(workbench,/<DashboardAssetOverview amount=\{money\(portfolio\.total
 assert.match(workbench,/<DashboardProfitAnalysis items=\{kpis\}/);
 assert.match(workbench,/<DashboardProfitDetail rows=\{rows\}/);
 assert.match(workbench,/<HoldingQuoteCollection rows=\{holdingPreviewRows\}/);
-assert.match(workbench,/<FrameCard title=\{item\.title\} titleVisual=\{targets\['frame-title:'\+item\.key\]\} editorStyle=\{itemConfig\}[\s\S]*?onMeasuredSize=/,'real card preview must retain its measured geometry and use saved title presentation');
+assert.match(workbench,/<FrameCard title=\{item\.title\} titleVisual=\{targets\['frame-title:'\+item\.key\]\} \{\.\.\.frameVisualProps\(itemConfig\)\}[\s\S]*?onMeasuredSize=/,'real card preview must retain its measured geometry and shared saved title/layout presentation');
+assert.match(read('src/components/PageEditorStack.tsx'),/\.\.\.frameVisualProps\(frameConfig\)/,'production and preview must share the same frame style resolver');
 assert.match(workbench,/<LayoutSelectionProvider targets=\{targets\}/);
 assert.doesNotMatch(workbench,/NT\$ 123,456|圖表區|後續工具只掛到此類物件|V3\.2\.1 已建立物件分流/,
  'no fabricated values or development placeholders are allowed in the layout preview');
