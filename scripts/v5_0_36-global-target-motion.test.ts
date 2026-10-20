@@ -46,6 +46,8 @@ assert.match(inspected,/<ItemMotionView effect=\{motion\}/,'real target must ren
 assert.match(inspected,/!needsContainerStyle&&!motion/,'legacy targets must keep their original no-wrapper layout');
 assert.match(read('src/maintenance/MaintenanceWorkbench.tsx'),/<MotionControls value=\{current\.motion\?\?DEFAULT_ITEM_EFFECT\}/);
 assert.match(read('src/components/PageLayoutToolWorkbench.tsx'),/<MotionControls value=\{current\.motion\?\?DEFAULT_ITEM_EFFECT\}/);
-assert.equal(JSON.parse(read('package.json')).version,'5.0.36');
-assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,50036);
+const packageVersion=JSON.parse(read('package.json')).version as string;
+const patch=Number(packageVersion.split('.')[2]);
+assert.ok(packageVersion.startsWith('5.0.')&&Number.isInteger(patch)&&patch>=36,'V5.0.36 global motion must survive later app versions');
+assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,50000+patch,'APK versionCode must match current release');
 console.log('V5.0.36 global mounted target motion: all 42 effects, six pages, inspector skill adapter, persistence, safe defaults and reset PASS');
