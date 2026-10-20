@@ -218,7 +218,7 @@ function IndexEditableChart({children}:{children:ReactNode}){
       ...(measured?{width:measured.width,height:measured.height}:{})})}>
     <View pointerEvents="none" style={{width:'100%'}}>{children}</View>
     {runtime.selectedId===id?<View pointerEvents="none"
-      style={[StyleSheet.absoluteFillObject,{borderWidth:2,borderColor:'#0969DA',borderRadius:8}]}/>:null}
+      style={[StyleSheet.absoluteFill,{borderWidth:2,borderColor:'#0969DA',borderRadius:8}]}/>:null}
   </Pressable>;
 }
 function IndexMetric({id,label,value}:{id:string;label:string;value:string}){
@@ -271,7 +271,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
   },[layoutPreview.active]);
   const today=taipeiIndexDate();
   const display=useMemo(()=>pickTaiexDisplay(mis,history,today,phase),[mis,history,today,phase]);
-  const chartData=useMemo<IndexPoint[]>(()=>range==='d1'?points:
+  const chartData=useMemo<IndexPoint[]>(()=>range==='d1'?[...points]:
     selectTaiexHistory(history,range,today).map(row=>({at:Date.parse(row.date+'T12:00:00Z'),value:row.close})),[range,history,points,today]);
   const oneYearRange=useMemo(()=>taiex52WeekCloseRange(history,today),[history,today]);
   const expectedPreviousDate=useMemo(()=>display?.date?

@@ -82,7 +82,7 @@ export function MarketEditableSurface({id,label,style,children}:{
     onPress={()=>runtime.onSelect?.({id,kind:'card',label})} style={surfaceStyle}>
     <View pointerEvents="none" style={{width:'100%'}}>{children}</View>
     {runtime.selectedId===id?<View pointerEvents="none"
-      style={[StyleSheet.absoluteFillObject,{borderWidth:2,borderColor:'#0969DA',borderRadius:8}]}/>:null}
+      style={[StyleSheet.absoluteFill,{borderWidth:2,borderColor:'#0969DA',borderRadius:8}]}/>:null}
   </Pressable>;
 }
 
