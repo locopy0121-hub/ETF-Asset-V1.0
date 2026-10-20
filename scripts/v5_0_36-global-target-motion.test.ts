@@ -48,7 +48,7 @@ assert.match(read('src/maintenance/MaintenanceWorkbench.tsx'),/<MotionControls v
 assert.match(read('src/components/PageLayoutToolWorkbench.tsx'),/<MotionControls value=\{current\.motion\?\?DEFAULT_ITEM_EFFECT\}/);
 const version=JSON.parse(read('package.json')).version as string;
 const patch=Number(version.split('.')[2]);
-assert.ok(/^5\\.0\\.\\d+$/.test(version)&&patch>=36,'global animation regression remains required after V5.0.36');
+assert.ok(/^5\.0\.\d+$/.test(version)&&patch>=36,'global animation regression remains required after V5.0.36');
 assert.equal(JSON.parse(read('app.json')).expo.version,version);
 assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,50000+patch);
 console.log('V5.0.36 global mounted target motion: all 42 effects, six pages, inspector skill adapter, persistence, safe defaults and reset PASS');
