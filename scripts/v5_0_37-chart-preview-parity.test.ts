@@ -60,7 +60,7 @@ assert.match(chart,/useSyncExternalStore/);
 assert.match(chart,/publishTaiexPreviewSnapshot/);
 assert.match(chart,/onPress=\{\(\)=>runtime\.onSelect\?\.\(\{id,kind:'card',label:'加權指數走勢圖'/);
 assert.match(chart,/width:measured\.width,height:measured\.height/,'editor must receive the measured chart bounds');
-assert.match(chart,/StyleSheet\.absoluteFillObject/,'selection border cannot alter chart width');
+assert.match(chart,/StyleSheet\.absoluteFill/,'selection border cannot alter chart width');
 const surfaces=read('src/components/MarketEditableContent.tsx');
 assert.match(surfaces,/const surfaceStyle=\[style,visual\]/,'other market charts share the actual surface styles');
 console.log('V5.0.37 chart preview real-frame parity, live source snapshot, measured chart geometry and empty graph tests PASS');
