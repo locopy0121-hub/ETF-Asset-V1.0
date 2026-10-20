@@ -13,7 +13,7 @@ const targetEffects=read('src/maintenance/TargetSurfaceEffects.tsx');
 const must=(ok:boolean,message:string)=>{if(!ok)throw new Error(message);};
 
 // Problem 1: upper half renders at actual page width and scales as one surface.
-must(workbench.includes('actualPageWidth=Math.max(280,Math.round(windowWidth-spacing.lg*2))'),'actual page width is not resolved independently');
+must(workbench.includes('actualPageWidth=Math.max(1,Math.round(windowWidth-spacing.lg*2))'),'actual page width is not resolved independently');
 must(workbench.includes("transformOrigin:'top left'"),'real page is not uniformly scaled from top-left');
 must(workbench.includes('transform:[{scale:previewScale}]'),'preview does not uniformly scale the real page');
 must(workbench.includes('scaledPageHeight'),'scaled viewport height missing');
