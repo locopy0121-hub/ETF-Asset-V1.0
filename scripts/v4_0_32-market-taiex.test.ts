@@ -35,7 +35,7 @@ assert.match(screen,/key:'market-index'/);
 assert.ok(screen.indexOf("key:'market-index'")<screen.indexOf("key:'market-search'"),'index header is above search');
 assert.match(registry,/key:'market-index',title:'台股加權指數'/);
 assert.match(ui,/marketVersion/);assert.match(ui,/phase/);
-assert.match(ui,/range==='d1'\?points:/);
+assert.match(ui,/range==='d1'\?\[\.\.\.points\]:/,'readonly official preview must not mutate the shared live index points');
 assert.match(ui,/官方最後收盤/);
 assert.match(ui,/52週收盤高點/);
 assert.match(ui,/TWSE MIS／FMTQIK/);
