@@ -15,7 +15,7 @@ const GROUPS=[
  {id:'color',mainCategory:'appearance',label:'顏色設置',categories:['07','08']},
  {id:'material',mainCategory:'appearance',label:'邊框與材質',categories:['09','10']},
  {id:'static-effects',mainCategory:'appearance',label:'靜態特效',categories:['11','12']},
- {id:'animation',mainCategory:'appearance',label:'動畫特效',categories:['13','14','15']},
+ {id:'animation',mainCategory:'appearance',label:'動畫特效',categories:['11','13','14','15']},
  {id:'state-appearance',mainCategory:'appearance',label:'狀態外觀',categories:['20']},
 
  {id:'position',mainCategory:'layout',label:'定位設置',categories:['04']},

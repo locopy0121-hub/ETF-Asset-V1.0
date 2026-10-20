@@ -3,6 +3,8 @@ import {useEffect,useRef,useState} from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Alert,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
 import {ColorPalettePicker} from '../components/ColorPalettePicker';
+import {MotionControls} from '../components/MotionControls';
+import {DEFAULT_ITEM_EFFECT} from '../domain/displayItemContract';
 import {colorWithAlpha,normalizeFrameEffects} from './frameEffects';
 import {FrameDimensionsToolDetails} from './FrameDimensionsToolDetails';
 import {NativeChildSortToolDetails} from './NativeChildSortToolDetails';
@@ -407,6 +409,10 @@ function ScopedToolDetails({tool,instance,onOpenTool}:{tool:SkillTool;instance?:
     const fieldName=tool.field.slice(7);
     const key=fieldName as keyof TargetOverride;
     const current=mergeTargetAppearance(target.base,maint.getTargetOverride(target.page,target.frameKey,target.id,target.kind));
+    if(fieldName==='motion')return <View style={{marginTop:8,gap:8}}>
+      <Text style={{color:theme.palette.textSecondary,fontSize:12}}>對當前已掛載的 A 元件選擇動畫，不改動帳務、行情原值或點擊功能。關閉時完全沿用原生靜態排版；同類跨頁套用請明確啟用樣式同步。</Text>
+      <MotionControls value={current.motion??DEFAULT_ITEM_EFFECT} onChange={patch=>maint.patchTarget(target.id,{motion:{...(current.motion??DEFAULT_ITEM_EFFECT),...patch}})}/>
+    </View>;
     if(fieldName==='source'){
       const snapshot=inspectLiveTargetSource(target);
       return <View style={{marginTop:8,gap:7}}>

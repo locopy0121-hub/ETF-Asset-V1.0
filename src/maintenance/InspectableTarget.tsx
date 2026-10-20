@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState,useId,type ReactNode} from 'react';
 import {PanResponder,Pressable,StyleSheet,Text,View,type LayoutChangeEvent,type StyleProp,type ViewStyle} from 'react-native';
 import {useEqualGridActive} from '../components/equalGridContext';
+import {ItemMotionView} from '../components/ItemMotion';
 import {equalGridVisualOverride} from '../domain/equalGridLayout';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useMaintenance} from './MaintenanceRuntime';
@@ -200,9 +201,10 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
     Boolean(placementOverride.anchorX&&placementOverride.anchorX!=='free')||
     Boolean(placementOverride.anchorY&&placementOverride.anchorY!=='free');
   const needsContainerStyle=Boolean(wrapperStyle&&Object.keys(wrapperStyle).length>0)||override.opacity!==undefined;
-  if(!engineer.enabled&&!flex&&!hasSpatialOverride&&!needsContainerStyle)
+  const motion=target.page!=='settings'&&override.motion?.kind!=='none'?override.motion:undefined;
+  if(!engineer.enabled&&!flex&&!hasSpatialOverride&&!needsContainerStyle&&!motion)
     return <>{children(resolvedAppearance,customized,override,{...renderContext,wrapped:false})}</>;
-  return <View ref={node} collapsable={false} onLayout={measureCurrent}
+  const actualSurface=<View ref={node} collapsable={false} onLayout={measureCurrent}
     {...(active&&selected?responder.panHandlers:{})}
     style={[placement,{position:'relative'},layoutStyle,{opacity:appearance.opacity},explicitWidth,spatial,wrapperStyle]}>
     {materialActive?<TargetBackdrop appearance={appearance} start={resolvedAppearance.backgroundColor}
@@ -230,6 +232,14 @@ export function InspectableTarget({target,frame,children,flex=false,layoutStyle}
       <Text style={{fontSize:15}}>🔧</Text>
     </Pressable>:null}
   </View>;
+  if(!motion)return actualSurface;
+  // A can be any mounted text, value, card, button, or chart surface. Never animate
+  // layout dimensions or financial source data. Reuse the same native appearance.
+  const liveValue=target.properties.map(property=>property.value).join('|')||target.label;
+  const toneNumber=displayTone==='gain'?1:displayTone==='loss'?-1:0;
+  return <ItemMotionView effect={motion} value={liveValue} numeric={toneNumber}>
+    {actualSurface}
+  </ItemMotionView>;
 }
 const styles=StyleSheet.create({
   metricPlacement:{flexGrow:1,flexShrink:0,flexBasis:'46%',minWidth:0,maxWidth:'100%',alignSelf:'stretch'},

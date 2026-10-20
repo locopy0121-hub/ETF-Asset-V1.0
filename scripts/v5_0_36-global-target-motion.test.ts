@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {DEFAULT_ITEM_EFFECT,ITEM_ALL_EFFECT_KINDS} from '../src/domain/displayItemContract';
+import {normalizeTargetOverride,normalizeTargetMap,resetTargetVisualOverride,targetToolSupported,mergeTargetAppearance,TARGET_APPEARANCE} from '../src/maintenance/inspectionModel';
+import {createInitialDisplayState,mergeDisplayState} from '../src/editor/editorModel';
+import {AB_PROPERTY_GROUPS} from '../src/maintenance/abPropertyModel';
+import {resolveSkillAdapter} from '../src/maintenance/skillAdapters';
+import {COMPLETE_ENGINEER_SKILLS} from '../src/maintenance/fullSkillCatalog';
+const read=(p:string)=>readFileSync(p,'utf8');
+const effect={...DEFAULT_ITEM_EFFECT,kind:'quote-flip' as const,trigger:'change' as const,speed:'fast' as const,intensity:'strong' as const,durationMs:1700,strengthPercent:132,loop:true};
+const migrated=normalizeTargetOverride({textColor:'#ffffff',motion:effect});
+assert.equal(migrated.motion?.kind,'quote-flip');
+assert.equal(migrated.motion?.durationMs,1200);
+assert.equal(migrated.motion?.strengthPercent,100);
+assert.equal(migrated.motion?.loop,true);
+assert.equal(migrated.textColor,'#FFFFFF');
+const restored=normalizeTargetOverride({motion:{kind:'javascript-injection',trigger:'bogus',loop:'true',durationMs:-10}});
+assert.equal(restored.motion?.kind,'none');
+assert.equal(restored.motion?.trigger,'change');
+assert.equal(restored.motion?.loop,false);
+assert.equal(restored.motion?.durationMs,100);
+const previous=normalizeTargetOverride({opacity:.7});
+assert.equal(previous.motion,undefined,'legacy layouts must not activate animation');
+assert.equal(resetTargetVisualOverride(migrated).motion,undefined,'reset must remove motion without touching source');
+const pages=createInitialDisplayState();
+for(const page of ['home','portfolio','market','ledger','dividend','ai'] as const){
+ const result=mergeDisplayState({[page]:{layoutTargets:{'text:root/symbol':migrated}}});
+ assert.equal(result[page].layoutTargets?.['text:root/symbol']?.motion?.kind,'quote-flip','persist animation in '+page);
+}
+const source=normalizeTargetMap({'home:asset-dashboard':{'metric:quote':migrated}});
+assert.equal(source['home:asset-dashboard']?.['metric:quote']?.motion?.kind,'quote-flip');
+const found=COMPLETE_ENGINEER_SKILLS.flatMap(group=>group.tools).find(tool=>tool.id==='target-motion');
+assert.ok(found,'central engineer must expose a real editable target animation tool');
+assert.equal(found?.field,'target:motion');
+assert.ok(AB_PROPERTY_GROUPS.find(group=>group.id==='animation')?.tools.some(tool=>tool.id==='target-motion'));
+for(const kind of ['metric','text','value','action','quote-card','wall','portfolio-list','control','generic','prefix','frame'] as const){
+ assert.ok(targetToolSupported(kind,'target:motion'),kind+' must support animation');
+ const adapter=resolveSkillAdapter(found!,{scope:'target',kind,page:'home',frameKey:'asset-dashboard'});
+ assert.equal(adapter.status,'active',kind+' runtime editor must be operable');
+}
+assert.equal(ITEM_ALL_EFFECT_KINDS.length,42);
+for(const kind of ITEM_ALL_EFFECT_KINDS)assert.equal(normalizeTargetOverride({motion:{...effect,kind}}).motion?.kind,kind);
+const inspected=read('src/maintenance/InspectableTarget.tsx');
+assert.match(inspected,/override\.motion/,'actual mounted target must read its effective motion override');
+assert.match(inspected,/<ItemMotionView effect=\{motion\}/,'real target must render its animation');
+assert.match(inspected,/!needsContainerStyle&&!motion/,'legacy targets must keep their original no-wrapper layout');
+assert.match(read('src/maintenance/MaintenanceWorkbench.tsx'),/<MotionControls value=\{current\.motion\?\?DEFAULT_ITEM_EFFECT\}/);
+assert.match(read('src/components/PageLayoutToolWorkbench.tsx'),/<MotionControls value=\{current\.motion\?\?DEFAULT_ITEM_EFFECT\}/);
+assert.equal(JSON.parse(read('package.json')).version,'5.0.36');
+assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,50036);
+console.log('V5.0.36 global mounted target motion: all 42 effects, six pages, inspector skill adapter, persistence, safe defaults and reset PASS');

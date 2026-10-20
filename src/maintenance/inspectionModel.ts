@@ -5,6 +5,7 @@ import type {FrameEditorConfig,PageDisplayConfig} from '../editor/editorModel';
 import type {FinancialTone,TargetGeometry,SpatialOffset} from './workspaceModel';
 import {normalizeConditionalStyles,type ConditionalStyleMap} from './conditionalVisual';
 import type {DisplayUnit} from './numberDisplay';
+import {DEFAULT_ITEM_EFFECT,ITEM_ALL_EFFECT_KINDS,ITEM_ALL_EFFECT_TRIGGERS,ITEM_EFFECT_INTENSITIES,ITEM_EFFECT_SPEEDS,type ItemEffectConfig} from '../domain/displayItemContract';
 
 // Read-only live snapshot comes from the *rendered App*, not a shadow mock.
 export type TargetKind='metric'|'text'|'value'|'action'|'quote-card'|'wall'|'portfolio-list'|'control'|'generic'|'prefix'|'frame';
@@ -37,6 +38,7 @@ export type TargetAppearance=Readonly<{
   labelFontStyle:'normal'|'italic';captionFontStyle:'normal'|'italic';
   labelLetterSpacing:number;captionLetterSpacing:number;labelLineHeight:number;captionLineHeight:number;
   letterSpacing:number;lineHeight:number;prefixText:string;prefixGap:number;prefixOffsetX:number;prefixOffsetY:number;
+  motion?:ItemEffectConfig; // Animation-only override for any mounted visual target; never a source value.
   align:'left'|'center'|'right';useProfitColor:boolean;
   labelText:string;captionText:string;
 }> & SpatialOffset;
@@ -70,6 +72,21 @@ export const TARGET_APPEARANCE:TargetAppearance={
   prefixText:'',prefixGap:8,prefixOffsetX:0,prefixOffsetY:0,
 };
 export const mergeTargetAppearance=(base:TargetAppearance,custom?:TargetOverride):TargetAppearance=>({...base,...(custom??{})});
+/** Normalize the full 42-effect catalog without altering frozen legacy wall effect types. */
+export function normalizeTargetMotion(raw:unknown):ItemEffectConfig{
+  const value=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw as Record<string,unknown>:{};
+  const kind=ITEM_ALL_EFFECT_KINDS.includes(value.kind as typeof ITEM_ALL_EFFECT_KINDS[number])?
+    value.kind as ItemEffectConfig['kind']:DEFAULT_ITEM_EFFECT.kind;
+  const trigger=ITEM_ALL_EFFECT_TRIGGERS.includes(value.trigger as typeof ITEM_ALL_EFFECT_TRIGGERS[number])?
+    value.trigger as ItemEffectConfig['trigger']:DEFAULT_ITEM_EFFECT.trigger;
+  const speed=ITEM_EFFECT_SPEEDS.includes(value.speed as typeof ITEM_EFFECT_SPEEDS[number])?
+    value.speed as ItemEffectConfig['speed']:DEFAULT_ITEM_EFFECT.speed;
+  const intensity=ITEM_EFFECT_INTENSITIES.includes(value.intensity as typeof ITEM_EFFECT_INTENSITIES[number])?
+    value.intensity as ItemEffectConfig['intensity']:DEFAULT_ITEM_EFFECT.intensity;
+  const durationMs=clamp(value.durationMs,100,1200,700);
+  const strengthPercent=clamp(value.strengthPercent,0,100,50);
+  return {kind,trigger,speed,intensity,durationMs,strengthPercent,loop:value.loop===true};
+}
 export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return {};
   const v=raw as Record<string,unknown>,o:Record<string,unknown>={};
@@ -103,6 +120,7 @@ export function normalizeTargetOverride(raw:unknown):TargetOverride {
   if(v.anchorY==='free'||v.anchorY==='top'||v.anchorY==='center'||v.anchorY==='bottom')o.anchorY=v.anchorY;
   if(v.profitToneOverride==='auto'||v.profitToneOverride==='gain'||v.profitToneOverride==='loss'||v.profitToneOverride==='neutral')o.profitToneOverride=v.profitToneOverride;
   if(v.conditionalStyles!==undefined)o.conditionalStyles=normalizeConditionalStyles(v.conditionalStyles);
+  if(v.motion!==undefined)o.motion=normalizeTargetMotion(v.motion);
   if(v.tapAction==='none'||v.tapAction==='emphasize')o.tapAction=v.tapAction;
   if(v.thresholdOperator==='gte'||v.thresholdOperator==='lte')o.thresholdOperator=v.thresholdOperator;
   if(['original','yuan','thousand','ten-thousand','million'].includes(String(v.displayUnit)))o.displayUnit=v.displayUnit;
@@ -133,7 +151,7 @@ export const VISUAL_TARGET_KEYS:readonly (keyof TargetAppearance)[]=[
   'gradientEndColor','gradientEndOpacity','gradientMidColor','gradientMidOpacity','gradientEndProfitColor','gradientMidProfitColor',
   'gradientMidEnabled','gradientMidStop','borderStyle','marginVertical','marginHorizontal',
   'shadowEnabled','shadowColor','shadowProfitColor','shadowOpacity','shadowBlur','shadowOffsetX','shadowOffsetY',
-  'glowEnabled','glowColor','glowProfitColor','glowOpacity','glowWidth',
+  'glowEnabled','glowColor','glowProfitColor','glowOpacity','glowWidth','motion',
 ];
 export function resetTargetVisualOverride(override:TargetOverride):TargetOverride {
   const next={...override};for(const field of VISUAL_TARGET_KEYS)delete next[field];return normalizeTargetOverride(next);
@@ -153,6 +171,7 @@ export const TARGET_VISUAL_PRESETS={
 } as const satisfies Record<string,TargetOverride>;
 export function targetToolSupported(kind:TargetKind,field:string):boolean {
   const nativeMaterial=['metric','text','value','prefix','generic','frame'].includes(kind);
+  if(field==='target:motion')return true; // real mounted A targets, regardless of visual component kind
   if(field==='target:source')return true; // actual mounted-target scope is enforced by skillAdapters
  if(field==='target:numberFormat')return kind==='metric'||kind==='value';
   if(field==='target:tapAction'||field==='target:tapSwipeGuard'||field==='target:threshold')return kind==='metric';

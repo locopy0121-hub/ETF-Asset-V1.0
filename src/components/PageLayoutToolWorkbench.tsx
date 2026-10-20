@@ -1092,6 +1092,9 @@ function TargetTools({kind,id,current,actualWidth,actualHeight,open,toggle,patch
       <SwitchRow label="說明損益色" value={current.captionProfitColor===true} onChange={captionProfitColor=>patch({captionProfitColor})}/>
       <AlignRow value={current.align} onChange={align=>patch({align})}/>
     </Accordion>:null}
+    <Accordion title="動畫" subtitle="此真實文字／數值／卡片元件可獨立選用 42 種動畫" open={open==='motion'} onPress={()=>toggle('motion')}>
+      <MotionControls value={current.motion??DEFAULT_ITEM_EFFECT} onChange={next=>patch({motion:{...(current.motion??DEFAULT_ITEM_EFFECT),...next}})}/>
+    </Accordion>
     <Pressable onPress={reset} style={styles.reset}><Text style={styles.resetText}>恢復目前物件排版</Text></Pressable>
   </View>;
 }
