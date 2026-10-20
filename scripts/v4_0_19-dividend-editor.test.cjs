@@ -24,7 +24,9 @@ assert.match(workbench,/selectDividendPreview\(dividendAction/);
 assert.match(workbench,/DIVIDEND_EDITOR_CATALOG\[frame\.key\]/);
 assert.match(workbench,/selection\.id\.startsWith\('dividend:'\)/);
 assert.match(workbench,/id\.startsWith\('dividend:metric:'\)/);
-assert.match(workbench,/<FrameCard title=\{item\.title\} titleVisual=\{targets\['frame-title:'\+item\.key\]\} editorStyle=\{itemConfig\}[\s\S]*?onMeasuredSize=/);
+assert.match(workbench,/<FrameCard title=\{item\.title\} titleVisual=\{targets\['frame-title:'\+item\.key\]\} \{\.\.\.frameVisualProps\(itemConfig\)\}[\s\S]*?onMeasuredSize=/);
+assert.match(stack,/\.\.\.frameVisualProps\(frameConfig\)/,'live frame must use same visual resolver as preview');
+assert.match(read('src/editor/frameVisualParity.ts'),/editorStyle:frame/,'shared frame style must retain original complete editor config');
 
 for(const key of ['dividend-summary','dividend-calendar','dividend-agenda','dividend-list','annual-trend'])
   assert.match(catalog,new RegExp("'"+key+"':\\["));
