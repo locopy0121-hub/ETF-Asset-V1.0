@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
@@ -7,6 +7,23 @@ import { colors, radius, spacing } from '../theme/tokens';
 
 type Hsv={h:number;s:number;v:number};
 type PickerMode='wheel'|'classic'|'palette';
+type PaletteProps={
+  label:string; value:string; onChange:(value:string)=>void;
+  opacity?:number|undefined; onOpacityChange?:((value:number)=>void)|undefined;
+  profitColorEnabled?:boolean; onProfitColorChange?:(value:boolean)=>void;
+};
+type PaletteHost={open:(props:PaletteProps)=>void;close:()=>void};
+const PaletteContext=createContext<PaletteHost|null>(null);
+
+// Native Modal lives above SettingsScreen, so live market rerenders cannot close it.
+export function ColorPaletteProvider({children}:{children:ReactNode}){
+  const [active,setActive]=useState<PaletteProps|null>(null);
+  const host=useMemo<PaletteHost>(()=>({open:setActive,close:()=>setActive(null)}),[]);
+  return <PaletteContext.Provider value={host}>
+    {children}
+    {active?<ColorPalettePicker key={active.label} {...active} modalHost/>:null}
+  </PaletteContext.Provider>;
+}
 
 const WHEEL_STEPS=18;
 const CLASSIC_COLORS=[
@@ -68,15 +85,9 @@ export function ColorPalettePicker({
   onOpacityChange,
   profitColorEnabled,
   onProfitColorChange,
-}:{
-  label:string;
-  value:string;
-  onChange:(value:string)=>void;
-  opacity?:number|undefined;
-  onOpacityChange?:((value:number)=>void)|undefined;
-  profitColorEnabled?:boolean;
-  onProfitColorChange?:(value:boolean)=>void;
-}){
+  modalHost=false,
+}:PaletteProps & {modalHost?:boolean}){
+  const host=useContext(PaletteContext);
   const settings=useSettingsRuntime();
   const [expanded,setExpanded]=useState(false);
   const [mode,setMode]=useState<PickerMode>('wheel');
@@ -84,6 +95,7 @@ export function ColorPalettePicker({
   const [original,setOriginal]=useState(()=>normalizeHex(value));
   const [wheelSize,setWheelSize]=useState(1);
   const [barWidth,setBarWidth]=useState(1);
+  useEffect(()=>{if(modalHost)setExpanded(true);},[modalHost]);
 
   useEffect(()=>{
     if(!expanded){
@@ -125,6 +137,10 @@ export function ColorPalettePicker({
   }),[wheelSize,hsv.h,hsv.s,hsv.v]);
 
   const openPicker=()=>{
+    if(host&&!modalHost){
+      host.open({label,value,onChange,opacity,onOpacityChange,profitColorEnabled,onProfitColorChange});
+      return;
+    }
     const next=normalizeHex(value);
     setOriginal(next);
     setDraft(next);
@@ -134,11 +150,13 @@ export function ColorPalettePicker({
   const cancel=()=>{
     setDraft(original);
     setExpanded(false);
+    if(modalHost)host?.close();
   };
   const confirm=()=>{
     onChange(draft);
     setOriginal(draft);
     setExpanded(false);
+    if(modalHost)host?.close();
   };
   const setBrightness=(x:number)=>{
     const ratio=clamp(x/(barWidth||1),0,1);
@@ -147,7 +165,7 @@ export function ColorPalettePicker({
   const wheelMarkerLeft=50+Math.cos(hsv.h*Math.PI/180)*(hsv.s/100)*50;
   const wheelMarkerTop=50+Math.sin(hsv.h*Math.PI/180)*(hsv.s/100)*50;
 
-  return <View style={styles.block}>
+  return <View style={modalHost?styles.hostAnchor:styles.block}>
     <View style={styles.titleRow}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.preview,{backgroundColor:value}]}/>
@@ -242,6 +260,7 @@ function PaletteBar({colors:barColors,onLayout,onPick,children}:{colors:readonly
 
 const styles=StyleSheet.create({
   block:{gap:6,paddingVertical:5},
+  hostAnchor:{position:'absolute',top:0,left:0,width:0,height:0,overflow:'hidden'},
   titleRow:{flexDirection:'row',alignItems:'center',gap:8},
   label:{fontSize:10,fontWeight:'900',color:colors.text,flex:1},
   hint:{fontSize:9,color:colors.textSecondary,flex:1},

@@ -713,6 +713,18 @@ export function SettingsScreen(){
     </Panel>;
   }
 
+  function ProfitColorPanel(){
+    const d=settings.prefs.display;
+    return <Panel title="損益顏色">
+      <ChoiceRow label="正負對應" options={[{key:'red-up-green-down',label:'正值用獲利色'},{key:'green-up-red-down',label:'正值用虧損色'}]} value={d.profitColorMode} onChange={profitColorMode=>settings.patchDisplay({profitColorMode:profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down'})}/>
+      <Text style={styles.note}>所有顏色改由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
+      <ColorPalettePicker label="獲利 / 上漲色" value={d.gainColor} onChange={gainColor=>settings.patchDisplay({gainColor})}/>
+      <ColorPalettePicker label="虧損 / 下跌色" value={d.lossColor} onChange={lossColor=>settings.patchDisplay({lossColor})}/>
+      <ColorPalettePicker label="平盤 / 中性色" value={d.neutralColor} onChange={neutralColor=>settings.patchDisplay({neutralColor})}/>
+      <Text style={styles.note}>設定集中保存；各顯示 Consumer 應使用同一損益色來源，不自行硬編碼。</Text>
+    </Panel>;
+  }
+
   return <SafeAreaView edges={['top']} style={[styles.root,{backgroundColor:'transparent'}]}>
     <View style={[styles.header,{backgroundColor:theme.palette.surface,borderBottomColor:theme.palette.border}]}>
       <Text style={[styles.eyebrow,{color:theme.palette.primary}]}>TF ASSET</Text>
@@ -753,19 +765,6 @@ export function SettingsScreen(){
   </SafeAreaView>;
 }
 
-
-function ProfitColorPanel(){
-  const settings=useSettingsRuntime();
-  const d=settings.prefs.display;
-  return <Panel title="損益顏色">
-    <ChoiceRow label="正負對應" options={[{key:'red-up-green-down',label:'正值用獲利色'},{key:'green-up-red-down',label:'正值用虧損色'}]} value={d.profitColorMode} onChange={profitColorMode=>settings.patchDisplay({profitColorMode:profitColorMode==='green-up-red-down'?'green-up-red-down':'red-up-green-down'})}/>
-    <Text style={styles.note}>所有顏色改由調色盤直接選擇，不使用固定色塊或手動色碼。</Text>
-    <ColorPalettePicker label="獲利 / 上漲色" value={d.gainColor} onChange={gainColor=>settings.patchDisplay({gainColor})}/>
-    <ColorPalettePicker label="虧損 / 下跌色" value={d.lossColor} onChange={lossColor=>settings.patchDisplay({lossColor})}/>
-    <ColorPalettePicker label="平盤 / 中性色" value={d.neutralColor} onChange={neutralColor=>settings.patchDisplay({neutralColor})}/>
-    <Text style={styles.note}>設定集中保存；各顯示 Consumer 應使用同一損益色來源，不自行硬編碼。</Text>
-  </Panel>;
-}
 
 type BrokerDraft={
   commissionRatePct:string;

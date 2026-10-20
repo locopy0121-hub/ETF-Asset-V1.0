@@ -37,6 +37,7 @@ import {MarketResearchScreen} from './src/screens/MarketResearchScreen';
 import { LedgerScreen } from './src/screens/LedgerScreen';
 import { PortfolioScreen } from './src/screens/PortfolioScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import {ColorPaletteProvider} from './src/components/ColorPalettePicker';
 import { SettingsRuntimeProvider, useSettingsRuntime } from './src/settings/SettingsRuntime';
 import { deriveAiUiState, shouldRefreshAiNews } from './src/settings/settingsControlBehavior';
 import { colors, spacing } from './src/theme/tokens';
@@ -85,6 +86,7 @@ export default function App() {
     <MarketRuntimeProvider><WatchlistRuntimeProvider>
       <AiNewsRuntimeProvider>
       <SettingsRuntimeProvider>
+      <ColorPaletteProvider>
       <ThemeRuntimeProvider>
       <MonitorSettingsRuntimeProvider>
       <WidgetSettingsRuntimeProvider>
@@ -98,6 +100,7 @@ export default function App() {
       </WidgetSettingsRuntimeProvider>
       </MonitorSettingsRuntimeProvider>
       </ThemeRuntimeProvider>
+      </ColorPaletteProvider>
       </SettingsRuntimeProvider>
       </AiNewsRuntimeProvider>
     </WatchlistRuntimeProvider></MarketRuntimeProvider>
