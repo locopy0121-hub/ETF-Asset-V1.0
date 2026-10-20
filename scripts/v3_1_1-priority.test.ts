@@ -7,8 +7,8 @@ assert.deepEqual(TOOLBOX_MAIN_CATEGORIES.map(x=>x.label),['版面設置','外觀
 assert.equal(new Set(TOOLBOX_MAIN_CATEGORIES.map(x=>x.id)).size,4);
 assert.ok(AB_PROPERTY_GROUPS.some(x=>x.id==='size'&&x.mainCategory==='appearance'));
 assert.ok(AB_PROPERTY_GROUPS.some(x=>x.id==='charts'&&x.mainCategory==='insert'));
-assert.equal(AB_PROPERTY_BASE_COUNT,184);
-assert.equal(new Set(AB_PROPERTY_TOOL_IDS).size,184);
+assert.equal(AB_PROPERTY_BASE_COUNT,185,'inherited 184 tools plus the global mounted-target animation adapter');
+assert.equal(new Set(AB_PROPERTY_TOOL_IDS).size,185,'all central tool IDs must remain unique');
 assert.ok(CHART_LIBRARY.length>=36);
 assert.ok(NATIVE_CHART_STYLES.some(x=>x.id==='candlestick'));
 assert.ok(NATIVE_CHART_STYLES.some(x=>x.id==='ohlc'));
