@@ -1,4 +1,4 @@
-import type {TaiexDailyOhlc,TaiexIntraday} from './taiexIndexSource';
+import type {TaiexDailyOhlc,TaiexIntraday} from './taiexIndex';
 import type {IndexClose,IndexPoint,IndexRange,IndexSnapshot} from './taiexIndex';
 
 // Ephemeral read-only mirror. No editor fetch or write of a financial source.

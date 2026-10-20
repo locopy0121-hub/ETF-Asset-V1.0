@@ -261,7 +261,7 @@ export function TaiexIndexCard({marketVersion,phase}:{
   const lastReq=useRef(0),inFlight=useRef(false);
   const today=taipeiIndexDate();
   const display=useMemo(()=>pickTaiexDisplay(mis,history,today,phase),[mis,history,today,phase]);
-  const chartData=useMemo<IndexPoint[]>(()=>range==='d1'?points:
+  const chartData=useMemo<readonly IndexPoint[]>(()=>range==='d1'?points:
     selectTaiexHistory(history,range,today).map(row=>({at:Date.parse(row.date+'T12:00:00Z'),value:row.close})),[range,history,points,today]);
   const oneYearRange=useMemo(()=>taiex52WeekCloseRange(history,today),[history,today]);
   const expectedPreviousDate=useMemo(()=>display?.date?
