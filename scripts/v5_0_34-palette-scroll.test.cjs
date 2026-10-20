@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {spawnSync}=require('node:child_process');
+const picker=fs.readFileSync('src/components/ColorPalettePicker.tsx','utf8');
+assert.match(picker,/<ScrollView style=\{styles.pickerScroll\} contentContainerStyle=\{styles.pickerBody\}/,'scroll must own all palette controls');
+assert.match(picker,/pickerScroll:\{flex:1\}/,'scroll viewport must occupy available height');
+const content=picker.match(/pickerBody:\{([^}]+)\}/)?.[1];
+assert.ok(content,'scroll content styling missing');
+assert.doesNotMatch(content,/\bflex\s*:/,'scroll content must not be fixed to screen height');
+assert.match(content,/paddingBottom:spacing\.lg\+40/,'brightness bar requires bottom clearance');
+assert.match(picker,/<\/ScrollView>\s*<\/View>\s*<\/Modal>/,'modal action header must remain outside scrolling content');
+const run=spawnSync(process.execPath,['scripts/v5_0_33-palette-interaction.test.cjs'],{stdio:'inherit'});
+assert.equal(run.status,0,'actual React modal, scroll, cancel/save, back and drag interaction must pass');
+console.log('V5.0.34 small viewport scroll and retained palette interaction PASS');

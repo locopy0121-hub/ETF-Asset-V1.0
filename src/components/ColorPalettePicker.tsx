@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutChangeEvent, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
 import { buildSystemColorChoices } from '../settings/systemColorPalette';
@@ -214,7 +214,7 @@ export function ColorPalettePicker({
           ] as const).map(item=><Pressable key={item.key} onPress={()=>setMode(item.key)} style={[styles.modeTab,mode===item.key&&styles.modeTabActive]}><Text style={[styles.modeText,mode===item.key&&styles.modeTextActive]}>{item.label}</Text></Pressable>)}
         </View>
 
-        <View style={styles.pickerBody}>
+        <ScrollView style={styles.pickerScroll} contentContainerStyle={styles.pickerBody} showsVerticalScrollIndicator={true}>
           <Text style={styles.sectionTitle}>系統損益色</Text>
           <View style={styles.systemColorRow}>{systemColors.map(item=><Pressable key={item.key} onPress={()=>setDraft(item.color)} style={styles.systemColorChoice}><View style={[styles.systemColorSwatch,{backgroundColor:item.color}]}/><Text style={styles.systemColorLabel}>{item.label}</Text></Pressable>)}</View>
           {mode==='wheel'?<>
@@ -238,7 +238,7 @@ export function ColorPalettePicker({
             <ColorGrid colors={THEME_COLORS} selected={draft} onPick={setDraft}/>
             <Text style={styles.noInputNote}>全程點選、拖曳與滑動；不提供 HEX、RGB、HSV 或任何文字輸入欄位。</Text>
           </>:null}
-        </View>
+        </ScrollView>
       </View>
     </Modal>:null}
   </View>;
@@ -295,7 +295,8 @@ const styles=StyleSheet.create({
   modeTabActive:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border},
   modeText:{fontSize:11,fontWeight:'800',color:colors.textSecondary},
   modeTextActive:{color:colors.primary},
-  pickerBody:{flex:1,padding:spacing.lg,gap:14},
+  pickerScroll:{flex:1},
+  pickerBody:{padding:spacing.lg,paddingBottom:spacing.lg+40,gap:14},
   wheel:{width:'100%',aspectRatio:1,maxWidth:360,alignSelf:'center',borderRadius:999,overflow:'hidden',backgroundColor:'#FFFFFF',position:'relative',borderWidth:1,borderColor:colors.border},
   wheelRow:{flex:1,flexDirection:'row'},
   wheelCell:{flex:1},

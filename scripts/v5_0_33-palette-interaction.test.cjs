@@ -8,7 +8,7 @@ global.IS_REACT_ACT_ENVIRONMENT=true;
 // Use real React state, effects, and element reconciliation, but no Android emulator.
 let responderCreates=0;
 const fakeNative={
- View:'View',Text:'Text',Pressable:'Pressable',Modal:'Modal',
+ View:'View',Text:'Text',Pressable:'Pressable',Modal:'Modal',ScrollView:'ScrollView',
  StyleSheet:{hairlineWidth:1,create:styles=>styles},
  PanResponder:{create:handlers=>{
    responderCreates++;
@@ -63,6 +63,11 @@ const selectedCell=color=>screen.root.findAllByType('Pressable').find(x=>
  assert.equal(modals().length,0,'picker must start closed');
  press('開啟調色盤');
  assert.equal(modals().length,1,'tap must show native modal');
+ const scroll=screen.root.findAllByType('ScrollView');
+ assert.equal(scroll.length,1,'color picker must provide a scrollable body on small displays');
+ assert.equal(scroll[0].props.style.flex,1,'picker scroll viewport must use available height');
+ assert.ok(scroll[0].props.contentContainerStyle.paddingBottom>=32,'brightness bar must clear system navigation area');
+ assert.equal(scroll[0].props.contentContainerStyle.flex,undefined,'scroll content cannot use flex:1 or clipping persists');
  await act(async()=>{screen.update(UI(1,saved));});
  assert.equal(modals().length,1,'market-triggered parent rerender must not dismiss modal');
 

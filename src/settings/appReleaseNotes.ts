@@ -1,10 +1,10 @@
 /** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.33',androidVersionCode:50033,headline:'損益色輪連續拖曳與調色盤互動修護',
+ version:'5.0.34',androidVersionCode:50034,headline:'調色盤小螢幕操作與亮度控制修護',
  changes:[
-  {id:'palette-stable-drag',title:'色輪拖曳時維持同一手勢處理器',detail:'修正選色過程每次 HSV 更新都重建 PanResponder 的問題，保持手勢連續且使用最新色輪尺寸與亮度。'},
-  {id:'palette-interaction-tests',title:'補上調色盤真正開關與儲存互動回歸',detail:'在 React 測試執行時驗證調色盤開啟、父層重新渲染不關閉、選色確認寫入、取消不寫入、Android 返回關閉以及拖曳穩定性。'},
-  {id:'palette-protected-page',title:'保留控制中心原有結構與統一損益色設定',detail:'設定頁僅更新版本識別；既有損益顏色選項、背景選色元件、設定儲存與受保護分類不更動。'},
+  {id:'palette-scroll-small-screen',title:'調色盤內容支援小螢幕垂直捲動',detail:'調色盤內的色輪、系統損益色、經典色票及亮度條改由可捲動內容承載，避免較短 Android 螢幕裁切底部控制項。'},
+  {id:'palette-scroll-footer-space',title:'保留亮度條底部可操作空間',detail:'捲動區底部增加留白並移除內容的固定 flex 高度，防止色盤最後一列遭系統導航列或視窗高度限制遮擋。'},
+  {id:'palette-scroll-interaction-gate',title:'維持色輪拖曳與開關儲存互動回歸',detail:'加入 React Runtime 捲動容器驗證，並繼續檢查開啟、取消、完成、返回、父層重繪及色輪手勢處理器不重建。'},
  ],
- notice:'本版為 QA 驗收版；Android 真機色輪觸控、調色盤呈現及安裝更新仍須驗證。控制中心原有分類、版面和設定資料結構維持不變。',
+ notice:'本版為 QA 驗收版，Android 真機不同顯示尺寸下的捲動與亮度條操作仍須實測。受保護控制中心僅更新版本識別，既有設定資料及行情核心未變更。',
 } as const;
