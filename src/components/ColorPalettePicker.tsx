@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LayoutChangeEvent, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useSettingsRuntime } from '../settings/SettingsRuntime';
@@ -95,6 +95,8 @@ export function ColorPalettePicker({
   const [original,setOriginal]=useState(()=>normalizeHex(value));
   const [wheelSize,setWheelSize]=useState(1);
   const [barWidth,setBarWidth]=useState(1);
+  // Keep the responder object mounted through every HSV update during a drag.
+  const wheelState=useRef({size:1,brightness:100});
   useEffect(()=>{if(modalHost)setExpanded(true);},[modalHost]);
 
   useEffect(()=>{
@@ -107,6 +109,7 @@ export function ColorPalettePicker({
 
   const systemColors=useMemo(()=>buildSystemColorChoices(settings.prefs.display),[settings.prefs.display.profitColorMode,settings.prefs.display.gainColor,settings.prefs.display.lossColor,settings.prefs.display.neutralColor]);
   const hsv=useMemo(()=>hexToHsv(draft),[draft]);
+  wheelState.current={size:wheelSize,brightness:hsv.v};
   const wheelRows=useMemo(()=>Array.from({length:WHEEL_STEPS},(_,row)=>
     Array.from({length:WHEEL_STEPS},(_,col)=>{
       const x=((col+.5)/WHEEL_STEPS)*2-1;
@@ -121,20 +124,21 @@ export function ColorPalettePicker({
 
   const updateDraftHsv=(next:Hsv)=>setDraft(hsvToHex(next));
   const pickWheel=(x:number,y:number)=>{
-    const size=Math.max(1,wheelSize);
+    const {size:width,brightness}=wheelState.current;
+    const size=Math.max(1,width);
     const dx=(x-size/2)/(size/2);
     const dy=(y-size/2)/(size/2);
     const radial=Math.sqrt(dx*dx+dy*dy);
     if(radial>1.08)return;
     const hue=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
-    updateDraftHsv({h:hue,s:clamp(radial*100,0,100),v:hsv.v});
+    updateDraftHsv({h:hue,s:clamp(radial*100,0,100),v:brightness});
   };
   const wheelResponder=useMemo(()=>PanResponder.create({
     onStartShouldSetPanResponder:()=>true,
     onMoveShouldSetPanResponder:()=>true,
     onPanResponderGrant:event=>pickWheel(event.nativeEvent.locationX,event.nativeEvent.locationY),
     onPanResponderMove:event=>pickWheel(event.nativeEvent.locationX,event.nativeEvent.locationY),
-  }),[wheelSize,hsv.h,hsv.s,hsv.v]);
+  }),[]);
 
   const openPicker=()=>{
     if(host&&!modalHost){
