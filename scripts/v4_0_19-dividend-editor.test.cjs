@@ -24,7 +24,7 @@ assert.match(workbench,/selectDividendPreview\(dividendAction/);
 assert.match(workbench,/DIVIDEND_EDITOR_CATALOG\[frame\.key\]/);
 assert.match(workbench,/selection\.id\.startsWith\('dividend:'\)/);
 assert.match(workbench,/id\.startsWith\('dividend:metric:'\)/);
-assert.match(workbench,/<FrameCard title=\{item\.title\} titleVisual=\{targets\['frame-title:'\+item\.key\]\} editorStyle=\{itemConfig\}[\s\S]*?onMeasuredSize=/);
+assert.match(workbench,/<FrameCard title=\{item\.title\} layout=\{itemConfig\.layout\} appearance=\{itemConfig\.appearance\} titleVisual=\{targets\['frame-title:'\+item\.key\]\} editorStyle=\{itemConfig\}[\s\S]*?onMeasuredSize=/);
 
 for(const key of ['dividend-summary','dividend-calendar','dividend-agenda','dividend-list','annual-trend'])
   assert.match(catalog,new RegExp("'"+key+"':\\["));
