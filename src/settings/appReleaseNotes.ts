@@ -1,10 +1,11 @@
 /** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.36',androidVersionCode:50036,headline:'全局元件行情動畫應用',
+ version:'5.0.37',androidVersionCode:50037,headline:'圖表設定預覽與實際畫面同步修護',
  changes:[
-  {id:'target-motion',title:'動畫由固定行情欄位擴充至各頁實際元件',detail:'在頁面編輯與維護工程師的已掛載元件上加入共用的 42 種動畫選擇。文字、數值與卡片等元件可各自設定，不需要預先寫死行情欄位。'},
-  {id:'target-motion-save',title:'動畫設定納入個體／同類連動與重設',detail:'持久化原始 42 種動畫代碼、觸發條件、速度、時長、強度與循環設定；預設不啟用，允許個別重設與明確指定同類元件跨頁樣式同步。'},
-  {id:'target-motion-runtime',title:'動畫套用至已掛載真實元件',detail:'僅在選擇動畫後為元件掛接視覺動畫，不改行情、財務計算、布局尺寸及原生資料來源；舊有行情牆與框架動畫仍保留。'},
+  {id:'frame-preview-style',title:'設定預覽與實際頁共用框架排版',detail:'修正設定預覽遺漏排列密度與外觀模式的問題；正式頁與預覽共用框架視覺參數，保留原有顏色、邊框與尺寸。'},
+  {id:'taiex-preview-empty',title:'沒有快取行情時保留加權指數圖表',detail:'預覽沒有官方行情快取時仍顯示實際可編輯繪圖區及資料不足說明，不造假價格線或三關價。'},
+  {id:'taiex-chart-height',title:'加權指數圖表與左側數值軸同步高度',detail:'圖表和左側數值軸採用相同已儲存高度；取消固定 300 畫布造成的裁切和錯位。'},
+  {id:'chart-parity-regression',title:'加強頁面圖表編輯回歸驗證',detail:'針對不同排版、樣式、已儲存尺寸及空資料的預覽一致性增加測試，保留既有圖表手勢與歷版品質檢查。'},
  ],
- notice:'本版為 QA 驗收版；React Native 已掛載 A 元件可個別應用動畫。未接入此元件路徑的 Android 原生 Widget、Floating Monitor、特定圖表與其手勢互動需逐項真機驗證，不能視為全局 Release PASS。',
+ notice:'本版 QA 驗收須在 Android 真機確認；資料點數依官方快取可能與即時畫面不同，不能因此虛構走勢。受保護的系統設定主頁不變。',
 } as const;

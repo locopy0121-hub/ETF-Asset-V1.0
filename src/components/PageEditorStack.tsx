@@ -19,6 +19,7 @@ import {PORTFOLIO_SAFE_SWITCH_ID,PORTFOLIO_QUICK_SWITCH_ID} from '../domain/port
 import {AiQuestionBox} from './AiQuestionBox';
 import type { MainPageKey } from '../domain/pageRegistry';
 import { usePageEditor } from '../editor/pageEditor';
+import {frameVisualProps} from '../editor/frameVisualParity';
 import {InstalledFrameComponents} from '../maintenance/MaintenanceWorkbench';
 import {InspectableTarget} from '../maintenance/InspectableTarget';
 import {TARGET_APPEARANCE,type FrameMaintenanceContext,type InspectedTarget} from '../maintenance/inspectionModel';
@@ -229,9 +230,7 @@ export function PageEditorStack({pageKey,frames,gap=12}:{pageKey:MainPageKey;fra
       onBounds={bounds=>engineer.reportWorkspaceBounds(pageKey,item.key,bounds)}>
       {cloneElement(item.element,{
       key:item.key,
-      layout:frameConfig?.layout??'standard',
-      appearance:frameConfig?.appearance??'theme',
-      ...(frameConfig?{editorStyle:frameConfig}:{}),
+      ...frameVisualProps(frameConfig),
       workActive:active,
       titleVisual:effectiveDisplay.layoutTargets?.['frame-title:'+item.key],
       ...(active&&session?.scope==='frame'?{onResizePreview:(size:{width:number;height:number})=>engineer.patchFrame({

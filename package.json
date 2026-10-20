@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.36",
+  "version": "5.0.37",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_36 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_37 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -402,7 +402,9 @@
     "test:palette-v5_0_35": "node scripts/v5_0_35-black-wheel.test.cjs",
     "test:v5_0_35": "npm run test:v5_0_34 && npm run test:palette-v5_0_35",
     "test:global-motion-v5_0_36": "tsx scripts/v5_0_36-global-target-motion.test.ts",
-    "test:v5_0_36": "npm run test:v5_0_35 && npm run test:global-motion-v5_0_36"
+    "test:v5_0_36": "npm run test:v5_0_35 && npm run test:global-motion-v5_0_36",
+    "test:chart-parity-v5_0_37": "tsx scripts/v5_0_37-chart-preview-parity.test.ts",
+    "test:v5_0_37": "npm run test:v5_0_36 && npm run test:chart-parity-v5_0_37"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

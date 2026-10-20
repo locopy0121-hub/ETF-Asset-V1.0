@@ -4,6 +4,9 @@ import type {LayoutSelectionTarget} from './LayoutSelectionContext';
 export const TAIEX_AXIS_DEFAULT=93;
 export const taiexAxisWidth=(v:number|undefined):number=>
   v!==undefined&&Number.isFinite(v)?Math.max(56,Math.min(150,Math.round(v))):TAIEX_AXIS_DEFAULT;
+/** Saved plot height is shared by real chart and settings preview. */
+export const taiexChartHeight=(v:number|undefined):number=>
+  v!==undefined&&Number.isFinite(v)?Math.max(80,Math.min(900,Math.round(v))):300;
 export const taiexPlotLeftInset=(v:number|undefined):number=>
   v!==undefined&&Number.isFinite(v)?Math.max(0,Math.min(40,Math.round(v))):0;
 export const taiexTimeAxisLeft=(axis:number,inset:number):number=>

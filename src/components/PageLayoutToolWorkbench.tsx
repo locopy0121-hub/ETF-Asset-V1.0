@@ -9,6 +9,7 @@ import type {DashboardChartConfig,DashboardChartSource,DashboardChartStyle,Frame
 import {layoutKindLabel,layoutToolProfile,type LayoutToolTargetKind} from '../editor/layoutToolModel';
 import {TAIEX_EXPLANATIONS} from './taiexExplanations';
 import {TAIEX_INDEX_EDITOR_ITEMS,taiexAxisWidth,taiexPlotLeftInset} from '../editor/taiexIndexChartLayout';
+import {frameVisualProps} from '../editor/frameVisualParity';
 import {colors,radius,spacing} from '../theme/tokens';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingQuoteCollection,type HoldingLayoutMode} from './HoldingQuoteCollection';
@@ -398,7 +399,7 @@ export function PageLayoutToolWorkbench({
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
     const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
-    const frameContent=<FrameCard title={item.title} titleVisual={targets['frame-title:'+item.key]} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
+    const frameContent=<FrameCard title={item.title} titleVisual={targets['frame-title:'+item.key]} {...frameVisualProps(itemConfig)} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
       tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
       onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
         previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>

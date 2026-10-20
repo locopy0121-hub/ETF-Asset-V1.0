@@ -4,7 +4,7 @@ import Svg,{Circle,Line,Polyline,Polygon} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
 import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
-import {taiexAxisWidth,taiexPlotLeftInset,taiexTimeAxisLeft} from '../editor/taiexIndexChartLayout';
+import {taiexAxisWidth,taiexChartHeight,taiexPlotLeftInset,taiexTimeAxisLeft} from '../editor/taiexIndexChartLayout';
 import {MarketEditableSurface} from './MarketEditableContent';
 import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
@@ -45,15 +45,16 @@ function PriceLine({values,color,levels,intraday,date}:{
   const runtime=useLayoutRuntime(),editor=usePageEditor('market');
   const targetOverrides=runtime.active?runtime.targets:editor.displayConfig.layoutTargets;
   const axisWidth=taiexAxisWidth(targetOverrides?.['market:index:axis:left']?.width);
+  const chartHeight=taiexChartHeight(targetOverrides?.['market:index:chart']?.height);
   const plotInset=taiexPlotLeftInset(targetOverrides?.['market:index:plot:left-inset']?.width);
   const sorted=[...values].filter(x=>Number.isFinite(x.at)&&Number.isFinite(x.value)&&x.value>0)
     .sort((a,b)=>a.at-b.at);
-  if(!sorted.length&&!levels)return <Text style={{color:theme.palette.textSecondary,fontSize:12,paddingVertical:20}}>
-    尚無可核實的日內走勢或三關價，不以模擬點填補。</Text>;
+  // Keep the actual editable chart surface mounted even when preview has no cache.
+  // Do not fabricate missing market values.
   const gates=levels?indexFiveGateLevels(levels):[];
   const pricePool=[...sorted.map(p=>p.value),...gates.map(g=>g.value)];
-  const high=Math.max(...pricePool),low=Math.min(...pricePool);
-  const pad=Math.max(0.5,(high-low)*.055),bottom=272,top=16;
+  const high=pricePool.length?Math.max(...pricePool):1,low=pricePool.length?Math.min(...pricePool):0;
+  const pad=Math.max(0.5,(high-low)*.055),bottom=chartHeight-28,top=16;
   const y=(v:number)=>top+(high+pad-v)/(high-low+pad*2)*(bottom-top);
   const at0=sorted[0]?.at??0,atEnd=sorted[sorted.length-1]?.at??0;
   const x=(at:number)=>intraday&&date?taiexSessionX(at,date,5,310):
@@ -68,7 +69,7 @@ function PriceLine({values,color,levels,intraday,date}:{
   const timeLabels=['09:00','10:00','11:00','12:00','13:00','13:30'];
   return <View style={{gap:4}}>
     <View style={{flexDirection:'row',gap:0}}>
-      <View style={{width:axisWidth,height:300,position:'relative'}}>
+      <View style={{width:axisWidth,height:chartHeight,position:'relative'}}>
         {runtime.active?<Pressable accessibilityRole="button" accessibilityLabel="編輯左側數值欄寬度"
           onPress={()=>runtime.onSelect?.({id:'market:index:axis:left',kind:'card',label:'圖表左側數值欄',width:axisWidth})}
           style={{position:'absolute',top:0,right:0,zIndex:2,padding:2}}>
@@ -79,8 +80,8 @@ function PriceLine({values,color,levels,intraday,date}:{
       </View>
       <View style={{flex:1,minWidth:0,paddingLeft:plotInset}}>
         <IndexEditableChart>
-          <Svg width="100%" height={300} viewBox="0 0 320 300" preserveAspectRatio="none">
-            {[top,90,180,bottom].map(gy=><Line key={'grid'+gy} x1={5} x2={315} y1={gy} y2={gy}
+          <Svg width="100%" height={chartHeight} viewBox={'0 0 320 '+chartHeight} preserveAspectRatio="none">
+            {[top,top+(bottom-top)/3,top+(bottom-top)*2/3,bottom].map(gy=><Line key={'grid'+gy} x1={5} x2={315} y1={gy} y2={gy}
               stroke={theme.palette.border} strokeWidth={0.8}/>)}
             {gates.map(g=><Line key={g.id} x1={0} x2={320} y1={y(g.value)} y2={y(g.value)}
               stroke={g.color} strokeWidth={1.3} strokeDasharray="5 4"/>)}
@@ -100,6 +101,8 @@ function PriceLine({values,color,levels,intraday,date}:{
         </IndexEditableChart>
       </View>
     </View>
+    {!pricePool.length?<Text style={{color:theme.palette.textSecondary,fontSize:12,paddingVertical:6}}>
+      尚無可核實的日內走勢或三關價，不以模擬點填補。</Text>:null}
     {intraday?<MarketEditableSurface id="market:index:time-axis" label="圖表時間軸">
       <View style={{marginLeft:taiexTimeAxisLeft(axisWidth,plotInset),flexDirection:'row',justifyContent:'space-between'}}>
         {timeLabels.map(s=><Text key={s} style={{fontSize:8,color:theme.palette.textSecondary}}>{s}</Text>)}

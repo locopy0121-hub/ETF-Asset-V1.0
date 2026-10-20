@@ -30,8 +30,10 @@ assert.ok(card.includes('runtime.active?runtime.targets:editor.displayConfig.lay
   'preview/live must share persisted overrides');
 assert.ok(card.includes("taiexAxisWidth(targetOverrides?.['market:index:axis:left']?.width)"));
 assert.ok(card.includes("taiexPlotLeftInset(targetOverrides?.['market:index:plot:left-inset']?.width)"));
-assert.ok(card.includes('width:axisWidth,height:300'));
+assert.ok(card.includes('width:axisWidth,height:chartHeight'));
 assert.ok(card.includes('paddingLeft:plotInset'));
+assert.ok(card.includes('height={chartHeight}'));
+assert.ok(card.includes("targetOverrides?.['market:index:chart']?.height"));
 assert.ok(card.includes('taiexTimeAxisLeft(axisWidth,plotInset)'));
 assert.ok(card.includes('top:position-height/2'),'gate number must sit on its y-coordinate');
 assert.ok(!card.includes('width:93,height:300'),'no fixed left-axis width');
