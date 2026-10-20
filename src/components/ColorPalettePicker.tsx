@@ -131,7 +131,9 @@ export function ColorPalettePicker({
     const radial=Math.sqrt(dx*dx+dy*dy);
     if(radial>1.08)return;
     const hue=(Math.atan2(dy,dx)*180/Math.PI+360)%360;
-    updateDraftHsv({h:hue,s:clamp(radial*100,0,100),v:brightness});
+    // Pure black has V=0: hue changes cannot produce any visible color unless brightness is lifted.
+    // Restore a visible color only for the zero-brightness edge case; preserve other brightness levels.
+    updateDraftHsv({h:hue,s:clamp(radial*100,0,100),v:brightness===0?100:brightness});
   };
   const wheelResponder=useMemo(()=>PanResponder.create({
     onStartShouldSetPanResponder:()=>true,

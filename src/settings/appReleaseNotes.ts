@@ -1,10 +1,10 @@
 /** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.34',androidVersionCode:50034,headline:'調色盤小螢幕操作與亮度控制修護',
+ version:'5.0.35',androidVersionCode:50035,headline:'損益調色盤純黑選色修復',
  changes:[
-  {id:'palette-scroll-small-screen',title:'調色盤內容支援小螢幕垂直捲動',detail:'調色盤內的色輪、系統損益色、經典色票及亮度條改由可捲動內容承載，避免較短 Android 螢幕裁切底部控制項。'},
-  {id:'palette-scroll-footer-space',title:'保留亮度條底部可操作空間',detail:'捲動區底部增加留白並移除內容的固定 flex 高度，防止色盤最後一列遭系統導航列或視窗高度限制遮擋。'},
-  {id:'palette-scroll-interaction-gate',title:'維持色輪拖曳與開關儲存互動回歸',detail:'加入 React Runtime 捲動容器驗證，並繼續檢查開啟、取消、完成、返回、父層重繪及色輪手勢處理器不重建。'},
+  {id:'palette-black-hue-recovery',title:'純黑顏色也能直接使用色輪選色',detail:'修復色彩亮度為零時，拖曳或點擊任何色相都仍維持黑色的問題；使用色輪選色時自動恢復可見亮度。'},
+  {id:'palette-dim-hue-preservation',title:'保留一般深色的原有亮度',detail:'只有完全零亮度才啟用恢復機制；深紅或其他非零亮度顏色切換色相時，維持使用者選定的明暗程度。'},
+  {id:'palette-black-runtime-regression',title:'補上純黑與低亮度實際互動測試',detail:'在 React Runtime 測試執行色輪拖曳、確認儲存、取消、返回及重繪；並維持先前小螢幕捲動與受保護設定頁回歸檢查。'},
  ],
- notice:'本版為 QA 驗收版，Android 真機不同顯示尺寸下的捲動與亮度條操作仍須實測。受保護控制中心僅更新版本識別，既有設定資料及行情核心未變更。',
+ notice:'本版為 QA 驗收版；色輪觸控及顏色保存需在 Android 真機驗收。控制中心僅同步版本識別，不變更受保護的既有設定、帳務或行情核心。',
 } as const;
