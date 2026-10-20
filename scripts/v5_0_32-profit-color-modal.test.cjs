@@ -1,0 +1,34 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const ts=require('typescript');
+const screen=fs.readFileSync('src/screens/SettingsScreen.tsx','utf8');
+const picker=fs.readFileSync('src/components/ColorPalettePicker.tsx','utf8');
+const source=ts.createSourceFile('SettingsScreen.tsx',screen,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+const atTopLevel=source.statements.filter(node=>ts.isFunctionDeclaration(node)&&node.name?.text==='ProfitColorPanel');
+assert.equal(atTopLevel.length,1,'ProfitColorPanel must have stable module-level identity to preserve modal state');
+let nested=0;
+function inspect(node){
+  if(ts.isFunctionDeclaration(node)&&node.name?.text==='ProfitColorPanel'&&!atTopLevel.includes(node))nested++;
+  ts.forEachChild(node,inspect);
+}
+ts.forEachChild(source,inspect);
+assert.equal(nested,0,'ProfitColorPanel cannot be nested inside SettingsScreen: parent quote rerenders will unmount the palette');
+assert.equal((screen.match(/<ProfitColorPanel\s*\/>/g)||[]).length,2,'both Monitor and Visual settings must reuse the stable component');
+const panel=atTopLevel[0].getText(source);
+assert.match(panel,/useSettingsRuntime\(\)/,'panel must subscribe to settings directly');
+for(const label of ['獲利 / 上漲色','虧損 / 下跌色','平盤 / 中性色'])assert.ok(panel.includes(label),'missing profit color entry: '+label);
+for(const property of ['gainColor','lossColor','neutralColor','profitColorMode'])assert.ok(panel.includes(property),'missing shared color setting: '+property);
+assert.match(picker,/onPress=\{openPicker\}/,'tap must open palette');
+assert.match(picker,/setExpanded\(true\)/,'opening must set visible state');
+assert.match(picker,/expanded\?<Modal visible/,'open state must control native modal');
+assert.match(picker,/onRequestClose=\{cancel\}/,'Android back must close palette');
+assert.match(picker,/const confirm=\(\)=>\{\s*onChange\(draft\)/,'confirm must persist selected color');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+const app=JSON.parse(fs.readFileSync('app.json','utf8')).expo;
+const workflow=fs.readFileSync('.github/workflows/ci.yml','utf8');
+assert.equal(pkg.version,'5.0.32');
+assert.equal(app.version,pkg.version);
+assert.equal(app.android.versionCode,50032);
+assert.ok(workflow.includes('TF-Asset-V5.0.32-QA.apk'),'APK name must match version');
+assert.ok(workflow.includes('npm run test:palette-v5_0_32'),'both CI and build must gate the repair');
+console.log('V5.0.32 stable profit palette: parent rerenders preserve component identity; color entry/persistence/version gates PASS');

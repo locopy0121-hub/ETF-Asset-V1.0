@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.31",
+  "version": "5.0.32",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "check:expo": "expo install --check",
-    "check": "npm run typecheck && npm run test:v5_0_30 && npm run check:expo",
+    "check": "npm run typecheck && npm run test:v5_0_32 && npm run check:expo",
     "test:finance": "node scripts/BREAKING_HUANAN_CORE_TEST.cjs && tsx scripts/finance-golden.test.ts && npm run test:ledger",
     "test:ui": "node scripts/ui-architecture.test.cjs",
     "test:plugins": "tsx scripts/plugin-architecture.test.ts",
@@ -392,7 +392,9 @@
     "test:v5_0_30": "npm run test:v5_0_29 && npm run test:motion-v5_0_30 && npm run test:m11-backup-transaction && npm run test:m11-backup-history",
     "test:v5_0_27": "npm run test:v5_0_26 && node scripts/v4_0_64-news-content.test.cjs && node scripts/v4_0_64-news-reader.test.cjs",
     "test:m11-backup-transaction": "tsx scripts/v5_0_31-backup-transaction.test.ts",
-    "test:m11-backup-history": "tsx scripts/v5_0_31-backup-history-fault.test.ts"
+    "test:m11-backup-history": "tsx scripts/v5_0_31-backup-history-fault.test.ts",
+    "test:palette-v5_0_32": "node scripts/v5_0_32-profit-color-modal.test.cjs",
+    "test:v5_0_32": "npm run test:v5_0_30 && npm run test:palette-v5_0_32"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
