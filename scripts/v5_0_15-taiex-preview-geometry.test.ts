@@ -30,7 +30,7 @@ assert.ok(card.includes('runtime.active?runtime.targets:editor.displayConfig.lay
   'preview/live must share persisted overrides');
 assert.ok(card.includes("taiexAxisWidth(targetOverrides?.['market:index:axis:left']?.width)"));
 assert.ok(card.includes("taiexPlotLeftInset(targetOverrides?.['market:index:plot:left-inset']?.width)"));
-assert.ok(card.includes('width:axisWidth,height:300'));
+assert.ok(card.includes('width:axisWidth,height:chartHeight'));
 assert.ok(card.includes('paddingLeft:plotInset'));
 assert.ok(card.includes('taiexTimeAxisLeft(axisWidth,plotInset)'));
 assert.ok(card.includes('top:position-height/2'),'gate number must sit on its y-coordinate');
@@ -39,7 +39,7 @@ assert.ok(!card.includes('marginLeft:95'),'no independently fixed X axis');
 assert.ok(editor.includes("pageKey==='market'&&frame.key==='market-index'?TAIEX_INDEX_EDITOR_ITEMS"));
 assert.ok(editor.includes("onChange={width=>patchTarget('market:index:axis:left',{width})}"));
 assert.ok(editor.includes("onChange={width=>patchTarget('market:index:plot:left-inset',{width})}"));
-assert.ok(editor.includes("const actualPageWidth=Math.max(280,Math.round(windowWidth-spacing.lg*2))"),
+assert.ok(editor.includes("const actualPageWidth=Math.max(1,Math.round(windowWidth-spacing.lg*2))"),
   'preview uses the actual app content width for re-layout');
 assert.ok(editor.includes('transform:[{scale:previewScale}]'),
   'only finished preview layout is visually scaled');

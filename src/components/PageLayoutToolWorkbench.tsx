@@ -108,7 +108,7 @@ export function PageLayoutToolWorkbench({
   const [previewBounds,setPreviewBounds]=useState({width:0,height:0});
   const [previewViewportWidth,setPreviewViewportWidth]=useState(0);
   const [actualCanvasHeight,setActualCanvasHeight]=useState(1);
-  const actualPageWidth=Math.max(280,Math.round(windowWidth-spacing.lg*2));
+  const actualPageWidth=Math.max(1,Math.round(windowWidth-spacing.lg*2));
   const previewScale=previewViewportWidth>0?Math.min(1,previewViewportWidth/actualPageWidth):1;
   const scaledPageHeight=Math.max(1,Math.ceil(actualCanvasHeight*previewScale));
   useEffect(()=>{setFrameKey(initial);setSelection({id:'frame',kind:'frame',label:'框架'});setOpenGroup('size');},[initial]);
@@ -398,7 +398,7 @@ export function PageLayoutToolWorkbench({
     const maintenance:FrameMaintenanceContext={page:pageKey,frameKey:item.key,frameTitle:item.title,frameConfig:itemConfig,displayConfig:displayDraft};
     const providerSelect=(target:LayoutSelectionTarget)=>{setFrameKey(item.key);selectTarget(target);};
     const dividendAction=pageKey==='dividend'?previewElements?.find(view=>view.key===item.key)?.element.props.action:undefined;
-    const frameContent=<FrameCard title={item.title} titleVisual={targets['frame-title:'+item.key]} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
+    const frameContent=<FrameCard title={item.title} layout={itemConfig.layout} appearance={itemConfig.appearance} titleVisual={targets['frame-title:'+item.key]} editorStyle={itemConfig} showTitle={!(pageKey==='dividend'&&item.key==='dividend-ai')} action={pageKey==='dividend'?selectDividendPreview(dividendAction,providerSelect,selected?selection.id:null,targets,draft[item.key]):undefined}
       tone={portfolioFrameTone(pageKey,item.key,finance.snapshot.portfolio,finance.valuationComplete)}
       onMeasuredSize={({width,height})=>setFrameMeasurements(previous=>
         previous[item.key]?.width===width&&previous[item.key]?.height===height?previous:{...previous,[item.key]:{width,height}})}>

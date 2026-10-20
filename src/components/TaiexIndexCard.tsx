@@ -1,11 +1,12 @@
-import {useCallback,useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState,useSyncExternalStore,type ReactNode} from 'react';
 import {StyleSheet,View,type StyleProp,type TextStyle} from 'react-native';
 import Svg,{Circle,Line,Polyline,Polygon} from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Pressable,Text} from './EditableNative';
 import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
-import {taiexAxisWidth,taiexPlotLeftInset,taiexTimeAxisLeft} from '../editor/taiexIndexChartLayout';
+import {taiexAxisWidth,taiexPlotLeftInset,taiexTimeAxisLeft,taiexPlotHeight} from '../editor/taiexIndexChartLayout';
 import {MarketEditableSurface} from './MarketEditableContent';
+import {getTaiexIndexPreviewSnapshot,subscribeTaiexIndexPreview,publishTaiexIndexPreviewSnapshot,clearTaiexIndexPreviewSnapshot} from '../market/taiexIndexPreviewState';
 import {usePageEditor} from '../editor/pageEditor';
 import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
@@ -46,6 +47,7 @@ function PriceLine({values,color,levels,intraday,date}:{
   const targetOverrides=runtime.active?runtime.targets:editor.displayConfig.layoutTargets;
   const axisWidth=taiexAxisWidth(targetOverrides?.['market:index:axis:left']?.width);
   const plotInset=taiexPlotLeftInset(targetOverrides?.['market:index:plot:left-inset']?.width);
+  const chartHeight=taiexPlotHeight(targetOverrides?.['market:index:chart']?.height);
   const sorted=[...values].filter(x=>Number.isFinite(x.at)&&Number.isFinite(x.value)&&x.value>0)
     .sort((a,b)=>a.at-b.at);
   if(!sorted.length&&!levels)return <Text style={{color:theme.palette.textSecondary,fontSize:12,paddingVertical:20}}>
@@ -68,18 +70,18 @@ function PriceLine({values,color,levels,intraday,date}:{
   const timeLabels=['09:00','10:00','11:00','12:00','13:00','13:30'];
   return <View style={{gap:4}}>
     <View style={{flexDirection:'row',gap:0}}>
-      <View style={{width:axisWidth,height:300,position:'relative'}}>
+      <View style={{width:axisWidth,height:chartHeight,position:'relative'}}>
         {runtime.active?<Pressable accessibilityRole="button" accessibilityLabel="編輯左側數值欄寬度"
           onPress={()=>runtime.onSelect?.({id:'market:index:axis:left',kind:'card',label:'圖表左側數值欄',width:axisWidth})}
           style={{position:'absolute',top:0,right:0,zIndex:2,padding:2}}>
           <Text style={{fontSize:10,color:theme.palette.primary}}>↔</Text>
         </Pressable>:null}
-        {gates.map(g=><GateAxisValue key={g.id} gate={g} position={y(g.value)}/>)}
+        {gates.map(g=><GateAxisValue key={g.id} gate={g} position={y(g.value)*chartHeight/300}/>)}
         {!gates.length?<Text style={{fontSize:9,color:theme.palette.textSecondary}}>指數點位</Text>:null}
       </View>
       <View style={{flex:1,minWidth:0,paddingLeft:plotInset}}>
         <IndexEditableChart>
-          <Svg width="100%" height={300} viewBox="0 0 320 300" preserveAspectRatio="none">
+          <Svg width="100%" height={chartHeight} viewBox="0 0 320 300" preserveAspectRatio="none">
             {[top,90,180,bottom].map(gy=><Line key={'grid'+gy} x1={5} x2={315} y1={gy} y2={gy}
               stroke={theme.palette.border} strokeWidth={0.8}/>)}
             {gates.map(g=><Line key={g.id} x1={0} x2={320} y1={y(g.value)} y2={y(g.value)}
@@ -223,16 +225,39 @@ export function TaiexIndexCard({marketVersion,phase}:{
 }){
   const theme=useThemeRuntime(),system=useSystemColors();
   const layoutPreview=useLayoutRuntime();
-  const [range,setRange]=useState<IndexRange>('d1');
-  const [mis,setMis]=useState<IndexSnapshot|null>(null);
-  const [history,setHistory]=useState<IndexClose[]>([]);
-  const [points,setPoints]=useState<IndexPoint[]>([]);
-  const [officialTape,setOfficialTape]=useState<TaiexIntraday|null>(null);
+  const [localRange,setRange]=useState<IndexRange>('d1');
+  const [localMis,setMis]=useState<IndexSnapshot|null>(null);
+  const [localHistory,setHistory]=useState<IndexClose[]>([]);
+  const [localPoints,setPoints]=useState<IndexPoint[]>([]);
+  const [localOfficialTape,setOfficialTape]=useState<TaiexIntraday|null>(null);
   const [tapeReload,setTapeReload]=useState(0);
-  const [ohlc,setOhlc]=useState<TaiexDailyOhlc[]>([]);
-  const [gatesOn,setGatesOn]=useState(true);
-  const [busy,setBusy]=useState(false),[historyBusy,setHistoryBusy]=useState(false);
-  const [error,setError]=useState<string|null>(null);
+  const [localOhlc,setOhlc]=useState<TaiexDailyOhlc[]>([]);
+  const [localGatesOn,setGatesOn]=useState(true);
+  const [localBusy,setBusy]=useState(false),[localHistoryBusy,setHistoryBusy]=useState(false);
+  const [localError,setError]=useState<string|null>(null);
+  const shared=useSyncExternalStore(subscribeTaiexIndexPreview,getTaiexIndexPreviewSnapshot,getTaiexIndexPreviewSnapshot);
+  const preview=layoutPreview.active?shared:null;
+  const range=preview?.range??localRange;
+  const mis=preview?preview.mis:localMis;
+  const history=preview?.history??localHistory;
+  const points=preview?.points??localPoints;
+  const officialTape=preview?preview.officialTape:localOfficialTape;
+  const ohlc=preview?.ohlc??localOhlc;
+  const gatesOn=preview?.gatesOn??localGatesOn;
+  const busy=preview?.busy??localBusy,historyBusy=preview?.historyBusy??localHistoryBusy;
+  const error=preview?preview.error:localError;
+  useEffect(()=>{
+    if(layoutPreview.active)return;
+    publishTaiexIndexPreviewSnapshot({
+      range:localRange,mis:localMis,history:localHistory,points:localPoints,
+      officialTape:localOfficialTape,ohlc:localOhlc,gatesOn:localGatesOn,
+      busy:localBusy,historyBusy:localHistoryBusy,error:localError,
+    });
+  },[layoutPreview.active,localRange,localMis,localHistory,localPoints,localOfficialTape,localOhlc,localGatesOn,localBusy,localHistoryBusy,localError]);
+  useEffect(()=>{
+    if(layoutPreview.active)return;
+    return ()=>clearTaiexIndexPreviewSnapshot();
+  },[layoutPreview.active]);
   const lastReq=useRef(0),inFlight=useRef(false);
   const today=taipeiIndexDate();
   const display=useMemo(()=>pickTaiexDisplay(mis,history,today,phase),[mis,history,today,phase]);
@@ -353,9 +378,9 @@ export function TaiexIndexCard({marketVersion,phase}:{
   // The TAIEX display is read-only and piggybacks on market snapshots, without a new global polling law.
   useEffect(()=>{if(!layoutPreview.active)void refresh();},[marketVersion,refresh,layoutPreview.active]);
   useEffect(()=>{
-    if(!points.length)return;
-    void AsyncStorage.setItem(POINTS,JSON.stringify({date:today,rows:points})).catch(()=>{});
-  },[points,today]);
+    if(layoutPreview.active||!localPoints.length)return;
+    void AsyncStorage.setItem(POINTS,JSON.stringify({date:today,rows:localPoints})).catch(()=>{});
+  },[layoutPreview.active,localPoints,today]);
   useEffect(()=>{
     if(range==='d1')return;
     const abort=new AbortController();
