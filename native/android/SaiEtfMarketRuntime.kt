@@ -180,23 +180,8 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }
             .toSet()
         if (symbols.isEmpty()) return snapshot(symbols)
-        if (!TfAssetMarketSchedule.allows(appContext)) {
-            if(closeReconciler.reconcile(symbols,TfAssetMarketSchedule.load(appContext))) {
-                kotlinx.coroutines.runBlocking { persistenceController.flushNow() }
-            }
-            if(FugleSessionCloseReconciler.eligible(TfAssetMarketSchedule.load(appContext),clockMillis(),FugleSessionCloseReconciler.SETTLEMENT_GRACE_MILLIS)) {
-                val date=taipeiDate(clockMillis())
-                val confirmed=center.memoryQuotes(symbols).values.count{it.isClose&&it.sessionDate==date}
-                com.tfasset.app.TfAssetMarketFlowDiagnostics.sourceCheckpoint(JSONObject()
-                    .put("kind","source").put("reason","SESSION_CLOSE")
-                    .put("failure",if(confirmed==symbols.size)"NONE" else "CLOSE_UNCONFIRMED")
-                    .put("requested",symbols.size).put("confirmed",confirmed))
-            }
-            version.incrementAndGet()
-            val result=snapshot(symbols)
-            onLiveSnapshot(result.toString())
-            return result
-        }
+        // Locked screens and post-close periods are cache-only: no REST/WS work.
+        if (!TfAssetMarketSchedule.allows(appContext)) return snapshot(symbols)
 
         val now = clockMillis()
         if (isLiveSession(now)) {

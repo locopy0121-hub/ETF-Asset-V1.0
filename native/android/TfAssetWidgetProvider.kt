@@ -42,9 +42,9 @@ class TfAssetWidgetProvider : AppWidgetProvider() {
     val pending=PendingIntent.getBroadcast(context,404,Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_EXPIRE),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     alarm.cancel(pending)
     val until=TfAssetMarketPresentation.nextExpiry(raw,System.currentTimeMillis())?:return
-    // No exact-alarm permission is requested; Android may defer this in idle mode.
-    if(Build.VERSION.SDK_INT<31||alarm.canScheduleExactAlarms())alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,until,pending)
-    else alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,until,pending)
+    // Quote freshness labels must not wake a locked phone. Repaint when the OS is awake.
+    if(Build.VERSION.SDK_INT<31||alarm.canScheduleExactAlarms())alarm.setExact(AlarmManager.RTC,until,pending)
+    else alarm.set(AlarmManager.RTC,until,pending)
   }
   override fun onDisabled(context:Context){
     val pending=PendingIntent.getBroadcast(context,404,Intent(context,TfAssetWidgetProvider::class.java).setAction(ACTION_EXPIRE),PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
