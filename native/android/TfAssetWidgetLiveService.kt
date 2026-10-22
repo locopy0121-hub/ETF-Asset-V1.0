@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -15,7 +17,16 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
 
 class TfAssetWidgetLiveService:HeadlessJsTaskService(){
     private var started=false
+    private val screenReceiver=object:BroadcastReceiver(){
+        override fun onReceive(context:Context?,intent:Intent?){
+            if(intent?.action==Intent.ACTION_SCREEN_OFF||intent?.action==Intent.ACTION_USER_PRESENT)
+                TfAssetMarketOwner.applySchedule(this@TfAssetWidgetLiveService)
+        }
+    }
     override fun onCreate(){
+        registerReceiver(screenReceiver,IntentFilter().apply{
+            addAction(Intent.ACTION_SCREEN_OFF);addAction(Intent.ACTION_USER_PRESENT)
+        })
         super.onCreate()
         val nm=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT>=26)nm.createNotificationChannel(NotificationChannel(CHANNEL,"背景行情連線",NotificationManager.IMPORTANCE_LOW))
@@ -29,7 +40,7 @@ class TfAssetWidgetLiveService:HeadlessJsTaskService(){
     }
     override fun onStartCommand(intent:Intent?,flags:Int,startId:Int):Int{
         if(started)return START_STICKY
-        if(!hasBackgroundSurfaces(this)||!TfAssetMarketSchedule.allows(this)){stopSelf();return START_NOT_STICKY}
+        if(!hasBackgroundSurfaces(this)||!TfAssetMarketSchedule.load(this).allows(System.currentTimeMillis())){stopSelf();return START_NOT_STICKY}
         started=true;running=true;TfAssetMarketOwner.widgetActive=true
         TfAssetMarketOwner.applySchedule(this)
         super.onStartCommand(intent,flags,startId)
@@ -39,6 +50,7 @@ class TfAssetWidgetLiveService:HeadlessJsTaskService(){
         if(started)HeadlessJsTaskConfig("TfAssetWidgetLive",Arguments.createMap(),0L,true) else null
     override fun onTimeout(startId:Int,fgsType:Int){stopSelf()}
     override fun onDestroy(){
+        unregisterReceiver(screenReceiver)
         running=false
         TfAssetMarketOwner.stopWidget(this)
         sendBroadcast(Intent(ACTION_STOPPED).setPackage(packageName))
