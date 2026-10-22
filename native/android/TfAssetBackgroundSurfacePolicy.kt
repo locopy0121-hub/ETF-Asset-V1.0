@@ -11,6 +11,6 @@ internal fun refreshBackgroundMonitorIfNeeded(uiActive:Boolean,monitorRunning:Bo
 /** A delayed background repaint is never an open-window command. */
 internal fun backgroundMonitorRefreshAllowed(hasView:Boolean,userClosed:Boolean):Boolean = hasView&&!userClosed
 
-/** Keep prices live; cosmetic motion is allowed only when the App is visible and the market is open. */
-internal fun monitorAnimationsAllowed(configEnabled:Boolean,uiActive:Boolean,sessionActive:Boolean):Boolean =
-    configEnabled&&uiActive&&sessionActive
+/** Live quote delivery is independent from the visibility of cosmetic monitor animation. */
+internal fun monitorAnimationsAllowed(configEnabled:Boolean,uiActive:Boolean):Boolean =
+    configEnabled&&uiActive
