@@ -36,11 +36,12 @@ internal object TfAssetMarketOwner {
                 instance?.pause()
                 finishClose(app,settled=false)
             }else if(!screenReady){
-                // Keep the existing Widget service as a passive unlock listener.
-                // Stop WebSocket subscriptions immediately, even with a Widget.
+                // Lock: pause trades and terminate the Headless JS foreground service.
+                // A persistent Headless task could otherwise retain its WakeLock.
                 instance?.pause()
                 closeGeneration++;closePending=false;closingVersion=null
                 closeTimeout?.let{handler.removeCallbacks(it)};closeTimeout=null
+                app.stopService(Intent(app,TfAssetWidgetLiveService::class.java))
             }else if(uiActive||widgetActive){
                 closeGeneration++;closePending=false;closeSettled=false;closingVersion=null
                 closeTimeout?.let{handler.removeCallbacks(it)};closeTimeout=null
