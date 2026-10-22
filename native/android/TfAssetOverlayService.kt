@@ -265,7 +265,6 @@ class TfAssetOverlayService:Service(){
     animationsEnabled=monitorAnimationsAllowed(
       (cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true),
       TfAssetMarketOwner.uiActive,
-      TfAssetMarketSchedule.allows(this),
     )
     val snap=readSnapshot()
     val style=cfg.optJSONObject(if(mode=="mini")"miniStyle" else "normalStyle")?:JSONObject()
