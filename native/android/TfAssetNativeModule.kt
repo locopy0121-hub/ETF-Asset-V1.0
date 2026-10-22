@@ -50,9 +50,9 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val saietfMarket get() = TfAssetMarketOwner.runtime(reactContext)
   private val lifecycleListener=object:com.facebook.react.bridge.LifecycleEventListener{
-    override fun onHostResume(){TfAssetMarketOwner.resumeUi(reactContext)}
-    override fun onHostPause(){TfAssetMarketOwner.uiActive=false}
-    override fun onHostDestroy(){TfAssetMarketOwner.uiActive=false}
+    override fun onHostResume(){TfAssetMarketOwner.resumeUi(reactContext);TfAssetOverlayService.requestRefresh()}
+    override fun onHostPause(){TfAssetMarketOwner.pauseUi(reactContext);TfAssetOverlayService.requestRefresh()}
+    override fun onHostDestroy(){TfAssetMarketOwner.pauseUi(reactContext)}
   }
   private val flowReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
