@@ -14,3 +14,7 @@ internal fun backgroundMonitorRefreshAllowed(hasView:Boolean,userClosed:Boolean)
 /** Live quote delivery is independent from the visibility of cosmetic monitor animation. */
 internal fun monitorAnimationsAllowed(configEnabled:Boolean,uiActive:Boolean):Boolean =
     configEnabled&&uiActive
+
+/** Session and unlocked interactive screen are both required for market network work. */
+internal fun marketUpdatesAllowed(tradingSession:Boolean,deviceReady:Boolean):Boolean =
+    tradingSession&&deviceReady
