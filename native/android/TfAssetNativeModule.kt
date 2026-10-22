@@ -62,10 +62,16 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val screenReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
-      // The foreground Widget service owns transitions while it is running.
-      if(!TfAssetWidgetLiveService.isRunning&&
-         (intent?.action==Intent.ACTION_SCREEN_OFF||intent?.action==Intent.ACTION_USER_PRESENT))
-        TfAssetMarketOwner.applySchedule(reactContext)
+      when(intent?.action){
+        Intent.ACTION_SCREEN_OFF->TfAssetMarketOwner.applySchedule(reactContext)
+        Intent.ACTION_USER_PRESENT->{
+          // Resubscribe only if the market is still open and the phone is unlocked.
+          if(TfAssetMarketSchedule.allows(reactContext)){
+            TfAssetMarketOwner.applySchedule(reactContext)
+            TfAssetWidgetLiveService.ensureStarted(reactContext,fromUnlock=true)
+          }
+        }
+      }
     }
   }
   private val widgetStoppedReceiver=object:BroadcastReceiver(){
