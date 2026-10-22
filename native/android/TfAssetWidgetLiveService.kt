@@ -24,10 +24,10 @@ class TfAssetWidgetLiveService:HeadlessJsTaskService(){
         }
     }
     override fun onCreate(){
+        super.onCreate()
         registerReceiver(screenReceiver,IntentFilter().apply{
             addAction(Intent.ACTION_SCREEN_OFF);addAction(Intent.ACTION_USER_PRESENT)
         })
-        super.onCreate()
         val nm=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT>=26)nm.createNotificationChannel(NotificationChannel(CHANNEL,"背景行情連線",NotificationManager.IMPORTANCE_LOW))
         val launch=packageManager.getLaunchIntentForPackage(packageName)
@@ -60,6 +60,7 @@ class TfAssetWidgetLiveService:HeadlessJsTaskService(){
         const val ACTION_STOPPED="com.tfasset.app.WIDGET_LIVE_STOPPED"
         private const val CHANNEL="tf_asset_widget_live"
         @Volatile private var running=false
+        val isRunning:Boolean get()=running
         fun hasWidgets(context:Context)=AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java)).isNotEmpty()
         fun hasBackgroundSurfaces(context:Context)=backgroundLiveRequired(hasWidgets(context),TfAssetOverlayService.isRunning)
         fun ensureStarted(context:Context){
