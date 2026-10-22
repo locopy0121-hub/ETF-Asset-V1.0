@@ -52,8 +52,6 @@ internal object TfAssetMarketOwner {
                 instance?.resumeTrackedSymbols()
                 if(allowStart)TfAssetWidgetLiveService.ensureStarted(app)
             }
-            // A session boundary must stop cosmetic animations without stopping background quotes.
-            TfAssetOverlayService.requestRefresh()
             if(uiActive||widgetActive){
                 val now=System.currentTimeMillis()
                 TfAssetMarketSchedule.load(app).nextBoundary(now)?.let{at->
