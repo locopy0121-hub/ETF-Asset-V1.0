@@ -43,7 +43,7 @@ class TfAssetOverlayService:Service(){
   private lateinit var wm:WindowManager
   private var root:LinearLayout?=null
   private val renderHandler=Handler(Looper.getMainLooper())
-  private val renderQueue=LatestSurfaceRenderQueue({renderHandler.postDelayed(it,16L)}){
+  private val renderQueue=LatestSurfaceRenderQueue({renderHandler.postDelayed(it,if(TfAssetMarketOwner.uiActive)100L else 250L)}){
     if(backgroundMonitorRefreshAllowed(root!=null&&running,prefs().getBoolean("monitor_user_closed",false))){
       applyConfiguredLayoutIfChanged(readConfig());render()
     }
@@ -262,7 +262,11 @@ class TfAssetOverlayService:Service(){
     val r=root?:return
     scheduleExpiry()
     val cfg=readConfig()
-    animationsEnabled=(cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)
+    animationsEnabled=monitorAnimationsAllowed(
+      (cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true),
+      TfAssetMarketOwner.uiActive,
+      TfAssetMarketSchedule.allows(this),
+    )
     val snap=readSnapshot()
     val style=cfg.optJSONObject(if(mode=="mini")"miniStyle" else "normalStyle")?:JSONObject()
     val aggregate=snap.optJSONObject("asset")?.optDouble("totalReturn",Double.NaN)?.takeIf{it.isFinite()}
@@ -612,7 +616,7 @@ class TfAssetOverlayService:Service(){
   private fun renderMini(root:LinearLayout,cfg:JSONObject,snap:JSONObject,style:JSONObject){
     if(cfg.optBoolean("showBreathingLight",true)){
       val lamp=textView("●",color(style.optString("gainColor","#10B981"),Color.GREEN),12f,Gravity.START)
-      if((cfg.optJSONObject("effects")?:JSONObject()).optBoolean("animationsEnabled",true)){
+      if(animationsEnabled){
         lamp.startAnimation(AlphaAnimation(.28f,1f).apply{duration=900;repeatMode=Animation.REVERSE;repeatCount=Animation.INFINITE})
       }
       root.addView(lamp)
