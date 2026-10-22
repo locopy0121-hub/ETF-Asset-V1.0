@@ -12,10 +12,10 @@ fun main(){
     TfAssetMarketSchedule.unlocked=false
     TfAssetMarketOwner.applySchedule(app);Handler.flush()
     check(runtime.pauses>=1){"Lock must immediately pause socket with Widget still installed"}
-    check(app.stops==0){"Retain passive service listener until unlock"}
+    check(app.stops>0){"Lock must end Headless JS foreground service and release its WakeLock"}
     val paused=runtime.pauses
     TfAssetMarketOwner.applySchedule(app);Handler.flush()
-    check(runtime.pauses>paused && app.stops==0){"Locked state may not reconnect"}
+    check(runtime.pauses>paused && app.stops>0){"Locked state may not reconnect"}
     TfAssetMarketSchedule.unlocked=true
     TfAssetMarketOwner.applySchedule(app);Handler.flush()
     check(runtime.resumes==2){"Unlock must reconnect exactly once per schedule event"}
