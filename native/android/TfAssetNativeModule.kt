@@ -60,6 +60,12 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
       runCatching{reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("TfAssetMarketFlowDiagnostics",raw)}
     }
   }
+  private val screenReceiver=object:BroadcastReceiver(){
+    override fun onReceive(context:Context?,intent:Intent?){
+      if(intent?.action==Intent.ACTION_SCREEN_OFF||intent?.action==Intent.ACTION_USER_PRESENT)
+        TfAssetMarketOwner.applySchedule(reactContext)
+    }
+  }
   private val widgetStoppedReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
       runCatching{reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("TfAssetWidgetLiveStopped",null)}
@@ -194,6 +200,9 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     TfAssetMarketOwner.addListener(marketListener)
     reactContext.addLifecycleEventListener(lifecycleListener)
     TfAssetMarketOwner.uiActive=reactContext.lifecycleState==com.facebook.react.common.LifecycleState.RESUMED
+    reactContext.registerReceiver(screenReceiver,IntentFilter().apply{
+      addAction(Intent.ACTION_SCREEN_OFF);addAction(Intent.ACTION_USER_PRESENT)
+    })
     val stopFilter=IntentFilter(TfAssetWidgetLiveService.ACTION_STOPPED)
     if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(widgetStoppedReceiver,stopFilter,Context.RECEIVER_NOT_EXPORTED)
     else reactContext.registerReceiver(widgetStoppedReceiver,stopFilter)
@@ -206,6 +215,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     TfAssetMarketFlowDiagnostics.removeSourceListener(sourceDiagnosticListener)
     TfAssetMarketOwner.removeListener(marketListener)
     reactContext.removeLifecycleEventListener(lifecycleListener)
+    runCatching{reactContext.unregisterReceiver(screenReceiver)}
     runCatching{reactContext.unregisterReceiver(flowReceiver)}
     runCatching{reactContext.unregisterReceiver(widgetStoppedReceiver)}
     runCatching{reactContext.unregisterReceiver(refreshRequestReceiver)}
