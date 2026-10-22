@@ -62,7 +62,9 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val screenReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
-      if(intent?.action==Intent.ACTION_SCREEN_OFF||intent?.action==Intent.ACTION_USER_PRESENT)
+      // The foreground Widget service owns transitions while it is running.
+      if(!TfAssetWidgetLiveService.isRunning&&
+         (intent?.action==Intent.ACTION_SCREEN_OFF||intent?.action==Intent.ACTION_USER_PRESENT))
         TfAssetMarketOwner.applySchedule(reactContext)
     }
   }
