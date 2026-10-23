@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {localStockEtfOwners,validateStockEtfOwners,mergeStockEtfOwners,taipeiDisclosureDate} from '../src/market/etfStockOwnership';
-import type {EtfConstituentSnapshot} from '../src/market/etfConstituents';
+import {restoreEtfConstituents,cachedEtfConstituents,type EtfConstituentSnapshot} from '../src/market/etfConstituents';
 const at='2026-10-23';
 const base:EtfConstituentSnapshot={
   symbol:'0050',asOf:at,fetchedAt:100,source:'元大投信',
@@ -13,6 +13,10 @@ const older:EtfConstituentSnapshot={
   sourceUrl:'https://www.moneydj.com/ETF/X/Basic/Basic0007.xdjhtm?etfid=00878.TW',
   basis:'third_party_disclosed',complete:false,rows:[{symbol:'2330',name:'台積電',weight:4.5}],
 };
+const hydrated=restoreEtfConstituents([{...base,rows:[{symbol:'2330',name:'台積電',weight:58.12,quantity:null}]}]);
+assert.equal(hydrated,1,'SQL NULL quantity must preserve otherwise valid ETF weights');
+assert.equal(cachedEtfConstituents('0050')?.rows[0]?.weight,58.12);
+assert.equal(cachedEtfConstituents('0050')?.rows[0]?.quantity,undefined);
 const stocks=localStockEtfOwners('2330',[base,older],{'0050':'元大台灣50','00878':'國泰永續高股息'});
 assert.equal(stocks.length,2);
 assert.equal(stocks[0]!.asOf,at);
