@@ -18,6 +18,7 @@ import {MarketEditableSurface,MarketEditableText,MarketPreviewActionGuard} from 
 import {MarketTechnicalSignals} from '../components/MarketTechnicalSignals';
 import {StockDividendHistoryContent} from '../components/StockDividendHistoryContent';
 import {EtfConstituentsContent} from '../components/EtfConstituentsContent';
+import {StockEtfOwnershipContent} from '../components/StockEtfOwnershipContent';
 import {EtfBasicProfileContent} from '../components/EtfBasicProfileContent';
 import {PageGearButton} from '../components/PageGearButton';
 import {PageFrameSettingsModal} from '../components/PageFrameSettingsModal';
@@ -37,7 +38,7 @@ import {useThemeRuntime} from '../theme/ThemeRuntime';
 import {colors,radius,spacing} from '../theme/tokens';
 
 const tabs:readonly {key:ResearchTab;label:string}[]=[
-  {key:'chart',label:'即時／K線'},{key:'profile',label:'基本資料'},{key:'etf',label:'ETF成分'},
+  {key:'chart',label:'即時／K線'},{key:'profile',label:'基本資料'},{key:'etf',label:'ETF持股'},
   {key:'institution',label:'法人／主力'},{key:'dividend',label:'歷史股利'},{key:'premium',label:'折溢價'},{key:'news',label:'新聞'},
 ];
 const price=(n:number|null|undefined)=>typeof n==='number'&&Number.isFinite(n)&&n>0?n.toFixed(2):'—';
@@ -125,6 +126,7 @@ export function MarketResearchScreen({initialSelection=null}:{initialSelection?:
   const [institutionLoading,setInstitutionLoading]=useState(false),[institutionError,setInstitutionError]=useState<string|null>(null);
   const [navRows,setNavRows]=useState<NavRecord[]>([]);
   const [navLoading,setNavLoading]=useState(false),[navError,setNavError]=useState<string|null>(null);
+  const etfNames=useMemo(()=>Object.fromEntries(market.catalog.filter(x=>isEtfSymbol(x.symbol)).map(x=>[x.symbol,x.name])),[market.catalog]);
   const info=market.catalog.find(row=>row.symbol===symbol);
   const quote=market.quotes.find(row=>row.symbol===symbol);
   const holding=finance.holdings.find(row=>row.symbol===symbol);
@@ -233,8 +235,8 @@ export function MarketResearchScreen({initialSelection=null}:{initialSelection?:
           ['產業',info?.industry??'—'],['上市櫃日期',info?.listingDate??'—'],['資本額',amount(info?.paidInCapitalTwd)],
           ['普通股發行量',amount(info?.issuedCommonShares)],['董事長',info?.chairman??'—'],['來源',info?.source??'—']].map(([label,metric])=>
           <Fact key={label} label={label??''} value={metric??'—'}/>)}</View>:null}
-      {tab==='etf'?(isEtfSymbol(symbol)?<MarketEditableSurface id="market:details:etf" label="ETF 成分股清單"><EtfConstituentsContent symbol={symbol} name={info?.name??symbol}/></MarketEditableSurface>:
-        <Text style={{color:theme.palette.textSecondary}}>此標的未辨識為 ETF，不顯示不適用的成分資料。</Text>):null}
+      {tab==='etf'?(isEtfSymbol(symbol)?<MarketEditableSurface id="market:details:etf" label="ETF 成分股清單"><EtfConstituentsContent symbol={symbol} name={info?.name??symbol} onSelectStock={(code,name)=>{selectSecurity(code,name);setTab('etf');}}/></MarketEditableSurface>:
+        <MarketEditableSurface id="market:details:etf:stock-owners" label="個股 ETF 持有反查"><StockEtfOwnershipContent symbol={symbol} etfNames={etfNames} onSelectEtf={(code,name)=>{selectSecurity(code,name);setTab('etf');}}/></MarketEditableSurface>):null}
       {tab==='institution'?<View style={{gap:10}}>
         <MarketEditableSurface id="market:details:institution:controls" label="法人日期切換列"><MarketPreviewActionGuard><View style={styles.row}>{([1,3,5] as const).map(n=><Chip key={n} label={n+'個交易日'} active={institutionalDays===n} click={()=>setInstitutionalDays(n)}/>)}</View></MarketPreviewActionGuard></MarketEditableSurface>
         {!info?.market?<Text style={{color:theme.palette.textSecondary}}>標的市場尚未核實，暫不顯示法人數值。</Text>:
@@ -284,7 +286,7 @@ export function MarketResearchScreen({initialSelection=null}:{initialSelection?:
       {tab==='news'?(relatedNews.length?<MarketEditableSurface id="market:details:news-list" label="市場新聞清單"><MarketPreviewActionGuard>{relatedNews.map(n=><Pressable key={n.id} onPress={()=>void Linking.openURL(n.url).catch(()=>{})} style={[styles.option,{borderBottomColor:theme.palette.border}]}>
         <View style={{flex:1}}><Text style={{color:theme.palette.text,fontWeight:'700'}}>{n.title}</Text><Text style={{color:theme.palette.textSecondary,fontSize:11}}>{n.source}｜{n.publishedAt}</Text></View>
         </Pressable>)}</MarketPreviewActionGuard></MarketEditableSurface>:<Text style={{color:theme.palette.textSecondary}}>目前無此標的經核實新聞。既有新聞來源僅追蹤持股，不用其他標的新聞替代。</Text>):null}
-      {tab==='chart'?<MarketEditableText id="market:details:tabs:note" label="研究頁籤說明" style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股、法人、歷史股利、折溢價及新聞。</MarketEditableText>:null}
+      {tab==='chart'?<MarketEditableText id="market:details:tabs:note" label="研究頁籤說明" style={{color:theme.palette.textSecondary}}>切換上方頁籤可看基本資料、ETF 成分股與個股反查持有 ETF、法人、歷史股利、折溢價及新聞。</MarketEditableText>:null}
     </FrameCard>}]:[]),
   ];
   return <>

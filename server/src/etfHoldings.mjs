@@ -20,8 +20,8 @@ export class EtfHoldingsService {
         [snapshot.symbol,snapshot.asOf,snapshot.source,snapshot.sourceUrl,basis,snapshot.complete,new Date(snapshot.fetchedAt)]);
       const id=result.rows[0].id;
       await client.query('DELETE FROM etf_holdings WHERE snapshot_id=$1',[id]);
-      await client.query(`INSERT INTO etf_holdings(snapshot_id,stock_symbol,stock_name,weight)
-        SELECT $1,x.symbol,x.name,x.weight FROM jsonb_to_recordset($2::jsonb) AS x(symbol text,name text,weight numeric)`,[id,JSON.stringify(snapshot.rows)]);
+      await client.query(`INSERT INTO etf_holdings(snapshot_id,stock_symbol,stock_name,weight,quantity)
+        SELECT $1,x.symbol,x.name,x.weight,x.quantity FROM jsonb_to_recordset($2::jsonb) AS x(symbol text,name text,weight numeric,quantity numeric)`,[id,JSON.stringify(snapshot.rows)]);
       await client.query('COMMIT');
       // Invalidate after commit; reads always reconstruct one atomic snapshot.
       if(this.redis?.isReady)await this.redis.del('etf:holdings:'+snapshot.symbol).catch(()=>{});
@@ -36,12 +36,29 @@ export class EtfHoldingsService {
       ORDER BY as_of DESC,complete DESC,fetched_at DESC LIMIT 1)
       SELECT s.etf_symbol AS symbol,to_char(s.as_of,'YYYY-MM-DD') AS "asOf",s.source,s.source_url AS "sourceUrl",
         s.basis,s.complete,extract(epoch FROM s.fetched_at)*1000 AS "fetchedAt",
-        jsonb_agg(jsonb_build_object('symbol',h.stock_symbol,'name',h.stock_name,'weight',h.weight) ORDER BY h.weight DESC,h.stock_symbol) AS rows
+        jsonb_agg(jsonb_build_object('symbol',h.stock_symbol,'name',h.stock_name,'weight',h.weight,'quantity',h.quantity) ORDER BY h.weight DESC,h.stock_symbol) AS rows
       FROM latest s JOIN etf_holdings h ON h.snapshot_id=s.id GROUP BY s.id,s.etf_symbol,s.as_of,s.source,s.source_url,s.basis,s.complete,s.fetched_at`,[symbol]);
     const data=result.rows[0];if(!data)return null;
     data.fetchedAt=Number(data.fetchedAt);
     if(this.redis?.isReady)await this.redis.set('etf:holdings:'+symbol,JSON.stringify(data),{EX:300}).catch(()=>{});
     return data;
+  }
+  /** Read-only reverse lookup across ETFs already indexed in the public database. */
+  async readStockOwners(symbol){
+    if(!/^[A-Z0-9][A-Z0-9._-]{0,24}$/.test(symbol))throw new Error('invalid_stock_symbol');
+    const results=await this.pg.query(`WITH latest AS (
+      SELECT DISTINCT ON (etf_symbol) id,etf_symbol,as_of,source,source_url,basis,complete
+      FROM etf_holding_snapshots ORDER BY etf_symbol,as_of DESC,complete DESC,fetched_at DESC)
+      SELECT s.etf_symbol AS "etfSymbol",e.name AS "etfName",
+        h.stock_symbol AS "stockSymbol",h.stock_name AS "stockName",
+        h.weight,h.quantity,to_char(s.as_of,'YYYY-MM-DD') AS "asOf",
+        s.source,s.source_url AS "sourceUrl",s.basis,s.complete
+      FROM latest s JOIN etf_holdings h ON h.snapshot_id=s.id
+      JOIN etfs e ON e.symbol=s.etf_symbol
+      WHERE h.stock_symbol=$1 ORDER BY s.as_of DESC,h.weight DESC,s.etf_symbol LIMIT 300`,[symbol]);
+    const total=await this.pg.query('SELECT count(DISTINCT etf_symbol)::int AS total FROM etf_holding_snapshots');
+    return {stockSymbol:symbol,coverage:Number(total.rows[0]?.total??0),
+      rows:results.rows.map(row=>({...row,weight:Number(row.weight),quantity:row.quantity==null?null:Number(row.quantity)}))};
   }
   registerSymbol(symbol){
     if(!isEtfSymbol(symbol))throw new Error('invalid_etf_symbol');
@@ -87,6 +104,15 @@ export function registerEtfHoldingsApi(app,service){
     attempts.set(ip,window);if(window.count>20)return res.status(429).json({error:'tracking_rate_limit'});
     try{service.registerSymbol(symbol);return res.json(await service.track(symbol));}
     catch{return res.status(503).json({error:'etf_holdings_source_unavailable'});}
+  });
+  // Public reference only. A stock lookup never triggers upstream crawling.
+  app.get('/api/v1/etf/stock/:symbol/owners',async(req,res)=>{
+    const symbol=String(req.params.symbol??'').trim().toUpperCase();
+    if(!/^[A-Z0-9][A-Z0-9._-]{0,24}$/.test(symbol))return res.status(400).json({error:'invalid_stock_symbol'});
+    try{
+      const data=await service.readStockOwners(symbol);
+      res.set('Cache-Control','public, max-age=60').json(data);
+    }catch{return res.status(503).json({error:'etf_ownership_store_unavailable'});}
   });
   app.get('/api/v1/etf/:symbol/holdings',async(req,res)=>{
     const symbol=String(req.params.symbol??'').toUpperCase();

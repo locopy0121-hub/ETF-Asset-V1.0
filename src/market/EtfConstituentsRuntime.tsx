@@ -15,6 +15,7 @@ let apiUrl='';
 const hydrate=()=>hydration??(hydration=AsyncStorage.getItem(STORAGE).then(raw=>{
   if(raw){try{restoreEtfConstituents(JSON.parse(raw));}catch{}}
 }).catch(()=>{}));
+export const hydrateEtfConstituentCache=()=>hydrate();
 let storageQueue=Promise.resolve();
 function persist(){
   const json=JSON.stringify(allCachedEtfConstituents());
