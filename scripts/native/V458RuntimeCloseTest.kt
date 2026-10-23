@@ -27,15 +27,14 @@ fun main(){
     val runtime=SaiEtfMarketRuntime(Context(),{now}){events.add(JSONObject(it))}
     runtime.updateSymbols(listOf("0050"))
     val result=runtime.refresh(listOf("0050"))
-    check(result.getJSONArray("quotes").getJSONObject(0).getDouble("currentPrice")==114.0){"Actual runtime must repair 12:51 cache on 16:34 refresh"}
-    check(result.getJSONArray("quotes").getJSONObject(0).getLong("sourceQuoteAt")==closed)
-    check(MarketPersistenceRepository.stored.getValue("0050").isClose){"Persist final quote before shutdown"}
-    check(events.any{it.optLong("version")==result.getLong("version")}){ "Emit exact version awaited by canonical writer" }
-    runtime.refresh(listOf("0050"));check(requests==1){"Final close cache suppresses repeat HTTP requests"}
-    val journal=com.tfasset.app.TfAssetMarketFlowDiagnostics.read()
-    check(journal.contains("SESSION_CLOSE") && journal.contains("confirmed"))
-    check(!journal.contains("test-only") && !journal.contains("114.0"))
+    val restored=result.getJSONArray("quotes").getJSONObject(0)
+    check(restored.getDouble("currentPrice")==113.5){"Closed/locked session must show the last confirmed cached price"}
+    check(restored.getLong("sourceQuoteAt")==old){"Closed quote source clock must not be rewritten"}
+    check(!MarketPersistenceRepository.stored.getValue("0050").isClose){"No fabricated closing settlement after hours"}
+    check(requests==0){"After hours must not fetch quotes or holiday calendar metadata"}
+    check(events.none{it.optLong("version")==result.getLong("version")}){"Cache-only read must not masquerade as a new LIVE publish"}
+    runtime.refresh(listOf("0050"));check(requests==0){"Repeated closed reads must remain offline"}
     TfAssetMarketSchedule.policy=MarketSchedule(enabled=false)
-    runtime.refresh(listOf("00878"));check(requests==1)
-    println("V4.0.58 compiled production runtime + REST + sink + center: reopen repair / publish / persist / no repeat PASS")
+    runtime.refresh(listOf("00878"));check(requests==0){"Disabled schedule must not start HTTP requests"}
+    println("V4.0.58 compiled production runtime + REST + sink + center: afterhours cache-only/no HTTP/no fabricated close PASS")
 }
