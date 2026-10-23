@@ -26,7 +26,7 @@ assert.equal(validateStockEtfOwners({coverage:10,rows:[{...stocks[0],sourceUrl:'
 assert.equal(validateStockEtfOwners({coverage:301,rows:[]},'2330'),null);
 assert.equal(validateStockEtfOwners({coverage:1,rows:[{...stocks[0],asOf:'2026-02-30'}]},'2330'),null);
 assert.equal(validateStockEtfOwners({coverage:1,rows:[stocks[0],stocks[0]]},'2330'),null);
-const merged=mergeStockEtfOwners(stocks,[{...stocks[0],asOf:'2026-10-20',weight:60}]);
+const merged=mergeStockEtfOwners(stocks,[{...stocks[0]!,asOf:'2026-10-20',weight:60}]);
 assert.equal(merged[0]!.asOf,at,'older server data must not overwrite today cache');
 const q=localStockEtfOwners('2330',[{...base,rows:[{symbol:'2330',name:'台積電',weight:5,quantity:133000}]}]);
 assert.equal(q[0]?.quantity,133000);
