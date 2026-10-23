@@ -84,6 +84,8 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
     init {
         TradingCalendar.restore(calendarPrefs.getStringSet("closedDates", emptySet()) ?: emptySet())
         scope.launch {
+            // Calendar metadata must not initiate network I/O after close or while locked.
+            if(!TfAssetMarketSchedule.allows(appContext))return@launch
             runCatching {
                 val connection = java.net.URL("https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule").openConnection() as java.net.HttpURLConnection
                 connection.connectTimeout = 8000
