@@ -1,6 +1,6 @@
 {
   "name": "tf-asset",
-  "version": "5.0.31",
+  "version": "5.0.32",
   "private": true,
   "main": "index.ts",
   "scripts": {
