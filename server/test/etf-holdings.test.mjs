@@ -12,6 +12,23 @@ test('ETF endpoint rejects malformed symbols and preserves missing/error states'
   registerEtfHoldingsApi({get:(_path,fn)=>{handler=fn;}},{read:async()=>{throw new Error('offline');}});
   assert.equal((await invoke('0050')).status,503);
 });
+test('stock reverse lookup reports bounded indexed ETF coverage without crawling',async()=>{
+  const handlers={};
+  const svc={readStockOwners:async symbol=>({stockSymbol:symbol,coverage:2,rows:[
+    {stockSymbol:symbol,stockName:'台積電',etfSymbol:'0050',etfName:'元大台灣50',weight:56.52,
+      quantity:null,asOf:'2026-10-22',source:'元大投信',
+      sourceUrl:'https://www.yuantaetfs.com/product/detail/0050/ratio',
+      basis:'issuer_disclosed',complete:true}]})};
+  registerEtfHoldingsApi({get:(path,fn)=>{handlers[path]=fn;}},svc);
+  const invoke=async symbol=>{const result={status:200};const res={
+    status(code){result.status=code;return this;},set(){return this;},json(value){result.data=value;return this;}};
+    await handlers['/api/v1/etf/stock/:symbol/owners']({params:{symbol}},res);return result;};
+  assert.equal((await invoke('../../x')).status,400);
+  const output=await invoke('2330');
+  assert.equal(output.status,200);assert.equal(output.data.coverage,2);
+  assert.equal(output.data.rows[0].quantity,null);assert.equal(output.data.rows[0].weight,56.52);
+});
+
 test('cached registration and restart keep ETFs in the scheduled tracking universe',async()=>{
   const service=new EtfHoldingsService({pg:{query:async()=>({rows:[{symbol:'00929'}]})},symbols:['0050']});
   service.read=async symbol=>({symbol,rows:[{symbol:'2330',name:'台積電',weight:20}]});

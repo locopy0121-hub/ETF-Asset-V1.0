@@ -2,12 +2,13 @@ import {useEffect,useState} from 'react';
 import {Linking,StyleSheet,View} from 'react-native';
 import {Pressable,Text} from './EditableNative';
 import {cachedEtfConstituents,subscribeEtfConstituents,type EtfConstituentSnapshot} from '../market/etfConstituents';
+import {taipeiDisclosureDate} from '../market/etfStockOwnership';
 import {refreshEtfConstituentSnapshot} from '../market/EtfConstituentsRuntime';
 import {useSystemColors} from '../theme/useSystemColors';
 import {EtfConstituentChangeNotice} from './EtfConstituentChangeNotice';
 import {useLayoutRuntime} from '../editor/LayoutSelectionContext';
 
-export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}){
+export function EtfConstituentsContent({symbol,name,onSelectStock}:{symbol:string;name:string;onSelectStock?:(symbol:string,name:string)=>void}){
   const colors=useSystemColors();
   const editingPreview=useLayoutRuntime().active;
   const [snapshot,setSnapshot]=useState<EtfConstituentSnapshot|null>(()=>cachedEtfConstituents(symbol));
@@ -36,16 +37,16 @@ export function EtfConstituentsContent({symbol,name}:{symbol:string;name:string}
       <Text editorId="native:EtfConstituentsContent:text:2" editorReadOnly={true} style={{color:colors.primary,fontWeight:'800'}}>{loading?'更新中…':'更新成分股'}</Text>
     </Pressable>
     {data?<>
-      <Text editorId="native:EtfConstituentsContent:meta:3" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>資料日期 {data.asOf} · {data.source}</Text>
+      <Text editorId="native:EtfConstituentsContent:meta:3" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>資料日期 {data.asOf} · {data.asOf===taipeiDisclosureDate()?'今日已揭露':'最新揭露（非今日）'} · {data.source}</Text>
       <EtfConstituentChangeNotice snapshot={data}/>
       {data.basis==='pcf_estimated'?<Text editorId="native:EtfConstituentsContent:meta:4" editorReadOnly={false} style={[styles.meta,{color:colors.textSecondary}]}>PCF 申購組合估算權重，非基金實際持股權重。</Text>:null}
       <Text editorId="native:EtfConstituentsContent:meta:5" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>已取得 {data.rows.length} 檔 · 依權重由高至低排列{data.complete?'':' · 僅部分揭露資料'}</Text>
       <View style={[styles.row,{borderColor:colors.border}]}><Text editorId="native:EtfConstituentsContent:stock:6" editorReadOnly={false} style={[styles.stock,{color:colors.textSecondary}]}>成分股／代號</Text><Text editorId="native:EtfConstituentsContent:text:7" editorReadOnly={false} style={{color:colors.textSecondary}}>權重</Text></View>
       {rows?.map((row,index)=><View key={row.symbol} style={[styles.row,{borderColor:colors.border}]}>
         <Text editorId="native:EtfConstituentsContent:rank:8" editorReadOnly={true} style={[styles.rank,{color:colors.textSecondary}]}>{index+1}</Text>
-        <View style={styles.stock}><Text editorId="native:EtfConstituentsContent:name:9" editorReadOnly={true} style={[styles.name,{color:colors.text}]}>{row.name}</Text><Text editorId="native:EtfConstituentsContent:meta:10" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>{row.symbol}</Text>
-          <View style={[styles.track,{backgroundColor:colors.surfaceMuted}]}><View style={{height:4,width:`${row.weight}%`,backgroundColor:colors.primary,borderRadius:2}}/></View></View>
-        <Text editorId="native:EtfConstituentsContent:weight:11" editorReadOnly={true} style={[styles.weight,{color:colors.text}]}>{row.weight.toFixed(2)}%</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={'查看 '+row.symbol+' 被哪些 ETF 持有'} disabled={!onSelectStock||editingPreview} onPress={()=>onSelectStock?.(row.symbol,row.name)} style={styles.stock}><Text editorId="native:EtfConstituentsContent:name:9" editorReadOnly={true} style={[styles.name,{color:colors.text}]}>{row.name}</Text><Text editorId="native:EtfConstituentsContent:meta:10" editorReadOnly={true} style={[styles.meta,{color:colors.textSecondary}]}>{row.symbol}{onSelectStock?' · 查看 ETF 持有狀況':''}</Text>
+          <View style={[styles.track,{backgroundColor:colors.surfaceMuted}]}><View style={{height:4,width:`${row.weight}%`,backgroundColor:colors.primary,borderRadius:2}}/></View></Pressable>
+        <Text editorId="native:EtfConstituentsContent:weight:11" editorReadOnly={true} style={[styles.weight,{color:colors.text}]}>{row.weight.toFixed(2)}%{row.quantity!==undefined&&data.basis!=='pcf_estimated'?'\n'+row.quantity.toLocaleString('zh-TW')+' 股':''}</Text>
       </View>)}
       {data.rows.length>10?<Pressable editorId="native:EtfConstituentsContent:button:12" accessibilityRole="button" onPress={()=>setExpanded(value=>!value)} style={styles.button}>
         <Text editorId="native:EtfConstituentsContent:text:13" editorReadOnly={true} style={{color:colors.primary,fontWeight:'800'}}>{expanded?'收合為前十大':`展開已取得的全部 ${data.rows.length} 檔`}</Text></Pressable>:null}
