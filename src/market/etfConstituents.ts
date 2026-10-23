@@ -115,7 +115,7 @@ function storedBaseline(value:unknown,symbol:string):EtfConstituentSnapshot['pre
     typeof v.sourceUrl!=='string'||!/^https:\/\/www\.(?:(?:yuantaetfs|moneydj)\.com|twse\.com\.tw)\//.test(v.sourceUrl)||!Array.isArray(v.rows)||
     (v.basis!==undefined&&!['issuer_disclosed','third_party_disclosed','pcf_estimated'].includes(v.basis)))return undefined;
   if(v.rows.some(r=>!r||typeof r!=='object'))return undefined;
-  const rows=validRows(v.rows.map(r=>({symbol:r.symbol,name:r.name,weight:r.weight,...(r.quantity!==undefined?{quantity:r.quantity}:{})})));if(!rows)return undefined;
+  const rows=validRows(v.rows.map(r=>({symbol:r.symbol,name:r.name,weight:r.weight,...(typeof r.quantity==='number'?{quantity:r.quantity}:{})})));if(!rows)return undefined;
   return {symbol:v.symbol,asOf:v.asOf,fetchedAt:v.fetchedAt,source:v.source,sourceUrl:v.sourceUrl,complete:v.complete,rows,...(v.basis?{basis:v.basis}:{}),...(v.completenessVerified===true?{completenessVerified:true}:{})};
 }
 export function restoreEtfConstituents(items:unknown){
@@ -128,7 +128,7 @@ export function restoreEtfConstituents(items:unknown){
       (item.basis!==undefined&&!['issuer_disclosed','third_party_disclosed','pcf_estimated'].includes(item.basis))||
       typeof item.sourceUrl!=='string'||!/^https:\/\/www\.(?:(?:yuantaetfs|moneydj)\.com|twse\.com\.tw)\//.test(item.sourceUrl))continue;
     if(item.rows.some((row:unknown)=>!row||typeof row!=='object'))continue;
-    const rows=validRows(item.rows.map((row:EtfConstituent)=>({symbol:row.symbol,name:row.name,weight:row.weight,...(row.quantity!==undefined?{quantity:row.quantity}:{})})));
+    const rows=validRows(item.rows.map((row:EtfConstituent)=>({symbol:row.symbol,name:row.name,weight:row.weight,...(typeof row.quantity==='number'?{quantity:row.quantity}:{})})));
     if(!rows)continue;
     accepted++;
     const old=cache.get(item.symbol);
