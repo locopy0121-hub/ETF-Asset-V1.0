@@ -146,6 +146,7 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
         trackedSymbols = symbols
         if(!TfAssetMarketSchedule.allows(appContext)){pause();return}
         paused = false
+        persistenceController.setActive(symbols.isNotEmpty())
         streamingController.updateSymbols(symbols)
     }
 
@@ -155,6 +156,7 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
 
     fun pause() {
         paused = true
+        persistenceController.setActive(false)
         streamingController.pause()
         scope.launch { persistenceController.flushNow() }
     }
