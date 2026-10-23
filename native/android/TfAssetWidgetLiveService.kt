@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -15,8 +17,19 @@ import com.facebook.react.jstasks.HeadlessJsTaskConfig
 
 class TfAssetWidgetLiveService:HeadlessJsTaskService(){
     private var started=false
+    private val screenReceiver=object:BroadcastReceiver(){
+        override fun onReceive(context:Context?,intent:Intent?){
+            if(intent?.action==Intent.ACTION_SCREEN_OFF){
+                TfAssetMarketOwner.applySchedule(this@TfAssetWidgetLiveService)
+                stopSelf()
+            }
+        }
+    }
     override fun onCreate(){
         super.onCreate()
+        registerReceiver(screenReceiver,IntentFilter().apply{
+            addAction(Intent.ACTION_SCREEN_OFF)
+        })
         val nm=getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT>=26)nm.createNotificationChannel(NotificationChannel(CHANNEL,"背景行情連線",NotificationManager.IMPORTANCE_LOW))
         val launch=packageManager.getLaunchIntentForPackage(packageName)
@@ -39,6 +52,7 @@ class TfAssetWidgetLiveService:HeadlessJsTaskService(){
         if(started)HeadlessJsTaskConfig("TfAssetWidgetLive",Arguments.createMap(),0L,true) else null
     override fun onTimeout(startId:Int,fgsType:Int){stopSelf()}
     override fun onDestroy(){
+        unregisterReceiver(screenReceiver)
         running=false
         TfAssetMarketOwner.stopWidget(this)
         sendBroadcast(Intent(ACTION_STOPPED).setPackage(packageName))
@@ -48,10 +62,11 @@ class TfAssetWidgetLiveService:HeadlessJsTaskService(){
         const val ACTION_STOPPED="com.tfasset.app.WIDGET_LIVE_STOPPED"
         private const val CHANNEL="tf_asset_widget_live"
         @Volatile private var running=false
+        val isRunning:Boolean get()=running
         fun hasWidgets(context:Context)=AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context,TfAssetWidgetProvider::class.java)).isNotEmpty()
         fun hasBackgroundSurfaces(context:Context)=backgroundLiveRequired(hasWidgets(context),TfAssetOverlayService.isRunning)
-        fun ensureStarted(context:Context){
-            if(running||!hasBackgroundSurfaces(context)||!TfAssetMarketSchedule.allows(context)||!TfAssetMarketOwner.uiActive)return
+        fun ensureStarted(context:Context,fromUnlock:Boolean=false){
+            if(running||!hasBackgroundSurfaces(context)||!TfAssetMarketSchedule.allows(context)||(!TfAssetMarketOwner.uiActive&&!fromUnlock))return
             val intent=Intent(context,TfAssetWidgetLiveService::class.java)
             runCatching{if(Build.VERSION.SDK_INT>=26)context.startForegroundService(intent) else context.startService(intent)}
                 .onFailure{context.getSharedPreferences("tf_asset_native",0).edit().putString("widget_refresh_status","背景連線未啟動｜保留最後行情").apply()}

@@ -28,32 +28,29 @@ internal object TfAssetMarketOwner {
         val app=context.applicationContext
         handler.post{
             boundary?.let{handler.removeCallbacks(it)};boundary=null
-            if(!TfAssetMarketSchedule.allows(app)){
+            val now=System.currentTimeMillis()
+            val sessionOpen=TfAssetMarketSchedule.load(app).allows(now)
+            val screenReady=TfAssetMarketSchedule.deviceReady(app)
+            if(!sessionOpen){
+                // After close / holiday no settlement network or scheduled live writer.
                 instance?.pause()
-                if(!closePending && !closeSettled && (uiActive||widgetActive)) {
-                    closePending=true
-                    val generation=++closeGeneration
-                    val started=instance?.settleScheduledClose{version->handler.post{
-                        if(generation==closeGeneration && closePending) {
-                            closingVersion=version
-                            if(lastSurfaceVersion>=version)finishClose(app)
-                        }
-                    }} ?: false
-                    if(started) {
-                        // A failed HTTP request or absent JS writer must never keep
-                        // an after-hours foreground service running indefinitely.
-                        val timeout=Runnable{if(generation==closeGeneration)finishClose(app)}
-                        closeTimeout=timeout;handler.postDelayed(timeout,30_000L)
-                    } else finishClose(app,settled=false)
-                } else if(!closePending)app.stopService(Intent(app,TfAssetWidgetLiveService::class.java))
+                finishClose(app,settled=false)
+            }else if(!screenReady){
+                // Lock: pause trades and terminate the Headless JS foreground service.
+                // A persistent Headless task could otherwise retain its WakeLock.
+                instance?.pause()
+                closeGeneration++;closePending=false;closingVersion=null
+                closeTimeout?.let{handler.removeCallbacks(it)};closeTimeout=null
+                app.stopService(Intent(app,TfAssetWidgetLiveService::class.java))
             }else if(uiActive||widgetActive){
                 closeGeneration++;closePending=false;closeSettled=false;closingVersion=null
                 closeTimeout?.let{handler.removeCallbacks(it)};closeTimeout=null
                 instance?.resumeTrackedSymbols()
                 if(allowStart)TfAssetWidgetLiveService.ensureStarted(app)
+            }else{
+                instance?.pause()
             }
             if(uiActive||widgetActive){
-                val now=System.currentTimeMillis()
                 TfAssetMarketSchedule.load(app).nextBoundary(now)?.let{at->
                     val task=Runnable{applySchedule(app)};boundary=task
                     handler.postDelayed(task,(at-now).coerceAtLeast(1L))

@@ -84,6 +84,8 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
     init {
         TradingCalendar.restore(calendarPrefs.getStringSet("closedDates", emptySet()) ?: emptySet())
         scope.launch {
+            // Calendar metadata must not initiate network I/O after close or while locked.
+            if(!TfAssetMarketSchedule.allows(appContext))return@launch
             runCatching {
                 val connection = java.net.URL("https://openapi.twse.com.tw/v1/holidaySchedule/holidaySchedule").openConnection() as java.net.HttpURLConnection
                 connection.connectTimeout = 8000
@@ -146,6 +148,7 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
         trackedSymbols = symbols
         if(!TfAssetMarketSchedule.allows(appContext)){pause();return}
         paused = false
+        persistenceController.setActive(symbols.isNotEmpty())
         streamingController.updateSymbols(symbols)
     }
 
@@ -155,6 +158,7 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
 
     fun pause() {
         paused = true
+        persistenceController.setActive(false)
         streamingController.pause()
         scope.launch { persistenceController.flushNow() }
     }
@@ -180,23 +184,8 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
             .filter { it.matches(Regex("[0-9A-Z]{4,10}")) }
             .toSet()
         if (symbols.isEmpty()) return snapshot(symbols)
-        if (!TfAssetMarketSchedule.allows(appContext)) {
-            if(closeReconciler.reconcile(symbols,TfAssetMarketSchedule.load(appContext))) {
-                kotlinx.coroutines.runBlocking { persistenceController.flushNow() }
-            }
-            if(FugleSessionCloseReconciler.eligible(TfAssetMarketSchedule.load(appContext),clockMillis(),FugleSessionCloseReconciler.SETTLEMENT_GRACE_MILLIS)) {
-                val date=taipeiDate(clockMillis())
-                val confirmed=center.memoryQuotes(symbols).values.count{it.isClose&&it.sessionDate==date}
-                com.tfasset.app.TfAssetMarketFlowDiagnostics.sourceCheckpoint(JSONObject()
-                    .put("kind","source").put("reason","SESSION_CLOSE")
-                    .put("failure",if(confirmed==symbols.size)"NONE" else "CLOSE_UNCONFIRMED")
-                    .put("requested",symbols.size).put("confirmed",confirmed))
-            }
-            version.incrementAndGet()
-            val result=snapshot(symbols)
-            onLiveSnapshot(result.toString())
-            return result
-        }
+        // Locked screens and post-close periods are cache-only: no REST/WS work.
+        if (!TfAssetMarketSchedule.allows(appContext)) return snapshot(symbols)
 
         val now = clockMillis()
         if (isLiveSession(now)) {
