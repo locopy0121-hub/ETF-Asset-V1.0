@@ -25,5 +25,12 @@ fun main(){
     check(!backgroundMonitorRefreshAllowed(true,true))
     check(!backgroundMonitorRefreshAllowed(false,false))
     check(backgroundMonitorRefreshAllowed(true,false))
+    check(monitorAnimationsAllowed(true,true))
+    check(!monitorAnimationsAllowed(true,false))
+    check(!monitorAnimationsAllowed(false,true))
+    check(marketUpdatesAllowed(true,true))
+    check(!marketUpdatesAllowed(true,false))
+    check(!marketUpdatesAllowed(false,true))
+    check(!marketUpdatesAllowed(false,false))
     println("V4.0.54 native background policy: floating-only ownership, live repaint, foreground handoff and last-surface cleanup PASS")
 }

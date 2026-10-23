@@ -50,14 +50,28 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
   }
   private val saietfMarket get() = TfAssetMarketOwner.runtime(reactContext)
   private val lifecycleListener=object:com.facebook.react.bridge.LifecycleEventListener{
-    override fun onHostResume(){TfAssetMarketOwner.resumeUi(reactContext)}
-    override fun onHostPause(){TfAssetMarketOwner.uiActive=false}
-    override fun onHostDestroy(){TfAssetMarketOwner.uiActive=false}
+    override fun onHostResume(){TfAssetMarketOwner.resumeUi(reactContext);TfAssetOverlayService.requestRefresh()}
+    override fun onHostPause(){TfAssetMarketOwner.pauseUi(reactContext);TfAssetOverlayService.requestRefresh()}
+    override fun onHostDestroy(){TfAssetMarketOwner.pauseUi(reactContext)}
   }
   private val flowReceiver=object:BroadcastReceiver(){
     override fun onReceive(context:Context?,intent:Intent?){
       val raw=intent?.getStringExtra("payload")?:return
       runCatching{reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java).emit("TfAssetMarketFlowDiagnostics",raw)}
+    }
+  }
+  private val screenReceiver=object:BroadcastReceiver(){
+    override fun onReceive(context:Context?,intent:Intent?){
+      when(intent?.action){
+        Intent.ACTION_SCREEN_OFF->TfAssetMarketOwner.applySchedule(reactContext)
+        Intent.ACTION_USER_PRESENT->{
+          // Resubscribe only if the market is still open and the phone is unlocked.
+          if(TfAssetMarketSchedule.allows(reactContext)){
+            TfAssetMarketOwner.applySchedule(reactContext)
+            TfAssetWidgetLiveService.ensureStarted(reactContext,fromUnlock=true)
+          }
+        }
+      }
     }
   }
   private val widgetStoppedReceiver=object:BroadcastReceiver(){
@@ -194,6 +208,9 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     TfAssetMarketOwner.addListener(marketListener)
     reactContext.addLifecycleEventListener(lifecycleListener)
     TfAssetMarketOwner.uiActive=reactContext.lifecycleState==com.facebook.react.common.LifecycleState.RESUMED
+    reactContext.registerReceiver(screenReceiver,IntentFilter().apply{
+      addAction(Intent.ACTION_SCREEN_OFF);addAction(Intent.ACTION_USER_PRESENT)
+    })
     val stopFilter=IntentFilter(TfAssetWidgetLiveService.ACTION_STOPPED)
     if(Build.VERSION.SDK_INT>=33)reactContext.registerReceiver(widgetStoppedReceiver,stopFilter,Context.RECEIVER_NOT_EXPORTED)
     else reactContext.registerReceiver(widgetStoppedReceiver,stopFilter)
@@ -206,6 +223,7 @@ class TfAssetNativeModule(private val reactContext: ReactApplicationContext) : R
     TfAssetMarketFlowDiagnostics.removeSourceListener(sourceDiagnosticListener)
     TfAssetMarketOwner.removeListener(marketListener)
     reactContext.removeLifecycleEventListener(lifecycleListener)
+    runCatching{reactContext.unregisterReceiver(screenReceiver)}
     runCatching{reactContext.unregisterReceiver(flowReceiver)}
     runCatching{reactContext.unregisterReceiver(widgetStoppedReceiver)}
     runCatching{reactContext.unregisterReceiver(refreshRequestReceiver)}

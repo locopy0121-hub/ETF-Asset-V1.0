@@ -1,8 +1,10 @@
 // Supplement the compiled runtime and owner behavior tests with module wiring checks.
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const runtime=fs.readFileSync('native/android/SaiEtfMarketRuntime.kt','utf8');
-assert.match(runtime,/if \(!TfAssetMarketSchedule\.allows\(appContext\)\) \{\s*if\(closeReconciler\.reconcile/);
-assert.match(runtime,/runBlocking \{ persistenceController\.flushNow\(\) \}/);
+// V5.0.32 intentionally uses cache-only reads when the market is closed or the phone is locked.
+assert.match(runtime,/if \(!TfAssetMarketSchedule\.allows\(appContext\)\) return snapshot\(symbols\)/);
+assert.match(runtime,/persistenceController\.setActive\(false\)/);
+assert.match(runtime,/scope\.launch \{ persistenceController\.flushNow\(\) \}/);
 assert.match(runtime,/settledVersion=refresh\(trackedSymbols\)\.getLong\("version"\)/);
 const moduleSource=fs.readFileSync('native/android/TfAssetNativeModule.kt','utf8');
 const persist=moduleSource.slice(moduleSource.indexOf('private fun persistSurfaceSnapshot'),moduleSource.indexOf('private fun refreshBackgroundMonitor'));

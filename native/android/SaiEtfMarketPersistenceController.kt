@@ -18,7 +18,14 @@ class MarketPersistenceController(
     private val persistedVersions = linkedMapOf<String, String>()
     private var writerJob: Job? = null
 
-    init {
+    /** No five-second CPU wakeups while locked, closed or unsubscribed. */
+    @Synchronized fun setActive(active: Boolean) {
+        if (!active) {
+            writerJob?.cancel()
+            writerJob = null
+            return
+        }
+        if (writerJob?.isActive == true) return
         writerJob = scope.launch {
             while (isActive) {
                 delay(PERSIST_INTERVAL_MILLIS)

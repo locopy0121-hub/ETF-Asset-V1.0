@@ -90,6 +90,15 @@ java -cp "$compiler_dir/v449-rest-schedule.jar:$compile_cp" com.tfasset.app.saie
   -include-runtime -d "$compiler_dir/v454-background-surfaces.jar"
 java -jar "$compiler_dir/v454-background-surfaces.jar"
 
+# Compile the real process-wide owner with Android/runtime doubles, not just source-smoke assertions.
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/TfAssetMarketOwner.kt \
+  scripts/native/V458OwnerRuntimeStub.kt scripts/native/V458OwnerSurfaceStubs.kt \
+  scripts/native/V458OwnerHandlerStubs.kt scripts/native/V458OwnerAndroidStubs.kt \
+  scripts/native/V458OwnerCloseTest.kt \
+  -include-runtime -d "$compiler_dir/v5032-power-owner.jar"
+java -jar "$compiler_dir/v5032-power-owner.jar"
+
 "$compiler_dir/kotlinc/bin/kotlinc" native/android/TfAssetLatestSurfaceRenderQueue.kt scripts/native/V455RenderQueueTest.kt \
   -include-runtime -d "$compiler_dir/v455-render-queue.jar"
 java -jar "$compiler_dir/v455-render-queue.jar"

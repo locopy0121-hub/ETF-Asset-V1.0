@@ -10,6 +10,11 @@ fun main()=runBlocking {
     check(center.acceptStreamingQuote(first,now,"2026-10-14"))
     val scope=CoroutineScope(SupervisorJob()+Dispatchers.Default)
     val controller=MarketPersistenceController(scope,center,MarketPersistenceRepository(Context()))
+    // The writer starts asleep and only runs for an active live session.
+    controller.setActive(true)
+    controller.setActive(true)
+    controller.setActive(false)
+    controller.setActive(true)
     val entered=CompletableDeferred<Unit>();val release=CompletableDeferred<Unit>()
     val secondEntered=CompletableDeferred<Unit>()
     MarketPersistenceRepository.beforePersist={quotes->
@@ -24,6 +29,7 @@ fun main()=runBlocking {
     withTimeoutOrNull(100){secondEntered.await()}
     release.complete(Unit);withTimeout(2000){older.await();final.await()}
     check(MarketPersistenceRepository.stored.getValue("0050").price==114.0){"Late old flush must not overwrite the final close"}
+    controller.setActive(false)
     MarketPersistenceRepository.beforePersist=null;scope.cancel()
     println("V4.0.58 production persistence controller: overlapped old/final flush remains newest PASS")
 }
