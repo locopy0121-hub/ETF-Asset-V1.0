@@ -40,6 +40,9 @@ assert.match(workbench,/Math\.max\(1,Math\.round\(windowWidth-spacing\.lg\*2\)\)
 assert.match(read('src/components/PageFrameSettingsModal.tsx'),/onChangeDisplay=\{setDisplayDraft\}/);
 assert.match(read('src/components/PageFrameSettingsModal.tsx'),/updateDisplayConfig\(displayDraft\)/);
 assert.match(read('src/screens/MarketResearchScreen.tsx'),/previewElements=\{frameData\}/);
-assert.equal(JSON.parse(read('package.json')).version,'5.0.37');
-assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,50037);
+const version=JSON.parse(read('package.json')).version as string;
+assert.match(version,/^5\.0\.\d+$/);
+const patch=Number(version.split('.')[2]);
+assert.ok(patch>=37,'V5.0.37 chart preview must remain covered by later releases');
+assert.equal(JSON.parse(read('app.json')).expo.android.versionCode,50000+patch);
 console.log('V5.0.37 chart preview: runtime mirror, persistence and chart geometry PASS');
