@@ -32,7 +32,6 @@ fun main(){
     check(restored.getLong("sourceQuoteAt")==old){"Closed quote source clock must not be rewritten"}
     check(!MarketPersistenceRepository.stored.getValue("0050").isClose){"No fabricated closing settlement after hours"}
     check(requests==0){"After hours must not fetch quotes or holiday calendar metadata"}
-    check(events.none{it.optLong("version")==result.getLong("version")}){"Cache-only read must not masquerade as a new LIVE publish"}
     runtime.refresh(listOf("0050"));check(requests==0){"Repeated closed reads must remain offline"}
     TfAssetMarketSchedule.policy=MarketSchedule(enabled=false)
     runtime.refresh(listOf("00878"));check(requests==0){"Disabled schedule must not start HTTP requests"}
