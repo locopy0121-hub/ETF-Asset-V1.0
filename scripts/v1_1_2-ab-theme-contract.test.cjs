@@ -10,6 +10,10 @@ const monitor=read('src/components/monitor/MonitorControlPanel.tsx');
 const monitorDomain=read('src/monitor/monitorDomain.ts');
 const monitorRuntime=read('src/monitor/MonitorSettingsRuntime.tsx');
 const monitorNative=read('native/android/TfAssetOverlayService.kt');
+const holdingModule=read('src/components/HoldingQuoteModule.tsx');
+const holdingCollection=read('src/components/HoldingQuoteCollection.tsx');
+const home=read('src/screens/HomeScreen.tsx');
+const portfolio=read('src/screens/PortfolioScreen.tsx');
 const settings=read('src/screens/SettingsScreen.tsx');
 const theme=read('src/theme/ThemeRuntime.tsx');
 const themeBackground=read('src/theme/ThemeBackgroundLayer.tsx');
@@ -32,6 +36,9 @@ assert.match(widget,/widgetFieldProfitValue\(previewSnapshot,row,field\)/,'Widge
 assert.match(widgetNative,/globalGap:Int,[\s\S]*?globalAlign:String/,'Widget wall must accept global alignment fallback');
 assert.match(widgetNative,/textAlign",""\)\.takeIf\(String::isNotBlank\)\?:globalAlign/,'Widget wall B alignment must inherit global alignment');
 assert.match(widgetNative,/effectTone=withAlpha\(tone,staticEffectAlpha\(visual,rendered\.second\)\)/,'Widget wall must render non-bounce static effects');
+assert.match(widgetNative,/val configuredFields=jsonStrings[\s\S]*?val selectedFields=configuredFields\.take\(capacity\)/,'Widget summary capacity must be applied after preserving the full configured field list');
+assert.match(widgetNative,/val wallFields=configuredFields\.filter\{supported\.contains\(it\)\}\.take\(4\)/,'Widget wall must filter supported fields before its four-field limit');
+assert.match(widgetNative,/val paddingY=visual\.optInt\("paddingY",0\)[\s\S]*?spacerHeight=\(gap\+paddingY\)/,'Widget wall must apply per-field vertical padding');
 for(let i=1;i<=4;i++)assert(widgetXml.includes('widget_wall_row_'+i),'Widget XML missing dynamic row '+i);
 
 for(const token of ['Normal A 顯示項目（母）','Mini A 項目列（母）','Mini B 欄位（子）','Mini 下方狀態列 A/B','主體行情牆 A/B 編輯','單項行距','單項特效'])assert(monitor.includes(token),'Monitor A-B UI missing '+token);
@@ -46,6 +53,13 @@ assert.match(monitorNative,/valueScale=if\(isMonitorValueField\(field\)\)style\.
 assert.match(monitorNative,/if\(!animationsEnabled\)return/,'Monitor animation disable must gate item effects');
 assert.match(monitorNative,/"change"->changed/,'Monitor change trigger must require a real value change');
 assert.match(monitorNative,/previousEffectValues\[key\]=numeric/,'Monitor must retain prior effect values');
+
+assert.match(native,/app_icon_key[\s\S]*?refreshWidget\(\)/,'Changing launcher aliases must refresh existing widget intents');
+assert.match(holdingModule,/function EffectView[\s\S]*?effect\.kind==='bounce'[\s\S]*?translateY:translate/,'Holding wall header bounce must use translation');
+assert.match(holdingModule,/triggerToken=effect\.trigger==='refresh'\?refreshToken:numeric/,'Holding effects must use a refresh token for refresh-triggered effects');
+assert.match(holdingCollection,/refreshToken=\{refreshToken\}/,'Holding collection must forward the refresh token');
+assert.match(home,/refreshToken=\{finance\.sharedSnapshot\.generatedAt\}/,'Home holding wall must receive the market refresh generation');
+assert.match(portfolio,/refreshToken=\{finance\.sharedSnapshot\.generatedAt\}/,'Portfolio holding wall must receive the market refresh generation');
 
 assert(settings.includes('主題與背景'),'Theme settings entry missing');
 const backgroundBlock=theme.slice(theme.indexOf('const BACKGROUNDS:'),theme.indexOf('export const THEME_PRESETS'));
