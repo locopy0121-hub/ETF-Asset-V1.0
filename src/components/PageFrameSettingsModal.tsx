@@ -130,8 +130,9 @@ export function PageFrameSettingsModal({
               </AccordionGroup>
 
               <AccordionGroup title="背景" subtitle="顏色、透明度、陰影" expanded={openGroup===`${frame.key}:background`} onPress={()=>toggleGroup(frame.key,'background')}>
-                <ColorPalettePicker label="框架背景" value={value.backgroundColor} onChange={backgroundColor=>patch(frame.key,{backgroundColor})}/>
-                <EditorRow title="背景透明度" subtitle={`${Math.round(value.backgroundOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.backgroundOpacity*100)} min={10} max={100} step={5} onChange={v=>patch(frame.key,{backgroundOpacity:v/100})}/></EditorRow>
+                <EditorRow title="主題背景融合" subtitle={value.backgroundBlend?'自動柔化框架背景，絕不改動框內元件':'保留框架自訂實色及透明度'}><Switch value={value.backgroundBlend} disabled={locked} onValueChange={backgroundBlend=>patch(frame.key,{backgroundBlend})} trackColor={{true:colors.primary}}/></EditorRow>
+                <ColorPalettePicker label="框架背景" value={value.backgroundColor} onChange={backgroundColor=>patch(frame.key,{backgroundColor,backgroundBlend:false})}/>
+                <EditorRow title="背景透明度" subtitle={`${Math.round(value.backgroundOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.backgroundOpacity*100)} min={0} max={100} step={5} onChange={v=>patch(frame.key,{backgroundOpacity:v/100,backgroundBlend:false})}/></EditorRow>
                 <EditorRow title="陰影" subtitle={value.shadowEnabled?'開啟':'關閉'}><Switch value={value.shadowEnabled} onValueChange={shadowEnabled=>patch(frame.key,{shadowEnabled})} trackColor={{true:colors.primary}}/></EditorRow>
                 {value.shadowEnabled?<EditorRow title="陰影強度" subtitle={`${Math.round(value.shadowOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.shadowOpacity*100)} min={0} max={80} step={5} onChange={v=>patch(frame.key,{shadowOpacity:v/100})}/></EditorRow>:null}
               </AccordionGroup>
