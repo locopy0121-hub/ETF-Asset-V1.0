@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {selectNewsForEnrichment} from '../src/ai/newsCoverage';
+const items=[...Array.from({length:10},(_,i)=>({symbol:'0050',id:'A'+i})),{symbol:'00878',id:'B0'},{symbol:'00919',id:'C0'}];
+const selected=selectNewsForEnrichment(items,8);
+assert.equal(selected.length,8);
+assert.deepEqual(selected.slice(0,3).map(x=>x.id),['A0','B0','C0']);
+assert.equal(selected.filter(x=>x.symbol==='0050').length,6);
+assert.deepEqual(selectNewsForEnrichment([],8),[]);
+assert.deepEqual(selectNewsForEnrichment(items,0),[]);
+console.log('R4 news enrichment distribution behavior: PASS');

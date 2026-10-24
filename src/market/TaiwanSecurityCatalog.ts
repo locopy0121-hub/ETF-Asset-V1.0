@@ -1,3 +1,6 @@
+import {mergeEtfCatalog,parseOfficialEtfRow} from './etfMetadata';
+import {VERIFIED_ISSUER_DIVIDEND_POLICIES} from './issuerDividendPolicies';
+
 export type TaiwanMarket='TWSE'|'TPEx';
 export type TaiwanSecurityInfo=Readonly<{
   symbol:string;
@@ -16,6 +19,13 @@ export type TaiwanSecurityInfo=Readonly<{
   generalManager:string|null;
   address:string|null;
   source:string;
+  etfType?:string|null;
+  dividendType?:string|null;
+  metadataSource?:string|null;
+  metadataVerifiedAt?:number|null;
+  dividendSource?:string|null;
+  dividendSourceUrl?:string|null;
+  dividendVerifiedAt?:number|null;
 }>;
 
 type Row=Record<string,unknown>;
@@ -76,11 +86,13 @@ export async function fetchTaiwanSecurityCatalog():Promise<TaiwanSecurityInfo[]>
     jsonRows('https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes'),
     jsonRows('https://openapi.twse.com.tw/v1/opendata/t187ap03_L'),
     jsonRows('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O'),
+    jsonRows('https://openapi.twse.com.tw/v1/opendata/t187ap47_L'),
   ]);
   const twseDaily=sources[0].status==='fulfilled'?sources[0].value:[];
   const tpexDaily=sources[1].status==='fulfilled'?sources[1].value:[];
   const twseProfiles=sources[2].status==='fulfilled'?sources[2].value:[];
   const tpexProfiles=sources[3].status==='fulfilled'?sources[3].value:[];
+  const etfOfficialRows=sources[4].status==='fulfilled'?sources[4].value:[];
 
   const map=new Map<string,TaiwanSecurityInfo>();
   for(const row of twseDaily){
@@ -101,7 +113,25 @@ export async function fetchTaiwanSecurityCatalog():Promise<TaiwanSecurityInfo[]>
     const profile=profileFrom(row,'TPEx','TPEx OpenAPI / MOPS');
     if(profile)map.set(profile.symbol,{...(map.get(profile.symbol)??profile),...profile,name:profile.name||map.get(profile.symbol)?.name||profile.symbol});
   }
-  return [...map.values()].sort((a,b)=>a.symbol.localeCompare(b.symbol,'en'));
+  const now=Date.now();
+  const official=etfOfficialRows.map(row=>parseOfficialEtfRow(row,now)).filter((row):row is NonNullable<ReturnType<typeof parseOfficialEtfRow>>=>row!==null);
+  const tags=mergeEtfCatalog(
+    [],
+    [],
+    [...map.values()].map(item=>({symbol:item.symbol,name:item.name,market:item.market})),
+    official,
+    VERIFIED_ISSUER_DIVIDEND_POLICIES,
+  );
+  const tagMap=new Map(tags.map(item=>[item.symbol,item] as const));
+  return [...map.values()].map(item=>{
+    const tag=tagMap.get(item.symbol);
+    return tag?{...item,
+      etfType:tag.etfType??null,dividendType:tag.dividendType??null,
+      metadataSource:tag.metadataSource??null,metadataVerifiedAt:tag.metadataVerifiedAt??null,
+      dividendSource:tag.dividendSource??null,dividendSourceUrl:tag.dividendSourceUrl??null,
+      dividendVerifiedAt:tag.dividendVerifiedAt??null,
+    }:item;
+  }).sort((a,b)=>a.symbol.localeCompare(b.symbol,'en'));
 }
 
 export function securityNameMap(catalog:readonly TaiwanSecurityInfo[]):ReadonlyMap<string,string>{

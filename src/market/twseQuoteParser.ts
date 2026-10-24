@@ -1,5 +1,5 @@
 export type TwseQuoteRow=Record<string,unknown>;
-export type TwsePriceKind='lastTrade'|'bid'|'ask'|'none';
+export type TwsePriceKind='lastTrade'|'none';
 
 const numeric=(value:unknown)=>{
   const text=String(value??'').trim().replace(/,/g,'');
@@ -8,36 +8,37 @@ const numeric=(value:unknown)=>{
   return Number.isFinite(n)&&n>0?n:0;
 };
 
-const firstBookPrice=(value:unknown)=>{
-  const raw=String(value??'').trim();
-  if(!raw)return 0;
-  for(const part of raw.split('_')){
-    const price=numeric(part);
-    if(price>0)return price;
-  }
-  return 0;
-};
+export type TwsePriceDecision=Readonly<{
+  price:number;
+  quality:'trade'|'backup_realtime'|'bid_ask'|'previous_close';
+  priceType:'REALTIME_TRADE'|'BACKUP_REALTIME'|'BID_ASK'|'PREV_CLOSE';
+  isFallback:boolean;
+  officialTradePrice:number|null;
+  statusMessage:string;
+}>;
 
 /**
- * MIS z is the documented last-trade field. Some ETFs can expose z="-" while
- * the live order book is already populated. In that case use the best bid,
- * then best ask as a clearly tagged live proxy.
- *
- * Never use pz (undocumented) or y (previous close) as currentPrice.
+ * V3.2.49 invariant retained in V4:
+ * TWSE MIS currentPrice is z (actual last trade) only.
+ * pz, bid, ask and previous-close remain diagnostics; Yahoo/Fugle provide fallback quotes.
  */
+export function resolveTwsePriceDecision(row:TwseQuoteRow|undefined):TwsePriceDecision|null{
+  if(!row)return null;
+  const z=numeric(row.z);
+  if(z>0)return {
+    price:z,quality:'trade',priceType:'REALTIME_TRADE',isFallback:false,
+    officialTradePrice:z,statusMessage:'TWSE MIS z 實際成交價',
+  };
+  return null;
+}
+
 export function resolveTwseLivePrice(row:TwseQuoteRow|undefined):Readonly<{price:number;kind:TwsePriceKind}>{
-  if(!row)return {price:0,kind:'none'};
-  const lastTrade=numeric(row.z);
-  if(lastTrade>0)return {price:lastTrade,kind:'lastTrade'};
-  const bid=firstBookPrice(row.b);
-  if(bid>0)return {price:bid,kind:'bid'};
-  const ask=firstBookPrice(row.a);
-  if(ask>0)return {price:ask,kind:'ask'};
-  return {price:0,kind:'none'};
+  const decision=resolveTwsePriceDecision(row);
+  return decision?{price:decision.price,kind:'lastTrade'}:{price:0,kind:'none'};
 }
 
 export function resolveTwseCurrentPrice(row:TwseQuoteRow|undefined):number{
-  return resolveTwseLivePrice(row).price;
+  return resolveTwsePriceDecision(row)?.price??0;
 }
 
 export function resolveTwsePreviousClose(row:TwseQuoteRow|undefined):number{
@@ -55,7 +56,7 @@ export function resolveTwseQuoteTime(row:TwseQuoteRow|undefined):string|null{
 }
 
 export function hasUsableTwseQuote(row:TwseQuoteRow|undefined):boolean{
-  return resolveTwseCurrentPrice(row)>0;
+  return resolveTwsePriceDecision(row)!==null;
 }
 
 export function pickBetterTwseRow(current:TwseQuoteRow|undefined,next:TwseQuoteRow):TwseQuoteRow{
@@ -66,8 +67,7 @@ export function pickBetterTwseRow(current:TwseQuoteRow|undefined,next:TwseQuoteR
 }
 
 function quoteFreshnessScore(row:TwseQuoteRow):number{
-  const resolved=resolveTwseLivePrice(row);
-  const fieldScore=resolved.kind==='lastTrade'?400:resolved.kind==='bid'?300:resolved.kind==='ask'?200:0;
+  const fieldScore=numeric(row.z)>0?100:0;
   const raw=String(row.t??'');
   const m=raw.match(/^(\d{2}):(\d{2}):(\d{2})$/);
   const seconds=m?(Number(m[1])*3600+Number(m[2])*60+Number(m[3])):0;

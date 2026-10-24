@@ -7,15 +7,25 @@ export type MarketStatus =
   | 'unavailable';
 
 export type HoldingSnapshot = Readonly<{
+  watchOnly?:boolean;
   id: string;
   symbol: string;
   name: string;
   price: number | null;
   previousClose: number | null;
+  previousCloseKnown?:boolean;
+  /** Cumulative source volume; display-only, not a finance input. */
+  volume?:number|null;
   change: number | null;
   changePercent: number | null;
   marketStatus: MarketStatus;
   updatedAt: string | null;
+  quoteStatus?:'LIVE'|'DELAYED'|'STALE'|'OFFLINE'|undefined;
+  streamingHealthy?:boolean;
+  streamingCheckedAt?:number;
+  valuationStatus?:'current_session'|'reference'|'unavailable'|undefined;
+  valuationValidUntil?:number|null|undefined;
+  marketQuality?:'trade'|'backup_realtime'|'bid_ask'|'previous_close'|'official_close'|'unavailable';
   shares: number;
   avgCost: number;
   marketValue: number;
@@ -28,6 +38,7 @@ export type AssetSnapshot = Readonly<{
   totalAssets: number;
   marketValue: number;
   cash: number;
+  cashConfigured?: boolean;
   unrealizedPnl: number;
   realizedPnl: number;
   dividendIncome: number;
@@ -36,10 +47,13 @@ export type AssetSnapshot = Readonly<{
 
 export type SharedSnapshot = Readonly<{
   contractVersion: 1;
+  marketDataVersion?:number;
+  valuationComplete?:boolean;
   generatedAt: string;
   source: 'canonical-finance-core';
   asset: AssetSnapshot;
   holdings: readonly HoldingSnapshot[];
+  watchlist?:readonly HoldingSnapshot[];
 }>;
 
 /**

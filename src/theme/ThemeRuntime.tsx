@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {createContext,type PropsWithChildren,useContext,useEffect,useMemo,useState} from 'react';
+import {Image} from 'react-native';
 import { setNativeAppIcon } from '../native/TfAssetNativeBridge';
 
 export type ThemeKey='sky'|'midnight'|'sand'|'forest'|'violet'|'rose'|'aqua'|'amber'|'ocean'|'slate';
@@ -39,34 +40,46 @@ export type ThemePrefs=ThemeSnapshot&Readonly<{
   customSlots:readonly (ThemeSnapshot|null)[];
 }>;
 
-const BACKGROUNDS:readonly string[]=[
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAkklEQVR42u3VMQqAMAxG4TQn6AV6/0M5ujk5ikhxUKgWs9Z/eE4OUR6l5EvTUkuuFjzz6tfLsBl/Tkd/GTnjUXX35bCZtO2HTs19Qjo1JVeXqulP6PeaV5BCTQsSqfneQ/9uAZeq6S+1woZ0qZp2Qjp6YBmWYRmWYRmWYRmWYRmWYRmWYRmWYRmWYRmWYVk4Y2Yn4OtLHHTGbiQAAAAASUVORK5CYII=',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAfklEQVR42u2VsQ3AIAwEwUpPmQHSMRWjZTGGYIMU6QCjNA4uzpWx3tIXjy+mMwdPJcFZuTN0dO90lbdp9dZ2TDUyVXT9nxpZbG6ZEOrvhsb0bZmIptN+h7UmcqkxBMtgGSyDZbCMS40hWAbLYBksg2VcagzBMlhGqGEZLDOsB5AY8fQTyEmYAAAAAElFTkSuQmCC',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAABsElEQVR42u1ZSW7DMAyMCD0kf+lv8we/I1d/IOfc4h5sOIwWerioNdAKOQQRRU65jCg2Lc/H5XMt87R+Sdevy7DVs0K/gobr3y1uv3MPrXs4lEJX0x6oZJd/A8LRCDhsyLjpDRCCpsYhyKuEOYC0PB9aNKr0wg9uMF73G/63mjMdVLLME+HF6ak7flxOQRIgh1PAIaYth5BqHMGKTeVtQE4K0JY6X9lGM7IMHutlngqZbCC0w5LZBWp7/GDbu0XI5GBp0/xQvjZHIwKBl1W9S2CwzBQgY6q1kU37uFOEZI+fk9azgpP2rewhsXaHJZaVUHeWkCGEpOqWuoBsQXk3MexjwMRPkTlevS08XSJDJnvU5qeYHApf/4D+CiA5bT3MTlGUH3UFZRWv924D5x3MgXpzqEeM5pVxN8g06L+kyxxyUn7UFUQGvf6OQFdlcq+pxST3vrU2wrPBgAnsxPlu6s0YQ95liJ5CINmGnqCTEA3HL9fem9LzuFHQ2OmmH6/77cfmQ4hOksdHIQ8J1VOf8FxxMjVKAaebwp5xTh0yxvNMGhqTfFupj/1fx7hSVxXdN4fWvcRATchPAAAAAElFTkSuQmCC',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAlklEQVR42u3VsQ2AIBBGYbiSPRjFWR3CJexdwc5oZ2KhCUq8Fv7iWVmc5oWQ++K4zUPKwXmmY7lfms3Ye9r7S8sZ86qrL5vNxPXcdWqeE9KpGVI2qZr6hLrXfIIUakqQSM3/Huq7BUyqpr7UChvSpGrKCenogWVYhmVYhmVYhmVYhmVYhmVYhmVYhmVYhmVYhmXuTAjhAiCkUmCKpAJ6AAAAAElFTkSuQmCC',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAe0lEQVR42u3VsQ2AMAxEUWKxABuw/1RsQEVDAw1VIIgmJMVz5Vhn6YqLf9q3Y+ipYuisujM0Zu91uZppLu5U1cSjIuv/1MTLZpOJUH83dE9fk0mUdKXfUVuTXGqGsAzLsAzLsMylZgjLsAzLsAzLXGqGsAzLhBrLsKxinQ/Arwraq2/UAAAAAElFTkSuQmCC',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAABsElEQVR42u1ZOXLDMAw0MfyHm/z/J67cqtET7AdYKaSRYR7Q4mCimYTjwmOCwAbHEkTS8nhePtcyzeuX9HW9DFs9K/QraLj+3eL2O/fQuodDKXQ17YFKdvk3IByNgMOGjJveACFoahyCvEqYA0jL46lFo0ov/OAG43W/63mjMdVLLME+HF6ak7flxOQRIgh1PAIaYth5BqHMGKTeVtQE4K0JY6X9lGM7IMHutlngqZbCC0w5LZBWp7/GDbu0XI5GBp0/xQvjZHIwKBl1W9S2CwzBQgY6q1kU37uFOEZI+fk9azgpP2rewhsXaHJZaVUHeWkCGEpOqWuoBsQXk3MexjwMRPkTlevS08XSJDJnvU5qeYHApf/4D+CiA5bT3MTlGUH3UFZRWv924D5x3MgXpzqEeM5pVxN8g06L+kyxxyUn7UFUQGvf6OQFdlcq+pxST3vrU2wrPBgAnsxPlu6s0YQ95liJ5CINmGnqCTEA3HL9fem9LzuFHQ2OmmH6/77cfmQ4hOksdHIQ8J1VOf8FxxMjVKAaebwp5xTh0yxvNMGhqTfFupj/1fx7hSVxXdN4fWvcRATchPAAAAAElFTkSuQmCC',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAlUlEQVR42u3VsQmAMBBG4eSabJDVnM0R3MvKykpQECwUosFrk794VhanPEK4L47bPKQcnGfal/ul2Yy9p72/tJwxr7r6stlMXM9Dp+Y5IZ2aIWWTqqlPqHvNJ0ihpgSJ1Pzvob5bwKRq6kutsCFNqqackI4eWIZlWIZlWIZlWIZlWIZlWIZlWIZlWIZlWIZlWObOhBAuOiJSjY30ogoAAAAASUVORK5CYII=',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAe0lEQVR42u3VMQ6AIBBEUSBewQN6Mg/IEUzUxgrF2CAUbyvYzCZTzO6Px5bDSJXCYDWcoan473m9nM5LbaapJj0qivefmvQy2aUj1N8N3dPXpZNqutp2tNZEl5ohLMMyLMMyLHOpGcIyLMMyLMMyl5ohLMMyocYyLGtYJzXI/t3a/B+yAAAAAElFTkSuQmCC',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAABrElEQVR42u1ZOXLDMAw0MfpFPpH/N/6Ceteq3bm0UkhDIzygxUFHMzHHlYljjWNJwun+WC+/17zs33x/pcuw1fNCf4KG288et5V4hLY9HEphq+kPNJLlX4BwNAIOGzLuegeEoKlxCPIqYQ4g3R+rFo2qvHDFTTJdb0/8t5orHTQyLyvhzenpO64ulyAJkMMp4BDTXkNIN45gxabxNiAnBWhbna/JRjOyDJ7reVkLmclAaIctkwVqf1yx+avKlMnJ0pb5oXztjkYkAm+repfAZJkpQMZUWyOb9XFahFSPn5M2XSFIeWvykFgzF3JbCX1nSRlCSKrbUheQLSlZi38MmLgWmfPV28LLJTJlckRtcYqpofD1AfRfAMll62F2iqL8qCNoUvF67zRwnsEcqLeGesRoXhMeBpkG/Yd0WUNOyo86gshg138j0HWZfNfUYpLvvrU1wqvBgAm8ifPd1JsxhrzLEDuFQLINPcEgIRaOX669N6XncYMjPt/043p7vm0+hNgkeXwU8pBQPfUJrxUnU4PxPt8U9oxz6pAxnmfS0Jjk21p97H8d41pd1XQ/WQ69vh/MyscAAAAASUVORK5CYII=',
-'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAAlUlEQVR42u3VIQ6AMBAF0XavUV3J/Q+BJCgUgjsQgkBAUmhY234xKMRCJk2zL47zOuQUnGdatvul2Yy9p72/tJwxr7r6stlM3I9Tp+Y5IZ2aISeTqqlPqHvNJ0ihpgSJ1Pzvob5bwKRq6kutsCFNqqackI4eWIZlWIZlWIZlWIZlWIZlWIZlWIZlWIZlWIZlWObOhBAu1lxTBEpSgHoAAAAASUVORK5CYII='
-];
+const BACKGROUND_ASSETS=[
+  require('../assets/theme/background_01.jpg'),
+  require('../assets/theme/background_02.jpg'),
+  require('../assets/theme/background_03.jpg'),
+  require('../assets/theme/background_04.jpg'),
+  require('../assets/theme/background_05.jpg'),
+  require('../assets/theme/background_06.jpg'),
+  require('../assets/theme/background_07.jpg'),
+  require('../assets/theme/background_08.jpg'),
+  require('../assets/theme/background_09.jpg'),
+  require('../assets/theme/background_10.jpg'),
+] as const;
+const BACKGROUNDS:readonly string[]=BACKGROUND_ASSETS.map(source=>Image.resolveAssetSource(source).uri);
 
 export const THEME_PRESETS:readonly ThemePalette[]=[
- {key:'sky',label:'晴空藍',dark:false,background:'#F8FAFC',surface:'#FFFFFF',surfaceMuted:'#EFF6FF',border:'#DBEAFE',primary:'#0066FF',text:'#0F172A',textSecondary:'#64748B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
- {key:'midnight',label:'午夜藍',dark:true,background:'#08111F',surface:'#FFFFFF',surfaceMuted:'#EFF6FF',border:'#BFDBFE',primary:'#1D4ED8',text:'#0F172A',textSecondary:'#64748B',gain:'#E11D48',loss:'#059669',flat:'#64748B',warning:'#D97706'},
- {key:'sand',label:'暖沙',dark:false,background:'#FFF7ED',surface:'#FFFBF5',surfaceMuted:'#FFEDD5',border:'#FED7AA',primary:'#EA580C',text:'#431407',textSecondary:'#9A3412',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#D97706'},
- {key:'forest',label:'森林',dark:false,background:'#ECFDF5',surface:'#F7FFF9',surfaceMuted:'#D1FAE5',border:'#A7F3D0',primary:'#047857',text:'#064E3B',textSecondary:'#477569',gain:'#DC2626',loss:'#047857',flat:'#6B7280',warning:'#B45309'},
- {key:'violet',label:'紫晶',dark:false,background:'#FAF5FF',surface:'#FFFFFF',surfaceMuted:'#F3E8FF',border:'#E9D5FF',primary:'#7C3AED',text:'#2E1065',textSecondary:'#6B5A80',gain:'#E11D48',loss:'#059669',flat:'#7C7288',warning:'#D97706'},
- {key:'rose',label:'玫瑰',dark:false,background:'#FFF1F2',surface:'#FFFFFF',surfaceMuted:'#FFE4E6',border:'#FECDD3',primary:'#E11D48',text:'#4C0519',textSecondary:'#9F1239',gain:'#E11D48',loss:'#059669',flat:'#78716C',warning:'#D97706'},
- {key:'aqua',label:'青瓷',dark:false,background:'#F0FDFA',surface:'#FFFFFF',surfaceMuted:'#CCFBF1',border:'#99F6E4',primary:'#0F766E',text:'#134E4A',textSecondary:'#52736F',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'},
- {key:'amber',label:'琥珀',dark:false,background:'#FFFBEB',surface:'#FFFFFF',surfaceMuted:'#FEF3C7',border:'#FDE68A',primary:'#B45309',text:'#451A03',textSecondary:'#92400E',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#B45309'},
- {key:'ocean',label:'深海',dark:true,background:'#071A2B',surface:'#FFFFFF',surfaceMuted:'#E0F2FE',border:'#BAE6FD',primary:'#0284C7',text:'#0F172A',textSecondary:'#64748B',gain:'#E11D48',loss:'#059669',flat:'#64748B',warning:'#D97706'},
- {key:'slate',label:'霧銀',dark:false,background:'#F8FAFC',surface:'#FFFFFF',surfaceMuted:'#F1F5F9',border:'#CBD5E1',primary:'#475569',text:'#0F172A',textSecondary:'#64748B',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'}
-];
+ {key:'sky',label:'經典金融',dark:false,background:'#F8F6F0',surface:'#FFFFFF',surfaceMuted:'#FFF7DF',border:'#E7D49A',primary:'#C99700',text:'#171717',textSecondary:'#6B6252',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#D97706'},
+ {key:'midnight',label:'極簡清新',dark:false,background:'#F5FAFF',surface:'#FFFFFF',surfaceMuted:'#EAF4FF',border:'#CFE4FF',primary:'#1677FF',text:'#0F172A',textSecondary:'#64748B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'sand',label:'科技藍光',dark:true,background:'#06152F',surface:'#FFFFFF',surfaceMuted:'#E8F3FF',border:'#9CCBFF',primary:'#007BFF',text:'#0F172A',textSecondary:'#64748B',gain:'#F43F5E',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'forest',label:'行情動能',dark:true,background:'#071A1A',surface:'#FFFFFF',surfaceMuted:'#E8F8F4',border:'#A7E4D5',primary:'#009B7A',text:'#10211E',textSecondary:'#58706B',gain:'#EF4444',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'violet',label:'股息收益',dark:false,background:'#EFFBF2',surface:'#FFFFFF',surfaceMuted:'#E1F6E6',border:'#B7E5C1',primary:'#16834A',text:'#123B25',textSecondary:'#557262',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#C99700'},
+ {key:'rose',label:'成長動能',dark:true,background:'#160A35',surface:'#FFFFFF',surfaceMuted:'#F2EAFE',border:'#D8C5FB',primary:'#7C3AED',text:'#24113F',textSecondary:'#6B5A80',gain:'#F43F5E',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'aqua',label:'牛市活力',dark:false,background:'#FFF4E8',surface:'#FFFFFF',surfaceMuted:'#FFE7CC',border:'#F6C995',primary:'#F97316',text:'#431407',textSecondary:'#9A4E17',gain:'#DC2626',loss:'#059669',flat:'#78716C',warning:'#D97706'},
+ {key:'amber',label:'永續綠能',dark:false,background:'#F0FDF4',surface:'#FFFFFF',surfaceMuted:'#DCFCE7',border:'#BBF7D0',primary:'#15803D',text:'#14532D',textSecondary:'#4F7560',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#D97706'},
+ {key:'ocean',label:'AI 智慧',dark:true,background:'#0B1027',surface:'#FFFFFF',surfaceMuted:'#EEEAFE',border:'#C8B5FB',primary:'#6D28D9',text:'#21113A',textSecondary:'#695A80',gain:'#F43F5E',loss:'#10B981',flat:'#64748B',warning:'#F59E0B'},
+ {key:'slate',label:'尊榮質感',dark:true,background:'#0E1117',surface:'#FFFFFF',surfaceMuted:'#F1F3F6',border:'#C7CDD6',primary:'#C7A34A',text:'#171A20',textSecondary:'#626A76',gain:'#DC2626',loss:'#059669',flat:'#64748B',warning:'#C99700'}
+]
 
 export const APP_ICON_KEYS:readonly AppIconKey[]=['icon01','icon02','icon03','icon04','icon05','icon06','icon07','icon08','icon09','icon10'];
-export const APP_ICON_PREVIEWS:readonly string[]=["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA10lEQVR42u2aUQ6EIAxEoeGs7pk8LX6rhN3UbWnj409CYp/TGWtiLVsvmZeU5AsAAAAAAIB3A7SANfX9dFk/qRS4VD/cwQMAALAuhe6OnIdMLAWGeTIPGTwAAADE6MKIdFXAIiLxQIBZOhOArt8kdfVRAJ54vanv4RCRf1PALSIVDyWQiXWSinUT/yiUuiHFwYJ9/3LmiZ2aW3oYjRXi0NmmeSU+/rPDkFXpEQVg+etMUlfP9wAAAAAAAAAAZAAYjgyXTbsz84Gl8s8cAAAAAAAAAADwYoADw4Mxu2yERFEAAAAASUVORK5CYII=","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA4klEQVR42u2a0Q2DMAxEwcoIrFAWa8diMlaAIfqLIIoqUzu2ePkjioQf5zuMxPh6b0PmJUPyBQAAAAAAwLMBSsCa1mU6Xs6fPZMCp+qrO3gAAAD6pdDVke2QiaVANU/aIYMHAACAGO0Yka4KWEQkHggwS2cC0PWbpK4+CsAdrxf1PRwi8m8KuEWk4qEEMrFOUrFu4h+FUjekOFhwXab2mTt2Km7pYTRWiENnm+aV+PjPDkN6pUcUgO6vM0ldPd8DAAAAAAAAAJABoDoynDbtzrQHlpF/5gAAAAAAAAAAgAcDfAET8Enl4e1hyQAAAABJRU5ErkJggg==","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA4ElEQVR42u2aQQ6DMAwEwcqRHvkbvJC/0SMf6LWCKKpM7dhiciOKhIf1LkZi3JdpyLxkSL4AAAAAAAB4NkAJWNO8Hd+X7/WVSYFT9dUdPAAAAP1S6OrIdsjEUqCaJ+2QwQMAAECMdoxIVwUsIhIPBJilMwHo+k1SVx8F4I7Xi/oeDhH5NwXcIlLxUAKZWCepWDfxj0KpG1IcLDhvR/vMHTsVt/QwGivEobNN80p8/GeHIb3SIwpA99eZpK6e7wEAAAAAAAAAyABQHRlOm3Zn2gPLyD9zAAAAAAAAAADAgwE+OpJJdv+an0MAAAAASUVORK5CYII=","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA30lEQVR42u2aQQqEMAxFNdQzjkdxTuBVvKOb2YqWMkSTJvi6sxTM8+d/IziW5TNkXjIkXwAAAAAAALwboASsaV+34+X0nTMpcKq+uoMHAACgXwpdHdkOmVgKVPOkHTJ4AAAAiNGOEemqgEVE4oEAs3QmAF2/SerqowDc8XpR38MhIh9TwC0iFQ8lkIl1kop1E/8plLohxcGC+7q1z9yxU3FLD6OxQhw62zSvxMd/dhjSKz2iAHR/nUnq6vkeAAAAAAAAAIAMANWR4bRpd6Y9sIz8MwcAAAAAAAAAALwY4AcjokgFFLdcBQAAAABJRU5ErkJggg==","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA4UlEQVR42u2awQ2DMAxFwcoEjFNWa0/MxjgwQ68IoqgytWOLlxtRJPz4/h8jMb5f25B5yZB8AQAAAAAA8GyAErCmZZ2Ol595z6TAqfrqDh4AAIB+KXR1ZDtkYilQzZN2yOABAAAgRjtGpKsCFhGJBwLM0pkAdP0mqauPAnDH60V9D4eI/JsCbhGpeCiBTKyTVKyb+Eeh1A0pDhZc1ql95o6dilt6GI0V4tDZpnklPv6zw5Be6REFoPvrTFJXz/cAAAAAAAAAAGQAqI4Mp027M+2BZeSfOQAAAAAAAAAA4MEAX/b6SnVZHoTGAAAAAElFTkSuQmCC","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA3klEQVR42u2a0Q2DMAxEwcoaZJ4yMfOQSfpb0SiqTO3Y4uWPKBJ+nO8wEuu5vZbMS5bkCwAAAAAAgGcDlIA11XZ8Xra6Z1LgUn13Bw8AAMC8FPp25DhkYinQzZNxyOABAAAgRidGpKsCFhGJBwLM0pkAdP0mqauPAnDH60V9D4eI/JsCbhGpeCiBTKyTVKyb+Eeh1A0pDhas7RifuWOn4pYeRmOFOHS2aV6Jj//sMGRWekQBmP46k9TV8z0AAAAAAAAAABkAuiPDZdPuzHhgWflnDgAAAAAAAAAAeDDAG5QPSV5k5BM9AAAAAElFTkSuQmCC","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA4ElEQVR42u2aQQ6DMAwEwcqdvrTc6Bs48lOe0GsFUVQZ7NhiciOKhIf1LkZinJb3kHnJkHwBAAAAAADwbIASsKZ93X4vX585kwKH6qs7eAAAAPql0NmR7ZCJpUA1T9ohgwcAAIAY7RiRrgpYRCQeCDBLZwLQ9Zukrj4KwBWvF/U9HCLyNgXcIlLxUAKZWCepWDfxn0KpG1IcLLivW/vMFTsVt/QwGivEobNN80p8/GeHIb3SIwpA99eZpK6e7wEAAAAAAAAAyABQHRkOm3Zn2gPLyD9zAAAAAAAAAADAgwG+ujBIZVG3NhMAAAAASUVORK5CYII=","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA4ElEQVR42u2aMQ6DMAxFwcpCr8YIx2SkV2PuWkEUVaZ2bPGyEUXCj+//MRLjvkxD5iVD8gUAAAAAAMCzAUrAmubt+L58r69MCpyqr+7gAQAA6JdCV0e2QyaWAtU8aYcMHgAAAGK0Y0S6KmARkXggwCydCUDXb5K6+igAd7xe1PdwiMi/KeAWkYqHEsjEOknFuol/FErdkOJgwXk72mfu2Km4pYfRWCEOnW2aV+LjPzsM6ZUeUQC6v84kdfV8DwAAAAAAAABABoDqyHDatDvTHlhG/pkDAAAAAAAAAAAeDPAB9eRIvM4lA6sAAAAASUVORK5CYII=","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA3klEQVR42u2aQQqEMAxFNfZQ3s2tczbnUoJb0VKGOEkTfN1ZCub5878RHGXdhsxLhuQLAAAAAACAdwOUgDXty3y+nD7fTApcqq/u4AEAAOiXQndHtkMmlgLVPGmHDB4AAABitGNEuipgEZF4IMAsnQlA12+SuvooAE+8XtT3cIjIvyngFpGKhxLIxDpJxbqJfxRK3ZDiYMF9mdtnntipuKWH0VghDp1tmlfi4z87DOmVHlEAur/OJHX1fA8AAAAAAAAAQAaA6shw2bQ70x5YRv6ZAwAAAAAAAAAAXgxwAMDrSXOhV7VFAAAAAElFTkSuQmCC","data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAA4klEQVR42u2a0Q2DMAxEwcpudIGyAx2IIZiA8fpbQRRVBju2ePkjioQf5zuMxDi9lyHzkiH5AgAAAAAA4NkAJWBN+7b+Xr7mTyYFDtVXd/AAAAD0S6GzI9shE0uBap60QwYPAAAAMdoxIl0VsIhIPBBgls4EoOs3SV19FIArXi/qezhE5G0KuEWk4qEEMrFOUrFu4j+FUjekOFhw39b2mSt2Km7pYTRWiENnm+aV+PjPDkN6pUcUgO6vM0ldPd8DAAAAAAAAAJABoDoyHDbtzrQHlpF/5gAAAAAAAAAAgAcDfAHvrUibETkdLwAAAABJRU5ErkJggg=="];
+export const APP_ICON_PREVIEWS:readonly string[]=[
+  require('../assets/theme/icon_01.jpg'),
+  require('../assets/theme/icon_02.jpg'),
+  require('../assets/theme/icon_03.jpg'),
+  require('../assets/theme/icon_04.jpg'),
+  require('../assets/theme/icon_05.jpg'),
+  require('../assets/theme/icon_06.jpg'),
+  require('../assets/theme/icon_07.jpg'),
+  require('../assets/theme/icon_08.jpg'),
+  require('../assets/theme/icon_09.jpg'),
+  require('../assets/theme/icon_10.jpg'),
+].map(source=>Image.resolveAssetSource(source).uri);
 export const THEME_BACKGROUNDS=BACKGROUNDS;
 
 const DEFAULT_SNAPSHOT:ThemeSnapshot={

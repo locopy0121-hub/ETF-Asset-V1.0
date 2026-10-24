@@ -1,3 +1,209 @@
+# V4.0.65 — 並排欄數擴展單欄卡片，不能均分壓縮
+- 使用者的並排欄數是單欄卡片尺寸的倍數；不能把固定視窗平均分欄，也不能依欄數縮小主價格字體或變更卡片內排列。
+- Normal market-wall 保留 normalLayout.width 作為單欄基準；原生建立、設定更新、Normal/Mini 切換都採同一幾何計算。視窗受螢幕寬度限制，卡片仍固定寬度並可橫向捲動，最後一列不放大。
+- 欄數可直接輸入正整數，不能在設定正規化或 Native 靜默夾回 1~4。避免空值／非整數／溢位；極大欄數只建立實際標的，不配置數十億個空白 View。
+- 檢查實際編輯輸入、保存正規化、預覽卡片及編譯 Kotlin 幾何；原生視窗拖曳、橫縱向手勢和手機邊界仍需實機驗收。此授權只修改 Monitor 子面板相關內容，設定主頁與其他子面板保持保護。
+
+# V4.0.64 — reversible web cleanup and one watchlist across views
+- Ad cleanup must be narrowly identified and reversible. Preserve article-sized wrappers, visible text, tables, nested list lead text and safe responsive images; test actual injected DOM code, not just selector strings. Missing extraction keeps original page and reports failure.
+- Keep JS injection as source literals: Hermes function.toString is not a source serializer. Do not disable all page JS, wipe the body, expose private App data, or claim an untested site's overlay is the proven sole cause.
+- Display modes consume the same quote/watchlist owners. Persist optional presentation separately and serialize rapid writes; numeric scroll must retain identifiers. Apply existing wall appearance read-only, including opacity and profit-linked colors, with no accounting values invented for non-held instruments.
+- Real chart timestamps and source clocks remain authoritative; absent intraday data cannot become a synthetic line. Preserve all protected Settings content and canonical/native source contracts.
+
+# V4.0.63 — daily agenda is an independent card, acquisition is not cash
+- Do not replace or embed into the calendar grid. Register a separate frame, editor catalog and real preview, add after the saved calendar order, and preserve existing dimensions/styles.
+- Fetch public announcements independently of holdings, AI and price subscriptions. Use bounded user-triggered requests, deduplicate symbol/ex-date and display source coverage and last successful acquisition time honestly.
+- Unknown dates stay unknown. An ex-rights/capital-increase row is not a cash dividend. Failures retain prior announcements and timestamps; partial failures and storage errors remain visible and retryable.
+- Public announcement cache never writes FinanceRuntime or local receipt/plan state. Test the actual screen/hook and FinanceProvider, including non-held rows, double-tap, persistence, retry and cash invariance. Cloud build does not replace phone acceptance.
+
+## 2026-10-14｜V4.0.55 行情牆拖住全 App：主緒重繪排隊與鏈路證據
+- 使用者確認關閉浮動窗後 App 行情恢復。V4.0.54 開窗沒有直接暫停前景訂閱；卻每筆 syncMonitor 都排 Android service intent，promise 先完成，onStartCommand 再於共用主緒 removeAllViews／重建，因此 JS latest-job 並不能限制原生重繪積壓。尚無手機 trace，不把這條負載缺陷偽稱已證實手機唯一原因。
+- 可見 Overlay 改用事件驅動 latest-frame queue：只有一個待繪工作，讀最新 canonical snapshot，關閉取消；控制／首次開啟仍走原服務。syncMonitor 不再額外更新 Widget，設定 JSON 未改不重寫。
+- 1000 burst、繪製期間 burst、8 concurrent producers、關閉與例外恢復，必須編譯執行實際 Kotlin queue。Source smoke 不是 Feature PASS。
+- 增加開窗／2秒一次取樣／關閉／關閉後一次的有界行情鏈路計數，包含原生成交接收、發佈、App 套用、重繪數與主緒延遲；這是診斷，沒有價格輪詢。既有錯誤紀錄匯出可讀，不改受保護設定內容，不記錄行情值、部位或密鑰。
+- 手機全 App 停止現象仍需這些計數驗證。另查到 headless background 會以帳務持股覆寫 research 訂閱，屬不同問題，本輪未冒稱解決。Finance／仲裁／MarketDataCenter 不改。
+
+## 2026-10-13｜V4.0.54 浮動行情窗不是桌面 Widget
+- 截圖確認使用者看到的是原生浮動 Monitor；App.tsx 在背景跳過 Monitor 同步，而 headless writer 只呼叫 syncWidget，Native syncWidget 不觸發 Overlay render，且背景服務只允許桌面 Widget。前兩輪修補桌面 Widget 不會補齊浮動視窗的消費路徑。
+- 將實際可見的 Overlay 納入同一背景服務啟動條件；同一 canonical snapshot 的背景 Widget 寫入後，僅重繪仍在運作的 Overlay，不覆寫 Monitor 設定或自行算第二份價格／損益。
+- 移除最後 Widget 不可停掉可見 Overlay 所需 writer；關閉最後 Overlay 且無 Widget 則停止 writer。前景仍由 App 處理設定與同步。背景／休市排程與唯一 Fugle 來源保持。
+- Source wiring smoke 與編譯執行的 Kotlin eligibility/repaint/lifetime policy 分開驗證。Screenshot 單一時點價格一致不代表持續同步；真機後續成交與來源時間、三種 surface 組合及關閉清理仍需驗收。
+
+## 2026-10-13｜V4.0.53 APK 真實入口缺 Headless 任務註冊
+- 使用者確認回桌面／切換 App 後行情牆不自動更新，通知仍在。CI 另產生 TFAssetNative/index.js，只 registerComponent，未複製 repository index.ts 的 TfAssetWidgetLive 註冊。RN 對未知任務不會執行 widgetLiveTask；通知存在不等於 JS writer 已啟動。
+- 修護必須發生在真正打包的入口。測試抽取並執行 workflow 產生的入口，從已註冊 task provider 啟動真實 widgetLiveTask，驗證前景寫入由 App 擁有、回桌面自動同步、背景新行情、回前景交接及清理；直接呼叫函式的測試會漏掉打包缺陷。
+- QA 另執行實際已產生的 native index.js，最終 APK Hermes bundle 檢查 task key。保留 V4.0.52 WAKE_LOCK 與排程，不改 Finance Core。手機背景服務生命週期與實際行情傳輸仍待驗收。
+
+## 2026-10-13｜V4.0.52 Widget 盤中啟動權限
+- 使用者確認 V4.0.51 盤中開啟閃退，移除 Widget 即可啟動。已交付 APK badging 缺 WAKE_LOCK；目前 React Native HeadlessJsTaskService.startTask 必定 acquireWakeLockNow，觸發 PowerManager 權限檢查。尚未取得手機 crash journal，實際例外堆疊待核對。
+- 最小修護：原生 manifest 注入 WAKE_LOCK，保留資料、排程與單一即時行情來源。真實 injector fixture 驗證權限及重跑冪等；GitHub QA 在最終 APK badging 再檢查權限，缺少即停止交付。
+- 權限為 manifest 宣告，無新增設定選項。仍須手機帶 Widget 盤中啟動／回前景／背景更新驗收；CI 通過不等於真機閃退已消失。
+
+## 2026-10-12｜V4.0.47 盤中訂閱定義取代 V4.0.44 秒數輪詢
+- 使用者要求盤中 TF Asset 自己直接訂閱富果。SaiETF V2.0.2 的凍結仲裁／StateFlow 核心保留；SaiETF App 不參與中繼。
+- 刪除 JS 固定價格輪詢，保留啟動、持股／研究標的、前景恢復、人工更新與交易時段邊界事件。正常盤中不執行 TWSE/Yahoo 價格刷新；富果 REST 僅補取啟動／重連最後成交與當日參考價。
+- 成交時間與訂閱健康分開；沒有新成交不是斷線。健康時間 75 秒失效避免 process 終止後持久化 true 冒充 LIVE。
+- Socket 和 REST 進入核心前需共用短時間原子寫入鎖，HTTP 不可持鎖。晚到補取只補同日 metadata，不覆蓋新成交價、時間及流水號。
+- 驗證／訂閱未回應與 send 失敗需取消舊 socket 才能重連；不能只排重連但保留舊 socket。
+- 回歸：無價格輪詢的 MarketRuntime→Finance 實際執行、500 筆並行仲裁、試撮／來源時間／參考价、驗證／訂閱逾時，以及 Widget/Monitor 健康失效。
+- QA APK / CI 不取代使用者 API key 與手機盤中 LIVE 逐筆核對。
+
+## 2026-10-09｜V4.0.18 有效行情不因時間經過而消失
+- 休市判斷使用交易所公告與台北時間；週一至週五不代表一定開市。
+- 「目前沒有更新」不等於「沒有有效價格」。保留原始來源時間、最後有效價格及非即時標記；不可用接收時間刷新來源時間。
+- 空回應、缺少標的、無效價格與較舊回應不得覆蓋有效快照；盤中／跨日仍繼續接收較新資料。
+- 股息月曆與行情中心共用開休市日曆；休市紅字與選取日期說明不影響股息帳務。
+
+## 2026-10-09｜V4.0.17 庫存預覽不得錯用行情牆
+
+現象：庫存「持股檢視」實際是 PortfolioHoldingTable（清單模式），PageLayoutToolWorkbench 卻一律渲染 HoldingQuoteCollection，導致預覽是深色行情卡片，編輯工具指向錯誤類別。
+
+修護：預覽依 portfolioViewMode 選擇與 PortfolioScreen 相同的正式元件；清單時帶入 portfolioList、etfBadges、現有持股與排序，顯示四鍵快捷列並接入 PortfolioListEditor；行情牆時維持現有卡片編輯。不得拿假卡片代替正式清單、不得改動財務資料或受保護的系統設定主頁。CI 原始碼/邏輯閘不取代真機操作驗收。
+
+## 2026-10-09｜受保護「系統設定／控制中心」主頁，不得納入 V4.0.15 編輯器改造
+
+已依使用者明確規則撤回 V4.0.15 對 SettingsScreen 的 PageShell／PageEditorStack 及 EditableNative 變更，完整回復 V4.0.14 設定主頁（僅顯示版本資訊更新）。五個設定頁直接子面板也按 V4.0.14 回復，避免新增 wrapper 改變設定內容與操作。新增回歸 Gate 比對 Git blob baseline，後續不得破壞保護規則。先前只加 header fallback 不能符合此保護要求，故採正式還原。
+
+## 2026-10-09｜V4.0.15 設定底部導航閃退（V4.0.16 熱修）
+
+根因：V4.0.15 新增控制中心 page-header 並由 PageShell 繪製，但 normalizeEditorConfig 仍以舊 PAGE_FRAMES 正規化，讀取使用者既有編輯設定後丟失新增表頭，render 進入 PageHeaderVisual 時因 undefined 而閃退。
+
+修護規則：設定頁屬受保護區域，禁止修改現有分類、框架 UI、功能與使用者儲存資料。修復只調整共用 editorModel 正規化使用 EDITOR_FRAMES，PageShell 加上安全表頭 fallback；設定頁檔案僅同步版本顯示常數。
+回歸必須涵蓋舊版存檔缺少 page-header、重啟載入後恢復 header、原設定的隱藏與配色不被覆寫、再次正規化穩定，以及底部設定路由存在。
+GitHub Actions 綠燈僅表示程式碼與 APK 建置完成；未執行真機點擊與 logcat 前不可宣稱實機已驗收。
+
+# 2026-09-29｜行情 z 缺值不可等同「沒有行情」
+
+- TWSE MIS HTTP 200 且 z='-' 只表示該列沒有可核實的最新成交 z，不代表整個行情不可用。
+- 官方診斷與 App 有效行情必須分離：officialTradePrice 只允許 z；effective currentPrice 可由明確標記的 fallback 供 UI 使用。
+- fallback 不得偽裝成 trade；必須保存 source / quality / priceType / isFallback / sourceQuoteAt / statusMessage。
+- 來源切換只能在 A→B 行情層完成；Client、Widget、Monitor 不得各自形成另一套來源真相。
+- 市場快取 schema migration 僅限 market database，嚴禁碰 Ledger 與 actual_fee / actual_tax 固化資料。
+
+## 2026-09-28｜首頁模組重構不可順手改行情牆
+
+症狀：首頁儀表板與持股行情同屬首頁時，若把「頁面佈局」與「行情牆內容設定」混成同一資料模型，任何首頁改版都可能意外覆寫欄位、排列、跑馬燈、特效或卡片設定。
+
+修正原則：
+1. DashboardLayoutConfig 只持有儀表板自身布局屬性，不得持有 holdingWall、quoteStyle、holdingLayoutMode。
+2. 行情牆只能作為完整 Frame 被首頁排序；Frame 內部的 wall config 保持獨立。
+3. 頁面設定可新增儀表板布局編輯器，但不得重寫 HoldingMarketWallEditor。
+4. 重要 Frozen Scope 使用 Git blob SHA 回歸 Gate，避免「看起來沒改」但實際 source 漂移。
+5. Finance Core 與行情牆同樣視為本次 UI 重構的不可變依賴。
+
+## 2026-09-28｜金額前綴不可同時是 Auto Layout 子項又允許 absolute XY
+
+症狀：資產儀表板的 NT$ 與主金額雖在同一 Row，但維護工程師仍可對前綴套用泛用 XY／Anchor；Android 在文字被包裝或父框架尺寸改變後，會出現基準線與位移疊加，造成 NT$ 掉到數字下方或穿入數字。
+
+修正原則：
+1. 金額前綴與數值視為同一個 composite layout，主結構使用 Flow/Flex，不使用彼此獨立 absolute positioning。
+2. 前綴只允許安全的相對間距／小範圍位移；泛用 XY、寬高與 Anchor 對 prefix 必須停用。
+3. 水平位移必須保留 layout space，不用 translateX 去穿越兄弟元件。
+4. Android 文字複合列優先使用 flex-end + 明確 lineHeight，不依賴跨 wrapper 的 baseline。
+5. 長金額與窄父框架必須有 minWidth=0、auto font shrink、overflow guard。
+
+## 2026-09-28｜不要用 magic amount 修 magic amount
+
+症狀：雖然新帳戶預設已改為 0，但原始碼仍保留歷史固定現金數值並以該數值做 migration、provenance 與人工沖回判斷，導致錯誤概念持續存在於 Runtime。
+
+修正原則：
+1. 金融 Runtime 不保留歷史固定金額作為識別條件。
+2. 舊系統產生資料必須依專用 ID／provenance 辨識，不依金額猜測。
+3. 未有明確現金來源 provenance 時，opening cash 一律正規化為 0。
+4. migration 不得建立另一筆固定負數來抵消固定正數；應直接修正來源狀態。
+5. regression test 必須掃 Runtime 原始碼，防止 retired magic amount 再被寫回。
+
+## 2026-09-28｜V3.1.10：歷史行情代號驗證不可比中央行情規格更窄
+
+009816 是六位 ETF 代號，但舊 `fetchOfficialDailyHistory` 使用 `^\d{4,5}[A-Z]?$`，在送出任何歷史查詢前就直接拋出「無效的歷史行情查詢」。歷史資料入口必須與中央行情代號契約對齊（4–8 位英數），並用回歸測試鎖定 009816 與 00406A。歷史圖表不可因單一月份 HTTP／路由失敗就丟棄已取得月份；逐月容錯與官方備援路由應保留已驗證交易日。持股歷史損益不可冒充歷史 Canonical Ledger：若用目前股數／成本套入歷史收盤價，必須明示為估值，當前正式損益仍只取 Canonical Core。
+
+## 2026-09-28｜V3.1.3：閃退不能只靠 CI，需持續化設備診斷紀錄
+
+V3.1.2 品質與原生 QA APK 建置通過，仍不能證明編輯後在庫存清單／行情牆點擊 ETF 不會閃退。下一版在設定的系統設定中加入錯誤紀錄 Log，分別記錄 UI 操作 breadcrumbs、React 渲染異常、JS 全局錯誤及 Java/Kotlin 可攔截的原生未處理異常，完整保留原生舊 handler。所有診斷紀錄需在 App 重啟後仍可讀取，序列化寫入避免快速連點覆蓋，14 天與最多 80 筆上限，匯出採使用者主動 SAF 或系統分享，不可包含帳務原值／帳密。JS 致命錯誤的異步持久化無法保證成功；原生 crash journal 是盡力回收，ANR／NDK signal 仍須真機 logcat。只有裝置堆疊與重現流程相符才能認定閃退根因已消除，否則 Issue #90 應保持開啟。
+
+
+## 2026-09-27｜V3.0.40 無障礙未知事件不得當作反向排序
+
+V3.0.39 的無障礙 handler 原先以 `increment ? +1 : -1` 判斷，未知事件會誤觸發上一位，且對首尾行仍派發無效果命令。新版本引入 `accessibleChildMove` 白名單，只接受 increment/decrement、合法 index/total、未越界時才派發；保留原生拖曳手柄、真實父層白名單及草稿／套用／取消，並用行為回歸測試未知事件、首尾邊界及排序結果。184 中央技能 164/20 維持，避免以安全加固假報新技能完成。
+
+## 2026-09-27｜V3.0.39 native 新增元件排序必須遵守父層實際邊界
+
+原始完整中央技能樹包含尚未接線的 `fx-drag-sort` 與 `drag-sort` 兩個不同 ID，不能把單一父框架子元件已實作誇大成全 App 所有元件可拖移排序。只有工程師新增的合法 parent-frame 被選取時，才從 session.draftInstances 唯讀列出同 parentId 的直接工程師子元件；原生 PanResponder 只能經白名單 helper reorderOwnedSiblings 於相同父層置換既有陣列中的合法槽位，其他 ID、業務欄位、兄弟父框架不改。手勢位移以有限數值正規化，草稿預覽／取消／套用沿用 V3 維護 Runtime；真機觸控與父容器溢出另待驗。版本每次增加需要所有歷版 3.0.38→3.0.39 及 source-ready 163→164／pending 21→20 同步，勿將 push quality 成功且 APK skipped 誤判 native APK PASS。
+
+## 2026-09-27｜V3.0.38 #1261／#1264 exactOptionalPropertyTypes 與原生尺寸手勢
+
+FrameCard 新增 `onResizePreview` 可選 callback 後，PageEditorStack 不可在 cloneElement props 明確賦予 `undefined`：TypeScript `exactOptionalPropertyTypes` 在 #1261 與 #1264 的 quality TypeScript Gate 報 TS2769。真正修正是只在當前框架編輯 scope 使用條件 spread 傳入 callback，其他情況完全省略此 prop；相同分支新 commit `ae4b882b4954c681732a572277ed33b56e24af67` 的 #1265 已重新通過 quality 和 backend。建置門檻分層：push quality PASS 卻 APK skipped 不得作 APK 成功；必須有真正版本升級、PR 事件及實存原生 QA APK。尺寸手勢只掛載真實目前 A 的右下角 44dp 手柄，量測手勢初始原生尺寸，限定安全範圍並沿用草稿／取消／套用，不動金融資料與其他頁。每次升版要同步全部 V3.0.x 歷版 identity 和 184 ready／pending 計數，真機驗收仍獨立於 CODE／Build。
+
+## 2026-09-27｜V3.0.36 數值門檻必須先驗真實來源、只改局部原生顯示
+
+不得把代號或百分比與顯示單位已縮放結果當真實比較金額；原始 metric 字串不符合嚴格數值解析則不描邊。輸入不是有限數值或超過 ±1 兆則不得覆寫草稿；預設不啟用、選擇當前 A 才能編輯。thresholdReady 僅認列真實 native MetricTile 渲染、AB 控制、標準化白名單、草稿／套用／取消及完整歷版 regression，Android 手機仍待實測。當前 184 項中預期 161 宣告 ready／23 pending，不等於 161 項真機 PASS。帳務核心、actual_fee/tax、交易寫入、行情來源及 SAF 實作絕不變動。歷版 hard-coded 身份與準備度計數須全部同步升 3.0.36／30036／161/23，品質、後端、APK、ZIP/SHA/AAPT/Artifact 均實際 PASS 才可接續。
+
+## 2026-09-27｜V3.0.35 #1215 非同步升版導致 quality Gate FAIL
+不可僅修改 app.json 將新 branch 視為版本已升級。#1215 quality 讀到 app 3.0.35、package/SettingsScreen/BackupService/workflow 3.0.34，historical v2_1_1 release assertion 失敗；同版必須以單一 release identity commit 同步更新全部版本與歷版強硬門檻。失敗後讀 job log、原 branch 修復、推新 commit 實際觸發 PR QA，絕不能只有重跑原始失敗 run 就稱為已修復。
+
+## 2026-09-27｜V3.0.34 原生點按功能與工程師選取手勢不可混淆
+目前僅 metric 原生卡具備安全的本地點按強調，不得把 frame 的點按與全部子元件手勢宣告為已接線。Engineer ON 時 InspectableTarget 的選取疊層優先；以選中狀態的原位展示預覽強調邊框，退出後才能測試真正點按。預設 OFF、不開啟交易／導覽、不改金融資料，取消草稿不持久化。舊版回歸繼續完整執行，CODE、BUILD、手機實機分開驗證。
+
+## 2026-09-27｜V3.0.33 顯示單位不得污染真實帳務
+只允許格式化已掛載 metric/value 的畫面字串，ETF 代號、資料缺失及非數字原封不動；僅在原生 Runtime 接入與 AB C 控制及回歸存在後將 units 升 ready。更新歷版版本身份與宣告接線計數，不得以 CI 字串門檻假裝真機通過。
+
+## 2026-09-27｜V3.0.32 真實框架標題手勢與內部按鈕隔離
+不能直接在整張 FrameCard 父容器加 onPress 或全畫面透明 Pressable，否則攔截或重複觸發持股卡、圖表及右上角操作按鈕。只在獨立標題區放原生 Pressable，右側 action 與財務 children 繼續為兄弟，frameInteractionEnabled 預設 OFF，長按消耗本次 onPress；只允許本地畫面強調框線與收合／展開，不執行外部 URL、帳務操作或隱藏真實資料來源。新欄位必須走 normalizeFrameEffects 和 A 草稿正式套用，舊 SAF/財務核心不動。歷版測試要同步 3.0.32/30032、實際 QA 分支與 184/157/27 宣告統計；Build/實機分開驗證。
+
+## 2026-09-27｜V3.0.31 #1187 native cover crop 負零與驗證門檻
+全部 V3.0.1–V3.0.30 歷版測試通過後，V3.0.31 新增 `frameImageCoverCrop` 回歸在水平焦點 0 時 `deepStrictEqual` 觀察到 `-0`（JS 負零）而 FAIL；原生視覺坐標數值等效但資料契約應明確回傳正零。只在焦點 x/y 為 0 時返回 0，不更動裁切尺度、非零焦點、金融資料或影像模式，並新增兩軸負零回歸，以同一 PR 重新執行完整 Gate 及 APK。
+
+## 2026-09-27｜V3.0.31 #1183 歷版 16 支回歸硬編碼舊版造成 CI 連鎖失敗
+#1183 已通過 V3.0.8 的原生圖片控制合約，接續在 `v3_0_14-skill-navigation.test.ts` 固定要求 3.0.30/30030 而 FAIL。經掃描其後 V3.0.15–V3.0.29 共 16 支歷史測試均殘留 3.0.30、APK 路徑或舊 PR head_ref；本輪一次性更新 16 支為當前 3.0.31／30031／實際 PR 分支，同時保留各種功能與財務隔離斷言，不使用 skip 或刪除測試。升版 Gate 後續必須全檔掃描 scripts 中舊版本 identity/hard-coded head_ref，避免前項修復後才逐支暴露錯誤。
+
+## 2026-09-27｜V3.0.31 #1181 歷版圖片裁切測試誤用不存在欄位
+V3.0.31 實際以 `framefx:imageFit` 一項 ready 工具進入原生 UI，於 cover 模式控制 `imageFocusX/Y`。舊 `v3_0_8-frame-background.test.ts` 把草稿參數 `imageFocusX` 錯當中央技能欄位 `framefx:imageFocusX`，令 #1181 aggregate gates 在品質階段 FAIL、QA APK skipped；應修測試為既有真實工具的語意斷言，並保留原生控制接線與新版裁切行為回歸，不新增假工具或放寬 immutable 財務檢查。
+
+## 2026-09-27｜V3.0.31 本機背景裁切焦點與跨裝置資產移轉分離
+Native Image cover 預設置中行為不得被新增設定破壞；只有焦點偏離 50% 才量測來源/容器及定位，來源 getSize 不可用須退回舊 resizeMode=cover。不能把 content:// 授權當跨裝置可攜圖檔，也不能把部分適配標為整個 fx-background-image ready。所有焦點設置由當前 A 的既有 framefx.imageFit 控制、套用才儲存；圖層只能影響背景，金融內容及帳務 immutable。
+
+## 2026-09-27｜V3.0.30 真實寬度斷點不得越權修改跨頁模板
+「breakpoint」本輪只在 FrameCard 原生 onLayout 量測寬度後切換其卡片密度，不得假裝已完成獨立的 `fx-responsive` 跨頁中央模板／全裝置適配技能。兩斷點保留最小 40dp 差距，只在框架當前 A draft 生效；手動緊湊／密集的原樣式只可維持或進一步密集，不可因較寬螢幕悄悄放大；不改父框架尺寸、子布局坐標、數值、帳務核心或舊 SAF 備份。新增入口須完整走既有 framefx 原位編輯及 QA APK Gate。
+
+## 2026-09-27｜V3.0.29 原生框架進場動畫不得改動帳務或殘留位移
+進場動畫只用 Animated.View 的 native-driver transform，不能更改 FrameEditor 寬高或金融來源；預設關閉，降低動態啟用時停止並 setValue(1) 恢復原位。三種模式為滑入／縮放／旋轉，草稿取消與切換 A 必須觸發動畫清理，不得讓舊動畫流入別的框架。新增 ready 工具後同步更新 184 中央矩陣、歷版 pending 門檻、原生控制與真機待驗分級。
+
+## 2026-09-27｜V3.0.28 原生雙層／漸層邊框必須確實渲染
+雙層／厚度方向八階漸層邊框必須在真實 FrameCard 實際原生 View 繪製，不得只把 ready 標籤加入中央技能或僅顯示開關。兩組 Color Picker 各自綁定獨立損益色，限制厚度/透明度，預設 OFF，保持 shadow spread/glow/blink/marquee 原功能及不可變帳務。上一版 fx-shadow-spread 由 pending 轉 ready 後，舊 frame-engineer 回歸中的 pending 名單和數量必須一起檢查，避免品質 Gate 阻斷 APK。
+
+## 2026-09-27｜V3.0.27 多層陰影不可褪色財務子內容
+陰影多層擴散只能在獨立非互動 View 繪製，預設 OFF、最多 6 層、限制半徑與透明度；不能用父 View 整體 opacity，也不能宣稱原生輪廓近似等於真正 Gaussian GPU Blur。新增框架外緣視覺需要 overflow:visible，原有 outerGlow、blink、marquee 保留；版本/Build/QA Workflow/coverage 與前版全部回歸需一致。
+
+## 2026-09-27｜V3.0.26 跑馬燈必須獨立原生層且支援即時降低動態
+跑馬燈只可動畫實際 FrameCard 標題，不得對父框架整體 opacity 或移動內容容器造成財務數值閃爍；文字和可見空間需先量測，未溢出不啟動。系統降低動態的值除 mount 查詢，還須訂閱 reduceMotionChanged 並在卸載清理；重複循環用的第二份標題不可被讀屏重複朗讀。版本建置需對齊 APK／SHA／badging／技能覆蓋報告四組名稱。
+
+## 2026-09-27｜連續 GO 空分支與版本鎖死的根因
+V3.0.24 #1131 QA APK PASS 後雖建立 `backup-v3.0.24-20260927-pre-v3.0.25` 與 `go-v3.0.25-20260927-native-blink`，但工作分支 HEAD 仍與 V3.0.24 相同，沒有新 commit/PR/Actions。舊 CI `push.branches` 只接受 V3.0.24、`pull_request.branches` 未包含新版基底，`qa-apk.if` 又精確限定上一版 head_ref；只排程文字 GO 或只建空分支無法產生新 APK。應把分支觸發抽象為 `go-v3.0.*`，每次必須建立可審計的新程式 commit／PR，品質＋後端 PASS 且 APK ZIP/SHA/badging/Artifact 實存才能宣告完成。每次成功後同一輪接續下個正式遞增版本；若超過當輪時限，精確交接下個每小時排程，不得冒稱排程間仍持續跑建置。
+
+## 2026-09-26｜V3.0.24 #1125 舊測試文字比對需保護模擬分層
+
+在 V3.0.24 真實元件插入不持久化模擬後，V3.0.19 regression 原本要求 `InspectableTarget` 直接用 `actualTone` 的程式字串，現在 Runtime 正確先以 `simulatedVisualTone(previewState,actualTone)` 計算僅當前 A 的 `displayTone`，再用該狀態調用原始條件色。舊 test 僅更新成實際語意驗證，保留完整真實行情來源／數值不可改、取消恢復與帳務核心測試；禁止為通過舊字串而撤銷新功能。
+
+## 2026-09-26｜V3.0.24 #1123 sandbox 狀態初始化雙路徑 TypeScript FAIL
+
+同一段版本編輯腳本在第一個 begin 建構子連續插入 `previewState` 兩次，卻遺漏 enterTarget 新建構子，造成 TS1117 與 TS2345。修復後把兩種新建構子和兩種切換 A 的重置路徑列入固定測試（預期四處），版本修改仍需先通過 TypeScript 再認列 QA。模擬參數依舊只在維護會話內存，不可保存到帳務或 AsyncStorage。
+
+## 2026-09-26｜V3.0.24 模擬資料必須完全隔離真實帳務
+
+資料狀態情境只能存在已選 A 的維護會話內存：真正的 UI 可見、可回復、不可寫入 maintenance/SAF/ledger/cache，不得顯示捏造的價格或把「延遲／失敗」誤當真實 API 事實。來源分支名稱先精確更新，再改版本號；QA head_ref 與本次實際 branch 由新回歸強制比較，以免 workflow success 卻沒有 APK Artifact。
+
+## 2026-09-26｜#1119 APK 虛假 success：GitHub head_ref 必須精確核對
+
+V3.0.23 推進時先將整份 workflow 版本 `3.0.22` 取代為 `3.0.23`，連帶把來源分支名稱誤改為不存在的 `go-v3.0.23-20260926-next-skills`，導致 #1119 quality/backend PASS 但 QA APK 以 `skipped` 結束。根因不是 APK 編譯，而是 GitHub job `if` 未符合實際 PR `head_ref`。修復時對 `push.branches` 與 `qa-apk.if` 實際工作分支名稱作精確核對，並納入新版本回歸 Gate；品質/後端 PASS、workflow success 均不可取代 APK 產物實際驗證。
+
+## 2026-09-26｜V3.0.23 外側光暈不影響父框架子內容
+
+新增視覺工具要接到真實原生渲染，獨立損益色與透明度均正規化、預設關閉，不得使用根 View 整體 opacity 褪色原始數字。陰影、內緣光與外側光圈分層，手機不同容器對越界描邊的裁切需另實測；版本更新同步全部歷史 allowlist，不動 immutable 財務核心。
+
+## 2026-09-26｜GO 不得遺漏建置追蹤與完成清單
+
+建置已開始仍須每 15 秒追蹤 GitHub Actions job／Log；遇到 FAIL 查根因、原地修復並重新驗證。APK Artifact 上傳、版本／ZIP／SHA 驗證後，每輪必須立即回報本輪更新項目、未完成與歷史結轉項目、CI／APK／實機獨立 PASS 證據及完成／未完成統計。離開即時互動後不能冒稱仍在 15 秒輪詢；由排程每小時喚醒時重新讀取最新 GitHub run 狀態。
+
 # ERROR_LESSONS.md
 
 ## TF Asset / ETF 財務管家 — 深度遵守條例清單
@@ -232,3 +438,295 @@
 > 以後不是「先做，再解釋為什麼對」，而是「先確認規則與證據，再做；做完後用證據證明沒有違反規則」。
 
 這才是 `ERROR_LESSONS.md` 真正應該達到的效果。
+
+
+29. **GO 最終結果必須交付新版 APK；每次 App 更新 Ver +1（2026-09-23 新增硬規則）**
+    - 使用者執行 GO 的最終交付物是本輪新版本、經 GitHub Actions 實際建置與 Artifact／完整性驗證成功的 APK，不是只有程式修改或 PR。
+    - 每輪 App 更新版本正式遞增一級，App 顯示、package.json、app.json、Android versionCode、iOS buildNumber、原生 CI／QA workflow 與備份版本一致；禁止復用上次更新版本或加「OA」尾碼。
+    - 本輪仍有真機待驗或原 Checklist 未全 PASS 時，應在品質與安全前置 Gate 允許後先交付**新版本 QA APK**供驗收；保留所有未完成項及正式 Release 阻斷，不以 QA 建置冒充正式 Release。
+    - Action 出錯就查 Log、原地修復、重驗、重新建置，最後必須核對 APK 檔案、SHA-256、包名、版本和實際下載連結。
+    - 若平台授權或技術阻斷使新 APK 尚未成功，清楚回報阻斷與未完成；不能僅憑「已提交修改」宣告 GO 完成，也不能承諾在本回合結束後無工具持續執行。
+    - 詳細版本一致性、QA／正式 Release 分流及交付證據依 Work_Project_Rules.md 第 26 節執行。
+
+30. **3.0.3 原地元件工程師：不得把金融數值當作可替換文字，亦不得讓扳手遮蔽資料（2026-09-25）**
+    - 即時金額、損益與原始資料內容預設唯讀；自訂標籤只對標題／說明生效，不能修改或遮蔽數字。
+    - 選取框、迷你扳手不得擠壓或遮蔽原元件；窄欄大字需有合理縮放與溢出策略。
+    - 2026-09-26 最新使用者要求覆蓋此舊規則：每個實際 A 對象一律顯示完整中央 B／C／D 技能樹；適配不足只能標示待接入，不得按元件種類隱藏技能。僅原始數據／帳務核心與內建元件安全刪除限制維持。
+    - 對 AI 等複合元件，必須在既有原生模塊內植入子元件適配；複用原有行為，不能另外畫一個假替身。
+
+31. **V3.0.13 回歸根因：中央技能定義、元件類別閘門及原生適配未分離（2026-09-26）**
+    - V3.0.12 正常的父框架／元件視覺能力，升級 V3.0.13 時增加 instance sync，但仍以 `scope` 和 `targetToolSupported` 決定 UI 可操作性，導致同一視覺技能跨元件出現舊限制。
+    - V3.0.14 將工具分類、原生適配與唯讀數據界線分離；B 類全顯示、每個工具以純 resolver 回傳 active／pending-adapter／planned，UI 與 CI 必須共用此決定源。
+    - `behavior='locked'` 是框架佈局偏好，不是封鎖外觀編輯的權限。僅交易、數據來源、金額及公式可唯讀。
+    - 同名技能若渲染不等價，不可偷換參數（例如「僅上內距」絕不能被自動轉成「四邊內距」）；缺適配如實記錄。
+    - 169 個舊工具必須零遺失；29 個舊待接入、12 個專業能力及尚未登記的 Widget、AI、導航介面皆須追蹤，不能以「分類完成」冒充「功能完成」。
+32. **單靠原始碼 literal grep 的假驗證造成多次 CI 阻斷（2026-09-26）**
+    - V3.0.13 Action #1012 在舊 `setShowAllSkills` 字串測試失敗；V3.0.14 Action #1027 在新 UI 文案測試失敗，Action #1048 在已移走的 `f.startsWith('framefx:')` 斷言失敗。
+    - 回歸測試應優先呼叫中央純函式並檢查實際資料結構；少數 UI 原始碼檢查用來確保入口仍掛載，但重構後須更新為等價行為測試，不能為通過 literal 而恢復錯誤架構。
+    - 每個版本保留前版的真實行為、不修改 immutable finance；CI PASS、APK 產物及手機實機 PASS 是三種不同證據。
+
+## 2026-09-26｜維護工程師技能樹過長的根因與防回歸
+
+錯誤：30 類同時渲染成直列，且每一類同時出現在導航和內容區；鎖定說明、同步細項、元件屬性及技術統計全部預先展開，導致手機工作台冗長。單純把文字縮小、增加收合開關或刪減技能都無法消除重複展示。
+
+修正：資料層保留唯一完整 184 項中央清單，畫面以「六大分類 → 單組五類 → 單一技能工具 → 單一工具細節」逐層顯示；全域搜尋直達技能；詳細資訊按需查看。保留真實畫面即時草稿、固定底部套用與取消，以及原始資料不可改、內建元件不可刪的硬性限制。
+
+驗收 Gate：初始畫面不能同時渲染 30 類；進入分類只顯示對應五類；進入技能只列其工具；所有 30 類及 184 項仍可由選單或搜尋抵達；切換後舊工具細節不得殘留；原始帳務核心檔案須與事前備份完全相同。程式測試與手機長螢幕實測分開記錄。
+
+
+## 2026-09-26｜嚴格 AB，不得增加分類索引層
+
+V3.0.15 把 B 30 類之前另設六組入口，導致 A→額外分類→B→C→D，使用者操作反而更複雜。A 當前真實元件／框架 → B 全技能直接可見（小格網及搜尋）→ C 選定 B 的工具 → D 單一工具細節，不得增設平行設定卡與第二分類入口。B 所有內容於固定高度工作台內捲動；同步應回歸 B27 的 C 工具／D 細節；唯讀資料硬鎖保持不變。
+
+## 2026-09-26｜根因：B 應是目前 A 的可編輯屬性，非技能分類
+
+AB 定律實例：A 框架 → B 長度 → C 大小；A 框架 → B 寬度 → C 大小；A 框架 → B 顏色 → C 開啟損益色、C 開啟漸層。B 的名稱必須是長度／寬度／顏色等直接可理解的屬性；30 類完整技能庫與六大分類只可作為中央工具追蹤及 C 控制映射的內部資料，不可直接顯示為 B 或額外導航層。C 能直接顯示的開關、輸入及調色器不得再強迫跳入工具細節頁。進階操作在同一 B 的 C 按需展開；切換 B 只清空 C 畫面，不丟棄草稿。所有非金融數據編輯能力共用中央工具，不按元件類型刪掉技能。
+
+## 2026-09-26｜新增高階技能時，必須同時驗證真實 Runtime、來源和局部覆寫
+
+先前技能表「已列入」不等於能編輯真實元件。V3.0.17 將新增進階技能限於三項可連通的原生操作：多選批次視覺樣式、已儲存對比暫存的局部差異、以實際座標量測為依據的健康診斷。新增元件功能不能只增加新按鈕；必須從當前 A 的真實掛載元件取目標清單，操作前展示逐筆差異、跳過不支援屬性，僅對本框架白名單樣式改 draft，取消必須還原。正式儲存的局部樣式不得被舊同類共享設定蓋掉，需記錄各 ID 的局部覆寫鍵。診斷未取得量測時不得報告 PASS；同類重疊是提示，不得假定全部都是佈局錯誤。絕對不能藉批次途徑修改資料來源、交易欄位、金融公式、內建元件身份或跨頁設定；不可因工具存在就將尚未接入原生介面的其餘 41 項標記完成。
+
+## 2026-09-26｜V3.0.18：中央技能庫新設計資產應獨立儲存但進入完整備份
+
+- 保存跨頁共用的設計組合和收藏，不能把它們混入某頁元件的局部 Draft；修改外觀依舊只能透過真實 A 原位草稿及正式套用。
+- 同類視覺同步原本可能遮蔽局部顏色；套用共享 token 必須把目標欄位標記局部覆寫，剔除同一批 sharedTouched，以免按工作台儲存時意外傳播全 App。
+- 收藏、最近使用會有連點及多個 async 寫入；專用存儲鍵由單一 Promise 佇列依序持久化，寫入失敗不更新顯示為成功。
+- 新資產鍵必須符合現有 `@tf-asset/` 備份前綴，外部 SAF 備份與還原均需涵蓋，禁止讓新增功能成為升降版資料遺失新入口。
+- 僅保存視覺白名單；文字內容、帳務來源、actual_fee、tax、座標、顯示／刪除原生元件權限永遠不能進入具名樣式。未接入的原生效果誠實顯示略過，不得以 JS 選單存在宣稱手機 PASS。
+
+## 2026-09-26｜#1102：版本號增長時歷史測試 allowlist 造成假性 CI FAIL
+
+GitHub Actions run #1102（實際 V3.0.19）在 `scripts/v3_0_3-workspace.test.ts` 拒絕 3.0.19，因八項歷史回歸的版號白名單停留 V3.0.18，導致 quality 被提前阻斷與 QA APK 跳過。根因為版本相容性檢查重複散佈；後續增版需於版號 Gate 同步掃描所有歷史測試，僅擴充經驗證的版本白名單，絕不能放寬帳務核心或業務公式的實際測試。修正後 #1103 quality 與 backend PASS；APK 須另由 PR job 完整驗證。
+
+## 2026-09-26｜V3.0.20：已儲存與暫存不可混淆，歷史不得覆寫帳務
+
+在真實 A 上，局部外觀歷史要由**成功正式套用之前的已儲存狀態**產生，且與樣式草稿合併到同一維護 AsyncStorage 交易；若儲存失敗，不可新增假歷史或宣告成功。歷史只保留當前 A 的視覺白名單，禁止收入交易原值、內容、身份、可見性、座標或事件動作；每個 A 最多十筆，舊備份的未知欄位與惡意資料要正規化。還原先預覽、須使用者二次確認，並強制局部停用同類同步，直到工作台底部正式儲存前都不得影響其他畫面。舊版 `schema:3` 應兼容可選新歷史欄位；獨立 QA APK 與手機手勢仍各自驗證。
+
+
+## 2026-09-26｜V3.0.22 任意角度漸層的向下相容 Gate
+舊版 gradientDirection 水平／垂直不可因增加任意角度屬性而自動漂移；以 null 角度繼承舊方向，明確選角才更新當前 A。斜角時使用量測矩形及外擴旋轉畫布避免角落透明；渲染層必須在文字下面，不得將背景透明度套到整張卡。版本升級必須同步歷史回歸 allowlist 與版本/工作流程；不得修改已鎖定金融核心。
+
+
+## 2026-09-28｜V3.1.4 個體恢復不能只清除視覺覆寫
+
+V3.1.3 既有 `resetTargetVisual` 只刪視覺欄位；XY、隱藏、個體互動等仍保留，而且 app／page／frame 共用樣式會再次覆蓋重設結果。維護工程師新增獨立「恢復此個體原廠」：以實際 page／frame／target ID 清除全部局部覆寫並保存隔離旗標；任何共用樣式都不得再套回該特定元件。對唯一持股清單或模式選擇器，僅重設該原生 A 所擁有的顯示欄位；個別 ETF 行情卡採本卡預設，不可回寫所有卡片的共享配置。故障元件點擊會閃退時，提供框架內免點擊元件清單入口；取消不儲存，套用後重啟仍保留；Android 真機仍須測試。帳務核心與既有備份不變。
+
+## 2026-09-28｜V3.1.5：個體恢復與舊模式選擇器仍會在實機觸發例外
+
+在 V3.1.4 QA APK 成功後，實機反映庫存持股顯示連續切換 list／paged2／horizontal／grid3 仍出現 NATIVE_CRASH 與 JS 例外。不可再僅重複清空舊 target 覆寫或只修改視覺；將庫存主切換控制整個替換為不共用舊 ID／共享樣式的獨立原生 Pressable 卡片選擇器，另備無舊表格／行情牆／動畫的簡易清單，以及 React 渲染錯誤邊界。舊資料正規化；模式變更在工程師編輯時不得直接保存。原生 fatal 與根因仍需 Android logcat，QA 成功只代表建置品質通過。
+
+
+## 2026-09-28｜V3.1.6：快捷檢視與閃退隔離
+
+- 舊清單／行情牆模式已有 Android 閃退回報，改用全新四鍵原生 Pressable 與獨立個體 ID；保留 V3.1.5 安全簡易清單作旁路，而不是將安全清單誤作新的持股風格。
+- 切換模式時僅更新既有視覺欄位 `portfolioViewMode`／`quoteStyle`／`holdingLayoutMode`，排序只更新 `sortKey`；工程師預覽更新草稿，切勿直接寫入已儲存設定。
+- 圖表、進階以單欄避免三欄壓縮，切換第一鍵的圖示與文字必須同步；排序採固定循環，一次點擊即實際排序，不引入彈出清單。
+- 不以 CI 通過宣稱已消除 Android 原生閃退；仍需實機 logcat 作最終驗證。
+
+## 2026-09-28｜V3.1.7：安全簡易清單不是主介面第五個按鈕
+
+- Android V3.1.6 截圖顯示四鍵之下仍有大型獨立救援按鈕，與既定單鍵循環式介面不一致。這個元件原本用來繞過舊表格／行情牆，保留獨立輕量渲染函式，但把正常入口合入第一鍵「清單」。
+- 不用刪除保護路徑：保留 JS 渲染錯誤的 fallback，並將它指向第一鍵清單的簡易版。原生 Android crash 是否消失只能由實機和 logcat 驗證。
+- 舊用戶保存的清單版型缺欄位時預設簡易版；明確在設定選擇詳細表格者保留選擇。異動僅影響呈現模式，不影響 Immutable Core 帳務。
+
+## 2026-09-28｜V3.1.8：正式清單不可用故障簡易清單取代
+
+- 前一版通過 CI／APK，但實機「清單」顯示渲染錯誤。不能用通過的 build 替代真實畫面驗收；未取得故障詳細 Log 時，只能列出可驗證的變更點而非聲稱已掌握原生閃退根因。
+- V3.0.1 原本的 `PortfolioHoldingTable` 並未消失，左側固定、右側橫滑的 component blob 仍與舊版完全一致；上層 V3.1.7 UI 卻切換成卡片式救援預設，造成名稱與實際版型不符。恢復原件接線，避免全域檢查器在日常瀏覽階段介入。
+- 預設版型應永久回到正式 table；舊 `simple` 存檔只能遷移顯示，不可清除原始持股與設定。簡易 renderer 只在 React error boundary 需要時旁路；Android 原生信號崩潰仍要 logcat。
+
+## 2026-09-28｜V3.1.9：可調參數不能把目前顯示值誤當硬下限
+
+- Android 畫面顯示 160 dp 並不代表使用者要把 160 當最小值；若編輯器的 min 直接鎖為 160，實際上就失去「自由欄寬」。顯示值、預設值、允許範圍必須分開。
+- 版面尺寸優先使用連續調整：1 dp 微調、直接輸入、拖曳；仍保留合理安全邊界防止負值或極端尺寸。正規化層與 UI 控制必須使用同一組 min/max，避免畫面可選但重啟後被 clamp 回去。
+- 已恢復的正式 V3.0.1 表格 renderer 不應為了增加控制器而重寫；只改既有 config 與編輯器，並以 Git blob SHA 回歸保護，降低再次引入清單閃退的風險。
+
+
+## 2026-09-28｜Mini 摘要圖與完整股市圖表必須分層
+
+首頁與庫存屬摘要瀏覽面，圖表只能以 Mini 形式存在，不得把完整 K 線工具、十字線控制、資料來源編輯器塞回卡片造成擁擠或誤觸。Mini 的圖表區需與卡片主點擊區隔離：單點 Mini 進完整圖表頁、連點 Mini 切換視覺樣式、卡片其餘區域維持持股詳情。完整圖表頁才能承載市場／持股兩類資料、查詢、時間區間與專業圖型。持股歷史資料只做視覺估值，不得把歷史收盤價反推回正式帳務損益。
+
+
+## 2026-09-28｜V3.1.11 Mini 圖表改造的兩個 CI 失敗點
+
+首次 PR run 在 TypeScript Gate 因 `HoldingQuoteModule.tsx` 重構移除舊 Sparkline 時誤刪仍被版面樣式使用的 `spacing` token import，產生 TS2304；元件替換不能只檢查被刪函式附近，必須掃描整檔所有共用 token 的剩餘引用再清 import。第二次 run 已通過 TypeScript，但舊 `v2_1_1-release.test.cjs` 的 QA 版本 allowlist 只接受到 V3.1.10，令 aggregate gate 報 `unsupported QA version`；每次正式遞增版本時，版本 identity、workflow、歷史 regression 與 release allowlist 必須同步更新。修復後 run 36390921666 的 quality、backend-quality、QA APK 全部 PASS，APK badging 為 versionName 3.1.11 / versionCode 30111。
+
+## V3.1.12｜只修 default 不等於修掉 persisted legacy state
+
+**症狀**：程式碼已將 `INITIAL_CASH` 改為 0，但升級後帳務中心仍顯示「期初現金 NT$ 750,000」，且仍參與目前現金計算。
+
+**根因**：舊值已寫入 AsyncStorage。初始化 default 只影響「沒有舊資料的新安裝」，hydrate 流程仍把已儲存的 750,000 原封不動還原，因此 UI 修正與資料修正脫節。
+
+**修護原則**：
+1. 對 persisted schema 做明確資料遷移，不用 UI 警告取代 migration。
+2. 只辨識產品曾硬編碼的精確 sentinel `750_000`，避免誤傷其他期初現金。
+3. 遷移只處理 provenance/storage，不碰 Canonical Finance Core 算式與歷史交易固化值。
+4. 若先前版本已建立專用 -750,000 系統沖回，必須與 opening cash 同步正規化，否則會 double subtract。
+5. migration 必須 idempotent，並以 regression test 驗證「舊值移除、真實 entries 不變、既有沖回前後 balance 不變」。
+
+
+## 2026-09-28｜V3.1.12 只處理 opening sentinel，漏掉 opening=0 + orphan -750,000 reversal
+
+實機證據出現「期初現金 0、目前現金 -773,871」，而真實淨額約為 -23,871；兩者差額精確為 -750,000。V3.1.12 migration 只有在 `initialCash===750000` 時才處理 reversal，因此只要先前某路徑已把 opening 歸零、但 generated reversal 仍存在，migration 就會直接 return，造成幽靈 -750,000 永久參與現金。
+
+修復準則：
+1. persisted migration 必須覆蓋「值已部分遷移」的中間狀態，不只 happy path。
+2. 刪除舊資料必須依不可由一般 UI 偽造的 provenance（專用 generated ID），不能只用 label+amount。
+3. 一次 migration 至多移除一筆舊系統沖回，避免重複紀錄或相同文字的使用者資料被全部刪除。
+4. schema 升級時同步更新 backup parser；否則 App 能寫 schema 3、備份卻拒收。
+5. regression test 必須重現真機數字：opening=0 + genuine -23,871 + generated -750,000 = -773,871，修復後回到 -23,871。
+
+
+## 2026-09-28｜不要把「交易淨流量」當成「目前現金」
+
+實機畫面可同時出現 `initialCash=0` 與大量負的 ledger net movement。若使用者沒有建立明確現金來源，從 0 開始扣買進成交款只代表「交易現金流方向」，並不能證明使用者實際持有負現金。
+
+修護原則：
+1. `auditCashSources.netMovement` 是對帳資訊，不等於已設定的 cash balance。
+2. 現金需有 provenance；無明確來源顯示「未設定」，禁止用 0 起算交易流量冒充可用現金。
+3. Canonical Finance Core 的交易 settlement 公式保持不動；在 Runtime/Shared Snapshot/UI 層區分「計算流量」與「可顯示現金」。
+4. App、Widget、Monitor 必須共用同一 cashConfigured 狀態，不能其中一處仍顯示負現金。
+
+
+## 2026-09-29｜V3.2.9：今日市值變動不能用帳務總損益差額冒充
+
+實機出現開盤前持股市值 24,875、盤後 24,642，但「今日損益」顯示 -124。根因是每日紀錄以 `totalPnl - previousTotalPnl` 當成今日市場損益；然而 `totalPnl` 是 Finance Core 的綜合帳務結果（未實現淨清算＋已實現＋股息），和持股市值的 close-to-close 變化不是同一口徑，且前一日估值若來自不同價格來源還會放大差異。
+
+修護原則：
+1. 今日市場損益改以「當日總持股市值－前一交易日總持股市值－當日買賣本金流」計算；買進／賣出本金不可被誤算成獲利。
+2. 總損益仍由 Immutable Finance Core 計算，不改手續費、證交稅、Math.floor 或 Portfolio 加總公式。
+3. 自第一筆交易日起，依每日當時實際持股重播交易，使用 TWSE／TPEx 正式日收盤重建歷史，不拿今天持股反套過去價格。
+4. 首頁不得再顯示「前日損益＋今日市值變動＝總損益」這種混合口徑等式；明細另列「帳務調整」橋接兩種口徑。
+5. 正式日收盤優先於盤中／previous-close 暫算；錯誤舊 schema 另開儲存鍵，避免已凍結的錯誤每日紀錄繼續污染新版本。
+
+
+## 2026-09-29｜長期每日資料不可用「一天一張大卡片」，Mini 圖也不可脫離金融基準
+
+實機每日損益資料一旦從第一筆交易持續累積，逐日卡片會讓頁面長度線性膨脹，跨日比較困難；每日變動的柱狀圖也只適合離散比較，不適合閱讀資產長期方向。每日歷史主介面改採「金融走勢圖＋固定日期欄統計表＋單一選取日詳情」，圖表與表格必須共用同一 DailyPnlRecord，不另建第二套損益計算。大量歷史可為繪圖效能抽樣，但表格不得丟資料。
+
+行情牆 Mini 圖是看盤摘要，不是完整圖表頁：應以昨收作基準虛線，走勢在基準上／下依全域漲跌色分段；卡片背景由行情牆設定掌管，Mini 不得自行畫固定黑底。缺少完整 sparkline 時可退化為昨收到現價的兩點走勢，但不得虛構盤中路徑。Mini 單點進完整圖表、連點切樣式的既有分層仍保留；完整 K 線／技術指標只在獨立圖表頁。
+
+
+## 2026-09-29｜V3.2.10 Mini 的「昨收→現價」兩點線不是分時走勢
+
+實機在盤後看到行情牆 Mini 只有一條斜直線。根因不是繪圖樣式，而是資料模型只有無時間戳的 rolling sparkline；當資料不足時又用昨收與現價兩點補線，視覺上會把「兩個已知價格」誤表達成「09:00 到 13:30 的真實盤中路徑」。
+
+修護準則：
+1. 行情牆 Mini 的「今日走勢」必須是 timestamped intraday series，X 軸固定為台北交易時段 09:00–13:30；不得用 index 等距冒充時間。
+2. 昨收只能當基準虛線，不能當成 09:00 的第一個成交點。
+3. 只允許 trade／backup_realtime 進入分時線；bid/ask、previous-close、official-close 不得被畫成盤中成交軌跡。
+4. App 中途開啟或盤後才開啟時，要由行情資料層補齊缺口；UI 不自行造點。Native Market Center／後端保留來源與時間戳。
+5. 分時點不足兩筆時誠實顯示「待取得／累積中」，空白優於假直線。
+6. 分時展示資料與 Immutable Finance Core 完全隔離，不得拿分時資料重新推導帳務損益。
+
+## V4.0.5 股息日期與公告現金分離
+
+- `Date` 會把不存在日期正規化，不可只檢查 getTime 有限；輸入必須 roundtrip 保持同一 ISO 日期。
+- 切換代號必須重設全部相依資料，找不到持股不能保留前一代號名稱或股數。配息资格回看已公告日期的 ledger，不以今日庫存替代。
+- 公告是事件，實收才是現金。未知配發日不得以除息日代替；AI 推算股數不得自動視為實收資格。所有 AI 入口同樣儲存預告。
+- 預告與轉入帳同 payload 原子更新；已入帳由正式 ledger 推導、固定 ID 保證重播不重複增加現金；到期不等同收款。
+- RN host 測試必須捕獲 hook 所屬 instance，並走 PageShell actions / frame element 才能驗證實際可操作控制；測試替身不是裝置驗收。
+
+## V4.0.6 FrameCard 金融損益色資料接線
+
+- 全域色盤正確不等於實際框架正確；linkedColor 固定 neutral 會讓所有框架特效永远中性。金融狀態應由 canonical 顯示來源傳入，不能從格式化字串、今日漲跌或主题色反推。
+- 首頁持股總損益與庫存含息總損益是不同來源；共用映射保證已存在的實際頁預覽使用相同來源。無金融語意的框架保留中性。
+- 測試須執行 FrameCard 本體並檢查背景、標題、漸層與效果圖層，另驗證固定色開關、兩模式、零值與無效行情；source smoke 只作接線補充，不取代執行測試。
+
+## V4.0.7 整體文字金融狀態與覆寫順序
+
+- 同一頁不是每個文字都經過同一renderer：一般Text、dashboard、metric、quote-card與原生行情牆須分別追踪。目標缺profitTone時所有連動都會退為neutral。
+- 0與行情不可用不能用 >=0 算盈利。金融來源需明確；一般文字由父框架繼承、指標用自己的數值、行情卡用日變動，資料不足停止判盈虧。
+- 已解析的卡片固定色／手動tone不能被主要或次要文字flag二次判色；傳遞明確視覺覆寫時須停止底層再判色，非色彩覆寫保留原字段規則。
+- 不以重複反轉色盤臆測根因；先跑實際renderer，V4.0.6 baseline red → 新版green。UI整檔hash可在已授權修護時更新，帳務核心與未修改版型鎖定不可變動。
+
+## V4.0.8 預覽套用與 SaiETF 即時行情唯一來源
+
+- 預覽正確不代表實際頁正確；必須驗證「draft → displayConfig 儲存 → restart → 實際 renderer」完整路徑。不同覆寫儲存區要明確合併並定義優先序。
+- 1 秒排程不等於畫面每秒同步。若 Memory Hot Store 的讀取被整批 provider fallback 或 runtime 大鎖阻塞，已有新行情仍會顯示待核對。
+- Provider 應逐筆發布已接受行情；批次結束時不可用較舊集合覆蓋期間到達的 streaming tick。JS 也要用來源查詢時間拒絕晚到舊 snapshot。
+- 完整移植必須刪除舊執行入口與旁路，不只把 SaiETF 類別放進專案。App 只接受 SaiETF broker-free 來源契約，Widget／Monitor 不自行抓第二份行情。
+
+## V4.0.9 SaiETF LIVE 訂閱與設定殘留
+- V4.0.8 雖移植原生仲裁，React Native 仍每秒拉快照；Fugle tick 到畫面最多多等一次輪詢。改為 Memory Hot Store 推送，並保留快照恢復路徑。
+- 舊排程 JSON、設定開關與歷史交易代號會讓 SaiETF 更新定律失效；移除舊排程執行權，以正持股訂閱並在回前景即刻恢復。
+- 單檔 AI 查價與正持股訂閱若共用同一 `refresh` 訂閱更新，會把持股 WebSocket 清單換掉；專用訂閱入口與臨時查價分開。
+
+## V4.0.11 非同步行情持久化不能作原生顯示 Gate
+- Canonical 快照與 SQLite 快照可能處於不同 Tick。以價格 / 時間戳逐筆相等作可用性條件，會在每次新 Tick 或寫入延遲時清空有效行情。
+- Monitor / Mini / Widget 顯示同一 immutable canonical 投影；持久化只負責恢復。不可在 presentation 混入另一個來源版本重新算漲跌或損益。
+- 單檔缺少行情只隱藏該檔金融欄位，總資產完整性與逐檔可用性分別判定。
+- 原生 ISO UTC 字串不能 substring 作手機時間；需解析為 Instant，再轉 Asia/Taipei。
+
+## V4.0.15 設定編輯必須有實際消費者
+- 註冊框架清單不等於正式頁面已接入：控制中心、專業圖表、獨立業務視窗與全域元件需要各自渲染作用域。
+- App 的 session 取消條件需辨識全域與圖表範圍；只看目前主頁會立即取消合法的圖表或全域編輯。
+- 動態代號、名稱、金額與輸入值必須唯讀。共用靜態標籤 ID 需包含非財務標籤識別，防止一列修改覆寫不同選項。
+- Native Modal 上方需有自己的工作台；Activity 底下的工作台不可穿透 Modal。
+- 原生文字表面與 standalone 框架都需實際渲染背景、邊框與透明度，不能只儲存設定。
+- 舊來源 smoke 可改為等價新接線檢查；財務核心與凍結表格 hash 不放寬，適配 import / metadata 正規化後仍須比對原 blob。
+
+## V4.0.44 — SaiETF Market Center SSOT / session guard
+- Root issue: TF Asset port drifted from SaiETF frozen MarketDataCenter/MarketArbitrator, omitted SaiETF's foreground 1-second market-center polling cadence, and reused previous-close metadata from a prior Taipei session when Fugle trade events lacked previousClose.
+- Repair: restore authoritative SaiETF market arbitration and center implementation from `locopy0121-hub/Saietf_V1.0.1@main`; use the existing native provider rate limits (TWSE MIS 1s, Yahoo 15s) with 1s active-session UI polling and 30s outside; guard previous-close by exchange session date.
+- Constraints: do not change Ledger, protected Settings, Fugle API key storage, or introduce independent UI price-selection paths. Prior-session cache may be diagnostic, not today's live valuation.
+- Acceptance: V4.0.44 CI quality, backend integration, native build and verified APK; if inherited V4.0.43 gates fail, do not claim V4.0.44 release.
+
+## V4.0.48 — Widget automatic background subscription
+- Root cause: App pause stopped the single market runtime, and canonical Widget synchronization depended on foreground React effects/manual refresh. Android periodic Widget updates cannot deliver direct intraday trades.
+- Repair: process-wide market owner, trading-session foreground Headless JS service, event-driven canonical Widget projection shared with App. No price polling or update-button dependency; connection notification required by chosen background mode. Stop at session close, last Widget removal and platform timeout.
+- Regression guards: newer pending events cannot be replaced by late versions; foreground queued surface writes skip background; native persisted market versions reject regression; bootstrap errors keep listeners alive; official calendar ingestion matches App.
+- Verification boundary: automated projection/task/native gates and QA build do not prove device screen-off, OEM background lifetime, genuine provider credentials or reconnect. These remain device validation pending.
+
+## V4.0.49 — configurable trading-session schedule
+- Intraday direct push does not justify after-hours lifecycle REST calls or an open socket. Persist a shared native schedule (enabled, Mon–Fri, start/end within 09:00–13:30 Taipei), and gate both subscription commands and REST before each symbol. App/Widget share this policy; cached finance remains intact.
+- Credential changes must first clear desired subscriptions; otherwise provider reconnect uses retained symbols despite a previous disconnect. Serialize transport commands and discard obsolete queued commands so a late resume cannot undo schedule pause.
+- Only one upcoming start/end boundary is armed while App/Widget owns the runtime. This is connection scheduling, not seconds-based price polling. Outside schedule and with no active owner, no automatic price work runs.
+- Device background restrictions remain: after a resting/background service stops, future sessions resume when the App is opened. UI states this explicitly. QA build is not proof of next-day autonomous background launch.
+# V4.0.56 — Monitor models must reach the real surface
+- Models must have different columns, typography, visible fields or ranking; a new name alone is not a model.
+- Monitor field options need snapshot metadata, persisted config normalization, preview and Android render coverage. Volume is cumulative source metadata; never infer it from shares or sum repeated snapshots.
+- Detail fields must wrap; hardcoded footer lists silently hide newly enabled fields. Null values sort last in both directions on both platforms.
+- Preserve V55 event coalescing and the protected Settings shell; only the Monitor child editor and release constants change.
+
+# V4.0.57 — Authentication is not trade subscription recovery
+- Do not reset retry backoff or mark streaming healthy merely on auth/heartbeat. Required trade subscriptions must be acknowledged; symbol updates must respect an existing cooldown.
+- Release obsolete active AND pending subscriptions before adding replacements. Await unsubscribe ACK with a recovery timeout; otherwise transient subscription overlap or missing ACK can stall the feed.
+- Snapshot/render counts do not count source trades. Preserve separate bounded source-state categories and numeric error/close codes, never raw credentials/payloads, to locate future reception failures.
+- External clock is selected holding source time in Taipei HH:mm:ss, not render/generatedAt time. No timer may make stale prices look newly updated.
+
+# V4.0.58 — Stop streaming only after settling the final canonical surface
+- A cache-only after-hours refresh can preserve a missed intraday quote indefinitely. Closing settlement must use a trusted final trade with its original source timestamp, not a render clock.
+- An empty-symbol cold lifecycle is not a completed reconciliation. Hydration must remain retryable, and actual foreground resumes may retry unconfirmed results through the coordinator's cooldown.
+- A foreground writer must remain until the final canonical surface version is acknowledged or a bounded timeout expires; late close callbacks cannot stop a resumed session.
+- Periodic and shutdown persistence must share one serialized capture/write boundary. An asynchronous previous snapshot must never finish after the final close and overwrite it.
+- Charge cooldown only to dispatched requests. A sequential request budget must not cool down or indefinitely starve unrequested holdings.
+
+# V4.0.59 — Monitor display edits must survive normalization and reach Android
+- Monitor-only format extensions must be normalized at every target: normal fields, Mini fields/status/header, wall header/style/fields and each mode's source clock. UI controls without persisted native consumers are incomplete.
+- Bind each existing display color independently. Profit palette definitions are fixed inputs, never recursively bound. Typography inheritance must not overwrite separately resolved secondary/caption colors.
+- Keep line-height ratio separate from row gap and padding. Source clocks use selected holdings' actual source timestamps in Asia/Taipei HH:mm:ss; generated/render times are not quote freshness.
+- Consolidate overlapping template choices and avoid repeating the aggregate source clock in Mini status when its main clock is visible; retain existing stored template/field configuration.
+- Scope the protected Settings change to its explicitly authorized Monitor child, release constants and backup version; do not relax other child or finance/core locks.
+
+# V4.0.60 — Fit real glyph metrics into row budgets
+- Measure actual maximum-size text with its face/weight; string length is not a font-width metric. All eligible cells in a row share the tightest width/height bound.
+- Count spacing once: Mini gap/padding belongs inside each text budget; wall detail wrapper padding is shared across its text rows. Minimum-font overflow ellipsizes; enlarge vertical space only when needed to avoid minimum-font clipping.
+- Native fitting uses one pre-draw callback per fresh surface, cleared on rebuild/destroy. Detached/hidden clock views have no layout budget and must be skipped. No timers or new market work.
+- Reject stale preview measurements by layout epoch and text identity. OFF leaves stored manual font settings intact; Normal/Mini keep separate options and old configurations default OFF.
+- Android overlay layout dimensions are physical px, not dp. Do not multiply configured row height by density; scale the preview canvas and its measured sp metrics together so Mini does not lose its data area.
+
+# V4.0.61 — Native readiness cannot block local startup; optional lists cannot block accounting
+- Local hydration must finish independently of native market and Keystore promises. Apply late native results, but never keep all app navigation behind an unbounded bridge promise. Keep a native-control render boundary outside all providers; never clear accounts or layout settings to recover a screen.
+- Source timestamp ticks are not catalog edits. Serialize market-cache writes only at a bounded, serialized latest-only boundary; do not queue full-catalog JSON once per trade. This write window is not a quote-refresh timer.
+- Holdings, one-off research and persisted watchlist symbols are independent subscription owners; union them on foreground and headless paths. Closing search or removing a watched symbol must not remove another owner's subscription.
+- Keep watchlist rows separate from canonical holdings and totals. Monitor source selection needs persisted normalization, real preview, native rendering, background data, explicit source labels, duplicate merging, and suppression of unavailable accounting fields.
+- LIVE watched trades need the same Taipei session classification as live holdings. Optional corrupt watchlist data must not stop canonical background writes. Preserve malformed foreground data in a recovery copy before allowing an empty replacement.
+- A passing model or cloud build cannot prove the original device's upgrade-time white screen or latency is resolved; retain this as a device acceptance check.
+
+# V4.0.62 — partial subscription failures must preserve accepted streams
+- Quota rejection is admission evidence, not proof the whole socket is broken. Preserve acknowledged channels, discover capacity serially after bulk denial, and prioritize held/watch/research owners consistently in foreground and headless paths. Never hardcode a plan tier or bypass its cap.
+- Zero accepted subscriptions still require bounded backoff. Preserve serial admission across those retries, but do not gate initial quota discovery on the transport reconnect counter.
+- Mark unsupported subscription coverage honestly without inventing a fresh source timestamp or changing financial quantities.
+- Adding list members must reuse the current presentation; preset application is an explicit user action. Hydration establishes an addition baseline and must not reset saved selection.
+- A daily agenda must not inherit month-dot truncation or visibility filters. Label its registered/imported coverage and never post forecast cash when reading calendar events.

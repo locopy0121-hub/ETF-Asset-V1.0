@@ -1,9 +1,15 @@
-import {type ReactNode,useEffect,useMemo,useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Switch,Text,View} from 'react-native';
+import {type ReactElement,type ReactNode,useEffect,useMemo,useState} from 'react';
+import {Alert,Modal,Pressable,ScrollView,StyleSheet,Switch,Text,TextInput,View} from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 
 import type {PageFrameDefinition} from '../domain/frameRegistry';
-import type {MainPageKey} from '../domain/pageRegistry';
+import {recordDiagnosticEvent} from '../diagnostics/DiagnosticRuntime';
+import {MAIN_PAGES,type MainPageKey} from '../domain/pageRegistry';
+import type {PortfolioPrimaryMode} from '../domain/portfolioModeSwitch';
 import {DEFAULT_HOLDING_WALL_CONFIG} from '../domain/uiModels';
+import {DEFAULT_ETF_BADGES} from '../domain/etfBadges';
+import {DEFAULT_PORTFOLIO_LIST} from '../domain/portfolioList';
+import {DEFAULT_DASHBOARD_LAYOUT,type DashboardLayoutConfig} from '../domain/dashboardLayout';
 import {
   normalizeEditorConfig,
   type DashboardChartConfig,
@@ -19,8 +25,18 @@ import {
 } from '../editor/pageEditor';
 import {AB_COLLAPSE_RULES,getComponentCapabilities} from '../editor/componentCapabilities';
 import {colors,radius,spacing} from '../theme/tokens';
+import {useSettingsRuntime} from '../settings/SettingsRuntime';
 import {ColorPalettePicker} from './ColorPalettePicker';
 import {HoldingMarketWallEditor} from './HoldingMarketWallEditor';
+import type {FrameCardProps} from './FrameCard';
+import {EtfBadgeEditor} from './EtfBadgeEditor';
+import {useMarketRuntime} from '../market/MarketRuntime';
+import {PortfolioListEditor} from './PortfolioListEditor';
+import {FloatingHoldingCardPreview} from './FloatingHoldingCardPreview';
+import {holdingPreviewLayout} from '../editor/holdingPreviewModel';
+import {DashboardLayoutPreview} from './dashboard/DashboardLayoutPreview';
+import {PageLayoutToolWorkbench} from './PageLayoutToolWorkbench';
+import type {HoldingQuote,QuoteModuleStyle} from '../domain/uiModels';
 
 const layouts:readonly {key:FrameLayout;label:string}[]=[
   {key:'standard',label:'標準'},{key:'compact',label:'緊湊'},{key:'dense',label:'密集'},
@@ -34,23 +50,38 @@ const behaviors:readonly {key:FrameBehavior;label:string}[]=[
 const aligns=([{key:'left',label:'靠左'},{key:'center',label:'置中'},{key:'right',label:'靠右'}] as const);
 
 export function PageFrameSettingsModal({
-  visible,pageKey,title,frames,onClose,
+  visible,pageKey,title,frames,onClose,previewQuote,previewRows,initialContentTab,previewFirstMode,previewListFallback,previewElements,
 }:{
-  visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;
+  visible:boolean;pageKey:MainPageKey;title:string;frames:readonly PageFrameDefinition[];onClose:()=>void;previewQuote?:HoldingQuote|undefined;
+  previewRows?:readonly HoldingQuote[]|undefined;
+  previewFirstMode?:PortfolioPrimaryMode;
+  previewListFallback?:boolean;
+  previewElements?:readonly {key:string;element:ReactElement<FrameCardProps>}[]|undefined;
+  initialContentTab?:'wall'|'badges'|undefined;
 }){
   const {config,displayConfig,replacePageConfig,updateDisplayConfig,resetPage}=usePageEditor(pageKey);
+  const pageSettings=useSettingsRuntime();
+  const market=useMarketRuntime();
+  const defaultPageTitle=MAIN_PAGES.find(page=>page.key===pageKey)?.title??title;
+  const [titleDraft,setTitleDraft]=useState(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
   const [openFrame,setOpenFrame]=useState<string|null>(null);
   const [openGroup,setOpenGroup]=useState<string|null>(null);
+  const [showWallPreview,setShowWallPreview]=useState(true);
+  const [contentTab,setContentTab]=useState<'list'|'wall'|'badges'>('list');
   const [draft,setDraft]=useState<Record<string,FrameEditorConfig>>({...config});
   const [displayDraft,setDisplayDraft]=useState<PageDisplayConfig>({...displayConfig});
 
   useEffect(()=>{
     if(!visible)return;
     setDraft({...config});
+    setTitleDraft(pageSettings.prefs.pageTitles[pageKey]||defaultPageTitle);
     setDisplayDraft({...displayConfig});
-    setOpenFrame(null);
-    setOpenGroup(null);
-  },[visible,config,displayConfig]);
+    const editFrame=pageKey==='portfolio'?'holding-view':pageKey==='home'?'holding-quotes':null;
+    setOpenFrame(initialContentTab?editFrame:(pageKey==='home'?'asset-dashboard':pageKey==='portfolio'?editFrame:null));
+    setOpenGroup(initialContentTab&&editFrame?editFrame+':content':(pageKey==='portfolio'?'holding-view:content':null));
+    setShowWallPreview(false);
+    setContentTab(initialContentTab??(pageKey==='portfolio'?'list':'wall'));
+  },[visible,config,displayConfig,initialContentTab]);
 
   const orderedFrames=useMemo(
     ()=>[...frames].sort((a,b)=>(draft[a.key]?.order??0)-(draft[b.key]?.order??0)),
@@ -80,82 +111,170 @@ export function PageFrameSettingsModal({
     const key=`${frameKey}:${group}`;
     setOpenGroup(current=>current===key?null:key);
   };
-  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);onClose();};
+  const apply=()=>{replacePageConfig(normalizeEditorConfig(pageKey,draft));updateDisplayConfig(displayDraft);pageSettings.patchPageTitle(pageKey,titleDraft.trim()||defaultPageTitle);
+    recordDiagnosticEvent({level:'info',code:'PAGE_EDITOR_APPLY',screen:pageKey,message:'頁面設定已套用'});
+    onClose();};
   const cancel=()=>{setDraft({...config});setDisplayDraft({...displayConfig});onClose();};
-  const reset=()=>{resetPage();onClose();};
+  const reset=()=>Alert.alert(
+    '確認恢復本頁預設排版',
+    '將恢復目前頁面的排版設定。請再次確認是否恢復。',
+    [
+      {text:'取消',style:'cancel'},
+      {text:'確認恢復',style:'destructive',onPress:()=>{resetPage();pageSettings.patchPageTitle(pageKey,defaultPageTitle);onClose();}},
+    ],
+  );
 
+  // Only the two actions stay in the fixed toolbar. The preview and tool list
+  // have their own bounded scroll regions; the whole editor never scrolls away.
   return <Modal visible={visible} animationType="slide" onRequestClose={cancel}>
-    <View style={styles.root}>
-      <View style={styles.top}>
-        <View style={{flex:1}}>
-          <Text style={styles.kicker}>頁面設定 · 統一能力模型</Text>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.hint}>元件決定可用工具；AB 規則只負責收合。未編輯區預設收合，切換時上一組自動收起。</Text>
-        </View>
-        <Pressable style={styles.cancel} onPress={cancel}><Text style={styles.cancelText}>取消</Text></Pressable>
-        <Pressable style={styles.save} onPress={apply}><Text style={styles.saveText}>套用</Text></Pressable>
+    <SafeAreaView style={styles.root} edges={['top','bottom']}>
+      <View style={styles.compactToolbar}>
+        <Pressable accessibilityRole="button" accessibilityLabel="取消頁面編輯" style={styles.cancel} onPress={cancel}>
+          <Text style={styles.cancelText}>取消</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="套用頁面編輯" style={styles.save} onPress={apply}>
+          <Text style={styles.saveText}>套用</Text>
+        </Pressable>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.toolbar}>
-          <Text style={styles.toolbarText}>AB：預設收合 {AB_COLLAPSE_RULES.defaultCollapsed?'✓':'×'} · 同層單一展開 {AB_COLLAPSE_RULES.singleOpenPerLevel?'✓':'×'} · 所有顏色皆使用調色盤。</Text>
-          <Pressable onPress={reset}><Text style={styles.resetText}>重設本頁</Text></Pressable>
-        </View>
-        {orderedFrames.map((frame,index)=>{
-          const expanded=openFrame===frame.key,value=draft[frame.key];if(!value)return null;
-          const locked=value.behavior==='locked';
-          return <View key={frame.key} style={styles.section}>
-            <Pressable style={styles.header} onPress={()=>toggleFrame(frame.key)}>
-              <View style={{flex:1}}><Text style={styles.sectionTitle}>{frame.title}</Text><Text style={styles.description}>{frame.description}</Text></View>
-              <Switch value={value.visible} disabled={locked} onValueChange={visibleValue=>patch(frame.key,{visible:visibleValue})} trackColor={{true:colors.primary}}/>
-              <Text style={styles.toggle}>{expanded?'−':'+'}</Text>
-            </Pressable>
-            {expanded?<View style={styles.body}>
-              <AccordionGroup title="顯示／版面" subtitle="顯示、密度、框架行為" expanded={openGroup===`${frame.key}:layout`} onPress={()=>toggleGroup(frame.key,'layout')}>
-                <EditorRow title="顯示內容" subtitle={value.visible?'此框架顯示':'此框架隱藏'}><Switch value={value.visible} disabled={locked} onValueChange={visibleValue=>patch(frame.key,{visible:visibleValue})} trackColor={{true:colors.primary}}/></EditorRow>
-                <EditorRow title="版面" subtitle="同類框架使用同一套版面工具"><ChoiceGroup disabled={locked} items={layouts} value={value.layout} onChange={layout=>patch(frame.key,{layout})}/></EditorRow>
-                <EditorRow title="外觀模式" subtitle="快速套用基本框架風格"><ChoiceGroup disabled={locked} items={appearances} value={value.appearance} onChange={appearance=>patch(frame.key,{appearance})}/></EditorRow>
-                <EditorRow title="排序 / 行為" subtitle="鎖定時禁止框架修改"><ChoiceGroup items={behaviors} value={value.behavior} onChange={behavior=>setBehavior(frame.key,behavior)}/></EditorRow>
-                <View style={styles.orderRow}>
-                  <Pressable disabled={value.behavior !== 'manual'||index===0} onPress={()=>move(frame.key,-1)} style={[styles.orderButton,(value.behavior !== 'manual'||index===0)&&styles.disabled]}><Text style={styles.orderText}>↑ 上移</Text></Pressable>
-                  <Text style={styles.orderIndex}>順位 {index+1}</Text>
-                  <Pressable disabled={value.behavior !== 'manual'||index===orderedFrames.length-1} onPress={()=>move(frame.key,1)} style={[styles.orderButton,(value.behavior !== 'manual'||index===orderedFrames.length-1)&&styles.disabled]}><Text style={styles.orderText}>↓ 下移</Text></Pressable>
-                </View>
-              </AccordionGroup>
-
-              <AccordionGroup title="標題" subtitle="所有頁面的標題都使用同一套工具" expanded={openGroup===`${frame.key}:title`} onPress={()=>toggleGroup(frame.key,'title')}>
-                <EditorRow title="字體大小" subtitle={`${Math.round(value.titleFontSize)} px`}><NumberStep label="px" value={value.titleFontSize} min={10} max={32} step={1} onChange={titleFontSize=>patch(frame.key,{titleFontSize})}/></EditorRow>
-                <ColorPalettePicker label="標題文字顏色" value={value.titleColor} onChange={titleColor=>patch(frame.key,{titleColor})}/>
-                <EditorRow title="標題對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.titleAlign} onChange={titleAlign=>patch(frame.key,{titleAlign})}/></EditorRow>
-                <CapabilityHint type="title"/>
-              </AccordionGroup>
-
-              <AccordionGroup title="背景" subtitle="顏色、透明度、陰影" expanded={openGroup===`${frame.key}:background`} onPress={()=>toggleGroup(frame.key,'background')}>
-                <ColorPalettePicker label="框架背景" value={value.backgroundColor} onChange={backgroundColor=>patch(frame.key,{backgroundColor})}/>
-                <EditorRow title="背景透明度" subtitle={`${Math.round(value.backgroundOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.backgroundOpacity*100)} min={10} max={100} step={5} onChange={v=>patch(frame.key,{backgroundOpacity:v/100})}/></EditorRow>
-                <EditorRow title="陰影" subtitle={value.shadowEnabled?'開啟':'關閉'}><Switch value={value.shadowEnabled} onValueChange={shadowEnabled=>patch(frame.key,{shadowEnabled})} trackColor={{true:colors.primary}}/></EditorRow>
-                {value.shadowEnabled?<EditorRow title="陰影強度" subtitle={`${Math.round(value.shadowOpacity*100)}%`}><NumberStep label="%" value={Math.round(value.shadowOpacity*100)} min={0} max={80} step={5} onChange={v=>patch(frame.key,{shadowOpacity:v/100})}/></EditorRow>:null}
-              </AccordionGroup>
-
-              <AccordionGroup title="邊框" subtitle="邊框顏色、粗細、圓角" expanded={openGroup===`${frame.key}:border`} onPress={()=>toggleGroup(frame.key,'border')}>
-                <ColorPalettePicker label="邊框顏色" value={value.borderColor} onChange={borderColor=>patch(frame.key,{borderColor})}/>
-                <EditorRow title="邊框粗細" subtitle={`${Math.round(value.borderWidth)} px`}><NumberStep label="px" value={value.borderWidth} min={0} max={8} step={1} onChange={borderWidth=>patch(frame.key,{borderWidth})}/></EditorRow>
-                <EditorRow title="圓角" subtitle={`${Math.round(value.borderRadius)} px`}><NumberStep label="px" value={value.borderRadius} min={0} max={48} step={2} onChange={borderRadius=>patch(frame.key,{borderRadius})}/></EditorRow>
-              </AccordionGroup>
-
-              {hasContentTools(pageKey,frame.key)?<AccordionGroup title="資料／內容" subtitle="只顯示目前框架真正可用的內容工具" expanded={openGroup===`${frame.key}:content`} onPress={()=>toggleGroup(frame.key,'content')}>
-                {((pageKey==='home'&&frame.key==='market-news')||(pageKey==='ai'&&frame.key==='ai-news'))?<View style={styles.newsEditor}>
-                  <EditorRow title="新聞顯示筆數" subtitle="3／5／10 筆"><ChoiceGroup items={([{key:'3',label:'3 筆'},{key:'5',label:'5 筆'},{key:'10',label:'10 筆'}] as const)} value={String(displayDraft.newsVisibleCount??5) as '3'|'5'|'10'} onChange={v=>setDisplayDraft(current=>({...current,newsVisibleCount:Number(v)}))}/></EditorRow>
-                  <EditorRow title="僅顯示持股相關" subtitle="依目前持股代號與名稱篩選"><Switch value={displayDraft.newsHoldingsOnly??true} onValueChange={newsHoldingsOnly=>setDisplayDraft(current=>({...current,newsHoldingsOnly}))} trackColor={{true:colors.primary}}/></EditorRow>
-                </View>:null}
-                {pageKey==='home'&&frame.key==='holding-quotes'?<HoldingMarketWallEditor value={displayDraft.holdingWall??DEFAULT_HOLDING_WALL_CONFIG} onChange={holdingWall=>setDisplayDraft(current=>({...current,holdingWall}))}/>:null}
-                {pageKey==='home'&&frame.key==='asset-dashboard'?<DashboardToolsEditor value={displayDraft} onChange={patchValue=>setDisplayDraft(current=>({...current,...patchValue}))}/>:null}
-              </AccordionGroup>:null}
-            </View>:null}
-          </View>;
-        })}
-      </ScrollView>
-    </View>
+      <View style={styles.fixedSplitWorkbench}>
+        <PageLayoutToolWorkbench pageKey={pageKey} frames={frames} draft={draft} displayDraft={displayDraft}
+          onPatchFrame={patch} onMoveFrame={move} onSetFrameBehavior={setBehavior}
+          onChangeDisplay={setDisplayDraft} previewQuote={previewQuote} previewRows={previewRows}
+          previewFirstMode={previewFirstMode} previewListFallback={previewListFallback}
+          previewElements={previewElements} pageTitle={titleDraft} onChangePageTitle={setTitleDraft}
+          onResetPage={reset}/>
+      </View>
+    </SafeAreaView>
   </Modal>;
+}
+
+function DashboardModuleContentEditor({frameKey,value,onChange}:{frameKey:string;value:DashboardLayoutConfig;onChange:(value:DashboardLayoutConfig)=>void}){
+  const patchOverview=(next:Partial<DashboardLayoutConfig['overview']>)=>onChange({...value,overview:{...value.overview,...next}});
+  const patchProfit=(next:Partial<DashboardLayoutConfig['profitAnalysis']>)=>onChange({...value,profitAnalysis:{...value.profitAnalysis,...next}});
+  const patchDetail=(next:Partial<DashboardLayoutConfig['profitDetail']>)=>onChange({...value,profitDetail:{...value.profitDetail,...next}});
+  const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>onChange({...value,quickActions:{...value.quickActions,...next}});
+  if(frameKey==='asset-dashboard')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>編輯資產總覽內部真實內容；框架外觀仍由上層框架工具控制。文字、數值與 NT$ 在維護工程師中亦可個別選取。</Text>
+    <OrderEditor title="內容排序" order={value.overview.order}
+      items={[{key:'label',label:'標題'},{key:'amount',label:'金額'},{key:'caption',label:'說明'}]}
+      onChange={order=>patchOverview({order})}/>
+    <EditorRow title="內容間距" subtitle={value.overview.contentGap+' dp'}><NumberStep label="dp" value={value.overview.contentGap} min={0} max={24} step={1} onChange={contentGap=>patchOverview({contentGap})}/></EditorRow>
+    <EditorRow title="卡片內距" subtitle={value.overview.padding+' dp'}><NumberStep label="dp" value={value.overview.padding} min={8} max={28} step={1} onChange={padding=>patchOverview({padding})}/></EditorRow>
+    <EditorRow title="內容對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.overview.align} onChange={align=>patchOverview({align})}/></EditorRow>
+    <EditorRow title="標題字體大小" subtitle={value.overview.labelFontSize+' px'}><NumberStep label="px" value={value.overview.labelFontSize} min={8} max={28} step={1} onChange={labelFontSize=>patchOverview({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="標題文字顏色" value={value.overview.labelColor} onChange={labelColor=>patchOverview({labelColor})}/>
+    <EditorRow title="主數值字體大小" subtitle={value.overview.valueFontSize+' px'}><NumberStep label="px" value={value.overview.valueFontSize} min={18} max={64} step={1} onChange={valueFontSize=>patchOverview({valueFontSize})}/></EditorRow>
+    <ColorPalettePicker label="主數值文字顏色" value={value.overview.valueColor} onChange={valueColor=>patchOverview({valueColor})}/>
+    <EditorRow title="NT$ 字體大小" subtitle={value.overview.prefixFontSize+' px'}><NumberStep label="px" value={value.overview.prefixFontSize} min={10} max={32} step={1} onChange={prefixFontSize=>patchOverview({prefixFontSize})}/></EditorRow>
+    <ColorPalettePicker label="NT$ 文字顏色" value={value.overview.prefixColor} onChange={prefixColor=>patchOverview({prefixColor})}/>
+    <EditorRow title="說明字體大小" subtitle={value.overview.captionFontSize+' px'}><NumberStep label="px" value={value.overview.captionFontSize} min={8} max={24} step={1} onChange={captionFontSize=>patchOverview({captionFontSize})}/></EditorRow>
+    <ColorPalettePicker label="說明文字顏色" value={value.overview.captionColor} onChange={captionColor=>patchOverview({captionColor})}/>
+  </View>;
+  if(frameKey==='profit-analysis')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>四張 KPI 卡可調整排序、卡片內距、文字大小、文字色與對齊；損益數值仍可跟隨系統損益色。</Text>
+    <OrderEditor title="KPI 排序" order={value.profitAnalysis.order}
+      items={[{key:'realizedNetPnL',label:'已實現損益'},{key:'totalPnl',label:'含息總損益'},{key:'totalUnrealizedProfit',label:'未實現損益'},{key:'totalMarketValue',label:'持股市值'}]}
+      onChange={order=>patchProfit({order})}/>
+    <EditorRow title="卡片內距" subtitle={value.profitAnalysis.cardPadding+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardPadding} min={0} max={28} step={1} onChange={cardPadding=>patchProfit({cardPadding})}/></EditorRow>
+    <EditorRow title="卡片間距" subtitle={value.profitAnalysis.cardGap+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} onChange={cardGap=>patchProfit({cardGap})}/></EditorRow>
+    <EditorRow title="文字對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.profitAnalysis.align} onChange={align=>patchProfit({align})}/></EditorRow>
+    <EditorRow title="標題大小" subtitle={value.profitAnalysis.labelFontSize+' px'}><NumberStep label="px" value={value.profitAnalysis.labelFontSize} min={8} max={28} step={1} onChange={labelFontSize=>patchProfit({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="標題顏色" value={value.profitAnalysis.labelColor} onChange={labelColor=>patchProfit({labelColor})}/>
+    <EditorRow title="數值大小" subtitle={value.profitAnalysis.valueFontSize+' px'}><NumberStep label="px" value={value.profitAnalysis.valueFontSize} min={10} max={40} step={1} onChange={valueFontSize=>patchProfit({valueFontSize})}/></EditorRow>
+    <ColorPalettePicker label="一般數值顏色" value={value.profitAnalysis.valueColor} onChange={valueColor=>patchProfit({valueColor})}/>
+    <EditorRow title="副文字大小" subtitle={value.profitAnalysis.captionFontSize+' px'}><NumberStep label="px" value={value.profitAnalysis.captionFontSize} min={8} max={24} step={1} onChange={captionFontSize=>patchProfit({captionFontSize})}/></EditorRow>
+    <ColorPalettePicker label="副文字顏色" value={value.profitAnalysis.captionColor} onChange={captionColor=>patchProfit({captionColor})}/>
+  </View>;
+  if(frameKey==='pnl-detail')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>明細列可調整顯示順序、左右內距、欄位間距、字體大小與顏色；財務數值來源保持唯讀。</Text>
+    <OrderEditor title="明細排序" order={value.profitDetail.order}
+      items={[{key:'price',label:'純價差未實現'},{key:'net',label:'淨清算未實現'},{key:'realized',label:'已實現損益'},{key:'total',label:'含息總損益'}]}
+      onChange={order=>patchDetail({order})}/>
+    <EditorRow title="左右內距" subtitle={value.profitDetail.rowPaddingHorizontal+' dp'}><NumberStep label="dp" value={value.profitDetail.rowPaddingHorizontal} min={0} max={32} step={1} onChange={rowPaddingHorizontal=>patchDetail({rowPaddingHorizontal})}/></EditorRow>
+    <EditorRow title="欄位間距" subtitle={value.profitDetail.rowGap+' dp'}><NumberStep label="dp" value={value.profitDetail.rowGap} min={0} max={28} step={1} onChange={rowGap=>patchDetail({rowGap})}/></EditorRow>
+    <EditorRow title="文字對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.profitDetail.align} onChange={align=>patchDetail({align})}/></EditorRow>
+    <EditorRow title="標題大小" subtitle={value.profitDetail.labelFontSize+' px'}><NumberStep label="px" value={value.profitDetail.labelFontSize} min={8} max={28} step={1} onChange={labelFontSize=>patchDetail({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="標題顏色" value={value.profitDetail.labelColor} onChange={labelColor=>patchDetail({labelColor})}/>
+    <EditorRow title="數值大小" subtitle={value.profitDetail.valueFontSize+' px'}><NumberStep label="px" value={value.profitDetail.valueFontSize} min={9} max={32} step={1} onChange={valueFontSize=>patchDetail({valueFontSize})}/></EditorRow>
+    <ColorPalettePicker label="一般數值顏色" value={value.profitDetail.valueColor} onChange={valueColor=>patchDetail({valueColor})}/>
+  </View>;
+  if(frameKey==='dashboard-quick-actions')return <View style={styles.dashboardContentEditor}>
+    <Text style={styles.dashboardHint}>快捷功能可調整按鈕排序、內距、圖示／文字間距、圖示與文字大小／顏色及對齊。</Text>
+    <OrderEditor title="按鈕排序" order={value.quickActions.order}
+      items={[{key:'stock-query',label:'持股查詢'},{key:'ledger',label:'交易紀錄'},{key:'allocation',label:'資產配置'},{key:'dividend',label:'股息資訊'}]}
+      onChange={order=>patchQuick({order})}/>
+    <EditorRow title="按鈕內距" subtitle={value.quickActions.itemPadding+' dp'}><NumberStep label="dp" value={value.quickActions.itemPadding} min={0} max={28} step={1} onChange={itemPadding=>patchQuick({itemPadding})}/></EditorRow>
+    <EditorRow title="圖示／文字間距" subtitle={value.quickActions.itemGap+' dp'}><NumberStep label="dp" value={value.quickActions.itemGap} min={0} max={24} step={1} onChange={itemGap=>patchQuick({itemGap})}/></EditorRow>
+    <EditorRow title="內容對齊" subtitle="左／中／右"><ChoiceGroup items={aligns} value={value.quickActions.align} onChange={align=>patchQuick({align})}/></EditorRow>
+    <EditorRow title="圖示大小" subtitle={value.quickActions.iconSize+' px'}><NumberStep label="px" value={value.quickActions.iconSize} min={18} max={36} step={1} onChange={iconSize=>patchQuick({iconSize})}/></EditorRow>
+    <ColorPalettePicker label="圖示顏色" value={value.quickActions.iconColor} onChange={iconColor=>patchQuick({iconColor})}/>
+    <EditorRow title="文字大小" subtitle={value.quickActions.labelFontSize+' px'}><NumberStep label="px" value={value.quickActions.labelFontSize} min={8} max={24} step={1} onChange={labelFontSize=>patchQuick({labelFontSize})}/></EditorRow>
+    <ColorPalettePicker label="文字顏色" value={value.quickActions.labelColor} onChange={labelColor=>patchQuick({labelColor})}/>
+  </View>;
+  return null;
+}
+
+function OrderEditor<T extends string>({title,order,items,onChange}:{title:string;order:readonly T[];items:readonly {key:T;label:string}[];onChange:(order:readonly T[])=>void}){
+  const labels=new Map(items.map(item=>[item.key,item.label]));
+  const move=(key:T,delta:-1|1)=>{
+    const next=[...order],index=next.indexOf(key),target=index+delta;
+    if(index<0||target<0||target>=next.length)return;
+    [next[index],next[target]]=[next[target]!,next[index]!];
+    onChange(next);
+  };
+  return <View style={styles.orderEditor}>
+    <Text style={styles.rowLabel}>{title}</Text>
+    {order.map((key,index)=><View key={key} style={styles.orderEditorRow}>
+      <Text style={styles.orderEditorLabel}>{index+1}. {labels.get(key)??key}</Text>
+      <View style={styles.orderEditorActions}>
+        <Pressable disabled={index===0} onPress={()=>move(key,-1)} style={[styles.orderMini,index===0&&styles.disabled]}><Text style={styles.orderMiniText}>↑</Text></Pressable>
+        <Pressable disabled={index===order.length-1} onPress={()=>move(key,1)} style={[styles.orderMini,index===order.length-1&&styles.disabled]}><Text style={styles.orderMiniText}>↓</Text></Pressable>
+      </View>
+    </View>)}
+  </View>;
+}
+
+function DashboardLayoutSettings({value,onChange}:{value:DashboardLayoutConfig;onChange:(value:DashboardLayoutConfig)=>void}){
+  const [open,setOpen]=useState<string|null>('preview');
+  const patch=(patchValue:Partial<DashboardLayoutConfig>)=>onChange({...value,...patchValue});
+  const patchOverview=(next:Partial<DashboardLayoutConfig['overview']>)=>patch({overview:{...value.overview,...next}});
+  const patchProfit=(next:Partial<DashboardLayoutConfig['profitAnalysis']>)=>patch({profitAnalysis:{...value.profitAnalysis,...next}});
+  const patchDetail=(next:Partial<DashboardLayoutConfig['profitDetail']>)=>patch({profitDetail:{...value.profitDetail,...next}});
+  const patchQuick=(next:Partial<DashboardLayoutConfig['quickActions']>)=>patch({quickActions:{...value.quickActions,...next}});
+  const toggle=(key:string)=>setOpen(current=>current===key?null:key);
+  return <View style={{gap:4}}>
+    <Text style={styles.dashboardHint}>模組顯示與上下排序使用下方各「實際框架」的顯示／順位；這裡只管理方案 C 內部排版，避免建立第二套排序狀態。</Text>
+    <AccordionGroup title="即時佈局預覽" subtitle="只預覽方案 C 儀表板，不載入行情牆" expanded={open==='preview'} onPress={()=>toggle('preview')}>
+      <DashboardLayoutPreview layout={value}/>
+    </AccordionGroup>
+    <AccordionGroup title="全局間距" subtitle="儀表板模組間距與內容內距" expanded={open==='global'} onPress={()=>toggle('global')}>
+      <EditorRow title="模組間距" subtitle={Math.round(value.sectionGap)+' dp'}><NumberStep label="dp" value={value.sectionGap} min={6} max={32} step={1} onChange={sectionGap=>patch({sectionGap})}/></EditorRow>
+      <EditorRow title="模組內容水平內距" subtitle={Math.round(value.contentPadding)+' dp'}><NumberStep label="dp" value={value.contentPadding} min={0} max={24} step={1} onChange={contentPadding=>patch({contentPadding})}/></EditorRow>
+    </AccordionGroup>
+    <AccordionGroup title="資產總覽" subtitle="主資產卡與 Money Composite" expanded={open==='overview'} onPress={()=>toggle('overview')}>
+      <EditorRow title="最小高度" subtitle={Math.round(value.overview.minHeight)+' dp'}><NumberStep label="dp" value={value.overview.minHeight} min={104} max={220} step={4} onChange={minHeight=>patchOverview({minHeight})}/></EditorRow>
+      <EditorRow title="卡片內距" subtitle={Math.round(value.overview.padding)+' dp'}><NumberStep label="dp" value={value.overview.padding} min={8} max={28} step={1} onChange={padding=>patchOverview({padding})}/></EditorRow>
+      <SwitchRow label="NT$ 前綴" value={value.overview.prefixVisible} onChange={prefixVisible=>patchOverview({prefixVisible})}/>
+      <SwitchRow label="說明文字" value={value.overview.captionVisible} onChange={captionVisible=>patchOverview({captionVisible})}/>
+      <SwitchRow label="右側裝飾" value={value.overview.decorationVisible} onChange={decorationVisible=>patchOverview({decorationVisible})}/>
+    </AccordionGroup>
+    <AccordionGroup title="損益分析" subtitle="固定 2×2 四宮格，不使用自由 XY" expanded={open==='profit'} onPress={()=>toggle('profit')}>
+      <EditorRow title="卡片間距" subtitle={Math.round(value.profitAnalysis.cardGap)+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardGap} min={6} max={24} step={1} onChange={cardGap=>patchProfit({cardGap})}/></EditorRow>
+      <EditorRow title="卡片最小高度" subtitle={Math.round(value.profitAnalysis.cardHeight)+' dp'}><NumberStep label="dp" value={value.profitAnalysis.cardHeight} min={84} max={156} step={4} onChange={cardHeight=>patchProfit({cardHeight})}/></EditorRow>
+      <SwitchRow label="圖示" value={value.profitAnalysis.iconVisible} onChange={iconVisible=>patchProfit({iconVisible})}/>
+      <SwitchRow label="副文字" value={value.profitAnalysis.captionVisible} onChange={captionVisible=>patchProfit({captionVisible})}/>
+    </AccordionGroup>
+    <AccordionGroup title="損益明細" subtitle="首頁摘要筆數與行高" expanded={open==='detail'} onPress={()=>toggle('detail')}>
+      <EditorRow title="顯示筆數" subtitle={value.profitDetail.itemCount+' 筆'}><ChoiceGroup items={([{key:'2',label:'2 筆'},{key:'3',label:'3 筆'},{key:'4',label:'4 筆'}] as const)} value={String(value.profitDetail.itemCount) as '2'|'3'|'4'} onChange={v=>patchDetail({itemCount:Number(v) as 2|3|4})}/></EditorRow>
+      <EditorRow title="行高" subtitle={Math.round(value.profitDetail.rowHeight)+' dp'}><NumberStep label="dp" value={value.profitDetail.rowHeight} min={40} max={72} step={2} onChange={rowHeight=>patchDetail({rowHeight})}/></EditorRow>
+      <SwitchRow label="查看更多" value={value.profitDetail.showMore} onChange={showMore=>patchDetail({showMore})}/>
+    </AccordionGroup>
+    <AccordionGroup title="快捷功能" subtitle="只連接既有頁面，不新增影子資料" expanded={open==='quick'} onPress={()=>toggle('quick')}>
+      <EditorRow title="排列欄數" subtitle={value.quickActions.columns+' 欄'}><ChoiceGroup items={([{key:'2',label:'2 欄'},{key:'4',label:'4 欄'}] as const)} value={String(value.quickActions.columns) as '2'|'4'} onChange={v=>patchQuick({columns:Number(v) as 2|4})}/></EditorRow>
+      <EditorRow title="圖示大小" subtitle={Math.round(value.quickActions.iconSize)+' px'}><NumberStep label="px" value={value.quickActions.iconSize} min={18} max={36} step={1} onChange={iconSize=>patchQuick({iconSize})}/></EditorRow>
+      <SwitchRow label="功能名稱" value={value.quickActions.titleVisible} onChange={titleVisible=>patchQuick({titleVisible})}/>
+    </AccordionGroup>
+  </View>;
 }
 
 const dashboardMetricChoices:readonly {key:DashboardMetricKey;label:string}[]=[
@@ -201,9 +320,7 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
   };
   const chartGroup=(id:string,key:string)=>`${id}:${key}`;
   return <View style={styles.dashboardTools}>
-    <AccordionGroup title="儀表板資料卡" subtitle="選擇首頁摘要資料" expanded={openChart==='metrics'} onPress={()=>{setOpenChart(v=>v==='metrics'?null:'metrics');setOpenChartGroup(null);}}>
-      <View style={styles.choiceGroup}>{dashboardMetricChoices.map(item=><Pressable key={item.key} onPress={()=>toggleMetric(item.key)} style={[styles.choice,metrics.includes(item.key)&&styles.choiceActive]}><Text style={[styles.choiceText,metrics.includes(item.key)&&styles.choiceTextActive]}>{item.label}</Text></Pressable>)}</View>
-    </AccordionGroup>
+    <Text style={styles.dashboardHint}>方案 C 的四張核心 KPI 已固定由「損益分析」模組呈現；此區保留既有浮動圖表能力，不改行情牆。</Text>
     <View style={styles.chartHeader}><Text style={styles.dashboardTitle}>浮動圖表工具</Text><Pressable onPress={addChart} style={styles.addChart}><Text style={styles.addChartText}>＋ 新增圖表</Text></Pressable></View>
     <Text style={styles.dashboardHint}>圖表可跨框架自由放置；未鎖定時移動 Block，鎖定後手勢切換為資料縮放／平移。</Text>
     {charts.map((chart,index)=>{
@@ -273,7 +390,7 @@ function DashboardToolsEditor({value,onChange}:{value:PageDisplayConfig;onChange
 }
 
 function hasContentTools(pageKey:MainPageKey,frameKey:string){
-  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard'].includes(frameKey))||(pageKey==='ai'&&frameKey==='ai-news');
+  return (pageKey==='home'&&['market-news','holding-quotes','asset-dashboard','profit-analysis','pnl-detail','dashboard-quick-actions'].includes(frameKey))||(pageKey==='portfolio'&&frameKey==='holding-view')||(pageKey==='ai'&&frameKey==='ai-news');
 }
 function CapabilityHint({type}:{type:'title'|'chart'}){
   const groups=getComponentCapabilities(type);
@@ -294,6 +411,9 @@ function ChoiceGroup<T extends string>({items,value,onChange,disabled=false}:{it
 
 const styles=StyleSheet.create({
   root:{flex:1,backgroundColor:colors.background},
+  compactToolbar:{flexDirection:'row',justifyContent:'flex-end',alignItems:'center',gap:10,paddingHorizontal:spacing.md,paddingVertical:8,minHeight:54,backgroundColor:colors.surface,borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},
+  fixedSplitWorkbench:{flex:1,minHeight:0,backgroundColor:colors.surface},
+  pageTitleInput:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,minHeight:42,paddingHorizontal:12,color:colors.text,backgroundColor:colors.surface,fontSize:15},
   top:{paddingTop:56,paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,backgroundColor:colors.surface,borderBottomWidth:1,borderBottomColor:colors.border,flexDirection:'row',alignItems:'flex-start',gap:spacing.sm},
   kicker:{fontSize:12,fontWeight:'800',color:colors.primary},title:{fontSize:26,fontWeight:'900',color:colors.text,marginTop:4},hint:{fontSize:12,color:colors.textSecondary,lineHeight:18,marginTop:5},
   cancel:{paddingHorizontal:12,paddingVertical:10,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted},cancelText:{color:colors.textSecondary,fontWeight:'800'},
@@ -301,11 +421,15 @@ const styles=StyleSheet.create({
   content:{padding:spacing.lg,gap:spacing.md,paddingBottom:48},toolbar:{backgroundColor:colors.surfaceMuted,borderRadius:radius.md,padding:spacing.md,flexDirection:'row',alignItems:'center',gap:spacing.md},toolbarText:{flex:1,fontSize:10,lineHeight:15,color:colors.textSecondary},resetText:{fontSize:11,fontWeight:'900',color:colors.primary},
   section:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:radius.lg,overflow:'hidden'},header:{padding:spacing.lg,flexDirection:'row',alignItems:'center',gap:spacing.md},sectionTitle:{fontSize:17,fontWeight:'900',color:colors.text},description:{fontSize:12,color:colors.textSecondary,marginTop:4},toggle:{fontSize:25,color:colors.primary,fontWeight:'600'},
   body:{paddingHorizontal:spacing.lg,paddingBottom:spacing.lg,borderTopWidth:StyleSheet.hairlineWidth,borderTopColor:colors.border,gap:8},
+  bodyNoTop:{padding:spacing.lg,gap:8},
+  resetOnly:{paddingHorizontal:spacing.lg,paddingBottom:spacing.xl},
+  resetPageButton:{minHeight:44,borderRadius:14,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},
   accordion:{borderBottomWidth:StyleSheet.hairlineWidth,borderBottomColor:colors.border},accordionHeader:{paddingVertical:13,flexDirection:'row',alignItems:'center',gap:8},accordionTitle:{fontSize:13,fontWeight:'900',color:colors.text},accordionToggle:{fontSize:20,fontWeight:'900',color:colors.primary},accordionBody:{paddingBottom:10},
   editorRow:{paddingVertical:10,gap:8},rowLabel:{fontWeight:'800',color:colors.text},rowHint:{fontSize:10,color:colors.textSecondary,marginTop:3,lineHeight:15},editorControl:{marginTop:5},
   choiceGroup:{flexDirection:'row',flexWrap:'wrap',gap:6},choice:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},choiceActive:{backgroundColor:colors.primary,borderColor:colors.primary},choiceText:{fontSize:10,fontWeight:'800',color:colors.textSecondary},choiceTextActive:{color:'#FFFFFF'},
   orderRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:12},orderButton:{paddingHorizontal:12,paddingVertical:8,borderRadius:radius.md,backgroundColor:colors.surfaceMuted},orderText:{fontSize:11,fontWeight:'900',color:colors.primary},orderIndex:{fontSize:11,fontWeight:'800',color:colors.textSecondary},disabled:{opacity:.35},
   newsEditor:{gap:4},rule:{fontSize:11,lineHeight:17,color:colors.primary,marginTop:4,fontWeight:'700'},capabilityHint:{fontSize:10,lineHeight:16,color:colors.textSecondary,marginTop:8},
+  dashboardContentEditor:{gap:8,paddingTop:8},orderEditor:{gap:5,paddingVertical:6},orderEditorRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8,paddingVertical:5},orderEditorLabel:{flex:1,fontSize:11,fontWeight:'800',color:colors.text},orderEditorActions:{flexDirection:'row',gap:5},orderMini:{width:34,height:30,borderRadius:radius.sm,backgroundColor:colors.surfaceMuted,alignItems:'center',justifyContent:'center'},orderMiniText:{fontSize:13,fontWeight:'900',color:colors.primary},
   dashboardTools:{gap:10},dashboardTitle:{fontSize:13,fontWeight:'900',color:colors.text},dashboardHint:{fontSize:10,lineHeight:16,color:colors.textSecondary},chartHeader:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},addChart:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.primary},addChartText:{fontSize:10,fontWeight:'900',color:'#FFFFFF'},
   chartEditor:{borderWidth:1,borderColor:colors.border,borderRadius:radius.md,overflow:'hidden'},chartBody:{padding:10,gap:6},chartName:{fontSize:11,fontWeight:'900',color:colors.text,padding:10},deleteChart:{fontSize:10,fontWeight:'900',color:colors.loss,paddingVertical:8},layerActions:{flexDirection:'row',flexWrap:'wrap',gap:6},layerButton:{paddingHorizontal:10,paddingVertical:7,borderRadius:radius.pill,backgroundColor:colors.surfaceMuted,borderWidth:1,borderColor:colors.border},layerButtonText:{fontSize:10,fontWeight:'900',color:colors.primary},
   stepGrid:{gap:6},numberStep:{flexDirection:'row',alignItems:'center',gap:6},numberLabel:{width:24,fontSize:10,fontWeight:'800',color:colors.textSecondary},numberButton:{width:32,height:30,alignItems:'center',justifyContent:'center',borderRadius:radius.sm,backgroundColor:colors.surfaceMuted},numberButtonText:{fontSize:14,fontWeight:'900',color:colors.primary},numberValue:{minWidth:48,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
