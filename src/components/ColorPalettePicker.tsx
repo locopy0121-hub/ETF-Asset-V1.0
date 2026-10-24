@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Modal, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useSettingsRuntime } from '../settings/SettingsRuntime';
+import { buildSystemColorChoices } from '../settings/systemColorPalette';
 import { colors, radius, spacing } from '../theme/tokens';
 
 type Hsv={h:number;s:number;v:number};
@@ -62,15 +64,20 @@ export function ColorPalettePicker({
   label,
   value,
   onChange,
+  opacity,
+  onOpacityChange,
   profitColorEnabled,
   onProfitColorChange,
 }:{
   label:string;
   value:string;
   onChange:(value:string)=>void;
+  opacity?:number|undefined;
+  onOpacityChange?:((value:number)=>void)|undefined;
   profitColorEnabled?:boolean;
   onProfitColorChange?:(value:boolean)=>void;
 }){
+  const settings=useSettingsRuntime();
   const [expanded,setExpanded]=useState(false);
   const [mode,setMode]=useState<PickerMode>('wheel');
   const [draft,setDraft]=useState(()=>normalizeHex(value));
@@ -86,6 +93,7 @@ export function ColorPalettePicker({
     }
   },[value,expanded]);
 
+  const systemColors=useMemo(()=>buildSystemColorChoices(settings.prefs.display),[settings.prefs.display.profitColorMode,settings.prefs.display.gainColor,settings.prefs.display.lossColor,settings.prefs.display.neutralColor]);
   const hsv=useMemo(()=>hexToHsv(draft),[draft]);
   const wheelRows=useMemo(()=>Array.from({length:WHEEL_STEPS},(_,row)=>
     Array.from({length:WHEEL_STEPS},(_,col)=>{
@@ -151,6 +159,15 @@ export function ColorPalettePicker({
       <Text style={styles.toggleText}>開啟調色盤</Text>
     </Pressable>
 
+    {onOpacityChange?<View style={styles.opacityRow}>
+      <Text style={styles.opacityLabel}>透明度</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={label+'透明度降低'} style={styles.opacityButton}
+        onPress={()=>onOpacityChange(clamp((opacity??1)-.01,0,1))}><Text style={styles.opacityButtonText}>−</Text></Pressable>
+      <Text style={styles.opacityValue}>{Math.round(clamp(opacity??1,0,1)*100)}%</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={label+'透明度提高'} style={styles.opacityButton}
+        onPress={()=>onOpacityChange(clamp((opacity??1)+.01,0,1))}><Text style={styles.opacityButtonText}>＋</Text></Pressable>
+    </View>:null}
+
     {expanded?<Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={cancel}>
       <View style={styles.modalRoot}>
         <View style={styles.modalTop}>
@@ -176,6 +193,8 @@ export function ColorPalettePicker({
         </View>
 
         <View style={styles.pickerBody}>
+          <Text style={styles.sectionTitle}>系統損益色</Text>
+          <View style={styles.systemColorRow}>{systemColors.map(item=><Pressable key={item.key} onPress={()=>setDraft(item.color)} style={styles.systemColorChoice}><View style={[styles.systemColorSwatch,{backgroundColor:item.color}]}/><Text style={styles.systemColorLabel}>{item.label}</Text></Pressable>)}</View>
           {mode==='wheel'?<>
             <View
               onLayout={(event:LayoutChangeEvent)=>setWheelSize(Math.max(1,event.nativeEvent.layout.width))}
@@ -229,6 +248,9 @@ const styles=StyleSheet.create({
   paletteToggle:{minHeight:34,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
   toggleText:{fontSize:9,fontWeight:'900',color:colors.primary},
   preview:{width:26,height:26,borderRadius:13,borderWidth:1,borderColor:colors.border},
+  opacityRow:{minHeight:34,flexDirection:'row',alignItems:'center',gap:8,paddingHorizontal:10,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  opacityLabel:{fontSize:10,fontWeight:'900',color:colors.text,flex:1},opacityButton:{width:30,height:28,borderRadius:8,alignItems:'center',justifyContent:'center',backgroundColor:colors.surfaceMuted},
+  opacityButtonText:{fontSize:16,fontWeight:'900',color:colors.primary},opacityValue:{minWidth:42,textAlign:'center',fontSize:10,fontWeight:'900',color:colors.text},
   profitPill:{paddingHorizontal:8,paddingVertical:5,borderRadius:999,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
   profitPillOn:{borderColor:colors.primary,backgroundColor:'#EFF6FF'},
   profitText:{fontSize:9,fontWeight:'900',color:colors.textSecondary},
@@ -256,6 +278,10 @@ const styles=StyleSheet.create({
   wheelCell:{flex:1},
   wheelMarker:{position:'absolute',width:34,height:34,borderRadius:17,marginLeft:-17,marginTop:-17,borderWidth:3,borderColor:'#FFFFFF',backgroundColor:'transparent',shadowColor:'#000000',shadowOpacity:.25,shadowRadius:3,elevation:3},
   sectionTitle:{fontSize:12,fontWeight:'900',color:colors.text},
+  systemColorRow:{flexDirection:'row',gap:8},
+  systemColorChoice:{flex:1,alignItems:'center',gap:5,padding:8,borderRadius:radius.md,borderWidth:1,borderColor:colors.border,backgroundColor:colors.surface},
+  systemColorSwatch:{width:30,height:20,borderRadius:7,borderWidth:1,borderColor:colors.border},
+  systemColorLabel:{fontSize:9,fontWeight:'800',color:colors.textSecondary,textAlign:'center'},
   bar:{height:34,borderRadius:radius.md,overflow:'hidden',flexDirection:'row',borderWidth:1,borderColor:colors.border,position:'relative'},
   marker:{position:'absolute',top:0,bottom:0,width:4,marginLeft:-2,backgroundColor:'#FFFFFF',borderWidth:1,borderColor:'#0F172A'},
   colorGrid:{flexDirection:'row',flexWrap:'wrap',gap:10,justifyContent:'center',paddingTop:6},

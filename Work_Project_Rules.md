@@ -1,5 +1,16 @@
 # Work_Project_Rules.md
 
+## 0. 受保護設定主頁（V4.0.16 起不可修改）
+
+- TF Asset 的「控制中心／系統設定」主頁為受保護區域，不能修改其既有頁面結構、分類、內容、選項、文案、交互與內部子面板；V4.0.15 引入的全頁編輯器不得覆蓋或改造設定主頁。
+- 固定基準為 V4.0.14 的 `src/screens/SettingsScreen.tsx`，其他被 V4.0.15 適配改動的設定專用子元件亦以 V4.0.14 為基準。只有必要的 `VERSION` / `BUILD` 發行識別可更新。
+- `scripts/v4_0_16-settings-navigation.test.ts` 的 Git blob SHA 守門測試必須維持；若有任何內容變動，CI 應直接失敗，不得透過降低驗證門檻繞過。
+- 設定頁問題應先在共用導航、頁面框架、設定資料 migration 或原生 crash 診斷處理；未經使用者明確授權，不可重構設定主頁。
+- 不得刪除使用者已儲存偏好、帳務、行情快取來掩蓋頁面閃退。任何 Android APK CI 通過也不能替代真機導航驗收。
+
+---
+
+
 ## TF Asset / ETF 財務管家 — GO 強化工作規則
 
 更新日期：2026-09-21  
@@ -510,3 +521,18 @@ GO 執行途中若追加新需求：
 ### 只有原始 Checklist 全部完成、逐項驗證完成、Final Checklist Reconciliation PASS、GitHub Action PASS、APK / Artifact 驗證 PASS，才能宣告：
 
 # GO ALL PASS
+
+
+---
+
+## 26. GO APK 交付與每次版本 +1（2026-09-23 使用者最新指令）
+
+**每次使用者下達實際更新 GO，最終交付目標必須是「當次新版本 APK 建置成功、Artifact 已驗證且提供可用下載連結」；只提交程式、建立 PR、通過 CI 或準備好 workflow 均不能宣稱本次 GO 完成。**
+
+1. **Ver +1 硬規則：**每次新一輪 App 更新均從上一輪已指定版本正式遞增一級；例如 V2.1.4 → V2.1.5 → V2.1.6。同步更新 package.json、app.json、Android versionCode、iOS buildNumber、App 設定畫面、備份版本及 GitHub QA／Release workflow，不得沿用上次交付版本；不採用「OA」等非正式版本尾碼。僅修改本規則文件、不修改 App 或建置的行政性變更，不冒充新的 APK 版本。
+2. **APK 是 GO 的必需最終產物：**以 GitHub Actions 建置 Android APK；檢查完整 workflow log、Artifact 真實存在、APK 解壓完整性、大小、SHA-256、package、versionName 與 versionCode，並提供與當次 commit／版本對應的實際下載連結。不可提供舊 APK 冒充本次版本。
+3. **QA APK 與正式 Release 分流：**如果舊 U/G/N 或當次 Checklist 尚有未驗證項，仍應在程式及安全前置 Gate 允許後建置供真機確認的**當次新版本 QA APK**；它是實機驗收交付物，不是正式 Release PASS。正式 Release Action 仍須等全項 CODE／RUNTIME／UI／RESULT 與 Final Checklist Reconciliation PASS，嚴禁以 QA APK 取代正式驗收。
+4. **失敗原地修護：**若 PR、Action、GitHub 權限、CI、原生 Gradle 或 Artifact 遇到阻斷，必須回報具體錯誤及真實當前狀態，排除阻斷後再跑建置與驗證；不得報稱 APK 成功，也不得將尚未執行的重試描述為會自動在背景完成。
+5. **GO 最終報告強制包含：**起點版本 → 新版版本、備份 ref、修改及未完成 Checklist 數、CI／APK Action run URL 與結論、APK artifact ID／檔案大小／SHA-256／badging、實際下載連結、尚待真機驗收範圍。未取得新版本可用 APK，GO 狀態只能是**未完成／被阻斷**。
+
+以上規則優先適用於後續 GO 的交付目標，**但不取消 immutable Finance Core、正式 Release 全項驗收、真機未驗證不得偽稱 PASS 等既有安全約束**。

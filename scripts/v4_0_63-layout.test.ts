@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {makePageConfig,normalizeEditorConfig} from '../src/editor/editorModel';
+import {DIVIDEND_EDITOR_CATALOG} from '../src/editor/dividendEditorCatalog';
+const legacy=makePageConfig('dividend');delete legacy['dividend-agenda'];
+Object.entries(legacy).forEach(([key,value],index)=>{legacy[key]={...value,order:index+2};});
+legacy['dividend-calendar']={...legacy['dividend-calendar']!,order:0,backgroundColor:'#123456',width:310,height:490};
+legacy['dividend-list']={...legacy['dividend-list']!,order:1};
+const migrated=normalizeEditorConfig('dividend',legacy);
+assert.equal(migrated['dividend-agenda']!.order,migrated['dividend-calendar']!.order+1);
+assert.equal(migrated['dividend-list']!.order,migrated['dividend-agenda']!.order+1);
+assert.equal(migrated['dividend-calendar']!.backgroundColor,'#123456');assert.equal(migrated['dividend-calendar']!.height,490);
+assert.equal(migrated['dividend-agenda']!.height,undefined,'new agenda does not inherit a fixed calendar height');
+assert.deepEqual(normalizeEditorConfig('dividend',migrated),migrated,'migration is stable on restart');
+assert.ok(DIVIDEND_EDITOR_CATALOG['dividend-agenda']!.some(x=>x.id.endsWith('agendaRefresh:100')));
+assert.ok(!DIVIDEND_EDITOR_CATALOG['dividend-calendar']!.some(x=>x.id.endsWith('eventDetailTitle:15')));
+console.log('V4.0.63 standalone agenda migration, saved calendar dimensions and real editor targets PASS');

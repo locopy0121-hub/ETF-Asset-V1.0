@@ -1,0 +1,71 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {resolveTwsePriceDecision} from '../src/market/twseQuoteParser';
+import {marketSourceField} from '../src/market/marketComparison';
+
+const read=(p:string)=>readFileSync(p,'utf8');
+
+const fallback=resolveTwsePriceDecision({z:'-',pz:'9.86',y:'9.80',b:'9.85_',a:'9.87_'});
+assert.equal(fallback,null,'TWSE non-trade fields are diagnostics only; Yahoo handles trade-like fallback');
+assert.equal(resolveTwsePriceDecision({z:'-',pz:'9.86',y:'9.80'}),null,
+  'pz/previous-close only must stay unresolved instead of becoming currentPrice');
+assert.equal(marketSourceField({source:'TWSE_MIS',quality:'trade'}),'z｜實際成交價');
+
+const probe=read('src/market/officialMarketProbe.ts');
+assert.match(probe,/price=positive\(selected\.z\)\|\|null/,'diagnostic official truth must remain z-only');
+assert.match(probe,/field:'z'/);
+assert.doesNotMatch(probe,/resolveTwsePriceDecision|YAHOO|BACKUP_REALTIME/,
+  'official diagnostic probe must stay isolated from effective-price fallback');
+
+const serverParser=read('server/src/parser.mjs');
+for(const token of ['misNormalizedQuote','yahooQuoteFromChart','officialTradePrice','BACKUP_REALTIME','PREV_CLOSE'])
+  assert.ok(serverParser.includes(token),'server A-layer missing '+token);
+const serverSources=read('server/src/sources.mjs');
+assert.match(serverSources,/query1\.finance\.yahoo\.com\/v8\/finance\/chart/);
+assert.match(serverSources,/misNormalizedQuote/);
+assert.match(serverSources,/this\.yahoo\(symbol,now\)/);
+
+const nativeProviders=read('native/android/SaiEtfAndroidMarketProviders.kt');
+const nativeCenter=read('native/android/SaiEtfMarketDataCenter.kt');
+const nativeRuntime=read('native/android/SaiEtfMarketRuntime.kt');
+for(const token of ['TwseMisQuoteProvider','YahooQuoteProvider','MarketProviderException'])
+  assert.ok(nativeProviders.includes(token),'SaiETF native provider layer missing '+token);
+assert.match(nativeProviders,/marketNumber\(row\.optString\("z"\)\) \?: continue/,
+  'SaiETF TWSE provider must only publish verified z trades');
+assert.doesNotMatch(nativeProviders,/row\.optString\("pz"\)/,
+  'SaiETF provider must not promote pz into current price');
+assert.match(nativeCenter,/val pending = requested\.toMutableSet\(\)/);
+assert.match(nativeCenter,/providers\.forEach \{ provider ->/);
+assert.match(nativeRuntime,/TwseMisQuoteProvider\(\)[\s\S]*YahooQuoteProvider\(\)/,
+  'SaiETF runtime must try TWSE before Yahoo fallback');
+assert.doesNotMatch(nativeRuntime,/Shioaji/i,'retired Shioaji credential path must not exist in the Android runtime');
+
+const nativeDb=read('native/android/TfAssetMarketDatabase.kt');
+assert.match(nativeDb,/tf_asset_market_center_v1\.db",null,\d+/,'market SQLite schema must remain versioned without touching the Ledger');
+assert.match(nativeDb,/market_intraday[\s\S]*previous_close/,'intraday schema must retain the displayed session previous-close baseline');
+
+const bridge=read('src/native/TfAssetNativeBridge.ts');
+assert.match(bridge,/marketCore\?:'SAIETF_NATIVE'/);
+assert.match(bridge,/refreshUnifiedMarketData/);
+
+const panel=read('src/components/MarketComparisonPanel.tsx');
+for(const token of ['行情中心價格型態','行情中心 Fallback','行情中心說明','證券中心原始欄位（唯讀）'])
+  assert.ok(panel.includes(token),'diagnostic provenance UI missing '+token);
+
+const app=JSON.parse(read('app.json')),pkg=JSON.parse(read('package.json'));
+const [major=0,minor=0,patch=0]=String(pkg.version).split('.').map(Number);
+assert.ok(major>3||(major===3&&(minor>2||(minor===2&&patch>=1))),'must remain a descendant of V3.2.x market architecture');
+assert.equal(app.expo.version,pkg.version);
+assert.ok(Number.isInteger(app.expo.android.versionCode)&&app.expo.android.versionCode>0);
+assert.equal(String(app.expo.ios.buildNumber),String(app.expo.android.versionCode));
+assert.ok(read('src/settings/BackupService.ts').includes("APP_VERSION='"+pkg.version+"'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("VERSION='"+pkg.version+"'"));
+assert.ok(read('src/screens/SettingsScreen.tsx').includes("BUILD='"+String(app.expo.android.versionCode)+"'"));
+
+for(const core of ['src/finance/canonicalLedger.ts','src/utils/etfCalculators.ts','docs/finance/CORE_LOCK.md'])
+  assert.ok(read(core).length>0,'finance core missing: '+core);
+assert.doesNotMatch(nativeProviders,/canonicalLedger|actual_fee|actual_tax/);
+assert.doesNotMatch(nativeCenter,/canonicalLedger|actual_fee|actual_tax/);
+assert.doesNotMatch(serverParser,/canonicalLedger|actual_fee|actual_tax/);
+
+console.log('V3.2.11/V4 SaiETF A→B normalized market fallback / Yahoo failover / z-truth separation PASS');
