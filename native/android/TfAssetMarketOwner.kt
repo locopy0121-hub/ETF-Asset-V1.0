@@ -34,6 +34,7 @@ internal object TfAssetMarketOwner {
             if(!sessionOpen){
                 // After close / holiday no settlement network or scheduled live writer.
                 instance?.pause()
+                if(screenReady && uiActive)instance?.reconcileOfficialCloseOnWake()
                 finishClose(app,settled=false)
             }else if(!screenReady){
                 // Lock: pause trades and terminate the Headless JS foreground service.
@@ -51,7 +52,9 @@ internal object TfAssetMarketOwner {
                 instance?.pause()
             }
             if(uiActive||widgetActive){
-                TfAssetMarketSchedule.load(app).nextBoundary(now)?.let{at->
+                val next=TfAssetMarketSchedule.load(app).nextBoundary(now)
+                val finalClose=if(!sessionOpen && screenReady && uiActive)instance?.nextOfficialCloseProbeAt(now) else null
+                listOfNotNull(next,finalClose).minOrNull()?.let{at->
                     val task=Runnable{applySchedule(app)};boundary=task
                     handler.postDelayed(task,(at-now).coerceAtLeast(1L))
                 }

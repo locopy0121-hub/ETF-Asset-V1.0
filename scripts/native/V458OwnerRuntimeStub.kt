@@ -1,11 +1,13 @@
 package com.tfasset.app.saietf
 import android.content.Context
 class SaiEtfMarketRuntime(context:Context,listener:(String)->Unit) {
-    var pauses=0;var settles=0;var resumes=0
+    var pauses=0;var settles=0;var resumes=0;var officialCloseChecks=0
     var callback:((Long)->Unit)?=null
     var canSettle=false
     fun subscriptionLimitedSymbols():Set<String> = emptySet()
     fun pause(){pauses++}
     fun resumeTrackedSymbols(){resumes++}
+    fun reconcileOfficialCloseOnWake(){officialCloseChecks++}
+    fun nextOfficialCloseProbeAt(now:Long):Long?=null
     fun settleScheduledClose(done:(Long)->Unit):Boolean {if(!canSettle)return false;settles++;callback=done;return true}
 }

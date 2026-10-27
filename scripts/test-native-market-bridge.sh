@@ -118,3 +118,12 @@ java -cp "$compiler_dir/v457-recovery.jar:$stream_cp" com.tfasset.app.saietf.V45
   scripts/native/V404AndroidStubs.kt scripts/native/V457QuoteClockTest.kt \
   -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v457-clock.jar"
 java -cp "$compiler_dir/v457-clock.jar:$compile_cp" com.tfasset.app.V457QuoteClockTestKt
+
+# Real native arbitration: the last Fugle trade (2385) must yield to a newer
+# same-day TWSE MIS closing trade (2400) on a single foreground reconciliation.
+"$compiler_dir/kotlinc/bin/kotlinc" \
+  native/android/SaiEtfMarketModels.kt native/android/SaiEtfMarketArbitrator.kt \
+  native/android/SaiEtfProviderCircuitBreaker.kt native/android/SaiEtfMemoryMarketStore.kt \
+  native/android/SaiEtfMarketDataCenter.kt native/android/TfAssetOfficialCloseReconciler.kt \
+  scripts/native/V5041OfficialCloseTest.kt -classpath "$compile_cp" -include-runtime -d "$compiler_dir/v5041-close.jar"
+java -cp "$compiler_dir/v5041-close.jar:$compile_cp" com.tfasset.app.saietf.V5041OfficialCloseTestKt

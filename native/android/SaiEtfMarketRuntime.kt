@@ -59,6 +59,50 @@ class SaiEtfMarketRuntime(context: Context, private val clockMillis:()->Long=Sys
         },
         clockMillis = clockMillis,
     )
+    private val officialCloseInFlight = AtomicBoolean(false)
+    private val officialCloseReconciler = OfficialCloseReconciler(
+        fetch = { symbols -> TwseMisQuoteProvider().fetch(symbols) },
+        current = center::memoryQuotes,
+        admit = { quote -> liveQuotes.acceptBaseline(quote,clockMillis(),taipeiDate(clockMillis())) },
+        clockMillis = clockMillis,
+    )
+    /** Schedule one final MIS check at 13:32 without an after-hours polling timer. */
+    fun nextOfficialCloseProbeAt(now: Long): Long? {
+        val schedule = TfAssetMarketSchedule.load(appContext)
+        val local = Instant.ofEpochMilli(now).atZone(taipeiZone)
+        if (!schedule.enabled || schedule.end != 810 || local.dayOfWeek.value !in schedule.weekdays ||
+            TradingCalendar.closed(now)) return null
+        val end = local.toLocalDate().atTime(13,30).atZone(taipeiZone).toInstant().toEpochMilli()
+        val probe = end + OFFICIAL_CLOSE_GRACE_MILLIS
+        return probe.takeIf { now >= end && now < probe }
+    }
+
+    /** Only the unlocked, foreground UI owner may request this single reconciliation. */
+    fun reconcileOfficialCloseOnWake() {
+        val now = clockMillis()
+        val schedule = TfAssetMarketSchedule.load(appContext)
+        val local = Instant.ofEpochMilli(now).atZone(taipeiZone)
+        if (!TfAssetMarketSchedule.deviceReady(appContext) || !schedule.enabled || schedule.end != 810 ||
+            local.dayOfWeek.value !in schedule.weekdays || TradingCalendar.closed(now) ||
+            local.toLocalTime().isBefore(LocalTime.of(13,32)) || trackedSymbols.isEmpty() ||
+            !officialCloseInFlight.compareAndSet(false,true)) return
+        scope.launch {
+            try {
+                if (officialCloseReconciler.reconcile(trackedSymbols)) {
+                    version.incrementAndGet()
+                    persistenceController.flushNow()
+                    onLiveSnapshot(snapshot(trackedSymbols).toString())
+                }
+            } finally {
+                officialCloseInFlight.set(false)
+            }
+        }
+    }
+
+    companion object {
+        private const val OFFICIAL_CLOSE_GRACE_MILLIS = 120_000L
+    }
+
     @Volatile private var streamWasHealthy = false
     // This socket is owned by TF Asset and talks directly to Fugle.
     // No SaiETF process, app, service, database or network relay participates.

@@ -1,11 +1,11 @@
 /** Current-package release notes; update in the same commit as every version bump. */
 export const APP_RELEASE_NOTES={
- version:'5.0.40',androidVersionCode:50040,headline:'ETF 今日持股與個股反查正式接續版號',
+ version:'5.0.41',androidVersionCode:50041,headline:'TWSE 收盤價一次核對與全局行情同步修護',
  changes:[
-  {id:'v5040-increment',title:'版本正確接續至 V5.0.40',detail:'已安裝 V5.0.39 的下一個 QA APK 版號提升為 5.0.40（Android versionCode 50040），版本資訊、備份記錄及 Android 建置產物同步，不回退至舊版。'},
-  {id:'v5040-etf',title:'保留 ETF 每日持股揭露與個股反查',detail:'ETF 成分股可查看權重與實際揭露日期；個股可反查已收錄 ETF 的持有狀況。可核實的股數才顯示，未有當日資料不得冒稱今日。'},
-  {id:'v5040-heritage',title:'沿用 V5.0.39 全部資料安全修護',detail:'保留 V5.0.38 鎖屏／盤後節能、V5.0.37 圖表預覽及全局動畫、既有 Finance SSOT 與受保護控制中心，不另行變更這些業務實作。'},
-  {id:'v5040-qa',title:'原有 ETF、圖表與 Android APK 品質回歸',detail:'重跑既有完整 CI 品質檢查、ETF 每日揭露與個股反查測試、Gradle 原生 APK 編譯與簽章／版號檢查，確保版本升級可實際生成安裝檔。'},
+  {id:'v5041-close',title:'收盤後一次性 TWSE MIS 官方價格核對',detail:'交易日 13:32 後、手機解鎖且 App 在前景時核對當日 TWSE MIS 實際成交價；錯過收盤的手機於下次開啟補核對。不恢復盤後輪詢、鎖屏更新或背景常駐服務。'},
+  {id:'v5041-sync',title:'個股價格同步寫入原生行情中心',detail:'官方報價經 SaiETF 原生仲裁與來源時間戳驗證後同步至個股詳情、首頁持股、自選行情與資產估值；K 線依舊使用官方日歷史。'},
+  {id:'v5041-guard',title:'保持盤中 Fugle LIVE 與帳務核心不變',detail:'盤中仍由 Fugle WebSocket 訂閱；拒絕前一交易日與無效官方報價；保留不可變 Finance Core、既有控制中心 UI 與省電政策。'},
+  {id:'v5041-build',title:'接續 V5.0.41 原生 QA APK 建置',detail:'Android 版號遞增至 50041；加入收盤價原生仲裁與跨頁行情測試，並執行 GitHub Actions Gradle APK 編譯、簽章與產物驗證。'},
  ],
- notice:'本版為 V5.0.39 功能的 V5.0.40 QA 升版建置，並非新增今日 ETF 真實揭露來源。資料中心涵蓋範圍仍依設定及已索引快照，未收錄不代表沒有持股；PCF 不等於基金實際持倉。手機覆蓋安裝、真機鎖屏省電與各投信當日資料完整性仍待真機驗證。',
+ notice:'本版為 V5.0.41 QA 驗收版。TWSE MIS 當日價格需依交易所回傳時間與原生來源仲裁確認；無法核實時保留最後有效報價並等待下次前景補核對。手機覆蓋安裝、真機收盤與鎖屏省電行為仍待真機驗證。',
 } as const;
