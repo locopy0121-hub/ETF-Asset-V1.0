@@ -3,5 +3,6 @@ import android.content.Context
 internal object TfAssetMarketSchedule {
     var policy=MarketSchedule()
     fun load(context:Context)=policy
+    fun deviceReady(context:Context)=true
     fun allows(context:Context,at:Long=System.currentTimeMillis())=false
 }

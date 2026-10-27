@@ -27,5 +27,12 @@ fun main(){
     val afterClose=runtime.resumes
     TfAssetMarketOwner.applySchedule(app);Handler.flush()
     check(runtime.resumes==afterClose){"After close must not resume quotes"}
-    println("Native power policy: open/unlocked live; lock pause; unlock resume; after-hours stop PASS")
+    TfAssetMarketOwner.uiActive=true
+    TfAssetMarketSchedule.unlocked=true
+    TfAssetMarketOwner.applySchedule(app);Handler.flush()
+    check(runtime.officialCloseChecks==1){"Foreground after-hours UI must request one close reconciliation"}
+    TfAssetMarketSchedule.unlocked=false
+    TfAssetMarketOwner.applySchedule(app);Handler.flush()
+    check(runtime.officialCloseChecks==1){"Locked device must not request any close reconciliation"}
+    println("Native power policy: open/unlocked live; lock pause; foreground close probe; locked no probe PASS")
 }

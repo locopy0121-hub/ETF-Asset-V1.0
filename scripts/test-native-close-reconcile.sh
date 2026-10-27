@@ -19,7 +19,7 @@ java -jar "$compiler_dir/v458-owner.jar"
 "$compiler_dir/kotlinc/bin/kotlinc" "${core[@]}" "${close[@]}" \
   native/android/SaiEtfMarketDataProviderV2.kt native/android/SaiEtfMarketRestoreAdapter.kt native/android/SaiEtfRuntimeQuoteMapper.kt \
   native/android/SaiEtfFugleWebSocketProvider.kt native/android/SaiEtfFugleStreamingController.kt native/android/TfAssetMarketFlowDiagnostics.kt \
-  native/android/SaiEtfMarketPersistenceController.kt native/android/SaiEtfMarketRuntime.kt \
+  native/android/SaiEtfMarketPersistenceController.kt native/android/TfAssetOfficialCloseReconciler.kt native/android/SaiEtfMarketRuntime.kt \
   scripts/native/V458RuntimeAndroidStubs.kt scripts/native/V458RuntimeDependencies.kt scripts/native/V458RuntimeScheduleStub.kt scripts/native/V458RuntimeCloseTest.kt \
   -classpath "$stream_cp" -include-runtime -d "$compiler_dir/v458-runtime.jar"
 java -cp "$compiler_dir/v458-runtime.jar:$stream_cp" com.tfasset.app.saietf.V458RuntimeCloseTestKt
